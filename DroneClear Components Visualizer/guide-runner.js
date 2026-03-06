@@ -117,6 +117,9 @@ function _populateStep(index, step, steps) {
     guideDOM['runner-cli-section']?.classList.toggle('hidden', !hasCLI);
     if (hasCLI) setText('runner-cli-content', step.betaflight_cli);
 
+    // Parts for this step
+    renderStepComponents(step);
+
     // Photo gallery for this step
     renderStepPhotos(step);
 
@@ -628,6 +631,58 @@ async function completeSession() {
         console.error('Failed to complete session:', err);
         alert('Failed to mark session as complete.');
     }
+}
+
+// ── Per-step component cards ─────────────────────────────
+function renderStepComponents(step) {
+    const container = guideDOM['runner-step-components'];
+    if (!container) return;
+
+    const pids = step.required_components || [];
+    if (!pids.length) {
+        container.classList.add('hidden');
+        return;
+    }
+
+    container.classList.remove('hidden');
+
+    let html = '<h3 class="guide-step-comp-title"><i class="ph ph-package"></i> Parts for This Step</h3>';
+    html += '<div class="guide-step-comp-grid">';
+
+    pids.forEach(pid => {
+        const comp = guideState.resolvedComponents[pid];
+        if (!comp) {
+            html += `<div class="guide-step-comp-card guide-step-comp-missing">
+                <i class="ph ph-warning" style="color:var(--accent-red);"></i>
+                <span>${escHTML(pid)}</span>
+            </div>`;
+            return;
+        }
+
+        const imgSrc = compImageUrl(comp);
+        const tips = extractComponentTips(comp);
+
+        html += `<div class="guide-step-comp-card">
+            ${imgSrc
+                ? `<img class="guide-step-comp-img" src="${escHTML(imgSrc)}"
+                        alt="${escHTML(comp.name)}" onerror="this.style.display='none'">`
+                : `<div class="guide-step-comp-img-placeholder"><i class="ph ph-package"></i></div>`}
+            <div class="guide-step-comp-info">
+                <div class="guide-step-comp-name">${escHTML(comp.name)}</div>
+                ${comp.manufacturer ? `<div class="guide-step-comp-mfr">${escHTML(comp.manufacturer)}</div>` : ''}
+                ${tips.length > 0 ? `<div class="guide-step-comp-tips">
+                    ${tips.slice(0, 4).map(t =>
+                        `<span class="guide-step-comp-tip"><i class="ph ${t.icon}"></i> ${escHTML(t.value)}</span>`
+                    ).join('')}
+                </div>` : ''}
+            </div>
+            ${comp.manual_link ? `<a href="${escHTML(comp.manual_link)}" target="_blank"
+                class="guide-step-comp-manual" title="Open manual"><i class="ph ph-file-pdf"></i></a>` : ''}
+        </div>`;
+    });
+
+    html += '</div>';
+    container.innerHTML = html;
 }
 
 // ── Sidebar session info ─────────────────────────────────

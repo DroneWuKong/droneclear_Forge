@@ -50,17 +50,21 @@ class BuildGuideListSerializer(serializers.ModelSerializer):
 
 class BuildGuideDetailSerializer(serializers.ModelSerializer):
     steps = BuildGuideStepSerializer(many=True)
-    drone_model = serializers.SlugRelatedField(
+    # Read: full nested drone model (includes relations with part PIDs)
+    drone_model = DroneModelSerializer(read_only=True)
+    # Write: accept drone model PID string
+    drone_model_pid = serializers.SlugRelatedField(
         slug_field='pid', queryset=DroneModel.objects.all(),
-        required=False, allow_null=True,
+        required=False, allow_null=True, source='drone_model',
+        write_only=True,
     )
 
     class Meta:
         model = BuildGuide
         fields = [
             'pid', 'name', 'description', 'difficulty', 'estimated_time_minutes',
-            'drone_class', 'thumbnail', 'drone_model', 'required_tools',
-            'settings', 'created_at', 'updated_at', 'steps',
+            'drone_class', 'thumbnail', 'drone_model', 'drone_model_pid',
+            'required_tools', 'settings', 'created_at', 'updated_at', 'steps',
         ]
 
     def create(self, validated_data):

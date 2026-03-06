@@ -91,10 +91,17 @@ function renderGuideSelection() {
     `).join('');
 }
 
-// ── Select a guide → fetch detail → show overview ────────
+// ── Select a guide → fetch detail → resolve components → show overview
 async function selectGuide(pid) {
     try {
         guideState.selectedGuide = await apiFetch(GUIDE_API.guideDetail(pid));
+
+        // Resolve all component PIDs to full objects before rendering
+        const allPids = collectGuidePids(guideState.selectedGuide);
+        if (allPids.length > 0) {
+            await resolveComponents(allPids);
+        }
+
         renderBuildOverview();
         setGuidePhase('overview');
     } catch (err) {
@@ -122,26 +129,107 @@ function renderBuildOverview() {
         if (!g.required_tools?.length) toolsList.innerHTML = '<li style="color:var(--text-muted);">None specified</li>';
     }
 
-    // Component checklist — gather from all steps
+    // ── Enriched component checklist ──────────────────────
     const allComponents = [];
+    const stepMapping = {};  // PID → [step orders that use it]
+
     (g.steps || []).forEach(step => {
         (step.required_components || []).forEach(pid => {
             if (!allComponents.includes(pid)) allComponents.push(pid);
+            if (!stepMapping[pid]) stepMapping[pid] = [];
+            if (!stepMapping[pid].includes(step.order)) stepMapping[pid].push(step.order);
         });
     });
+
+    // Also include drone_model parts not explicitly in steps
+    if (g.drone_model?.relations) {
+        Object.values(g.drone_model.relations).forEach(pid => {
+            if (pid && !allComponents.includes(pid)) allComponents.push(pid);
+        });
+    }
+
     guideState.checklist = {};
     const checklistEl = guideDOM['overview-checklist'];
     if (checklistEl) {
         if (!allComponents.length) {
             checklistEl.innerHTML = '<p style="color:var(--text-muted); font-size:13px;">No components listed.</p>';
         } else {
-            checklistEl.innerHTML = allComponents.map(pid => {
-                guideState.checklist[pid] = false;
-                return `<label class="guide-checklist-item">
-                    <input type="checkbox" data-pid="${pid}" onchange="toggleChecklistItem('${pid}', this.checked)">
-                    <span>${escHTML(pid)}</span>
-                </label>`;
-            }).join('');
+            // Group by category
+            const groups = {};
+            allComponents.forEach(pid => {
+                const comp = guideState.resolvedComponents[pid];
+                const cat = comp?.category || 'unknown';
+                if (!groups[cat]) groups[cat] = [];
+                groups[cat].push({ pid, comp });
+            });
+
+            let html = '';
+
+            Object.entries(groups).forEach(([category, items]) => {
+                html += `<div class="guide-checklist-group">
+                    <h4 class="guide-checklist-group-title">${formatCategoryName(category)}</h4>`;
+
+                const displayFields = g.settings?.checklist_fields?.length
+                    ? g.settings.checklist_fields
+                    : DEFAULT_CHECKLIST_FIELDS;
+                const extras = { stepMapping };
+
+                items.forEach(({ pid, comp }) => {
+                    guideState.checklist[pid] = false;
+
+                    if (comp) {
+                        // Rich component card with configurable attribute badges
+                        const imgSrc = compImageUrl(comp);
+                        const manualLink = comp.manual_link
+                            ? `<a href="${escHTML(comp.manual_link)}" target="_blank" class="guide-comp-action" title="Manual"><i class="ph ph-file-pdf"></i></a>`
+                            : '';
+                        const productLink = comp.link
+                            ? `<a href="${escHTML(comp.link)}" target="_blank" class="guide-comp-action" title="Product page"><i class="ph ph-arrow-square-out"></i></a>`
+                            : '';
+
+                        // Dynamic attribute badges
+                        const badges = displayFields.map(key => {
+                            const fv = resolveChecklistFieldValue(key, comp, extras);
+                            return fv ? `<span class="guide-checklist-attr" title="${escHTML(fv.label)}"><i class="ph ${fv.icon}"></i> ${escHTML(fv.value)}</span>` : '';
+                        }).filter(Boolean).join('');
+
+                        html += `<label class="guide-checklist-item guide-checklist-rich">
+                            <input type="checkbox" data-pid="${escHTML(pid)}"
+                                   onchange="toggleChecklistItem('${escHTML(pid)}', this.checked)">
+                            ${imgSrc
+                                ? `<img class="guide-checklist-thumb" src="${escHTML(imgSrc)}"
+                                        alt="${escHTML(comp.name)}"
+                                        onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
+                                   <div class="guide-checklist-thumb-placeholder" style="display:none;"><i class="ph ph-package"></i></div>`
+                                : `<div class="guide-checklist-thumb-placeholder"><i class="ph ph-package"></i></div>`}
+                            <div class="guide-checklist-info">
+                                <span class="guide-checklist-name">${escHTML(comp.name)}</span>
+                                <span class="guide-checklist-meta">${badges}</span>
+                            </div>
+                            <div class="guide-checklist-actions">
+                                ${productLink}${manualLink}
+                            </div>
+                        </label>`;
+                    } else {
+                        // Unresolved PID fallback
+                        html += `<label class="guide-checklist-item guide-checklist-unresolved">
+                            <input type="checkbox" data-pid="${escHTML(pid)}"
+                                   onchange="toggleChecklistItem('${escHTML(pid)}', this.checked)">
+                            <span class="guide-checklist-pid-fallback">
+                                <i class="ph ph-warning" style="color:var(--accent-red);"></i>
+                                ${escHTML(pid)} <em style="color:var(--text-muted);">(not found in library)</em>
+                            </span>
+                        </label>`;
+                    }
+                });
+
+                html += '</div>';
+            });
+
+            // BOM summary
+            html += renderBomSummary(allComponents);
+
+            checklistEl.innerHTML = html;
         }
     }
 
@@ -151,6 +239,45 @@ function renderBuildOverview() {
     }, { once: true });
 
     guideDOM['btn-start-build']?.addEventListener('click', startBuild, { once: true });
+}
+
+/**
+ * Render BOM (Bill of Materials) summary with total cost and weight.
+ */
+function renderBomSummary(pidList) {
+    let totalCost = 0;
+    let totalWeight = 0;
+    let costCount = 0;
+    let weightCount = 0;
+
+    pidList.forEach(pid => {
+        const comp = guideState.resolvedComponents[pid];
+        if (!comp) return;
+
+        const price = guideParsePriceNum(comp.approx_price);
+        if (!isNaN(price)) { totalCost += price; costCount++; }
+
+        const w = parseFloat(comp.schema_data?.weight_g || comp.schema_data?.weight);
+        if (!isNaN(w)) { totalWeight += w; weightCount++; }
+    });
+
+    if (costCount === 0 && weightCount === 0) return '';
+
+    return `<div class="guide-bom-summary">
+        <h4 class="guide-bom-title"><i class="ph ph-receipt"></i> Bill of Materials</h4>
+        <div class="guide-bom-stats">
+            ${costCount > 0 ? `<div class="guide-bom-stat">
+                <span class="guide-bom-label">Est. Total</span>
+                <span class="guide-bom-value guide-bom-cost">$${totalCost.toFixed(2)}</span>
+                <span class="guide-bom-note">${costCount} of ${pidList.length} parts priced</span>
+            </div>` : ''}
+            ${weightCount > 0 ? `<div class="guide-bom-stat">
+                <span class="guide-bom-label">Total Weight</span>
+                <span class="guide-bom-value">${totalWeight.toFixed(1)}g</span>
+                <span class="guide-bom-note">${weightCount} of ${pidList.length} parts weighed</span>
+            </div>` : ''}
+        </div>
+    </div>`;
 }
 
 function toggleChecklistItem(pid, checked) {

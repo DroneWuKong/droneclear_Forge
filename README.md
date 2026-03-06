@@ -34,7 +34,7 @@ Step-by-step guided drone assembly module. After a user creates a parts recipe i
 
 **Core Features**:
 - **Guide Selection Grid**: Browse available build guides as cards showing difficulty, estimated time, step count, and drone class.
-- **Build Overview**: Pre-build checklist with required tools, component verification checkboxes, and builder name entry.
+- **Build Overview**: Full-width pre-build checklist with required tools, component verification checkboxes, builder name entry, and configurable attribute badges (up to 5 fields per component — manufacturer, weight, voltage, KV, mounting pattern, etc.).
 - **Step Runner**: Step-by-step instruction engine with progress tracking, previous/next navigation, and per-step photo capture.
 - **Serial Number Tracking**: Every build session receives a unique serial number (`DC-YYYYMMDD-XXXX`), generated server-side to prevent race conditions.
 - **Photo Capture**: Camera integration via `navigator.mediaDevices.getUserMedia()` (rear camera preferred) with file upload fallback. Photos are stored via Django `ImageField` to `media/build_photos/`.
@@ -47,7 +47,8 @@ Step-by-step guided drone assembly module. After a user creates a parts recipe i
 - **Build Timer**: Dual stopwatch showing total build elapsed time and per-step elapsed time. Updates every second via `setInterval`. Per-step times are accumulated in `guideState.stepElapsed` and displayed alongside step time estimates.
 - **Step Notes**: Per-step note-taking textarea with auto-save (debounced 1s) to `guideState.session.step_notes[stepOrder]`. Persisted via PATCH to session API.
 - **Markdown & Checklists**: Step descriptions support markdown-style checklists (`- [ ] item`). Rendered as interactive checkboxes tracked in `guideState.stepChecklists`. Plain markdown formatting (bold, headers, code, links) also rendered.
-- **Guide Editor**: Dedicated authoring interface (Edit mode toggle). Guide list moved to sidebar panel for full-width editing. Media list editor per step with type/URL/caption rows and add/remove support. Full CRUD for guides and their steps.
+- **Guide Editor**: Dedicated authoring interface (Edit mode toggle). Guide list moved to sidebar panel for full-width editing. Media list editor per step with type/URL/caption rows and add/remove support. Checklist display fields picker (max 5 from 13 options). Full CRUD for guides and their steps.
+- **Configurable Checklist Fields**: Guide authors choose which component attributes appear as badges on overview checklist items. 13 available fields: manufacturer, price, weight, mount pattern, bolt size, voltage, cell count, KV rating, connector, MCU, prop size, current, step usage. Stored in `guide.settings.checklist_fields` JSONField. Defaults: `['manufacturer', 'weight', 'step_reference']`.
 - **User Settings**: Configurable photo quality (640/1280/1920px), auto-advance after photo, and safety warning visibility. Persisted to `localStorage`.
 
 **Build Session Lifecycle**:
@@ -78,12 +79,12 @@ Vanilla JS SPA — no framework. Modular JS files loaded in order:
 | `shortcuts.js` | Keyboard shortcut overlay |
 | `editor.js` | Parts Library CRUD (editor page only) |
 | `template.js` | Master Schema editor logic (template page only) |
-| `guide-state.js` | Build Guide global state, DOM refs, settings, API helpers |
+| `guide-state.js` | Build Guide global state, DOM refs, settings, API helpers, `CHECKLIST_FIELD_OPTIONS` registry, `resolveChecklistFieldValue()` |
 | `guide-selection.js` | Guide card grid, overview rendering, session start |
 | `guide-runner.js` | Step-by-step engine, navigation, media carousel/lightbox, timer, notes, markdown, session completion |
 | `guide-camera.js` | Camera capture (getUserMedia + file fallback), photo upload |
 | `guide-viewer.js` | Three.js STL/3MF viewer wrapper with auto-centre/scale |
-| `guide-editor.js` | Guide authoring UI: CRUD for guides/steps, media list editor |
+| `guide-editor.js` | Guide authoring UI: CRUD for guides/steps, media list editor, checklist field picker |
 
 **CSS Architecture** (5 files):
 - `base.css` — CSS variables, theme (light/dark), typography
@@ -186,7 +187,7 @@ Top-level guide definition. References an optional `DroneModel` for linking to a
 | `thumbnail` | `CharField(500)` | URL for card thumbnail |
 | `drone_model` | `FK → DroneModel` | Optional link to saved build |
 | `required_tools` | `JSONField(list)` | e.g. `["Soldering iron", "Hex drivers"]` |
-| `settings` | `JSONField(dict)` | Extensible guide-level settings |
+| `settings` | `JSONField(dict)` | Extensible guide-level settings (e.g. `{ "checklist_fields": ["manufacturer", "weight", "step_reference"] }`) |
 
 ### `BuildGuideStep`
 Ordered steps within a guide. Each step has a type that controls which UI elements are shown.
@@ -240,7 +241,8 @@ The guide editor (`/guide/` → Edit mode) provides a dedicated authoring interf
 2. **Guide Metadata Form** (full-width): PID, name, difficulty, drone class, estimated time, thumbnail URL, description, required tools (comma-separated). Increased padding (24px) for comfortable editing.
 3. **Steps Manager**: Ordered list of steps with click-to-select. "+ Add Step" appends a new step. Remove button (X) on each step.
 4. **Step Detail Form**: Title, type, time, description, safety warning, **media list editor** (add/remove rows of type/URL/caption), STL URL, Betaflight CLI, required component PIDs.
-5. **Actions**: Save (PUT to API with nested steps), Delete, Preview (saves then switches to Browse mode).
+5. **Checklist Display Fields Picker**: 2-column checkbox grid of 13 available attributes. Max 5 enforced (unchecked boxes disable when limit reached). Saved to `guide.settings.checklist_fields`.
+6. **Actions**: Save (PUT to API with nested steps including settings), Delete, Preview (saves then switches to Browse mode).
 
 Steps are saved as a nested array in the guide PUT payload — the API replaces all steps atomically on each save.
 
@@ -445,10 +447,20 @@ The import endpoint (`POST /api/import/parts/`) performs upsert by PID and retur
 - ✅ **Nav bar proportional layout**: Changed from flex (oversized Previous button) to CSS grid: `minmax(100px, 15%) 1fr minmax(100px, 15%)`.
 - ✅ **Editor UI overhaul**: Guide list moved to sidebar panel, editor form area made full-width, increased padding to 24px, form gap to 14px.
 
-### 🔜 Tier 8 Candidates
+**Tier 8** — Build Guide + Parts Library integration & UX fixes:
+- ✅ **Batch PID endpoint**: `GET /api/components/?pids=PID1,PID2` added to ComponentViewSet for efficient multi-component resolution.
+- ✅ **Serializer split**: `BuildGuideDetailSerializer` reads `drone_model` as nested `DroneModelSerializer`, writes via `drone_model_pid` slug field.
+- ✅ **Component resolution**: `resolveComponents()` in `guide-state.js` batch-fetches and caches components in `guideState.resolvedComponents`.
+- ✅ **Overview enrichment**: Rich checklist with images, names, category grouping, BOM summary (cost + weight). Full-width single-column layout (replaced cramped 2-column grid).
+- ✅ **Configurable checklist fields**: 13 available attribute fields (manufacturer, price, weight, mounting, bolt size, voltage, cells, KV, connector, MCU, prop size, current, step usage). Guide authors pick up to 5 via checkbox grid in editor. Stored in `guide.settings.checklist_fields` JSONField. Dynamic rendering via `resolveChecklistFieldValue()` — fields with no data for a component are gracefully hidden.
+- ✅ **Runner enrichment**: "Parts for This Step" panel with component cards, spec tips from `extractComponentTips()`.
+- ✅ **Editor picker**: Component chips UI replacing freeform PID text, linked drone model dropdown, search suggestions from build parts.
+- ✅ **Scroll fix**: Wrapped `guide.html` content in `.content-body` scroll container (matching other pages). Fixed overflow clipping on glass panels extending beyond viewport.
+- ✅ **630+ real parts imported** from DRONECLEAR_SCRAPE/imports/ (frames, motors, ESCs, FCs, props, batteries, cameras, VTXs, receivers, antennas, stacks).
+
+### 🔜 Tier 9 Candidates
 - **Component Cloning**: Duplicate an existing part or schema category to speed up data entry.
 - **Build Export**: Export a completed build to CSV or PDF from the wizard.
-- **Build Guide → Model Builder Link**: Auto-populate guide component checklist from a linked DroneModel's relations.
 - **Photo AI Analysis**: Run CV models on captured step photos for quality assurance.
 - **Audit Logging**: Track who changed what in the schema and parts library.
 - **Tag Vocabulary**: Controlled tag taxonomy per category instead of free-form strings.

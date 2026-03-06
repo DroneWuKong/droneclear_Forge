@@ -23,6 +23,11 @@ class ComponentViewSet(viewsets.ModelViewSet):
         category_slug = self.request.query_params.get('category', None)
         if category_slug is not None:
             queryset = queryset.filter(category__slug=category_slug)
+        # Batch PID filtering for guide component resolution
+        pids = self.request.query_params.get('pids', None)
+        if pids is not None:
+            pid_list = [p.strip() for p in pids.split(',') if p.strip()]
+            queryset = queryset.filter(pid__in=pid_list)
         return queryset
 
 class DroneModelViewSet(viewsets.ModelViewSet):

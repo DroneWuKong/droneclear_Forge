@@ -79,6 +79,26 @@ function populateEditorForm(guide) {
     setVal('ge-description', guide.description || '');
     setVal('ge-tools', (guide.required_tools || []).join(', '));
 
+    // Checklist display fields picker
+    renderChecklistFieldPicker(guide.settings?.checklist_fields);
+
+    // Load drone models and set selected
+    loadDroneModelsForEditor().then(() => {
+        const dmPid = guide.drone_model?.pid || guide.drone_model || '';
+        setVal('ge-drone-model', dmPid);
+        // Load linked build parts for component picker
+        loadLinkedBuildParts();
+    });
+
+    // Wire drone model change to reload linked parts
+    const dmSelect = document.getElementById('ge-drone-model');
+    if (dmSelect) {
+        const newSelect = dmSelect.cloneNode(true);
+        dmSelect.parentNode.replaceChild(newSelect, dmSelect);
+        guideDOM['ge-drone-model'] = newSelect;
+        newSelect.addEventListener('change', loadLinkedBuildParts);
+    }
+
     renderEditorStepsList();
     // Hide step detail until a step is selected
     guideDOM['editor-step-detail']?.classList.add('hidden');
@@ -183,6 +203,9 @@ function selectEditorStep(index) {
     setVal('se-cli', step.betaflight_cli || '');
     setVal('se-components', (step.required_components || []).join(', '));
 
+    // Initialize component picker with rich UI
+    initComponentPicker(step);
+
     renderEditorStepsList();
 }
 
@@ -220,6 +243,11 @@ async function saveGuide() {
         estimated_time_minutes: parseInt(getVal('ge-time')) || 60,
         thumbnail: getVal('ge-thumbnail'),
         required_tools: getVal('ge-tools').split(',').map(s => s.trim()).filter(Boolean),
+        drone_model_pid: getVal('ge-drone-model') || null,
+        settings: {
+            ...(guide.settings || {}),
+            checklist_fields: getSelectedChecklistFields(),
+        },
         steps: _editorSteps,
     };
 
@@ -344,6 +372,252 @@ function readEditorMedia() {
         if (url) media.push({ type, url, caption });
     });
     _editorSteps[idx].media = media;
+}
+
+// ── Component Picker ──────────────────────────────────
+
+let _compSearchTimer = null;
+let _linkedBuildParts = null;  // Cache of linked build's component objects
+
+/**
+ * Initialize the component picker for a step.
+ */
+function initComponentPicker(step) {
+    const searchInput = document.getElementById('se-components-search');
+    const resultsEl = document.getElementById('se-components-results');
+    if (!searchInput || !resultsEl) return;
+
+    // Render existing components as chips
+    renderComponentChips(step.required_components || []);
+
+    // Wire search (remove old listener by cloning)
+    const newSearch = searchInput.cloneNode(true);
+    searchInput.parentNode.replaceChild(newSearch, searchInput);
+    newSearch.addEventListener('input', onComponentSearch);
+    newSearch.addEventListener('focus', () => {
+        // Show linked build parts on focus if search is empty
+        if (!newSearch.value.trim() && _linkedBuildParts?.length) {
+            showComponentResults(_linkedBuildParts, 'Build Parts');
+        }
+    });
+
+    // Close results on outside click
+    document.addEventListener('click', _closePickerOnOutsideClick);
+}
+
+function _closePickerOnOutsideClick(e) {
+    if (!e.target.closest('.guide-comp-picker')) {
+        document.getElementById('se-components-results')?.classList.add('hidden');
+    }
+}
+
+/**
+ * Load drone models list into the editor dropdown.
+ */
+async function loadDroneModelsForEditor() {
+    try {
+        const models = await apiFetch(GUIDE_API.droneModels);
+        const select = document.getElementById('ge-drone-model');
+        if (!select) return;
+        select.innerHTML = '<option value="">(none)</option>';
+        models.forEach(m => {
+            const opt = document.createElement('option');
+            opt.value = m.pid;
+            opt.textContent = `${m.name} (${m.pid})`;
+            select.appendChild(opt);
+        });
+    } catch (err) {
+        console.warn('Failed to load drone models for editor:', err);
+    }
+}
+
+/**
+ * Load linked build parts for the component picker suggestions.
+ */
+async function loadLinkedBuildParts() {
+    _linkedBuildParts = null;
+
+    const dmPid = document.getElementById('ge-drone-model')?.value;
+    if (!dmPid) return;
+
+    try {
+        const dm = await apiFetch(GUIDE_API.droneModelDetail(dmPid));
+        const pids = Object.values(dm.relations || {}).filter(Boolean);
+        if (pids.length > 0) {
+            await resolveComponents(pids);
+            _linkedBuildParts = pids.map(pid => guideState.resolvedComponents[pid]).filter(Boolean);
+        }
+    } catch (err) {
+        console.warn('Failed to load linked build parts:', err);
+    }
+}
+
+function renderComponentChips(pidList) {
+    const chipsEl = document.getElementById('se-components-chips');
+    if (!chipsEl) return;
+
+    if (!pidList.length) {
+        chipsEl.innerHTML = '<span class="guide-comp-picker-hint">No components selected</span>';
+        syncHiddenComponentsField();
+        return;
+    }
+
+    // Resolve any un-resolved PIDs that might be in the list
+    const unresolvedPids = pidList.filter(pid => !(pid in guideState.resolvedComponents));
+    if (unresolvedPids.length > 0) {
+        resolveComponents(unresolvedPids).then(() => renderComponentChips(pidList));
+        return;
+    }
+
+    chipsEl.innerHTML = pidList.map(pid => {
+        const comp = guideState.resolvedComponents[pid];
+        const label = comp ? comp.name : pid;
+        return `<span class="guide-comp-chip" data-pid="${escHTML(pid)}">
+            ${escHTML(label)}
+            <button type="button" onclick="removeComponentChip('${escHTML(pid)}')" class="guide-comp-chip-remove">
+                <i class="ph ph-x"></i>
+            </button>
+        </span>`;
+    }).join('');
+
+    syncHiddenComponentsField();
+}
+
+window.removeComponentChip = function(pid) {
+    const idx = guideState.editingStepIndex;
+    if (idx < 0 || !_editorSteps[idx]) return;
+
+    _editorSteps[idx].required_components =
+        (_editorSteps[idx].required_components || []).filter(p => p !== pid);
+    renderComponentChips(_editorSteps[idx].required_components);
+};
+
+window.addComponentChip = function(pid) {
+    const idx = guideState.editingStepIndex;
+    if (idx < 0 || !_editorSteps[idx]) return;
+
+    if (!_editorSteps[idx].required_components) _editorSteps[idx].required_components = [];
+    if (!_editorSteps[idx].required_components.includes(pid)) {
+        _editorSteps[idx].required_components.push(pid);
+    }
+    renderComponentChips(_editorSteps[idx].required_components);
+
+    // Clear search
+    const searchInput = document.getElementById('se-components-search');
+    if (searchInput) searchInput.value = '';
+    document.getElementById('se-components-results')?.classList.add('hidden');
+};
+
+function syncHiddenComponentsField() {
+    const idx = guideState.editingStepIndex;
+    if (idx < 0 || !_editorSteps[idx]) return;
+    setVal('se-components', (_editorSteps[idx].required_components || []).join(', '));
+}
+
+function onComponentSearch() {
+    clearTimeout(_compSearchTimer);
+    const query = document.getElementById('se-components-search')?.value?.trim().toLowerCase();
+    const resultsEl = document.getElementById('se-components-results');
+    if (!resultsEl) return;
+
+    if (!query || query.length < 2) {
+        if (_linkedBuildParts?.length) {
+            showComponentResults(_linkedBuildParts, 'Build Parts');
+        } else {
+            resultsEl.classList.add('hidden');
+        }
+        return;
+    }
+
+    _compSearchTimer = setTimeout(async () => {
+        let results = [];
+
+        // Search linked build parts first
+        if (_linkedBuildParts) {
+            results = _linkedBuildParts.filter(c =>
+                c.name.toLowerCase().includes(query) ||
+                c.pid.toLowerCase().includes(query) ||
+                (c.manufacturer || '').toLowerCase().includes(query)
+            );
+        }
+
+        showComponentResults(results, 'Search Results');
+    }, 200);
+}
+
+function showComponentResults(components, label) {
+    const resultsEl = document.getElementById('se-components-results');
+    if (!resultsEl) return;
+
+    const currentPids = _editorSteps[guideState.editingStepIndex]?.required_components || [];
+    const available = components.filter(c => !currentPids.includes(c.pid));
+
+    if (!available.length) {
+        resultsEl.innerHTML = '<div class="guide-comp-picker-empty">No matching components</div>';
+    } else {
+        resultsEl.innerHTML = available.slice(0, 10).map(c => {
+            const imgSrc = compImageUrl(c);
+            return `<div class="guide-comp-picker-result" onclick="addComponentChip('${escHTML(c.pid)}')">
+                ${imgSrc
+                    ? `<img class="guide-comp-picker-result-img" src="${escHTML(imgSrc)}" alt=""
+                           onerror="this.style.display='none'">`
+                    : ''}
+                <div class="guide-comp-picker-result-info">
+                    <span class="guide-comp-picker-result-name">${escHTML(c.name)}</span>
+                    <span class="guide-comp-picker-result-meta">${escHTML(c.manufacturer || '')} &middot; ${escHTML(c.pid)}</span>
+                </div>
+            </div>`;
+        }).join('');
+    }
+
+    resultsEl.classList.remove('hidden');
+}
+
+// ── Checklist Display Fields Picker ──────────────────────
+
+function renderChecklistFieldPicker(selectedFields) {
+    const container = guideDOM['ge-checklist-fields'];
+    if (!container) return;
+
+    const selected = Array.isArray(selectedFields) && selectedFields.length
+        ? selectedFields
+        : DEFAULT_CHECKLIST_FIELDS;
+
+    container.innerHTML = CHECKLIST_FIELD_OPTIONS.map(opt => {
+        const checked = selected.includes(opt.key);
+        return `<label class="guide-checklist-field-option" data-key="${opt.key}">
+            <input type="checkbox" value="${opt.key}" ${checked ? 'checked' : ''}>
+            <i class="ph ${opt.icon}"></i>
+            <span>${opt.label}</span>
+        </label>`;
+    }).join('');
+
+    // Enforce max 5
+    container.querySelectorAll('input[type="checkbox"]').forEach(cb => {
+        cb.addEventListener('change', () => enforceChecklistFieldMax(container));
+    });
+    enforceChecklistFieldMax(container);
+}
+
+function enforceChecklistFieldMax(container) {
+    const checkboxes = container.querySelectorAll('input[type="checkbox"]');
+    const checkedCount = container.querySelectorAll('input[type="checkbox"]:checked').length;
+    checkboxes.forEach(cb => {
+        const label = cb.closest('.guide-checklist-field-option');
+        if (!cb.checked && checkedCount >= 5) {
+            label.classList.add('disabled');
+            cb.disabled = true;
+        } else {
+            label.classList.remove('disabled');
+            cb.disabled = false;
+        }
+    });
+}
+
+function getSelectedChecklistFields() {
+    const container = guideDOM['ge-checklist-fields'];
+    if (!container) return DEFAULT_CHECKLIST_FIELDS;
+    return [...container.querySelectorAll('input[type="checkbox"]:checked')].map(cb => cb.value);
 }
 
 // ── Helpers ──────────────────────────────────────────────
