@@ -10,7 +10,7 @@ function buildSummaryHtml() {
     const filled = Object.entries(currentBuild).filter(([, v]) => v !== null);
     if (filled.length === 0) return '<p style="color:var(--text-faint);font-size:13px;">No components selected yet.</p>';
     return filled.map(([cat, comp]) =>
-        `<div class="save-summary-row"><span class="save-summary-cat">${formatTitle(cat)}</span><span class="save-summary-name">${comp.name}</span></div>`
+        `<div class="save-summary-row"><span class="save-summary-cat">${escapeHTML(formatTitle(cat))}</span><span class="save-summary-name">${escapeHTML(comp.name)}</span></div>`
     ).join('');
 }
 
@@ -92,21 +92,29 @@ async function openLoadBuildModal() {
             return `
                 <div class="saved-build-item">
                     <div class="saved-build-info">
-                        <div class="saved-build-name">${b.name}</div>
-                        <div class="saved-build-meta">${slotCount} component${slotCount !== 1 ? 's' : ''} · <span style="color:var(--text-faint);font-size:11px;">${b.pid}</span></div>
-                        ${b.description ? `<div class="saved-build-desc">${b.description}</div>` : ''}
-                        <div class="saved-build-slots">${slotNames}</div>
+                        <div class="saved-build-name">${escapeHTML(b.name)}</div>
+                        <div class="saved-build-meta">${slotCount} component${slotCount !== 1 ? 's' : ''} · <span style="color:var(--text-faint);font-size:11px;">${escapeHTML(b.pid)}</span></div>
+                        ${b.description ? `<div class="saved-build-desc">${escapeHTML(b.description)}</div>` : ''}
+                        <div class="saved-build-slots">${escapeHTML(slotNames)}</div>
                     </div>
                     <div class="saved-build-actions">
-                        <button class="btn btn-primary btn-sm" onclick="loadBuild('${b.pid}')">
+                        <button class="btn btn-primary btn-sm btn-load-build" data-pid="${escapeHTML(b.pid)}">
                             <i class="ph ph-download-simple"></i> Load
                         </button>
-                        <button class="btn btn-outline btn-sm" style="border-color:rgba(239,68,68,0.3);color:#ef4444;" onclick="deleteBuild('${b.pid}', '${b.name.replace(/'/g, "\\'")}', this)">
+                        <button class="btn btn-outline btn-sm btn-delete-build" data-pid="${escapeHTML(b.pid)}" data-name="${escapeHTML(b.name)}" style="border-color:rgba(239,68,68,0.3);color:#ef4444;">
                             <i class="ph ph-trash"></i>
                         </button>
                     </div>
                 </div>`;
         }).join('');
+
+        // Attach event listeners (replaces inline onclick to prevent XSS via pid/name injection)
+        elements.savedBuildsList.querySelectorAll('.btn-load-build').forEach(btn => {
+            btn.addEventListener('click', () => loadBuild(btn.dataset.pid));
+        });
+        elements.savedBuildsList.querySelectorAll('.btn-delete-build').forEach(btn => {
+            btn.addEventListener('click', () => deleteBuild(btn.dataset.pid, btn.dataset.name, btn));
+        });
     } catch (err) {
         console.error(err);
         elements.savedBuildsList.innerHTML = '<div class="saved-builds-empty"><i class="ph ph-warning-circle"></i><p>Could not load builds.</p></div>';

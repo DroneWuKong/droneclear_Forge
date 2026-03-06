@@ -70,19 +70,17 @@ REST_FRAMEWORK = {
 | H3 | **BuildEvent CASCADE undermines immutability** | `models.py:159` | `BuildEvent.session` uses `on_delete=CASCADE`. Deleting a session destroys audit trail. Consider `PROTECT` for audit integrity. |
 | H4 | **No transaction wrapping** | Multiple files | `ImportPartsView`, `BuildSessionViewSet.perform_create()`, `reset_to_golden` command all run multi-step operations without `transaction.atomic()`. Failures leave partial data. |
 
-### MEDIUM — Frontend XSS (Partially Fixed)
+### ~~MEDIUM — Frontend XSS~~ ✅ RESOLVED
 
-The `showToast()` XSS is fixed. The following innerHTML usages still inject unescaped database content:
+All innerHTML XSS issues (M1–M5) have been fixed. Every database-sourced value injected via innerHTML is now wrapped in `escapeHTML()`. The `escapeHTML()` function in `utils.js` was also upgraded from a DOM-based approach (which didn't escape quotes) to a string-replace method that escapes all 5 HTML entities (`& < > " '`), making it safe for both content and attribute contexts. Inline `onclick` handlers in `modal.js` (similar cards) and `persist.js` (load/delete build buttons) were replaced with `data-*` attributes + `addEventListener` to eliminate JS-context injection vectors.
 
-| # | File | Lines | Risk |
-|---|------|-------|------|
-| M1 | `components.js` | 300, 346, 365-387 | Component name, manufacturer, tags, description injected into card innerHTML |
-| M2 | `modal.js` | 79, 112, 138, 213-219 | Spec values, tag values, similar item cards |
-| M3 | `build.js` | 116, 317-318 | Build slot component names, warning messages |
-| M4 | `persist.js` | 13, 89-108 | Saved build names, descriptions |
-| M5 | `editor.js` | 249-257 | Item row PIDs and names |
-
-**Recommended Fix**: Use the `escapeHTML()` function (now in `utils.js`) for all user/database data injected via innerHTML. The guide module (`guide-selection.js`, `guide-runner.js`) already uses `escHTML()` consistently — follow that pattern.
+| # | File | Status | What Was Fixed |
+|---|------|--------|----------------|
+| M1 | `components.js` | ✅ Fixed | Card PID, name, manufacturer, description, tags, compat badges, price, weight, image src |
+| M2 | `modal.js` | ✅ Fixed | Tags, spec labels/values, compat labels/values, similar item cards (onclick→data-pid), image src |
+| M3 | `build.js` | ✅ Fixed | Build slot names, price, weight; warning titles/messages |
+| M4 | `persist.js` | ✅ Fixed | Build summary names; saved builds list (names, PIDs, descriptions); onclick→data-pid+addEventListener |
+| M5 | `editor.js` | ✅ Fixed | Item row PIDs and names |
 
 ### MEDIUM — Code Quality
 
@@ -211,7 +209,7 @@ The `showToast()` XSS is fixed. The following innerHTML usages still inject unes
 ## Recommended Next Session Priorities
 
 1. ~~**Write basic Django tests**~~ — **Done.** 72 tests across 13 classes. See § "Test Coverage" above.
-2. **Fix remaining innerHTML XSS** — Apply `escapeHTML()` to component cards, modal specs, and persist.js build names
+2. ~~**Fix remaining innerHTML XSS**~~ — **Done.** All M1–M5 resolved. `escapeHTML()` applied across 5 JS files; inline `onclick` handlers replaced with `data-*` + `addEventListener`. See § "MEDIUM — Frontend XSS" above.
 3. **Extract duplicated maintenance script** — Move the ~100-line system maintenance block (now including Reset to Golden handler) from 3 HTML files into `maintenance.js`
 4. **Add `transaction.atomic()`** — Wrap `ImportPartsView.post()`, `ResetToGoldenView.post()`, `BuildSessionViewSet.perform_create()`, and `BuildGuideDetailSerializer.update()`
 5. **Add API authentication** — When ready for non-local access

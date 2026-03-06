@@ -248,8 +248,8 @@ function renderItemRow(item, isDrone) {
     row.className = 'item-row';
     row.innerHTML = `
         <div>
-            <strong style="color:var(--text-main)">${item.pid}</strong>
-            <span style="color:var(--text-muted);margin-left:12px;">${item.name}</span>
+            <strong style="color:var(--text-main)">${escapeHTML(item.pid)}</strong>
+            <span style="color:var(--text-muted);margin-left:12px;">${escapeHTML(item.name)}</span>
         </div>
         <i class="ph ph-pencil-simple" style="color:var(--accent-blue);"></i>
     `;

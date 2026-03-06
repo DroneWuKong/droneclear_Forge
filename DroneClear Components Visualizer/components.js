@@ -70,7 +70,7 @@ function renderSidebar(categories) {
         navItem.dataset.category = category;
 
         const formattedName = categoryObj.name || formatTitle(category);
-        navItem.innerHTML = `<span>${formattedName}</span><span class="nav-count">${itemCount}</span>`;
+        navItem.innerHTML = `<span>${escapeHTML(formattedName)}</span><span class="nav-count">${itemCount}</span>`;
         navItem.addEventListener('click', (e) => { e.preventDefault(); selectCategory(category); });
         elements.categoryNav.appendChild(navItem);
     });
@@ -297,7 +297,7 @@ function createComponentCard(comp, highlightData = null) {
 
     const tagsArray = comp.schema_data?.tags || [];
     const weightG = comp.schema_data?.weight_g;
-    const tagsHtml = tagsArray.slice(0, 4).map(t => `<span class="tag">${t}</span>`).join('');
+    const tagsHtml = tagsArray.slice(0, 4).map(t => `<span class="tag">${escapeHTML(t)}</span>`).join('');
 
     const tooltipCompat = i18n[currentLang].lblCompatible;
     const tooltipIncompat = i18n[currentLang].lblIncompatible;
@@ -343,12 +343,12 @@ function createComponentCard(comp, highlightData = null) {
             } else if (typeof val === 'number') {
                 val = val + unit;
             }
-            return `<span class="compat-badge" title="${label}"><i class="ph ph-wrench"></i> ${val}</span>`;
+            return `<span class="compat-badge" title="${escapeHTML(label)}"><i class="ph ph-wrench"></i> ${escapeHTML(val)}</span>`;
         }).filter(b => b !== '').join('');
         compatHtml = `<div class="card-compat-badges">${badges}</div>`;
     }
 
-    const priceHtml = comp.approx_price ? `<span class="card-price">${comp.approx_price}</span>` : '';
+    const priceHtml = comp.approx_price ? `<span class="card-price">${escapeHTML(comp.approx_price)}</span>` : '';
     const inBuildBadge = isInBuild ? `<span class="card-in-build-badge" style="font-size:12px; color:#10b981; font-weight:600;"><i class="ph-fill ph-check-circle"></i> In Build</span>` : '';
 
     // =========================================================================
@@ -363,26 +363,26 @@ function createComponentCard(comp, highlightData = null) {
     }
 
     const thumbHtml = comp.image_file
-        ? `<div class="card-thumb"><img src="${comp.image_file}" alt="" loading="lazy" onerror="this.parentElement.style.display='none'"></div>`
+        ? `<div class="card-thumb"><img src="${escapeHTML(comp.image_file)}" alt="" loading="lazy" onerror="this.parentElement.style.display='none'"></div>`
         : '';
 
     card.innerHTML = `
         ${thumbHtml}
         <div class="card-header">
-            <span class="card-pid">${comp.pid || 'N/A'}</span>
+            <span class="card-pid">${escapeHTML(comp.pid || 'N/A')}</span>
             <div style="display:flex; align-items:center; gap:8px;">
-                ${weightG ? `<span class="tag weight-tag">${weightG}g</span>` : ''}
+                ${weightG ? `<span class="tag weight-tag">${escapeHTML(weightG)}g</span>` : ''}
                 ${priceHtml}
                 ${inBuildBadge}
                 ${quickAddHtml}
             </div>
         </div>
         <div class="list-name-col">
-            <div class="card-mfg">${comp.manufacturer || 'Unknown'}</div>
-            <h3 class="card-title">${comp.name || 'Unnamed Component'}</h3>
+            <div class="card-mfg">${escapeHTML(comp.manufacturer || 'Unknown')}</div>
+            <h3 class="card-title">${escapeHTML(comp.name || 'Unnamed Component')}</h3>
         </div>
         ${compatHtml}
-        <p class="card-desc">${comp.description || ''}</p>
+        <p class="card-desc">${escapeHTML(comp.description || '')}</p>
         <div class="card-tags">${tagsHtml}</div>
     `;
 

@@ -69,14 +69,16 @@ function openModal(comp) {
     elements.modalPid.textContent = comp.pid || 'N/A';
     elements.modalDesc.textContent = comp.description || '';
 
-    if (comp.link) {
-        elements.modalLink.href = comp.link;
-        elements.modalLink.style.display = 'inline-flex';
-    } else {
-        elements.modalLink.style.display = 'none';
+    if (elements.modalLink) {
+        if (comp.link) {
+            elements.modalLink.href = comp.link;
+            elements.modalLink.style.display = 'inline-flex';
+        } else {
+            elements.modalLink.style.display = 'none';
+        }
     }
 
-    elements.modalTags.innerHTML = (comp.schema_data?.tags || []).map(t => `<span class="tag">${t}</span>`).join('');
+    elements.modalTags.innerHTML = (comp.schema_data?.tags || []).map(t => `<span class="tag">${escapeHTML(t)}</span>`).join('');
 
     // Specs & Notes
     const specsHtml = [];
@@ -109,7 +111,7 @@ function openModal(comp) {
                 displayVal = Object.entries(val).filter(([,v]) => v !== null).map(([k,v]) => `${k}: ${v}`).join(', ');
                 if (!displayVal) return;
             }
-            specsHtml.push(`<div class="spec-item"><span class="spec-label">${formatTitle(key)}</span><span class="spec-value ${valClass}">${displayVal}</span></div>`);
+            specsHtml.push(`<div class="spec-item"><span class="spec-label">${escapeHTML(formatTitle(key))}</span><span class="spec-value ${valClass}">${escapeHTML(displayVal)}</span></div>`);
         });
     } else {
         // Fallback if no blueprint loaded
@@ -135,7 +137,7 @@ function openModal(comp) {
             } else if (typeof val === 'object') {
                 return; // Skip complex objects
             }
-            specsHtml.push(`<div class="spec-item"><span class="spec-label">${formatTitle(key)}</span><span class="spec-value ${valClass}">${displayVal}</span></div>`);
+            specsHtml.push(`<div class="spec-item"><span class="spec-label">${escapeHTML(formatTitle(key))}</span><span class="spec-value ${valClass}">${escapeHTML(displayVal)}</span></div>`);
         });
     }
 
@@ -176,8 +178,8 @@ function openModal(comp) {
                 }
                 return `
                     <div class="spec-item" style="border-color: rgba(6, 182, 212, 0.3); background: rgba(6, 182, 212, 0.05);">
-                        <span class="spec-label" style="color: var(--accent-cyan);">${_formatCompatLabel(k)}</span>
-                        <span class="spec-value">${displayVal}</span>
+                        <span class="spec-label" style="color: var(--accent-cyan);">${escapeHTML(_formatCompatLabel(k))}</span>
+                        <span class="spec-value">${escapeHTML(displayVal)}</span>
                     </div>`;
             }).filter(h => h !== '').join('');
         elements.modalCompatSection.classList.remove('hidden');
@@ -197,8 +199,8 @@ function openModal(comp) {
                 else displayVal = v;
                 return `
                     <div class="spec-item" style="border-color: rgba(6, 182, 212, 0.3); background: rgba(6, 182, 212, 0.05);">
-                        <span class="spec-label" style="color: var(--accent-cyan);">${_formatCompatLabel(k)}</span>
-                        <span class="spec-value">${displayVal}</span>
+                        <span class="spec-label" style="color: var(--accent-cyan);">${escapeHTML(_formatCompatLabel(k))}</span>
+                        <span class="spec-value">${escapeHTML(displayVal)}</span>
                     </div>`;
             }).filter(h => h !== '').join('');
         elements.modalCompatSection.classList.remove('hidden');
@@ -210,14 +212,17 @@ function openModal(comp) {
     const similarComps = findSimilarComponents(comp);
     if (similarComps.length > 0) {
         elements.modalSimilarGrid.innerHTML = similarComps.map(simItem => {
-            const priceHtml = simItem.approx_price ? `<span style="color:var(--accent-green);font-size:12px;">${simItem.approx_price}</span>` : '';
+            const priceHtml = simItem.approx_price ? `<span style="color:var(--accent-green);font-size:12px;">${escapeHTML(simItem.approx_price)}</span>` : '';
             return `
-                <div class="similar-card" title="Switch to ${simItem.name}" style="cursor:pointer;padding:10px;border:1px solid rgba(255,255,255,0.1);border-radius:6px;background:rgba(0,0,0,0.2);" onclick="switchModalItem('${simItem.pid}')">
-                    <div style="font-size:11px;color:var(--text-muted);">${simItem.manufacturer || 'Unknown'}</div>
-                    <div style="font-weight:600;font-size:13px;margin:4px 0;">${simItem.name}</div>
+                <div class="similar-card" data-pid="${escapeHTML(simItem.pid)}" title="Switch to ${escapeHTML(simItem.name)}" style="cursor:pointer;padding:10px;border:1px solid rgba(255,255,255,0.1);border-radius:6px;background:rgba(0,0,0,0.2);">
+                    <div style="font-size:11px;color:var(--text-muted);">${escapeHTML(simItem.manufacturer || 'Unknown')}</div>
+                    <div style="font-weight:600;font-size:13px;margin:4px 0;">${escapeHTML(simItem.name)}</div>
                     ${priceHtml}
                 </div>`;
         }).join('');
+        elements.modalSimilarGrid.querySelectorAll('.similar-card').forEach(card => {
+            card.addEventListener('click', () => switchModalItem(card.dataset.pid));
+        });
         elements.modalSimilarSection.classList.remove('hidden');
     } else {
         elements.modalSimilarSection.classList.add('hidden');
@@ -225,7 +230,7 @@ function openModal(comp) {
 
     // Image
     if (comp.image_file) {
-        elements.modalImageContainer.innerHTML = `<img src="${comp.image_file}" alt="Component Image" class="modal-image" onerror="this.onerror=null;this.parentElement.innerHTML='<i class=\\'ph ph-image-broken\\'></i>';">`;
+        elements.modalImageContainer.innerHTML = `<img src="${escapeHTML(comp.image_file)}" alt="Component Image" class="modal-image" onerror="this.onerror=null;this.parentElement.innerHTML='<i class=\\'ph ph-image-broken\\'></i>';">`;
     } else {
         elements.modalImageContainer.innerHTML = `<i class="ph ph-image"></i>`;
     }

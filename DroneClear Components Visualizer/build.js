@@ -110,13 +110,13 @@ function renderBuildSlots() {
             const price  = comp.approx_price || 'N/A';
             const weight = comp.schema_data?.weight_g ? `${comp.schema_data.weight_g}g` : 'Unknown Weight';
             slotEl.innerHTML = `
-                <span class="slot-label">${catName}</span>
+                <span class="slot-label">${escapeHTML(catName)}</span>
                 <div class="slot-content">
                     <div class="slot-details">
-                        <h4>${comp.name}</h4>
+                        <h4>${escapeHTML(comp.name)}</h4>
                         <div class="slot-metrics">
-                            <span style="color:var(--accent-blue);">${price}</span>
-                            <span>${weight}</span>
+                            <span style="color:var(--accent-blue);">${escapeHTML(price)}</span>
+                            <span>${escapeHTML(weight)}</span>
                         </div>
                     </div>
                     <button class="slot-remove" onclick="removeFromBuild('${cat}')" title="Remove part">
@@ -124,7 +124,7 @@ function renderBuildSlots() {
                     </button>
                 </div>`;
         } else {
-            slotEl.innerHTML = `<span class="slot-label">${catName}</span><span class="slot-empty-text">Empty Slot</span>`;
+            slotEl.innerHTML = `<span class="slot-label">${escapeHTML(catName)}</span><span class="slot-empty-text">Empty Slot</span>`;
         }
 
         elements.buildSlots.appendChild(slotEl);
@@ -317,8 +317,8 @@ function validateBuild() {
         el.innerHTML = `
             <i class="${w.type === 'error' ? 'ph-fill ph-warning-octagon' : 'ph-fill ph-warning'}"></i>
             <div class="build-warning-content">
-                <strong>${w.title}</strong>
-                <span>${w.message}</span>
+                <strong>${escapeHTML(w.title)}</strong>
+                <span>${escapeHTML(w.message)}</span>
             </div>`;
         elements.buildWarnings.appendChild(el);
     });
