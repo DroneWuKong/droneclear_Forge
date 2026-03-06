@@ -1,13 +1,29 @@
+"""
+models.py — DroneClear data models.
+
+Core: Category, Component, DroneModel (parts library & compatibility engine)
+Guide: BuildGuide, BuildGuideStep (assembly instructions)
+Session: BuildSession, StepPhoto, BuildEvent (build tracking & audit trail)
+"""
+
 from django.db import models
 
+
+# ── Core Parts Library ──────────────────────────────────────
+
 class Category(models.Model):
+    """A component category (e.g., Motors, ESCs, Frames). Slug used as API identifier."""
     name = models.CharField(max_length=100)
     slug = models.CharField(max_length=100, unique=True)
-    
+
+    class Meta:
+        verbose_name_plural = "Categories"
+
     def __str__(self):
         return self.name
 
 class Component(models.Model):
+    """A drone component in the parts library. schema_data stores all category-specific specs."""
     pid = models.CharField(max_length=50, unique=True)
     category = models.ForeignKey(Category, on_delete=models.CASCADE, related_name='components')
     name = models.CharField(max_length=255)
@@ -25,6 +41,7 @@ class Component(models.Model):
         return f"{self.pid} - {self.name}"
 
 class DroneModel(models.Model):
+    """A saved drone build (parts recipe). relations JSONField maps category → component PID."""
     pid = models.CharField(max_length=50, unique=True)
     name = models.CharField(max_length=255)
     description = models.TextField(blank=True, null=True)

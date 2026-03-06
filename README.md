@@ -633,3 +633,68 @@ The entire Build Audit module (Tier 9) was designed, planned, and implemented in
 - **Server-side SHA-256** over client-side — prevents spoofing; hash is computed from actual file bytes on upload.
 - **Fire-and-forget event emission** with sendBeacon fallback — avoids blocking the build UX for non-critical telemetry.
 - **Standalone audit.js** — no dependency on guide-state.js or guide-runner.js. The audit page only needs `utils.js` for shared utilities (toast, escHTML, getCookie).
+
+---
+
+## 📋 Session Log (2026-03-06b) — Comprehensive Codebase Audit & Refactor
+
+### What was done
+Full codebase audit across all backend (20 files) and frontend (19 JS, 6 CSS, 5 HTML) files. Identified bugs, security issues, dead code, missing dependencies, and organizational debt accumulated across 10 sprints. Applied fixes, improved code comments, cleaned up file structure, and wrote a detailed audit report for future reference.
+
+> **For the next agent**: Start by reading `AUDIT_REPORT.md` in the repo root. It contains a prioritized backlog of remaining issues (5 critical, 4 high, 13 medium, 15 low), recommended test coverage plan, and architecture observations. Cross-reference with this session log for context on what was already fixed.
+
+### Bugs fixed
+| Bug | File(s) | Description |
+|-----|---------|-------------|
+| **XSS in showToast** | `utils.js` | User/database content was injected raw via innerHTML. Added `escapeHTML()` function and applied it to toast messages. |
+| **Regex bug** | `template.js` | Category key generation used `/s+/g` instead of `/\s+/g` — was stripping the letter 's' instead of whitespace. |
+| **Broken DOM** | `index.html` | Orphaned `#modal-link` element and 3 extra `</div>` tags floating outside the modal container. |
+| **Build drawer shortcut** | `shortcuts.js` | Checked for non-existent `'open'` class. Build drawer uses `'closed'` class (absence = open). Fixed to `!contains('closed')`. |
+| **Missing CSRF tokens** | `editor.js`, `template.js`, `guide-state.js`, `guide-editor.js` | 10+ mutating fetch calls lacked `X-CSRFToken` header. Added to all POST/PUT/DELETE requests. |
+| **Naive datetime** | `views.py` | `BugReportView` used `datetime.datetime.now()` instead of `timezone.now()`. |
+| **Stale error message** | `index.html` | Error screen referenced `drone_parts_schema_v2.json` (v2 was replaced in Sprint 3). |
+| **N+1 query** | `views.py` | `ComponentViewSet.get_queryset()` missing `select_related('category')`. |
+
+### Code quality improvements
+| Change | File(s) | Description |
+|--------|---------|-------------|
+| **Missing CSS variables** | `base.css` | Added `--accent-purple`, `--accent-green`, `--accent-cyan`, `--negative-red` to both light and dark themes. These were referenced by guide/wizard CSS but never defined. |
+| **Missing dependency** | `requirements.txt` | Added `Pillow>=10.0` (required by `ImageField`). Added version bounds to all deps. |
+| **Import consolidation** | `views.py` | Moved all imports to top of file (were scattered mid-file). Removed duplicate `import datetime`. |
+| **Module docstrings** | `models.py`, `views.py`, `serializers.py` | Added module-level docstrings and docstrings to all models and viewsets. |
+| **Model Meta** | `models.py` | Added `verbose_name_plural = "Categories"` to fix Django admin display. |
+| **Cascade warning** | `serializers.py` | Documented the step delete+recreate CASCADE behavior in `BuildGuideDetailSerializer.update()`. |
+| **Dead CSS removed** | `components.css`, `utilities.css` | Removed orphaned `.sidebar-meta`, duplicate `.card-thumb width`, dead `.grid-container` mobile selector. |
+| **.gitignore** | `.gitignore` | Added `bug_reports/*.txt`, `media/`, `diff_*.txt`, `*.sqlite3-journal`, `*.bak`, `node_modules/`. |
+
+### Files cleaned up
+| File | Action | Reason |
+|------|--------|--------|
+| `diff_output.txt` (103 KB) | Deleted | Temp diff artifact |
+| `diff_utf8.txt` (52 KB) | Deleted | Temp diff artifact |
+| `temp_template.html` (14 KB) | Deleted | Orphaned legacy UTF-16 template |
+| `bump_font.py` (2 KB) | Deleted | One-off migration script, target file doesn't exist |
+| `convert_csv_to_json.py` | Moved → `archive/` | References v2 schema, no longer functional |
+| `v3_schema_overhaul_plan.md` | Moved → `archive/` | Completed plan, historical reference only |
+| `SPRINT_REPORT_v3_schema.md` | Moved → `archive/` | Completed sprint, historical reference only |
+| `droneclear_backend/settings.py` | Moved → `archive/settings_legacy_flat.py` | Orphaned — no entry point references it (superseded by `settings/{base,dev,prod}.py`) |
+
+### Artifacts produced
+| File | Purpose |
+|------|---------|
+| `AUDIT_REPORT.md` | Comprehensive audit report with prioritized backlog (5 critical, 4 high, 13 medium, 15 low findings), recommended test plan (15 test areas), and architecture observations. **Start here for the next session.** |
+| `DroneClear_System_Architecture.excalidraw` | Excalidraw architecture diagram (5-layer: Frontend → Engine → API → Backend → Data). Suitable for stakeholder demos. Checkpoint ID: `3ca3a2c77330409fae`. |
+| `MEMORY.md` | Project memory file for Claude sessions — key patterns, known issues, development conventions. |
+
+### Current state
+- Django system check passes cleanly (`python manage.py check` — 0 issues)
+- All 23 files modified, 4 deleted, 4 archived
+- No new migrations needed (all changes were code-level, not schema-level)
+- Server boots and all 5 pages render correctly
+
+### Recommended next session priorities
+1. **Write basic Django tests** — `components/tests.py` is empty. Even 10–15 tests covering serial number generation, import/export round-trip, and snapshot creation would catch regressions.
+2. **Fix remaining innerHTML XSS** — Apply `escapeHTML()` to component cards (`components.js`), modal specs (`modal.js`), build slots (`build.js`), and saved build names (`persist.js`).
+3. **Extract duplicated maintenance script** — ~80 lines of identical inline JS is copy-pasted across `index.html`, `editor.html`, and `template.html`. Should be extracted to `maintenance.js`.
+4. **Add `transaction.atomic()`** — Wrap `ImportPartsView.post()`, `BuildSessionViewSet.perform_create()`, and `BuildGuideDetailSerializer.update()` for data integrity.
+5. **Add API authentication** — No endpoint requires auth. Fine for local dev, critical before any deployment. See `AUDIT_REPORT.md` § "CRITICAL — Security" for full details.

@@ -1,5 +1,15 @@
+"""
+serializers.py — DRF serializers for all DroneClear models.
+
+Note: CategorySerializer.count requires the queryset to have
+annotate(count=Count('components')) applied (done in CategoryViewSet).
+"""
+
 from rest_framework import serializers
 from .models import Category, Component, DroneModel, BuildGuide, BuildGuideStep, BuildSession, StepPhoto
+
+
+# ── Core Model Serializers ──────────────────────────────────
 
 class ComponentSerializer(serializers.ModelSerializer):
     # Allow writing components by category slug
@@ -81,7 +91,10 @@ class BuildGuideDetailSerializer(serializers.ModelSerializer):
         instance.save()
 
         if steps_data is not None:
-            # Replace all steps with the new set
+            # WARNING: delete + recreate will CASCADE-DELETE any StepPhoto records
+            # referencing these steps. This is acceptable for guide authoring (no active
+            # sessions reference steps by FK during editing), but should be revisited
+            # if step IDs become stable references.
             instance.steps.all().delete()
             for step_data in steps_data:
                 BuildGuideStep.objects.create(guide=instance, **step_data)

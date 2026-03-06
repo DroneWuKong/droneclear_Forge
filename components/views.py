@@ -1,10 +1,27 @@
-import hashlib
+"""
+views.py — DroneClear API views.
 
-from rest_framework import viewsets
-from rest_framework.parsers import MultiPartParser, FormParser
+Provides REST endpoints for: schema management, component CRUD, drone model CRUD,
+build guides, build sessions (with serial number tracking), step photo uploads,
+audit event logging, and maintenance utilities.
+"""
+
+import os
+import json
+import hashlib
+import datetime
+import threading
+
+from django.conf import settings
 from django.db.models import Count
 from django.shortcuts import get_object_or_404
 from django.utils import timezone
+
+from rest_framework import viewsets, status
+from rest_framework.parsers import MultiPartParser, FormParser
+from rest_framework.views import APIView
+from rest_framework.response import Response
+
 from .models import (
     Category, Component, DroneModel,
     BuildGuide, BuildGuideStep, BuildSession, StepPhoto, BuildEvent,
@@ -15,21 +32,29 @@ from .serializers import (
     BuildSessionSerializer, StepPhotoSerializer,
 )
 
+
+# ── Core CRUD ViewSets ─────────────────────────────────────
+
 class CategoryViewSet(viewsets.ModelViewSet):
+    """CRUD for component categories. Annotates each category with component count."""
     queryset = Category.objects.annotate(count=Count('components')).order_by('name')
     serializer_class = CategorySerializer
     lookup_field = 'slug'
 
 class ComponentViewSet(viewsets.ModelViewSet):
+    """
+    CRUD for drone components. Supports query params:
+      ?category=<slug>    — filter by category
+      ?pids=PID1,PID2     — batch lookup by comma-separated PIDs
+    """
     serializer_class = ComponentSerializer
     lookup_field = 'pid'
 
     def get_queryset(self):
-        queryset = Component.objects.all()
+        queryset = Component.objects.select_related('category').all()
         category_slug = self.request.query_params.get('category', None)
         if category_slug is not None:
             queryset = queryset.filter(category__slug=category_slug)
-        # Batch PID filtering for guide component resolution
         pids = self.request.query_params.get('pids', None)
         if pids is not None:
             pid_list = [p.strip() for p in pids.split(',') if p.strip()]
@@ -37,19 +62,15 @@ class ComponentViewSet(viewsets.ModelViewSet):
         return queryset
 
 class DroneModelViewSet(viewsets.ModelViewSet):
+    """CRUD for saved drone builds (parts recipes)."""
     queryset = DroneModel.objects.all()
     serializer_class = DroneModelSerializer
     lookup_field = 'pid'
 
-import os
-import json
-import threading
-from django.conf import settings
-from rest_framework.views import APIView
-from rest_framework.response import Response
-from rest_framework import status
 
-# Basic lock to prevent concurrent read/writes to the singular json file
+# ── Schema File Management ──────────────────────────────────
+
+# Process-level lock for schema file reads/writes (single-process dev server only)
 schema_lock = threading.Lock()
 
 class SchemaView(APIView):
@@ -104,7 +125,9 @@ class SchemaView(APIView):
             except Exception as e:
                 return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
-import datetime
+
+# ── Maintenance Utilities ───────────────────────────────────
+
 class RestartServerView(APIView):
     """
     Touches wsgi.py to force a runserver restart.
@@ -132,7 +155,7 @@ class BugReportView(APIView):
             reports_dir = os.path.join(settings.BASE_DIR, 'bug_reports')
             os.makedirs(reports_dir, exist_ok=True)
 
-            timestamp = datetime.datetime.now().strftime('%Y%m%d_%H%M%S')
+            timestamp = timezone.now().strftime('%Y%m%d_%H%M%S')
             filename = f"bug_{timestamp}.txt"
             filepath = os.path.join(reports_dir, filename)
 

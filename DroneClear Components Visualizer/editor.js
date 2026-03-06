@@ -430,7 +430,7 @@ elements.form.onsubmit = async (e) => {
 
         const res = await fetch(url, {
             method,
-            headers: { 'Content-Type': 'application/json' },
+            headers: { 'Content-Type': 'application/json', 'X-CSRFToken': getCookie('csrftoken') },
             body: JSON.stringify(payload)
         });
 
@@ -513,7 +513,7 @@ elements.btnDeleteConfirm?.addEventListener('click', async () => {
     elements.btnDeleteConfirm.disabled = true;
 
     try {
-        const res = await fetch(`/api/components/${pid}/`, { method: 'DELETE' });
+        const res = await fetch(`/api/components/${pid}/`, { method: 'DELETE', headers: { 'X-CSRFToken': getCookie('csrftoken') } });
         if (!res.ok) throw new Error('Delete failed');
 
         elements.formContainer.classList.add('hidden');
@@ -594,7 +594,7 @@ elements.droneForm.onsubmit = async (e) => {
 
         const res = await fetch(url, {
             method,
-            headers: { 'Content-Type': 'application/json' },
+            headers: { 'Content-Type': 'application/json', 'X-CSRFToken': getCookie('csrftoken') },
             body: JSON.stringify(payload)
         });
 
@@ -631,7 +631,7 @@ elements.btnDroneDeleteConfirm?.addEventListener('click', async () => {
     elements.btnDroneDeleteConfirm.disabled = true;
 
     try {
-        const res = await fetch(`/api/drone-models/${pid}/`, { method: 'DELETE' });
+        const res = await fetch(`/api/drone-models/${pid}/`, { method: 'DELETE', headers: { 'X-CSRFToken': getCookie('csrftoken') } });
         if (!res.ok) throw new Error('Delete failed');
 
         elements.droneFormContainer.classList.add('hidden');
@@ -884,7 +884,7 @@ importExportElements.importApplyBtn?.addEventListener('click', async () => {
     try {
         const res = await fetch('/api/import/parts/', {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            headers: { 'Content-Type': 'application/json', 'X-CSRFToken': getCookie('csrftoken') },
             body: JSON.stringify(pendingImportParts)
         });
         if (!res.ok) throw new Error('Import request failed');

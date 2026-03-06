@@ -75,6 +75,14 @@ function showError(message) {
     elements.errorScreen.classList.remove('hidden');
 }
 
+// --- HTML Escaping ---
+function escapeHTML(str) {
+    if (!str) return '';
+    const div = document.createElement('div');
+    div.textContent = str;
+    return div.innerHTML;
+}
+
 // --- Toast Notification ---
 let _toastTimer = null;
 function showToast(message, type = 'info') {
@@ -91,7 +99,7 @@ function showToast(message, type = 'info') {
         info: 'ph-info'
     };
     toast.className = `app-toast app-toast--${type} show`;
-    toast.innerHTML = `<i class="ph-fill ${icons[type] || 'ph-info'}"></i><span>${message}</span>`;
+    toast.innerHTML = `<i class="ph-fill ${icons[type] || 'ph-info'}"></i><span>${escapeHTML(message)}</span>`;
 
     clearTimeout(_toastTimer);
     _toastTimer = setTimeout(() => toast.classList.remove('show'), 3500);

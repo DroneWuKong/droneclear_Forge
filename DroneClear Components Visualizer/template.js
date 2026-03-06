@@ -98,6 +98,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
+                    'X-CSRFToken': getCookie('csrftoken'),
                 },
                 body: JSON.stringify(parsed)
             });
@@ -351,7 +352,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (!catName) { alert("Category name cannot be empty."); return; }
 
         // Remove spaces, keep lowercase, enforce standard underscore keys
-        let schemaKey = catName.toLowerCase().replace(/s+/g, '_');
+        let schemaKey = catName.toLowerCase().replace(/\s+/g, '_');
 
         if (!currentSchema.components) currentSchema.components = {};
 

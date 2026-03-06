@@ -157,7 +157,13 @@ async function apiFetch(url, options = {}) {
         // Don't set Content-Type for FormData — browser sets boundary
         delete defaults.headers['Content-Type'];
     }
-    const res = await fetch(url, { ...defaults, ...options });
+    // Include CSRF token for mutating requests
+    const method = (options.method || 'GET').toUpperCase();
+    if (method !== 'GET' && method !== 'HEAD') {
+        defaults.headers['X-CSRFToken'] = getCookie('csrftoken');
+    }
+    const merged = { ...defaults, ...options, headers: { ...defaults.headers, ...(options.headers || {}) } };
+    const res = await fetch(url, merged);
     if (!res.ok) {
         const text = await res.text();
         throw new Error(`API ${res.status}: ${text}`);

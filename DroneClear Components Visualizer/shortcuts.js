@@ -75,7 +75,7 @@ function handleEscape() {
         closeLoadBuildModal();
     } else if (compModal && !compModal.classList.contains('hidden')) {
         closeModal();
-    } else if (buildDrawer && buildDrawer.classList.contains('open')) {
+    } else if (buildDrawer && !buildDrawer.classList.contains('closed')) {
         closeBuildDrawer();
     }
 }
@@ -88,7 +88,7 @@ function focusSearch() {
 }
 
 function toggleBuildDrawer() {
-    if (elements.buildDrawer?.classList.contains('open')) {
+    if (elements.buildDrawer && !elements.buildDrawer.classList.contains('closed')) {
         closeBuildDrawer();
     } else {
         openBuildDrawer();

@@ -377,7 +377,7 @@ async function deleteGuide() {
     if (!confirm(`Delete guide "${guide.name}"? This cannot be undone.`)) return;
 
     try {
-        await fetch(GUIDE_API.guideDetail(guide.pid), { method: 'DELETE' });
+        await fetch(GUIDE_API.guideDetail(guide.pid), { method: 'DELETE', headers: { 'X-CSRFToken': getCookie('csrftoken') } });
         guideState.editingGuide = null;
         guideState.editingStepIndex = -1;
         _editorSteps = [];
