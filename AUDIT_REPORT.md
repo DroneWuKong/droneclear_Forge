@@ -33,6 +33,8 @@ The DroneClear codebase is well-architected for a vanilla JS + Django project at
 | **.gitignore** | Added `bug_reports/*.txt`, `media/`, `diff_*.txt`, `*.sqlite3-journal`, `*.bak`, `node_modules/` | `.gitignore` |
 | **Query Optimization** | Added `select_related('category')` to `ComponentViewSet.get_queryset()` | `views.py` |
 | **Model Fix** | Added `verbose_name_plural = "Categories"` to Category Meta | `models.py` |
+| **Import Button UX** | Import button was hidden until a category was selected — impossible to bootstrap an empty DB. Now always visible on Parts Library Editor. | `editor.html`, `editor.js` |
+| **Reset to Golden** | New `POST /api/maintenance/reset-to-golden/` endpoint + UI button in system drawer. Wipes all data and re-seeds from golden schema. Confirmation dialog, spinner, and success summary. | `views.py`, `urls.py`, `index.html`, `editor.html`, `template.html` |
 
 ---
 
@@ -190,7 +192,11 @@ The `showToast()` XSS is fixed. The following innerHTML usages still inject unes
 | `views.py` | Updated | Consolidated imports, added module docstring, viewset docstrings, `select_related`, `timezone.now()` fix |
 | `serializers.py` | Updated | Added module docstring, documented cascade-delete warning |
 
-**Total: 23 files touched, 4 deleted, 4 moved to archive, 15 modified**
+| `editor.html` | Updated | Import button always visible (removed `hidden` class), added Reset to Golden button + JS handler |
+| `editor.js` | Updated | Import button now shown unconditionally; export still requires category selection |
+| `urls.py` | Updated | Added `api/maintenance/reset-to-golden/` route |
+
+**Total: 26 files touched, 4 deleted, 4 moved to archive, 18 modified**
 
 ---
 
@@ -198,6 +204,6 @@ The `showToast()` XSS is fixed. The following innerHTML usages still inject unes
 
 1. **Write basic Django tests** — Even 10-15 tests covering serial number generation, import/export round-trip, and snapshot creation would catch regressions
 2. **Fix remaining innerHTML XSS** — Apply `escapeHTML()` to component cards, modal specs, and persist.js build names
-3. **Extract duplicated maintenance script** — Move the ~80-line system maintenance block from 3 HTML files into `maintenance.js`
-4. **Add `transaction.atomic()`** — Wrap `ImportPartsView.post()`, `BuildSessionViewSet.perform_create()`, and `BuildGuideDetailSerializer.update()`
+3. **Extract duplicated maintenance script** — Move the ~100-line system maintenance block (now including Reset to Golden handler) from 3 HTML files into `maintenance.js`
+4. **Add `transaction.atomic()`** — Wrap `ImportPartsView.post()`, `ResetToGoldenView.post()`, `BuildSessionViewSet.perform_create()`, and `BuildGuideDetailSerializer.update()`
 5. **Add API authentication** — When ready for non-local access

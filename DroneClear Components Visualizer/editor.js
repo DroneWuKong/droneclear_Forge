@@ -671,13 +671,14 @@ const importExportElements = {
 
 let pendingImportParts = null;
 
-// Show/hide import + export buttons when a category is selected
+// Show/hide import + export buttons when a category is selected.
+// Import is always visible so users can bootstrap an empty database.
+// Export only shows when a category is selected (needs data to export).
 function showImportExportButtons() {
+    importExportElements.btnImport?.classList.remove('hidden');
     if (currentCategory && currentCategory !== '__DRONE_MODELS__') {
-        importExportElements.btnImport?.classList.remove('hidden');
         importExportElements.exportWrapper?.classList.remove('hidden');
     } else {
-        importExportElements.btnImport?.classList.add('hidden');
         importExportElements.exportWrapper?.classList.add('hidden');
     }
 }

@@ -58,6 +58,10 @@
                             style="padding: 6px; font-size: 11px; justify-content: center; color: var(--accent-red); border-color: rgba(218, 41, 28, 0.3);">
                             <i class="ph ph-bug"></i> Report Bug
                         </button>
+                        <button class="btn btn-outline" id="btn-reset-golden"
+                            style="padding: 6px; font-size: 11px; justify-content: center; grid-column: 1 / -1; color: var(--accent-orange, #f97316); border-color: rgba(249, 115, 22, 0.3);">
+                            <i class="ph ph-arrow-counter-clockwise"></i> Reset to Golden
+                        </button>
                     </div>
                 </details>
 
@@ -542,6 +546,7 @@
         document.addEventListener('DOMContentLoaded', () => {
             const btnRestart = document.getElementById('btn-restart-server');
             const btnReport = document.getElementById('btn-report-bug');
+            const btnResetGolden = document.getElementById('btn-reset-golden');
             const bugModal = document.getElementById('bug-report-modal');
             const btnCancelBug = document.getElementById('btn-cancel-bug');
             const btnSubmitBug = document.getElementById('btn-submit-bug');
@@ -615,6 +620,36 @@
                     } finally {
                         btnSubmitBug.innerHTML = originalText;
                         btnSubmitBug.disabled = false;
+                    }
+                });
+            }
+
+            if (btnResetGolden) {
+                btnResetGolden.addEventListener('click', async () => {
+                    if (!confirm('This will DELETE all current parts and drone models, then re-import from the golden schema file.\n\nAre you sure?')) return;
+                    const originalText = btnResetGolden.innerHTML;
+                    btnResetGolden.innerHTML = '<i class="ph ph-spinner ph-spin"></i> Resetting...';
+                    btnResetGolden.disabled = true;
+                    try {
+                        const res = await fetch('/api/maintenance/reset-to-golden/', {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'X-CSRFToken': (document.cookie.match(/csrftoken=([^;]+)/) || [])[1] || '',
+                            }
+                        });
+                        const data = await res.json();
+                        if (res.ok) {
+                            alert(`Reset complete!\n\nCreated: ${data.created.categories} categories, ${data.created.components} components, ${data.created.drone_models} drone models.`);
+                            window.location.reload();
+                        } else {
+                            alert('Reset failed: ' + (data.error || 'Unknown error'));
+                        }
+                    } catch (e) {
+                        alert('Error connecting to backend.');
+                    } finally {
+                        btnResetGolden.innerHTML = originalText;
+                        btnResetGolden.disabled = false;
                     }
                 });
             }

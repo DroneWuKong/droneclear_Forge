@@ -16,6 +16,7 @@ urlpatterns = [
     path('api/export/parts/', views.ExportPartsView.as_view(), name='export-parts'),
     path('api/maintenance/restart/', views.RestartServerView.as_view(), name='restart-server'),
     path('api/maintenance/bug-report/', views.BugReportView.as_view(), name='bug-report'),
+    path('api/maintenance/reset-to-golden/', views.ResetToGoldenView.as_view(), name='reset-to-golden'),
     path('api/build-sessions/<str:sn>/photos/', views.StepPhotoUploadView.as_view(), name='session-photos'),
     path('api/build-sessions/<str:sn>/events/', views.BuildEventView.as_view(), name='session-events'),
     path('api/audit/<str:sn>/', views.BuildAuditView.as_view(), name='build-audit'),
