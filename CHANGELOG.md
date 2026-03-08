@@ -5,6 +5,38 @@
 
 ---
 
+## Session 2026-03-08-2 — Guide Media Upload (FEAT-007) & StepPhoto Validation (SEC-003)
+
+**Agent**: Claude
+**Branch**: `claude/vigilant-dirac`
+**Commit(s)**: `31ae493`, `d384773`
+
+### Summary
+Implemented direct file upload for guide step media (FEAT-007) with a production-ready architecture using Django's storage API for future cloud migration. Created shared validation module that also fixes SEC-003 (StepPhotoUploadView lacked file validation). Added upload button UI to guide editor with thumbnail previews and toast notifications.
+
+### Changes
+| Category | Description | Files |
+|----------|-------------|-------|
+| feat | `GuideMediaFile` model — UUID PK, `FileField` with storage API, compartmentalized by guide PID | `components/models.py`, `migrations/0010_guidemediafile.py` |
+| feat | `GuideMediaUploadView` — POST `/api/guide-media/upload/` with full validation pipeline | `components/views.py`, `components/urls.py` |
+| feat | Shared upload validation module — size (10MB), MIME whitelist, PIL verify, UUID filenames | `components/upload_utils.py` (new) |
+| feat | Guide editor upload button + thumbnail preview + toast notifications | `guide-editor.js`, `guide-state.js`, `guide.css` |
+| fix | SEC-003: StepPhotoUploadView now validates file size, MIME type, and image content | `components/views.py` |
+| test | 10 new tests — 8 for GuideMediaUpload, 2 for StepPhoto validation (92 total) | `components/tests.py` |
+| config | Upload size limits in Django settings | `droneclear_backend/settings/base.py` |
+| docs | Updated CLAUDE.md — Claude is sole developer (removed multi-agent section) | `CLAUDE.md` |
+
+### Backlog Updates
+- Completed: FEAT-007, SEC-003
+
+### Notes
+- **Production migration path**: Swap `STORAGES["default"]` to S3/Azure backend — all `GuideMediaFile.file.url` calls automatically return signed/CDN URLs. Zero code changes needed.
+- Files stored at `guide_media/<guide_pid>/<uuid>.<ext>` for per-guide access policies.
+- `upload_utils.py` is reusable for any future upload endpoint.
+- `alert()` dialogs in upload handler replaced with `showToast()` for consistent UX.
+
+---
+
 ## Session 2026-03-08-1 — Data Integrity Fixes (BUG-001 through BUG-004)
 
 **Agent**: Claude

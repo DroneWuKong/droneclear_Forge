@@ -27,7 +27,7 @@
 |----|-------|----------|-------------|-------|
 | SEC-001 | No API authentication | `views.py` (all views) | Every endpoint is anonymous. No `permission_classes`. Must lock down before external access. | 2026-03-06 |
 | SEC-002 | Unauthenticated server restart | `views.py:RestartServerView` | `POST /api/maintenance/restart/` allows anyone to restart. DoS vector. | 2026-03-06 |
-| SEC-003 | No file size/type validation | `views.py:StepPhotoUploadView` | No max size check. No validation that uploaded file is actually an image. Could exhaust disk. | 2026-03-06 |
+| ~~SEC-003~~ | ~~No file size/type validation~~ | ~~`views.py:StepPhotoUploadView`~~ | ~~Resolved — see Completed section~~ | 2026-03-06 |
 | SEC-004 | Bug report disk exhaustion | `views.py:BugReportView` | No rate limiting. Unlimited file writes to `bug_reports/`. | 2026-03-06 |
 | SEC-005 | Schema overwrite no backup | `views.py:SchemaView.post()` | Overwrites schema directly with no backup copy. Corruption risk on failure. | 2026-03-06 |
 
@@ -80,7 +80,7 @@
 | FEAT-004 | Schema audit logging | Track who changed what in the schema and parts library. | 2026-03-06 |
 | FEAT-005 | Tag vocabulary | Controlled tag taxonomy per category instead of free-form strings. | 2026-03-06 |
 | FEAT-006 | Additional data sources | Scrape GetFPV, RaceDayQuads, or manufacturer sites for broader coverage. | 2026-03-06 |
-| FEAT-007 | Media upload | Direct file upload for guide step media (currently URL-only). | 2026-03-06 |
+| ~~FEAT-007~~ | ~~Media upload~~ | ~~Resolved — see Completed section~~ | 2026-03-06 |
 | FEAT-008 | Build guide versioning | Track guide revisions so sessions reference a specific version. | 2026-03-06 |
 | FEAT-009 | Audit PDF export | Generate downloadable PDF audit reports from the audit viewer. | 2026-03-06 |
 
@@ -105,3 +105,5 @@
 | ~~BUG-002~~ | Serial number race condition — select_for_update + transaction + retry | 2026-03-08 | 2026-03-08-1 |
 | ~~BUG-003~~ | BuildEvent CASCADE breaks immutability — changed to PROTECT; BuildSession.guide to SET_NULL | 2026-03-08 | 2026-03-08-1 |
 | ~~BUG-004~~ | No transaction wrapping — added atomic to serializer update, session create, import | 2026-03-08 | 2026-03-08-1 |
+| ~~FEAT-007~~ | Media upload — GuideMediaFile model + upload endpoint + editor UI | 2026-03-08 | 2026-03-08-2 |
+| ~~SEC-003~~ | StepPhotoUploadView file validation — size, MIME, PIL verify | 2026-03-08 | 2026-03-08-2 |
