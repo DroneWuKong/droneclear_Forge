@@ -486,6 +486,9 @@ function initComponentPicker(step) {
     // Render existing components as chips
     renderComponentChips(step.required_components || []);
 
+    // Render build parts quick-select panel
+    renderBuildPartsPanel(step.required_components || []);
+
     // Wire search (remove old listener by cloning)
     const newSearch = searchInput.cloneNode(true);
     searchInput.parentNode.replaceChild(newSearch, searchInput);
@@ -497,6 +500,14 @@ function initComponentPicker(step) {
         }
     });
 
+    // Wire "Add All" button
+    const addAllBtn = document.getElementById('se-build-parts-add-all');
+    if (addAllBtn) {
+        const newBtn = addAllBtn.cloneNode(true);
+        addAllBtn.parentNode.replaceChild(newBtn, addAllBtn);
+        newBtn.addEventListener('click', addAllBuildParts);
+    }
+
     // Close results on outside click
     document.addEventListener('click', _closePickerOnOutsideClick);
 }
@@ -505,6 +516,69 @@ function _closePickerOnOutsideClick(e) {
     if (!e.target.closest('.guide-comp-picker')) {
         document.getElementById('se-components-results')?.classList.add('hidden');
     }
+}
+
+/**
+ * Render the Build Components quick-select panel.
+ * Shows linked drone model parts as clickable buttons.
+ */
+function renderBuildPartsPanel(currentPids) {
+    const panel = document.getElementById('se-build-parts');
+    const listEl = document.getElementById('se-build-parts-list');
+    if (!panel || !listEl) return;
+
+    if (!_linkedBuildParts?.length) {
+        panel.classList.add('hidden');
+        return;
+    }
+
+    panel.classList.remove('hidden');
+    listEl.innerHTML = _linkedBuildParts.map(comp => {
+        const isAdded = currentPids.includes(comp.pid);
+        const imgSrc = compImageUrl(comp);
+        const cat = (comp.category_name || comp.category || '').replace(/_/g, ' ');
+        return `<button type="button" class="guide-build-part-btn${isAdded ? ' added' : ''}"
+                    data-pid="${escHTML(comp.pid)}"
+                    onclick="toggleBuildPart('${escHTML(comp.pid)}')"
+                    title="${escHTML(comp.name)} (${escHTML(comp.pid)})">
+            ${imgSrc ? `<img src="${escHTML(imgSrc)}" alt="" onerror="this.style.display='none'">` : ''}
+            <span>${escHTML(comp.name)}</span>
+            ${cat ? `<span class="guide-build-part-cat">${escHTML(cat)}</span>` : ''}
+            <i class="ph ${isAdded ? 'ph-check-circle' : 'ph-plus-circle'}"></i>
+        </button>`;
+    }).join('');
+}
+
+window.toggleBuildPart = function(pid) {
+    const idx = guideState.editingStepIndex;
+    if (idx < 0 || !_editorSteps[idx]) return;
+
+    if (!_editorSteps[idx].required_components) _editorSteps[idx].required_components = [];
+    const list = _editorSteps[idx].required_components;
+
+    if (list.includes(pid)) {
+        _editorSteps[idx].required_components = list.filter(p => p !== pid);
+    } else {
+        list.push(pid);
+    }
+
+    renderComponentChips(_editorSteps[idx].required_components);
+    renderBuildPartsPanel(_editorSteps[idx].required_components);
+};
+
+function addAllBuildParts() {
+    const idx = guideState.editingStepIndex;
+    if (idx < 0 || !_editorSteps[idx] || !_linkedBuildParts?.length) return;
+
+    if (!_editorSteps[idx].required_components) _editorSteps[idx].required_components = [];
+    const list = _editorSteps[idx].required_components;
+
+    _linkedBuildParts.forEach(comp => {
+        if (!list.includes(comp.pid)) list.push(comp.pid);
+    });
+
+    renderComponentChips(list);
+    renderBuildPartsPanel(list);
 }
 
 /**
@@ -538,13 +612,22 @@ async function loadLinkedBuildParts() {
 
     try {
         const dm = await apiFetch(GUIDE_API.droneModelDetail(dmPid));
-        const pids = Object.values(dm.relations || {}).filter(Boolean);
+        // Flatten relations: values may be strings or arrays of strings
+        const pids = Object.values(dm.relations || {})
+            .flat()
+            .filter(v => typeof v === 'string' && v);
         if (pids.length > 0) {
             await resolveComponents(pids);
             _linkedBuildParts = pids.map(pid => guideState.resolvedComponents[pid]).filter(Boolean);
         }
     } catch (err) {
         console.warn('Failed to load linked build parts:', err);
+    }
+
+    // Refresh the build parts panel for the current step
+    const idx = guideState.editingStepIndex;
+    if (idx >= 0 && _editorSteps[idx]) {
+        renderBuildPartsPanel(_editorSteps[idx].required_components || []);
     }
 }
 
@@ -586,6 +669,7 @@ window.removeComponentChip = function(pid) {
     _editorSteps[idx].required_components =
         (_editorSteps[idx].required_components || []).filter(p => p !== pid);
     renderComponentChips(_editorSteps[idx].required_components);
+    renderBuildPartsPanel(_editorSteps[idx].required_components);
 };
 
 window.addComponentChip = function(pid) {
@@ -597,6 +681,7 @@ window.addComponentChip = function(pid) {
         _editorSteps[idx].required_components.push(pid);
     }
     renderComponentChips(_editorSteps[idx].required_components);
+    renderBuildPartsPanel(_editorSteps[idx].required_components);
 
     // Clear search
     const searchInput = document.getElementById('se-components-search');
