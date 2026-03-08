@@ -31,6 +31,7 @@ DroneClear Configurator: Django 5 + vanilla JS internal tool for drone component
 - **Build drawer**: Uses `closed` class (not `open`) — check `!contains('closed')` to test if open
 - **Schema sync**: Schema exists at both root and `DroneClear Components Visualizer/` — keep them in sync
 - **Settings**: Split into `settings/{base,dev,prod}.py`. The flat `settings.py` in archive/ is dead.
+- **Build version**: Auto-generated from git via `droneclear_backend/version.py` context processor. All templates use `{{ dc_version }}` (e.g. "v1.0.0 | Build 62 · 52305b2"). **Never hardcode version strings in HTML** — the context processor reads `git rev-list --count HEAD` and `git rev-parse --short HEAD` at server startup. To bump the semantic version, edit `VERSION` in `version.py`.
 
 ## Testing
 

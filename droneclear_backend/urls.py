@@ -29,6 +29,7 @@ urlpatterns = [
     path('editor/', TemplateView.as_view(template_name='editor.html')), # Legacy redirect/support
     path('guide/', TemplateView.as_view(template_name='guide.html'), name='guide'),
     path('audit/', TemplateView.as_view(template_name='audit.html'), name='audit'),
+    path('academy/', TemplateView.as_view(template_name='academy.html'), name='academy'),
     path('', include('components.urls')),
 ]
 

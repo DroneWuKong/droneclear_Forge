@@ -1,0 +1,1134 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FPV Academy — DroneClear</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap"
+        rel="stylesheet">
+    <link rel="stylesheet" href="{% static 'base.css' %}?v=2">
+    <link rel="stylesheet" href="{% static 'layout.css' %}?v=3">
+    <link rel="stylesheet" href="{% static 'components.css' %}?v=2">
+    <link rel="stylesheet" href="{% static 'utilities.css' %}?v=2">
+    <link rel="stylesheet" href="{% static 'academy.css' %}?v=1">
+
+    <script src="https://unpkg.com/@phosphor-icons/web"></script>
+    <script>
+        (function () {
+            const saved = localStorage.getItem('dc-theme');
+            const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+            document.documentElement.setAttribute('data-theme', saved ? saved : (prefersDark ? 'dark' : 'light'));
+        })();
+    </script>
+</head>
+
+<body>
+    <div class="app-container">
+
+        <!-- Sidebar Overlay (Mobile) -->
+        <div class="sidebar-overlay hidden" id="sidebar-overlay"></div>
+
+        <!-- Sidebar -->
+        <aside class="sidebar">
+            <div class="sidebar-header">
+                <div class="logo">
+                    <span class="logo-text">DroneClear</span>
+                </div>
+
+                <!-- System Meta Drawer -->
+                <details class="system-meta-drawer">
+                    <summary>
+                        <div style="display:flex; align-items:center; gap:6px;">
+                            <span class="status-indicator"></span>
+                            <span>{{ dc_version }}</span>
+                        </div>
+                        <i class="ph ph-caret-down"></i>
+                    </summary>
+                    <div class="meta-actions-grid">
+                        <p id="total-parts-count">FPV Academy</p>
+
+                        <button class="btn btn-outline" id="btn-restart-server"
+                            style="padding: 6px; font-size: 11px; justify-content: center;">
+                            <i class="ph ph-arrows-clockwise"></i> Restart
+                        </button>
+                        <button class="btn btn-outline" id="btn-report-bug"
+                            style="padding: 6px; font-size: 11px; justify-content: center; color: var(--accent-red); border-color: rgba(218, 41, 28, 0.3);">
+                            <i class="ph ph-bug"></i> Report Bug
+                        </button>
+                        <button class="btn btn-outline" id="btn-reset-golden"
+                            style="padding: 6px; font-size: 11px; justify-content: center; color: var(--accent-orange, #f97316); border-color: rgba(249, 115, 22, 0.3);">
+                            <i class="ph ph-arrow-counter-clockwise"></i> Reset to Golden
+                        </button>
+                        <button class="btn btn-outline" id="btn-reset-examples"
+                            style="padding: 6px; font-size: 11px; justify-content: center; color: var(--text-muted); border-color: var(--border-color);">
+                            <i class="ph ph-arrow-counter-clockwise"></i> Reset to Examples
+                        </button>
+                    </div>
+                </details>
+
+                <nav class="sidebar-menu"
+                    style="border-top: 1px solid var(--border-color); display: flex; flex-direction: column; gap: 8px; padding-top: 16px;">
+                    <a href="/" class="btn btn-menu">
+                        <i class="ph ph-command"></i> Mission Control
+                    </a>
+                    <a href="/template/" class="btn btn-menu">
+                        <i class="ph ph-tree-structure"></i> Master Attributes
+                    </a>
+                    <a href="/library/" class="btn btn-menu">
+                        <i class="ph ph-books"></i> Parts Library Editor
+                    </a>
+                    <a href="/builder/" class="btn btn-menu">
+                        <i class="ph ph-magic-wand"></i> Model Builder
+                    </a>
+                    <a href="/guide/" class="btn btn-menu">
+                        <i class="ph ph-list-checks"></i> Build Guide
+                    </a>
+                    <a href="/audit/" class="btn btn-menu">
+                        <i class="ph ph-clipboard-text"></i> Build Audit
+                    </a>
+                    <a href="/academy/" class="btn btn-menu active">
+                        <i class="ph ph-graduation-cap"></i> FPV Academy
+                    </a>
+                </nav>
+
+            </div>
+        </aside>
+
+        <!-- Main -->
+        <main class="main-content">
+
+            <header class="topbar">
+                <div style="display: flex; justify-content: space-between; width: 100%; align-items: center;">
+                    <div style="display: flex; align-items: center; gap: 12px;">
+                        <button class="mobile-nav-toggle" id="mobile-nav-toggle"
+                            style="display:none; background:none; border:none; cursor:pointer; color:var(--text-main);">
+                            <i class="ph ph-list" style="font-size:28px;"></i>
+                        </button>
+                        <h1 class="page-title">FPV Academy</h1>
+                    </div>
+
+                    <div style="display: flex; align-items: center; gap: 16px;">
+                        <button class="dark-mode-toggle" id="dark-mode-toggle" title="Toggle dark mode"
+                            aria-label="Toggle dark mode">
+                            <i class="ph ph-moon" id="dark-mode-icon"></i>
+                        </button>
+                    </div>
+                </div>
+            </header>
+
+            <div class="content-body" id="acad-content-body">
+
+                <!-- Hero Section -->
+                <section class="acad-hero">
+                    <div class="acad-hero-text">
+                        <h2 class="acad-hero-title">Welcome to <span class="acad-hero-accent">FPV Academy</span></h2>
+                        <p class="acad-hero-subtitle">
+                            Everything you need to know to build your first FPV drone — from zero to flight.
+                            No engineering degree required, just curiosity and a soldering iron.
+                        </p>
+                        <a href="#acad-topics" class="acad-hero-cta" id="acad-start-learning">
+                            Start Learning <i class="ph ph-arrow-down"></i>
+                        </a>
+                    </div>
+                    <div class="acad-hero-graphic">
+                        <i class="ph ph-graduation-cap"></i>
+                    </div>
+                </section>
+
+                <!-- Topic Cards Grid -->
+                <section class="acad-section" id="acad-topics">
+                    <h3 class="acad-section-title">
+                        <i class="ph ph-book-open-text"></i> Learning Topics
+                    </h3>
+                    <div class="acad-topics-grid">
+
+                        <div class="acad-topic-card" data-accent="purple" data-target="acad-section-what-is-fpv">
+                            <div class="acad-card-icon"><i class="ph ph-drone"></i></div>
+                            <div class="acad-card-body">
+                                <h4 class="acad-card-title">What is FPV?</h4>
+                                <p class="acad-card-desc">Understand the FPV experience and why building your own drone is worth it.</p>
+                            </div>
+                            <span class="acad-card-read-more">Read more <i class="ph ph-arrow-right"></i></span>
+                        </div>
+
+                        <div class="acad-topic-card" data-accent="red" data-target="acad-section-core-components">
+                            <div class="acad-card-icon"><i class="ph ph-cpu"></i></div>
+                            <div class="acad-card-body">
+                                <h4 class="acad-card-title">Core Components</h4>
+                                <p class="acad-card-desc">The 8 essential parts every FPV drone needs and what each one does.</p>
+                            </div>
+                            <span class="acad-card-read-more">Read more <i class="ph ph-arrow-right"></i></span>
+                        </div>
+
+                        <div class="acad-topic-card" data-accent="blue" data-target="acad-section-size-classes">
+                            <div class="acad-card-icon"><i class="ph ph-ruler"></i></div>
+                            <div class="acad-card-body">
+                                <h4 class="acad-card-title">Size Classes</h4>
+                                <p class="acad-card-desc">How propeller size determines everything else about your build.</p>
+                            </div>
+                            <span class="acad-card-read-more">Read more <i class="ph ph-arrow-right"></i></span>
+                        </div>
+
+                        <div class="acad-topic-card" data-accent="cyan" data-target="acad-section-video-systems">
+                            <div class="acad-card-icon"><i class="ph ph-monitor-play"></i></div>
+                            <div class="acad-card-body">
+                                <h4 class="acad-card-title">Video Systems</h4>
+                                <p class="acad-card-desc">The biggest decision you'll make — and the most expensive mistake to get wrong.</p>
+                            </div>
+                            <span class="acad-card-read-more">Read more <i class="ph ph-arrow-right"></i></span>
+                        </div>
+
+                        <div class="acad-topic-card" data-accent="amber" data-target="acad-section-compatibility">
+                            <div class="acad-card-icon"><i class="ph ph-link"></i></div>
+                            <div class="acad-card-body">
+                                <h4 class="acad-card-title">Compatibility Rules</h4>
+                                <p class="acad-card-desc">What fits with what — the hard constraints and soft guidelines for parts matching.</p>
+                            </div>
+                            <span class="acad-card-read-more">Read more <i class="ph ph-arrow-right"></i></span>
+                        </div>
+
+                        <div class="acad-topic-card" data-accent="green" data-target="acad-section-first-build">
+                            <div class="acad-card-icon"><i class="ph ph-wrench"></i></div>
+                            <div class="acad-card-body">
+                                <h4 class="acad-card-title">Your First Build</h4>
+                                <p class="acad-card-desc">A step-by-step checklist for building a solid 5-inch FPV drone.</p>
+                            </div>
+                            <span class="acad-card-read-more">Read more <i class="ph ph-arrow-right"></i></span>
+                        </div>
+
+                        <div class="acad-topic-card" data-accent="red" data-target="acad-section-tips">
+                            <div class="acad-card-icon"><i class="ph ph-warning"></i></div>
+                            <div class="acad-card-body">
+                                <h4 class="acad-card-title">Tips & Common Mistakes</h4>
+                                <p class="acad-card-desc">The top beginner pitfalls and how to avoid expensive lessons.</p>
+                            </div>
+                            <span class="acad-card-read-more">Read more <i class="ph ph-arrow-right"></i></span>
+                        </div>
+
+                        <div class="acad-topic-card" data-accent="slate" data-target="acad-section-glossary">
+                            <div class="acad-card-icon"><i class="ph ph-book-open"></i></div>
+                            <div class="acad-card-body">
+                                <h4 class="acad-card-title">Glossary</h4>
+                                <p class="acad-card-desc">Quick reference for FPV terminology, naming conventions, and decoder charts.</p>
+                            </div>
+                            <span class="acad-card-read-more">Read more <i class="ph ph-arrow-right"></i></span>
+                        </div>
+
+                    </div>
+                </section>
+
+                <!-- ====================================================
+                     ARTICLE SECTIONS
+                     ==================================================== -->
+                <section class="acad-section">
+                    <h3 class="acad-section-title">
+                        <i class="ph ph-article"></i> Articles
+                    </h3>
+                    <div class="acad-articles">
+
+                        <!-- ===== 1. What is FPV? ===== -->
+                        <details class="acad-article" data-accent="purple" id="acad-section-what-is-fpv">
+                            <summary>
+                                <div class="acad-article-icon"><i class="ph ph-drone"></i></div>
+                                <span class="acad-article-title">What is FPV?</span>
+                                <i class="ph ph-caret-down acad-article-chevron"></i>
+                            </summary>
+                            <div class="acad-article-body">
+                                <p>
+                                    <strong>FPV</strong> stands for <strong>First Person View</strong>. It means flying a drone while
+                                    wearing goggles that show a live video feed from a camera mounted on the drone itself. You see
+                                    what the drone sees — as if you were sitting in the cockpit. It is one of the most immersive
+                                    experiences in the hobby world.
+                                </p>
+
+                                <h4>How is this different from a DJI Mavic?</h4>
+                                <p>
+                                    Consumer drones like the DJI Mavic are pre-built, fly themselves with GPS, and are designed for
+                                    aerial photography. FPV drones are <strong>custom-built from individual components</strong>, fly
+                                    manually (no GPS stabilization), and are designed for speed, agility, and the thrill of flight.
+                                    Think of it as the difference between buying a car off the lot and building a go-kart from parts.
+                                </p>
+
+                                <h4>Why build your own?</h4>
+                                <ul>
+                                    <li><strong>Performance</strong> — Custom FPV drones are dramatically faster and more agile than any consumer drone.</li>
+                                    <li><strong>Customization</strong> — You choose every single component to match your flying style.</li>
+                                    <li><strong>Repairability</strong> — When you crash (and you will), you replace the broken part instead of the whole drone.</li>
+                                    <li><strong>The craft</strong> — Building is half the fun. Soldering, tuning, and testing is deeply satisfying.</li>
+                                    <li><strong>Community</strong> — FPV has one of the most passionate and helpful communities in any hobby.</li>
+                                </ul>
+
+                                <h4>What do you need beyond the drone?</h4>
+                                <p>
+                                    A complete FPV setup includes the drone itself, a <strong>radio transmitter</strong> (the controller
+                                    you hold), <strong>FPV goggles</strong> (to see the video feed), <strong>batteries and a charger</strong>,
+                                    and basic tools (soldering iron, hex drivers, zip ties). Budget roughly $400-800 for a complete
+                                    first setup including goggles and radio.
+                                </p>
+
+                                <div class="acad-callout acad-callout-tip">
+                                    <i class="ph ph-lightbulb"></i>
+                                    <p>You do not need to be an engineer to build an FPV drone. If you can follow instructions
+                                    and are willing to learn to solder, you can do this. Thousands of people with zero technical
+                                    background have built their first drone successfully.</p>
+                                </div>
+                            </div>
+                        </details>
+
+                        <!-- ===== 2. Core Components ===== -->
+                        <details class="acad-article" data-accent="red" id="acad-section-core-components">
+                            <summary>
+                                <div class="acad-article-icon"><i class="ph ph-cpu"></i></div>
+                                <span class="acad-article-title">Core Components</span>
+                                <i class="ph ph-caret-down acad-article-chevron"></i>
+                            </summary>
+                            <div class="acad-article-body">
+                                <p>
+                                    Every FPV drone is assembled from 8 essential components. Each has a specific job, and they all
+                                    need to work together. Here is what each part does, explained simply:
+                                </p>
+
+                                <div class="acad-table-wrap">
+                                    <table class="acad-table">
+                                        <thead>
+                                            <tr>
+                                                <th>Component</th>
+                                                <th>What It Does</th>
+                                                <th>Think of It As...</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            <tr>
+                                                <td><strong>Frame</strong></td>
+                                                <td>Carbon fiber skeleton that holds everything together. Determines drone size.</td>
+                                                <td>The chassis of a car</td>
+                                            </tr>
+                                            <tr>
+                                                <td><strong>Motors</strong> (x4)</td>
+                                                <td>Spin the propellers to generate thrust. More powerful motors = more speed.</td>
+                                                <td>The engine(s)</td>
+                                            </tr>
+                                            <tr>
+                                                <td><strong>Propellers</strong> (x4)</td>
+                                                <td>Blades that push air downward to create lift. Diameter defines your size class.</td>
+                                                <td>The tires</td>
+                                            </tr>
+                                            <tr>
+                                                <td><strong>ESC</strong> (Electronic Speed Controller)</td>
+                                                <td>Controls how fast each motor spins. Usually a single "4-in-1" board for all 4 motors.</td>
+                                                <td>The throttle/transmission</td>
+                                            </tr>
+                                            <tr>
+                                                <td><strong>Flight Controller</strong> (FC)</td>
+                                                <td>The brain. Reads sensors, processes your stick inputs, and tells each motor what to do 8,000 times per second.</td>
+                                                <td>The computer/ECU</td>
+                                            </tr>
+                                            <tr>
+                                                <td><strong>Battery</strong> (LiPo)</td>
+                                                <td>Rechargeable lithium polymer pack. Cell count determines voltage, capacity determines flight time.</td>
+                                                <td>The fuel tank</td>
+                                            </tr>
+                                            <tr>
+                                                <td><strong>FPV Camera + VTX</strong></td>
+                                                <td>Camera captures video, Video Transmitter (VTX) broadcasts it wirelessly to your goggles.</td>
+                                                <td>The dashcam + radio antenna</td>
+                                            </tr>
+                                            <tr>
+                                                <td><strong>Receiver</strong> (RX)</td>
+                                                <td>Receives your stick inputs from the radio transmitter you hold. The control link.</td>
+                                                <td>The steering wheel connection</td>
+                                            </tr>
+                                        </tbody>
+                                    </table>
+                                </div>
+
+                                <div class="acad-callout acad-callout-info">
+                                    <i class="ph ph-info"></i>
+                                    <p><strong>What is a "Stack"?</strong> A stack is a pre-matched Flight Controller + ESC pair sold
+                                    together. They are designed to physically stack on top of each other (hence the name) with guaranteed
+                                    compatible mounting holes. Great for beginners — one purchase, two components sorted.</p>
+                                </div>
+
+                                <h4>Optional Components</h4>
+                                <ul>
+                                    <li><strong>GPS Module</strong> — Enables GPS Rescue (fly-home-if-signal-lost), position hold, and altitude display. Not required for basic flying.</li>
+                                    <li><strong>Buzzer</strong> — Beeps when you lose your drone in tall grass. Cheap insurance.</li>
+                                    <li><strong>Capacitor</strong> — Smooths out electrical noise from the ESC. Often included with ESCs, sometimes soldered separately.</li>
+                                </ul>
+
+                                <div class="acad-callout acad-callout-info">
+                                    <i class="ph ph-info"></i>
+                                    <p><strong>AIO (All-In-One) boards</strong> combine the FC + ESC (and sometimes VTX and receiver)
+                                    on a single circuit board. Common on smaller builds (3-inch and under) where space is tight.
+                                    Trade-off: saves weight and wiring, but if one part fails you replace the whole board.</p>
+                                </div>
+                            </div>
+                        </details>
+
+                        <!-- ===== 3. Size Classes ===== -->
+                        <details class="acad-article" data-accent="blue" id="acad-section-size-classes">
+                            <summary>
+                                <div class="acad-article-icon"><i class="ph ph-ruler"></i></div>
+                                <span class="acad-article-title">Size Classes</span>
+                                <i class="ph ph-caret-down acad-article-chevron"></i>
+                            </summary>
+                            <div class="acad-article-body">
+                                <p>
+                                    The single most important concept in FPV is <strong>size class</strong>. It is determined by
+                                    propeller diameter and it dictates which motors, frames, batteries, and electronics you need.
+                                    Everything flows from this one decision.
+                                </p>
+
+                                <div class="acad-table-wrap">
+                                    <table class="acad-table">
+                                        <thead>
+                                            <tr>
+                                                <th>Size Class</th>
+                                                <th>Prop Size</th>
+                                                <th>Typical Use</th>
+                                                <th>Beginner Friendly?</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            <tr>
+                                                <td>Tiny Whoop</td>
+                                                <td>31-40mm</td>
+                                                <td>Indoor flying, bedrooms, offices</td>
+                                                <td>Great for practice</td>
+                                            </tr>
+                                            <tr>
+                                                <td>2-inch</td>
+                                                <td>2"</td>
+                                                <td>Indoor/outdoor micro, lightweight</td>
+                                                <td>Good, but fragile</td>
+                                            </tr>
+                                            <tr>
+                                                <td>3-inch</td>
+                                                <td>3"</td>
+                                                <td>Backyard flying, parks, cinewhoops</td>
+                                                <td>Good starter size</td>
+                                            </tr>
+                                            <tr>
+                                                <td>3.5-inch</td>
+                                                <td>3.5"</td>
+                                                <td>Growing "sweet spot" size</td>
+                                                <td>Moderate</td>
+                                            </tr>
+                                            <tr class="acad-highlight">
+                                                <td><strong>5-inch</strong></td>
+                                                <td><strong>5"</strong></td>
+                                                <td><strong>THE standard — freestyle, racing, cinematic</strong></td>
+                                                <td><strong>Best overall</strong></td>
+                                            </tr>
+                                            <tr>
+                                                <td>6-inch</td>
+                                                <td>6"</td>
+                                                <td>Long range, smooth cinematic</td>
+                                                <td>Moderate</td>
+                                            </tr>
+                                            <tr>
+                                                <td>7-inch</td>
+                                                <td>7"</td>
+                                                <td>Long range cruising, heavy payloads</td>
+                                                <td>Advanced</td>
+                                            </tr>
+                                            <tr>
+                                                <td>8-10 inch</td>
+                                                <td>8-10"</td>
+                                                <td>Heavy lift, cinema cameras, mapping</td>
+                                                <td>Expert</td>
+                                            </tr>
+                                        </tbody>
+                                    </table>
+                                </div>
+
+                                <h4>Why 5-inch is king</h4>
+                                <p>
+                                    About 90% of the FPV community flies 5-inch drones. This means the most parts availability,
+                                    the most tutorials, the cheapest spare parts, and the largest community for help. The 5-inch
+                                    size hits the sweet spot of power, agility, flight time, and portability.
+                                </p>
+
+                                <div class="acad-callout acad-callout-tip">
+                                    <i class="ph ph-lightbulb"></i>
+                                    <p>When in doubt, go 5-inch. It is the Honda Civic of FPV — reliable, well-documented, and
+                                    parts are everywhere. If you want indoor practice first, grab a cheap Tiny Whoop to learn the
+                                    sticks while you build your 5-inch.</p>
+                                </div>
+
+                                <h4>How size class cascades to other components</h4>
+                                <p>
+                                    Once you pick a prop size, everything else narrows down. A 5-inch build typically uses
+                                    <span class="acad-code">2207</span> motors, <span class="acad-code">30.5x30.5mm</span> mounting
+                                    pattern electronics, <span class="acad-code">4-6S</span> batteries around
+                                    <span class="acad-code">1300-1550mAh</span>, and <span class="acad-code">XT60</span> connectors.
+                                    You do not need to memorize this — just know that picking the size class automatically filters
+                                    your options for everything else.
+                                </p>
+                            </div>
+                        </details>
+
+                        <!-- ===== 4. Video Systems ===== -->
+                        <details class="acad-article" data-accent="cyan" id="acad-section-video-systems">
+                            <summary>
+                                <div class="acad-article-icon"><i class="ph ph-monitor-play"></i></div>
+                                <span class="acad-article-title">Video Systems</span>
+                                <i class="ph ph-caret-down acad-article-chevron"></i>
+                            </summary>
+                            <div class="acad-article-body">
+                                <p>
+                                    The FPV video chain has three parts: a <strong>camera</strong> on the drone, a <strong>video
+                                    transmitter (VTX)</strong> that broadcasts the signal, and <strong>goggles</strong> on your head
+                                    that receive it. The critical rule:
+                                </p>
+
+                                <div class="acad-callout acad-callout-warn">
+                                    <i class="ph ph-warning"></i>
+                                    <p><strong>All three must be the same video system.</strong> A DJI camera will NOT work with
+                                    HDZero goggles. An Analog VTX will NOT work with Walksnail goggles. There is ZERO
+                                    cross-compatibility between systems. This is the number one mistake beginners make.</p>
+                                </div>
+
+                                <div class="acad-table-wrap">
+                                    <table class="acad-table">
+                                        <thead>
+                                            <tr>
+                                                <th>System</th>
+                                                <th>Type</th>
+                                                <th>Resolution</th>
+                                                <th>Latency</th>
+                                                <th>Cost</th>
+                                                <th>Best For</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            <tr>
+                                                <td><strong>Analog</strong></td>
+                                                <td>Legacy</td>
+                                                <td>480-720p</td>
+                                                <td>~1ms</td>
+                                                <td>$$ (cheapest)</td>
+                                                <td>Budget builds, racing, lightweight</td>
+                                            </tr>
+                                            <tr>
+                                                <td><strong>DJI O3/O4</strong></td>
+                                                <td>Digital</td>
+                                                <td>1080p+</td>
+                                                <td>22-28ms</td>
+                                                <td>$$$$ (most expensive)</td>
+                                                <td>Best image quality, freestyle, cinematic</td>
+                                            </tr>
+                                            <tr>
+                                                <td><strong>HDZero</strong></td>
+                                                <td>Digital</td>
+                                                <td>720-1080p</td>
+                                                <td>~4ms</td>
+                                                <td>$$$ (mid-high)</td>
+                                                <td>Racing, lowest digital latency</td>
+                                            </tr>
+                                            <tr>
+                                                <td><strong>Walksnail Avatar</strong></td>
+                                                <td>Digital</td>
+                                                <td>1080p</td>
+                                                <td>22-28ms</td>
+                                                <td>$$$ (mid)</td>
+                                                <td>Good value digital, freestyle</td>
+                                            </tr>
+                                        </tbody>
+                                    </table>
+                                </div>
+
+                                <h4>Making the decision</h4>
+                                <ul>
+                                    <li><strong>Want the best image quality?</strong> Go DJI O3/O4. Market leader, best picture, most pilots use it.</li>
+                                    <li><strong>On a budget?</strong> Go Analog. Cheapest entry point, still perfectly flyable, lightest weight.</li>
+                                    <li><strong>Racing competitively?</strong> Go HDZero. Lowest digital latency at ~4ms.</li>
+                                    <li><strong>Want good digital at a lower price?</strong> Walksnail Avatar is a solid middle ground.</li>
+                                </ul>
+
+                                <div class="acad-callout acad-callout-warn">
+                                    <i class="ph ph-warning"></i>
+                                    <p>This is the most expensive single decision in FPV. Goggles cost $200-650, and switching
+                                    systems later means rebuying goggles, every camera, and every VTX across all your drones.
+                                    Research this choice carefully before committing.</p>
+                                </div>
+
+                                <h4>Frame compatibility note</h4>
+                                <p>
+                                    DJI digital cameras are slightly larger than analog cameras. Many frames are sold in "Analog"
+                                    and "DJI/Digital" versions with different camera mounting slots. When buying a frame, check if
+                                    it supports your chosen video system — look for "O3", "O4", "HD", or "Digital" in the frame name.
+                                </p>
+                            </div>
+                        </details>
+
+                        <!-- ===== 5. Compatibility Rules ===== -->
+                        <details class="acad-article" data-accent="amber" id="acad-section-compatibility">
+                            <summary>
+                                <div class="acad-article-icon"><i class="ph ph-link"></i></div>
+                                <span class="acad-article-title">Compatibility Rules</span>
+                                <i class="ph ph-caret-down acad-article-chevron"></i>
+                            </summary>
+                            <div class="acad-article-body">
+                                <p>
+                                    Not every part fits with every other part. Compatibility comes in two flavors:
+                                    <strong>hard constraints</strong> (physically will not fit) and <strong>soft constraints</strong>
+                                    (will fit but may cause problems).
+                                </p>
+
+                                <h4>Hard Constraints — Will Not Work</h4>
+                                <p>These are physical mismatches. If you get these wrong, the parts literally cannot be assembled.</p>
+                                <div class="acad-table-wrap">
+                                    <table class="acad-table">
+                                        <thead>
+                                            <tr>
+                                                <th>Constraint</th>
+                                                <th>What Must Match</th>
+                                                <th>Example</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            <tr>
+                                                <td><strong>FC Mounting Pattern</strong></td>
+                                                <td>Frame hole spacing must match FC/ESC hole spacing</td>
+                                                <td>A 20x20mm FC will not bolt into a frame with only 30.5x30.5mm holes</td>
+                                            </tr>
+                                            <tr>
+                                                <td><strong>Motor Mount Bolts</strong></td>
+                                                <td>Motor bolt size and hole spacing must match the frame arm</td>
+                                                <td>M3 bolts at 16mm spacing is standard for 5-inch</td>
+                                            </tr>
+                                            <tr>
+                                                <td><strong>Prop Shaft Hole</strong></td>
+                                                <td>Propeller center hole must fit the motor shaft diameter</td>
+                                                <td>5mm shaft = 5mm prop hole (standard for 5-inch motors)</td>
+                                            </tr>
+                                            <tr>
+                                                <td><strong>Video System</strong></td>
+                                                <td>Camera, VTX, and goggles must all be the same system</td>
+                                                <td>DJI camera + DJI VTX + DJI goggles (no mixing)</td>
+                                            </tr>
+                                            <tr>
+                                                <td><strong>RX Protocol</strong></td>
+                                                <td>Receiver protocol must match your radio transmitter</td>
+                                                <td>ELRS receiver needs an ELRS-compatible radio</td>
+                                            </tr>
+                                        </tbody>
+                                    </table>
+                                </div>
+
+                                <h4>Soft Constraints — Works But May Have Issues</h4>
+                                <p>These parts will physically fit together, but mismatching them causes performance or safety problems.</p>
+                                <div class="acad-table-wrap">
+                                    <table class="acad-table">
+                                        <thead>
+                                            <tr>
+                                                <th>Constraint</th>
+                                                <th>What Should Match</th>
+                                                <th>What Goes Wrong</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            <tr>
+                                                <td><strong>Voltage Range</strong></td>
+                                                <td>Battery cell count must be within motor, ESC, and FC rated range</td>
+                                                <td>Over-voltage burns components instantly</td>
+                                            </tr>
+                                            <tr>
+                                                <td><strong>ESC Current Rating</strong></td>
+                                                <td>ESC amps should be at least 1.5x the motor's max draw</td>
+                                                <td>Under-rated ESC overheats under hard flying</td>
+                                            </tr>
+                                            <tr>
+                                                <td><strong>Prop Size vs Frame</strong></td>
+                                                <td>Props should fit within the frame's max supported diameter</td>
+                                                <td>Oversized props hit the frame arms</td>
+                                            </tr>
+                                            <tr>
+                                                <td><strong>Battery Connector</strong></td>
+                                                <td>Battery plug should match ESC input (XT60, XT30, etc.)</td>
+                                                <td>Adapters add weight and electrical resistance</td>
+                                            </tr>
+                                        </tbody>
+                                    </table>
+                                </div>
+
+                                <div class="acad-callout acad-callout-warn">
+                                    <i class="ph ph-warning"></i>
+                                    <p><strong>Voltage mismatch is the #1 way beginners destroy components.</strong> Plugging a 6S
+                                    battery (22.2V) into a motor or ESC rated for 4S max (16.8V) will burn it instantly — the
+                                    dreaded "magic smoke." Always check voltage ratings before powering up.</p>
+                                </div>
+
+                                <div class="acad-callout acad-callout-tip">
+                                    <i class="ph ph-lightbulb"></i>
+                                    <p>DroneClear's <strong>Model Builder</strong> automatically checks all of these
+                                    compatibility rules as you select parts. It validates mounting patterns, voltage ranges,
+                                    connector types, and more in real-time so you do not have to memorize every constraint.</p>
+                                </div>
+                            </div>
+                        </details>
+
+                        <!-- ===== 6. Your First Build ===== -->
+                        <details class="acad-article" data-accent="green" id="acad-section-first-build">
+                            <summary>
+                                <div class="acad-article-icon"><i class="ph ph-wrench"></i></div>
+                                <span class="acad-article-title">Your First Build</span>
+                                <i class="ph ph-caret-down acad-article-chevron"></i>
+                            </summary>
+                            <div class="acad-article-body">
+                                <p>
+                                    Ready to build? Here is the recommended order for choosing parts for a solid 5-inch freestyle/general
+                                    purpose drone. Picking in this order avoids compatibility mistakes:
+                                </p>
+
+                                <ol>
+                                    <li>
+                                        <strong>Choose your video system first</strong> — This determines your goggles ($200-650),
+                                        camera, and VTX. It is the hardest decision to change later. DJI O3 for best image, Analog
+                                        for budget.
+                                    </li>
+                                    <li>
+                                        <strong>Choose your radio protocol</strong> — ELRS is the recommended standard. It is
+                                        open-source, cheap, low-latency, and available in both 2.4GHz and 900MHz. Buy an
+                                        ELRS-compatible radio transmitter.
+                                    </li>
+                                    <li>
+                                        <strong>Pick a frame</strong> — 5-inch, true-X or stretched-X configuration,
+                                        <span class="acad-code">30.5x30.5mm</span> FC mount,
+                                        <span class="acad-code">M3 16mm</span> motor mounts. Make sure it supports your video system
+                                        (Analog or Digital camera mount).
+                                    </li>
+                                    <li>
+                                        <strong>Pick a stack (FC + ESC combo)</strong> —
+                                        <span class="acad-code">30.5x30.5mm</span> mounting,
+                                        <span class="acad-code">6S</span> capable,
+                                        <span class="acad-code">45A+</span> per motor ESC,
+                                        <span class="acad-code">F405</span> or <span class="acad-code">H743</span> MCU.
+                                    </li>
+                                    <li>
+                                        <strong>Pick motors</strong> — <span class="acad-code">2207</span> stator size,
+                                        <span class="acad-code">1700-1900KV</span> for 6S batteries. Match the frame's motor mount
+                                        bolt size (M3).
+                                    </li>
+                                    <li>
+                                        <strong>Pick propellers</strong> — 5-inch triblade (3-blade),
+                                        <span class="acad-code">5mm</span> center hole. Gemfan 51466 or HQ 5x4.3x3 are popular choices.
+                                    </li>
+                                    <li>
+                                        <strong>Pick a battery</strong> — <span class="acad-code">6S</span>
+                                        <span class="acad-code">1300-1550mAh</span>,
+                                        <span class="acad-code">XT60</span> connector. Look for reputable brands with honest C-ratings.
+                                    </li>
+                                    <li>
+                                        <strong>Pick a receiver</strong> — ELRS 2.4GHz receiver. Small, cheap, easy to bind.
+                                    </li>
+                                </ol>
+
+                                <h4>Tools You Will Need</h4>
+                                <ul>
+                                    <li><strong>Soldering iron</strong> (temperature-controlled, 60W+) and solder (60/40 or 63/37 leaded recommended for beginners)</li>
+                                    <li><strong>Flux</strong> — Makes solder flow cleanly. Do not skip this.</li>
+                                    <li><strong>Heat shrink tubing</strong> and a heat gun or lighter</li>
+                                    <li><strong>Hex drivers</strong> — M2 and M3 for frame bolts</li>
+                                    <li><strong>Wire cutters</strong> and wire strippers</li>
+                                    <li><strong>Zip ties</strong> — For securing antennas and wires</li>
+                                    <li><strong>Smoke stopper</strong> — Limits current on first power-up to prevent fires</li>
+                                    <li><strong>Battery charger</strong> — Balance charger that supports your cell count</li>
+                                </ul>
+
+                                <div class="acad-callout acad-callout-tip">
+                                    <i class="ph ph-lightbulb"></i>
+                                    <p>Buy from reputable FPV retailers (GetFPV, RaceDayQuads, Pyrodrone, RDQ, etc.) instead
+                                    of random Amazon listings. FPV retailers have accurate specs, real product photos, and
+                                    customer support that understands what you are building.</p>
+                                </div>
+                            </div>
+                        </details>
+
+                        <!-- ===== 7. Tips & Common Mistakes ===== -->
+                        <details class="acad-article" data-accent="red" id="acad-section-tips">
+                            <summary>
+                                <div class="acad-article-icon"><i class="ph ph-warning"></i></div>
+                                <span class="acad-article-title">Tips & Common Mistakes</span>
+                                <i class="ph ph-caret-down acad-article-chevron"></i>
+                            </summary>
+                            <div class="acad-article-body">
+                                <p>
+                                    These are the most common mistakes beginners make. Each one has cost someone real money.
+                                    Learn from their pain:
+                                </p>
+
+                                <ol>
+                                    <li>
+                                        <strong>Mixing video systems</strong> — Buying a DJI O3 camera with Analog goggles (or any cross-system
+                                        combination). They are completely incompatible. Always confirm camera + VTX + goggles are the same system.
+                                    </li>
+                                    <li>
+                                        <strong>Voltage mismatch</strong> — Plugging a 6S battery into components rated for 4S max. This
+                                        instantly destroys the ESC or FC. Always check the voltage rating on every electrical component.
+                                    </li>
+                                    <li>
+                                        <strong>Wrong motor mount pattern</strong> — The motor arm holes must match the motor's bolt
+                                        pattern. M2 bolts in M3 holes will not tighten; M3 bolts in M2 holes will crack the motor base.
+                                    </li>
+                                    <li>
+                                        <strong>Buying an autopilot FC by mistake</strong> — Pixhawk, Cube Orange, and CUAV boards are
+                                        for autonomous drones (ArduPilot/PX4), not FPV racing/freestyle. They look similar but are a
+                                        completely different ecosystem. Look for "Betaflight" or "iNav" support on FPV flight controllers.
+                                    </li>
+                                    <li>
+                                        <strong>Forgetting the receiver</strong> — Your radio transmitter talks to the drone through a
+                                        receiver. The drone does not have WiFi or Bluetooth. You need a physical RX board soldered to the FC.
+                                    </li>
+                                    <li>
+                                        <strong>Cheap batteries with inflated C-ratings</strong> — Budget LiPo brands advertise "150C"
+                                        discharge rates that are physically impossible. Buy from trusted brands. A genuinely rated 75C
+                                        battery outperforms a fake 150C battery.
+                                    </li>
+                                    <li>
+                                        <strong>Skipping the smoke stopper</strong> — A smoke stopper is a simple current limiter (usually
+                                        an XT60 plug with a small light bulb or resistor). On your first power-up, it limits current so a
+                                        wiring mistake lights up the bulb instead of frying your electronics.
+                                    </li>
+                                    <li>
+                                        <strong>Wrong prop direction</strong> — Quadcopters use two clockwise (CW) and two counter-clockwise
+                                        (CCW) propellers in a specific pattern. Mounting them wrong means the drone flips on takeoff.
+                                        Check the markings on each prop carefully.
+                                    </li>
+                                </ol>
+
+                                <div class="acad-callout acad-callout-warn">
+                                    <i class="ph ph-warning"></i>
+                                    <p>Always use a smoke stopper on your first power-up. A $10 smoke stopper can save $200+
+                                    in burned electronics. It is the cheapest insurance in the hobby.</p>
+                                </div>
+
+                                <div class="acad-callout acad-callout-tip">
+                                    <i class="ph ph-lightbulb"></i>
+                                    <p><strong>Before your first flight:</strong> Flash the latest Betaflight firmware, calibrate
+                                    your accelerometer, set your motor direction in Betaflight Configurator, verify your radio
+                                    inputs are correct, and do a low-throttle hover test in a wide open area. Do not try flips
+                                    on day one.</p>
+                                </div>
+                            </div>
+                        </details>
+
+                        <!-- ===== 8. Glossary ===== -->
+                        <details class="acad-article" data-accent="slate" id="acad-section-glossary">
+                            <summary>
+                                <div class="acad-article-icon"><i class="ph ph-book-open"></i></div>
+                                <span class="acad-article-title">Glossary & Quick Reference</span>
+                                <i class="ph ph-caret-down acad-article-chevron"></i>
+                            </summary>
+                            <div class="acad-article-body">
+                                <h4>FPV Terminology</h4>
+                                <div class="acad-table-wrap">
+                                    <table class="acad-table">
+                                        <thead>
+                                            <tr>
+                                                <th>Term</th>
+                                                <th>Definition</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            <tr><td><strong>AIO</strong></td><td>All-In-One — a single board combining multiple components (usually FC + ESC, sometimes + VTX + RX)</td></tr>
+                                            <tr><td><strong>Betaflight</strong></td><td>The most popular open-source flight controller firmware. Runs on most FPV FCs.</td></tr>
+                                            <tr><td><strong>BLHeli_32</strong></td><td>Industry-standard 32-bit ESC firmware. Handles motor timing and protocol.</td></tr>
+                                            <tr><td><strong>C-Rating</strong></td><td>Battery discharge rate as a multiple of capacity. A 1500mAh 100C pack can deliver 150A max.</td></tr>
+                                            <tr><td><strong>DShot</strong></td><td>Digital motor signal protocol. DShot600 is standard — no calibration needed.</td></tr>
+                                            <tr><td><strong>ELRS</strong></td><td>ExpressLRS — open-source radio control protocol. Low latency, long range, cheap. The new standard.</td></tr>
+                                            <tr><td><strong>ESC</strong></td><td>Electronic Speed Controller — converts FC commands into 3-phase power for brushless motors.</td></tr>
+                                            <tr><td><strong>FC</strong></td><td>Flight Controller — the main computer running flight firmware (Betaflight, iNav).</td></tr>
+                                            <tr><td><strong>FPV</strong></td><td>First Person View — flying via live video goggles from the drone's camera perspective.</td></tr>
+                                            <tr><td><strong>KV</strong></td><td>Motor RPM per volt (unloaded). Higher KV = faster spin at same voltage. Lower KV = more torque.</td></tr>
+                                            <tr><td><strong>LiPo</strong></td><td>Lithium Polymer — the standard rechargeable battery chemistry for FPV drones.</td></tr>
+                                            <tr><td><strong>MCU</strong></td><td>Microcontroller Unit — the processor chip on the FC. F405, F722, H743 are common families.</td></tr>
+                                            <tr><td><strong>OSD</strong></td><td>On-Screen Display — overlays battery voltage, RSSI, flight time, etc. on your goggle view.</td></tr>
+                                            <tr><td><strong>PID</strong></td><td>Proportional-Integral-Derivative — the tuning algorithm that keeps the drone stable.</td></tr>
+                                            <tr><td><strong>RSSI</strong></td><td>Received Signal Strength Indicator — how strong your control link is. Low RSSI = risk of failsafe.</td></tr>
+                                            <tr><td><strong>VTX</strong></td><td>Video Transmitter — broadcasts the camera feed wirelessly to your goggles.</td></tr>
+                                            <tr><td><strong>XT60/XT30</strong></td><td>Standard battery connector types. XT60 for 5"+ (60A rated), XT30 for smaller builds (30A rated).</td></tr>
+                                        </tbody>
+                                    </table>
+                                </div>
+
+                                <h4>Motor Stator Code Decoder</h4>
+                                <p>
+                                    Motor size is described by a 4-digit stator code in the format
+                                    <span class="acad-code">DDMM</span> where DD = stator diameter (mm) and MM = stator height (mm).
+                                </p>
+                                <div class="acad-code-block">2207 = 22mm diameter, 07mm height  (standard 5-inch motor)
+1404 = 14mm diameter, 04mm height  (3-inch micro motor)
+2806 = 28mm diameter, 06mm height  (7-inch long-range motor)</div>
+                                <p>
+                                    Bigger diameter = more torque. Taller stator = more RPM headroom. For a 5-inch build,
+                                    <span class="acad-code">2207</span> is the sweet spot.
+                                </p>
+
+                                <h4>Propeller Naming Decoder</h4>
+                                <p>
+                                    Propeller names encode the diameter, pitch, and blade count. The same prop may be
+                                    listed in different formats by different manufacturers:
+                                </p>
+                                <div class="acad-code-block">Gemfan 51466  = 5.1" dia, 4.6" pitch, 6 blades... wait, no! Actually:
+
+Gemfan 5-digit format:
+  51433 = 5.1" diameter, 4.3" pitch, 3 blades
+
+HQ Props format:
+  5x4.3x3 = 5" diameter x 4.3" pitch x 3 blades
+
+Both describe the same prop dimensions!</div>
+                                <p>
+                                    <strong>Pitch</strong> is the forward distance a prop would move in one rotation (like a screw thread).
+                                    Higher pitch = more aggressive/faster, lower pitch = more efficient/better for heavy loads.
+                                </p>
+
+                                <h4>Mounting Pattern Quick Reference</h4>
+                                <div class="acad-table-wrap">
+                                    <table class="acad-table">
+                                        <thead>
+                                            <tr>
+                                                <th>Pattern</th>
+                                                <th>Bolt Size</th>
+                                                <th>Typical Size Class</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            <tr><td><span class="acad-code">16x16mm</span></td><td>M2</td><td>Tiny Whoop, 2-inch</td></tr>
+                                            <tr><td><span class="acad-code">20x20mm</span></td><td>M2</td><td>2-inch, 3-inch, 3.5-inch</td></tr>
+                                            <tr><td><span class="acad-code">25.5x25.5mm</span></td><td>M2/M3</td><td>3.5-inch, 4-inch, some 5-inch</td></tr>
+                                            <tr class="acad-highlight"><td><span class="acad-code">30.5x30.5mm</span></td><td>M3</td><td>5-inch (standard), 6-inch, 7-inch</td></tr>
+                                        </tbody>
+                                    </table>
+                                </div>
+
+                                <div class="acad-callout acad-callout-tip">
+                                    <i class="ph ph-lightbulb"></i>
+                                    <p>Bookmark this section. You will come back to it often during your first build.
+                                    These naming conventions are confusing at first but become second nature after your
+                                    first few parts purchases.</p>
+                                </div>
+                            </div>
+                        </details>
+
+                    </div>
+                </section>
+
+            </div>
+        </main>
+    </div>
+
+    <!-- Back to Top Button -->
+    <button class="acad-back-to-top" id="acad-back-to-top" title="Back to top" aria-label="Back to top">
+        <i class="ph ph-arrow-up"></i>
+    </button>
+
+    <!-- Bug Report Modal -->
+    <div id="bug-report-modal" class="modal-overlay hidden" style="z-index: 9999;">
+        <div class="modal-content" style="max-width: 500px; padding: 24px; position: relative;">
+            <div class="modal-title-area" style="margin-bottom: 16px;">
+                <h2 style="font-size: 20px; color: var(--text-main); display:flex; align-items:center; gap:8px;">
+                    <i class="ph ph-bug" style="color: var(--accent-red);"></i> Submit Bug Report
+                </h2>
+                <p style="color: var(--text-muted); font-size: 13px; margin-top: 4px;">Found an issue? Let us know.</p>
+            </div>
+            <div style="display:flex; flex-direction:column; gap:12px;">
+                <input type="text" id="bug-title-input" placeholder="Brief issue description..."
+                    style="width:100%; padding:10px; background:var(--bg-dark); border:1px solid var(--border-color); color:var(--text-main); border-radius:var(--radius-sm);">
+                <textarea id="bug-desc-input" rows="4" placeholder="Steps to reproduce..."
+                    style="width:100%; padding:10px; background:var(--bg-dark); border:1px solid var(--border-color); color:var(--text-main); border-radius:var(--radius-sm); resize:vertical;"></textarea>
+            </div>
+            <div class="modal-footer" style="margin-top:20px; display:flex; gap:12px; justify-content:flex-end;">
+                <button class="btn btn-outline" id="btn-cancel-bug">Cancel</button>
+                <button class="btn btn-primary" id="btn-submit-bug">Submit</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- System Maintenance Logic -->
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const btnRestart = document.getElementById('btn-restart-server');
+            const btnReport = document.getElementById('btn-report-bug');
+            const btnResetGolden = document.getElementById('btn-reset-golden');
+            const btnResetExamples = document.getElementById('btn-reset-examples');
+            const bugModal = document.getElementById('bug-report-modal');
+            const btnCancelBug = document.getElementById('btn-cancel-bug');
+            const btnSubmitBug = document.getElementById('btn-submit-bug');
+            const titleInput = document.getElementById('bug-title-input');
+            const descInput = document.getElementById('bug-desc-input');
+
+            if (btnRestart) {
+                btnRestart.addEventListener('click', async () => {
+                    const originalText = btnRestart.innerHTML;
+                    btnRestart.innerHTML = '<i class="ph ph-spinner ph-spin"></i> Restarting...';
+                    try {
+                        const res = await fetch('/api/maintenance/restart/', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' }
+                        });
+                        if (res.ok) {
+                            setTimeout(() => window.location.reload(), 1500);
+                        } else {
+                            alert('Failed to restart server.');
+                            btnRestart.innerHTML = originalText;
+                        }
+                    } catch (e) {
+                        alert('Error connecting to backend.');
+                        btnRestart.innerHTML = originalText;
+                    }
+                });
+            }
+
+            if (btnReport && bugModal) {
+                btnReport.addEventListener('click', () => {
+                    bugModal.classList.remove('hidden');
+                    titleInput.value = '';
+                    descInput.value = '';
+                    titleInput.focus();
+                });
+            }
+
+            if (btnCancelBug && bugModal) {
+                btnCancelBug.addEventListener('click', () => {
+                    bugModal.classList.add('hidden');
+                });
+            }
+
+            if (btnSubmitBug) {
+                btnSubmitBug.addEventListener('click', async () => {
+                    if (!titleInput.value.trim()) {
+                        alert("Please enter a brief description.");
+                        return;
+                    }
+                    const originalText = btnSubmitBug.innerHTML;
+                    btnSubmitBug.innerHTML = 'Submitting...';
+                    btnSubmitBug.disabled = true;
+
+                    try {
+                        const res = await fetch('/api/maintenance/bug-report/', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({
+                                title: titleInput.value.trim(),
+                                description: descInput.value.trim()
+                            })
+                        });
+                        if (res.ok) {
+                            bugModal.classList.add('hidden');
+                            alert("Bug report submitted successfully.");
+                        } else {
+                            alert('Failed to submit bug report.');
+                        }
+                    } catch (e) {
+                        alert('Error connecting to backend.');
+                    } finally {
+                        btnSubmitBug.innerHTML = originalText;
+                        btnSubmitBug.disabled = false;
+                    }
+                });
+            }
+
+            if (btnResetGolden) {
+                btnResetGolden.addEventListener('click', async () => {
+                    if (!confirm('This will DELETE all current parts and drone models, then re-import from the golden schema file.\n\nAre you sure?')) return;
+                    const originalText = btnResetGolden.innerHTML;
+                    btnResetGolden.innerHTML = '<i class="ph ph-spinner ph-spin"></i> Resetting...';
+                    btnResetGolden.disabled = true;
+                    try {
+                        const res = await fetch('/api/maintenance/reset-to-golden/', {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'X-CSRFToken': (document.cookie.match(/csrftoken=([^;]+)/) || [])[1] || '',
+                            }
+                        });
+                        const data = await res.json();
+                        if (res.ok) {
+                            alert(`Reset complete!\n\nCreated: ${data.created.categories} categories, ${data.created.components} components, ${data.created.drone_models} drone models.`);
+                            window.location.reload();
+                        } else {
+                            alert('Reset failed: ' + (data.error || 'Unknown error'));
+                        }
+                    } catch (e) {
+                        alert('Error connecting to backend.');
+                    } finally {
+                        btnResetGolden.innerHTML = originalText;
+                        btnResetGolden.disabled = false;
+                    }
+                });
+            }
+
+            if (btnResetExamples) {
+                btnResetExamples.addEventListener('click', async () => {
+                    if (!confirm('This will DELETE all current parts and drone models, then re-import the schema examples (1 per category).\n\nAre you sure?')) return;
+                    const originalText = btnResetExamples.innerHTML;
+                    btnResetExamples.innerHTML = '<i class="ph ph-spinner ph-spin"></i> Resetting...';
+                    btnResetExamples.disabled = true;
+                    try {
+                        const res = await fetch('/api/maintenance/reset-to-examples/', {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'X-CSRFToken': (document.cookie.match(/csrftoken=([^;]+)/) || [])[1] || '',
+                            }
+                        });
+                        const data = await res.json();
+                        if (res.ok) {
+                            alert(`Reset complete!\n\nCreated: ${data.created.categories} categories, ${data.created.components} components, ${data.created.drone_models} drone models.`);
+                            window.location.reload();
+                        } else {
+                            alert('Reset failed: ' + (data.error || 'Unknown error'));
+                        }
+                    } catch (e) {
+                        alert('Error connecting to backend.');
+                    } finally {
+                        btnResetExamples.innerHTML = originalText;
+                        btnResetExamples.disabled = false;
+                    }
+                });
+            }
+        });
+    </script>
+    <script src="{% static 'utils.js' %}?v=2"></script>
+    <script src="{% static 'academy.js' %}?v=1"></script>
+    <script>
+        (function () {
+            function applyTheme(dark) {
+                document.documentElement.setAttribute('data-theme', dark ? 'dark' : 'light');
+                const icon = document.getElementById('dark-mode-icon');
+                const btn = document.getElementById('dark-mode-toggle');
+                if (icon) icon.className = dark ? 'ph ph-sun' : 'ph ph-moon';
+                if (btn) btn.title = dark ? 'Switch to light mode' : 'Switch to dark mode';
+            }
+            document.getElementById('dark-mode-toggle')?.addEventListener('click', function () {
+                const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+                applyTheme(!isDark);
+                localStorage.setItem('dc-theme', !isDark ? 'dark' : 'light');
+            });
+            const saved = localStorage.getItem('dc-theme');
+            const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+            applyTheme(saved ? saved === 'dark' : prefersDark);
+        })();
+
+        document.addEventListener('DOMContentLoaded', () => {
+            const toggle = document.getElementById('mobile-nav-toggle');
+            const sidebar = document.querySelector('.sidebar');
+            if (toggle && sidebar) {
+                toggle.addEventListener('click', () => sidebar.classList.toggle('open'));
+                document.addEventListener('click', (e) => {
+                    if (window.innerWidth <= 768 && !sidebar.contains(e.target) && !toggle.contains(e.target))
+                        sidebar.classList.remove('open');
+                });
+            }
+        });
+    </script>
+</body>
+
+</html>
