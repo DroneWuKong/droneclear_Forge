@@ -5,6 +5,42 @@
 
 ---
 
+## Session 2026-03-08-4 — FPV Academy, Dynamic Versioning & DroneClear Rebrand
+
+**Agent**: Claude
+**Branch**: `claude/elastic-brattain`
+**Commit(s)**: `274812a`, `8bb53b8`
+
+### Summary
+Built the FPV Academy educational module (FEAT-014) — an 8-section learning hub for FPV beginners covering components, size classes, video systems, compatibility rules, first build checklist, tips, and glossary. Also added a git-based dynamic version context processor, rebranded "DroneClear Configurator" → "DroneClear" with red gradient logo, and activated the Mission Control FPV Academy card.
+
+### Changes
+| Category | Description | Files |
+|----------|-------------|-------|
+| feat | FPV Academy page — hero, 8 topic cards, 8 `<details>` article sections with tables, callouts, glossary | `academy.html` (new) |
+| feat | FPV Academy CSS — `acad-` prefixed styles, accent colors, responsive, dark mode | `academy.css` (new) |
+| feat | FPV Academy JS — IIFE with card→article scroll/open, back-to-top, smooth anchors | `academy.js` (new) |
+| feat | Dynamic build version from git — context processor injects `dc_version` into all templates | `droneclear_backend/version.py` (new), `settings/base.py` |
+| style | Rebrand logo: "DroneClear Configurator" → "DroneClear", red gradient, 32px | `layout.css`, all 7 HTML templates |
+| style | Replace hardcoded version string with `{{ dc_version }}` template tag | all 7 HTML templates |
+| feat | Activate FPV Academy card on Mission Control (div→a, remove coming-soon) | `mission-control.html` |
+| feat | Add FPV Academy sidebar link on all 6 existing pages | `index.html`, `editor.html`, `template.html`, `guide.html`, `audit.html`, `mission-control.html` |
+| fix | Add `?v=3` cache buster to layout.css across all templates | all 7 HTML templates |
+| feat | Register `/academy/` URL route | `droneclear_backend/urls.py` |
+| docs | Build version convention documented in CLAUDE.md | `CLAUDE.md` |
+
+### Backlog Updates
+- Completed: FEAT-014
+
+### Notes
+- Academy uses native `<details>/<summary>` for accessible no-JS accordion behavior.
+- Content seeded from `docs/fpv_domain_knowledge.md` — covers the full beginner journey from "What is FPV?" to glossary of terms.
+- Version context processor reads `git rev-list --count HEAD` and `git rev-parse --short HEAD` once at server startup — zero per-request overhead.
+- Logo uses CSS `background-clip: text` with `var(--accent-red)` → `var(--accent-darkred)` gradient.
+- Cache buster `?v=3` on `layout.css` was necessary to pick up the logo size change — browser was serving stale stylesheet despite dev server restart.
+
+---
+
 ## Session 2026-03-08-3 — Mission Control Dashboard (FEAT-013) & FPV Academy Placeholder (FEAT-014)
 
 **Agent**: Claude
