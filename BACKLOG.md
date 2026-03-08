@@ -35,10 +35,7 @@
 
 | ID | Issue | Location | Description | Added |
 |----|-------|----------|-------------|-------|
-| BUG-001 | Guide update cascade-deletes photos | `serializers.py:88` | `update()` deletes all steps then recreates. CASCADE destroys all photos across sessions. Need atomic update-in-place. | 2026-03-06 |
-| BUG-002 | Serial number race condition | `views.py:~295` | Concurrent `POST /api/build-sessions/` can generate duplicate SNs. Need `select_for_update()`. | 2026-03-06 |
-| BUG-003 | BuildEvent CASCADE breaks immutability | `models.py:159` | `on_delete=CASCADE` means deleting session destroys audit trail. Consider `PROTECT`. | 2026-03-06 |
-| BUG-004 | No transaction wrapping | Multiple files | `ImportPartsView`, `ResetToGoldenView`, `perform_create()`, `BuildGuideDetailSerializer.update()` lack `transaction.atomic()`. | 2026-03-06 |
+| | *(All items completed — see Completed section)* | | | |
 
 ## Medium — Technical Debt
 
@@ -104,3 +101,7 @@
 | ~~BUG-005~~ | `getCookie is not defined` on guide page (missing utils.js import) | 2026-03-07 | 2026-03-07-1 |
 | ~~BUG-006~~ | Schema field mismatch — 79 seed fields missing from schema blueprints | 2026-03-07 | 2026-03-07-1 |
 | ~~BUG-007~~ | Guide save fails with blank step title/description (DRF 400 validation) | 2026-03-07 | 2026-03-07-1 |
+| ~~BUG-001~~ | Guide update cascade-deletes photos — SET_NULL + update-in-place | 2026-03-08 | 2026-03-08-1 |
+| ~~BUG-002~~ | Serial number race condition — select_for_update + transaction + retry | 2026-03-08 | 2026-03-08-1 |
+| ~~BUG-003~~ | BuildEvent CASCADE breaks immutability — changed to PROTECT; BuildSession.guide to SET_NULL | 2026-03-08 | 2026-03-08-1 |
+| ~~BUG-004~~ | No transaction wrapping — added atomic to serializer update, session create, import | 2026-03-08 | 2026-03-08-1 |

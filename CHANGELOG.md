@@ -5,6 +5,37 @@
 
 ---
 
+## Session 2026-03-08-1 — Data Integrity Fixes (BUG-001 through BUG-004)
+
+**Agent**: Claude
+**Branch**: `claude/hungry-ishizaka`
+**Commit(s)**: `fd83ba8`
+
+### Summary
+Resolved all four high-priority data integrity bugs identified in the codebase audit. Fixed cascade-delete of photos on guide edit, serial number race condition, audit trail immutability violation, and missing transaction wrapping. Added 10 new tests (82 total).
+
+### Changes
+| Category | Description | Files |
+|----------|-------------|-------|
+| fix | BUG-001: StepPhoto.step FK changed to SET_NULL; serializer update() rewritten to update-in-place instead of delete+recreate | `models.py`, `serializers.py` |
+| fix | BUG-002: Serial number generation wrapped in transaction.atomic() with select_for_update() and 3-attempt retry | `views.py` |
+| fix | BUG-003: BuildEvent.session FK changed from CASCADE to PROTECT; BuildSession.guide FK changed to SET_NULL | `models.py` |
+| fix | BUG-004: ImportPartsView uses per-item transaction.atomic() savepoints | `views.py` |
+| fix | Null guards for StepPhoto.step in audit view and __str__ | `views.py`, `models.py` |
+| test | 10 new tests for all four fixes across 4 test classes | `tests.py` |
+| migration | 0009_data_integrity_fixes — alters BuildEvent, BuildSession, StepPhoto FKs | `migrations/0009_data_integrity_fixes.py` |
+
+### Backlog Updates
+- Completed: BUG-001, BUG-002, BUG-003, BUG-004
+
+### Notes
+- The PROTECT on BuildEvent means sessions with audit events cannot be deleted without explicitly removing events first — this is intentional for audit trail integrity.
+- SET_NULL on BuildSession.guide means guide_snapshot (frozen at build start) is the source of truth for audit, not the live guide FK.
+- The serializer update-in-place approach matches steps by `order` field, preserving step IDs and their photo FK references.
+- ResetToGoldenView was already protected by `@transaction.atomic` on `seed_golden()` — no change needed.
+
+---
+
 ## Session 2026-03-07-1 — Golden Seed, Schema Merge, Guide Fixes & Build Components Panel
 
 **Agent**: Claude
