@@ -59,8 +59,12 @@
                             <i class="ph ph-bug"></i> Report Bug
                         </button>
                         <button class="btn btn-outline" id="btn-reset-golden"
-                            style="padding: 6px; font-size: 11px; justify-content: center; grid-column: 1 / -1; color: var(--accent-orange, #f97316); border-color: rgba(249, 115, 22, 0.3);">
+                            style="padding: 6px; font-size: 11px; justify-content: center; color: var(--accent-orange, #f97316); border-color: rgba(249, 115, 22, 0.3);">
                             <i class="ph ph-arrow-counter-clockwise"></i> Reset to Golden
+                        </button>
+                        <button class="btn btn-outline" id="btn-reset-examples"
+                            style="padding: 6px; font-size: 11px; justify-content: center; color: var(--text-muted); border-color: var(--border-color);">
+                            <i class="ph ph-arrow-counter-clockwise"></i> Reset to Examples
                         </button>
                     </div>
                 </details>
@@ -547,6 +551,7 @@
             const btnRestart = document.getElementById('btn-restart-server');
             const btnReport = document.getElementById('btn-report-bug');
             const btnResetGolden = document.getElementById('btn-reset-golden');
+            const btnResetExamples = document.getElementById('btn-reset-examples');
             const bugModal = document.getElementById('bug-report-modal');
             const btnCancelBug = document.getElementById('btn-cancel-bug');
             const btnSubmitBug = document.getElementById('btn-submit-bug');
@@ -650,6 +655,36 @@
                     } finally {
                         btnResetGolden.innerHTML = originalText;
                         btnResetGolden.disabled = false;
+                    }
+                });
+            }
+
+            if (btnResetExamples) {
+                btnResetExamples.addEventListener('click', async () => {
+                    if (!confirm('This will DELETE all current parts and drone models, then re-import the schema examples (1 per category).\n\nAre you sure?')) return;
+                    const originalText = btnResetExamples.innerHTML;
+                    btnResetExamples.innerHTML = '<i class="ph ph-spinner ph-spin"></i> Resetting...';
+                    btnResetExamples.disabled = true;
+                    try {
+                        const res = await fetch('/api/maintenance/reset-to-examples/', {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'X-CSRFToken': (document.cookie.match(/csrftoken=([^;]+)/) || [])[1] || '',
+                            }
+                        });
+                        const data = await res.json();
+                        if (res.ok) {
+                            alert(`Reset complete!\n\nCreated: ${data.created.categories} categories, ${data.created.components} components, ${data.created.drone_models} drone models.`);
+                            window.location.reload();
+                        } else {
+                            alert('Reset failed: ' + (data.error || 'Unknown error'));
+                        }
+                    } catch (e) {
+                        alert('Error connecting to backend.');
+                    } finally {
+                        btnResetExamples.innerHTML = originalText;
+                        btnResetExamples.disabled = false;
                     }
                 });
             }
