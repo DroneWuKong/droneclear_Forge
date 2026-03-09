@@ -662,7 +662,7 @@ async function completeSession() {
         setGuidePhase('completed');
     } catch (err) {
         console.error('Failed to complete session:', err);
-        alert('Failed to mark session as complete.');
+        showToast('Failed to mark session as complete.', 'error');
     }
 }
 

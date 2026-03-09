@@ -5,6 +5,38 @@
 
 ---
 
+## Session 2026-03-08-5 — Seed Drone Models, Build Guides & Bug Fixes
+
+**Agent**: Claude
+**Branch**: `claude/xenodochial-panini`
+**Commit(s)**: *(see below)*
+
+### Summary
+Created 12 curated seed drone models and 3 expert-quality build guides (42 total steps) as golden seed data. Fixed critical relations format mismatch across frontend and backend that caused `[object Object]` rendering and build session 500 errors. Replaced blocking `alert()` calls with toast notifications and added UI padding fix to build overview.
+
+### Changes
+| Category | Description | Files |
+|----------|-------------|-------|
+| feat | 12 seed drone models (5"/6"/7"/10" builds) with real component PIDs | `docs/golden_parts_db_seed/drone_models.json` (new) |
+| feat | 3 detailed build guides — freestyle, long range, HD digital — 42 steps with Betaflight CLI, safety warnings, tools | `docs/golden_parts_db_seed/build_guides.json` (new) |
+| feat | Seed system loads drone models + build guides on golden reset and auto-seed | `components/seed.py`, `components/apps.py` |
+| fix | Relations format: frontend now handles both string PIDs and `{pid, quantity}` objects | `guide-state.js`, `guide-selection.js`, `guide-editor.js` |
+| fix | Build session 500 — `perform_create` crashed adding list to set from relations | `components/views.py` |
+| fix | Replace 7 `alert()` calls with `showToast()` in guide module | `guide-selection.js`, `guide-editor.js`, `guide-camera.js`, `guide-runner.js`, `audit.js` |
+| style | Build overview glass panel padding (20px/24px) | `guide.css` |
+
+### Backlog Updates
+- Completed: FEAT-015, BUG-008, BUG-009, BUG-010, POLISH-021
+- Added: FEAT-015, BUG-008, BUG-009, BUG-010, POLISH-021 (all completed this session)
+
+### Notes
+- Drone models span 5 size classes: 5" freestyle/racing/HD, 6" long range, 7" long range/cinema, 10" cinelifter.
+- Build guides include realistic Betaflight CLI dump commands, per-step component references, and expert-level assembly descriptions written as if by an FPV professional.
+- Relations format now supports both legacy string PIDs (from user-saved builds via `persist.js`) and the canonical `[{pid, quantity}]` format from the schema and seed data.
+- All 92 tests pass. Seed verified: 33 categories, 3,113 components, 13 drone models, 3 build guides.
+
+---
+
 ## Session 2026-03-08-4 — FPV Academy, Dynamic Versioning & DroneClear Rebrand
 
 **Agent**: Claude

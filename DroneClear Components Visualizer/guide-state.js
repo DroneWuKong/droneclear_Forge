@@ -222,8 +222,10 @@ function collectGuidePids(guide) {
     });
 
     // From linked drone_model relations
+    // Values may be plain PID strings or arrays of {pid, quantity} objects
     if (guide.drone_model?.relations) {
-        Object.values(guide.drone_model.relations).forEach(pid => {
+        Object.values(guide.drone_model.relations).flat().forEach(entry => {
+            const pid = typeof entry === 'string' ? entry : entry?.pid;
             if (pid) pids.add(pid);
         });
     }

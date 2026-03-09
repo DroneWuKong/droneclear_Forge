@@ -28,5 +28,6 @@ def _auto_seed(sender, **kwargs):
     if result['components'] > 0:
         print(
             f'[DroneClear] Auto-seeded: {result["categories"]} categories, '
-            f'{result["components"]} components, {result["drone_models"]} drone models.'
+            f'{result["components"]} components, {result["drone_models"]} drone models, '
+            f'{result["build_guides"]} build guides.'
         )

@@ -123,7 +123,7 @@ async function createNewGuide() {
         selectEditorGuide(newGuide.pid);
     } catch (err) {
         console.error('Failed to create guide:', err);
-        alert('Failed to create guide.');
+        showToast('Failed to create guide.', 'error');
     }
 }
 
@@ -365,7 +365,7 @@ async function saveGuide() {
         }
     } catch (err) {
         console.error('Save failed:', err);
-        alert('Failed to save guide.');
+        showToast('Failed to save guide.', 'error');
         if (btn) btn.innerHTML = originalHTML;
     }
 }
@@ -386,7 +386,7 @@ async function deleteGuide() {
         await loadEditorGuideList();
     } catch (err) {
         console.error('Delete failed:', err);
-        alert('Failed to delete guide.');
+        showToast('Failed to delete guide.', 'error');
     }
 }
 
@@ -693,10 +693,11 @@ async function loadLinkedBuildParts() {
 
     try {
         const dm = await apiFetch(GUIDE_API.droneModelDetail(dmPid));
-        // Flatten relations: values may be strings or arrays of strings
+        // Flatten relations: values may be strings or arrays of {pid, quantity} objects
         const pids = Object.values(dm.relations || {})
             .flat()
-            .filter(v => typeof v === 'string' && v);
+            .map(v => typeof v === 'string' ? v : v?.pid)
+            .filter(Boolean);
         if (pids.length > 0) {
             await resolveComponents(pids);
             _linkedBuildParts = pids.map(pid => guideState.resolvedComponents[pid]).filter(Boolean);

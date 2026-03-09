@@ -71,8 +71,7 @@ async function doAuditSearch() {
         renderAuditRecord();
         showAuditPhase('record');
     } catch (err) {
-        if (typeof showToast === 'function') showToast('Build record not found', 'error');
-        else alert('Build record not found');
+        showToast('Build record not found', 'error');
     }
 }
 

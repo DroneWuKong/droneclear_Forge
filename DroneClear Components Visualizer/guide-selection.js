@@ -106,7 +106,7 @@ async function selectGuide(pid) {
         setGuidePhase('overview');
     } catch (err) {
         console.error('Failed to load guide:', err);
-        alert('Failed to load guide details.');
+        showToast('Failed to load guide details.', 'error');
     }
 }
 
@@ -142,8 +142,10 @@ function renderBuildOverview() {
     });
 
     // Also include drone_model parts not explicitly in steps
+    // Values may be plain PID strings or arrays of {pid, quantity} objects
     if (g.drone_model?.relations) {
-        Object.values(g.drone_model.relations).forEach(pid => {
+        Object.values(g.drone_model.relations).flat().forEach(entry => {
+            const pid = typeof entry === 'string' ? entry : entry?.pid;
             if (pid && !allComponents.includes(pid)) allComponents.push(pid);
         });
     }
@@ -311,7 +313,7 @@ async function startBuild() {
         updateSidebarSession();
     } catch (err) {
         console.error('Failed to start build:', err);
-        alert('Failed to start build session.');
+        showToast('Failed to start build session.', 'error');
         // Re-enable button
         guideDOM['btn-start-build']?.addEventListener('click', startBuild, { once: true });
     }

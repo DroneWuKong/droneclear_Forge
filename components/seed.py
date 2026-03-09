@@ -4,6 +4,11 @@ seed.py — Shared seeding logic for DroneClear parts database.
 Reads golden parts from docs/golden_parts_db_seed/ (per-category JSON files)
 and creates all categories defined in the schema.
 
+Seed data includes:
+  - 3,113 real FPV drone parts across 12 categories
+  - 12 curated drone model build recipes (5", 6", 7", 10" builds)
+  - 3 detailed build guides with expert assembly instructions
+
 Used by:
   - management command: reset_to_golden
   - API view: ResetToGoldenView
@@ -16,7 +21,10 @@ from pathlib import Path
 from django.conf import settings
 from django.db import transaction
 
-from components.models import Category, Component, DroneModel
+from components.models import (
+    Category, Component, DroneModel,
+    BuildGuide, BuildGuideStep,
+)
 
 
 # Fields stored directly on the Component model (not in schema_data)
@@ -27,6 +35,10 @@ CORE_KEYS = {
 
 SEED_DIR = os.path.join(settings.BASE_DIR, 'docs', 'golden_parts_db_seed')
 SCHEMA_PATH = os.path.join(settings.BASE_DIR, 'drone_parts_schema_v3.json')
+
+# Seed data file paths
+SEED_DRONE_MODELS_PATH = os.path.join(SEED_DIR, 'drone_models.json')
+SEED_BUILD_GUIDES_PATH = os.path.join(SEED_DIR, 'build_guides.json')
 
 
 def _load_schema_categories():
@@ -39,12 +51,16 @@ def _load_schema_categories():
 
 
 def _load_seed_parts():
-    """Load all parts from the golden seed directory. Returns list of dicts."""
+    """Load all parts from the golden seed directory. Returns list of dicts.
+    Skips drone_models.json and build_guides.json (handled separately)."""
     parts = []
     seed_path = Path(SEED_DIR)
     if not seed_path.is_dir():
         return parts
+    skip_files = {'drone_models.json', 'build_guides.json'}
     for json_file in sorted(seed_path.glob('*.json')):
+        if json_file.name in skip_files:
+            continue
         with open(json_file, 'r', encoding='utf-8') as f:
             file_parts = json.load(f)
         if isinstance(file_parts, list):
@@ -61,6 +77,39 @@ def _load_drone_models():
     return schema.get('drone_models', [])
 
 
+def _load_seed_drone_models():
+    """Load curated drone models from the seed directory."""
+    if not os.path.exists(SEED_DRONE_MODELS_PATH):
+        return []
+    with open(SEED_DRONE_MODELS_PATH, 'r', encoding='utf-8') as f:
+        return json.load(f)
+
+
+def _load_seed_build_guides():
+    """Load curated build guides from the seed directory."""
+    if not os.path.exists(SEED_BUILD_GUIDES_PATH):
+        return []
+    with open(SEED_BUILD_GUIDES_PATH, 'r', encoding='utf-8') as f:
+        return json.load(f)
+
+
+def _create_drone_model(model_data):
+    """Create a single DroneModel from seed data dict. Returns the model or None."""
+    pid = model_data.get('pid')
+    if not pid:
+        return None
+    return DroneModel.objects.create(
+        pid=pid,
+        name=model_data.get('name', ''),
+        description=model_data.get('description', ''),
+        image_file=model_data.get('image_file', ''),
+        pdf_file=model_data.get('pdf_file', ''),
+        vehicle_type=model_data.get('vehicle_type', ''),
+        build_class=model_data.get('build_class', ''),
+        relations=model_data.get('relations', {}),
+    )
+
+
 @transaction.atomic
 def seed_golden(wipe=True):
     """
@@ -71,7 +120,8 @@ def seed_golden(wipe=True):
 
     Returns:
         dict with counts: deleted_components, deleted_models,
-                          categories, components, drone_models
+                          categories, components, drone_models,
+                          build_guides
     """
     result = {
         'deleted_components': 0,
@@ -79,11 +129,14 @@ def seed_golden(wipe=True):
         'categories': 0,
         'components': 0,
         'drone_models': 0,
+        'build_guides': 0,
     }
 
     if wipe:
         result['deleted_components'] = Component.objects.count()
         result['deleted_models'] = DroneModel.objects.count()
+        # Delete build guides first (steps cascade via FK)
+        BuildGuide.objects.all().delete()
         Component.objects.all().delete()
         DroneModel.objects.all().delete()
         Category.objects.all().delete()
@@ -131,27 +184,63 @@ def seed_golden(wipe=True):
         )
         components_created += 1
 
-    # 3. Seed golden drone models from schema
+    # 3. Seed drone models from schema + seed file
     models_created = 0
+    # Schema models first (example models)
     for model_data in _load_drone_models():
-        pid = model_data.get('pid')
+        if _create_drone_model(model_data):
+            models_created += 1
+    # Golden seed models (curated real builds)
+    for model_data in _load_seed_drone_models():
+        if _create_drone_model(model_data):
+            models_created += 1
+
+    # 4. Seed build guides from seed file
+    guides_created = 0
+    drone_model_map = {m.pid: m for m in DroneModel.objects.all()}
+    for guide_data in _load_seed_build_guides():
+        pid = guide_data.get('pid')
         if not pid:
             continue
-        DroneModel.objects.create(
+
+        # Resolve drone model FK by PID
+        drone_model = drone_model_map.get(guide_data.get('drone_model_pid'))
+
+        guide = BuildGuide.objects.create(
             pid=pid,
-            name=model_data.get('name', ''),
-            description=model_data.get('description', ''),
-            image_file=model_data.get('image_file', ''),
-            pdf_file=model_data.get('pdf_file', ''),
-            vehicle_type=model_data.get('vehicle_type', ''),
-            build_class=model_data.get('build_class', ''),
-            relations=model_data.get('relations', {}),
+            name=guide_data.get('name', ''),
+            description=guide_data.get('description', ''),
+            difficulty=guide_data.get('difficulty', 'beginner'),
+            estimated_time_minutes=guide_data.get('estimated_time_minutes', 60),
+            drone_class=guide_data.get('drone_class', ''),
+            thumbnail=guide_data.get('thumbnail', ''),
+            drone_model=drone_model,
+            required_tools=guide_data.get('required_tools', []),
+            settings=guide_data.get('settings', {}),
         )
-        models_created += 1
+
+        # Create steps for this guide
+        for step_data in guide_data.get('steps', []):
+            BuildGuideStep.objects.create(
+                guide=guide,
+                order=step_data.get('order', 0),
+                title=step_data.get('title', 'Untitled'),
+                description=step_data.get('description', ''),
+                safety_warning=step_data.get('safety_warning', ''),
+                media=step_data.get('media', []),
+                stl_file=step_data.get('stl_file', ''),
+                betaflight_cli=step_data.get('betaflight_cli', ''),
+                step_type=step_data.get('step_type', 'assembly'),
+                estimated_time_minutes=step_data.get('estimated_time_minutes', 5),
+                required_components=step_data.get('required_components', []),
+            )
+
+        guides_created += 1
 
     result['categories'] = Category.objects.count()
     result['components'] = components_created
     result['drone_models'] = models_created
+    result['build_guides'] = guides_created
     return result
 
 
@@ -179,8 +268,10 @@ def seed_examples():
         'categories': 0,
         'components': 0,
         'drone_models': 0,
+        'build_guides': 0,
     }
 
+    BuildGuide.objects.all().delete()
     Component.objects.all().delete()
     DroneModel.objects.all().delete()
     Category.objects.all().delete()
@@ -213,20 +304,8 @@ def seed_examples():
 
     models_created = 0
     for model_data in _load_drone_models():
-        pid = model_data.get('pid')
-        if not pid:
-            continue
-        DroneModel.objects.create(
-            pid=pid,
-            name=model_data.get('name', ''),
-            description=model_data.get('description', ''),
-            image_file=model_data.get('image_file', ''),
-            pdf_file=model_data.get('pdf_file', ''),
-            vehicle_type=model_data.get('vehicle_type', ''),
-            build_class=model_data.get('build_class', ''),
-            relations=model_data.get('relations', {}),
-        )
-        models_created += 1
+        if _create_drone_model(model_data):
+            models_created += 1
 
     result['categories'] = Category.objects.count()
     result['components'] = components_created

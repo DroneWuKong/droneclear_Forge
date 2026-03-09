@@ -138,7 +138,7 @@ async function acceptPhoto() {
         }
     } catch (err) {
         console.error('Photo upload failed:', err);
-        alert('Failed to upload photo. Please try again.');
+        showToast('Failed to upload photo. Please try again.', 'error');
     }
 }
 

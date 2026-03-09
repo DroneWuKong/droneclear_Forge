@@ -440,9 +440,14 @@ class BuildSessionViewSet(viewsets.ModelViewSet):
                         for pid in (step.required_components or []):
                             all_pids.add(pid)
                     if guide.drone_model and guide.drone_model.relations:
-                        for pid in guide.drone_model.relations.values():
-                            if pid:
-                                all_pids.add(pid)
+                        for entries in guide.drone_model.relations.values():
+                            if isinstance(entries, str):
+                                all_pids.add(entries)
+                            elif isinstance(entries, list):
+                                for entry in entries:
+                                    pid = entry.get('pid') if isinstance(entry, dict) else entry
+                                    if pid:
+                                        all_pids.add(pid)
                     components = Component.objects.filter(pid__in=all_pids)
                     comp_data = {c.pid: ComponentSerializer(c).data for c in components}
 
