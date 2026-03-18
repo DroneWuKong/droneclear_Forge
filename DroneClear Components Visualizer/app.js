@@ -64,7 +64,7 @@ function setupEventListeners() {
             if (!confirmBar) {
                 confirmBar = document.createElement('div');
                 confirmBar.id = 'modal-replace-confirm';
-                confirmBar.style.cssText = "display:flex; align-items:center; gap:8px; margin-right:auto; background:rgba(218, 41, 28, 0.1); padding:6px 12px; border-radius:var(--radius-sm); border:1px solid rgba(218, 41, 28, 0.2);";
+                confirmBar.style.cssText = "display:flex; align-items:center; gap:8px; margin-right:auto; background:rgba(34, 211, 238, 0.1); padding:6px 12px; border-radius:var(--radius-sm); border:1px solid rgba(34, 211, 238, 0.2);";
                 confirmBar.innerHTML = `
                     <span style="font-size:12px; color:var(--accent-red); font-weight:600;"><i class="ph ph-warning"></i> Replace ${shortName}?</span>
                     <button type="button" class="btn btn-primary" id="modal-replace-yes" style="padding:4px 10px; font-size:12px;">Yes</button>

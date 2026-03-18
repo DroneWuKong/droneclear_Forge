@@ -537,7 +537,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     <i class="ph ph-folder" style="margin-right: 8px;"></i> ${catKey.replace(/_/g, ' ')}
                 </div>
                 <div style="display:flex; gap: 8px;">
-                    <button class="inline-action-btn delete-action delete-category" data-cat="${catKey}" title="Delete Category" onclick="event.preventDefault();" style="background: rgba(218, 41, 28, 0.1); color: var(--accent-red); border: 1px solid rgba(218, 41, 28, 0.3); border-radius: 50%; width: 32px; height: 32px; display: flex; align-items: center; justify-content: center; transition: all 0.2s; padding: 0;">
+                    <button class="inline-action-btn delete-action delete-category" data-cat="${catKey}" title="Delete Category" onclick="event.preventDefault();" style="background: rgba(34, 211, 238, 0.1); color: var(--accent-red); border: 1px solid rgba(34, 211, 238, 0.3); border-radius: 50%; width: 32px; height: 32px; display: flex; align-items: center; justify-content: center; transition: all 0.2s; padding: 0;">
                         <i class="ph ph-trash" style="font-size: 16px;"></i>
                     </button>
                 </div>
@@ -634,7 +634,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 <div class="prop-card" style="background: var(--bg-panel); padding: 16px; border-radius: var(--radius-sm); margin-bottom: 12px; border: 1px solid var(--border-color); box-shadow: var(--card-shadow); position:relative;">
                     
                     <div style="position:absolute; right:12px; top:12px; z-index:2;">
-                        <button class="inline-action-btn delete-action delete-attr" data-cat="${catKey}" data-sub="${subKey}" data-attr="${propKey}" title="Delete Property" style="background: rgba(218, 41, 28, 0.1); color: var(--accent-red); border: 1px solid rgba(218, 41, 28, 0.3); border-radius: 50%; width: 28px; height: 28px; display: flex; align-items: center; justify-content: center; transition: all 0.2s; padding: 0;">
+                        <button class="inline-action-btn delete-action delete-attr" data-cat="${catKey}" data-sub="${subKey}" data-attr="${propKey}" title="Delete Property" style="background: rgba(34, 211, 238, 0.1); color: var(--accent-red); border: 1px solid rgba(34, 211, 238, 0.3); border-radius: 50%; width: 28px; height: 28px; display: flex; align-items: center; justify-content: center; transition: all 0.2s; padding: 0;">
                             <i class="ph ph-trash" style="font-size: 14px;"></i>
                         </button>
                     </div>
