@@ -19,10 +19,11 @@
      */
     async function loadDashboardStats() {
         try {
-            const [catRes, modelRes, guideRes] = await Promise.all([
+            const [catRes, modelRes, guideRes, platformRes] = await Promise.all([
                 fetch('/api/categories/'),
                 fetch('/api/drone-models/'),
                 fetch('/api/build-guides/'),
+                fetch('/api/industry/platforms/'),
             ]);
 
             // Categories endpoint returns array with annotated `count` per category
@@ -51,6 +52,13 @@
                 const guideArray = Array.isArray(guides) ? guides : (guides.results || []);
                 const el = document.getElementById('stat-guides');
                 if (el) el.textContent = guideArray.length;
+            }
+
+            if (platformRes && platformRes.ok) {
+                const platforms = await platformRes.json();
+                const platformArray = Array.isArray(platforms) ? platforms : [];
+                const el = document.getElementById('stat-platforms');
+                if (el) el.textContent = platformArray.length;
             }
         } catch (err) {
             console.warn('Mission Control: could not load stats', err);

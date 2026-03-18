@@ -204,6 +204,28 @@
             return jsonResponse([]);
         }
 
+        // ── Industry Data Endpoints ──
+
+        // GET /api/industry/
+        if (path === '/api/industry' && method === 'GET') {
+            return jsonResponse(_db.industry || {});
+        }
+
+        // GET /api/industry/platforms/
+        if (path === '/api/industry/platforms' && method === 'GET') {
+            return jsonResponse((_db.industry && _db.industry.platforms) || []);
+        }
+
+        // GET /api/industry/programs/
+        if (path === '/api/industry/programs' && method === 'GET') {
+            return jsonResponse((_db.industry && _db.industry.key_programs) || []);
+        }
+
+        // GET /api/industry/compliance/
+        if (path === '/api/industry/compliance' && method === 'GET') {
+            return jsonResponse((_db.industry && _db.industry.compliance_tiers) || {});
+        }
+
         // Fallback: return empty for any unhandled API call
         console.warn(`[Forge] Unhandled API call: ${method} ${url}`);
         return jsonResponse([], 200);
