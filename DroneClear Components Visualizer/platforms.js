@@ -170,12 +170,19 @@
 
             const tags = (p.tags || []).slice(0, 4).map(t => `<span class="plat-tag">${esc(t)}</span>`).join('');
 
-            return `
-                <div class="plat-card" data-id="${esc(p.id)}">
-                    <div class="plat-card-visual" style="border-color: ${vis.color};">
+            const hasImage = !!p.image_url;
+            const cardVisual = hasImage
+                ? `<div class="plat-card-image" style="border-color: ${vis.color};">
+                        <img src="${esc(p.image_url)}" alt="${esc(p.platform_name)}" loading="lazy" onerror="this.parentElement.innerHTML='<i class=\\'ph ${vis.icon}\\' style=\\'font-size:48px;color:${vis.color};opacity:0.4;\\'></i>';">
+                   </div>`
+                : `<div class="plat-card-visual" style="border-color: ${vis.color};">
                         <i class="ph ${vis.icon}" style="color: ${vis.color};"></i>
                         <span class="plat-card-initials" style="color: ${vis.color};">${initials}</span>
-                    </div>
+                   </div>`;
+
+            return `
+                <div class="plat-card" data-id="${esc(p.id)}">
+                    ${cardVisual}
                     <div class="plat-card-header">
                         <div>
                             <div class="plat-card-name">${esc(p.platform_name)}</div>
@@ -225,6 +232,7 @@
         const c = p.compliance || {};
 
         let html = `
+            ${p.image_url ? `<div style="width:100%; height:200px; border-radius:12px; overflow:hidden; margin-bottom:20px; background:var(--bg-dark);"><img src="${esc(p.image_url)}" alt="${esc(p.platform_name)}" style="width:100%; height:100%; object-fit:cover;" onerror="this.parentElement.style.display='none';"></div>` : ''}
             <div class="plat-detail-header">
                 <div class="plat-detail-name">${esc(p.platform_name)}</div>
                 <div class="plat-detail-mfr">
