@@ -119,6 +119,31 @@
         renderGrid(filtered);
     }
 
+    // Category visual config — icon + accent color
+    const catVisuals = {
+        fpv_strike:              { icon: 'ph-crosshair',        color: '#ef4444' },
+        fpv_strike_fiber:        { icon: 'ph-plug',             color: '#f97316' },
+        fpv_isr:                 { icon: 'ph-binoculars',       color: '#3b82f6' },
+        fpv_isr_dev:             { icon: 'ph-code',             color: '#6366f1' },
+        fpv_indoor_recon:        { icon: 'ph-buildings',        color: '#8b5cf6' },
+        fpv:                     { icon: 'ph-drone',            color: '#22d3ee' },
+        fpv_strike_and_tactical: { icon: 'ph-target',           color: '#ef4444' },
+        loitering_munition:      { icon: 'ph-timer',            color: '#f59e0b' },
+        tactical_isr:            { icon: 'ph-eye',              color: '#06b6d4' },
+        nano_isr:                { icon: 'ph-atom',             color: '#a78bfa' },
+        heavy_lift_multi_mission:{ icon: 'ph-package',          color: '#10b981' },
+        fixed_wing_isr:          { icon: 'ph-airplane-tilt',    color: '#0ea5e9' },
+        autonomous_interceptor:  { icon: 'ph-shield-warning',   color: '#dc2626' },
+        tethered_persistent:     { icon: 'ph-link-simple',      color: '#64748b' },
+        group3_vtol_isr:         { icon: 'ph-airplane',         color: '#2563eb' },
+        evtol_fixed_wing_isr:    { icon: 'ph-wind',             color: '#0284c7' },
+        modular_multi_mission:   { icon: 'ph-puzzle-piece',     color: '#059669' },
+    };
+
+    function getCatVisual(cat) {
+        return catVisuals[cat] || { icon: 'ph-drone', color: '#22d3ee' };
+    }
+
     function renderGrid(platforms) {
         const grid = document.getElementById('plat-grid');
         if (!grid) return;
@@ -133,19 +158,24 @@
             if (p.compliance?.blue_uas) badges.push('<span class="plat-badge blue-uas"><i class="ph ph-shield-check"></i> Blue UAS</span>');
             if (p.compliance?.ndaa_compliant) badges.push('<span class="plat-badge ndaa"><i class="ph ph-check-circle"></i> NDAA</span>');
 
+            const vis = getCatVisual(p.category);
+            const initials = p.platform_name.split(/[\s-]+/).map(w => w[0]).join('').substring(0, 3).toUpperCase();
+
             const specs = p.specs || {};
             const specRows = [];
             if (specs.range_km) specRows.push(mkSpec('Range', specs.range_km + ' km'));
             if (specs.speed_kmh) specRows.push(mkSpec('Speed', specs.speed_kmh + ' km/h'));
             if (specs.payload_kg) specRows.push(mkSpec('Payload', specs.payload_kg + ' kg'));
             if (specs.unit_cost_usd_approx) specRows.push(mkSpec('Unit Cost', specs.unit_cost_usd_approx));
-            if (specs.type) specRows.push(mkSpec('Type', specs.type));
-            if (specs.prop_size_inches) specRows.push(mkSpec('Props', Array.isArray(specs.prop_size_inches) ? specs.prop_size_inches.join(', ') + '"' : specs.prop_size_inches + '"'));
 
-            const tags = (p.tags || []).map(t => `<span class="plat-tag">${esc(t)}</span>`).join('');
+            const tags = (p.tags || []).slice(0, 4).map(t => `<span class="plat-tag">${esc(t)}</span>`).join('');
 
             return `
                 <div class="plat-card" data-id="${esc(p.id)}">
+                    <div class="plat-card-visual" style="border-color: ${vis.color};">
+                        <i class="ph ${vis.icon}" style="color: ${vis.color};"></i>
+                        <span class="plat-card-initials" style="color: ${vis.color};">${initials}</span>
+                    </div>
                     <div class="plat-card-header">
                         <div>
                             <div class="plat-card-name">${esc(p.platform_name)}</div>
@@ -207,6 +237,7 @@
                     <span class="plat-card-cat" style="margin:0;">${esc(p.category.replace(/_/g, ' '))}</span>
                 </div>
                 ${c.note ? `<div style="margin-top:8px; font-size:12px; color:var(--text-muted); font-style:italic;">${esc(c.note)}</div>` : ''}
+                ${p.manufacturer_url ? `<a href="${esc(p.manufacturer_url)}" target="_blank" rel="noopener" style="display:inline-flex; align-items:center; gap:6px; margin-top:12px; padding:8px 16px; border-radius:6px; background:rgba(34,211,238,0.1); border:1px solid rgba(34,211,238,0.2); color:var(--accent-cyan); font-family:var(--font-family); font-size:12px; font-weight:600; text-decoration:none; letter-spacing:0.03em; transition:all 0.15s;"><i class="ph ph-arrow-square-out"></i> Visit ${esc(p.manufacturer)}</a>` : ''}
             </div>`;
 
         // Variants
