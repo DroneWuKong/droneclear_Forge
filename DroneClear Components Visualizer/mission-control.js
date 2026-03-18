@@ -1,6 +1,9 @@
 // =============================================================
 // mission-control.js — Dashboard stats and interactivity
 // Standalone IIFE — no dependency on app.js or state.js
+//
+// Merges drone_models + industry.platforms into one unified
+// "Platforms & Models" count, deduplicating overlaps.
 // =============================================================
 
 (function () {
@@ -13,9 +16,9 @@
     }
 
     /**
-     * Fetch live counts from the existing REST API and populate
-     * the stat counter elements. Uses textContent (XSS-safe).
-     * Gracefully degrades — leaves "--" placeholders on failure.
+     * Fetch live counts from the static adapter API and populate
+     * the stat counter elements. Merges drone_models and industry
+     * platforms into a single deduplicated count.
      */
     async function loadDashboardStats() {
         try {
@@ -26,7 +29,7 @@
                 fetch('/api/industry/platforms/'),
             ]);
 
-            // Categories endpoint returns array with annotated `count` per category
+            // Categories + total component count
             if (catRes.ok) {
                 const cats = await catRes.json();
                 const catArray = Array.isArray(cats) ? cats : (cats.results || []);
@@ -34,19 +37,41 @@
                 const catEl = document.getElementById('stat-categories');
                 if (catEl) catEl.textContent = catArray.length;
 
-                // Sum component counts from category annotations
                 const totalParts = catArray.reduce((sum, c) => sum + (c.count || 0), 0);
                 const partsEl = document.getElementById('stat-parts');
                 if (partsEl) partsEl.textContent = totalParts.toLocaleString();
             }
 
+            // Unified Platforms & Models count
+            let models = [];
+            let industryPlatforms = [];
+
             if (modelRes.ok) {
-                const models = await modelRes.json();
-                const modelArray = Array.isArray(models) ? models : (models.results || []);
-                const el = document.getElementById('stat-models');
-                if (el) el.textContent = modelArray.length;
+                const data = await modelRes.json();
+                models = Array.isArray(data) ? data : (data.results || []);
             }
 
+            if (platformRes && platformRes.ok) {
+                const data = await platformRes.json();
+                industryPlatforms = Array.isArray(data) ? data : [];
+            }
+
+            // Find industry platforms that DON'T already exist in drone_models
+            const modelNamesLower = models.map(m => (m.name || '').toLowerCase());
+            const industryOnly = industryPlatforms.filter(p => {
+                const pName = (p.platform_name || '').toLowerCase();
+                const pMfr = (p.manufacturer || '').toLowerCase().split('(')[0].split('/')[0].trim();
+                return !modelNamesLower.some(mn =>
+                    mn.includes(pName) ||
+                    (pMfr && mn.includes(pMfr) && pName.split(' ').some(w => w.length > 3 && mn.includes(w)))
+                );
+            });
+
+            const totalUnified = models.length + industryOnly.length;
+            const modelsEl = document.getElementById('stat-models');
+            if (modelsEl) modelsEl.textContent = totalUnified;
+
+            // Build guides
             if (guideRes.ok) {
                 const guides = await guideRes.json();
                 const guideArray = Array.isArray(guides) ? guides : (guides.results || []);
@@ -54,15 +79,8 @@
                 if (el) el.textContent = guideArray.length;
             }
 
-            if (platformRes && platformRes.ok) {
-                const platforms = await platformRes.json();
-                const platformArray = Array.isArray(platforms) ? platforms : [];
-                const el = document.getElementById('stat-platforms');
-                if (el) el.textContent = platformArray.length;
-            }
         } catch (err) {
             console.warn('Mission Control: could not load stats', err);
-            // Leave "--" placeholders — graceful degradation
         }
     }
 })();
