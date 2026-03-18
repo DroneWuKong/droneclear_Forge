@@ -24,6 +24,7 @@ PAGES = {
     'editor.html': 'library/index.html',
     'guide.html': 'guide/index.html',
     'template.html': 'template/index.html',
+    'platforms.html': 'platforms/index.html',
 }
 
 # Static assets to copy (JS, CSS, JSON, images)
