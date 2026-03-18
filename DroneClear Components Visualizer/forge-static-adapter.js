@@ -45,6 +45,7 @@
             name: catNames[slug] || slug.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase()),
             slug: slug,
             component_count: _db.components[slug].length,
+            count: _db.components[slug].length,
         }));
     }
 
