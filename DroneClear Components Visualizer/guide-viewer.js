@@ -52,7 +52,7 @@ function initSTLViewer(containerId, stlUrl) {
     const loader = new THREE.STLLoader();
     loader.load(stlUrl, (geometry) => {
         const material = new THREE.MeshPhongMaterial({
-            color: 0xda291c,       // DroneClear accent red
+            color: 0x22d3ee,       // Forge accent cyan
             specular: 0x444444,
             shininess: 40,
         });

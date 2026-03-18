@@ -141,10 +141,9 @@ function setupEventListeners() {
 // =============================================================
 
 function initDarkMode() {
-    // Respect saved preference, then OS preference
+    // Forge is dark-first — default to dark unless explicitly set to light
     const saved = localStorage.getItem('dc-theme');
-    const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-    const isDark = saved ? saved === 'dark' : prefersDark;
+    const isDark = saved ? saved === 'dark' : true;
     applyTheme(isDark);
 }
 
