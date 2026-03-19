@@ -176,14 +176,8 @@ body { font-family:var(--sans); background:var(--bg); color:var(--text); -webkit
             allCategories = await catRes.json();
 
             if (startCat) {
-                // Deep link: go straight to a category
                 const parts = await loadCategory(startCat);
-                const field = subGroupField[startCat];
-                if (field && startView !== 'list') {
-                    showSubGroups(startCat, parts, field);
-                } else {
-                    showList(parts, catLabels[startCat] || startCat);
-                }
+                showList(parts, catLabels[startCat] || startCat, startCat);
             } else {
                 showCategories();
             }
@@ -236,13 +230,8 @@ body { font-family:var(--sans); background:var(--bg); color:var(--text); -webkit
 
     window.selectCategory = async function(slug) {
         const parts = await loadCategory(slug);
-        const field = subGroupField[slug];
-        if (field) {
-            showSubGroups(slug, parts, field);
-        } else {
-            currentParts = parts;
-            showList(parts, catLabels[slug] || slug);
-        }
+        currentParts = parts;
+        showList(parts, catLabels[slug] || slug, slug);
     };
 
     // ── VIEW: Sub-group cards (e.g. frequency bands for antennas) ──
@@ -316,32 +305,104 @@ body { font-family:var(--sans); background:var(--bg); color:var(--text); -webkit
         showList(parts, subtitle);
     };
 
-    // ── VIEW: Component list with filters ──
-    function showList(parts, title) {
+    // Smart filters per category — show the most useful attribute filter
+    const smartFilters = {
+        antennas: [
+            {field:'frequency_ghz', label:'Frequency', fmt: v => v + ' GHz'},
+            {field:'polarization', label:'Polarization'},
+            {field:'antenna_type', label:'Type'},
+            {field:'connector', label:'Connector'},
+        ],
+        batteries: [
+            {field:'cell_count', label:'Cells', fmt: v => v + 'S'},
+            {field:'chemistry', label:'Chemistry'},
+        ],
+        escs: [
+            {field:'esc_firmware', label:'Firmware'},
+            {field:'size_class', label:'Size'},
+        ],
+        flight_controllers: [
+            {field:'mcu_family', label:'MCU'},
+            {field:'firmware_targets', label:'Firmware'},
+            {field:'size_class', label:'Size'},
+        ],
+        fpv_cameras: [
+            {field:'video_system', label:'Video System'},
+            {field:'camera_size', label:'Size'},
+        ],
+        frames: [
+            {field:'size_class', label:'Size'},
+        ],
+        motors: [
+            {field:'size_class', label:'Size'},
+            {field:'stator_size', label:'Stator'},
+        ],
+        propellers: [
+            {field:'blade_count', label:'Blades'},
+            {field:'size_class', label:'Size'},
+        ],
+        receivers: [
+            {field:'protocol', label:'Protocol'},
+            {field:'frequency_ghz', label:'Frequency', fmt: v => v + ' GHz'},
+        ],
+        stacks: [
+            {field:'mcu_family', label:'MCU'},
+            {field:'esc_firmware', label:'ESC Firmware'},
+        ],
+        video_transmitters: [
+            {field:'video_system', label:'Video System'},
+        ],
+        mesh_radios: [
+            {field:'manufacturer', label:'Manufacturer'},
+        ],
+    };
+
+    // ── VIEW: Component list with smart filters ──
+    function showList(parts, title, catSlug) {
         currentParts = parts;
-        pushNav(() => showList(parts, title), title, parts.length + ' parts');
+        pushNav(() => showList(parts, title, catSlug), title, parts.length + ' parts');
 
         // Get filterable manufacturers
         const mfrs = [...new Set(parts.map(p => p.manufacturer).filter(Boolean))].sort();
+        const filters = smartFilters[catSlug] || [];
 
         let html = '<div class="browse-toolbar">';
         html += '<input type="text" class="browse-search" id="list-search" placeholder="Search...">';
         if (mfrs.length > 1) {
-            html += '<select class="browse-filter" id="list-mfr"><option value="">All Manufacturers</option>';
+            html += '<select class="browse-filter" id="list-mfr" data-field="manufacturer"><option value="">All Manufacturers</option>';
             mfrs.forEach(m => html += `<option value="${m}">${m}</option>`);
             html += '</select>';
         }
-        html += '<select class="browse-sort" id="list-sort"><option value="default">Default</option><option value="name">Name A-Z</option><option value="price-asc">Price ↑</option><option value="price-desc">Price ↓</option></select>';
+        // Smart attribute filters
+        for (const filt of filters) {
+            const vals = {};
+            for (const p of parts) {
+                const v = p[filt.field];
+                if (v !== undefined && v !== null && v !== '') vals[String(v)] = (vals[String(v)]||0) + 1;
+            }
+            if (Object.keys(vals).length >= 2) {
+                const sorted = Object.entries(vals).sort((a,b) => b[1] - a[1]);
+                const id = 'list-sf-' + filt.field;
+                html += `<select class="browse-filter smart-filter" id="${id}" data-field="${filt.field}"><option value="">${filt.label}</option>`;
+                for (const [val, count] of sorted) {
+                    const display = filt.fmt ? filt.fmt(val) : val;
+                    html += `<option value="${val}">${display} (${count})</option>`;
+                }
+                html += '</select>';
+            }
+        }
+        html += '<select class="browse-sort" id="list-sort"><option value="default">Sort</option><option value="name">Name A-Z</option></select>';
         html += '</div>';
         html += '<div class="browse-list" id="list-items"></div>';
 
         content.innerHTML = html;
         renderList(parts);
 
-        // Wire up filters
+        // Wire up all filters
         document.getElementById('list-search')?.addEventListener('input', applyListFilters);
         document.getElementById('list-mfr')?.addEventListener('change', applyListFilters);
         document.getElementById('list-sort')?.addEventListener('change', applyListFilters);
+        document.querySelectorAll('.smart-filter').forEach(el => el.addEventListener('change', applyListFilters));
     }
 
     function applyListFilters() {
@@ -353,9 +414,14 @@ body { font-family:var(--sans); background:var(--bg); color:var(--text); -webkit
         if (q) filtered = filtered.filter(p => (p.name + ' ' + p.manufacturer + ' ' + p.description).toLowerCase().includes(q));
         if (mfr) filtered = filtered.filter(p => p.manufacturer === mfr);
 
+        // Apply smart filters
+        document.querySelectorAll('.smart-filter').forEach(el => {
+            const field = el.dataset.field;
+            const val = el.value;
+            if (val) filtered = filtered.filter(p => String(p[field]) === val);
+        });
+
         if (sort === 'name') filtered = [...filtered].sort((a,b) => (a.name||'').localeCompare(b.name||''));
-        else if (sort === 'price-asc') filtered = [...filtered].sort((a,b) => (a.approx_price||9999) - (b.approx_price||9999));
-        else if (sort === 'price-desc') filtered = [...filtered].sort((a,b) => (b.approx_price||0) - (a.approx_price||0));
 
         renderList(filtered);
     }
@@ -367,7 +433,6 @@ body { font-family:var(--sans); background:var(--bg); color:var(--text); -webkit
             return;
         }
         container.innerHTML = parts.map(p => {
-            const price = p.approx_price ? '$' + Number(p.approx_price).toFixed(2) : '';
             const hasImg = p.image_file && !p.image_file.startsWith('data:');
             const imgHtml = hasImg
                 ? `<img src="${p.image_file}" alt="" loading="lazy">`
@@ -379,7 +444,6 @@ body { font-family:var(--sans); background:var(--bg); color:var(--text); -webkit
                     <div class="browse-item-mfr">${p.manufacturer || ''}</div>
                     <div class="browse-item-pid">${p.pid || ''}</div>
                 </div>
-                ${price ? `<div class="browse-item-price">${price}</div>` : ''}
                 <button class="browse-item-add" onclick="event.stopPropagation()" title="Add to build"><i class="ph ph-plus"></i></button>
             </div>`;
         }).join('');
@@ -391,7 +455,6 @@ body { font-family:var(--sans); background:var(--bg); color:var(--text); -webkit
         const p = parts.find(x => x.pid === pid);
         if (!p) return;
 
-        const price = p.approx_price ? '$' + Number(p.approx_price).toFixed(2) : '';
         const hasImg = p.image_file && !p.image_file.startsWith('data:');
 
         let specsHtml = '';
@@ -407,7 +470,6 @@ body { font-family:var(--sans); background:var(--bg); color:var(--text); -webkit
             <h3>${p.name}</h3>
             <div class="modal-mfr">${p.manufacturer || ''}</div>
             <div class="modal-pid">${p.pid}</div>
-            ${price ? `<div class="modal-price">${price}</div>` : ''}
             ${p.description ? `<div class="modal-desc">${p.description}</div>` : ''}
             ${specsHtml ? `<div class="modal-specs">${specsHtml}</div>` : ''}
             ${p.link ? `<a href="${p.link}" target="_blank" rel="noopener" style="display:inline-block;margin-top:12px;color:var(--accent);font-size:13px;text-decoration:none;">View product page →</a>` : ''}
