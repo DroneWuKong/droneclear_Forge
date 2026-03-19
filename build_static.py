@@ -3,6 +3,8 @@
 Forge Static Site Builder
 
 Converts the Django-templated HTML pages into pure static HTML for Netlify deployment.
+- Clones drone-integration-handbook repo for canonical parts-db data
+- Assembles forge_database.json from handbook JSON files + local industry data
 - Strips {% load static %} and {% static 'file' %} template tags
 - Injects forge-static-adapter.js before any app scripts
 - Copies all assets to a build/ directory ready for Netlify
@@ -11,6 +13,8 @@ Converts the Django-templated HTML pages into pure static HTML for Netlify deplo
 import os
 import re
 import shutil
+import json
+import subprocess
 
 SRC_DIR = 'DroneClear Components Visualizer'
 BUILD_DIR = 'build'
@@ -111,7 +115,98 @@ def fix_nav_links(html, depth=0):
     return html
 
 
+HANDBOOK_REPO = 'https://github.com/DroneWuKong/drone-integration-handbook.git'
+HANDBOOK_DIR = '_handbook_data'
+
+# Component categories to pull from handbook (filename without .json)
+COMPONENT_CATEGORIES = [
+    'antennas', 'batteries', 'escs', 'flight_controllers', 'fpv_cameras',
+    'frames', 'gps_modules', 'mesh_radios', 'motors', 'propellers',
+    'receivers', 'stacks', 'video_transmitters',
+]
+
+
+def sync_handbook_data():
+    """Clone the handbook repo and assemble forge_database.json from its parts-db."""
+    print("═" * 50)
+    print("  Syncing data from drone-integration-handbook...")
+    print("═" * 50)
+
+    # Clone (shallow, just the data we need)
+    if os.path.exists(HANDBOOK_DIR):
+        shutil.rmtree(HANDBOOK_DIR)
+
+    result = subprocess.run(
+        ['git', 'clone', '--depth', '1', '--filter=blob:none', '--sparse', HANDBOOK_REPO, HANDBOOK_DIR],
+        capture_output=True, text=True
+    )
+    if result.returncode != 0:
+        print(f"  WARNING: Could not clone handbook repo: {result.stderr}")
+        print("  Falling back to local forge_database.json")
+        return False
+
+    # Sparse checkout just the data directory
+    subprocess.run(
+        ['git', '-C', HANDBOOK_DIR, 'sparse-checkout', 'set', 'data/parts-db'],
+        capture_output=True, text=True
+    )
+
+    parts_dir = os.path.join(HANDBOOK_DIR, 'data', 'parts-db')
+    if not os.path.isdir(parts_dir):
+        print(f"  WARNING: {parts_dir} not found after clone")
+        print("  Falling back to local forge_database.json")
+        return False
+
+    # Load existing forge_database.json for industry data (stays local)
+    local_db_path = os.path.join(SRC_DIR, 'forge_database.json')
+    with open(local_db_path, 'r', encoding='utf-8') as f:
+        forge_db = json.load(f)
+
+    # Replace components from handbook
+    for cat in COMPONENT_CATEGORIES:
+        json_path = os.path.join(parts_dir, f'{cat}.json')
+        if os.path.exists(json_path):
+            with open(json_path, 'r', encoding='utf-8') as f:
+                data = json.load(f)
+            if isinstance(data, list):
+                forge_db['components'][cat] = data
+                print(f"  {cat}: {len(data)} parts")
+
+    # Replace drone_models from handbook
+    models_path = os.path.join(parts_dir, 'drone_models.json')
+    if os.path.exists(models_path):
+        with open(models_path, 'r', encoding='utf-8') as f:
+            models = json.load(f)
+        if isinstance(models, list):
+            forge_db['drone_models'] = models
+            print(f"  drone_models: {len(models)} models")
+
+    # Replace build_guides from handbook
+    guides_path = os.path.join(parts_dir, 'build_guides.json')
+    if os.path.exists(guides_path):
+        with open(guides_path, 'r', encoding='utf-8') as f:
+            guides = json.load(f)
+        if isinstance(guides, list):
+            forge_db['build_guides'] = guides
+            print(f"  build_guides: {len(guides)} guides")
+
+    # Write updated forge_database.json
+    with open(local_db_path, 'w', encoding='utf-8') as f:
+        json.dump(forge_db, f, separators=(',', ':'))
+
+    total_parts = sum(len(v) for v in forge_db['components'].values())
+    print(f"\n  forge_database.json updated: {total_parts} parts, {len(forge_db['drone_models'])} models")
+
+    # Cleanup
+    shutil.rmtree(HANDBOOK_DIR, ignore_errors=True)
+    print("  Handbook sync complete.\n")
+    return True
+
+
 def build():
+    # Step 0: Sync data from handbook repo
+    sync_handbook_data()
+
     # Clean build directory
     if os.path.exists(BUILD_DIR):
         shutil.rmtree(BUILD_DIR)
