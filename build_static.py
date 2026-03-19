@@ -115,43 +115,45 @@ def fix_nav_links(html, depth=0):
     return html
 
 
-HANDBOOK_REPO = 'https://github.com/DroneWuKong/drone-integration-handbook.git'
-HANDBOOK_DIR = '_handbook_data'
-
-# Component categories to pull from handbook (filename without .json)
-COMPONENT_CATEGORIES = [
-    'antennas', 'batteries', 'escs', 'flight_controllers', 'fpv_cameras',
-    'frames', 'gps_modules', 'mesh_radios', 'motors', 'propellers',
-    'receivers', 'stacks', 'video_transmitters',
-]
+DATA_REPO = 'https://github.com/DroneWuKong/Ai-Project.git'
+DATA_CLONE_DIR = '_data_source'
 
 
 def sync_handbook_data():
-    """Clone the handbook repo and assemble forge_database.json from its parts-db."""
+    """Clone the Ai-Project repo and assemble forge_database.json from its parts-db."""
     print("═" * 50)
-    print("  Syncing data from drone-integration-handbook...")
+    print("  Syncing data from Ai-Project...")
     print("═" * 50)
 
-    # Clone (shallow, just the data we need)
-    if os.path.exists(HANDBOOK_DIR):
-        shutil.rmtree(HANDBOOK_DIR)
+    # Clean previous clone
+    if os.path.exists(DATA_CLONE_DIR):
+        shutil.rmtree(DATA_CLONE_DIR)
 
+    # Build clone URL — use GITHUB_PAT env var for private repo access
+    clone_url = DATA_REPO
+    pat = os.environ.get('GITHUB_PAT', '')
+    if pat:
+        clone_url = DATA_REPO.replace('https://', f'https://x-access-token:{pat}@')
+        print("  Using GITHUB_PAT for private repo access")
+    else:
+        print("  WARNING: No GITHUB_PAT set — clone may fail for private repos")
+
+    # Shallow sparse clone — just data/parts-db
     result = subprocess.run(
-        ['git', 'clone', '--depth', '1', '--filter=blob:none', '--sparse', HANDBOOK_REPO, HANDBOOK_DIR],
+        ['git', 'clone', '--depth', '1', '--filter=blob:none', '--sparse', clone_url, DATA_CLONE_DIR],
         capture_output=True, text=True
     )
     if result.returncode != 0:
-        print(f"  WARNING: Could not clone handbook repo: {result.stderr}")
+        print(f"  WARNING: Could not clone data repo: {result.stderr.strip()}")
         print("  Falling back to local forge_database.json")
         return False
 
-    # Sparse checkout just the data directory
     subprocess.run(
-        ['git', '-C', HANDBOOK_DIR, 'sparse-checkout', 'set', 'data/parts-db'],
+        ['git', '-C', DATA_CLONE_DIR, 'sparse-checkout', 'set', 'data/parts-db'],
         capture_output=True, text=True
     )
 
-    parts_dir = os.path.join(HANDBOOK_DIR, 'data', 'parts-db')
+    parts_dir = os.path.join(DATA_CLONE_DIR, 'data', 'parts-db')
     if not os.path.isdir(parts_dir):
         print(f"  WARNING: {parts_dir} not found after clone")
         print("  Falling back to local forge_database.json")
@@ -198,8 +200,8 @@ def sync_handbook_data():
     print(f"\n  forge_database.json updated: {total_parts} parts, {len(forge_db['drone_models'])} models")
 
     # Cleanup
-    shutil.rmtree(HANDBOOK_DIR, ignore_errors=True)
-    print("  Handbook sync complete.\n")
+    shutil.rmtree(DATA_CLONE_DIR, ignore_errors=True)
+    print("  Data sync complete.\n")
     return True
 
 
