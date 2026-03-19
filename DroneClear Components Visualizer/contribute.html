@@ -97,6 +97,9 @@
                         <button class="type-btn" onclick="setType('component',this)" id="btnComponent">
                             <i class="ph ph-cpu"></i>Component / Part
                         </button>
+                        <button class="type-btn" onclick="setType('csv',this)" id="btnCsv">
+                            <i class="ph ph-file-csv"></i>Bulk CSV
+                        </button>
                     </div>
 
                     <!-- Common Fields -->
@@ -235,6 +238,55 @@
                         </div>
                     </div>
 
+                    <!-- CSV Bulk Upload -->
+                    <div class="dynamic-fields" id="csvFields">
+                        <div class="form-section">
+                            <h3><i class="ph ph-file-csv"></i> Bulk CSV Upload</h3>
+                            <p style="font-size:13px;color:var(--text-secondary);margin-bottom:16px">
+                                Upload a CSV file with multiple platforms or components. Download a template first, fill it out, then upload.
+                            </p>
+                            <div class="field-row" style="margin-bottom:16px">
+                                <button onclick="downloadTemplate('platform')" style="padding:10px 16px;border-radius:8px;border:1px solid var(--accent);background:transparent;color:var(--accent);cursor:pointer;font-family:inherit;font-weight:600;font-size:13px;width:100%">
+                                    <i class="ph ph-download-simple"></i> Platform Template
+                                </button>
+                                <button onclick="downloadTemplate('component')" style="padding:10px 16px;border-radius:8px;border:1px solid var(--accent);background:transparent;color:var(--accent);cursor:pointer;font-family:inherit;font-weight:600;font-size:13px;width:100%">
+                                    <i class="ph ph-download-simple"></i> Component Template
+                                </button>
+                            </div>
+                            <div class="field">
+                                <label>Upload Filled CSV <span class="req">*</span></label>
+                                <input type="file" id="csvFile" accept=".csv,.tsv" onchange="parseCSV(this)" style="padding:12px;border-style:dashed">
+                                <small>Max 100 rows per upload. CSV must match the template format.</small>
+                            </div>
+                            <div id="csvPreview" style="display:none">
+                                <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+                                    <span style="font-size:14px;font-weight:600;color:var(--accent)" id="csvCount"></span>
+                                    <span style="font-size:12px;color:var(--text-muted)" id="csvErrors"></span>
+                                </div>
+                                <div id="csvTable" style="max-height:300px;overflow:auto;border-radius:8px;border:1px solid var(--border-color)"></div>
+                            </div>
+                        </div>
+                        <div class="form-section">
+                            <h3><i class="ph ph-user"></i> About You (optional)</h3>
+                            <div class="field-row">
+                                <div class="field">
+                                    <label>Your Name / Handle</label>
+                                    <input type="text" id="csvSubmitter" placeholder="e.g. DroneWuKong">
+                                </div>
+                                <div class="field">
+                                    <label>Email</label>
+                                    <input type="email" id="csvEmail" placeholder="Optional">
+                                </div>
+                            </div>
+                        </div>
+                        <button class="submit-btn" id="csvSubmitBtn" onclick="submitCSV()" disabled>
+                            <i class="ph ph-paper-plane-tilt"></i> Submit CSV for Review
+                        </button>
+                        <div style="text-align:center;margin-top:12px;font-size:11px;color:var(--text-muted)">
+                            Each row creates a separate GitHub Issue for review.
+                        </div>
+                    </div>
+
                     <!-- Compliance -->
                     <div class="form-section">
                         <h3><i class="ph ph-shield-check"></i> Compliance & Status</h3>
@@ -289,6 +341,14 @@ function setType(type, btn) {
     btn.classList.add('active');
     document.getElementById('platformFields').classList.toggle('show', type === 'platform');
     document.getElementById('componentFields').classList.toggle('show', type === 'component');
+    document.getElementById('csvFields').classList.toggle('show', type === 'csv');
+    // Hide single-entry sections when in CSV mode
+    const singleSections = document.querySelectorAll('.form-section');
+    const csvEl = document.getElementById('csvFields');
+    singleSections.forEach(s => {
+        if (!csvEl.contains(s)) s.style.display = type === 'csv' ? 'none' : '';
+    });
+    document.getElementById('submitBtn').style.display = type === 'csv' ? 'none' : '';
 }
 
 async function submitContribution() {
@@ -382,6 +442,124 @@ function resetForm() {
         if (el.type !== 'button' && el.type !== 'submit') el.value = '';
     });
     setType('platform', document.getElementById('btnPlatform'));
+}
+
+// ── CSV Bulk Upload ──
+
+const PLATFORM_HEADERS = ['name','manufacturer','country','category','type','description','mtow_kg','payload_kg','endurance_min','range_km','speed_max_kmh','propulsion','ndaa','blue_uas','combat_proven','source_url'];
+const COMPONENT_HEADERS = ['name','manufacturer','country','category','description','price_usd','specs','ndaa','blue_uas','combat_proven','source_url'];
+
+let csvRows = [];
+let csvType = null;
+
+function downloadTemplate(type) {
+    const headers = type === 'platform' ? PLATFORM_HEADERS : COMPONENT_HEADERS;
+    const example = type === 'platform'
+        ? ['Spirit HL','Ascent Aerosystems','USA','tactical_isr','coaxial','Modular coaxial ISR drone with hot-swappable batteries','9.5','3.6','50','10','','electric','yes','yes','no','https://ascent.com']
+        : ['Brave 55A','Unusual Machines','USA','escs','Blue UAS compliant 4-in-1 ESC with AM32 firmware','49.99','55A continuous 4-in-1 AM32 30.5x30.5mm','yes','yes','no','https://unusualmachines.com'];
+    const csv = headers.join(',') + '\n' + example.map(v => (v+'').includes(',') ? '"'+v+'"' : v).join(',') + '\n';
+    const blob = new Blob([csv], {type:'text/csv'});
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = type === 'platform' ? 'forge_platform_template.csv' : 'forge_component_template.csv';
+    a.click();
+}
+
+function parseCSV(input) {
+    const file = input.files[0];
+    if (!file) return;
+    const errEl = document.getElementById('errorMsg');
+    errEl.style.display = 'none';
+    const reader = new FileReader();
+    reader.onload = function(e) {
+        const text = e.target.result;
+        const lines = text.split(/\r?\n/).filter(l => l.trim());
+        if (lines.length < 2) { showCsvError('CSV must have a header row and at least one data row'); return; }
+        const header = parseCSVLine(lines[0]).map(h => h.trim().toLowerCase());
+        if (header.includes('mtow_kg') || header.includes('endurance_min')) csvType = 'platform';
+        else if (header.includes('price_usd') || header.includes('specs')) csvType = 'component';
+        else { showCsvError('Could not detect CSV type — use a downloaded template'); return; }
+        const missing = ['name','manufacturer','country','category'].filter(h => !header.includes(h));
+        if (missing.length) { showCsvError('Missing required columns: ' + missing.join(', ')); return; }
+        csvRows = [];
+        let errors = 0;
+        for (let i = 1; i < Math.min(lines.length, 101); i++) {
+            const vals = parseCSVLine(lines[i]);
+            const row = {};
+            header.forEach((h, idx) => { row[h] = (vals[idx] || '').trim(); });
+            if (!row.name || !row.manufacturer || !row.country) { errors++; continue; }
+            csvRows.push(row);
+        }
+        document.getElementById('csvCount').textContent = csvRows.length + ' ' + csvType + (csvRows.length !== 1 ? 's' : '') + ' ready';
+        const errorsEl = document.getElementById('csvErrors');
+        errorsEl.textContent = errors > 0 ? errors + ' rows skipped' : '';
+        errorsEl.style.color = '#ff6b6b';
+        let html = '<table style="width:100%;border-collapse:collapse;font-size:12px"><tr style="background:var(--surface-secondary,#1a1a2e)">';
+        ['#','Name','Manufacturer','Country','Category'].forEach(h => { html += '<th style="padding:8px 10px;text-align:left;border-bottom:1px solid var(--border-color,#333);white-space:nowrap">'+h+'</th>'; });
+        html += '</tr>';
+        csvRows.forEach((r, i) => {
+            html += '<tr style="border-bottom:1px solid var(--border-color,#222)"><td style="padding:6px 10px;color:var(--text-muted)">'+(i+1)+'</td>';
+            html += '<td style="padding:6px 10px;font-weight:600">'+esc(r.name)+'</td>';
+            html += '<td style="padding:6px 10px">'+esc(r.manufacturer)+'</td>';
+            html += '<td style="padding:6px 10px">'+esc(r.country)+'</td>';
+            html += '<td style="padding:6px 10px;font-family:JetBrains Mono;font-size:11px">'+esc(r.category)+'</td></tr>';
+        });
+        html += '</table>';
+        document.getElementById('csvTable').innerHTML = html;
+        document.getElementById('csvPreview').style.display = 'block';
+        document.getElementById('csvSubmitBtn').disabled = csvRows.length === 0;
+    };
+    reader.readAsText(file);
+}
+
+function parseCSVLine(line) {
+    const result = []; let cur = '', inQ = false;
+    for (let i = 0; i < line.length; i++) {
+        const c = line[i];
+        if (c === '"') inQ = !inQ;
+        else if (c === ',' && !inQ) { result.push(cur); cur = ''; }
+        else cur += c;
+    }
+    result.push(cur); return result;
+}
+
+function esc(s) { return (s||'').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+function showCsvError(msg) { const e = document.getElementById('errorMsg'); e.textContent = msg; e.style.display = 'block'; document.getElementById('csvPreview').style.display = 'none'; }
+
+async function submitCSV() {
+    if (!csvRows.length) return;
+    const btn = document.getElementById('csvSubmitBtn');
+    const errEl = document.getElementById('errorMsg');
+    errEl.style.display = 'none';
+    btn.disabled = true;
+    const submitter = document.getElementById('csvSubmitter').value.trim() || 'Anonymous';
+    const email = document.getElementById('csvEmail').value.trim();
+    let ok = 0, fail = 0, lastUrl = null;
+    for (const row of csvRows) {
+        btn.innerHTML = '<i class="ph ph-circle-notch"></i> Submitting ' + (ok+fail+1) + '/' + csvRows.length + '...';
+        const payload = { type: csvType, name: row.name, manufacturer: row.manufacturer, country: row.country,
+            category: row.category, description: row.description || '', source_url: row.source_url || '',
+            compliance: { ndaa: row.ndaa||'', blue_uas: row.blue_uas||'', combat_proven: row.combat_proven||'' },
+            submitter, email };
+        if (csvType === 'platform') {
+            payload.specs = { type: row.type||'', mtow_kg: parseFloat(row.mtow_kg)||null, payload_kg: parseFloat(row.payload_kg)||null,
+                endurance_min: parseInt(row.endurance_min)||null, range_km: parseFloat(row.range_km)||null,
+                speed_max_kmh: parseInt(row.speed_max_kmh)||null, propulsion: row.propulsion||'' };
+        } else { payload.approx_price = parseFloat(row.price_usd)||null; payload.specs_text = row.specs||''; }
+        try {
+            const res = await fetch('https://nvmilldoitmyself.com/.netlify/functions/contribution-submit',
+                { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(payload) });
+            if (res.ok) { ok++; const d = await res.json(); if (d.issue_url) lastUrl = d.issue_url; } else fail++;
+        } catch { fail++; }
+    }
+    if (ok > 0) {
+        document.getElementById('formContainer').style.display = 'none';
+        const msg = document.getElementById('successMsg');
+        msg.querySelector('p').textContent = ok + ' of ' + csvRows.length + ' entries submitted.' + (fail ? ' ' + fail + ' failed.' : '');
+        if (lastUrl) { const a = document.getElementById('issueLink'); a.href = lastUrl.replace(/\/\d+$/,''); a.textContent = 'View Issues on GitHub →'; }
+        msg.style.display = 'block';
+    } else { errEl.textContent = 'All submissions failed.'; errEl.style.display = 'block'; }
+    btn.disabled = false; btn.innerHTML = '<i class="ph ph-paper-plane-tilt"></i> Submit CSV for Review';
 }
 </script>
 </body>
