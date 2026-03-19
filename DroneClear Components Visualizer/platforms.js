@@ -1,10 +1,63 @@
 (function () {
     'use strict';
 
-    let allPlatforms = [];     // unified merged array
+    let allPlatforms = [];
     let activeFilter = null;
-    let showTactical = true;   // toggle for industry/tactical platforms
-    let showCustomBuilds = false; // toggle for custom FPV builds (MDL-1xxx)
+
+    // ── Clean unified category taxonomy ──
+    const UNIFIED_CATS = {
+        // Map raw build_class / industry category → clean group
+        'enterprise_cots': 'enterprise',
+        'enterprise_blue_uas': 'blue_uas',
+        'enterprise': 'enterprise',
+        'tactical_blue_uas': 'blue_uas',
+        'tactical_fpv': 'tactical',
+        'tactical_defense': 'tactical',
+        'tactical_indoor': 'tactical',
+        'tethered': 'tethered',
+        'tethered_persistent': 'tethered',
+        'agriculture': 'agriculture',
+        'mapping': 'mapping',
+        'delivery': 'specialty',
+        'confined_space': 'specialty',
+        'development': 'open_source',
+        'open_source': 'open_source',
+        // Industry categories
+        'fpv_strike': 'tactical',
+        'fpv_strike_fiber': 'tactical',
+        'fpv_strike_and_tactical': 'tactical',
+        'fpv_isr': 'isr',
+        'fpv_isr_dev': 'isr',
+        'fpv_indoor_recon': 'tactical',
+        'fpv': 'tactical',
+        'loitering_munition': 'loitering',
+        'tactical_isr': 'isr',
+        'nano_isr': 'isr',
+        'heavy_lift_multi_mission': 'specialty',
+        'fixed_wing_isr': 'fixed_wing',
+        'autonomous_interceptor': 'tactical',
+        'group3_vtol_isr': 'fixed_wing',
+        'evtol_fixed_wing_isr': 'fixed_wing',
+        'modular_multi_mission': 'specialty',
+    };
+
+    const CAT_DISPLAY = {
+        'enterprise':  { label: 'Enterprise',    icon: 'ph-buildings',      color: '#8b5cf6' },
+        'blue_uas':    { label: 'Blue UAS',      icon: 'ph-shield-check',   color: '#3b82f6' },
+        'tactical':    { label: 'Tactical / FPV', icon: 'ph-crosshair',     color: '#ef4444' },
+        'isr':         { label: 'ISR',           icon: 'ph-binoculars',     color: '#06b6d4' },
+        'loitering':   { label: 'Loitering',     icon: 'ph-timer',          color: '#f59e0b' },
+        'fixed_wing':  { label: 'Fixed Wing',    icon: 'ph-airplane-tilt',  color: '#0ea5e9' },
+        'agriculture': { label: 'Agriculture',   icon: 'ph-plant',          color: '#22c55e' },
+        'mapping':     { label: 'Mapping',       icon: 'ph-map-trifold',    color: '#0ea5e9' },
+        'tethered':    { label: 'Tethered',      icon: 'ph-link-simple',    color: '#64748b' },
+        'specialty':   { label: 'Specialty',     icon: 'ph-puzzle-piece',   color: '#059669' },
+        'open_source': { label: 'Open Source',   icon: 'ph-git-branch',     color: '#10b981' },
+    };
+
+    function normalizeCategory(rawCat) {
+        return UNIFIED_CATS[rawCat] || 'specialty';
+    }
 
     document.addEventListener('DOMContentLoaded', init);
 
@@ -21,32 +74,21 @@
             if (platRes.ok) industryPlatforms = await platRes.json();
             if (modelRes.ok) droneModels = await modelRes.json();
 
-            // Normalize drone_models into platform-card-compatible shape
+            // Normalize ALL drone_models (MDL-2xxx) into cards
             const modelNamesLower = new Set();
             const normalizedModels = droneModels
-                .filter(m => m.pid && m.pid.startsWith('MDL-2'))  // skip custom builds by default
+                .filter(m => m.pid && m.pid.startsWith('MDL-2'))
                 .map(m => {
                     modelNamesLower.add((m.name || '').toLowerCase());
-                    // Determine category from build_class
-                    let cat = 'enterprise';
-                    const bc = m.build_class || '';
-                    if (bc.includes('tactical')) cat = 'tactical_defense';
-                    else if (bc.includes('blue_uas')) cat = 'enterprise_blue_uas';
-                    else if (bc.includes('enterprise')) cat = 'enterprise_cots';
-                    else if (bc.includes('development') || bc.includes('open')) cat = 'open_source';
-                    else if (bc.includes('agriculture')) cat = 'agriculture';
-                    else if (bc.includes('mapping')) cat = 'mapping';
-                    else if (bc.includes('delivery')) cat = 'delivery';
-                    else if (bc.includes('confined')) cat = 'confined_space';
-                    else if (bc.includes('tethered')) cat = 'tethered_persistent';
-
+                    const rawCat = m.build_class || m.platform_category || '';
                     return {
                         id: m.pid,
                         manufacturer: m.manufacturer || '',
-                        manufacturer_hq: '',
-                        manufacturer_url: '',
+                        manufacturer_hq: (m.industry_data && m.industry_data.manufacturer_hq) || '',
+                        manufacturer_url: (m.industry_data && m.industry_data.manufacturer_url) || '',
                         platform_name: m.name || '',
-                        category: cat,
+                        category: normalizeCategory(rawCat),
+                        _raw_category: rawCat,
                         _source: 'handbook',
                         compliance: {
                             blue_uas: m.blue_uas || false,
@@ -57,62 +99,34 @@
                             type: m.vehicle_type || 'quad',
                             flight_time_min: m.max_flight_time_min || null,
                             payload_kg: m.max_payload_kg || null,
+                            ...(m.industry_data && m.industry_data.specs || {}),
                         },
                         tags: [m.platform_category || '', m.build_class || ''].filter(Boolean),
-                        variants: [],
-                        contracts: {},
-                        production: {},
-                        funding: {},
-                        gcs: {},
-                        image_url: m.image_file || '',
-                        documentation_availability: {},
+                        variants: (m.industry_data && m.industry_data.variants) || [],
+                        contracts: (m.industry_data && m.industry_data.contracts) || {},
+                        production: (m.industry_data && m.industry_data.production) || {},
+                        funding: (m.industry_data && m.industry_data.funding) || {},
+                        gcs: (m.industry_data && m.industry_data.gcs) || {},
+                        image_url: m.image_file || (m.industry_data && m.industry_data.image_url) || '',
+                        documentation_availability: (m.industry_data && m.industry_data.documentation_availability) || {},
                         _description: m.description || '',
-                        _firmware: m.firmware || '',
-                        _rf_bands: m.rf_bands || [],
-                        _video_system: m.video_system || '',
-                        _thermal: m.thermal_capable || false,
                     };
                 });
 
-            // Filter out industry platforms that overlap with drone_models
-            const industryDeduped = industryPlatforms.map(p => {
-                const pName = (p.platform_name || '').toLowerCase();
-                const isDupe = [...modelNamesLower].some(mn =>
-                    mn.includes(pName) || (pName.length > 3 && mn.includes(pName))
-                );
-                return { ...p, _source: 'industry', _isDupe: isDupe };
-            }).filter(p => !p._isDupe);
-
-            // Also prepare custom builds for optional display
-            const customBuilds = droneModels
-                .filter(m => m.pid && m.pid.startsWith('MDL-1'))
-                .map(m => ({
-                    id: m.pid,
-                    manufacturer: m.manufacturer || 'Custom Build',
-                    manufacturer_hq: '',
-                    manufacturer_url: '',
-                    platform_name: m.name || '',
-                    category: 'custom_fpv',
-                    _source: 'custom',
-                    compliance: { blue_uas: false, ndaa_compliant: false },
-                    specs: { type: m.vehicle_type || 'quad' },
-                    tags: [m.build_class || ''],
-                    variants: [],
-                    contracts: {},
-                    production: {},
-                    funding: {},
-                    gcs: {},
-                    image_url: m.image_file || '',
-                    documentation_availability: {},
-                    _description: m.description || '',
+            // Add industry-only platforms (not already in drone_models)
+            const industryDeduped = industryPlatforms
+                .filter(p => {
+                    const pName = (p.platform_name || '').toLowerCase();
+                    return ![...modelNamesLower].some(mn => mn.includes(pName));
+                })
+                .map(p => ({
+                    ...p,
+                    category: normalizeCategory(p.category),
+                    _raw_category: p.category,
+                    _source: 'industry',
                 }));
 
-            // Store all pools
-            window._forgeAllModels = normalizedModels;
-            window._forgeIndustry = industryDeduped;
-            window._forgeCustom = customBuilds;
-
-            rebuildMergedList();
+            allPlatforms = [...normalizedModels, ...industryDeduped];
             renderStats();
             buildFilters();
             renderGrid(allPlatforms);
@@ -125,12 +139,6 @@
         }
     }
 
-    function rebuildMergedList() {
-        allPlatforms = [...(window._forgeAllModels || [])];
-        if (showTactical) allPlatforms = allPlatforms.concat(window._forgeIndustry || []);
-        if (showCustomBuilds) allPlatforms = allPlatforms.concat(window._forgeCustom || []);
-    }
-
     function renderStats() {
         const countEl = document.getElementById('plat-count');
         const blueEl = document.getElementById('plat-blue-count');
@@ -141,74 +149,27 @@
     }
 
     function buildFilters() {
-        const cats = [...new Set(allPlatforms.map(p => p.category))].sort();
+        // Get unique categories that actually have entries
+        const activeCats = [...new Set(allPlatforms.map(p => p.category))].sort();
         const bar = document.getElementById('filter-bar');
         if (!bar) return;
-
-        // Source toggle switches
-        const toggleWrap = document.createElement('div');
-        toggleWrap.style.cssText = 'display:flex; gap:12px; align-items:center; margin-right:8px;';
-
-        toggleWrap.appendChild(mkToggle('Tactical / Strike', showTactical, (on) => {
-            showTactical = on;
-            rebuildMergedList();
-            renderStats();
-            activeFilter = null;
-            // Rebuild category chips
-            bar.innerHTML = '';
-            buildFilters();
-            renderGrid(allPlatforms);
-        }));
-
-        toggleWrap.appendChild(mkToggle('Custom FPV Builds', showCustomBuilds, (on) => {
-            showCustomBuilds = on;
-            rebuildMergedList();
-            renderStats();
-            activeFilter = null;
-            bar.innerHTML = '';
-            buildFilters();
-            renderGrid(allPlatforms);
-        }));
-
-        bar.appendChild(toggleWrap);
-
-        // Divider
-        const divider = document.createElement('div');
-        divider.style.cssText = 'width:1px; height:20px; background:var(--border-color); margin:0 4px;';
-        bar.appendChild(divider);
+        bar.innerHTML = '';
 
         // All chip
-        const allChip = mkChip('All', null, true);
-        bar.appendChild(allChip);
+        bar.appendChild(mkChip('All', null, true));
 
-        // Blue UAS chip
-        const blueChip = mkChip('Blue UAS', '__blue_uas__');
-        bar.appendChild(blueChip);
+        // Blue UAS chip (special cross-cutting filter)
+        const blueCount = allPlatforms.filter(p => p.compliance?.blue_uas).length;
+        if (blueCount > 0) bar.appendChild(mkChip(`Blue UAS`, '__blue_uas__'));
 
-        // Category chips (simplified labels)
-        const catLabels = {
-            fpv_strike: 'FPV Strike',
-            fpv_strike_fiber: 'Fiber',
-            fpv_isr: 'FPV ISR',
-            fpv_isr_dev: 'ISR Dev',
-            fpv_indoor_recon: 'Indoor',
-            fpv: 'FPV',
-            fpv_strike_and_tactical: 'FPV Tactical',
-            loitering_munition: 'Loitering',
-            tactical_isr: 'Tactical ISR',
-            nano_isr: 'Nano ISR',
-            heavy_lift_multi_mission: 'Heavy Lift',
-            fixed_wing_isr: 'Fixed Wing',
-            autonomous_interceptor: 'Interceptor',
-            tethered_persistent: 'Tethered',
-            group3_vtol_isr: 'Group 3 VTOL',
-            evtol_fixed_wing_isr: 'eVTOL',
-            modular_multi_mission: 'Modular',
-        };
+        // NDAA chip
+        const ndaaCount = allPlatforms.filter(p => p.compliance?.ndaa_compliant).length;
+        if (ndaaCount > 0) bar.appendChild(mkChip(`NDAA`, '__ndaa__'));
 
-        cats.forEach(cat => {
-            const label = catLabels[cat] || cat.replace(/_/g, ' ');
-            bar.appendChild(mkChip(label, cat));
+        // Category chips
+        activeCats.forEach(cat => {
+            const info = CAT_DISPLAY[cat];
+            if (info) bar.appendChild(mkChip(info.label, cat));
         });
     }
 
@@ -241,6 +202,8 @@
 
         if (activeFilter === '__blue_uas__') {
             filtered = filtered.filter(p => p.compliance?.blue_uas);
+        } else if (activeFilter === '__ndaa__') {
+            filtered = filtered.filter(p => p.compliance?.ndaa_compliant);
         } else if (activeFilter) {
             filtered = filtered.filter(p => p.category === activeFilter);
         }
@@ -251,8 +214,7 @@
                     p.manufacturer, p.platform_name, p.category,
                     ...(p.tags || []), ...(p.variants || []),
                     p.compliance?.note || '',
-                    p._description || '', p._firmware || '',
-                    ...(p._rf_bands || []), p._video_system || '',
+                    p._description || '', p._raw_category || '',
                 ].join(' ').toLowerCase();
                 return haystack.includes(query);
             });
@@ -261,55 +223,8 @@
         renderGrid(filtered);
     }
 
-    // Category visual config — icon + accent color
-    const catVisuals = {
-        fpv_strike:              { icon: 'ph-crosshair',        color: '#ef4444' },
-        fpv_strike_fiber:        { icon: 'ph-plug',             color: '#f97316' },
-        fpv_isr:                 { icon: 'ph-binoculars',       color: '#3b82f6' },
-        fpv_isr_dev:             { icon: 'ph-code',             color: '#6366f1' },
-        fpv_indoor_recon:        { icon: 'ph-buildings',        color: '#8b5cf6' },
-        fpv:                     { icon: 'ph-drone',            color: '#22d3ee' },
-        fpv_strike_and_tactical: { icon: 'ph-target',           color: '#ef4444' },
-        loitering_munition:      { icon: 'ph-timer',            color: '#f59e0b' },
-        tactical_isr:            { icon: 'ph-eye',              color: '#06b6d4' },
-        nano_isr:                { icon: 'ph-atom',             color: '#a78bfa' },
-        heavy_lift_multi_mission:{ icon: 'ph-package',          color: '#10b981' },
-        fixed_wing_isr:          { icon: 'ph-airplane-tilt',    color: '#0ea5e9' },
-        autonomous_interceptor:  { icon: 'ph-shield-warning',   color: '#dc2626' },
-        tethered_persistent:     { icon: 'ph-link-simple',      color: '#64748b' },
-        group3_vtol_isr:         { icon: 'ph-airplane',         color: '#2563eb' },
-        evtol_fixed_wing_isr:    { icon: 'ph-wind',             color: '#0284c7' },
-        modular_multi_mission:   { icon: 'ph-puzzle-piece',     color: '#059669' },
-        // Handbook platform categories
-        enterprise_cots:         { icon: 'ph-buildings',        color: '#8b5cf6' },
-        enterprise_blue_uas:     { icon: 'ph-shield-check',     color: '#3b82f6' },
-        enterprise:              { icon: 'ph-drone',            color: '#06b6d4' },
-        tactical_defense:        { icon: 'ph-target',           color: '#ef4444' },
-        open_source:             { icon: 'ph-git-branch',       color: '#10b981' },
-        agriculture:             { icon: 'ph-plant',            color: '#22c55e' },
-        mapping:                 { icon: 'ph-map-trifold',      color: '#0ea5e9' },
-        delivery:                { icon: 'ph-package',          color: '#f59e0b' },
-        confined_space:          { icon: 'ph-cube',             color: '#a78bfa' },
-        custom_fpv:              { icon: 'ph-wrench',           color: '#f97316' },
-    };
-
-    function mkToggle(label, initialState, onChange) {
-        const wrap = document.createElement('label');
-        wrap.style.cssText = 'display:flex; align-items:center; gap:6px; cursor:pointer; font-size:11px; color:var(--text-muted); letter-spacing:0.02em; white-space:nowrap; user-select:none;';
-
-        const cb = document.createElement('input');
-        cb.type = 'checkbox';
-        cb.checked = initialState;
-        cb.style.cssText = 'accent-color: var(--accent-red, #4ECDC4); width:14px; height:14px; cursor:pointer;';
-        cb.addEventListener('change', () => onChange(cb.checked));
-
-        wrap.appendChild(cb);
-        wrap.appendChild(document.createTextNode(label));
-        return wrap;
-    }
-
     function getCatVisual(cat) {
-        return catVisuals[cat] || { icon: 'ph-drone', color: '#22d3ee' };
+        return CAT_DISPLAY[cat] || { label: cat, icon: 'ph-drone', color: '#22d3ee' };
     }
 
     function renderGrid(platforms) {
@@ -358,7 +273,7 @@
                         </div>
                         <div class="plat-card-badges">${badges.join('')}</div>
                     </div>
-                    <div class="plat-card-cat">${esc(p.category.replace(/_/g, ' '))}</div>
+                    <div class="plat-card-cat">${esc((CAT_DISPLAY[p.category] || {}).label || p.category.replace(/_/g, ' '))}</div>
                     ${specRows.length ? '<div class="plat-card-specs">' + specRows.join('') + '</div>' : ''}
                     ${tags ? '<div class="plat-card-tags">' + tags + '</div>' : ''}
                 </div>`;
