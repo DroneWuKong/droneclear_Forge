@@ -22,7 +22,7 @@ BUILD_DIR = 'build'
 # Pages to process
 PAGES = {
     'index.html': 'builder/index.html',      # /builder/
-    'mission-control.html': 'index.html',      # / (home)
+    'mission-control.html': 'index.html',      # / (home — The Bench)
     'academy.html': 'academy/index.html',
     'audit.html': 'audit/index.html',
     'editor.html': 'library/index.html',
