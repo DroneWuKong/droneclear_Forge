@@ -29,7 +29,7 @@
                 fetch('/api/industry/platforms/'),
             ]);
 
-            // Categories + total component count
+            // Categories + total component count + build DB grid
             if (catRes.ok) {
                 const cats = await catRes.json();
                 const catArray = Array.isArray(cats) ? cats : (cats.results || []);
@@ -40,6 +40,9 @@
                 const totalParts = catArray.reduce((sum, c) => sum + (c.count || 0), 0);
                 const partsEl = document.getElementById('stat-parts');
                 if (partsEl) partsEl.textContent = totalParts.toLocaleString();
+
+                // Build the clickable parts database grid
+                renderDbGrid(catArray);
             }
 
             // Unified Platforms & Models count
@@ -82,5 +85,39 @@
         } catch (err) {
             console.warn('Mission Control: could not load stats', err);
         }
+    }
+
+    // Category icons for the parts database grid
+    const catIcons = {
+        antennas: 'ph-broadcast',
+        batteries: 'ph-battery-full',
+        escs: 'ph-lightning',
+        flight_controllers: 'ph-cpu',
+        fpv_cameras: 'ph-camera',
+        frames: 'ph-frame-corners',
+        gps_modules: 'ph-map-pin',
+        motors: 'ph-gear-six',
+        propellers: 'ph-fan',
+        receivers: 'ph-radio',
+        stacks: 'ph-stack',
+        video_transmitters: 'ph-monitor-play',
+    };
+
+    function renderDbGrid(categories) {
+        const grid = document.getElementById('mc-db-grid');
+        if (!grid) return;
+
+        grid.innerHTML = categories.map(cat => {
+            const slug = cat.slug || cat.name?.toLowerCase().replace(/\s+/g, '_') || '';
+            const icon = catIcons[slug] || 'ph-cube';
+            const label = cat.name || slug.replace(/_/g, ' ');
+            const count = cat.count || cat.component_count || 0;
+
+            return `<a href="/builder/?category=${slug}" class="mc-db-card" title="Browse ${count} ${label}">
+                <i class="ph ${icon}"></i>
+                <div class="mc-db-card-count">${count}</div>
+                <div class="mc-db-card-label">${label}</div>
+            </a>`;
+        }).join('\n');
     }
 })();

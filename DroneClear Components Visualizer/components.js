@@ -15,7 +15,15 @@ async function fetchAllCategories() {
         }
 
         renderSidebar(categories);
-        selectCategory(categories[0].slug);
+
+        // Check URL params for pre-selected category
+        const params = new URLSearchParams(window.location.search);
+        const requestedCat = params.get('category');
+        if (requestedCat && categories.some(c => c.slug === requestedCat)) {
+            selectCategory(requestedCat);
+        } else {
+            selectCategory(categories[0].slug);
+        }
     } catch (error) {
         console.warn('Failed to fetch from Django API.', error);
         showError(i18n[currentLang].errLoadDesc);
