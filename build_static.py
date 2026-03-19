@@ -25,6 +25,7 @@ PAGES = {
     'guide.html': 'guide/index.html',
     'template.html': 'template/index.html',
     'platforms.html': 'platforms/index.html',
+    'browse.html': 'browse/index.html',
 }
 
 # Static assets to copy (JS, CSS, JSON, images)
