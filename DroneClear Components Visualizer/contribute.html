@@ -195,40 +195,32 @@
                     <div class="dynamic-fields" id="componentFields">
                         <div class="form-section">
                             <h3><i class="ph ph-cpu"></i> Component Specifications</h3>
-                            <div class="field-row">
-                                <div class="field">
-                                    <label>Category <span class="req">*</span></label>
-                                    <select id="c_category">
-                                        <option value="">Select...</option>
-                                        <option value="motors">Motors</option>
-                                        <option value="escs">ESCs</option>
-                                        <option value="flight_controllers">Flight Controllers</option>
-                                        <option value="batteries">Batteries</option>
-                                        <option value="frames">Frames</option>
-                                        <option value="fpv_cameras">FPV Cameras</option>
-                                        <option value="video_transmitters">Video Transmitters</option>
-                                        <option value="receivers">Receivers</option>
-                                        <option value="antennas">Antennas</option>
-                                        <option value="propellers">Propellers</option>
-                                        <option value="gps_modules">GPS Modules</option>
-                                        <option value="mesh_radios">Mesh Radios / Datalinks</option>
-                                        <option value="thermal_cameras">Thermal Cameras</option>
-                                        <option value="companion_computers">Companion Computers</option>
-                                        <option value="sensors">Sensors (Lidar/Radar/IMU)</option>
-                                        <option value="counter_uas">Counter-UAS</option>
-                                        <option value="esad">ESAD / Safe-and-Arm</option>
-                                    </select>
-                                </div>
-                                <div class="field">
-                                    <label>Approx Price (USD)</label>
-                                    <input type="number" id="c_price" step="0.01" placeholder="e.g. 49.99">
-                                </div>
-                            </div>
                             <div class="field">
-                                <label>Key Specifications</label>
-                                <textarea id="c_specs" placeholder="List the important specs. E.g. for a motor: 2807 stator, 1500KV, 6S, 58g, M3 mount. For an ESC: 55A continuous, AM32 firmware, 4-in-1, 30.5x30.5mm"></textarea>
-                                <small>Be as specific as possible — stator size, KV, current rating, resolution, weight, etc.</small>
+                                <label>Category <span class="req">*</span></label>
+                                <select id="c_category" onchange="showCategoryFields(this.value)">
+                                    <option value="">Select category...</option>
+                                    <option value="motors">Motors</option>
+                                    <option value="escs">ESCs</option>
+                                    <option value="flight_controllers">Flight Controllers</option>
+                                    <option value="stacks">FC/ESC Stacks</option>
+                                    <option value="batteries">Batteries</option>
+                                    <option value="frames">Frames</option>
+                                    <option value="fpv_cameras">FPV Cameras</option>
+                                    <option value="video_transmitters">Video Transmitters</option>
+                                    <option value="receivers">Receivers</option>
+                                    <option value="antennas">Antennas</option>
+                                    <option value="propellers">Propellers</option>
+                                    <option value="gps_modules">GPS Modules</option>
+                                    <option value="mesh_radios">Mesh Radios / Datalinks</option>
+                                    <option value="thermal_cameras">Thermal Cameras</option>
+                                    <option value="companion_computers">Companion Computers</option>
+                                    <option value="sensors">Sensors (Lidar/Radar/IMU)</option>
+                                    <option value="counter_uas">Counter-UAS</option>
+                                    <option value="esad">ESAD / Safe-and-Arm</option>
+                                </select>
                             </div>
+                            <!-- Dynamic spec fields render here -->
+                            <div id="categorySpecFields"></div>
                         </div>
                     </div>
 
@@ -400,8 +392,15 @@ async function submitContribution() {
             propulsion: document.getElementById('p_propulsion').value.trim(),
         };
     } else {
-        payload.approx_price = parseFloat(document.getElementById('c_price').value) || null;
-        payload.specs_text = document.getElementById('c_specs').value.trim();
+        payload.component_specs = getComponentSpecs(category);
+        // Enforce 90% completion
+        if (!validateCompletion(category)) {
+            errEl.textContent = 'At least 90% of the spec fields must be filled. Check the completion bar.';
+            errEl.style.display = 'block';
+            btn.disabled = false;
+            btn.innerHTML = '<i class="ph ph-paper-plane-tilt"></i> Submit for Review';
+            return;
+        }
     }
 
     try {
@@ -438,7 +437,272 @@ function resetForm() {
     setType('platform', document.getElementById('btnPlatform'));
 }
 
-// ── CSV Bulk Upload ──
+// ── Category-Specific Spec Fields (DroneClear Schema) ──
+// Each field matches the actual JSON schema in the parts database.
+// 90% of fields must be filled or submission is rejected.
+
+const CF = {
+    motors: [
+        {id:'stator_size',label:'Stator Size',ph:'e.g. 2207, 2806.5',type:'text',req:1},
+        {id:'kv_rating',label:'KV Rating',ph:'e.g. 1750',type:'number',req:1},
+        {id:'cell_count_min',label:'Min Cells (S)',ph:'e.g. 4',type:'number',req:1},
+        {id:'cell_count_max',label:'Max Cells (S)',ph:'e.g. 6',type:'number',req:1},
+        {id:'weight_g',label:'Weight (g)',ph:'e.g. 33.5',type:'number',step:'0.1',req:1},
+        {id:'motor_mount_bolt_size',label:'Mount Bolt',ph:'e.g. M3',type:'text',req:1},
+        {id:'motor_mount_hole_spacing_mm',label:'Mount Spacing (mm)',ph:'e.g. 16x16',type:'text'},
+        {id:'shaft_size_mm',label:'Shaft (mm)',ph:'e.g. 5',type:'number',step:'0.1'},
+        {id:'motor_count',label:'Qty per Pack',ph:'e.g. 1',type:'number'},
+        {id:'price_usd',label:'Price (USD)',ph:'e.g. 24.99',type:'number',step:'0.01',req:1},
+        {id:'link',label:'Product URL',ph:'https://...',type:'url'},
+    ],
+    escs: [
+        {id:'continuous_current_per_motor_a',label:'Continuous A/motor',ph:'e.g. 55',type:'number',req:1},
+        {id:'burst_current_a',label:'Burst Current (A)',ph:'e.g. 65',type:'number'},
+        {id:'cell_count_min',label:'Min Cells (S)',ph:'e.g. 3',type:'number',req:1},
+        {id:'cell_count_max',label:'Max Cells (S)',ph:'e.g. 6',type:'number',req:1},
+        {id:'esc_firmware',label:'Firmware',type:'select',opts:['BLHeli_32','BLHeli_S','AM32','KISS','Other'],req:1},
+        {id:'esc_format',label:'Format',type:'select',opts:['4-in-1','Single','2-in-1','AIO'],req:1},
+        {id:'motor_output_count',label:'Motor Outputs',ph:'e.g. 4',type:'number',req:1},
+        {id:'mounting_pattern_mm',label:'Mounting (mm)',ph:'e.g. 30.5x30.5',type:'text',req:1},
+        {id:'price_usd',label:'Price (USD)',ph:'e.g. 49.99',type:'number',step:'0.01',req:1},
+        {id:'link',label:'Product URL',ph:'https://...',type:'url'},
+    ],
+    flight_controllers: [
+        {id:'mcu_family',label:'MCU',type:'select',opts:['STM32F405','STM32F722','STM32F745','STM32H743','STM32H750','AT32F435','RP2040','Other'],req:1},
+        {id:'imu',label:'IMU / Gyro',ph:'e.g. BMI270, ICM-42688-P',type:'text',req:1},
+        {id:'firmware_targets',label:'Firmware Support',ph:'e.g. Betaflight, iNav, ArduPilot',type:'text',req:1},
+        {id:'uart_count',label:'UART Count',ph:'e.g. 6',type:'number',req:1},
+        {id:'has_osd',label:'OSD Chip',type:'select',opts:['Yes','No','AT7456E','None'],req:1},
+        {id:'cell_count_min',label:'Min Cells (S)',ph:'e.g. 3',type:'number',req:1},
+        {id:'cell_count_max',label:'Max Cells (S)',ph:'e.g. 6',type:'number',req:1},
+        {id:'mounting_hole_size',label:'Mounting',ph:'e.g. 30.5x30.5',type:'text',req:1},
+        {id:'has_barometer',label:'Barometer',type:'select',opts:['Yes','No']},
+        {id:'price_usd',label:'Price (USD)',ph:'e.g. 34.99',type:'number',step:'0.01',req:1},
+        {id:'link',label:'Product URL',ph:'https://...',type:'url'},
+    ],
+    stacks: [
+        {id:'mcu_family',label:'FC MCU',type:'select',opts:['STM32F405','STM32F722','STM32H743','STM32H750','AT32F435','Other'],req:1},
+        {id:'imu',label:'IMU / Gyro',ph:'e.g. BMI270',type:'text',req:1},
+        {id:'esc_current_a',label:'ESC Current (A)',ph:'e.g. 55',type:'number',req:1},
+        {id:'esc_firmware',label:'ESC Firmware',type:'select',opts:['BLHeli_32','BLHeli_S','AM32','Other'],req:1},
+        {id:'cell_count_min',label:'Min Cells',ph:'e.g. 3',type:'number',req:1},
+        {id:'cell_count_max',label:'Max Cells',ph:'e.g. 6',type:'number',req:1},
+        {id:'is_aio',label:'AIO (all-in-one)?',type:'select',opts:['Yes','No'],req:1},
+        {id:'mounting_hole_size',label:'Mounting (mm)',ph:'e.g. 30.5x30.5',type:'text',req:1},
+        {id:'price_usd',label:'Price (USD)',ph:'e.g. 79.99',type:'number',step:'0.01',req:1},
+        {id:'link',label:'Product URL',ph:'https://...',type:'url'},
+    ],
+    batteries: [
+        {id:'capacity_mah',label:'Capacity (mAh)',ph:'e.g. 1500',type:'number',req:1},
+        {id:'cell_count',label:'Cell Count (S)',ph:'e.g. 6',type:'number',req:1},
+        {id:'chemistry',label:'Chemistry',type:'select',opts:['LiPo','Li-Ion','LiHV','LiFe','Solid State'],req:1},
+        {id:'discharge_rate_c',label:'Discharge Rate (C)',ph:'e.g. 120',type:'number',req:1},
+        {id:'weight_g',label:'Weight (g)',ph:'e.g. 248',type:'number',step:'0.1',req:1},
+        {id:'battery_connector',label:'Connector',type:'select',opts:['XT60','XT30','XT90','EC5','Proprietary','Other'],req:1},
+        {id:'dimensions_mm',label:'Dimensions (mm)',ph:'e.g. 76x38x34',type:'text'},
+        {id:'price_usd',label:'Price (USD)',ph:'e.g. 32.99',type:'number',step:'0.01',req:1},
+        {id:'link',label:'Product URL',ph:'https://...',type:'url'},
+    ],
+    frames: [
+        {id:'arm_configuration',label:'Config',type:'select',opts:['True-X','Stretch-X','Deadcat','H','Plus','Other'],req:1},
+        {id:'motor_count',label:'Motor Count',ph:'e.g. 4',type:'number',req:1},
+        {id:'prop_size_in',label:'Prop Size (in)',ph:'e.g. 5',type:'number',step:'0.1',req:1},
+        {id:'material',label:'Material',type:'select',opts:['Carbon Fiber','TPU + CF','Aluminum','Injection Molded','Other'],req:1},
+        {id:'fc_mounting_patterns_mm',label:'FC Mount (mm)',ph:'e.g. 30.5x30.5, 20x20',type:'text',req:1},
+        {id:'camera_mount_size',label:'Camera Size',type:'select',opts:['Micro','Nano','Full','DJI O3','DJI O4','Other'],req:1},
+        {id:'weight_g',label:'Weight (g)',ph:'e.g. 115',type:'number',step:'0.1',req:1},
+        {id:'wheelbase_mm',label:'Wheelbase (mm)',ph:'e.g. 225',type:'number'},
+        {id:'price_usd',label:'Price (USD)',ph:'e.g. 39.99',type:'number',step:'0.01',req:1},
+        {id:'link',label:'Product URL',ph:'https://...',type:'url'},
+    ],
+    fpv_cameras: [
+        {id:'video_system',label:'Video System',type:'select',opts:['DJI O3','DJI O4','HDZero','Walksnail','Analog','OpenIPC'],req:1},
+        {id:'sensor_size',label:'Sensor Size',ph:'e.g. 1/1.8, 1/2.7',type:'text',req:1},
+        {id:'resolution',label:'Resolution',ph:'e.g. 4K, 1080p',type:'text',req:1},
+        {id:'fov_deg',label:'FOV (degrees)',ph:'e.g. 155',type:'number',req:1},
+        {id:'camera_size',label:'Camera Size',type:'select',opts:['Full','Micro','Nano'],req:1},
+        {id:'weight_g',label:'Weight (g)',ph:'e.g. 28',type:'number',step:'0.1',req:1},
+        {id:'latency_ms',label:'Latency (ms)',ph:'e.g. 22',type:'number'},
+        {id:'price_usd',label:'Price (USD)',ph:'e.g. 89.99',type:'number',step:'0.01',req:1},
+        {id:'link',label:'Product URL',ph:'https://...',type:'url'},
+    ],
+    video_transmitters: [
+        {id:'video_system',label:'Video System',type:'select',opts:['DJI O3','DJI O4','HDZero','Walksnail','Analog','OpenIPC'],req:1},
+        {id:'max_power_mw',label:'Max Power (mW)',ph:'e.g. 1000',type:'number',req:1},
+        {id:'frequency_ghz',label:'Frequency (GHz)',ph:'e.g. 5.8',type:'number',step:'0.1',req:1},
+        {id:'channels',label:'Channels',ph:'e.g. 40',type:'number'},
+        {id:'antenna_connector',label:'Antenna Connector',type:'select',opts:['U.FL/IPEX','MMCX','SMA','RP-SMA'],req:1},
+        {id:'weight_g',label:'Weight (g)',ph:'e.g. 8',type:'number',step:'0.1',req:1},
+        {id:'price_usd',label:'Price (USD)',ph:'e.g. 29.99',type:'number',step:'0.01',req:1},
+        {id:'link',label:'Product URL',ph:'https://...',type:'url'},
+    ],
+    receivers: [
+        {id:'protocol',label:'Protocol',type:'select',opts:['ELRS','CRSF/Crossfire','Ghost','FrSky ACCESS','FrSky ACCST','FlySky IBUS','SBUS','Other'],req:1},
+        {id:'frequency_ghz',label:'Frequency (GHz)',type:'select',opts:['2.4','900/868','Dual-Band'],req:1},
+        {id:'diversity',label:'Diversity',type:'select',opts:['Yes','No'],req:1},
+        {id:'antenna_count',label:'Antenna Count',ph:'e.g. 2',type:'number',req:1},
+        {id:'weight_g',label:'Weight (g)',ph:'e.g. 2.5',type:'number',step:'0.1',req:1},
+        {id:'has_wifi',label:'WiFi Backpack',type:'select',opts:['Yes','No']},
+        {id:'price_usd',label:'Price (USD)',ph:'e.g. 14.99',type:'number',step:'0.01',req:1},
+        {id:'link',label:'Product URL',ph:'https://...',type:'url'},
+    ],
+    antennas: [
+        {id:'antenna_type',label:'Type',type:'select',opts:['Omni Dipole','Patch','Helical','Pagoda','Lollipop','Moxon','Yagi','PCB','Other'],req:1},
+        {id:'frequency_ghz',label:'Frequency (GHz)',ph:'e.g. 5.8',type:'number',step:'0.1',req:1},
+        {id:'gain_dbi',label:'Gain (dBi)',ph:'e.g. 5.8',type:'number',step:'0.1',req:1},
+        {id:'polarization',label:'Polarization',type:'select',opts:['RHCP','LHCP','Linear','Dual'],req:1},
+        {id:'connector',label:'Connector',type:'select',opts:['SMA','RP-SMA','U.FL/IPEX','MMCX'],req:1},
+        {id:'weight_g',label:'Weight (g)',ph:'e.g. 12',type:'number',step:'0.1'},
+        {id:'price_usd',label:'Price (USD)',ph:'e.g. 9.99',type:'number',step:'0.01',req:1},
+        {id:'link',label:'Product URL',ph:'https://...',type:'url'},
+    ],
+    propellers: [
+        {id:'diameter_in',label:'Diameter (in)',ph:'e.g. 5.1',type:'number',step:'0.1',req:1},
+        {id:'pitch_in',label:'Pitch (in)',ph:'e.g. 3.6',type:'number',step:'0.1',req:1},
+        {id:'blade_count',label:'Blade Count',type:'select',opts:['2','3','4'],req:1},
+        {id:'material',label:'Material',type:'select',opts:['PC','PC+Glass','Carbon Fiber','Nylon','Other'],req:1},
+        {id:'hub_type',label:'Hub Type',type:'select',opts:['T-Mount','Press-Fit','Bolt-On','Other'],req:1},
+        {id:'weight_g',label:'Weight per Prop (g)',ph:'e.g. 4.2',type:'number',step:'0.1',req:1},
+        {id:'props_per_pack',label:'Props per Pack',ph:'e.g. 16',type:'number'},
+        {id:'price_usd',label:'Price/Pack (USD)',ph:'e.g. 3.99',type:'number',step:'0.01',req:1},
+        {id:'link',label:'Product URL',ph:'https://...',type:'url'},
+    ],
+    gps_modules: [
+        {id:'chipset',label:'Chipset',ph:'e.g. u-blox M10, M9N',type:'text',req:1},
+        {id:'constellations',label:'Constellations',ph:'e.g. GPS, GLONASS, Galileo, BeiDou',type:'text',req:1},
+        {id:'has_compass',label:'Built-in Compass',type:'select',opts:['Yes','No'],req:1},
+        {id:'update_rate_hz',label:'Update Rate (Hz)',ph:'e.g. 10',type:'number',req:1},
+        {id:'weight_g',label:'Weight (g)',ph:'e.g. 8',type:'number',step:'0.1',req:1},
+        {id:'price_usd',label:'Price (USD)',ph:'e.g. 19.99',type:'number',step:'0.01',req:1},
+        {id:'link',label:'Product URL',ph:'https://...',type:'url'},
+    ],
+    mesh_radios: [
+        {id:'band',label:'Band',ph:'e.g. 2.4 GHz, 900 MHz, L/S-band',type:'text',req:1},
+        {id:'max_power_w',label:'Max TX Power (W)',ph:'e.g. 2',type:'number',step:'0.1',req:1},
+        {id:'range_km',label:'Range (km)',ph:'e.g. 15',type:'number',req:1},
+        {id:'throughput_mbps',label:'Throughput (Mbps)',ph:'e.g. 50',type:'number',req:1},
+        {id:'encryption',label:'Encryption',type:'select',opts:['AES-256','AES-128','FIPS 140-2','None','Other'],req:1},
+        {id:'form_factor',label:'Form Factor',ph:'e.g. embedded OEM, standalone',type:'text',req:1},
+        {id:'weight_g',label:'Weight (g)',ph:'e.g. 180',type:'number',step:'0.1',req:1},
+        {id:'price_usd',label:'Price (USD)',ph:'e.g. 2500',type:'number',step:'0.01'},
+        {id:'link',label:'Product URL',ph:'https://...',type:'url'},
+    ],
+    thermal_cameras: [
+        {id:'resolution',label:'Resolution',ph:'e.g. 640x512',type:'text',req:1},
+        {id:'pixel_pitch_um',label:'Pixel Pitch (µm)',ph:'e.g. 12',type:'number',req:1},
+        {id:'spectral_range',label:'Spectral Range',ph:'e.g. 8-14 µm (LWIR)',type:'text',req:1},
+        {id:'frame_rate_hz',label:'Frame Rate (Hz)',ph:'e.g. 30',type:'number',req:1},
+        {id:'fov_deg',label:'FOV (degrees)',ph:'e.g. 40',type:'number'},
+        {id:'weight_g',label:'Weight (g)',ph:'e.g. 72',type:'number',step:'0.1',req:1},
+        {id:'interface',label:'Interface',type:'select',opts:['USB','Ethernet','MIPI','Analog','Other'],req:1},
+        {id:'price_usd',label:'Price (USD)',ph:'e.g. 4500',type:'number',step:'0.01'},
+        {id:'link',label:'Product URL',ph:'https://...',type:'url'},
+    ],
+    companion_computers: [
+        {id:'processor',label:'Processor',ph:'e.g. Qualcomm QRB5165, Jetson Orin',type:'text',req:1},
+        {id:'compute_power',label:'AI Compute (TOPS)',ph:'e.g. 15',type:'number',req:1},
+        {id:'ram_gb',label:'RAM (GB)',ph:'e.g. 8',type:'number',req:1},
+        {id:'interfaces',label:'Key Interfaces',ph:'e.g. USB3, Ethernet, MIPI CSI, UART',type:'text',req:1},
+        {id:'os_support',label:'OS Support',ph:'e.g. Linux, ROS2, PX4',type:'text',req:1},
+        {id:'weight_g',label:'Weight (g)',ph:'e.g. 40',type:'number',step:'0.1',req:1},
+        {id:'power_w',label:'Power Draw (W)',ph:'e.g. 12',type:'number',step:'0.1',req:1},
+        {id:'price_usd',label:'Price (USD)',ph:'e.g. 799',type:'number',step:'0.01'},
+        {id:'link',label:'Product URL',ph:'https://...',type:'url'},
+    ],
+    sensors: [
+        {id:'sensor_type',label:'Sensor Type',type:'select',opts:['LiDAR','Radar','IMU','Optical Flow','Barometer','Rangefinder','AHRS','Other'],req:1},
+        {id:'range_m',label:'Range (m)',ph:'e.g. 200',type:'number',req:1},
+        {id:'accuracy',label:'Accuracy',ph:'e.g. ±2cm, ±0.1°',type:'text',req:1},
+        {id:'update_rate_hz',label:'Update Rate (Hz)',ph:'e.g. 100',type:'number',req:1},
+        {id:'interface',label:'Interface',type:'select',opts:['I2C','SPI','UART','Ethernet','CAN','USB'],req:1},
+        {id:'weight_g',label:'Weight (g)',ph:'e.g. 15',type:'number',step:'0.1',req:1},
+        {id:'price_usd',label:'Price (USD)',ph:'e.g. 149',type:'number',step:'0.01',req:1},
+        {id:'link',label:'Product URL',ph:'https://...',type:'url'},
+    ],
+    counter_uas: [
+        {id:'defeat_method',label:'Defeat Method',type:'select',opts:['RF Jamming','GPS Spoofing','Kinetic','Directed Energy','Cyber','Net/Capture','Combined'],req:1},
+        {id:'detection_range_km',label:'Detection Range (km)',ph:'e.g. 5',type:'number',req:1},
+        {id:'defeat_range_km',label:'Defeat Range (km)',ph:'e.g. 2',type:'number',req:1},
+        {id:'frequency_bands',label:'Frequency Bands',ph:'e.g. 2.4 GHz, 5.8 GHz, 900 MHz',type:'text',req:1},
+        {id:'form_factor',label:'Form Factor',type:'select',opts:['Man-portable','Vehicle-mounted','Fixed Site','Handheld','Drone-mounted'],req:1},
+        {id:'weight_kg',label:'Weight (kg)',ph:'e.g. 15',type:'number',step:'0.1',req:1},
+        {id:'price_usd',label:'Price (USD)',ph:'e.g. 50000',type:'number',step:'0.01'},
+        {id:'link',label:'Product URL',ph:'https://...',type:'url'},
+    ],
+    esad: [
+        {id:'device_type',label:'Device Type',type:'select',opts:['Electronic Safe & Arm','Fuze','Initiator','Arming Unit','Complete System'],req:1},
+        {id:'activation_method',label:'Activation',type:'select',opts:['Electronic','Mechanical','Electromechanical','Pyrotechnic'],req:1},
+        {id:'safe_arm_time_ms',label:'Safe-to-Arm Time (ms)',ph:'e.g. 200',type:'number',req:1},
+        {id:'payload_interface',label:'Payload Interface',ph:'e.g. EBW, SCB, contact',type:'text',req:1},
+        {id:'weight_g',label:'Weight (g)',ph:'e.g. 45',type:'number',step:'0.1',req:1},
+        {id:'mil_spec',label:'Mil-Spec',ph:'e.g. MIL-STD-1316, MIL-STD-882',type:'text'},
+        {id:'price_usd',label:'Price (USD)',ph:'e.g. 800',type:'number',step:'0.01'},
+        {id:'link',label:'Product URL',ph:'https://...',type:'url'},
+    ],
+};
+
+function showCategoryFields(cat) {
+    const container = document.getElementById('categorySpecFields');
+    const fields = CF[cat];
+    if (!fields) { container.innerHTML = ''; updateCompletionBar(cat); return; }
+    let html = '<div style="margin-top:16px;margin-bottom:8px;display:flex;justify-content:space-between;align-items:center"><span style="font-size:12px;color:var(--text-muted)">DroneClear schema — fill <strong style=color:var(--accent)>90%+</strong> to submit</span><span id="completionPct" style="font-family:JetBrains Mono;font-size:13px;font-weight:700;color:var(--accent)">0%</span></div>';
+    html += '<div style="height:4px;background:var(--surface-primary,#111);border-radius:2px;margin-bottom:16px;overflow:hidden"><div id="completionBar" style="height:100%;width:0%;background:var(--accent);border-radius:2px;transition:width .3s"></div></div>';
+    for (let i = 0; i < fields.length; i += 2) {
+        html += '<div class="field-row">';
+        for (let j = i; j < Math.min(i + 2, fields.length); j++) {
+            const f = fields[j];
+            html += '<div class="field"><label>' + f.label + (f.req ? ' <span class="req">*</span>' : '') + '</label>';
+            if (f.type === 'select') {
+                html += '<select id="cs_' + f.id + '" onchange="updateCompletionBar(\'' + cat + '\')"><option value="">Select...</option>';
+                (f.opts || []).forEach(o => { html += '<option value="' + o + '">' + o + '</option>'; });
+                html += '</select>';
+            } else {
+                html += '<input type="' + (f.type || 'text') + '" id="cs_' + f.id + '"' + (f.ph ? ' placeholder="' + f.ph + '"' : '') + (f.step ? ' step="' + f.step + '"' : '') + ' oninput="updateCompletionBar(\'' + cat + '\')">';
+            }
+            html += '</div>';
+        }
+        if (fields.length % 2 !== 0 && i + 2 >= fields.length && fields.length % 2 === 1) html += '<div class="field"></div>';
+        html += '</div>';
+    }
+    container.innerHTML = html;
+    updateCompletionBar(cat);
+}
+
+function updateCompletionBar(cat) {
+    const fields = CF[cat];
+    if (!fields) return;
+    let filled = 0, total = fields.length;
+    fields.forEach(f => {
+        const el = document.getElementById('cs_' + f.id);
+        if (el && el.value.trim()) filled++;
+    });
+    const pct = Math.round((filled / total) * 100);
+    const bar = document.getElementById('completionBar');
+    const txt = document.getElementById('completionPct');
+    if (bar) { bar.style.width = pct + '%'; bar.style.background = pct >= 90 ? 'var(--accent,#4ECDC4)' : pct >= 50 ? '#f0ad4e' : '#ff6b6b'; }
+    if (txt) { txt.textContent = pct + '%'; txt.style.color = pct >= 90 ? 'var(--accent,#4ECDC4)' : pct >= 50 ? '#f0ad4e' : '#ff6b6b'; }
+}
+
+function getComponentSpecs(cat) {
+    const fields = CF[cat];
+    if (!fields) return {};
+    const specs = {};
+    fields.forEach(f => {
+        const el = document.getElementById('cs_' + f.id);
+        if (el && el.value.trim()) {
+            specs[f.id] = f.type === 'number' ? parseFloat(el.value) || el.value : el.value.trim();
+        }
+    });
+    return specs;
+}
+
+function validateCompletion(cat) {
+    const fields = CF[cat];
+    if (!fields) return true;
+    let filled = 0;
+    fields.forEach(f => { const el = document.getElementById('cs_' + f.id); if (el && el.value.trim()) filled++; });
+    return (filled / fields.length) >= 0.9;
+}
 
 const PLATFORM_HEADERS = ['name','manufacturer','country','category','type','description','mtow_kg','payload_kg','endurance_min','range_km','speed_max_kmh','propulsion','ndaa','blue_uas','combat_proven','source_url'];
 const COMPONENT_HEADERS = ['name','manufacturer','country','category','description','price_usd','specs','ndaa','blue_uas','combat_proven','source_url'];
