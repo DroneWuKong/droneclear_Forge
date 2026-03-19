@@ -166,6 +166,13 @@ def sync_handbook_data():
         forge_db = json.load(f)
 
     # Replace components from handbook
+    # Component categories to sync from handbook
+    COMPONENT_CATEGORIES = [
+        'antennas', 'batteries', 'escs', 'flight_controllers', 'fpv_cameras',
+        'frames', 'gps_modules', 'motors', 'propellers', 'receivers',
+        'stacks', 'video_transmitters', 'mesh_radios'
+    ]
+
     for cat in COMPONENT_CATEGORIES:
         json_path = os.path.join(parts_dir, f'{cat}.json')
         if os.path.exists(json_path):
