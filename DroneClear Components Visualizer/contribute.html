@@ -1,0 +1,383 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Contribute — Forge</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&family=Source+Serif+4:opsz,wght@8..60,400;8..60,600;8..60,700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="{% static 'base.css' %}?v=2">
+    <link rel="stylesheet" href="{% static 'layout.css' %}?v=3">
+    <link rel="stylesheet" href="{% static 'components.css' %}?v=2">
+    <link rel="stylesheet" href="{% static 'utilities.css' %}?v=2">
+    <script src="https://unpkg.com/@phosphor-icons/web"></script>
+    <script>
+        (function(){const s=localStorage.getItem('dc-theme');document.documentElement.setAttribute('data-theme',s||'dark')})();
+    </script>
+    <style>
+        .contribute-form{max-width:720px;margin:0 auto}
+        .form-section{background:var(--surface-secondary,#1a1a2e);border-radius:12px;padding:24px;margin-bottom:16px}
+        .form-section h3{font-size:15px;font-weight:600;margin:0 0 16px;color:var(--accent,#4ECDC4);display:flex;align-items:center;gap:8px}
+        .field{margin-bottom:16px}
+        .field label{display:block;font-size:13px;font-weight:500;margin-bottom:6px;color:var(--text-secondary,#ccc)}
+        .field label .req{color:var(--accent,#4ECDC4);margin-left:2px}
+        .field input,.field select,.field textarea{width:100%;padding:10px 14px;border-radius:8px;border:1px solid var(--border-color,#333);background:var(--surface-primary,#111);color:var(--text-primary,#eee);font-family:inherit;font-size:14px}
+        .field textarea{min-height:80px;resize:vertical}
+        .field input:focus,.field select:focus,.field textarea:focus{outline:none;border-color:var(--accent,#4ECDC4)}
+        .field-row{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+        .field-row-3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px}
+        .field small{display:block;margin-top:4px;font-size:11px;color:var(--text-muted,#666)}
+        .submit-btn{background:var(--accent,#4ECDC4);color:#111;border:none;padding:14px 32px;border-radius:8px;font-size:15px;font-weight:700;font-family:inherit;cursor:pointer;width:100%;transition:all .2s}
+        .submit-btn:hover{opacity:.9;transform:translateY(-1px)}
+        .submit-btn:disabled{opacity:.4;cursor:not-allowed;transform:none}
+        .type-toggle{display:flex;gap:8px;margin-bottom:24px}
+        .type-btn{flex:1;padding:14px;border-radius:8px;border:2px solid var(--border-color,#333);background:transparent;color:var(--text-secondary,#aaa);font-size:14px;font-weight:600;font-family:inherit;cursor:pointer;text-align:center;transition:all .2s}
+        .type-btn.active{border-color:var(--accent,#4ECDC4);color:var(--accent,#4ECDC4);background:rgba(78,205,196,0.08)}
+        .type-btn i{display:block;font-size:24px;margin-bottom:6px}
+        .success-msg{background:rgba(78,205,196,0.1);border:1px solid var(--accent);border-radius:12px;padding:24px;text-align:center;display:none}
+        .success-msg h3{color:var(--accent);margin:0 0 8px}
+        .success-msg a{color:var(--accent)}
+        .error-msg{background:rgba(255,107,107,0.1);border:1px solid #ff6b6b;border-radius:12px;padding:16px;text-align:center;display:none;color:#ff6b6b;margin-bottom:16px}
+        .dynamic-fields{display:none}
+        .dynamic-fields.show{display:block}
+        @media(max-width:600px){.field-row,.field-row-3{grid-template-columns:1fr}}
+    </style>
+</head>
+<body>
+    <div class="app-container">
+        <div class="sidebar-overlay hidden" id="sidebar-overlay"></div>
+        <aside class="sidebar">
+            <div class="sidebar-header">
+                <div class="logo"><span class="logo-text">Forge</span><span class="logo-sub">Powered by DroneClear</span></div>
+            </div>
+            <nav class="sidebar-menu" style="border-top:1px solid var(--border-color);display:flex;flex-direction:column;gap:8px;padding-top:16px;">
+                <a href="/" class="btn btn-menu"><i class="ph ph-command"></i> Mission Control</a>
+                <a href="/builder/" class="btn btn-menu"><i class="ph ph-magic-wand"></i> Model Builder</a>
+                <a href="/guide/" class="btn btn-menu"><i class="ph ph-list-checks"></i> Build Guide</a>
+                <a href="/audit/" class="btn btn-menu"><i class="ph ph-clipboard-text"></i> Build Audit</a>
+                <a href="/academy/" class="btn btn-menu"><i class="ph ph-graduation-cap"></i> FPV Academy</a>
+                <a href="/platforms/" class="btn btn-menu"><i class="ph ph-shield-check"></i> Platforms</a>
+                <a href="/contribute/" class="btn btn-menu active"><i class="ph ph-plus-circle"></i> Contribute</a>
+                <a href="https://nvmilldoitmyself.com" target="_blank" class="btn btn-menu"><i class="ph ph-book-open-text"></i> Handbook</a>
+            </nav>
+        </aside>
+
+        <main class="main-content">
+            <header class="topbar">
+                <div style="display:flex;justify-content:space-between;width:100%;align-items:center">
+                    <div style="display:flex;align-items:center;gap:12px">
+                        <button class="btn btn-icon mobile-menu-btn" onclick="document.querySelector('.sidebar').classList.toggle('open');document.getElementById('sidebar-overlay').classList.toggle('hidden')"><i class="ph ph-list"></i></button>
+                        <h2 style="margin:0;font-size:18px"><i class="ph ph-plus-circle" style="color:var(--accent)"></i> Contribute to the Database</h2>
+                    </div>
+                </div>
+            </header>
+
+            <div style="padding:24px" class="contribute-form">
+                <div class="error-msg" id="errorMsg"></div>
+                <div class="success-msg" id="successMsg">
+                    <h3><i class="ph ph-check-circle"></i> Submission Received!</h3>
+                    <p>Your contribution has been submitted for review.</p>
+                    <p style="margin-top:8px"><a id="issueLink" href="#" target="_blank">View on GitHub →</a></p>
+                    <button onclick="resetForm()" style="margin-top:16px;padding:10px 24px;border-radius:8px;border:1px solid var(--accent);background:transparent;color:var(--accent);cursor:pointer;font-family:inherit;font-weight:600">Submit Another</button>
+                </div>
+
+                <div id="formContainer">
+                    <!-- Type Toggle -->
+                    <div class="type-toggle">
+                        <button class="type-btn active" onclick="setType('platform',this)" id="btnPlatform">
+                            <i class="ph ph-drone"></i>Platform / Drone
+                        </button>
+                        <button class="type-btn" onclick="setType('component',this)" id="btnComponent">
+                            <i class="ph ph-cpu"></i>Component / Part
+                        </button>
+                    </div>
+
+                    <!-- Common Fields -->
+                    <div class="form-section">
+                        <h3><i class="ph ph-identification-card"></i> Basic Information</h3>
+                        <div class="field">
+                            <label>Product / Platform Name <span class="req">*</span></label>
+                            <input type="text" id="name" placeholder="e.g. Spirit HL, Brave 55A ESC, VANDAL Motor" required>
+                        </div>
+                        <div class="field-row">
+                            <div class="field">
+                                <label>Manufacturer <span class="req">*</span></label>
+                                <input type="text" id="manufacturer" placeholder="e.g. Ascent Aerosystems">
+                            </div>
+                            <div class="field">
+                                <label>Country <span class="req">*</span></label>
+                                <input type="text" id="country" placeholder="e.g. USA, Ukraine, Israel">
+                            </div>
+                        </div>
+                        <div class="field">
+                            <label>Description <span class="req">*</span></label>
+                            <textarea id="description" placeholder="2-3 sentences. What is it, what does it do, why does it matter?"></textarea>
+                        </div>
+                        <div class="field">
+                            <label>Source URL</label>
+                            <input type="url" id="source_url" placeholder="https://manufacturer.com/product-page">
+                            <small>Manufacturer page, datasheet, or article</small>
+                        </div>
+                    </div>
+
+                    <!-- Platform-specific fields -->
+                    <div class="dynamic-fields show" id="platformFields">
+                        <div class="form-section">
+                            <h3><i class="ph ph-airplane-tilt"></i> Platform Specifications</h3>
+                            <div class="field-row">
+                                <div class="field">
+                                    <label>Category <span class="req">*</span></label>
+                                    <select id="p_category">
+                                        <option value="">Select...</option>
+                                        <option value="fpv_strike">FPV Strike</option>
+                                        <option value="loitering_munition">Loitering Munition</option>
+                                        <option value="tactical_isr">Tactical ISR</option>
+                                        <option value="fixed_wing_isr">Fixed-Wing ISR</option>
+                                        <option value="male_ucav">MALE UCAV</option>
+                                        <option value="heavy_ucav">Heavy / Stealth UCAV</option>
+                                        <option value="deep_strike">Deep Strike</option>
+                                        <option value="heavy_lift">Heavy Lift</option>
+                                        <option value="armed_multirotor">Armed Multirotor</option>
+                                        <option value="maritime_isr">Maritime ISR</option>
+                                        <option value="swarm_autonomy">Swarm / Autonomy</option>
+                                        <option value="special_purpose">Special Purpose</option>
+                                    </select>
+                                </div>
+                                <div class="field">
+                                    <label>Type</label>
+                                    <select id="p_type">
+                                        <option value="">Select...</option>
+                                        <option value="multirotor">Multirotor</option>
+                                        <option value="fixed_wing">Fixed Wing</option>
+                                        <option value="vtol_fixed_wing">VTOL Fixed Wing</option>
+                                        <option value="helicopter">Helicopter</option>
+                                        <option value="jet">Jet</option>
+                                        <option value="coaxial">Coaxial</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="field-row-3">
+                                <div class="field">
+                                    <label>MTOW (kg)</label>
+                                    <input type="number" id="p_mtow" step="0.1" placeholder="e.g. 9.5">
+                                </div>
+                                <div class="field">
+                                    <label>Payload (kg)</label>
+                                    <input type="number" id="p_payload" step="0.1" placeholder="e.g. 3.6">
+                                </div>
+                                <div class="field">
+                                    <label>Endurance (min)</label>
+                                    <input type="number" id="p_endurance" placeholder="e.g. 50">
+                                </div>
+                            </div>
+                            <div class="field-row-3">
+                                <div class="field">
+                                    <label>Range (km)</label>
+                                    <input type="number" id="p_range" step="0.1" placeholder="e.g. 10">
+                                </div>
+                                <div class="field">
+                                    <label>Max Speed (km/h)</label>
+                                    <input type="number" id="p_speed" placeholder="e.g. 120">
+                                </div>
+                                <div class="field">
+                                    <label>Propulsion</label>
+                                    <input type="text" id="p_propulsion" placeholder="e.g. electric, turboprop">
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Component-specific fields -->
+                    <div class="dynamic-fields" id="componentFields">
+                        <div class="form-section">
+                            <h3><i class="ph ph-cpu"></i> Component Specifications</h3>
+                            <div class="field-row">
+                                <div class="field">
+                                    <label>Category <span class="req">*</span></label>
+                                    <select id="c_category">
+                                        <option value="">Select...</option>
+                                        <option value="motors">Motors</option>
+                                        <option value="escs">ESCs</option>
+                                        <option value="flight_controllers">Flight Controllers</option>
+                                        <option value="batteries">Batteries</option>
+                                        <option value="frames">Frames</option>
+                                        <option value="fpv_cameras">FPV Cameras</option>
+                                        <option value="video_transmitters">Video Transmitters</option>
+                                        <option value="receivers">Receivers</option>
+                                        <option value="antennas">Antennas</option>
+                                        <option value="propellers">Propellers</option>
+                                        <option value="gps_modules">GPS Modules</option>
+                                        <option value="mesh_radios">Mesh Radios / Datalinks</option>
+                                        <option value="thermal_cameras">Thermal Cameras</option>
+                                        <option value="companion_computers">Companion Computers</option>
+                                        <option value="sensors">Sensors (Lidar/Radar/IMU)</option>
+                                        <option value="counter_uas">Counter-UAS</option>
+                                        <option value="esad">ESAD / Safe-and-Arm</option>
+                                    </select>
+                                </div>
+                                <div class="field">
+                                    <label>Approx Price (USD)</label>
+                                    <input type="number" id="c_price" step="0.01" placeholder="e.g. 49.99">
+                                </div>
+                            </div>
+                            <div class="field">
+                                <label>Key Specifications</label>
+                                <textarea id="c_specs" placeholder="List the important specs. E.g. for a motor: 2807 stator, 1500KV, 6S, 58g, M3 mount. For an ESC: 55A continuous, AM32 firmware, 4-in-1, 30.5x30.5mm"></textarea>
+                                <small>Be as specific as possible — stator size, KV, current rating, resolution, weight, etc.</small>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Compliance -->
+                    <div class="form-section">
+                        <h3><i class="ph ph-shield-check"></i> Compliance & Status</h3>
+                        <div class="field-row-3">
+                            <div class="field">
+                                <label>NDAA Compliant</label>
+                                <select id="ndaa"><option value="">Unknown</option><option value="yes">Yes</option><option value="no">No</option></select>
+                            </div>
+                            <div class="field">
+                                <label>Blue UAS Listed</label>
+                                <select id="blue_uas"><option value="">Unknown</option><option value="yes">Yes</option><option value="no">No</option></select>
+                            </div>
+                            <div class="field">
+                                <label>Combat Proven</label>
+                                <select id="combat_proven"><option value="">Unknown</option><option value="yes">Yes</option><option value="no">No</option></select>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Submitter -->
+                    <div class="form-section">
+                        <h3><i class="ph ph-user"></i> About You (optional)</h3>
+                        <div class="field-row">
+                            <div class="field">
+                                <label>Your Name / Handle</label>
+                                <input type="text" id="submitter" placeholder="e.g. DroneWuKong">
+                            </div>
+                            <div class="field">
+                                <label>Email (for follow-up only)</label>
+                                <input type="email" id="email" placeholder="Optional">
+                            </div>
+                        </div>
+                    </div>
+
+                    <button class="submit-btn" id="submitBtn" onclick="submitContribution()">
+                        <i class="ph ph-paper-plane-tilt"></i> Submit for Review
+                    </button>
+                    <div style="text-align:center;margin-top:12px;font-size:11px;color:var(--text-muted)">
+                        Submissions are reviewed before being added to the database. A GitHub Issue will be created for tracking.
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+<script>
+let submissionType = 'platform';
+
+function setType(type, btn) {
+    submissionType = type;
+    document.querySelectorAll('.type-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    document.getElementById('platformFields').classList.toggle('show', type === 'platform');
+    document.getElementById('componentFields').classList.toggle('show', type === 'component');
+}
+
+async function submitContribution() {
+    const btn = document.getElementById('submitBtn');
+    const errEl = document.getElementById('errorMsg');
+    errEl.style.display = 'none';
+
+    // Validate required fields
+    const name = document.getElementById('name').value.trim();
+    const manufacturer = document.getElementById('manufacturer').value.trim();
+    const country = document.getElementById('country').value.trim();
+    const description = document.getElementById('description').value.trim();
+
+    if (!name || !manufacturer || !country || !description) {
+        errEl.textContent = 'Please fill in all required fields (Name, Manufacturer, Country, Description)';
+        errEl.style.display = 'block';
+        return;
+    }
+
+    const category = submissionType === 'platform'
+        ? document.getElementById('p_category').value
+        : document.getElementById('c_category').value;
+
+    if (!category) {
+        errEl.textContent = 'Please select a category';
+        errEl.style.display = 'block';
+        return;
+    }
+
+    btn.disabled = true;
+    btn.innerHTML = '<i class="ph ph-circle-notch"></i> Submitting...';
+
+    const payload = {
+        type: submissionType,
+        name, manufacturer, country, description,
+        category,
+        source_url: document.getElementById('source_url').value.trim(),
+        compliance: {
+            ndaa: document.getElementById('ndaa').value,
+            blue_uas: document.getElementById('blue_uas').value,
+            combat_proven: document.getElementById('combat_proven').value,
+        },
+        submitter: document.getElementById('submitter').value.trim(),
+        email: document.getElementById('email').value.trim(),
+    };
+
+    if (submissionType === 'platform') {
+        payload.specs = {
+            type: document.getElementById('p_type').value,
+            mtow_kg: parseFloat(document.getElementById('p_mtow').value) || null,
+            payload_kg: parseFloat(document.getElementById('p_payload').value) || null,
+            endurance_min: parseInt(document.getElementById('p_endurance').value) || null,
+            range_km: parseFloat(document.getElementById('p_range').value) || null,
+            speed_max_kmh: parseInt(document.getElementById('p_speed').value) || null,
+            propulsion: document.getElementById('p_propulsion').value.trim(),
+        };
+    } else {
+        payload.approx_price = parseFloat(document.getElementById('c_price').value) || null;
+        payload.specs_text = document.getElementById('c_specs').value.trim();
+    }
+
+    try {
+        const res = await fetch('https://nvmilldoitmyself.com/.netlify/functions/contribution-submit', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload),
+        });
+
+        const data = await res.json();
+
+        if (res.ok && data.issue_url) {
+            document.getElementById('formContainer').style.display = 'none';
+            document.getElementById('successMsg').style.display = 'block';
+            document.getElementById('issueLink').href = data.issue_url;
+        } else {
+            throw new Error(data.error || 'Submission failed');
+        }
+    } catch (err) {
+        errEl.textContent = 'Submission failed: ' + err.message;
+        errEl.style.display = 'block';
+    }
+
+    btn.disabled = false;
+    btn.innerHTML = '<i class="ph ph-paper-plane-tilt"></i> Submit for Review';
+}
+
+function resetForm() {
+    document.getElementById('formContainer').style.display = 'block';
+    document.getElementById('successMsg').style.display = 'none';
+    document.querySelectorAll('input, textarea, select').forEach(el => {
+        if (el.type !== 'button' && el.type !== 'submit') el.value = '';
+    });
+    setType('platform', document.getElementById('btnPlatform'));
+}
+</script>
+</body>
+</html>

@@ -31,6 +31,7 @@ PAGES = {
     'platforms.html': 'platforms/index.html',
     'browse.html': 'browse/index.html',
     'analytics.html': 'analytics/index.html',
+    'contribute.html': 'contribute/index.html',
 }
 
 # Static assets to copy (JS, CSS, JSON, images)
