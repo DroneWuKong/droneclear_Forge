@@ -150,7 +150,7 @@ def sync_handbook_data():
         return False
 
     subprocess.run(
-        ['git', '-C', DATA_CLONE_DIR, 'sparse-checkout', 'set', 'data/parts-db'],
+        ['git', '-C', DATA_CLONE_DIR, 'sparse-checkout', 'set', 'data/parts-db', 'docs/database'],
         capture_output=True, text=True
     )
 
@@ -192,6 +192,45 @@ def sync_handbook_data():
         if isinstance(guides, list):
             forge_db['build_guides'] = guides
             print(f"  build_guides: {len(guides)} guides")
+
+    # Merge platforms from drone_database.json (the enriched platform DB)
+    platform_db_path = os.path.join(DATA_CLONE_DIR, 'docs', 'database', 'drone_database.json')
+    if os.path.exists(platform_db_path):
+        with open(platform_db_path, 'r', encoding='utf-8') as f:
+            platform_db = json.load(f)
+        platforms = platform_db.get('platforms', [])
+        if platforms:
+            # Merge into drone_models, avoiding duplicates by name
+            existing_names = set(m.get('name', '').lower() for m in forge_db.get('drone_models', []))
+            added = 0
+            max_pid = max((int(m['pid'].split('-')[1]) for m in forge_db.get('drone_models', []) if m.get('pid', '').startswith('DM-')), default=0)
+            for p in platforms:
+                name = f"{p.get('manufacturer', '')} {p.get('platform_name', p.get('name', ''))}".strip()
+                if name.lower() in existing_names:
+                    continue
+                max_pid += 1
+                specs = p.get('specs', {})
+                entry = {
+                    "pid": f"DM-{max_pid:04d}",
+                    "name": name,
+                    "manufacturer": p.get('manufacturer', ''),
+                    "description": (p.get('notes', '') or f"{name}. {p.get('category', '').replace('_', ' ').title()} from {p.get('country', '')}.")[:500],
+                    "vehicle_type": specs.get('type', 'fixed_wing'),
+                    "build_class": "defense" if p.get('combat_proven') else "commercial",
+                    "category": p.get('category', ''),
+                    "image_file": "",
+                    "relations": {},
+                    "country": p.get('country', 'Unknown'),
+                    "compliance": p.get('compliance', {}),
+                    "specs": specs,
+                    "combat_proven": p.get('combat_proven', False),
+                    "status": p.get('status', 'production'),
+                    "tags": p.get('tags', []),
+                }
+                forge_db.setdefault('drone_models', []).append(entry)
+                existing_names.add(name.lower())
+                added += 1
+            print(f"  platforms: {added} merged from drone_database.json ({len(forge_db['drone_models'])} total)")
 
     # Write updated forge_database.json
     with open(local_db_path, 'w', encoding='utf-8') as f:
