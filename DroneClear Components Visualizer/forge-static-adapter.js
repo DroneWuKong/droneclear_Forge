@@ -39,6 +39,7 @@
             receivers: 'Receivers',
             stacks: 'Stacks',
             video_transmitters: 'Video Transmitters',
+            integrated_stacks: 'Integrated FC + Compute',
         };
         return Object.keys(_db.components).map((slug, i) => ({
             id: i + 1,
