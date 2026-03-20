@@ -171,7 +171,9 @@ def sync_handbook_data():
     COMPONENT_CATEGORIES = [
         'antennas', 'batteries', 'escs', 'flight_controllers', 'fpv_cameras',
         'frames', 'gps_modules', 'motors', 'propellers', 'receivers',
-        'stacks', 'video_transmitters', 'mesh_radios'
+        'stacks', 'video_transmitters', 'mesh_radios',
+        'companion_computers', 'integrated_stacks', 'counter_uas',
+        'esad', 'lidar', 'sensors', 'thermal_cameras',
     ]
 
     for cat in COMPONENT_CATEGORIES:
