@@ -111,6 +111,21 @@ function destroySTLViewer(containerId) {
 
     cancelAnimationFrame(viewer.animId);
     viewer.ro?.disconnect();
+
+    // POLISH-011: Dispose geometries and materials to prevent memory leak
+    if (viewer.scene) {
+        viewer.scene.traverse((obj) => {
+            if (obj.geometry) obj.geometry.dispose();
+            if (obj.material) {
+                if (Array.isArray(obj.material)) {
+                    obj.material.forEach(m => m.dispose());
+                } else {
+                    obj.material.dispose();
+                }
+            }
+        });
+    }
+
     viewer.controls?.dispose();
     viewer.renderer?.dispose();
 

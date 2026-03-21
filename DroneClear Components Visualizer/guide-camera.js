@@ -33,6 +33,10 @@ async function openCamera() {
         }
     } catch (err) {
         console.warn('Camera access denied or unavailable:', err);
+        // POLISH-020: Show user-facing feedback instead of silent fallback
+        if (typeof showToast === 'function') {
+            showToast('Camera access denied — using file upload instead.', 'info');
+        }
         // Fall back to file input
         closeCamera();
         guideDOM['camera-file-input']?.click();
@@ -79,6 +83,8 @@ function captureFrame() {
         _capturedBlob = blob;
         // Show preview
         if (preview) {
+            // POLISH-012: Revoke previous blob URL to prevent memory leak
+            if (preview.src && preview.src.startsWith("blob:")) URL.revokeObjectURL(preview.src);
             preview.src = URL.createObjectURL(blob);
             preview.classList.remove('hidden');
         }
@@ -168,6 +174,8 @@ function handleFileSelect(file) {
             acceptPhoto();
         }, 'image/jpeg', 0.85);
     };
+    // POLISH-012: Revoke on load to free blob memory
+    img.onload = () => URL.revokeObjectURL(img.src);
     img.src = URL.createObjectURL(file);
 }
 

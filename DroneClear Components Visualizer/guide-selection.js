@@ -70,7 +70,8 @@ function renderGuideSelection() {
     empty?.classList.add('hidden');
 
     grid.innerHTML = guideState.guides.map(g => `
-        <div class="guide-card" data-pid="${g.pid}" onclick="selectGuide('${g.pid}')">
+        <div class="guide-card" data-pid="${g.pid}" tabindex="0" role="button" onclick="selectGuide('${g.pid}')">
+    // POLISH-010: Keyboard accessible
             <div class="guide-card-thumb">
                 ${g.thumbnail
                     ? `<img src="${g.thumbnail}" alt="${g.name}" onerror="this.parentElement.innerHTML='<i class=\\'ph ph-clipboard-text\\'></i>'">`

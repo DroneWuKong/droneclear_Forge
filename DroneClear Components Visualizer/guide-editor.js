@@ -337,6 +337,20 @@ async function saveGuide() {
     const guide = guideState.editingGuide;
     if (!guide) return;
 
+    // POLISH-018: Validate required fields before submit
+    const name = getVal('ge-name').trim();
+    const time = parseInt(getVal('ge-time'));
+    if (!name) {
+        showToast('Guide name is required.', 'error');
+        document.getElementById('ge-name')?.focus();
+        return;
+    }
+    if (time !== undefined && time !== null && !isNaN(time) && time < 0) {
+        showToast('Estimated time cannot be negative.', 'error');
+        document.getElementById('ge-time')?.focus();
+        return;
+    }
+
     const payload = {
         pid: getVal('ge-pid'),
         name: getVal('ge-name'),
