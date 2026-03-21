@@ -4,12 +4,20 @@ views.py — DroneClear API views.
 Provides REST endpoints for: schema management, component CRUD, drone model CRUD,
 build guides, build sessions (with serial number tracking), step photo uploads,
 audit event logging, and maintenance utilities.
+
+Security:
+  SEC-001: All write endpoints require X-API-Key header (see permissions.py)
+  SEC-002: Maintenance endpoints have stricter auth + rate limiting
+  SEC-004: Bug reports rate-limited to 5/hour
+  SEC-005: Schema overwrite creates backup first
+  SEC-007: File uploads rate-limited to 10/minute
 """
 
 import os
 import json
 import hashlib
 import datetime
+import shutil
 import threading
 
 from django.conf import settings
@@ -22,6 +30,7 @@ from rest_framework import viewsets, status
 from rest_framework.parsers import MultiPartParser, FormParser
 from rest_framework.views import APIView
 from rest_framework.response import Response
+from rest_framework.throttling import ScopedRateThrottle
 
 from django.core.exceptions import ValidationError
 
@@ -36,6 +45,7 @@ from .serializers import (
     BuildSessionSerializer, StepPhotoSerializer,
 )
 from .upload_utils import validate_uploaded_file, ALLOWED_IMAGE_MIMES
+from .permissions import IsMaintenanceAllowed
 
 
 # ── Core CRUD ViewSets ─────────────────────────────────────
@@ -81,7 +91,10 @@ schema_lock = threading.Lock()
 class SchemaView(APIView):
     """
     API endpoint to read and write the master drone_parts_schema_v3.json file.
+    SEC-005: POST creates backup before overwrite.
+    SEC-002: POST requires API key.
     """
+    permission_classes = [IsMaintenanceAllowed]
     def get_schema_path(self):
         return os.path.join(settings.BASE_DIR, 'drone_parts_schema_v3.json')
 
@@ -124,6 +137,11 @@ class SchemaView(APIView):
 
         with schema_lock:
             try:
+                # SEC-005: Backup before overwrite
+                if os.path.exists(schema_path):
+                    backup_path = schema_path + f'.backup.{timezone.now().strftime("%Y%m%d_%H%M%S")}'
+                    shutil.copy2(schema_path, backup_path)
+
                 with open(schema_path, 'w', encoding='utf-8') as f:
                     json.dump(new_schema, f, indent=2)
                 return Response({"message": "Schema updated successfully."})
@@ -136,7 +154,11 @@ class SchemaView(APIView):
 class RestartServerView(APIView):
     """
     Touches wsgi.py to force a runserver restart.
+    SEC-002: Requires API key + rate limited to 3/hour.
     """
+    permission_classes = [IsMaintenanceAllowed]
+    throttle_classes = [ScopedRateThrottle]
+    throttle_scope = 'maintenance'
     def post(self, request):
         try:
             wsgi_path = os.path.join(settings.BASE_DIR, 'droneclear_backend', 'wsgi.py')
@@ -150,15 +172,28 @@ class RestartServerView(APIView):
 class BugReportView(APIView):
     """
     Saves a bug report to the bug_reports directory.
+    SEC-004: Rate limited to 5/hour. Max 100 reports on disk.
     """
+    throttle_classes = [ScopedRateThrottle]
+    throttle_scope = 'bug_reports'
+
+    MAX_REPORTS = 100
     def post(self, request):
         try:
+            reports_dir = os.path.join(settings.BASE_DIR, 'bug_reports')
+            os.makedirs(reports_dir, exist_ok=True)
+
+            # SEC-004: Cap on-disk reports
+            existing = [f for f in os.listdir(reports_dir) if f.startswith('bug_')]
+            if len(existing) >= self.MAX_REPORTS:
+                return Response(
+                    {"error": "Bug report storage full. Please contact the admin."},
+                    status=status.HTTP_429_TOO_MANY_REQUESTS,
+                )
+
             title = request.data.get('title', 'Untitled Bug')
             description = request.data.get('description', '')
             logs = request.data.get('logs', '')
-
-            reports_dir = os.path.join(settings.BASE_DIR, 'bug_reports')
-            os.makedirs(reports_dir, exist_ok=True)
 
             timestamp = timezone.now().strftime('%Y%m%d_%H%M%S')
             filename = f"bug_{timestamp}.txt"
@@ -181,7 +216,11 @@ class ResetToGoldenView(APIView):
     POST /api/maintenance/reset-to-golden/
     Wipes all components, drone models, and categories then re-seeds
     from the golden parts database in docs/golden_parts_db_seed/.
+    SEC-002: Requires API key + rate limited.
     """
+    permission_classes = [IsMaintenanceAllowed]
+    throttle_classes = [ScopedRateThrottle]
+    throttle_scope = 'maintenance'
     def post(self, request):
         try:
             from components.seed import seed_golden
@@ -209,7 +248,11 @@ class ResetToExamplesView(APIView):
     POST /api/maintenance/reset-to-examples/
     Wipes all components, drone models, and categories then re-seeds
     from the single-example entries in drone_parts_schema_v3.json.
+    SEC-002: Requires API key + rate limited.
     """
+    permission_classes = [IsMaintenanceAllowed]
+    throttle_classes = [ScopedRateThrottle]
+    throttle_scope = 'maintenance'
     def post(self, request):
         try:
             from components.seed import seed_examples
@@ -350,8 +393,11 @@ class GuideMediaUploadView(APIView):
     Files are tracked in GuideMediaFile for audit, cleanup, and future
     migration to secured storage (S3, Azure, etc.).
     Returns {url, type, filename, id} for insertion into the step's media array.
+    SEC-007: Rate limited to 10/minute.
     """
     parser_classes = [MultiPartParser, FormParser]
+    throttle_classes = [ScopedRateThrottle]
+    throttle_scope = 'uploads'
 
     def post(self, request):
         file = request.FILES.get('file')

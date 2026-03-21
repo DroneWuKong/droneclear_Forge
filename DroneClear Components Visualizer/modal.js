@@ -80,9 +80,8 @@ function openModal(comp) {
 
     elements.modalTags.innerHTML = (comp.schema_data?.tags || []).map(t => `<span class="tag">${escapeHTML(t)}</span>`).join('');
 
-    // Specs & Notes
+    // Specs
     const specsHtml = [];
-    const notesHtml = [];
     const sd = comp.schema_data || {};
     const ignoredKeys = ['tags', 'compatibility', 'weight_g', '_compat_hard', '_compat_soft'];
 
@@ -143,12 +142,8 @@ function openModal(comp) {
 
     elements.modalSpecs.innerHTML = specsHtml.join('');
 
-    if (notesHtml.length > 0) {
-        elements.modalNotes.innerHTML = notesHtml.join('');
-        elements.modalNotesSection.classList.remove('hidden');
-    } else {
-        elements.modalNotesSection.classList.add('hidden');
-    }
+    // Notes section — currently unused, always hidden
+    elements.modalNotesSection.classList.add('hidden');
 
     // Compatibility section — filter out internal _compat arrays, format values with units
     const blueprintCompat = blueprint?.compatibility || {};

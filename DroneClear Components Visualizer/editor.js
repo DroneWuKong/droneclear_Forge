@@ -127,7 +127,9 @@ async function handleDeepEditLink(pid) {
 }
 
 async function fetchCategories() {
+    try {
     const res = await fetch('/api/categories/');
+    if (!res.ok) { console.error('Failed to fetch categories:', res.status); return; }
     const categories = await res.json();
 
     elements.nav.innerHTML = '';
@@ -172,6 +174,7 @@ async function fetchCategories() {
 
     const partsCountEl = document.getElementById('total-parts-count');
     if (partsCountEl) partsCountEl.textContent = `${totalParts} Parts`;
+    } catch (e) { console.error('fetchCategories failed:', e); }
 }
 
 // Keep FAB and topbar button in sync

@@ -512,8 +512,8 @@ function setupFilterListeners() {
     // =========================================================================
 
     elements.weightMin?.addEventListener('input', () => {
-        clearTimeout(weightDebounceTimer);
-        weightDebounceTimer = setTimeout(() => {
+        clearTimeout(weightMinDebounceTimer);
+        weightMinDebounceTimer = setTimeout(() => {
             let val = parseFloat(elements.weightMin.value);
 
             // Bounds check: Min cannot be strictly greater than Max
@@ -532,8 +532,8 @@ function setupFilterListeners() {
     });
 
     elements.weightMax?.addEventListener('input', () => {
-        clearTimeout(weightDebounceTimer);
-        weightDebounceTimer = setTimeout(() => {
+        clearTimeout(weightMaxDebounceTimer);
+        weightMaxDebounceTimer = setTimeout(() => {
             let val = parseFloat(elements.weightMax.value);
 
             // Bounds check: Max cannot be strictly less than Min

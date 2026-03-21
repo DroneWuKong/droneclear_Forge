@@ -589,7 +589,8 @@ function initComponentPicker(step) {
         newBtn.addEventListener('click', addAllBuildParts);
     }
 
-    // Close results on outside click
+    // Close results on outside click — DEBT-005: remove before re-adding to prevent stacking
+    document.removeEventListener('click', _closePickerOnOutsideClick);
     document.addEventListener('click', _closePickerOnOutsideClick);
 }
 

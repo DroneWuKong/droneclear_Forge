@@ -15,10 +15,16 @@ load_dotenv(BASE_DIR / '.env')
 # ---------------------------------------------------------------------------
 # Security
 # ---------------------------------------------------------------------------
-SECRET_KEY = os.environ.get(
-    'DJANGO_SECRET_KEY',
-    'django-insecure-dm!qx$+*kfqhv)hp8ap=)wt^ssic(+one*!_3^$dcpwig0tq53'
-)
+SECRET_KEY = os.environ.get('DJANGO_SECRET_KEY', '')
+if not SECRET_KEY:
+    import warnings
+    warnings.warn(
+        "DJANGO_SECRET_KEY not set — using auto-generated ephemeral key. "
+        "Sessions will not persist across restarts. Set DJANGO_SECRET_KEY in .env for production.",
+        RuntimeWarning,
+    )
+    import secrets
+    SECRET_KEY = secrets.token_urlsafe(50)
 
 # ---------------------------------------------------------------------------
 # Application definition
@@ -118,3 +124,22 @@ DATA_UPLOAD_MAX_MEMORY_SIZE = 12 * 1024 * 1024    # 12 MB
 # Misc
 # ---------------------------------------------------------------------------
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
+
+# ---------------------------------------------------------------------------
+# REST Framework — SEC-001: Default authentication via API key
+# ---------------------------------------------------------------------------
+REST_FRAMEWORK = {
+    'DEFAULT_AUTHENTICATION_CLASSES': [],
+    'DEFAULT_PERMISSION_CLASSES': [
+        'components.permissions.HasAPIKey',
+    ],
+    'DEFAULT_THROTTLE_CLASSES': [
+        'rest_framework.throttling.AnonRateThrottle',
+    ],
+    'DEFAULT_THROTTLE_RATES': {
+        'anon': '60/minute',         # General API rate limit
+        'uploads': '10/minute',      # SEC-007: File upload rate limit
+        'bug_reports': '5/hour',     # SEC-004: Bug report rate limit
+        'maintenance': '3/hour',     # SEC-002: Maintenance endpoint rate limit
+    },
+}

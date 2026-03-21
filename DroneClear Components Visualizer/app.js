@@ -31,17 +31,7 @@ function setupEventListeners() {
     elements.fileUpload?.addEventListener('change', handleFileUpload);
     elements.searchInput.addEventListener('input', handleSearch);
 
-    // Global Escape key — close topmost open modal / drawer
-    document.addEventListener('keydown', (e) => {
-        if (e.key !== 'Escape') return;
-        const helpModal = document.getElementById('help-modal');
-        if (!elements.saveBuildModal?.classList.contains('hidden')) { closeSaveBuildModal(); return; }
-        if (!elements.loadBuildModal?.classList.contains('hidden')) { closeLoadBuildModal(); return; }
-        if (!helpModal?.classList.contains('hidden')) { helpModal.classList.add('hidden'); return; }
-        if (!elements.modal?.classList.contains('hidden')) { closeModal(); return; }
-        if (!elements.buildDrawer?.classList.contains('closed')) { closeBuildDrawer(); return; }
-        if (wizardActive) { exitWizard(false); return; }
-    });
+    // DEBT-003: Escape key handled by shortcuts.js — removed duplicate handler here
 
     // Component modal
     elements.modalCloseBtn.addEventListener('click', closeModal);

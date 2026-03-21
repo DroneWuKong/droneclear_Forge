@@ -110,6 +110,8 @@ let currentManufacturer = '';
 let currentWeightMin = null;
 let currentWeightMax = null;
 let weightDebounceTimer = null;
+let weightMinDebounceTimer = null;  // DEBT-006: Separate timer for min weight
+let weightMaxDebounceTimer = null;  // DEBT-006: Separate timer for max weight
 let searchDebounceTimer = null;
 
 // --- Dynamic Attribute Filters ---
@@ -127,7 +129,8 @@ const i18n = {
         titleBuildTotal: 'Total Build Cost',
         titleBuildWeight: 'Est. Total Weight',
         emptyBuild: 'Your build is currently empty. Click "Add to Build" on a component to get started.',
-        btnCheckCompat: 'Check Compatibility'
+        btnCheckCompat: 'Check Compatibility',
+        errLoadDesc: 'Failed to load data. Please make sure the file is in the same directory.',
     },
     fr: {
         lblCompatible: 'Compatible',
@@ -135,7 +138,8 @@ const i18n = {
         titleBuildTotal: 'Coût Total',
         titleBuildWeight: 'Poids Total Estimé',
         emptyBuild: 'Votre montage est actuellement vide. Cliquez sur "Ajouter au Montage" sur un composant.',
-        btnCheckCompat: 'Vérifier la Compatibilité'
+        btnCheckCompat: 'Vérifier la Compatibilité',
+        errLoadDesc: 'Échec du chargement. Assurez-vous que le fichier est dans le répertoire.',
     }
 };
 
