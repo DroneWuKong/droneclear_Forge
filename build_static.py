@@ -45,6 +45,7 @@ PAGES = {
     'fc-firmware-guide.html': 'fc-firmware-guide/index.html',
     'compliance.html': 'compliance/index.html',
     'compare.html': 'compare/index.html',
+    'cost.html': 'cost/index.html',
 }
 
 # Static assets to copy (JS, CSS, JSON, images)
