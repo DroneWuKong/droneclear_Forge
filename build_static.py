@@ -38,6 +38,7 @@ PAGES = {
     'tak-guide.html': 'tak-guide/index.html',
     'ai-guide.html': 'ai-guide/index.html',
     'cuas-guide.html': 'cuas-guide/index.html',
+    'swarm-guide.html': 'swarm-guide/index.html',
     'guides-hub.html': 'guides/index.html',
     'fc-firmware-guide.html': 'fc-firmware-guide/index.html',
 }
