@@ -44,6 +44,7 @@ PAGES = {
     'guides-hub.html': 'guides/index.html',
     'fc-firmware-guide.html': 'fc-firmware-guide/index.html',
     'compliance.html': 'compliance/index.html',
+    'compare.html': 'compare/index.html',
 }
 
 # Static assets to copy (JS, CSS, JSON, images)
