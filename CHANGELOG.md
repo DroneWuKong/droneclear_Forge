@@ -5,6 +5,51 @@
 
 ---
 
+## Session 2026-03-21 — OpenHD Audit, OpenIPC Mining, Full Backlog Clearance, 3 New Tools
+
+**Agent**: Claude
+**Branch**: `master`
+**Commits**: 51
+
+### Summary
+Massive session covering community feedback response (OpenHD antenna/range audit), new org mining (OpenIPC — 120 repos), complete technical debt clearance (12/12 DEBT items), all POLISH items resolved (11 closed, 2 WONTFIX), 3 queued features shipped (Compliance Dashboard, Platform Compare, Build Cost Estimator), 3 FEAT items implemented (component clone, CSV export, audit print), data enrichment (thermal sensors, contracts, funding, parts pricing from 6% to 99.7%), mobile layout fix, and OpenIPC handbook chapter.
+
+### Changes
+| Category | Description |
+|----------|-------------|
+| feat | **Compliance Dashboard** (`/compliance/`) — Blue UAS/NDAA/ITAR traffic-light view with 5 summary cards, filterable table, country chips |
+| feat | **Platform Compare Tool** (`/compare/`) — side-by-side spec cards for 2-3 platforms with best/worst highlighting |
+| feat | **Build Cost Estimator** (`/cost/`) — BOM cost + weight rollup with gauges, weight breakdown bar, full BOM table |
+| feat | Component cloning (FEAT-001) — clone icon on library items, pre-fills form |
+| feat | Build CSV export (FEAT-002) — downloads BOM as CSV with totals |
+| feat | Audit print/PDF (FEAT-009) — Print button on audit records with @media print styles |
+| fix | OpenHD guide range claims — stock antennas = 1-3km (was "5-20km typical"). Added antenna section with OpenHD's own Friis calculations, community antenna table, tracker info. Per Ivan Álvarez + Rapha (admin) Telegram feedback |
+| fix | OpenHD guide audited against openhdfpv.org — 9 corrections (latency, SBCs, BLM8812EU, bidirectional telemetry, dual cam, RC control, encryption, chipset diversity, ImageWriter) |
+| fix | Mobile build drawer — footer/buttons cut off. Added 100dvh + compact mobile overrides |
+| data | OpenIPC mined (120 repos, 1.9K★) — SWR-0010 in Forge DB with FPV presets, divinus architecture, smolrtsp, ipctool |
+| data | Parts pricing: 6% → 99.7% (2948/2958 parts seeded with retail prices) |
+| data | Thermal sensors: 28% → 66% (56 platforms enriched) |
+| data | Contracts: 14% → 26% (17 platforms with export/defense program data) |
+| data | Funding: 22% → 36% (21 platforms with revenue/VC/IPO data) |
+| data | 41 platforms synced handbook → Forge (country, compliance, combat-proven flags) |
+| debt | DEBT-008: 15 CSS classes extracted from template.html (80→48 inline styles) |
+| debt | DEBT-009: Event listener audit — all 130+ listeners confirmed safe |
+| debt | DEBT-010: 11 showToast calls added to silent catch blocks |
+| debt | DEBT-012: innerHTML XSS audit — all already use _esc()/escHTML() |
+| polish | POLISH-003/009/010/011/012/015/016/017/018/019/020 — all closed |
+| docs | OpenIPC section added to handbook comms-datalinks chapter |
+| docs | Handbook OpenHD section audited — latency, range, security, dual cam, diversity |
+| docs | Handbook antenna chapter — long-range setup section with OpenHD's own data |
+
+### Backlog Updates
+- DEBT-001 through DEBT-012: **All closed**
+- POLISH-003/009/010/011/012/015/016/017/018/019/020: **All closed**
+- POLISH-013/014: **WONTFIX** (global scope intentional; CSS split risk > benefit)
+- FEAT-001/002/009: **Closed** (clone, CSV export, print)
+- Remaining open (need backend): FEAT-003, 004, 005, 006, 008
+
+---
+
 ## Session 2026-03-08-5 — Seed Drone Models, Build Guides & Bug Fixes
 
 **Agent**: Claude
