@@ -1,0 +1,414 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Compliance Dashboard — Forge</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&family=Source+Serif+4:opsz,wght@8..60,400;8..60,600;8..60,700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="{% static 'base.css' %}">
+    <link rel="stylesheet" href="{% static 'layout.css' %}?v=4">
+    <link rel="stylesheet" href="{% static 'components.css' %}">
+    <link rel="stylesheet" href="{% static 'utilities.css' %}">
+    <script src="https://unpkg.com/@phosphor-icons/web"></script>
+    <script>
+        (function(){
+            const saved = localStorage.getItem('dc-theme');
+            document.documentElement.setAttribute('data-theme', saved ? saved : 'dark');
+        })();
+    </script>
+    <style>
+        .compliance-page { max-width: 1400px; margin: 0 auto; padding: 32px 24px; }
+
+        /* ── Summary Cards ── */
+        .compliance-summary {
+            display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 16px; margin-bottom: 32px;
+        }
+        .summary-card {
+            background: var(--bg-panel); border: 1px solid var(--border-color);
+            border-radius: var(--radius-md); padding: 20px; text-align: center;
+            position: relative; overflow: hidden; cursor: pointer;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+        .summary-card:hover { transform: translateY(-2px); box-shadow: 0 8px 24px rgba(0,0,0,0.3); }
+        .summary-card.active { border-color: var(--accent-red); box-shadow: 0 0 0 1px var(--accent-red); }
+        .summary-card::before {
+            content: ''; position: absolute; top: 0; left: 0; width: 100%; height: 3px;
+        }
+        .summary-card.tier-green::before { background: #22c55e; }
+        .summary-card.tier-yellow::before { background: #eab308; }
+        .summary-card.tier-orange::before { background: #f97316; }
+        .summary-card.tier-red::before { background: #ef4444; }
+        .summary-card.tier-all::before { background: linear-gradient(90deg, #22c55e, #eab308, #f97316, #ef4444); }
+        .summary-count { font-size: 36px; font-weight: 700; font-family: 'JetBrains Mono', monospace; line-height: 1; }
+        .tier-green .summary-count { color: #22c55e; }
+        .tier-yellow .summary-count { color: #eab308; }
+        .tier-orange .summary-count { color: #f97316; }
+        .tier-red .summary-count { color: #ef4444; }
+        .tier-all .summary-count { color: var(--text-main); }
+        .summary-label { font-size: 12px; color: var(--text-muted); margin-top: 6px; text-transform: uppercase; letter-spacing: 0.5px; }
+        .summary-desc { font-size: 11px; color: var(--text-muted); margin-top: 4px; opacity: 0.7; }
+
+        /* ── Controls ── */
+        .compliance-controls {
+            display: flex; gap: 12px; margin-bottom: 24px; flex-wrap: wrap; align-items: center;
+        }
+        .compliance-search {
+            flex: 1; min-width: 200px; max-width: 400px; position: relative;
+        }
+        .compliance-search input {
+            width: 100%; padding: 10px 12px 10px 36px;
+            background: var(--bg-dark); border: 1px solid var(--border-color);
+            color: var(--text-main); border-radius: var(--radius-sm); outline: none; font-size: 14px;
+        }
+        .compliance-search input:focus { border-color: var(--accent-red); }
+        .compliance-search i { position: absolute; left: 12px; top: 50%; transform: translateY(-50%); color: var(--text-muted); }
+        .filter-chip {
+            padding: 6px 14px; font-size: 12px; border-radius: 20px; cursor: pointer;
+            border: 1px solid var(--border-color); background: transparent; color: var(--text-muted);
+            transition: all 0.2s; font-family: 'JetBrains Mono', monospace;
+        }
+        .filter-chip:hover { border-color: var(--text-main); color: var(--text-main); }
+        .filter-chip.active { background: var(--accent-red); border-color: var(--accent-red); color: #000; font-weight: 600; }
+        .sort-select {
+            padding: 8px 12px; background: var(--bg-dark); border: 1px solid var(--border-color);
+            color: var(--text-main); border-radius: var(--radius-sm); font-size: 13px; outline: none;
+        }
+
+        /* ── Table ── */
+        .compliance-table-wrap {
+            background: var(--bg-panel); border: 1px solid var(--border-color);
+            border-radius: var(--radius-md); overflow: hidden;
+        }
+        .compliance-table {
+            width: 100%; border-collapse: collapse; font-size: 13px;
+        }
+        .compliance-table thead th {
+            padding: 12px 14px; text-align: left; font-size: 11px;
+            text-transform: uppercase; letter-spacing: 0.5px; color: var(--text-muted);
+            border-bottom: 2px solid var(--border-color); background: var(--bg-dark);
+            position: sticky; top: 0; z-index: 1; cursor: pointer; user-select: none;
+            white-space: nowrap;
+        }
+        .compliance-table thead th:hover { color: var(--text-main); }
+        .compliance-table thead th .sort-arrow { margin-left: 4px; font-size: 10px; opacity: 0.5; }
+        .compliance-table thead th.sorted .sort-arrow { opacity: 1; color: var(--accent-red); }
+        .compliance-table tbody tr {
+            border-bottom: 1px solid rgba(255,255,255,0.04);
+            transition: background 0.15s;
+        }
+        .compliance-table tbody tr:hover { background: rgba(255,255,255,0.03); }
+        .compliance-table td { padding: 10px 14px; vertical-align: middle; }
+        .compliance-table .platform-name { font-weight: 600; color: var(--text-main); white-space: nowrap; }
+        .compliance-table .platform-mfr { color: var(--text-muted); font-size: 12px; }
+
+        /* ── Traffic Light Badges ── */
+        .badge {
+            display: inline-flex; align-items: center; gap: 4px; padding: 3px 10px;
+            border-radius: 12px; font-size: 11px; font-weight: 600;
+            font-family: 'JetBrains Mono', monospace; white-space: nowrap;
+        }
+        .badge-green { background: rgba(34,197,94,0.15); color: #22c55e; border: 1px solid rgba(34,197,94,0.3); }
+        .badge-yellow { background: rgba(234,179,8,0.15); color: #eab308; border: 1px solid rgba(234,179,8,0.3); }
+        .badge-red { background: rgba(239,68,68,0.15); color: #ef4444; border: 1px solid rgba(239,68,68,0.3); }
+        .badge-muted { background: rgba(100,100,100,0.15); color: var(--text-muted); border: 1px solid rgba(100,100,100,0.3); }
+        .badge-combat { background: rgba(168,85,247,0.15); color: #a855f7; border: 1px solid rgba(168,85,247,0.3); }
+
+        .tier-dot {
+            width: 10px; height: 10px; border-radius: 50%; display: inline-block;
+        }
+        .tier-dot.green { background: #22c55e; box-shadow: 0 0 6px rgba(34,197,94,0.5); }
+        .tier-dot.yellow { background: #eab308; box-shadow: 0 0 6px rgba(234,179,8,0.5); }
+        .tier-dot.orange { background: #f97316; box-shadow: 0 0 6px rgba(249,115,22,0.5); }
+        .tier-dot.red { background: #ef4444; box-shadow: 0 0 6px rgba(239,68,68,0.5); }
+
+        .country-flag { font-size: 12px; color: var(--text-muted); }
+        .note-text { font-size: 11px; color: var(--text-muted); max-width: 300px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .note-text:hover { white-space: normal; }
+
+        .results-count { font-size: 13px; color: var(--text-muted); margin-bottom: 12px; }
+        .empty-state { padding: 48px; text-align: center; color: var(--text-muted); font-size: 14px; }
+
+        /* ── Legend ── */
+        .compliance-legend {
+            display: flex; gap: 24px; flex-wrap: wrap; margin-bottom: 24px;
+            padding: 16px; background: var(--bg-dark); border-radius: var(--radius-sm);
+            border: 1px solid var(--border-color); font-size: 12px;
+        }
+        .legend-item { display: flex; align-items: center; gap: 6px; color: var(--text-muted); }
+
+        @media (max-width: 768px) {
+            .compliance-summary { grid-template-columns: repeat(2, 1fr); }
+            .compliance-table { font-size: 12px; }
+            .compliance-table td, .compliance-table th { padding: 8px 10px; }
+            .note-text { display: none; }
+        }
+    </style>
+</head>
+<body>
+    <div class="app-container" style="display: flex; flex-direction: column; min-height: 100vh;">
+        <!-- Topbar -->
+        <header class="topbar" style="padding: 12px 24px; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border-color);">
+            <div style="display: flex; align-items: center; gap: 16px;">
+                <a href="/" style="text-decoration: none; display: flex; align-items: center; gap: 8px;">
+                    <span style="font-size: 18px; font-weight: 700; color: var(--text-main); font-family: 'JetBrains Mono', monospace;">Forge</span>
+                    <span style="font-size: 11px; color: var(--text-muted);">/ Compliance</span>
+                </a>
+            </div>
+            <div style="display: flex; align-items: center; gap: 12px;">
+                <a href="/platforms/" style="color: var(--text-muted); text-decoration: none; font-size: 13px;">Platforms</a>
+                <a href="/guides/" style="color: var(--text-muted); text-decoration: none; font-size: 13px;">Guides</a>
+                <button class="dark-mode-toggle" id="dark-mode-toggle" title="Toggle dark mode" aria-label="Toggle dark mode">
+                    <i class="ph ph-moon" id="dark-mode-icon"></i>
+                </button>
+            </div>
+        </header>
+
+        <main class="compliance-page">
+            <div style="margin-bottom: 24px;">
+                <h1 style="font-size: 24px; font-weight: 700; margin-bottom: 4px;">Compliance Dashboard</h1>
+                <p style="font-size: 14px; color: var(--text-muted);">Blue UAS, NDAA §848, ITAR, and country-of-origin status for all platforms in the Forge database.</p>
+            </div>
+
+            <!-- Summary Cards -->
+            <div class="compliance-summary" id="summary-cards"></div>
+
+            <!-- Legend -->
+            <div class="compliance-legend">
+                <div class="legend-item"><span class="tier-dot green"></span> Blue UAS + NDAA — cleared for US Gov procurement</div>
+                <div class="legend-item"><span class="tier-dot yellow"></span> NDAA compliant — no adversary components</div>
+                <div class="legend-item"><span class="tier-dot orange"></span> Non-NDAA — commercial / allied nation</div>
+                <div class="legend-item"><span class="tier-dot red"></span> Adversary nation — banned / restricted</div>
+                <div class="legend-item"><span class="badge badge-combat" style="font-size:10px;">COMBAT</span> Combat-proven in conflict</div>
+            </div>
+
+            <!-- Controls -->
+            <div class="compliance-controls">
+                <div class="compliance-search">
+                    <i class="ph ph-magnifying-glass"></i>
+                    <input type="text" id="comp-search" placeholder="Search platforms, manufacturers, countries...">
+                </div>
+                <div id="filter-chips" style="display: flex; gap: 8px; flex-wrap: wrap;"></div>
+                <select class="sort-select" id="sort-select">
+                    <option value="tier">Sort: Compliance Tier</option>
+                    <option value="name">Sort: Name A-Z</option>
+                    <option value="country">Sort: Country</option>
+                    <option value="manufacturer">Sort: Manufacturer</option>
+                </select>
+            </div>
+
+            <div class="results-count" id="results-count"></div>
+
+            <!-- Table -->
+            <div class="compliance-table-wrap">
+                <table class="compliance-table">
+                    <thead>
+                        <tr>
+                            <th>Tier</th>
+                            <th>Platform</th>
+                            <th>Manufacturer</th>
+                            <th>Country</th>
+                            <th>Blue UAS</th>
+                            <th>NDAA §848</th>
+                            <th>Combat</th>
+                            <th>Notes</th>
+                        </tr>
+                    </thead>
+                    <tbody id="compliance-tbody"></tbody>
+                </table>
+            </div>
+            <div class="empty-state hidden" id="empty-state">
+                <i class="ph ph-magnifying-glass" style="font-size: 32px; margin-bottom: 8px; display: block;"></i>
+                No platforms match your filters.
+            </div>
+        </main>
+    </div>
+
+    <script src="{% static 'maintenance.js' %}"></script>
+    <script>
+    (function() {
+        'use strict';
+
+        let platforms = [];
+        let currentTier = 'all';
+        let currentCountryFilter = null;
+        let searchTerm = '';
+        let sortField = 'tier';
+
+        const ESC = s => {
+            if (s == null) return '';
+            const d = document.createElement('div');
+            d.textContent = String(s);
+            return d.innerHTML;
+        };
+
+        function getTier(p) {
+            const blue = p.blue_uas === true || p.compliance?.blue_uas === true;
+            const ndaa = p.ndaa_compliant === true || p.compliance?.ndaa_compliant === true;
+            const country = (p.country || '').toLowerCase();
+            const adversary = ['china', 'iran', 'russia', 'north korea'].some(c => country.includes(c));
+            if (blue && ndaa) return 'green';
+            if (ndaa && !blue) return 'yellow';
+            if (!ndaa && !adversary) return 'orange';
+            return 'red';
+        }
+
+        function tierOrder(t) { return { green: 0, yellow: 1, orange: 2, red: 3 }[t] ?? 4; }
+
+        function render() {
+            let filtered = platforms.filter(p => {
+                if (currentTier !== 'all' && getTier(p) !== currentTier) return false;
+                if (currentCountryFilter && (p.country || '').toLowerCase() !== currentCountryFilter.toLowerCase()) return false;
+                if (searchTerm) {
+                    const q = searchTerm.toLowerCase();
+                    const haystack = [p.name, p.manufacturer, p.country, p.compliance?.note || ''].join(' ').toLowerCase();
+                    if (!haystack.includes(q)) return false;
+                }
+                return true;
+            });
+
+            // Sort
+            filtered.sort((a, b) => {
+                if (sortField === 'tier') return tierOrder(getTier(a)) - tierOrder(getTier(b)) || a.name.localeCompare(b.name);
+                if (sortField === 'name') return a.name.localeCompare(b.name);
+                if (sortField === 'country') return (a.country || '').localeCompare(b.country || '') || a.name.localeCompare(b.name);
+                if (sortField === 'manufacturer') return (a.manufacturer || '').localeCompare(b.manufacturer || '') || a.name.localeCompare(b.name);
+                return 0;
+            });
+
+            // Results count
+            document.getElementById('results-count').textContent = `Showing ${filtered.length} of ${platforms.length} platforms`;
+
+            // Table
+            const tbody = document.getElementById('compliance-tbody');
+            const empty = document.getElementById('empty-state');
+
+            if (!filtered.length) {
+                tbody.innerHTML = '';
+                empty.classList.remove('hidden');
+                return;
+            }
+            empty.classList.add('hidden');
+
+            tbody.innerHTML = filtered.map(p => {
+                const tier = getTier(p);
+                const blue = p.blue_uas === true || p.compliance?.blue_uas === true;
+                const ndaa = p.ndaa_compliant === true || p.compliance?.ndaa_compliant === true;
+                const combat = p.compliance?.combat_proven === true;
+                const note = p.compliance?.note || '';
+
+                return `<tr>
+                    <td><span class="tier-dot ${tier}"></span></td>
+                    <td>
+                        <div class="platform-name">${ESC(p.name)}</div>
+                    </td>
+                    <td class="platform-mfr">${ESC(p.manufacturer || '—')}</td>
+                    <td class="country-flag">${ESC(p.country || 'Unknown')}</td>
+                    <td>${blue ? '<span class="badge badge-green"><i class="ph ph-seal-check"></i> Listed</span>' : '<span class="badge badge-muted">—</span>'}</td>
+                    <td>${ndaa ? '<span class="badge badge-green"><i class="ph ph-check"></i> Yes</span>' : '<span class="badge badge-red"><i class="ph ph-x"></i> No</span>'}</td>
+                    <td>${combat ? '<span class="badge badge-combat"><i class="ph ph-crosshair"></i> Yes</span>' : '<span class="badge badge-muted">—</span>'}</td>
+                    <td><span class="note-text" title="${ESC(note)}">${ESC(note)}</span></td>
+                </tr>`;
+            }).join('');
+        }
+
+        function renderSummary() {
+            const counts = { all: 0, green: 0, yellow: 0, orange: 0, red: 0 };
+            platforms.forEach(p => { counts[getTier(p)]++; counts.all++; });
+
+            const cards = [
+                { tier: 'all', label: 'All Platforms', count: counts.all, desc: 'Complete database' },
+                { tier: 'green', label: 'Blue UAS + NDAA', count: counts.green, desc: 'Cleared for US Gov' },
+                { tier: 'yellow', label: 'NDAA Compliant', count: counts.yellow, desc: 'No adversary components' },
+                { tier: 'orange', label: 'Non-NDAA', count: counts.orange, desc: 'Commercial / allied' },
+                { tier: 'red', label: 'Restricted', count: counts.red, desc: 'Adversary nation' },
+            ];
+
+            document.getElementById('summary-cards').innerHTML = cards.map(c =>
+                `<div class="summary-card tier-${c.tier} ${currentTier === c.tier ? 'active' : ''}" data-tier="${c.tier}">
+                    <div class="summary-count">${c.count}</div>
+                    <div class="summary-label">${c.label}</div>
+                    <div class="summary-desc">${c.desc}</div>
+                </div>`
+            ).join('');
+
+            // Wire clicks
+            document.querySelectorAll('.summary-card').forEach(card => {
+                card.addEventListener('click', () => {
+                    currentTier = card.dataset.tier;
+                    renderSummary();
+                    render();
+                });
+            });
+        }
+
+        function renderCountryChips() {
+            const countries = {};
+            platforms.forEach(p => {
+                const c = p.country || 'Unknown';
+                countries[c] = (countries[c] || 0) + 1;
+            });
+
+            const top = Object.entries(countries)
+                .sort((a, b) => b[1] - a[1])
+                .slice(0, 8);
+
+            document.getElementById('filter-chips').innerHTML = top.map(([c, n]) =>
+                `<button class="filter-chip ${currentCountryFilter === c ? 'active' : ''}" data-country="${ESC(c)}">${ESC(c)} (${n})</button>`
+            ).join('');
+
+            document.querySelectorAll('.filter-chip').forEach(chip => {
+                chip.addEventListener('click', () => {
+                    const country = chip.dataset.country;
+                    currentCountryFilter = currentCountryFilter === country ? null : country;
+                    renderCountryChips();
+                    render();
+                });
+            });
+        }
+
+        // Init
+        async function init() {
+            try {
+                const res = await fetch('forge_database.json');
+                if (!res.ok) throw new Error('Failed to load database');
+                const db = await res.json();
+                platforms = db.drone_models || [];
+                renderSummary();
+                renderCountryChips();
+                render();
+            } catch (err) {
+                console.error(err);
+                document.getElementById('compliance-tbody').innerHTML = '<tr><td colspan="8" style="text-align:center; padding:24px; color:var(--text-muted);">Failed to load database.</td></tr>';
+            }
+        }
+
+        // Wire search
+        document.getElementById('comp-search').addEventListener('input', (e) => {
+            searchTerm = e.target.value.trim();
+            render();
+        });
+
+        // Wire sort
+        document.getElementById('sort-select').addEventListener('change', (e) => {
+            sortField = e.target.value;
+            render();
+        });
+
+        // Dark mode
+        document.getElementById('dark-mode-toggle')?.addEventListener('click', () => {
+            const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+            document.documentElement.setAttribute('data-theme', isDark ? 'light' : 'dark');
+            localStorage.setItem('dc-theme', isDark ? 'light' : 'dark');
+            const icon = document.getElementById('dark-mode-icon');
+            if (icon) icon.className = isDark ? 'ph ph-moon' : 'ph ph-sun';
+        });
+
+        init();
+    })();
+    </script>
+</body>
+</html>

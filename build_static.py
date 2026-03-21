@@ -43,6 +43,7 @@ PAGES = {
     'swarm-selector.html': 'swarm/index.html',
     'guides-hub.html': 'guides/index.html',
     'fc-firmware-guide.html': 'fc-firmware-guide/index.html',
+    'compliance.html': 'compliance/index.html',
 }
 
 # Static assets to copy (JS, CSS, JSON, images)
