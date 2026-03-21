@@ -34,6 +34,8 @@ PAGES = {
     'contribute.html': 'contribute/index.html',
     'slam-selector.html': 'slam/index.html',
     'slam-guide.html': 'slam-guide/index.html',
+    'guides-hub.html': 'guides/index.html',
+    'fc-firmware-guide.html': 'fc-firmware-guide/index.html',
 }
 
 # Static assets to copy (JS, CSS, JSON, images)
