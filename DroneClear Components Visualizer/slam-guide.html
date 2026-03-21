@@ -1,0 +1,721 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SLAM Implementation Guide — Forge</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&family=Source+Serif+4:opsz,wght@8..60,400;8..60,600;8..60,700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="{% static 'base.css' %}?v=2">
+    <link rel="stylesheet" href="{% static 'layout.css' %}?v=3">
+    <link rel="stylesheet" href="{% static 'utilities.css' %}?v=2">
+    <script src="https://unpkg.com/@phosphor-icons/web"></script>
+    <script>
+        (function(){const s=localStorage.getItem('dc-theme');document.documentElement.setAttribute('data-theme',s||'dark')})();
+    </script>
+    <style>
+        .ig-container { max-width: 900px; margin: 0 auto; padding: 32px 24px 80px; }
+        .ig-hero { text-align: center; margin-bottom: 40px; }
+        .ig-hero h1 { font-size: 26px; font-weight: 700; background: linear-gradient(135deg, var(--accent-green) 0%, var(--accent-cyan) 100%); -webkit-background-clip:text; -webkit-text-fill-color:transparent; background-clip:text; margin: 0 0 8px; }
+        .ig-hero p { color: var(--text-muted); font-size: 14px; max-width: 640px; margin: 0 auto; line-height: 1.6; }
+
+        /* Setup selector */
+        .ig-setup { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px; margin-bottom: 32px; }
+        .ig-setup select { width: 100%; padding: 10px 12px; background: var(--bg-panel); border: 1px solid var(--border-color); border-radius: var(--radius-sm); color: var(--text-main); font-family: var(--font-family); font-size: 13px; cursor: pointer; appearance: none; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%23737373' d='M6 8L1 3h10z'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 12px center; }
+        .ig-setup select:focus { outline: none; border-color: var(--accent-green); }
+        .ig-setup-label { font-size: 10px; text-transform: uppercase; letter-spacing: 0.1em; color: var(--text-faint); margin-bottom: 4px; display: block; }
+
+        /* Phase navigation */
+        .ig-phases { display: flex; gap: 2px; margin-bottom: 32px; overflow-x: auto; }
+        .ig-phase-tab { padding: 10px 16px; background: var(--bg-panel); border: 1px solid var(--border-color); border-radius: var(--radius-sm); font-size: 12px; font-family: var(--font-family); color: var(--text-muted); cursor: pointer; white-space: nowrap; transition: all 0.2s; display: flex; align-items: center; gap: 6px; }
+        .ig-phase-tab:hover { border-color: var(--border-hover); color: var(--text-main); }
+        .ig-phase-tab.active { background: rgba(74,222,128,0.1); border-color: rgba(74,222,128,0.3); color: var(--accent-green); }
+        .ig-phase-tab .num { display: inline-flex; width: 20px; height: 20px; align-items: center; justify-content: center; border-radius: 50%; background: var(--bg-dark); font-size: 10px; font-weight: 700; }
+        .ig-phase-tab.active .num { background: var(--accent-green); color: var(--bg-dark); }
+        .ig-phase-tab.done .num { background: var(--accent-green); color: var(--bg-dark); }
+        .ig-phase-tab.done .num::after { content: '✓'; }
+        .ig-phase-tab.done .num-text { display: none; }
+
+        /* Content */
+        .ig-phase-content { display: none; }
+        .ig-phase-content.active { display: block; }
+
+        .ig-section { margin-bottom: 28px; }
+        .ig-section-title { font-size: 16px; font-weight: 700; color: var(--text-main); margin: 0 0 6px; display: flex; align-items: center; gap: 8px; }
+        .ig-section-title i { color: var(--accent-cyan); }
+        .ig-section-desc { font-size: 13px; color: var(--text-muted); line-height: 1.7; margin-bottom: 16px; }
+
+        /* Code blocks */
+        .ig-code { background: #0d0d0d; border: 1px solid var(--border-color); border-radius: var(--radius-sm); padding: 16px; font-family: var(--font-family); font-size: 12px; line-height: 1.7; color: #a3e635; overflow-x: auto; position: relative; margin-bottom: 16px; white-space: pre; }
+        .ig-code .comment { color: #525252; }
+        .ig-code .cmd { color: #22d3ee; }
+        .ig-code .path { color: #fbbf24; }
+        .ig-code .flag { color: #a78bfa; }
+        .ig-code-label { position: absolute; top: 8px; right: 12px; font-size: 9px; text-transform: uppercase; letter-spacing: 0.1em; color: var(--text-faint); background: #0d0d0d; padding: 2px 6px; }
+        .ig-copy { position: absolute; top: 8px; right: 80px; background: var(--bg-panel); border: 1px solid var(--border-color); border-radius: 4px; color: var(--text-muted); cursor: pointer; padding: 3px 8px; font-size: 11px; font-family: var(--font-family); }
+        .ig-copy:hover { color: var(--accent-cyan); border-color: var(--accent-cyan); }
+
+        /* Info/warning boxes */
+        .ig-info { padding: 14px 16px; border-radius: var(--radius-sm); font-size: 13px; line-height: 1.6; margin-bottom: 16px; display: flex; gap: 10px; }
+        .ig-info i { font-size: 18px; flex-shrink: 0; margin-top: 1px; }
+        .ig-info-blue { background: rgba(34,211,238,0.06); border: 1px solid rgba(34,211,238,0.15); color: var(--accent-cyan); }
+        .ig-info-yellow { background: rgba(251,191,36,0.06); border: 1px solid rgba(251,191,36,0.15); color: #fbbf24; }
+        .ig-info-green { background: rgba(74,222,128,0.06); border: 1px solid rgba(74,222,128,0.15); color: var(--accent-green); }
+        .ig-info-red { background: rgba(248,113,113,0.06); border: 1px solid rgba(248,113,113,0.15); color: var(--negative-red); }
+
+        /* Glossary cards */
+        .ig-glossary { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 12px; margin-bottom: 20px; }
+        .ig-gloss-card { background: var(--bg-panel); border: 1px solid var(--border-color); border-radius: var(--radius-sm); padding: 14px; }
+        .ig-gloss-card h4 { font-size: 13px; font-weight: 700; color: var(--accent-cyan); margin: 0 0 4px; }
+        .ig-gloss-card p { font-size: 12px; color: var(--text-muted); margin: 0; line-height: 1.5; }
+
+        /* Checklist */
+        .ig-check { display: flex; align-items: flex-start; gap: 10px; padding: 8px 0; font-size: 13px; color: var(--text-muted); cursor: pointer; }
+        .ig-check input { margin-top: 2px; accent-color: var(--accent-green); }
+        .ig-check.checked span { color: var(--accent-green); text-decoration: line-through; opacity: 0.6; }
+
+        /* Nav buttons */
+        .ig-nav { display: flex; justify-content: space-between; margin-top: 32px; padding-top: 20px; border-top: 1px solid var(--border-color); }
+        .ig-nav-btn { padding: 10px 20px; border-radius: var(--radius-sm); font-size: 13px; font-family: var(--font-family); cursor: pointer; display: flex; align-items: center; gap: 6px; transition: all 0.2s; }
+        .ig-nav-prev { background: var(--bg-panel); border: 1px solid var(--border-color); color: var(--text-muted); }
+        .ig-nav-next { background: var(--accent-green); border: 1px solid var(--accent-green); color: #000; font-weight: 600; }
+        .ig-nav-btn:hover { opacity: 0.85; }
+
+        /* Dynamic content based on selections */
+        .ig-dynamic { display: none; }
+        .ig-dynamic.show { display: block; }
+    </style>
+</head>
+<body>
+    <div class="app-container" style="flex-direction: column;">
+        <header class="topbar">
+            <div style="display: flex; justify-content: space-between; width: 100%; align-items: center;">
+                <div style="display: flex; align-items: center; gap: 12px;">
+                    <a href="/" style="text-decoration:none; display:flex; align-items:baseline; gap:8px;">
+                        <span style="font-size:20px; font-weight:700; background: linear-gradient(135deg, var(--accent-red) 0%, var(--accent-darkred) 100%); -webkit-background-clip:text; -webkit-text-fill-color:transparent; background-clip:text;">Forge</span>
+                        <span style="font-size:9px; font-weight:500; letter-spacing:0.12em; text-transform:uppercase; color:var(--text-faint);">Implementation Guide</span>
+                    </a>
+                </div>
+                <div style="display: flex; align-items: center; gap: 12px;">
+                    <a href="/slam/" style="text-decoration:none; font-size:12px; color:var(--text-muted);"><i class="ph ph-compass-tool"></i> SLAM Selector</a>
+                    <a href="/platforms/" style="text-decoration:none; font-size:12px; color:var(--text-muted);"><i class="ph ph-drone"></i> Platforms</a>
+                    <div style="width:1px;height:24px;background:var(--border-color);"></div>
+                    <button class="dark-mode-toggle" id="dark-mode-toggle" title="Toggle theme"><i class="ph ph-moon" id="dark-mode-icon"></i></button>
+                </div>
+            </div>
+        </header>
+
+        <div class="ig-container">
+            <div class="ig-hero">
+                <h1><i class="ph ph-rocket-launch"></i> From Parts on Desk to Autonomous Hover</h1>
+                <p>You've built the hardware. Now what? This guide walks you through every software step — from flashing an OS to your first FAST-LIO autonomous flight. No prior SLAM experience needed.</p>
+            </div>
+
+            <!-- Hardware selection -->
+            <div class="ig-setup">
+                <div>
+                    <span class="ig-setup-label"><i class="ph ph-cpu"></i> Companion Computer</span>
+                    <select id="sel-cc">
+                        <option value="jetson">NVIDIA Jetson (any)</option>
+                        <option value="apb">Orqa DTK APB</option>
+                        <option value="voxl2">ModalAI VOXL 2</option>
+                        <option value="rpi">Raspberry Pi 4/5</option>
+                        <option value="rb5">Qualcomm RB5</option>
+                        <option value="nuc">Intel NUC / x86</option>
+                    </select>
+                </div>
+                <div>
+                    <span class="ig-setup-label"><i class="ph ph-scan"></i> LiDAR</span>
+                    <select id="sel-lidar">
+                        <option value="livox_avia">Livox Avia</option>
+                        <option value="livox_mid360">Livox Mid-360</option>
+                        <option value="velodyne">Velodyne VLP-16</option>
+                        <option value="ouster">Ouster OS1/OS0</option>
+                        <option value="robosense">RoboSense RS-Helios</option>
+                    </select>
+                </div>
+                <div>
+                    <span class="ig-setup-label"><i class="ph ph-code"></i> FC Firmware</span>
+                    <select id="sel-fw">
+                        <option value="ardupilot">ArduPilot</option>
+                        <option value="px4">PX4</option>
+                        <option value="inav">iNav</option>
+                        <option value="betaflight">Betaflight</option>
+                    </select>
+                </div>
+            </div>
+
+            <!-- Phase tabs -->
+            <div class="ig-phases" id="phase-tabs">
+                <div class="ig-phase-tab active" data-phase="0"><span class="num"><span class="num-text">0</span></span> Jargon Buster</div>
+                <div class="ig-phase-tab" data-phase="1"><span class="num"><span class="num-text">1</span></span> Flash OS</div>
+                <div class="ig-phase-tab" data-phase="2"><span class="num"><span class="num-text">2</span></span> ROS Install</div>
+                <div class="ig-phase-tab" data-phase="3"><span class="num"><span class="num-text">3</span></span> Drivers</div>
+                <div class="ig-phase-tab" data-phase="4"><span class="num"><span class="num-text">4</span></span> SLAM Stack</div>
+                <div class="ig-phase-tab" data-phase="5"><span class="num"><span class="num-text">5</span></span> FC Bridge</div>
+                <div class="ig-phase-tab" data-phase="6"><span class="num"><span class="num-text">6</span></span> First Hover</div>
+            </div>
+
+            <!-- ============ PHASE 0: JARGON BUSTER ============ -->
+            <div class="ig-phase-content active" data-phase="0">
+                <div class="ig-section">
+                    <div class="ig-section-title"><i class="ph ph-translate"></i> What All These Words Mean</div>
+                    <div class="ig-section-desc">Before you touch a terminal, here's every term you'll encounter. No shame — this stuff is dense and nobody explains it.</div>
+
+                    <div class="ig-glossary">
+                        <div class="ig-gloss-card">
+                            <h4>Yocto</h4>
+                            <p>A build system for creating custom embedded Linux images. It's not an OS — it's the tool that <em>makes</em> an OS. The Orqa APB ships with a Yocto-built Linux. Think of it like a kitchen that bakes a custom Linux cake with only the ingredients your drone needs. You don't need to rebuild it unless you're adding kernel drivers.</p>
+                        </div>
+                        <div class="ig-gloss-card">
+                            <h4>BSP (Board Support Package)</h4>
+                            <p>The specific Linux config + drivers for your exact hardware. "Orqa Yocto BSP" = Linux that knows how to talk to the APB's i.MX8M, cameras, IMU, etc. Every board vendor provides one.</p>
+                        </div>
+                        <div class="ig-gloss-card">
+                            <h4>ROS / ROS2</h4>
+                            <p>Robot Operating System. Not really an OS — it's middleware that lets your programs talk to each other via "topics." Your LiDAR driver publishes point clouds on a topic, FAST-LIO subscribes to it. ROS1 (Noetic) is stable legacy. ROS2 (Humble/Iron) is the future.</p>
+                        </div>
+                        <div class="ig-gloss-card">
+                            <h4>catkin / colcon</h4>
+                            <p>Build tools. <code>catkin_make</code> builds ROS1 packages. <code>colcon build</code> builds ROS2 packages. They compile C++ SLAM code into runnable programs. That's it.</p>
+                        </div>
+                        <div class="ig-gloss-card">
+                            <h4>Docker</h4>
+                            <p>A container that packages your entire software stack (OS libs + ROS + SLAM) into one portable box. Avoids "works on my machine" problems. On Yocto/embedded boards, Docker lets you run full Ubuntu+ROS inside the minimal Yocto host OS.</p>
+                        </div>
+                        <div class="ig-gloss-card">
+                            <h4>MAVROS / mavlink-router</h4>
+                            <p>The bridge between your companion computer (running SLAM) and your flight controller (running ArduPilot/PX4). MAVROS is a ROS node. mavlink-router is a lightweight alternative that just forwards MAVLink packets.</p>
+                        </div>
+                        <div class="ig-gloss-card">
+                            <h4>FAST-LIO / LIO</h4>
+                            <p>LiDAR-Inertial Odometry. Takes LiDAR point clouds + IMU data and outputs "where am I?" 100+ times per second. FAST-LIO2 is the gold standard. It does NOT control the drone — it just provides position to the FC.</p>
+                        </div>
+                        <div class="ig-gloss-card">
+                            <h4>EKF / ESIKF</h4>
+                            <p>Extended Kalman Filter. The math that fuses noisy sensor data into a clean position estimate. Your FC has one (ArduPilot's EKF3). FAST-LIO has its own (ESIKF). The companion's ESIKF replaces the FC's GPS input.</p>
+                        </div>
+                        <div class="ig-gloss-card">
+                            <h4>ikd-Tree</h4>
+                            <p>Incremental KD-Tree. FAST-LIO's secret weapon — a data structure that efficiently stores and queries 3D point cloud maps. You don't configure it, but it's why FAST-LIO runs so fast.</p>
+                        </div>
+                        <div class="ig-gloss-card">
+                            <h4>Launch file</h4>
+                            <p>A config file (<code>.launch</code> for ROS1, <code>.launch.py</code> for ROS2) that starts your SLAM stack with the right parameters. It specifies which LiDAR driver to use, which IMU topic to subscribe to, etc.</p>
+                        </div>
+                        <div class="ig-gloss-card">
+                            <h4>Topic / Publisher / Subscriber</h4>
+                            <p>ROS communication pattern. LiDAR driver <em>publishes</em> to <code>/livox/lidar</code>. FAST-LIO <em>subscribes</em> to it. FAST-LIO publishes pose to <code>/Odometry</code>. MAVROS subscribes and sends to FC. It's a pipeline.</p>
+                        </div>
+                        <div class="ig-gloss-card">
+                            <h4>UART / Serial</h4>
+                            <p>The physical wire between your companion computer and flight controller. Usually a 3-wire connection (TX, RX, GND) running MAVLink at 921600 baud. On APB, it's internal (UART3 → FC).</p>
+                        </div>
+                    </div>
+
+                    <div class="ig-info ig-info-green">
+                        <i class="ph ph-lightbulb"></i>
+                        <div><strong>The big picture:</strong> LiDAR → ROS Driver → FAST-LIO → MAVROS → FC → Motors. That's the entire data pipeline. Everything in this guide is about getting those links connected.</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ============ PHASE 1: FLASH OS ============ -->
+            <div class="ig-phase-content" data-phase="1">
+                <div class="ig-section">
+                    <div class="ig-section-title"><i class="ph ph-hard-drives"></i> Flash Your Companion Computer</div>
+                    <div class="ig-section-desc">Get a working Linux environment on your companion computer. The approach differs by hardware.</div>
+
+                    <!-- Jetson -->
+                    <div class="ig-dynamic" data-cc="jetson">
+                        <div class="ig-info ig-info-blue"><i class="ph ph-info"></i><div><strong>Jetson:</strong> Use NVIDIA's JetPack SDK. It includes Ubuntu 20.04/22.04 + CUDA + cuDNN + TensorRT. This is the easiest path — JetPack is a full Ubuntu desktop with GPU acceleration out of the box.</div></div>
+                        <div class="ig-code"><span class="comment"># Download JetPack SDK Manager on your host PC (Ubuntu x86)</span>
+<span class="comment"># https://developer.nvidia.com/sdk-manager</span>
+
+<span class="comment"># Connect Jetson via USB, put in recovery mode (hold REC button + power)</span>
+<span class="cmd">sdkmanager</span>
+<span class="comment"># Select: JetPack 5.x (for Orin) or 4.x (for TX2/Xavier)</span>
+<span class="comment"># Flash → wait 15-20 min → reboot → you have full Ubuntu + CUDA</span>
+
+<span class="comment"># After first boot, verify GPU:</span>
+<span class="cmd">nvidia-smi</span>   <span class="comment"># Should show GPU info (Orin won't show this — use jtop instead)</span>
+<span class="cmd">sudo pip3 install jetson-stats && jtop</span><span class="ig-code-label">Jetson</span></div>
+                    </div>
+
+                    <!-- APB -->
+                    <div class="ig-dynamic" data-cc="apb">
+                        <div class="ig-info ig-info-yellow"><i class="ph ph-warning"></i><div><strong>Orqa APB:</strong> Ships with Yocto Linux BSP pre-flashed. Yocto is a minimal embedded Linux — it does NOT have apt-get, Ubuntu packages, or a desktop. You have two paths: (A) use Docker on top of Yocto, or (B) use the native Yocto SDK.</div></div>
+                        <div class="ig-code"><span class="comment"># Path A (RECOMMENDED): Run Ubuntu+ROS in Docker on top of Yocto</span>
+<span class="comment"># This gives you apt-get, familiar Ubuntu, and easy ROS install</span>
+
+<span class="comment"># 1. Connect to APB via USB-C (it appears as ethernet device)</span>
+<span class="cmd">ssh</span> root@192.168.75.1
+
+<span class="comment"># 2. Check Yocto version</span>
+<span class="cmd">cat</span> <span class="path">/etc/os-release</span>
+
+<span class="comment"># 3. Install Docker (if not pre-installed)</span>
+<span class="comment"># Yocto may need Docker added via Yocto layer — check Orqa SDK docs</span>
+<span class="comment"># Or use the pre-built container from Orqa Developer Program</span>
+
+<span class="comment"># 4. Pull an ARM64 Ubuntu+ROS container</span>
+<span class="cmd">docker pull</span> arm64v8/ros:noetic-ros-base
+<span class="cmd">docker run</span> <span class="flag">-it --privileged --network host \
+  -v /dev:/dev \
+  -v /sdcard:/sdcard</span> \
+  arm64v8/ros:noetic-ros-base <span class="cmd">bash</span>
+
+<span class="comment"># You're now inside Ubuntu 20.04 with ROS Noetic on the APB!</span>
+<span class="comment"># The --privileged flag gives access to LiDAR USB/Ethernet + UART</span><span class="ig-code-label">APB (Docker)</span></div>
+
+                        <div class="ig-code"><span class="comment"># Path B: Native Yocto SDK (advanced — for production deployments)</span>
+<span class="comment"># Cross-compile ROS packages on your x86 host, deploy to APB</span>
+<span class="comment"># See: Orqa Developer Program → SDK documentation</span>
+<span class="comment"># The Yocto BSP includes: GStreamer, V4L2, i2c-tools, CAN utils</span>
+<span class="comment"># You'll need to add ROS via meta-ros Yocto layer</span>
+
+<span class="comment"># APB-specific: FC is on internal UART3</span>
+<span class="comment"># Route UART3 to FC:</span>
+<span class="cmd">gpioset</span> -c gpiochip3 -z 13=1
+<span class="cmd">gpioset</span> -c gpiochip3 -z 0=0
+<span class="comment"># Now /dev/ttymxc2 talks to the STM32H743 flight controller</span><span class="ig-code-label">APB (Native)</span></div>
+
+                        <div class="ig-info ig-info-green"><i class="ph ph-lightbulb"></i><div><strong>Why Docker on Yocto?</strong> Yocto is optimized for boot speed and minimal footprint — great for production. But for development, you want apt-get, pip, easy ROS install. Docker gives you both: fast Yocto host + full Ubuntu userland. Most embedded drone companies ship this way.</div></div>
+                    </div>
+
+                    <!-- RPi -->
+                    <div class="ig-dynamic" data-cc="rpi">
+                        <div class="ig-info ig-info-blue"><i class="ph ph-info"></i><div><strong>Raspberry Pi:</strong> Use the standard Raspberry Pi Imager to flash Ubuntu 22.04 Server (64-bit). Desktop not needed — headless is fine.</div></div>
+                        <div class="ig-code"><span class="comment"># Flash Ubuntu 22.04 Server 64-bit via Raspberry Pi Imager</span>
+<span class="comment"># Enable SSH in imager settings</span>
+<span class="comment"># Boot, connect via SSH</span>
+<span class="cmd">ssh</span> ubuntu@raspberrypi.local<span class="ig-code-label">RPi</span></div>
+                    </div>
+
+                    <!-- VOXL2 -->
+                    <div class="ig-dynamic" data-cc="voxl2">
+                        <div class="ig-info ig-info-blue"><i class="ph ph-info"></i><div><strong>VOXL 2:</strong> Ships with ModalAI's custom Linux (based on Yocto/Qualcomm Linux). Use <code>voxl-configure-mpa</code> for initial setup. PX4 runs natively on the DSP. Docker is supported for ROS workloads.</div></div>
+                        <div class="ig-code"><span class="comment"># Connect via USB-C or WiFi</span>
+<span class="cmd">adb shell</span>
+<span class="comment"># Or SSH after WiFi setup:</span>
+<span class="cmd">ssh</span> root@192.168.8.1
+
+<span class="comment"># Configure for PX4 + external LiDAR:</span>
+<span class="cmd">voxl-configure-mpa</span><span class="ig-code-label">VOXL 2</span></div>
+                    </div>
+
+                    <!-- Generic x86 / RB5 -->
+                    <div class="ig-dynamic" data-cc="nuc">
+                        <div class="ig-info ig-info-blue"><i class="ph ph-info"></i><div><strong>Intel NUC / x86:</strong> Flash Ubuntu 22.04 Desktop or Server. This is the easiest platform — standard Ubuntu, no embedded quirks.</div></div>
+                    </div>
+                    <div class="ig-dynamic" data-cc="rb5">
+                        <div class="ig-info ig-info-blue"><i class="ph ph-info"></i><div><strong>Qualcomm RB5:</strong> Use Qualcomm's Robotics Linux SDK. Docker recommended for ROS on top of the Qualcomm BSP.</div></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ============ PHASE 2: ROS INSTALL ============ -->
+            <div class="ig-phase-content" data-phase="2">
+                <div class="ig-section">
+                    <div class="ig-section-title"><i class="ph ph-package"></i> Install ROS</div>
+                    <div class="ig-section-desc">FAST-LIO2 uses ROS1 Noetic. If you're using SUPER (the full nav stack), you need ROS2 Humble. Here's both.</div>
+
+                    <div class="ig-info ig-info-yellow"><i class="ph ph-warning"></i><div><strong>Which ROS?</strong> For just SLAM odometry (FAST-LIO2, Point-LIO, S-FAST_LIO) → <strong>ROS1 Noetic</strong>. For full autonomous navigation (SUPER) → <strong>ROS2 Humble</strong>. For LIO-SAM → either works.</div></div>
+
+                    <div class="ig-code"><span class="comment"># ═══ ROS1 NOETIC (Ubuntu 20.04) ═══</span>
+
+<span class="cmd">sudo sh -c</span> 'echo "deb http://packages.ros.org/ros/ubuntu focal main" > /etc/apt/sources.list.d/ros-latest.list'
+<span class="cmd">sudo apt install</span> curl
+<span class="cmd">curl -s</span> https://raw.githubusercontent.com/ros/rosdistro/master/ros.asc | <span class="cmd">sudo apt-key add</span> -
+<span class="cmd">sudo apt update</span>
+<span class="cmd">sudo apt install</span> <span class="flag">ros-noetic-ros-base</span>    <span class="comment"># Base only (no GUI — we're on a drone)</span>
+
+<span class="comment"># Add to your shell:</span>
+<span class="cmd">echo</span> "source /opt/ros/noetic/setup.bash" >> ~/.bashrc
+<span class="cmd">source</span> ~/.bashrc
+
+<span class="comment"># Install build tools:</span>
+<span class="cmd">sudo apt install</span> python3-catkin-tools python3-rosdep
+<span class="cmd">sudo rosdep init</span>
+<span class="cmd">rosdep update</span>
+
+<span class="comment"># Create workspace:</span>
+<span class="cmd">mkdir -p</span> <span class="path">~/catkin_ws/src</span>
+<span class="cmd">cd</span> <span class="path">~/catkin_ws</span>
+<span class="cmd">catkin_make</span>
+<span class="cmd">source</span> <span class="path">devel/setup.bash</span><span class="ig-code-label">ROS1 Noetic</span></div>
+
+                    <div class="ig-code"><span class="comment"># ═══ ROS2 HUMBLE (Ubuntu 22.04) ═══</span>
+
+<span class="cmd">sudo apt install</span> software-properties-common
+<span class="cmd">sudo add-apt-repository</span> universe
+<span class="cmd">sudo curl -sSL</span> https://raw.githubusercontent.com/ros/rosdistro/master/ros.key -o /usr/share/keyrings/ros-archive-keyring.gpg
+<span class="cmd">echo</span> "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/ros-archive-keyring.gpg] http://packages.ros.org/ros2/ubuntu $(. /etc/os-release && echo $UBUNTU_CODENAME) main" | <span class="cmd">sudo tee</span> /etc/apt/sources.list.d/ros2.list > /dev/null
+<span class="cmd">sudo apt update</span>
+<span class="cmd">sudo apt install</span> <span class="flag">ros-humble-ros-base</span>
+
+<span class="cmd">echo</span> "source /opt/ros/humble/setup.bash" >> ~/.bashrc
+<span class="cmd">source</span> ~/.bashrc
+
+<span class="comment"># Create workspace:</span>
+<span class="cmd">mkdir -p</span> <span class="path">~/ros2_ws/src</span>
+<span class="cmd">cd</span> <span class="path">~/ros2_ws</span>
+<span class="cmd">colcon build</span><span class="ig-code-label">ROS2 Humble</span></div>
+
+                    <div class="ig-info ig-info-green"><i class="ph ph-lightbulb"></i><div><strong>Docker shortcut:</strong> Skip all the above. <code>docker pull ros:noetic-ros-base</code> gives you a working ROS1 environment in seconds. Mount <code>/dev</code> for hardware access.</div></div>
+
+                    <div class="ig-code"><span class="comment"># ═══ DOCKER SHORTCUT (works on ANY platform including Yocto) ═══</span>
+
+<span class="cmd">docker run</span> <span class="flag">-it --privileged --network host \
+  --name slam \
+  -v /dev:/dev \
+  -v ~/bags:/bags</span> \
+  ros:noetic-ros-base <span class="cmd">bash</span>
+
+<span class="comment"># Inside container, install build essentials:</span>
+<span class="cmd">apt update && apt install</span> -y git cmake build-essential libeigen3-dev libpcl-dev<span class="ig-code-label">Docker</span></div>
+                </div>
+            </div>
+
+            <!-- ============ PHASE 3: DRIVERS ============ -->
+            <div class="ig-phase-content" data-phase="3">
+                <div class="ig-section">
+                    <div class="ig-section-title"><i class="ph ph-plugs-connected"></i> Install LiDAR & IMU Drivers</div>
+                    <div class="ig-section-desc">Your SLAM stack needs ROS topics publishing point clouds and IMU data. Each LiDAR has its own driver.</div>
+
+                    <div class="ig-dynamic" data-lidar="livox_avia,livox_mid360">
+                        <div class="ig-code"><span class="comment"># ═══ LIVOX ROS DRIVER (Avia, Mid-360, Horizon) ═══</span>
+
+<span class="cmd">cd</span> <span class="path">~/catkin_ws/src</span>
+<span class="cmd">git clone</span> https://github.com/Livox-SDK/livox_ros_driver2.git
+<span class="cmd">cd</span> ..
+<span class="cmd">catkin_make</span>
+<span class="cmd">source</span> <span class="path">devel/setup.bash</span>
+
+<span class="comment"># Connect Livox via Ethernet (static IP: 192.168.1.1xx)</span>
+<span class="comment"># Set your PC/companion to 192.168.1.50</span>
+
+<span class="comment"># Test — you should see point clouds in the terminal:</span>
+<span class="cmd">roslaunch</span> livox_ros_driver2 msg_MID360_launch.py  <span class="comment"># for Mid-360</span>
+<span class="cmd">roslaunch</span> livox_ros_driver2 msg_avia_launch.py     <span class="comment"># for Avia</span>
+
+<span class="comment"># Verify topics exist:</span>
+<span class="cmd">rostopic list</span> | grep livox
+<span class="comment"># Should see: /livox/lidar and /livox/imu</span><span class="ig-code-label">Livox</span></div>
+                    </div>
+
+                    <div class="ig-dynamic" data-lidar="velodyne">
+                        <div class="ig-code"><span class="comment"># ═══ VELODYNE VLP-16 DRIVER ═══</span>
+
+<span class="cmd">sudo apt install</span> ros-noetic-velodyne
+<span class="comment"># Connect via Ethernet (factory IP: 192.168.1.201)</span>
+<span class="cmd">roslaunch</span> velodyne_pointcloud VLP16_points.launch
+
+<span class="comment"># Topics: /velodyne_points (PointCloud2)</span>
+<span class="comment"># NOTE: VLP-16 has NO built-in IMU — you need an external one</span><span class="ig-code-label">Velodyne</span></div>
+                    </div>
+
+                    <div class="ig-dynamic" data-lidar="ouster">
+                        <div class="ig-code"><span class="comment"># ═══ OUSTER OS1/OS0 DRIVER ═══</span>
+
+<span class="cmd">cd</span> <span class="path">~/catkin_ws/src</span>
+<span class="cmd">git clone</span> <span class="flag">--recurse-submodules</span> https://github.com/ouster-lidar/ouster-ros.git
+<span class="cmd">cd</span> .. && <span class="cmd">catkin_make</span>
+
+<span class="comment"># Connect via Ethernet</span>
+<span class="cmd">roslaunch</span> ouster_ros driver.launch sensor_hostname:=os-SERIAL.local
+
+<span class="comment"># Topics: /ouster/points, /ouster/imu (built-in IMU at 100Hz)</span><span class="ig-code-label">Ouster</span></div>
+                    </div>
+
+                    <div class="ig-dynamic" data-lidar="robosense">
+                        <div class="ig-code"><span class="comment"># ═══ ROBOSENSE RS-HELIOS DRIVER ═══</span>
+
+<span class="cmd">cd</span> <span class="path">~/catkin_ws/src</span>
+<span class="cmd">git clone</span> https://github.com/RoboSense-LiDAR/rslidar_sdk.git
+<span class="cmd">cd</span> rslidar_sdk && <span class="cmd">git submodule update --init</span>
+<span class="cmd">cd</span> ../.. && <span class="cmd">catkin_make</span>
+
+<span class="comment"># Edit config/config.yaml for RS-Helios-32</span>
+<span class="cmd">roslaunch</span> rslidar_sdk start.launch
+
+<span class="comment"># Topics: /rslidar_points (PointCloud2)</span>
+<span class="comment"># NOTE: No built-in IMU — use external (e.g., Xsens MTi)</span><span class="ig-code-label">RoboSense</span></div>
+                    </div>
+
+                    <div class="ig-info ig-info-yellow"><i class="ph ph-warning"></i><div><strong>External IMU:</strong> If your LiDAR has no built-in IMU (Velodyne, RoboSense), you need one. Connect via USB or UART. Common choices: Xsens MTi, Vectornav VN-100, or your FC's IMU via MAVLink. The IMU topic must publish at ≥200Hz for good SLAM.</div></div>
+                </div>
+            </div>
+
+            <!-- ============ PHASE 4: SLAM STACK ============ -->
+            <div class="ig-phase-content" data-phase="4">
+                <div class="ig-section">
+                    <div class="ig-section-title"><i class="ph ph-compass-tool"></i> Build & Configure FAST-LIO2</div>
+                    <div class="ig-section-desc">This is the core. FAST-LIO2 takes your LiDAR + IMU data and outputs 6-DOF position at 100Hz+.</div>
+
+                    <div class="ig-code"><span class="comment"># ═══ BUILD FAST-LIO2 ═══</span>
+
+<span class="cmd">cd</span> <span class="path">~/catkin_ws/src</span>
+<span class="cmd">git clone</span> https://github.com/hku-mars/FAST_LIO.git
+<span class="cmd">cd</span> FAST_LIO
+<span class="cmd">git submodule update --init</span>   <span class="comment"># pulls ikd-Tree</span>
+<span class="cmd">cd</span> ../..
+<span class="cmd">catkin_make</span>
+<span class="cmd">source</span> <span class="path">devel/setup.bash</span>
+
+<span class="comment"># Dependencies it needs (install if catkin_make fails):</span>
+<span class="cmd">sudo apt install</span> libeigen3-dev libpcl-dev ros-noetic-pcl-ros<span class="ig-code-label">Build</span></div>
+
+                    <div class="ig-dynamic" data-lidar="livox_avia">
+                        <div class="ig-code"><span class="comment"># ═══ CONFIGURE FOR LIVOX AVIA ═══</span>
+
+<span class="cmd">roslaunch</span> fast_lio mapping_avia.launch
+
+<span class="comment"># Key config in config/avia.yaml:</span>
+<span class="comment">#   lid_topic: "/livox/lidar"      ← must match your driver topic</span>
+<span class="comment">#   imu_topic: "/livox/imu"        ← Avia has built-in IMU</span>
+<span class="comment">#   extrinsic_est_en: true         ← auto-calibrate LiDAR↔IMU</span>
+<span class="comment">#   filter_size_map: 0.5           ← map resolution (meters)</span>
+
+<span class="comment"># Verify it's working — should see odometry output:</span>
+<span class="cmd">rostopic echo</span> /Odometry<span class="ig-code-label">Avia Config</span></div>
+                    </div>
+
+                    <div class="ig-dynamic" data-lidar="livox_mid360">
+                        <div class="ig-code"><span class="comment"># ═══ CONFIGURE FOR LIVOX MID-360 ═══</span>
+
+<span class="cmd">roslaunch</span> fast_lio mapping_mid360.launch
+
+<span class="comment"># 360° FoV = best for indoor GPS-denied</span>
+<span class="comment"># Key config in config/mid360.yaml:</span>
+<span class="comment">#   lid_topic: "/livox/lidar"</span>
+<span class="comment">#   imu_topic: "/livox/imu"</span><span class="ig-code-label">Mid-360 Config</span></div>
+                    </div>
+
+                    <div class="ig-dynamic" data-lidar="velodyne">
+                        <div class="ig-code"><span class="comment"># ═══ CONFIGURE FOR VELODYNE VLP-16 ═══</span>
+
+<span class="cmd">roslaunch</span> fast_lio mapping_velodyne.launch
+
+<span class="comment"># config/velodyne.yaml:</span>
+<span class="comment">#   lid_topic: "/velodyne_points"</span>
+<span class="comment">#   imu_topic: "/imu/data"         ← YOUR external IMU topic</span>
+<span class="comment">#   extrinsic_T: [x, y, z]         ← LiDAR→IMU translation (measure!)</span>
+<span class="comment">#   extrinsic_R: [r11..r33]        ← LiDAR→IMU rotation</span><span class="ig-code-label">Velodyne Config</span></div>
+                    </div>
+
+                    <div class="ig-dynamic" data-lidar="ouster">
+                        <div class="ig-code"><span class="comment"># ═══ CONFIGURE FOR OUSTER OS1 ═══</span>
+
+<span class="cmd">roslaunch</span> fast_lio mapping_ouster64.launch
+
+<span class="comment"># config/ouster64.yaml:</span>
+<span class="comment">#   lid_topic: "/ouster/points"</span>
+<span class="comment">#   imu_topic: "/ouster/imu"       ← built-in at 100Hz</span>
+<span class="comment">#   Note: Ouster IMU is 100Hz (low). May struggle in fast maneuvers.</span><span class="ig-code-label">Ouster Config</span></div>
+                    </div>
+
+                    <div class="ig-dynamic" data-lidar="robosense">
+                        <div class="ig-code"><span class="comment"># ═══ CONFIGURE FOR ROBOSENSE (use S-FAST_LIO) ═══</span>
+<span class="comment"># S-FAST_LIO has native RS-Helios support</span>
+
+<span class="cmd">cd</span> <span class="path">~/catkin_ws/src</span>
+<span class="cmd">git clone</span> https://github.com/zlwang7/S-FAST_LIO.git
+<span class="cmd">cd</span> ../.. && <span class="cmd">catkin_make</span>
+
+<span class="cmd">roslaunch</span> sfast_lio mapping_rs.launch
+
+<span class="comment"># Needs external IMU (e.g., Xsens MTi on /imu/data)</span><span class="ig-code-label">RoboSense Config</span></div>
+                    </div>
+
+                    <div class="ig-info ig-info-green"><i class="ph ph-check-circle"></i><div><strong>Test before flying!</strong> Record a rosbag by walking around with your LiDAR: <code>rosbag record /livox/lidar /livox/imu -O test_walk.bag</code>. Then replay it: <code>rosbag play test_walk.bag</code> while FAST-LIO runs. If the map looks good, you're ready for Phase 5.</div></div>
+                </div>
+            </div>
+
+            <!-- ============ PHASE 5: FC BRIDGE ============ -->
+            <div class="ig-phase-content" data-phase="5">
+                <div class="ig-section">
+                    <div class="ig-section-title"><i class="ph ph-plugs"></i> Bridge SLAM → Flight Controller</div>
+                    <div class="ig-section-desc">FAST-LIO outputs position. Now you need to feed that to your FC so it can hold position without GPS.</div>
+
+                    <div class="ig-dynamic" data-fw="ardupilot">
+                        <div class="ig-code"><span class="comment"># ═══ ARDUPILOT: MAVROS + VISION_POSITION_ESTIMATE ═══</span>
+
+<span class="comment"># 1. Install MAVROS</span>
+<span class="cmd">sudo apt install</span> ros-noetic-mavros ros-noetic-mavros-extras
+<span class="cmd">sudo /opt/ros/noetic/lib/mavros/install_geographiclib_datasets.sh</span>
+
+<span class="comment"># 2. Launch MAVROS (connect to FC via UART)</span>
+<span class="cmd">roslaunch</span> mavros apm.launch fcu_url:=<span class="path">/dev/ttyUSB0:921600</span>
+
+<span class="comment"># For APB (internal UART3 → FC):</span>
+<span class="cmd">roslaunch</span> mavros apm.launch fcu_url:=<span class="path">/dev/ttymxc2:921600</span>
+
+<span class="comment"># 3. Remap FAST-LIO odometry → MAVROS vision pose</span>
+<span class="comment"># Create a simple relay node or use topic_tools:</span>
+<span class="cmd">rosrun</span> topic_tools relay /Odometry /mavros/vision_pose/pose_cov
+
+<span class="comment"># 4. ArduPilot parameters (set via Mission Planner or mavproxy):</span>
+<span class="comment">#   AHRS_EKF_TYPE = 3          (use EKF3)</span>
+<span class="comment">#   EK3_SRC1_POSXY = 6         (ExternalNav)</span>
+<span class="comment">#   EK3_SRC1_POSZ = 1          (Baro — or 6 for full external)</span>
+<span class="comment">#   EK3_SRC1_VELXY = 6         (ExternalNav)</span>
+<span class="comment">#   EK3_SRC1_YAW = 6           (ExternalNav)</span>
+<span class="comment">#   VISO_TYPE = 1               (MAVLink)</span>
+<span class="comment">#   SERIAL2_PROTOCOL = 2       (MAVLink2 on the UART to companion)</span>
+<span class="comment">#   SERIAL2_BAUD = 921          (921600 baud)</span><span class="ig-code-label">ArduPilot</span></div>
+                    </div>
+
+                    <div class="ig-dynamic" data-fw="px4">
+                        <div class="ig-code"><span class="comment"># ═══ PX4: MAVROS + VISION_POSITION_ESTIMATE ═══</span>
+
+<span class="cmd">sudo apt install</span> ros-noetic-mavros ros-noetic-mavros-extras
+<span class="cmd">sudo /opt/ros/noetic/lib/mavros/install_geographiclib_datasets.sh</span>
+
+<span class="cmd">roslaunch</span> mavros px4.launch fcu_url:=<span class="path">/dev/ttyUSB0:921600</span>
+
+<span class="comment"># PX4 parameters (set via QGC):</span>
+<span class="comment">#   EKF2_EV_CTRL = 15           (enable vision pos+vel+yaw)</span>
+<span class="comment">#   EKF2_HGT_REF = 3            (vision for height)</span>
+<span class="comment">#   MAV_COMP_ID = 197            (companion computer ID)</span>
+<span class="comment">#   SER_TEL2_BAUD = 921600       (companion UART baud)</span><span class="ig-code-label">PX4</span></div>
+                    </div>
+
+                    <div class="ig-dynamic" data-fw="inav,betaflight">
+                        <div class="ig-info ig-info-red"><i class="ph ph-warning-circle"></i><div><strong>iNav / Betaflight:</strong> These firmwares do NOT natively support external position input (VISION_POSITION_ESTIMATE). You cannot directly feed SLAM odometry to them. Options: (1) Switch to ArduPilot/PX4 for GPS-denied flight, (2) Use the FC only for stabilization and control the drone via offboard commands from the companion computer, (3) Use iNav's GPS emulation (experimental, unreliable).</div></div>
+                    </div>
+
+                    <div class="ig-info ig-info-yellow"><i class="ph ph-warning"></i><div><strong>Critical:</strong> The coordinate frame MUST match. FAST-LIO outputs in its own frame (FLU — Forward-Left-Up). ArduPilot/PX4 expect NED (North-East-Down) or ENU (East-North-Up). MAVROS handles this conversion automatically if you publish to the right topic. Do NOT try to manually rotate — let MAVROS do it.</div></div>
+                </div>
+            </div>
+
+            <!-- ============ PHASE 6: FIRST HOVER ============ -->
+            <div class="ig-phase-content" data-phase="6">
+                <div class="ig-section">
+                    <div class="ig-section-title"><i class="ph ph-drone"></i> First Autonomous Hover</div>
+                    <div class="ig-section-desc">Everything's wired up. Time to fly. Follow this checklist exactly.</div>
+
+                    <div class="ig-info ig-info-red"><i class="ph ph-shield-warning"></i><div><strong>SAFETY FIRST:</strong> Tether the drone or fly in a netted area for your first test. SLAM-based flight can fail suddenly if the LiDAR loses tracking (featureless walls, direct sunlight, excessive vibration). Always have a manual override ready.</div></div>
+
+                    <div style="margin-bottom: 20px;">
+                        <div class="ig-check" onclick="this.classList.toggle('checked');this.querySelector('input').checked=!this.querySelector('input').checked"><input type="checkbox"><span>Props OFF — verify FAST-LIO odometry is stable with <code>rostopic echo /Odometry</code></span></div>
+                        <div class="ig-check" onclick="this.classList.toggle('checked');this.querySelector('input').checked=!this.querySelector('input').checked"><input type="checkbox"><span>Props OFF — verify MAVROS is connected: <code>rostopic echo /mavros/state</code> shows "connected: True"</span></div>
+                        <div class="ig-check" onclick="this.classList.toggle('checked');this.querySelector('input').checked=!this.querySelector('input').checked"><input type="checkbox"><span>Props OFF — verify vision position is reaching the FC: check EKF status in Mission Planner / QGC</span></div>
+                        <div class="ig-check" onclick="this.classList.toggle('checked');this.querySelector('input').checked=!this.querySelector('input').checked"><input type="checkbox"><span>Move the drone by hand — position in QGC/Mission Planner should update smoothly</span></div>
+                        <div class="ig-check" onclick="this.classList.toggle('checked');this.querySelector('input').checked=!this.querySelector('input').checked"><input type="checkbox"><span>Rotate the drone by hand — heading should update correctly (no 90° offset)</span></div>
+                        <div class="ig-check" onclick="this.classList.toggle('checked');this.querySelector('input').checked=!this.querySelector('input').checked"><input type="checkbox"><span>Tether attached or inside safety net</span></div>
+                        <div class="ig-check" onclick="this.classList.toggle('checked');this.querySelector('input').checked=!this.querySelector('input').checked"><input type="checkbox"><span>RC transmitter in hand, STABILIZE/MANUAL mode as fallback on a switch</span></div>
+                        <div class="ig-check" onclick="this.classList.toggle('checked');this.querySelector('input').checked=!this.querySelector('input').checked"><input type="checkbox"><span>Switch to LOITER (ArduPilot) or POSITION (PX4) mode — drone should hold</span></div>
+                        <div class="ig-check" onclick="this.classList.toggle('checked');this.querySelector('input').checked=!this.querySelector('input').checked"><input type="checkbox"><span>Gently throttle up — it should hover in place using SLAM position</span></div>
+                    </div>
+
+                    <div class="ig-info ig-info-green"><i class="ph ph-confetti"></i><div><strong>If it hovers — congratulations.</strong> You've built a GPS-denied autonomous drone. From here: tune the EKF noise parameters, add obstacle avoidance (look at SUPER from HKU-MARS), or add waypoint missions via MAVROS.</div></div>
+
+                    <div class="ig-code"><span class="comment"># ═══ FULL LAUNCH SEQUENCE (all in one terminal session) ═══</span>
+
+<span class="comment"># Terminal 1: LiDAR driver</span>
+<span class="cmd">roslaunch</span> livox_ros_driver2 msg_avia_launch.py
+
+<span class="comment"># Terminal 2: FAST-LIO</span>
+<span class="cmd">roslaunch</span> fast_lio mapping_avia.launch
+
+<span class="comment"># Terminal 3: MAVROS</span>
+<span class="cmd">roslaunch</span> mavros apm.launch fcu_url:=/dev/ttyUSB0:921600
+
+<span class="comment"># Terminal 4: Pose relay (FAST-LIO → MAVROS)</span>
+<span class="cmd">rosrun</span> topic_tools relay /Odometry /mavros/vision_pose/pose_cov
+
+<span class="comment"># Or wrap it all in one launch file (recommended for production)</span><span class="ig-code-label">Full Launch</span></div>
+                </div>
+            </div>
+
+            <!-- Nav buttons -->
+            <div class="ig-nav">
+                <button class="ig-nav-btn ig-nav-prev" id="btn-prev" style="visibility:hidden;"><i class="ph ph-caret-left"></i> Previous</button>
+                <button class="ig-nav-btn ig-nav-next" id="btn-next">Next Phase <i class="ph ph-caret-right"></i></button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+    let currentPhase = 0;
+    const totalPhases = 7;
+    const tabs = document.querySelectorAll('.ig-phase-tab');
+    const contents = document.querySelectorAll('.ig-phase-content');
+    const btnPrev = document.getElementById('btn-prev');
+    const btnNext = document.getElementById('btn-next');
+
+    function showPhase(n) {
+        currentPhase = Math.max(0, Math.min(n, totalPhases - 1));
+        tabs.forEach(t => t.classList.remove('active'));
+        contents.forEach(c => c.classList.remove('active'));
+        tabs[currentPhase].classList.add('active');
+        contents[currentPhase].classList.add('active');
+        btnPrev.style.visibility = currentPhase === 0 ? 'hidden' : 'visible';
+        btnNext.textContent = currentPhase === totalPhases - 1 ? '🎉 Done!' : 'Next Phase';
+        btnNext.innerHTML = currentPhase === totalPhases - 1 ? '🎉 Done!' : 'Next Phase <i class="ph ph-caret-right"></i>';
+        updateDynamic();
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+
+    tabs.forEach(t => t.addEventListener('click', () => showPhase(parseInt(t.dataset.phase))));
+    btnPrev.addEventListener('click', () => showPhase(currentPhase - 1));
+    btnNext.addEventListener('click', () => { if (currentPhase < totalPhases - 1) showPhase(currentPhase + 1); });
+
+    // Dynamic content visibility based on selections
+    const selCC = document.getElementById('sel-cc');
+    const selLidar = document.getElementById('sel-lidar');
+    const selFW = document.getElementById('sel-fw');
+
+    function updateDynamic() {
+        const cc = selCC.value;
+        const lidar = selLidar.value;
+        const fw = selFW.value;
+
+        document.querySelectorAll('.ig-dynamic').forEach(el => {
+            el.classList.remove('show');
+            const matchCC = el.dataset.cc;
+            const matchLidar = el.dataset.lidar;
+            const matchFw = el.dataset.fw;
+
+            let show = false;
+            if (matchCC && matchCC.split(',').includes(cc)) show = true;
+            if (matchLidar && matchLidar.split(',').includes(lidar)) show = true;
+            if (matchFw && matchFw.split(',').includes(fw)) show = true;
+            if (!matchCC && !matchLidar && !matchFw) show = true;
+
+            if (show) el.classList.add('show');
+        });
+    }
+
+    selCC.addEventListener('change', updateDynamic);
+    selLidar.addEventListener('change', updateDynamic);
+    selFW.addEventListener('change', updateDynamic);
+    updateDynamic();
+
+    // Copy buttons for code blocks
+    document.querySelectorAll('.ig-code').forEach(block => {
+        const btn = document.createElement('button');
+        btn.className = 'ig-copy';
+        btn.textContent = 'Copy';
+        btn.onclick = () => {
+            const text = block.textContent.replace(/Copy|Jetson|APB.*|Livox|Velodyne|Ouster|RoboSense|Build|.*Config|Docker|ROS.*|Full Launch|ArduPilot|PX4/g, '').trim();
+            navigator.clipboard?.writeText(text).then(() => { btn.textContent = 'Copied!'; setTimeout(() => btn.textContent = 'Copy', 1500); });
+        };
+        block.style.position = 'relative';
+        block.appendChild(btn);
+    });
+
+    // Theme toggle
+    document.getElementById('dark-mode-toggle')?.addEventListener('click', () => {
+        const c = document.documentElement.getAttribute('data-theme');
+        const n = c === 'dark' ? 'light' : 'dark';
+        document.documentElement.setAttribute('data-theme', n);
+        try { localStorage.setItem('dc-theme', n); } catch(e) {}
+        const i = document.getElementById('dark-mode-icon');
+        if (i) i.className = n === 'dark' ? 'ph ph-moon' : 'ph ph-sun';
+    });
+    </script>
+</body>
+</html>

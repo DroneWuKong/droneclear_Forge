@@ -33,6 +33,7 @@ PAGES = {
     'analytics.html': 'analytics/index.html',
     'contribute.html': 'contribute/index.html',
     'slam-selector.html': 'slam/index.html',
+    'slam-guide.html': 'slam-guide/index.html',
 }
 
 # Static assets to copy (JS, CSS, JSON, images)
