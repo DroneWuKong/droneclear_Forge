@@ -43,33 +43,19 @@
 
 | ID | Issue | Location | Description | Added |
 |----|-------|----------|-------------|-------|
-| POLISH-003 | Duplicate `/editor/` route | `urls.py:28` | Both `/library/` and `/editor/` serve same view. Use `RedirectView`. | 2026-03-06 |
-| POLISH-009 | Missing `<label>` elements | All 5 HTML pages | Search inputs lack `<label>` for screen readers. | 2026-03-06 |
-| POLISH-010 | Guide cards not keyboard-accessible | `guide-selection.js:72` | Cards use `onclick` on `div`, no `tabindex` or `role`. | 2026-03-06 |
-| POLISH-011 | Three.js memory leak | `guide-viewer.js` | `destroySTLViewer` doesn't dispose geometries/materials. | 2026-03-06 |
-| POLISH-012 | Camera blob URL not revoked | `guide-camera.js:82-83` | `URL.createObjectURL` never revoked. | 2026-03-06 |
-| POLISH-013 | Global scope pollution | All JS files | No module system. Risk of naming collisions. | 2026-03-06 |
-| POLISH-014 | `components.css` is 2800+ lines | `components.css` | Should split into focused files. | 2026-03-06 |
-| POLISH-015 | No cache-busting on guide/audit | `guide.html`, `audit.html` | Script tags lack `?v=` unlike other pages. | 2026-03-06 |
-| POLISH-016 | Dark mode flash on index.html | `index.html` | Missing `data-theme="light"` on `<html>` tag unlike all other pages. Flash of wrong theme on first load. | 2026-03-08 |
-| POLISH-017 | No print media styles | All CSS files | No `@media print` rules. Audit records, build guides, component details can't be printed readably. | 2026-03-08 |
-| POLISH-018 | Guide editor form validation | `guide-editor.js` | No `checkValidity()` before API submit. Empty guide names, negative time estimates saved without error. | 2026-03-08 |
-| POLISH-019 | Missing ARIA/keyboard on modals | Multiple JS + HTML | No `role="dialog"`, `aria-modal`, focus trap in modals. WCAG 2.1 AA non-compliant. | 2026-03-08 |
-| POLISH-020 | Camera permission no fallback UI | `guide-camera.js` | Denied camera shows empty video element with no user-facing error message. | 2026-03-08 |
+| POLISH-013 | Global scope pollution | All JS files | WONTFIX — intentional for cross-file function calls in static build. | 2026-03-06 |
+| POLISH-014 | `components.css` is 3000+ lines | `components.css` | WONTFIX — CSS split requires all HTML import updates, risk > benefit. | 2026-03-06 |
+| | *(All other POLISH items completed — see Completed section)* | | | |
 
 ## Feature Requests
 
 | ID | Feature | Description | Added |
 |----|---------|-------------|-------|
-| FEAT-001 | Component cloning | Duplicate an existing part or schema category to speed up data entry. | 2026-03-06 |
-| FEAT-002 | Build export | Export a completed build to CSV or PDF from the wizard. | 2026-03-06 |
-| FEAT-003 | Photo AI analysis | Run CV models on captured step photos for quality assurance. | 2026-03-06 |
-| FEAT-004 | Schema audit logging | Track who changed what in the schema and parts library. | 2026-03-06 |
-| FEAT-005 | Tag vocabulary | Controlled tag taxonomy per category instead of free-form strings. | 2026-03-06 |
-| FEAT-006 | Additional data sources | Scrape GetFPV, RaceDayQuads, or manufacturer sites for broader coverage. | 2026-03-06 |
-| ~~FEAT-007~~ | ~~Media upload~~ | ~~Resolved — see Completed section~~ | 2026-03-06 |
-| FEAT-008 | Build guide versioning | Track guide revisions so sessions reference a specific version. | 2026-03-06 |
-| FEAT-009 | Audit PDF export | Generate downloadable PDF audit reports from the audit viewer. | 2026-03-06 |
+| FEAT-003 | Photo AI analysis | Run CV models on captured step photos for quality assurance. Needs backend CV server. | 2026-03-06 |
+| FEAT-004 | Schema audit logging | Track who changed what in the schema and parts library. Needs database persistence. | 2026-03-06 |
+| FEAT-005 | Tag vocabulary | Controlled tag taxonomy per category instead of free-form strings. Needs schema changes. | 2026-03-06 |
+| FEAT-006 | Additional data sources | Scrape GetFPV, RaceDayQuads, or manufacturer sites for broader coverage. Needs scraping pipeline. | 2026-03-06 |
+| FEAT-008 | Build guide versioning | Track guide revisions so sessions reference a specific version. Needs database versioning. | 2026-03-06 |
 | ~~FEAT-013~~ | ~~Mission Control dashboard~~ | ~~Resolved — see Completed section~~ | 2026-03-08 |
 | ~~FEAT-014~~ | ~~FPV Academy educational module~~ | ~~Resolved — see Completed section~~ | 2026-03-08 |
 | ~~FEAT-015~~ | ~~Seed drone models & build guides~~ | ~~Resolved — see Completed section~~ | 2026-03-08 |
@@ -113,3 +99,17 @@
 | ~~DEBT-009~~ | Event listener leaks audited — all safe (DOMContentLoaded, _done guards, cloneNode, removeEventListener) | 2026-03-08 | 2026-03-21 |
 | ~~DEBT-010~~ | Fetch error handling — showToast added to 11 silent catch blocks across 5 JS files | 2026-03-08 | 2026-03-21 |
 | ~~DEBT-012~~ | escapeHTML audit — all innerHTML in audit.js/guide-runner.js already use _esc()/escHTML(). No XSS risk. | 2026-03-08 | 2026-03-21 |
+| ~~POLISH-003~~ | /editor/ → /library/ redirect in netlify.toml | 2026-03-06 | 2026-03-21 |
+| ~~POLISH-009~~ | .sr-only class + labels on all search inputs (8 pages) | 2026-03-06 | 2026-03-21 |
+| ~~POLISH-010~~ | tabindex + role=button on guide cards for keyboard nav | 2026-03-06 | 2026-03-21 |
+| ~~POLISH-011~~ | Three.js geometry/material dispose in destroySTLViewer | 2026-03-06 | 2026-03-21 |
+| ~~POLISH-012~~ | Blob URL revocation on camera preview + file upload | 2026-03-06 | 2026-03-21 |
+| ~~POLISH-015~~ | Cache busting ?v=2 on guide.html + audit.html scripts | 2026-03-06 | 2026-03-21 |
+| ~~POLISH-016~~ | data-theme=dark + early theme script on index.html | 2026-03-08 | 2026-03-21 |
+| ~~POLISH-017~~ | @media print styles — hide nav/drawers, readable layout | 2026-03-08 | 2026-03-21 |
+| ~~POLISH-018~~ | Guide editor form validation — require name, reject neg time | 2026-03-08 | 2026-03-21 |
+| ~~POLISH-019~~ | role=dialog + aria-modal on all modal overlays | 2026-03-08 | 2026-03-21 |
+| ~~POLISH-020~~ | Toast on camera permission denied (was silent fallback) | 2026-03-08 | 2026-03-21 |
+| ~~FEAT-001~~ | Component cloning — clone icon on item rows, pre-fills form with "(Copy)" | 2026-03-06 | 2026-03-21 |
+| ~~FEAT-002~~ | Build export CSV — Export CSV button in drawer, downloads BOM with totals | 2026-03-06 | 2026-03-21 |
+| ~~FEAT-009~~ | Audit Print/PDF — Print button on audit record, uses @media print styles | 2026-03-06 | 2026-03-21 |

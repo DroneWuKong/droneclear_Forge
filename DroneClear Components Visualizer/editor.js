@@ -257,9 +257,29 @@ function renderItemRow(item, isDrone) {
             <strong style="color:var(--text-main)">${escapeHTML(item.pid)}</strong>
             <span style="color:var(--text-muted);margin-left:12px;">${escapeHTML(item.name)}</span>
         </div>
-        <i class="ph ph-pencil-simple" style="color:var(--accent-blue);"></i>
+        <div style="display:flex;gap:8px;align-items:center;">
+            <i class="ph ph-copy item-row-clone" title="Clone" style="color:var(--text-muted);cursor:pointer;font-size:16px;"></i>
+            <i class="ph ph-pencil-simple" style="color:var(--accent-blue);"></i>
+        </div>
     `;
-    row.onclick = () => isDrone ? openDroneForm(item) : openForm(item);
+    // Edit on row click
+    row.onclick = (e) => {
+        if (e.target.closest('.item-row-clone')) return; // Don't edit on clone click
+        isDrone ? openDroneForm(item) : openForm(item);
+    };
+    // FEAT-001: Clone — open form pre-filled with item data but clear PID for new entry
+    row.querySelector('.item-row-clone')?.addEventListener('click', (e) => {
+        e.stopPropagation();
+        if (isDrone) {
+            openDroneForm({ ...item, pid: '', name: item.name + ' (Copy)' });
+        } else {
+            openForm({ ...item, pid: '', name: item.name + ' (Copy)' });
+        }
+        // Ensure PID field is editable for the clone
+        if (elements.pid) elements.pid.readOnly = false;
+        if (elements.formTitle) elements.formTitle.textContent = 'Clone Component';
+        showToast('Cloned — edit PID and save as new.', 'info');
+    });
     elements.itemsList.appendChild(row);
 }
 

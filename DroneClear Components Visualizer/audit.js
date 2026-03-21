@@ -415,3 +415,8 @@ function _formatElapsed(ms) {
     if (m > 0) return `${m}m ${s}s`;
     return `${s}s`;
 }
+
+// ═══ FEAT-009: Print/PDF audit record ═══
+document.getElementById('btn-print-audit')?.addEventListener('click', () => {
+    window.print();
+});

@@ -323,3 +323,46 @@ function validateBuild() {
         elements.buildWarnings.appendChild(el);
     });
 }
+
+// ═══ FEAT-002: Export build as CSV ═══
+function exportBuildCSV() {
+    const rows = [['Slot', 'PID', 'Name', 'Manufacturer', 'Price', 'Weight (g)']];
+    let totalPrice = 0;
+    let totalWeight = 0;
+
+    for (const [slot, comp] of Object.entries(currentBuild)) {
+        if (!comp) continue;
+        const price = parseFloat(comp.approx_price) || 0;
+        const weight = parseFloat(comp.schema_data?.weight_g) || 0;
+        rows.push([
+            slot,
+            comp.pid || '',
+            '"' + (comp.name || '').replace(/"/g, '""') + '"',
+            '"' + (comp.manufacturer || '').replace(/"/g, '""') + '"',
+            price ? '$' + price.toFixed(2) : '',
+            weight || '',
+        ]);
+        totalPrice += price;
+        totalWeight += weight;
+    }
+
+    if (rows.length <= 1) {
+        showToast('Build is empty — nothing to export.', 'warning');
+        return;
+    }
+
+    rows.push([]);
+    rows.push(['', '', '', 'TOTAL', '$' + totalPrice.toFixed(2), totalWeight + 'g']);
+
+    const csv = rows.map(r => r.join(',')).join('\n');
+    const blob = new Blob([csv], { type: 'text/csv' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'forge-build-' + new Date().toISOString().slice(0, 10) + '.csv';
+    a.click();
+    URL.revokeObjectURL(url);
+    showToast('Build exported as CSV.', 'success');
+}
+
+document.getElementById('export-build-csv-btn')?.addEventListener('click', exportBuildCSV);
