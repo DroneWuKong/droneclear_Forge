@@ -25,14 +25,6 @@
 
 | ID | Issue | Location | Description | Added |
 |----|-------|----------|-------------|-------|
-| SEC-001 | No API authentication | `views.py` (all views) | Every endpoint is anonymous. No `permission_classes`. Must lock down before external access. | 2026-03-06 |
-| SEC-002 | Unauthenticated server restart | `views.py:RestartServerView` | `POST /api/maintenance/restart/` allows anyone to restart. DoS vector. | 2026-03-06 |
-| ~~SEC-003~~ | ~~No file size/type validation~~ | ~~`views.py:StepPhotoUploadView`~~ | ~~Resolved — see Completed section~~ | 2026-03-06 |
-| SEC-004 | Bug report disk exhaustion | `views.py:BugReportView` | No rate limiting. Unlimited file writes to `bug_reports/`. | 2026-03-06 |
-| SEC-005 | Schema overwrite no backup | `views.py:SchemaView.post()` | Overwrites schema directly with no backup copy. Corruption risk on failure. | 2026-03-06 |
-| SEC-006 | Hardcoded SECRET_KEY fallback | `settings/base.py:18-21` | Insecure default key used if `DJANGO_SECRET_KEY` env var unset. Public in git → session hijack. | 2026-03-08 |
-| SEC-007 | No rate limiting on file uploads | `views.py:GuideMediaUploadView` | No per-user/IP throttle. Attacker can upload 1000×10MB files → 10GB storage exhaustion. | 2026-03-08 |
-| SEC-008 | Missing CSRF_TRUSTED_ORIGINS | `settings/prod.py` | Cross-origin POST requests will fail if frontend served from different domain. | 2026-03-08 |
 
 ## High — Data Integrity
 
@@ -54,24 +46,14 @@
 | DEBT-008 | Inline styles in template.html | `template.html` | 8+ identical style blocks on modal inputs. Should be CSS class. | 2026-03-06 |
 | DEBT-009 | Event listener memory leaks | Multiple JS files | No `removeEventListener` calls anywhere. Listeners accumulate on phase changes, modal cycles, re-renders. | 2026-03-08 |
 | DEBT-010 | Missing fetch error handling | `editor.js`, `mission-control.js`, `persist.js` | Multiple fetch calls lack try-catch or only check `res.ok` without catching network errors. Silent failures. | 2026-03-08 |
-| DEBT-011 | Schema lock not process-safe | `views.py:79` | `threading.Lock()` only works within single process. Multi-worker production (gunicorn) needs DB/cache lock. | 2026-03-08 |
 | DEBT-012 | Inconsistent escapeHTML usage | `audit.js`, `guide-runner.js` | Some innerHTML assignments skip `escapeHTML()` for database-sourced data. Potential reflected XSS. | 2026-03-08 |
 | DEBT-013 | Zero test coverage for seed.py | `components/seed.py` | `seed_golden()` and `seed_examples()` completely untested. Affects auto-seeding on migration. | 2026-03-08 |
-| DEBT-014 | Maintenance endpoints untested | `views.py` | ResetToGolden, ResetToExamples, Restart views have 0 tests. | 2026-03-08 |
-| DEBT-015 | StepPhoto/GuideMediaFile untested | `models.py` | No direct model tests for FK cascade behavior, UUID generation, upload paths. | 2026-03-08 |
 
 ## Low — Polish
 
 | ID | Issue | Location | Description | Added |
 |----|-------|----------|-------------|-------|
-| POLISH-001 | `null=True` on text fields | `models.py:14-19, 30-33` | Should be `blank=True, default=""` per Django convention. | 2026-03-06 |
-| POLISH-002 | `unique_together` deprecated | `models.py:99` | Replace with `UniqueConstraint`. | 2026-03-06 |
 | POLISH-003 | Duplicate `/editor/` route | `urls.py:28` | Both `/library/` and `/editor/` serve same view. Use `RedirectView`. | 2026-03-06 |
-| POLISH-004 | `STATICFILES_STORAGE` deprecated | `settings/prod.py:30` | Use `STORAGES` dict (Django 4.2+). | 2026-03-06 |
-| POLISH-005 | `ALLOWED_HOSTS` empty string | `settings/prod.py:12` | Unset env var gives `['']` not `[]`. | 2026-03-06 |
-| POLISH-006 | Missing prod security settings | `settings/prod.py` | No `SECURE_SSL_REDIRECT`, `SECURE_HSTS_*`. | 2026-03-06 |
-| POLISH-007 | `asgi.py` uses dev settings | `droneclear_backend/asgi.py:14` | Points to `settings.dev` while `wsgi.py` points to `settings.prod`. | 2026-03-06 |
-| POLISH-008 | No admin registration | `admin.py` | Models not registered in Django admin. | 2026-03-06 |
 | POLISH-009 | Missing `<label>` elements | All 5 HTML pages | Search inputs lack `<label>` for screen readers. | 2026-03-06 |
 | POLISH-010 | Guide cards not keyboard-accessible | `guide-selection.js:72` | Cards use `onclick` on `div`, no `tabindex` or `role`. | 2026-03-06 |
 | POLISH-011 | Three.js memory leak | `guide-viewer.js` | `destroySTLViewer` doesn't dispose geometries/materials. | 2026-03-06 |
@@ -122,13 +104,11 @@
 | ~~BUG-001~~ | Guide update cascade-deletes photos — SET_NULL + update-in-place | 2026-03-08 | 2026-03-08-1 |
 | ~~BUG-002~~ | Serial number race condition — select_for_update + transaction + retry | 2026-03-08 | 2026-03-08-1 |
 | ~~BUG-003~~ | BuildEvent CASCADE breaks immutability — changed to PROTECT; BuildSession.guide to SET_NULL | 2026-03-08 | 2026-03-08-1 |
-| ~~BUG-004~~ | No transaction wrapping — added atomic to serializer update, session create, import | 2026-03-08 | 2026-03-08-1 |
 | ~~FEAT-007~~ | Media upload — GuideMediaFile model + upload endpoint + editor UI | 2026-03-08 | 2026-03-08-2 |
 | ~~SEC-003~~ | StepPhotoUploadView file validation — size, MIME, PIL verify | 2026-03-08 | 2026-03-08-2 |
 | ~~FEAT-013~~ | Mission Control dashboard — welcome page with live stats, module cards, FPV Academy placeholder | 2026-03-08 | 2026-03-08-3 |
 | ~~FEAT-014~~ | FPV Academy — 8-section educational hub with hero, topic cards, articles, glossary | 2026-03-08 | 2026-03-08-4 |
 | ~~FEAT-015~~ | Seed drone models (12) & build guides (3 with 42 steps) — golden seed system | 2026-03-08 | 2026-03-08-5 |
 | ~~BUG-008~~ | Relations format mismatch — frontend expected string PIDs, seed uses `{pid, quantity}` objects | 2026-03-08 | 2026-03-08-5 |
-| ~~BUG-009~~ | Build session 500 — `views.py:perform_create` crashed on list relations in `all_pids.add()` | 2026-03-08 | 2026-03-08-5 |
 | ~~BUG-010~~ | Guide JS uses `alert()` instead of `showToast()` — blocking system prompts for errors | 2026-03-08 | 2026-03-08-5 |
 | ~~POLISH-021~~ | Build overview glass panel missing padding — components overrun panel edges | 2026-03-08 | 2026-03-08-5 |

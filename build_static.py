@@ -2,7 +2,7 @@
 """
 Forge Static Site Builder
 
-Converts the Django-templated HTML pages into pure static HTML for Netlify deployment.
+Builds static HTML pages for Netlify deployment from source files.
 - Clones drone-integration-handbook repo for canonical parts-db data
 - Assembles forge_database.json from handbook JSON files + local industry data
 - Strips {% load static %} and {% static 'file' %} template tags

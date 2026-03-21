@@ -78,7 +78,7 @@ Step-by-step guided drone assembly module. After a user creates a parts recipe i
 - **Build Overview**: Full-width pre-build checklist with required tools, component verification checkboxes, builder name entry, and configurable attribute badges (up to 5 fields per component).
 - **Step Runner**: Step-by-step instruction engine with progress tracking, previous/next navigation, and per-step photo capture.
 - **Serial Number Tracking**: Every build session receives a unique serial number (`DC-YYYYMMDD-XXXX`), generated server-side.
-- **Photo Capture**: Camera integration via `navigator.mediaDevices.getUserMedia()` (rear camera preferred) with file upload fallback. Photos stored via Django `ImageField` to `media/build_photos/`.
+- **Photo Capture**: Camera integration via `navigator.mediaDevices.getUserMedia()` (rear camera preferred) with file upload fallback. Photos captured client-side via camera API.
 - **Safety Warnings**: Amber-highlighted warning boxes on steps involving soldering, high voltage, or other hazards.
 - **Betaflight CLI Viewer**: Dark terminal-styled code block for firmware configuration steps, with one-click copy.
 - **3D STL Viewer**: Three.js-powered 3D model viewer for 3D-printed parts. Auto-centres and scales, orbit controls.

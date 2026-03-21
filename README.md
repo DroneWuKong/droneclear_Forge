@@ -1,87 +1,57 @@
-# DroneClear Configurator
+# DroneClear Forge
 
-The DroneClear Configurator is a robust internal tool built to manage, visualize, and construct drone component databases. It allows administrators to define a master schema of drone parts, populate a live library of components based on that schema, and provides a "Model Builder" interface to assemble virtual drone builds logically.
+> The public-facing drone component browser, build planner, and integration guide hub.
+> **Live at [forgeprole.netlify.app](https://forgeprole.netlify.app)**
 
-> **Purpose**: This is a **data-prep and configuration tool** whose output feeds the production DroneClear compatibility engine. The engine powers end-user features including parts ordering, audit trails, airworthiness checks, and cybersecurity verification. Data quality here directly affects production quality.
+## What This Is
 
----
+Forge is the front door to the AI Wingman ecosystem. It gives operators, builders, and integrators free access to:
 
-## Pages
-
-| Page | URL | Description |
-|------|-----|-------------|
-| **Master Attributes Editor** | `/template/` | Define categories and attributes, manage the v3 schema blueprint |
-| **Parts Library Editor** | `/library/` | CRUD for components, bulk import/export, deep-link editing |
-| **Model Builder** | `/` | Browse parts, 12-step build wizard, real-time compatibility validation (12 checks) |
-| **Build Guide** | `/guide/` | Step-by-step assembly with photo capture, media carousel, guide authoring editor |
-| **Build Audit** | `/audit/` | Immutable event log, SHA-256 photo hashing, serial lookup, integrity verification |
-
----
+- **3,200+ drone components** across 16 categories (motors, ESCs, FCs, frames, antennas, etc.)
+- **150+ drone platforms** with specs, compliance status, and manufacturer details
+- **Build planning tools** — model builder, build audit, compatibility checks
+- **Integration guides** — FC firmware, mesh networking, TAK, SLAM, C-UAS, AI, swarm coordination
+- **FPV Academy** — learning resources for new operators
+- **Community contributions** — submit new components and platforms
 
 ## Quick Start
 
-1. **Clone the Repository**
-   ```bash
-   git clone https://github.com/tedstrazimiri/droneclear.git
-   cd droneclear
-   ```
+```bash
+python3 build_static.py    # Build static site → build/
+```
 
-2. **Backend Setup**
-   ```bash
-   python -m venv venv
-   .\venv\Scripts\activate   # Windows
-   # source venv/bin/activate  # Mac/Linux
-   pip install -r requirements.txt
-   ```
+The build pulls fresh data from the Ai-Project repo if `GITHUB_PAT` is set. Without it, falls back to local data.
 
-3. **Run Migrations**
-   ```bash
-   python manage.py migrate
-   ```
+## Deploy
 
-4. **Seed Sample Data** (optional — creates a sample build guide for testing)
-   ```bash
-   python manage.py seed_guides
-   ```
+Netlify auto-deploys from `master` branch. Config in `netlify.toml`.
 
-5. **Run the Application**
-   ```bash
-   python manage.py runserver 8000
-   ```
-   Navigate to `http://127.0.0.1:8000/`
+| Setting | Value |
+|---------|-------|
+| Build command | `python3 build_static.py` |
+| Publish directory | `build` |
+| Required env var | `GITHUB_PAT` (repo read access to DroneWuKong/Ai-Project) |
 
-6. **Reset Parts Library to Golden State** (wipes all parts, seeds from schema examples)
-   ```bash
-   python manage.py reset_to_golden
-   ```
+## Project Structure
 
----
+```
+├── DroneClear Components Visualizer/   # Source HTML/CSS/JS (20 pages)
+├── build_static.py                     # Static site generator
+├── netlify.toml                        # Netlify config + redirects
+├── archive/                            # Historical data (CSVs, old JSON)
+├── docs/
+│   ├── ARCHITECTURE.md                 # How the build pipeline works
+│   ├── FEATURES.md                     # UI feature reference
+│   └── fpv_domain_knowledge.md         # FPV expertise for AI/compatibility
+├── CHANGELOG.md                        # Session-by-session dev history
+├── BACKLOG.md                          # Tracked issues
+└── CLAUDE.md                           # AI assistant project instructions
+```
 
-## Tech Stack
+## Data Source
 
-- **Backend**: Django 5 + Django REST Framework, SQLite
-- **Frontend**: Vanilla JS (no framework), CodeMirror 6, Three.js, Phosphor Icons
-- **Deployment**: PythonAnywhere — see [DEPLOY_PYTHONANYWHERE.md](DEPLOY_PYTHONANYWHERE.md)
+Component and platform data lives in [`DroneWuKong/Ai-Project`](https://github.com/DroneWuKong/Ai-Project) → `data/parts-db/*.json`. Forge is a read-only consumer that syncs at build time.
 
 ---
 
-## Documentation
-
-| Document | Contents |
-|----------|----------|
-| [Architecture](docs/ARCHITECTURE.md) | Frontend modules, CSS files, backend structure, API endpoints, schema format, test coverage |
-| [Django Models](docs/MODELS.md) | All 8 model field reference tables |
-| [Features](docs/FEATURES.md) | Compatibility engine, build guide, build audit, parts import, UI standards |
-| [Deployment](DEPLOY_PYTHONANYWHERE.md) | PythonAnywhere setup, configuration, and updates |
-| [Backlog](BACKLOG.md) | All tracked issues, bugs, and feature requests (single source of truth) |
-| [Changelog](CHANGELOG.md) | Session-by-session development history |
-
----
-
-## Multi-Agent Development
-
-This repo is developed collaboratively by two AI agents:
-- **Claude** works in: `DRONECLEAR - Claude` (and git worktrees)
-- **Gemini** works in: `DRONECLEAR - Claude - Gemini`
-
-See [CLAUDE.md](CLAUDE.md) for session protocols, conventions, and the `/close-session` workflow.
+*Buddy up.*
