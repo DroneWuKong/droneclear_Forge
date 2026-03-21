@@ -34,6 +34,7 @@ PAGES = {
     'contribute.html': 'contribute/index.html',
     'slam-selector.html': 'slam/index.html',
     'slam-guide.html': 'slam-guide/index.html',
+    'openhd-guide.html': 'openhd-guide/index.html',
     'mesh-guide.html': 'mesh-guide/index.html',
     'tak-guide.html': 'tak-guide/index.html',
     'ai-guide.html': 'ai-guide/index.html',

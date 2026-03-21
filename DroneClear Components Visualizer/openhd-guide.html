@@ -1,0 +1,247 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>OpenHD Implementation Guide — Forge</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="{% static 'base.css' %}?v=2">
+    <link rel="stylesheet" href="{% static 'layout.css' %}?v=4">
+    <link rel="stylesheet" href="{% static 'utilities.css' %}?v=2">
+    <style>
+        /* Scroll fix — standalone guide page */
+        body { overflow-y: auto !important; }
+        .app-container { height: auto !important; min-height: 100vh; overflow: visible !important; }
+
+        .guide-wrap { max-width: 860px; margin: 0 auto; padding: 32px 24px 80px; }
+        .guide-header { border-bottom: 1px solid var(--border-color); padding-bottom: 24px; margin-bottom: 32px; }
+        .guide-header h1 { font-size: 28px; font-weight: 700; color: var(--text-main); margin: 0 0 8px; }
+        .guide-header .guide-meta { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
+        .guide-badge { font-size: 11px; padding: 3px 10px; border-radius: 12px; font-weight: 600; }
+        .badge-green { background: rgba(74,222,128,0.12); color: var(--accent-green); border: 1px solid rgba(74,222,128,0.25); }
+        .badge-cyan  { background: rgba(34,211,238,0.1);  color: var(--accent-cyan);  border: 1px solid rgba(34,211,238,0.2); }
+        .badge-gray  { background: var(--bg-panel); color: var(--text-muted); border: 1px solid var(--border-color); }
+
+        .guide-body h2 { font-size: 18px; font-weight: 700; color: var(--text-main); margin: 36px 0 12px; padding-bottom: 6px; border-bottom: 1px solid var(--border-color); }
+        .guide-body h3 { font-size: 14px; font-weight: 700; color: var(--accent-cyan); margin: 24px 0 8px; text-transform: uppercase; letter-spacing: 0.05em; }
+        .guide-body p { font-size: 14px; color: var(--text-muted); line-height: 1.7; margin: 0 0 12px; }
+        .guide-body code { font-family: 'JetBrains Mono', monospace; font-size: 12px; background: var(--bg-panel); border: 1px solid var(--border-color); padding: 1px 6px; border-radius: 4px; color: var(--accent-green); }
+
+        .guide-table { width: 100%; border-collapse: collapse; margin: 16px 0 24px; font-size: 13px; }
+        .guide-table th { text-align: left; padding: 8px 12px; font-size: 11px; font-weight: 600; color: var(--text-faint); text-transform: uppercase; letter-spacing: 0.05em; border-bottom: 1px solid var(--border-color); }
+        .guide-table td { padding: 8px 12px; color: var(--text-muted); border-bottom: 1px solid rgba(255,255,255,0.04); vertical-align: top; }
+        .guide-table tr:last-child td { border-bottom: none; }
+        .guide-table td:first-child { color: var(--text-main); font-weight: 500; }
+
+        .arch-diagram { background: var(--bg-panel); border: 1px solid var(--border-color); border-radius: var(--radius-sm); padding: 20px; margin: 16px 0 24px; font-family: 'JetBrains Mono', monospace; font-size: 12px; color: var(--accent-green); overflow-x: auto; line-height: 1.8; }
+
+        .step-block { display: flex; gap: 16px; margin-bottom: 28px; }
+        .step-num { flex-shrink: 0; width: 28px; height: 28px; border-radius: 50%; background: rgba(74,222,128,0.12); border: 1px solid rgba(74,222,128,0.3); display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 700; color: var(--accent-green); margin-top: 2px; }
+        .step-content { flex: 1; }
+        .step-content h4 { font-size: 14px; font-weight: 700; color: var(--text-main); margin: 0 0 6px; }
+        .step-content p { margin: 0 0 8px; }
+
+        .warn-box { background: rgba(251,191,36,0.07); border: 1px solid rgba(251,191,36,0.2); border-radius: var(--radius-sm); padding: 12px 16px; margin: 16px 0; font-size: 13px; color: #fbbf24; }
+        .warn-box strong { display: block; margin-bottom: 4px; }
+        .info-box { background: rgba(74,222,128,0.06); border: 1px solid rgba(74,222,128,0.15); border-radius: var(--radius-sm); padding: 12px 16px; margin: 16px 0; font-size: 13px; color: var(--text-muted); }
+
+        .resource-links { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
+        .resource-link { font-size: 12px; padding: 5px 12px; border-radius: 6px; background: var(--bg-panel); border: 1px solid var(--border-color); color: var(--text-muted); text-decoration: none; }
+        .resource-link:hover { border-color: var(--accent-green); color: var(--accent-green); }
+    </style>
+</head>
+<body>
+    <div class="app-container" style="flex-direction: column;">
+        <header class="topbar">
+            <div style="display:flex; justify-content:space-between; width:100%; align-items:center;">
+                <div style="display:flex; align-items:center; gap:12px;">
+                    <a href="/" style="text-decoration:none; display:flex; align-items:baseline; gap:8px;">
+                        <span style="font-size:20px; font-weight:700; background:linear-gradient(135deg,var(--accent-red) 0%,var(--accent-darkred) 100%); -webkit-background-clip:text; -webkit-text-fill-color:transparent; background-clip:text;">Forge</span>
+                    </a>
+                    <div style="width:1px; height:24px; background:var(--border-color);"></div>
+                    <a href="/" style="text-decoration:none; font-size:12px; color:var(--text-muted);"><i class="ph ph-house"></i> Bench</a>
+                    <a href="/guides/" style="text-decoration:none; font-size:12px; color:var(--text-muted);"><i class="ph ph-rocket-launch"></i> Guides</a>
+                </div>
+            </div>
+        </header>
+
+        <div class="guide-wrap">
+
+            <div class="guide-header">
+                <h1><i class="ph ph-wifi-high" style="color:var(--accent-green);"></i> OpenHD — Open-Source Digital Video Link</h1>
+                <p style="font-size:14px; color:var(--text-muted); margin:8px 0 0;">From hardware sourcing to first HD video link with MAVLink telemetry passthrough. Wifibroadcast-based — no proprietary hardware required.</p>
+                <div class="guide-meta">
+                    <span class="guide-badge badge-green">LIVE</span>
+                    <span class="guide-badge badge-cyan">Video Link</span>
+                    <span class="guide-badge badge-cyan">MAVLink</span>
+                    <span class="guide-badge badge-gray">Moderate</span>
+                    <span class="guide-badge badge-gray">2–4 hrs</span>
+                    <span class="guide-badge badge-gray">$30–80 BOM</span>
+                    <span class="guide-badge badge-gray">GPL-3.0</span>
+                </div>
+            </div>
+
+            <div class="guide-body">
+
+                <h2>What You're Building</h2>
+                <p>Two nodes — Air and Ground — each running OpenHD on a Linux SBC or x86 machine. Both nodes have a commodity RTL8812AU WiFi adapter operating in monitor/injection mode (wifibroadcast). The air node captures CSI camera video, encodes it, and injects raw 802.11 frames into the air. The ground node captures all frames promiscuously, decodes video, and streams telemetry to QOpenHD and any connected MAVLink GCS.</p>
+
+                <div class="arch-diagram">
+[FC] ──UART── [Air SBC] ──wifibroadcast──▶ [Ground SBC/PC] ──UDP 14550── [QOpenHD / Mission Planner / Buddy]
+                  │                                                          │
+               [CSI Cam]                                               [Live HD Video]
+                </div>
+
+                <div class="info-box">No network router. No association. No ACK. One-way broadcast with FEC — signal degrades gracefully at range instead of dropping off a cliff.</div>
+
+                <h2>Hardware BOM</h2>
+
+                <h3>Tier 1 — Minimum ($30–80)</h3>
+                <table class="guide-table">
+                    <thead><tr><th>Item</th><th>Notes</th><th>~Cost</th></tr></thead>
+                    <tbody>
+                        <tr><td>Raspberry Pi Zero 2 W</td><td>Air unit. <strong>Not</strong> Zero 1 — unsupported</td><td>$15</td></tr>
+                        <tr><td>2× ALFA AWUS036ACH <em>or</em> ASUS USB-AC56</td><td>RTL8812AU, 500mW, 5.8GHz — one air, one ground</td><td>$20–30 each</td></tr>
+                        <tr><td>CSI camera (Arducam or RPi HQ)</td><td>Must be on OpenHD supported camera list</td><td>$25–50</td></tr>
+                        <tr><td>22-pin type B CSI cable</td><td>Pi Zero uses this, not the standard 15-pin</td><td>$3</td></tr>
+                        <tr><td>Dedicated 5V/3A BEC × 2</td><td>One for WiFi adapter, one for RPi — <strong>separate rails</strong></td><td>$5 each</td></tr>
+                        <tr><td>Laptop (x86) with SecureBoot off</td><td>Ground station — faster CPU = lower decode latency</td><td>—</td></tr>
+                        <tr><td>Fast USB stick</td><td>Ground station boots from this</td><td>$10</td></tr>
+                    </tbody>
+                </table>
+
+                <h3>Tier 2 — Recommended (CM4 + Rock5)</h3>
+                <table class="guide-table">
+                    <thead><tr><th>Item</th><th>Notes</th><th>~Cost</th></tr></thead>
+                    <tbody>
+                        <tr><td>RPi CM4 4GB eMMC</td><td>Air — better thermal, dual camera, lower latency</td><td>$60</td></tr>
+                        <tr><td>Ochin CM4 carrier board</td><td>Compact, designed for OpenHD</td><td>$35</td></tr>
+                        <tr><td>Radxa Rock 5B</td><td>Ground — H.265 HW decode, lowest latency GS option</td><td>$80</td></tr>
+                        <tr><td>2× ALFA AWUS036ACH</td><td>RTL8812AU, 500mW</td><td>$30 each</td></tr>
+                        <tr><td>Arducam Skymaster or IMX477</td><td>Best image quality for OpenHD builds</td><td>$40–80</td></tr>
+                    </tbody>
+                </table>
+
+                <h3>Supported WiFi Chipsets</h3>
+                <p>RTL8812AU (best — STBC/LDPC support, 500mW), RTL8814AU (4 antennas), RTL8812BU (lower power, ~60–80mW typical), RTL8812EU (newest, highest sensitivity — no FCC/CE cert), RTL8811AU (single antenna — no STBC/LDPC). For new builds use RTL8812AU.</p>
+
+                <h2>Step-by-Step Setup</h2>
+
+                <div class="step-block">
+                    <div class="step-num">1</div>
+                    <div class="step-content">
+                        <h4>Flash Air Image</h4>
+                        <p>Download the latest Evo image for your SBC from <code>openhdfpv.org/downloads</code>. Flash to SD (Pi Zero 2) or eMMC (CM4 via Ochin — hold button while connecting power to enter flash mode). First boot takes several minutes with multiple reboots. Normal.</p>
+                        <div class="warn-box"><strong>CM4/Ochin:</strong> Flash is very slow due to CM4 eMMC limitations. Do not disconnect — it will brick the device.</div>
+                    </div>
+                </div>
+
+                <div class="step-block">
+                    <div class="step-num">2</div>
+                    <div class="step-content">
+                        <h4>Flash Ground Image</h4>
+                        <p>For x86: flash the x86 image to a fast USB stick. Disable SecureBoot in BIOS. Set USB as first boot device. QOpenHD starts automatically. For Rock5: flash per standard Radxa process, OpenHD starts on boot.</p>
+                    </div>
+                </div>
+
+                <div class="step-block">
+                    <div class="step-num">3</div>
+                    <div class="step-content">
+                        <h4>Wire the Air Unit</h4>
+                        <div class="warn-box"><strong>Solder the WiFi adapter — do not rely on USB plugs.</strong> Vibration will disconnect any plug-in connection mid-flight. Remove the USB connector and solder directly to the SBC's USB power and data pads.</div>
+                        <p><strong>Power:</strong> Two separate BECs — one for the SBC, one for the WiFi adapter. The adapter draws more current than the SBC can supply via USB.</p>
+                        <p><strong>FC wiring:</strong> Connect FC MAVLink UART to SBC UART. Baud rate must match on both ends (default 115200).</p>
+                        <div class="arch-diagram">FC TX ──► SBC RX
+FC RX ◄── SBC TX
+FC GND ── SBC GND  ← required</div>
+                    </div>
+                </div>
+
+                <div class="step-block">
+                    <div class="step-num">4</div>
+                    <div class="step-content">
+                        <h4>Configure the Link</h4>
+                        <p>Open QOpenHD on the ground station. The OpenHD logo opens the main menu; the red circle opens the sidebar. Go to <strong>OPENHD → LINK/QUICK</strong>.</p>
+                        <table class="guide-table">
+                            <thead><tr><th>Setting</th><th>Value</th><th>Notes</th></tr></thead>
+                            <tbody>
+                                <tr><td>Frequency</td><td>5.8GHz</td><td>Cleaner than 2.4GHz. Cannot change while armed.</td></tr>
+                                <tr><td>STBC</td><td>ON (both ends)</td><td>Must match air/ground. Off = no link, not degraded.</td></tr>
+                                <tr><td>LDPC</td><td>ON (both ends)</td><td>Same — both ends or neither.</td></tr>
+                                <tr><td>FC_UART_BAUD</td><td>Match FC config</td><td>AIR tab → FC_UART_BAUD</td></tr>
+                                <tr><td>CAMERA_TYPE</td><td>Match physical cam</td><td>AIR CAM 1. Reboot required after change.</td></tr>
+                                <tr><td>Air Recording</td><td>AUTO</td><td>Starts recording on arm. Air-side storage only.</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <div class="step-block">
+                    <div class="step-num">5</div>
+                    <div class="step-content">
+                        <h4>Verify Link</h4>
+                        <p>In QOpenHD → <strong>STATUS</strong> tab, both AIR and GROUND should show LIVE. If only one shows: check adapter power, confirm same frequency on both ends, verify STBC/LDPC match.</p>
+                        <p><strong>Video but no telemetry:</strong> UART baud rate mismatch or wiring error. Set FC_UART_BAUD to match your FC's telemetry port.</p>
+                        <p><strong>Black screen "rebooting camera":</strong> Wrong CAMERA_TYPE. Fix in AIR CAM 1 menu, wait for reboot.</p>
+                    </div>
+                </div>
+
+                <div class="step-block">
+                    <div class="step-num">6</div>
+                    <div class="step-content">
+                        <h4>Connect MAVLink GCS</h4>
+                        <p>OpenHD auto-forwards the MAVLink stream over UDP on the ground station's local network. Default port: <code>14550</code>.</p>
+                        <p><strong>Mission Planner:</strong> Connection → UDP → 14550<br>
+                        <strong>QGroundControl:</strong> Comm Links → UDP → 14550<br>
+                        <strong>Buddy/Wingman:</strong> Same — connect as second UDP client. Kalman estimator smooths stream normally regardless of source.</p>
+                    </div>
+                </div>
+
+                <h2>Integration Patterns</h2>
+
+                <h3>OpenHD + GHST/ELRS (Dual-Link — Recommended)</h3>
+                <p>OpenHD handles HD video and MAVLink telemetry. GHST or ELRS handles primary RC control with its own dedicated link. The FC connects to both simultaneously — telemetry UART to OpenHD, RC input from the RC receiver. Best of both: high-quality video at range + reliable low-latency RC control. If the OpenHD link degrades, you still have full control authority.</p>
+
+                <h3>OpenHD + Meshtastic (Backup Comms)</h3>
+                <p>OpenHD as primary video + telemetry. Meshtastic LoRa node on each craft and at GCS as a fallback telemetry mesh for emergency commands when OpenHD degrades or fails. See the Mesh Networking guide for the dual-link pattern.</p>
+
+                <h3>OpenHD vs. Commercial Links</h3>
+                <table class="guide-table">
+                    <thead><tr><th>System</th><th>Cost (air unit)</th><th>Range</th><th>Latency</th><th>Open source</th><th>Chinese HW</th></tr></thead>
+                    <tbody>
+                        <tr><td>OpenHD (RPi)</td><td>~$30</td><td>5–20km typical</td><td>80–150ms</td><td>Yes — fully</td><td>No</td></tr>
+                        <tr><td>OpenHD (custom HW)</td><td>~$80</td><td>5–20km typical</td><td>&lt;40ms</td><td>Yes — fully</td><td>No</td></tr>
+                        <tr><td>DJI O3</td><td>~$229</td><td>~10km (O3 Pro)</td><td>~31ms (FHD)</td><td>No</td><td>Yes</td></tr>
+                        <tr><td>Walksnail Avatar</td><td>~$99–149</td><td>~4km</td><td>~22ms</td><td>No</td><td>Yes</td></tr>
+                        <tr><td>HDZero</td><td>~$99</td><td>~3–5km</td><td>~8ms (race)</td><td>Partial</td><td>Yes</td></tr>
+                    </tbody>
+                </table>
+
+                <h2>Gotchas</h2>
+                <div class="warn-box"><strong>Solder the WiFi adapter.</strong> USB plugs vibrate loose. No exceptions.</div>
+                <div class="warn-box"><strong>Two separate BECs.</strong> WiFi adapter on its own power rail. Brownouts on TX will drop the link.</div>
+                <div class="warn-box"><strong>STBC/LDPC must match on both ends.</strong> Mismatch = no link. Not degraded — just gone.</div>
+                <div class="warn-box"><strong>Don't change frequency while armed.</strong> Link drops during change. Set before takeoff.</div>
+                <div class="info-box"><strong>RTL8811AU users:</strong> Single antenna — cannot use STBC/LDPC. Leave both off on both ends.</div>
+                <div class="info-box"><strong>BLM8812EU:</strong> Best performing chip currently. No FCC/CE cert — import and use at your own risk outside certified regions.</div>
+
+                <h2>Resources</h2>
+                <div class="resource-links">
+                    <a href="https://openhdfpv.org" class="resource-link" target="_blank">openhdfpv.org</a>
+                    <a href="https://github.com/OpenHD/OpenHD" class="resource-link" target="_blank">GitHub (GPL-3.0)</a>
+                    <a href="https://github.com/OpenHD/QOpenHD/releases" class="resource-link" target="_blank">QOpenHD App</a>
+                    <a href="https://t.me/OpenHD_User" class="resource-link" target="_blank">Telegram Community</a>
+                    <a href="https://discord.gg/NRRn5ugrxH" class="resource-link" target="_blank">Discord</a>
+                    <a href="https://openhdfpv.org/hardware/wifi-adapters" class="resource-link" target="_blank">WiFi Adapter List</a>
+                    <a href="https://openhdfpv.org/hardware/cameras" class="resource-link" target="_blank">Supported Cameras</a>
+                </div>
+
+            </div>
+        </div>
+    </div>
+    <script src="{% static 'maintenance.js' %}"></script>
+</body>
+</html>
