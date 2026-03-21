@@ -1,0 +1,257 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Swarm Stack Selector — Forge</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&family=Source+Serif+4:opsz,wght@8..60,400;8..60,600;8..60,700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="{% static 'base.css' %}?v=2">
+    <link rel="stylesheet" href="{% static 'layout.css' %}?v=3">
+    <link rel="stylesheet" href="{% static 'utilities.css' %}?v=2">
+    <script src="https://unpkg.com/@phosphor-icons/web"></script>
+    <script>(function(){const s=localStorage.getItem('dc-theme');document.documentElement.setAttribute('data-theme',s||'dark')})();</script>
+    <style>
+        .ss-container{max-width:1100px;margin:0 auto;padding:32px 24px 80px}
+        .ss-hero{text-align:center;margin-bottom:40px}.ss-hero h1{font-size:28px;font-weight:700;background:linear-gradient(135deg,var(--accent-blue) 0%,var(--accent-purple) 100%);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;margin:0 0 8px}.ss-hero p{color:var(--text-muted);font-size:14px;max-width:600px;margin:0 auto;line-height:1.6}
+        .ss-inputs{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:16px;margin-bottom:32px}
+        .ss-input-group{background:var(--bg-panel);border:1px solid var(--border-color);border-radius:var(--radius-md);padding:20px}
+        .ss-input-group label{display:block;font-size:11px;text-transform:uppercase;letter-spacing:0.1em;color:var(--text-muted);margin-bottom:8px;font-weight:500}
+        .ss-input-group select{width:100%;padding:10px 12px;background:var(--bg-dark);border:1px solid var(--border-color);border-radius:var(--radius-sm);color:var(--text-main);font-family:var(--font-family);font-size:13px;cursor:pointer;appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%23737373' d='M6 8L1 3h10z'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 12px center}
+        .ss-input-group select:focus{outline:none;border-color:var(--accent-blue);box-shadow:0 0 0 2px rgba(14,165,233,0.15)}
+        .ss-results{display:grid;gap:16px}
+        .ss-empty{text-align:center;padding:60px 20px;color:var(--text-muted)}.ss-empty i{font-size:48px;opacity:0.3;display:block;margin-bottom:12px}
+        .ss-card{background:var(--bg-panel);border:1px solid var(--border-color);border-radius:var(--radius-md);overflow:hidden;transition:border-color 0.2s,box-shadow 0.2s}.ss-card:hover{border-color:var(--border-hover);box-shadow:var(--card-shadow-hover)}
+        .ss-card-header{display:flex;justify-content:space-between;align-items:flex-start;padding:20px 20px 0}
+        .ss-card-title{font-size:18px;font-weight:700;color:var(--text-main)}
+        .ss-card-badges{display:flex;gap:6px;flex-wrap:wrap}
+        .ss-badge{font-size:10px;padding:3px 8px;border-radius:20px;font-weight:500;letter-spacing:0.05em}
+        .ss-badge-best{background:rgba(74,222,128,0.15);color:var(--accent-green);border:1px solid rgba(74,222,128,0.3)}
+        .ss-badge-match{background:rgba(14,165,233,0.1);color:var(--accent-blue);border:1px solid rgba(14,165,233,0.2)}
+        .ss-badge-warn{background:rgba(251,191,36,0.1);color:#fbbf24;border:1px solid rgba(251,191,36,0.2)}
+        .ss-card-meta{padding:8px 20px 0;font-size:12px;color:var(--text-muted);display:flex;gap:16px;flex-wrap:wrap}
+        .ss-card-meta span{display:flex;align-items:center;gap:4px}
+        .ss-card-desc{padding:12px 20px;font-size:13px;color:var(--text-muted);line-height:1.6}
+        .ss-card-features{padding:0 20px 16px;display:flex;gap:6px;flex-wrap:wrap}
+        .ss-feat{font-size:10px;padding:3px 8px;background:var(--bg-dark);border:1px solid var(--border-color);border-radius:12px;color:var(--text-muted)}
+        .ss-card-links{padding:12px 20px;border-top:1px solid var(--border-color);display:flex;gap:16px}
+        .ss-card-links a{font-size:12px;color:var(--accent-cyan);text-decoration:none;display:flex;align-items:center;gap:4px}.ss-card-links a:hover{text-decoration:underline}
+        .ss-score{display:flex;align-items:center;gap:6px}.ss-score-bar{width:60px;height:6px;background:var(--bg-dark);border-radius:3px;overflow:hidden}.ss-score-fill{height:100%;border-radius:3px;background:var(--accent-green)}.ss-score-num{font-size:11px;font-weight:700;color:var(--accent-green);min-width:28px}
+    </style>
+</head>
+<body>
+<div class="app-container" style="flex-direction:column;">
+    <header class="topbar"><div style="display:flex;justify-content:space-between;width:100%;align-items:center;"><div style="display:flex;align-items:center;gap:12px;"><a href="/" style="text-decoration:none;display:flex;align-items:baseline;gap:8px;"><span style="font-size:20px;font-weight:700;background:linear-gradient(135deg,var(--accent-red) 0%,var(--accent-darkred) 100%);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;">Forge</span><span style="font-size:9px;font-weight:500;letter-spacing:0.12em;text-transform:uppercase;color:var(--text-faint);">Swarm Selector</span></a></div><div style="display:flex;align-items:center;gap:12px;"><a href="/guides/" style="text-decoration:none;font-size:12px;color:var(--text-muted);"><i class="ph ph-rocket-launch"></i> Guides</a><a href="/swarm-guide/" style="text-decoration:none;font-size:12px;color:var(--text-muted);"><i class="ph ph-book-open"></i> Swarm Guide</a><div style="width:1px;height:24px;background:var(--border-color);"></div><button class="dark-mode-toggle" id="dark-mode-toggle" title="Toggle theme"><i class="ph ph-moon" id="dark-mode-icon"></i></button></div></div></header>
+
+    <div class="ss-container">
+        <div class="ss-hero">
+            <h1><i class="ph ph-users-three"></i> Swarm Stack Selector</h1>
+            <p>Pick your mission type, flight controller, and fleet size — get ranked swarm software recommendations with key configs.</p>
+        </div>
+
+        <div class="ss-inputs">
+            <div class="ss-input-group">
+                <label><i class="ph ph-target"></i> Mission Type</label>
+                <select id="sel-mission">
+                    <option value="">— Select mission —</option>
+                    <option value="show">Drone Light Show (choreographed)</option>
+                    <option value="formation">Formation Flying (leader-follower)</option>
+                    <option value="search">Search & Rescue (area search)</option>
+                    <option value="tactical">Tactical / ISR Swarm</option>
+                    <option value="research">Research / Experimentation</option>
+                </select>
+            </div>
+            <div class="ss-input-group">
+                <label><i class="ph ph-microchip"></i> Flight Controller</label>
+                <select id="sel-fc">
+                    <option value="">— Any FC —</option>
+                    <option value="px4">PX4</option>
+                    <option value="ardupilot">ArduPilot</option>
+                    <option value="crazyflie">Crazyflie</option>
+                    <option value="none">None (simulation only)</option>
+                </select>
+            </div>
+            <div class="ss-input-group">
+                <label><i class="ph ph-drone"></i> Fleet Size</label>
+                <select id="sel-scale">
+                    <option value="">— Any size —</option>
+                    <option value="small">2-5 drones</option>
+                    <option value="medium">6-20 drones</option>
+                    <option value="large">21-100 drones</option>
+                    <option value="xlarge">100+ drones</option>
+                </select>
+            </div>
+            <div class="ss-input-group">
+                <label><i class="ph ph-house-simple"></i> Environment</label>
+                <select id="sel-env">
+                    <option value="">— Any —</option>
+                    <option value="outdoor">Outdoor (GPS)</option>
+                    <option value="indoor">Indoor (no GPS)</option>
+                    <option value="sim">Simulation only</option>
+                </select>
+            </div>
+        </div>
+
+        <div class="ss-results" id="results">
+            <div class="ss-empty"><i class="ph ph-magnifying-glass"></i>Select a mission type to see recommendations</div>
+        </div>
+    </div>
+</div>
+
+<script>
+const STACKS = [
+  {
+    id:"skybrush", name:"Skybrush (Server + Live + Studio)", type:"Show Platform",
+    stars:299, fc:["px4","ardupilot"], missions:["show","formation"], scale:["small","medium","large","xlarge"], env:["outdoor","sim"],
+    desc:"Industry-standard open-source drone show framework. Server backend (Python/Trio), React GCS frontend, Blender choreography addon. GPS time sync, geofencing, LED control, takeoff sequencing. Tested with 1000+ drones.",
+    features:["Blender addon","LED choreography","GPS time sync","1000+ drones tested","Geofencing","RC/auto start","MIDI timecode"],
+    links:{github:"https://github.com/skybrush-io/skybrush-server",web:"https://skybrush.io"},
+    strengths:"Most mature open-source show platform. Active daily development. Full toolchain from design (Blender) to execution (server) to monitoring (Live GCS).",
+    weaknesses:"Show-focused — not designed for reactive swarms or tactical missions."
+  },
+  {
+    id:"mds", name:"MDS (MAVSDK Drone Show)", type:"Show + Swarm",
+    stars:274, fc:["px4"], missions:["show","formation"], scale:["small","medium","large"], env:["outdoor","sim"],
+    desc:"All-in-one PX4 drone show + smart swarm. Docker SITL, React dashboard, SkyBrush CSV import, LED WS2812B control, leader-follower clustering with multi-group support. Free for <10 drones.",
+    features:["Docker SITL per drone","React GCS","SkyBrush import","Leader-follower","Multi-group","LED WS2812B","Free <10 drones"],
+    links:{github:"https://github.com/alireza787b/mavsdk_drone_show"},
+    strengths:"Fastest path from zero to simulated show. Leader-follower swarm mode. Well-documented SITL setup. Includes vetted PX4 params (COM_RCL_EXCEPT=7, GF_ACTION=3, EKF2 tuning).",
+    weaknesses:"PX4-only. Commercial license required for >10 drones.",
+    px4_params:{COM_RCL_EXCEPT:7,GF_ACTION:3,GF_MAX_HOR_DIST:1500,COM_OF_LOSS_T:20,EKF2_GPS_P_NOISE:0.5,EKF2_GPS_V_NOISE:0.3}
+  },
+  {
+    id:"orcus", name:"ORCUS", type:"Tactical Swarm",
+    stars:27, fc:["ardupilot"], missions:["tactical"], scale:["small","medium"], env:["outdoor","sim"],
+    desc:"Autonomous swarm kamikaze system. YOLOv12 detection, EKF multi-drone sensor fusion, Hungarian attack assignment, 7-step handshake protocol, IBVS terminal guidance. ArduPilot SITL + ROS + Gazebo.",
+    features:["YOLOv12 detection","EKF sensor fusion","Hungarian assignment","7-step attack protocol","IBVS terminal guidance","RGI geo-localization","Web control panel","BoT-SORT tracking"],
+    links:{github:"https://github.com/koesan/ORCUS"},
+    strengths:"Most sophisticated open-source tactical swarm. Production-grade: covariance-aware fusion, immutable attack states, ghost mode, zombie lock failsafe. Full sensor noise model. IBVS dive profile (1.5→8 m/s, 3-phase).",
+    weaknesses:"ArduPilot-only. Kamikaze-specific — terminal engagement logic not reusable for non-kinetic missions without modification.",
+    key_params:{pid_kp:0.9,pid_ki:0.02,pid_kd:0.12,ibvs_vx_max:8.0,merge_base_m:8,merge_max_m:20,ekf_mahalanobis:9.21}
+  },
+  {
+    id:"dsse", name:"DSSE (Drone Swarm Search)", type:"RL Training Environment",
+    stars:68, fc:["none"], missions:["search","research"], scale:["small","medium","large"], env:["sim"],
+    desc:"PettingZoo multi-agent RL environment for SAR drone swarm. Maritime search with dynamic probability matrices + OpenDrift ocean data. 9 ready-made algorithms (PPO-CNN, decentralized PPO, DQN, greedy, A*). Published JOSS + arXiv.",
+    features:["PettingZoo/Gymnasium","9 RL algorithms","OpenDrift ocean sim","pip install DSSE","JOSS published","arXiv:2307.06240","Ray RLlib","PyTorch"],
+    links:{github:"https://github.com/capstone-insper/drone-swarm-search",paper:"https://arxiv.org/abs/2307.06240",pypi:"https://pypi.org/project/DSSE/"},
+    strengths:"Best open-source RL training environment for swarm search. Dual-branch CNN architecture (prob matrix + position). Decentralized PPO variant for cooperative search without shared weights. Real ocean data via OpenDrift.",
+    weaknesses:"Simulation only — no hardware bridge. Discrete actions (8 directions + search), not continuous. Grid-based, not continuous space."
+  },
+  {
+    id:"crazyswarm2", name:"Crazyswarm2", type:"Research Swarm",
+    stars:300, fc:["crazyflie"], missions:["research","formation","show"], scale:["small","medium","large"], env:["indoor","sim"],
+    desc:"Gold standard for swarm research on Crazyflie nano-quads. 49+ drones demonstrated. ROS2 Humble. Motion capture integration, trajectory tracking, real-time visualization.",
+    features:["49+ drones","ROS2 native","Motion capture","Trajectory tracking","Real-time viz","Crazyflie ecosystem"],
+    links:{github:"https://github.com/IMRCLab/crazyswarm2"},
+    strengths:"Proven at scale (49+ drones). Tight integration with Crazyflie hardware. ROS2 native. Strong academic community.",
+    weaknesses:"Crazyflie-only — nano-quads, not full-size drones. Requires motion capture for indoor (expensive). No outdoor GPS support natively."
+  },
+  {
+    id:"coflyers", name:"CoFlyers", type:"Research Platform",
+    stars:33, fc:["crazyflie"], missions:["research"], scale:["small","medium"], env:["indoor","sim"],
+    desc:"General platform for collective flying. MATLAB/Simulink simulation + real hardware (Crazyflie, Tello). Bio-inspired swarming, formation control, collective decision-making.",
+    features:["MATLAB/Simulink","Bio-inspired","Crazyflie","DJI Tello","Formation control","Collective behavior"],
+    links:{github:"https://github.com/micros-uav/CoFlyers"},
+    strengths:"MATLAB/Simulink native — familiar for control engineers. Supports both Crazyflie and Tello. Bio-inspired algorithms.",
+    weaknesses:"MATLAB dependency (license cost). Limited to small drones. Less active development."
+  },
+  {
+    id:"lumifly", name:"Lumifly DroneShow", type:"Indoor Show (ROS)",
+    stars:0, fc:["px4"], missions:["show","research"], scale:["small"], env:["indoor","sim"],
+    desc:"ROS-based indoor drone light show from University of Turku. Gazebo simulation, choreography via ROS topics. Good learning resource for ROS swarm patterns.",
+    features:["ROS (Noetic)","Gazebo sim","Indoor show","Academic"],
+    links:{github:"https://github.com/sumietgore/DroneShow"},
+    strengths:"Simple, readable ROS architecture. Good for learning swarm-over-ROS patterns.",
+    weaknesses:"Academic capstone — not production-ready. Small scale only. Not actively maintained."
+  },
+  {
+    id:"swarm-lio2", name:"Swarm-LIO2", type:"Multi-Robot SLAM",
+    stars:200, fc:["px4","ardupilot"], missions:["search","tactical","research"], scale:["small","medium"], env:["indoor","outdoor"],
+    desc:"HKU-MARS multi-drone LiDAR SLAM with inter-drone loop closure. Decentralized mapping — each drone builds its own map and shares constraints. GPS-denied capable.",
+    features:["Multi-drone SLAM","Inter-drone loop closure","Decentralized","LiDAR-based","GPS-denied","HKU-MARS"],
+    links:{github:"https://github.com/hku-mars/Swarm-LIO2"},
+    strengths:"Solves the 'where is everyone' problem for GPS-denied multi-drone ops. Each drone runs independently — no single point of failure.",
+    weaknesses:"Research-grade — requires LiDAR on every drone. Compute-heavy. Not a coordination framework (pair with MDS or ORCUS for tasking)."
+  },
+  {
+    id:"3d-viz", name:"3D Drone Show Visualizer", type:"Visualization",
+    stars:0, fc:["none"], missions:["show"], scale:["small","medium","large","xlarge"], env:["sim"],
+    desc:"Three.js browser-based 3D choreography previewer. Load CSV formations, scrub timeline, verify spacing. No hardware needed.",
+    features:["Three.js","Browser-based","CSV import","Timeline scrub","Collision check"],
+    links:{github:"https://github.com/lucianotonet/3d-drone-show"},
+    strengths:"Zero setup — runs in browser. Fast iteration on choreography design.",
+    weaknesses:"Visualization only — no flight execution. Limited features."
+  }
+];
+
+function score(stack, mission, fc, scale, env) {
+  let s = 0, max = 0;
+  if (mission) { max += 40; if (stack.missions.includes(mission)) s += 40; }
+  if (fc) { max += 25; if (stack.fc.includes(fc)) s += 25; else if (fc === 'none' && stack.env.includes('sim')) s += 15; }
+  if (scale) { max += 20; if (stack.scale.includes(scale)) s += 20; }
+  if (env) { max += 15; if (stack.env.includes(env)) s += 15; else if (env === 'sim' && stack.env.includes('sim')) s += 10; }
+  return max > 0 ? Math.round((s / max) * 100) : 50;
+}
+
+function render() {
+  const m = document.getElementById('sel-mission').value;
+  const f = document.getElementById('sel-fc').value;
+  const sc = document.getElementById('sel-scale').value;
+  const e = document.getElementById('sel-env').value;
+  const el = document.getElementById('results');
+
+  if (!m && !f && !sc && !e) {
+    el.innerHTML = '<div class="ss-empty"><i class="ph ph-magnifying-glass"></i>Select a mission type to see recommendations</div>';
+    return;
+  }
+
+  let scored = STACKS.map(st => ({...st, score: score(st, m, f, sc, e)})).filter(st => st.score > 20).sort((a, b) => b.score - a.score);
+
+  if (!scored.length) {
+    el.innerHTML = '<div class="ss-empty"><i class="ph ph-x-circle"></i>No stacks match your criteria. Try broadening your selection.</div>';
+    return;
+  }
+
+  const best = scored[0].score;
+  el.innerHTML = scored.map((st, i) => {
+    const pct = st.score;
+    const color = pct >= 80 ? 'var(--accent-green)' : pct >= 50 ? '#fbbf24' : 'var(--text-muted)';
+    const badges = [];
+    if (i === 0 && pct >= 60) badges.push('<span class="ss-badge ss-badge-best">BEST MATCH</span>');
+    if (st.missions.includes(m)) badges.push(`<span class="ss-badge ss-badge-match">${st.type}</span>`);
+    if (f && !st.fc.includes(f) && f !== 'none') badges.push('<span class="ss-badge ss-badge-warn">FC MISMATCH</span>');
+
+    const links = Object.entries(st.links || {}).map(([k, v]) => {
+      const icon = k === 'github' ? 'ph-github-logo' : k === 'paper' ? 'ph-article' : k === 'web' ? 'ph-globe' : 'ph-link';
+      return `<a href="${v}" target="_blank"><i class="ph ${icon}"></i> ${k}</a>`;
+    }).join('');
+
+    const params = st.px4_params ? `<div style="padding:0 20px 12px;"><div style="font-size:10px;text-transform:uppercase;letter-spacing:0.1em;color:var(--text-faint);margin-bottom:6px;">PX4 Params</div><div style="font-size:11px;color:var(--accent-green);font-family:var(--font-family);">${Object.entries(st.px4_params).map(([k,v])=>`${k}=${v}`).join(' · ')}</div></div>` : '';
+    const kp = st.key_params ? `<div style="padding:0 20px 12px;"><div style="font-size:10px;text-transform:uppercase;letter-spacing:0.1em;color:var(--text-faint);margin-bottom:6px;">Key Params</div><div style="font-size:11px;color:var(--accent-cyan);font-family:var(--font-family);">${Object.entries(st.key_params).map(([k,v])=>`${k}=${v}`).join(' · ')}</div></div>` : '';
+
+    return `<div class="ss-card">
+      <div class="ss-card-header">
+        <div><div class="ss-card-title">${st.name}</div></div>
+        <div style="display:flex;align-items:center;gap:12px;">
+          <div class="ss-score"><span class="ss-score-num" style="color:${color}">${pct}%</span><div class="ss-score-bar"><div class="ss-score-fill" style="width:${pct}%;background:${color}"></div></div></div>
+          <div class="ss-card-badges">${badges.join('')}</div>
+        </div>
+      </div>
+      <div class="ss-card-meta"><span><i class="ph ph-star"></i> ${st.stars}</span><span><i class="ph ph-tag"></i> ${st.type}</span><span><i class="ph ph-microchip"></i> ${st.fc.join(', ')}</span></div>
+      <div class="ss-card-desc">${st.desc}</div>
+      <div style="padding:0 20px 8px;font-size:12px;line-height:1.6;"><span style="color:var(--accent-green);">✓</span> <span style="color:var(--text-muted);">${st.strengths}</span></div>
+      <div style="padding:0 20px 12px;font-size:12px;line-height:1.6;"><span style="color:#fbbf24;">⚠</span> <span style="color:var(--text-faint);">${st.weaknesses}</span></div>
+      ${params}${kp}
+      <div class="ss-card-features">${(st.features||[]).map(f=>`<span class="ss-feat">${f}</span>`).join('')}</div>
+      <div class="ss-card-links">${links}</div>
+    </div>`;
+  }).join('');
+}
+
+document.querySelectorAll('select').forEach(s => s.addEventListener('change', render));
+document.getElementById('dark-mode-toggle')?.addEventListener('click',()=>{const c=document.documentElement.getAttribute('data-theme');const n=c==='dark'?'light':'dark';document.documentElement.setAttribute('data-theme',n);try{localStorage.setItem('dc-theme',n)}catch(e){}const i=document.getElementById('dark-mode-icon');if(i)i.className=n==='dark'?'ph ph-moon':'ph ph-sun';});
+</script>
+</body>
+</html>

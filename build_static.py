@@ -39,6 +39,7 @@ PAGES = {
     'ai-guide.html': 'ai-guide/index.html',
     'cuas-guide.html': 'cuas-guide/index.html',
     'swarm-guide.html': 'swarm-guide/index.html',
+    'swarm-selector.html': 'swarm/index.html',
     'guides-hub.html': 'guides/index.html',
     'fc-firmware-guide.html': 'fc-firmware-guide/index.html',
 }
