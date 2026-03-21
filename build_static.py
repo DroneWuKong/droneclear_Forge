@@ -34,6 +34,9 @@ PAGES = {
     'contribute.html': 'contribute/index.html',
     'slam-selector.html': 'slam/index.html',
     'slam-guide.html': 'slam-guide/index.html',
+    'mesh-guide.html': 'mesh-guide/index.html',
+    'tak-guide.html': 'tak-guide/index.html',
+    'ai-guide.html': 'ai-guide/index.html',
     'guides-hub.html': 'guides/index.html',
     'fc-firmware-guide.html': 'fc-firmware-guide/index.html',
 }
