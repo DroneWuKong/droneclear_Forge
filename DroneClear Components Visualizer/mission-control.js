@@ -73,6 +73,9 @@
             const totalUnified = models.length + industryOnly.length;
             const modelsEl = document.getElementById('stat-models');
             if (modelsEl) modelsEl.textContent = totalUnified;
+            // Keep the Platforms module card description in sync
+            const descPlatforms = document.getElementById('desc-platforms');
+            if (descPlatforms) descPlatforms.textContent = totalUnified;
 
             // Build guides
             if (guideRes.ok) {
