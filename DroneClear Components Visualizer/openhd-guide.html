@@ -210,15 +210,60 @@ FC GND ── SBC GND  ← required</div>
 
                 <h3>OpenHD vs. Commercial Links</h3>
                 <table class="guide-table">
-                    <thead><tr><th>System</th><th>Cost (air unit)</th><th>Range</th><th>Latency</th><th>Open source</th><th>Chinese HW</th></tr></thead>
+                    <thead><tr><th>System</th><th>Cost (air unit)</th><th>Range (stock antennas)</th><th>Range (high-gain + tracker)</th><th>Latency</th><th>Open source</th></tr></thead>
                     <tbody>
-                        <tr><td>OpenHD (RPi)</td><td>~$30</td><td>5–20km typical</td><td>80–150ms</td><td>Yes — fully</td><td>No</td></tr>
-                        <tr><td>OpenHD (custom HW)</td><td>~$80</td><td>5–20km typical</td><td>&lt;40ms</td><td>Yes — fully</td><td>No</td></tr>
-                        <tr><td>DJI O3</td><td>~$229</td><td>~10km (O3 Pro)</td><td>~31ms (FHD)</td><td>No</td><td>Yes</td></tr>
-                        <tr><td>Walksnail Avatar</td><td>~$99–149</td><td>~4km</td><td>~22ms</td><td>No</td><td>Yes</td></tr>
-                        <tr><td>HDZero</td><td>~$99</td><td>~3–5km</td><td>~8ms (race)</td><td>Partial</td><td>Yes</td></tr>
+                        <tr><td>OpenHD (RPi)</td><td>~$30</td><td>1–3km</td><td>10–20km+</td><td>80–150ms</td><td>Yes — fully</td></tr>
+                        <tr><td>OpenHD (custom HW)</td><td>~$80</td><td>2–5km</td><td>10–20km+</td><td>&lt;40ms</td><td>Yes — fully</td></tr>
+                        <tr><td>DJI O3</td><td>~$229</td><td>~10km (O3 Pro)</td><td>N/A (integrated)</td><td>~31ms (FHD)</td><td>No</td></tr>
+                        <tr><td>Walksnail Avatar</td><td>~$99–149</td><td>~4km</td><td>N/A</td><td>~22ms</td><td>No</td></tr>
+                        <tr><td>HDZero</td><td>~$99</td><td>~3–5km</td><td>N/A</td><td>~8ms (race)</td><td>Partial</td></tr>
                     </tbody>
                 </table>
+
+                <h2>Antennas — This Is Where Range Actually Comes From</h2>
+                <div class="warn-box"><strong>Stock antennas will NOT give you 20km.</strong> The stock dipoles that come with RTL8812AU adapters are 2–3 dBi omni antennas. With stock antennas on both ends, expect 1–3km reliable range. The 10–20km numbers you see from long-range flyers come from high-gain directional antennas on the ground, often paired with antenna trackers.</div>
+
+                <h3>Air Side (on the drone)</h3>
+                <p>Keep it omnidirectional — the drone changes orientation constantly. Recommended:</p>
+                <table class="guide-table">
+                    <thead><tr><th>Antenna</th><th>Gain</th><th>Pattern</th><th>Notes</th></tr></thead>
+                    <tbody>
+                        <tr><td>Stock dipole</td><td>2–3 dBi</td><td>Omni (donut)</td><td>Fine for &lt;2km. Replace for anything serious.</td></tr>
+                        <tr><td>Maple Leaf / Cloverleaf (RHCP)</td><td>2–3 dBi</td><td>Omni, circular polarized</td><td>Better multipath rejection than linear dipole. Good general-purpose upgrade.</td></tr>
+                        <tr><td>Pagoda / Moxon (RHCP)</td><td>3–5 dBi</td><td>Omni / semi-directional</td><td>Slight gain improvement. Popular in FPV community.</td></tr>
+                    </tbody>
+                </table>
+                <div class="info-box"><strong>Air side rule:</strong> Stay omnidirectional. If you use a directional antenna on the drone, you'll lose link when the drone banks or turns away from you. Circular polarization (RHCP) is preferred over linear to reduce multipath fading from ground reflections.</div>
+
+                <h3>Ground Side (GCS / goggles)</h3>
+                <p>This is where you add gain. Directional antennas on the ground pointed at the drone give you the range. The tradeoff: higher gain = narrower beam = you need to track the drone.</p>
+                <table class="guide-table">
+                    <thead><tr><th>Antenna</th><th>Gain</th><th>Beamwidth</th><th>Range (paired with omni air)</th><th>Needs tracker?</th></tr></thead>
+                    <tbody>
+                        <tr><td>Stock dipole</td><td>2–3 dBi</td><td>360° omni</td><td>1–3km</td><td>No</td></tr>
+                        <tr><td>Patch panel (flat)</td><td>8–12 dBi</td><td>~60–90°</td><td>5–8km</td><td>No (if drone stays in front)</td></tr>
+                        <tr><td>Yagi</td><td>10–14 dBi</td><td>~30–50°</td><td>8–15km</td><td>Recommended</td></tr>
+                        <tr><td>Panel array (2x2 / 4x4)</td><td>14–18 dBi</td><td>~20–30°</td><td>10–20km</td><td>Yes</td></tr>
+                        <tr><td>Helical</td><td>12–16 dBi</td><td>~30–40°</td><td>10–20km</td><td>Yes</td></tr>
+                        <tr><td>Grid / dish</td><td>18–24 dBi</td><td>~10–15°</td><td>20km+</td><td>Yes (must track)</td></tr>
+                    </tbody>
+                </table>
+                <div class="info-box"><strong>The math:</strong> Every 6 dB of antenna gain doubles your range. Stock dipole (3 dBi) → patch panel (12 dBi) = +9 dB = roughly 2.8× range. Stock dipole → dish (24 dBi) = +21 dB = roughly 11× range. That's how 2km becomes 20km.</div>
+
+                <h3>Antenna Trackers</h3>
+                <p>Once you're using a directional ground antenna with &gt;10 dBi gain, the beam is narrow enough that you need to physically point it at the drone. An antenna tracker does this automatically using the drone's GPS telemetry.</p>
+                <table class="guide-table">
+                    <thead><tr><th>Tracker</th><th>Type</th><th>Protocol</th><th>Approx Cost</th><th>Notes</th></tr></thead>
+                    <tbody>
+                        <tr><td>u360gts</td><td>Pan/tilt servo</td><td>MAVLink / LTM / GPS</td><td>$30–60 DIY</td><td>Open-source, Arduino-based. Most popular in long-range FPV community. Uses MAVLink GPS from telemetry stream to compute bearing.</td></tr>
+                        <tr><td>YAAPU AAT</td><td>Pan/tilt servo</td><td>MAVLink via ELRS/Crossfire</td><td>$40–80 DIY</td><td>Runs on OpenTX/EdgeTX radio. Uses Yaapu telemetry script to drive servos from GPS position data received via RC link.</td></tr>
+                        <tr><td>Commercial tracker</td><td>Pan/tilt motorized</td><td>Various</td><td>$200–500</td><td>Pre-built units. Less common in OpenHD builds — most long-range flyers DIY their tracker.</td></tr>
+                    </tbody>
+                </table>
+                <div class="info-box"><strong>How broadcast systems get those impressive ranges:</strong> The same principle used in TV broadcasting — a high-power omni transmitter on the air side, and a high-gain directional antenna on the ground pointed at it. OpenHD is literally wifibroadcast — one-way injection of video frames. The ground station's directional antenna with a tracker is the "satellite dish on your roof" equivalent. Stock antennas are the "rabbit ears on the TV" equivalent. Same signal, vastly different reception.</div>
+
+                <h3>Dual Antenna Setup (Recommended for Long Range)</h3>
+                <p>Best practice: use TWO ground antennas with diversity reception. One omni (for nearby/all-around coverage) + one directional on a tracker (for range). OpenHD supports antenna diversity — it picks the best signal per packet. This gives you reliable close-in performance AND long-range capability without switching.</p>
 
                 <h2>Gotchas</h2>
                 <div class="warn-box"><strong>Solder the WiFi adapter.</strong> USB plugs vibrate loose. No exceptions.</div>
