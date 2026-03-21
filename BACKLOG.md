@@ -36,18 +36,8 @@
 
 | ID | Issue | Location | Description | Added |
 |----|-------|----------|-------------|-------|
-| DEBT-001 | Dead code: `notesHtml` | `modal.js:83-84, 144-149` | Declared but never populated. Dead conditional. | 2026-03-06 |
-| DEBT-002 | Missing i18n key | `components.js:21` / `state.js` | `i18n[currentLang].errLoadDesc` undefined. Shows `undefined` in error. | 2026-03-06 |
-| DEBT-003 | Duplicate Escape handlers | `app.js:35-43` + `shortcuts.js:62-81` | Both register keydown for Escape. app.js handler now redundant. | 2026-03-06 |
-| DEBT-004 | `body *` transition perf | `base.css:98-100` | Applies transition to every DOM element. Performance hit on 100+ cards. | 2026-03-06 |
-| DEBT-005 | Event listener stacking | `guide-editor.js:501` | `_closePickerOnOutsideClick` stacks on document every step selection. | 2026-03-06 |
-| DEBT-006 | Weight filter race condition | `filters.js:515` | Shared debounce timer between min/max cancels callbacks. | 2026-03-06 |
-| DEBT-007 | Maintenance script duplicated | `index.html`, `editor.html`, `template.html` | ~80 lines identical JS across 3 files. Extract to `maintenance.js`. | 2026-03-06 |
-| DEBT-008 | Inline styles in template.html | `template.html` | 8+ identical style blocks on modal inputs. Should be CSS class. | 2026-03-06 |
-| DEBT-009 | Event listener memory leaks | Multiple JS files | No `removeEventListener` calls anywhere. Listeners accumulate on phase changes, modal cycles, re-renders. | 2026-03-08 |
-| DEBT-010 | Missing fetch error handling | `editor.js`, `mission-control.js`, `persist.js` | Multiple fetch calls lack try-catch or only check `res.ok` without catching network errors. Silent failures. | 2026-03-08 |
-| DEBT-012 | Inconsistent escapeHTML usage | `audit.js`, `guide-runner.js` | Some innerHTML assignments skip `escapeHTML()` for database-sourced data. Potential reflected XSS. | 2026-03-08 |
-| DEBT-013 | Zero test coverage for seed.py | `components/seed.py` | `seed_golden()` and `seed_examples()` completely untested. Affects auto-seeding on migration. | 2026-03-08 |
+| DEBT-013 | Zero test coverage for seed.py | `components/seed.py` | `seed_golden()` and `seed_examples()` completely untested. Affects auto-seeding on migration. N/A for static Forge — Django backend only. | 2026-03-08 |
+| | *(All other DEBT items completed — see Completed section)* | | | |
 
 ## Low — Polish
 
@@ -112,3 +102,14 @@
 | ~~BUG-008~~ | Relations format mismatch — frontend expected string PIDs, seed uses `{pid, quantity}` objects | 2026-03-08 | 2026-03-08-5 |
 | ~~BUG-010~~ | Guide JS uses `alert()` instead of `showToast()` — blocking system prompts for errors | 2026-03-08 | 2026-03-08-5 |
 | ~~POLISH-021~~ | Build overview glass panel missing padding — components overrun panel edges | 2026-03-08 | 2026-03-08-5 |
+| ~~DEBT-001~~ | Dead code: `notesHtml` removed | 2026-03-06 | prior session |
+| ~~DEBT-002~~ | Missing i18n key `errLoadDesc` added to state.js | 2026-03-06 | prior session |
+| ~~DEBT-003~~ | Duplicate Escape handler removed from app.js | 2026-03-06 | prior session |
+| ~~DEBT-004~~ | `body *` transition scoped to layout elements only | 2026-03-06 | prior session |
+| ~~DEBT-005~~ | Event listener stacking — removeEventListener + cloneNode pattern | 2026-03-06 | prior session |
+| ~~DEBT-006~~ | Weight filter race — separate debounce timers in state.js | 2026-03-06 | prior session |
+| ~~DEBT-007~~ | Maintenance script extracted to maintenance.js | 2026-03-06 | prior session |
+| ~~DEBT-008~~ | Inline styles in template.html — 15 CSS classes extracted, 80→48 inline styles | 2026-03-06 | 2026-03-21 |
+| ~~DEBT-009~~ | Event listener leaks audited — all safe (DOMContentLoaded, _done guards, cloneNode, removeEventListener) | 2026-03-08 | 2026-03-21 |
+| ~~DEBT-010~~ | Fetch error handling — showToast added to 11 silent catch blocks across 5 JS files | 2026-03-08 | 2026-03-21 |
+| ~~DEBT-012~~ | escapeHTML audit — all innerHTML in audit.js/guide-runner.js already use _esc()/escHTML(). No XSS risk. | 2026-03-08 | 2026-03-21 |

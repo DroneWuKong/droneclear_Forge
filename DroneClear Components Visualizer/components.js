@@ -26,6 +26,7 @@ async function fetchAllCategories() {
         }
     } catch (error) {
         console.warn('Failed to fetch from Django API.', error);
+        if (typeof showToast === "function") showToast("Fetch from Django API.", "error");
         showError(i18n[currentLang].errLoadDesc);
     } finally {
         hideLoader();
@@ -121,6 +122,7 @@ async function renderComponents(searchTerm = '') {
             schemaData[currentCategory] = await response.json();
         } catch (error) {
             console.error(error);
+            if (typeof showToast === "function") showToast("Operation failed", "error");
             showError('Could not load components for this category.');
             return;
         }

@@ -1,5 +1,10 @@
 /* ═══════════════════════════════════════════════════════════
    guide-editor.js — Guide authoring / editing UI
+   DEBT-009: Listener lifecycle managed via:
+   - wireEditorButtons._done guard (one-time button wiring)
+   - cloneNode pattern (search inputs replaced on re-render)
+   - removeEventListener for _closePickerOnOutsideClick
+   - innerHTML replacement destroys old DOM + attached listeners
    ═══════════════════════════════════════════════════════════ */
 
 let _editorSteps = [];  // Local step array while editing
@@ -29,6 +34,7 @@ async function loadEditorGuideList() {
         guideState.guides = await apiFetch(GUIDE_API.guides);
     } catch (err) {
         console.error('Failed to load guides for editor:', err);
+        if (typeof showToast === "function") showToast("Load guides for editor:", "error");
     }
     renderEditorGuideList();
 }
@@ -62,6 +68,7 @@ async function selectEditorGuide(pid) {
         renderEditorGuideList();
     } catch (err) {
         console.error('Failed to load guide for editing:', err);
+        if (typeof showToast === "function") showToast("Load guide for editing:", "error");
     }
 }
 
@@ -680,6 +687,7 @@ async function loadDroneModelsForEditor() {
         });
     } catch (err) {
         console.warn('Failed to load drone models for editor:', err);
+        if (typeof showToast === "function") showToast("Load drone models for editor:", "error");
     }
 }
 
@@ -705,6 +713,7 @@ async function loadLinkedBuildParts() {
         }
     } catch (err) {
         console.warn('Failed to load linked build parts:', err);
+        if (typeof showToast === "function") showToast("Load linked build parts:", "error");
     }
 
     // Refresh the build parts panel for the current step

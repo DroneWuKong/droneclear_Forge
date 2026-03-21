@@ -282,6 +282,7 @@ function saveStepNotes() {
             });
         } catch (err) {
             console.warn('Failed to save step notes:', err);
+            if (typeof showToast === "function") showToast("Save step notes:", "error");
             if (status) {
                 status.textContent = 'Save failed';
                 status.className = 'guide-notes-status visible saving';

@@ -50,6 +50,7 @@ async function loadGuideList() {
         renderGuideSelection();
     } catch (err) {
         console.error('Failed to load guides:', err);
+        if (typeof showToast === "function") showToast("Load guides:", "error");
         guideState.guides = [];
         renderGuideSelection();
     }

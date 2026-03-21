@@ -91,6 +91,7 @@ async function initEditor() {
 
     } catch (e) {
         console.error("Failed to init editor", e);
+        if (typeof showToast === "function") showToast("Failed to load editor", "error");
         showToast("Failed to load editor data. Is the Django server running?", 'error');
     } finally {
         elements.loader.style.display = 'none';
@@ -122,6 +123,7 @@ async function handleDeepEditLink(pid) {
         }
     } catch (e) {
         console.error("Deep link failed:", e);
+        if (typeof showToast === "function") showToast("Failed to load component", "error");
         showToast("Could not load the requested component for editing.", 'error');
     }
 }
@@ -174,7 +176,8 @@ async function fetchCategories() {
 
     const partsCountEl = document.getElementById('total-parts-count');
     if (partsCountEl) partsCountEl.textContent = `${totalParts} Parts`;
-    } catch (e) { console.error('fetchCategories failed:', e); }
+    } catch (e) { console.error("fetchCategories failed:", e);
+    if (typeof showToast === "function") showToast("Failed to load categories", "error"); }
 }
 
 // Keep FAB and topbar button in sync
