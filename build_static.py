@@ -46,6 +46,7 @@ PAGES = {
     'compliance.html': 'compliance/index.html',
     'compare.html': 'compare/index.html',
     'cost.html': 'cost/index.html',
+    'tools.html': 'tools/index.html',
 }
 
 # Static assets to copy (JS, CSS, JSON, images)

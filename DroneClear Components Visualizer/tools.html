@@ -1,0 +1,1007 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RF Tools & Calculators — Forge</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&family=Source+Serif+4:opsz,wght@8..60,400;8..60,600;8..60,700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="{% static 'base.css' %}">
+    <link rel="stylesheet" href="{% static 'layout.css' %}?v=4">
+    <link rel="stylesheet" href="{% static 'components.css' %}">
+    <link rel="stylesheet" href="{% static 'utilities.css' %}">
+    <script src="https://unpkg.com/@phosphor-icons/web"></script>
+    <script>(function(){ document.documentElement.setAttribute('data-theme', localStorage.getItem('dc-theme') || 'dark'); })();</script>
+    <style>
+        /* ── Layout ── */
+        .tools-page { display: flex; min-height: 100vh; }
+        .tools-sidebar {
+            width: 220px; flex-shrink: 0;
+            background: var(--bg-panel);
+            border-right: 1px solid var(--border-color);
+            padding: 24px 0; position: sticky; top: 0; height: 100vh; overflow-y: auto;
+        }
+        .tools-sidebar-header {
+            padding: 0 20px 20px;
+            border-bottom: 1px solid var(--border-color);
+            margin-bottom: 16px;
+        }
+        .tools-sidebar-title { font-size: 11px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--text-muted); font-weight: 600; }
+        .tools-nav-section { padding: 0 12px; margin-bottom: 8px; }
+        .tools-nav-label { font-size: 10px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--text-faint); padding: 8px 8px 4px; display: block; }
+        .tools-nav-item {
+            display: flex; align-items: center; gap: 8px;
+            padding: 7px 10px; border-radius: var(--radius-sm);
+            font-size: 13px; color: var(--text-muted);
+            cursor: pointer; transition: all 0.15s;
+            border: none; background: none; width: 100%; text-align: left;
+            font-family: var(--font-family);
+        }
+        .tools-nav-item:hover { background: var(--bg-panel-hover); color: var(--text-main); }
+        .tools-nav-item.active { background: rgba(34,211,238,0.08); color: var(--accent-red); border-left: 2px solid var(--accent-red); padding-left: 8px; }
+        .tools-nav-item i { font-size: 14px; width: 16px; flex-shrink: 0; }
+        .tools-nav-badge { margin-left: auto; font-size: 10px; padding: 1px 6px; border-radius: 99px; }
+        .badge-soon { background: rgba(255,255,255,0.06); color: var(--text-faint); }
+        .badge-ua { background: rgba(234,179,8,0.15); color: #ca8a04; }
+        .badge-new { background: rgba(74,222,128,0.15); color: #16a34a; }
+
+        /* ── Main area ── */
+        .tools-main { flex: 1; overflow-y: auto; }
+        .tools-topbar {
+            padding: 14px 32px; display: flex; align-items: center; justify-content: space-between;
+            border-bottom: 1px solid var(--border-color);
+            background: var(--bg-panel); position: sticky; top: 0; z-index: 10;
+        }
+        .tools-breadcrumb { display: flex; align-items: center; gap: 8px; }
+        .tools-breadcrumb a { color: var(--text-muted); text-decoration: none; font-size: 13px; }
+        .tools-breadcrumb a:hover { color: var(--text-main); }
+        .tools-breadcrumb .sep { color: var(--text-faint); font-size: 12px; }
+        .tools-breadcrumb .current { color: var(--text-main); font-size: 13px; font-weight: 500; }
+
+        /* ── Tool panel ── */
+        .tool-panel { display: none; padding: 32px; max-width: 820px; }
+        .tool-panel.active { display: block; }
+        .tool-header { margin-bottom: 28px; }
+        .tool-title {
+            font-size: 22px; font-weight: 700; color: var(--text-main);
+            font-family: var(--font-family); margin-bottom: 6px;
+        }
+        .tool-desc { font-size: 14px; color: var(--text-muted); line-height: 1.6; }
+
+        /* ── Input grid ── */
+        .input-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; margin-bottom: 24px; }
+        .input-group { display: flex; flex-direction: column; gap: 6px; }
+        .input-label { font-size: 12px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em; font-weight: 500; }
+        .input-row { display: flex; align-items: center; gap: 8px; }
+        .tool-input {
+            width: 100%; padding: 9px 12px; border-radius: var(--radius-sm);
+            border: 1px solid var(--border-color); background: var(--bg-dark);
+            color: var(--text-main); font-size: 14px; font-family: var(--font-family);
+            transition: border-color 0.15s;
+        }
+        .tool-input:focus { outline: none; border-color: var(--accent-red); }
+        .tool-select {
+            width: 100%; padding: 9px 12px; border-radius: var(--radius-sm);
+            border: 1px solid var(--border-color); background: var(--bg-dark);
+            color: var(--text-main); font-size: 13px; font-family: var(--font-family);
+            cursor: pointer;
+        }
+        .input-unit { font-size: 12px; color: var(--text-muted); white-space: nowrap; }
+
+        /* ── Result card ── */
+        .result-card {
+            background: var(--bg-panel); border: 1px solid var(--border-color);
+            border-radius: var(--radius-md); padding: 20px 24px; margin-bottom: 16px;
+        }
+        .result-card.accent { border-color: var(--accent-red); background: rgba(34,211,238,0.04); }
+        .result-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 16px; }
+        .result-item { display: flex; flex-direction: column; gap: 4px; }
+        .result-value {
+            font-size: 28px; font-weight: 700; color: var(--accent-red);
+            font-family: var(--font-family); line-height: 1;
+        }
+        .result-value.sm { font-size: 20px; }
+        .result-value.warn { color: #eab308; }
+        .result-value.ok { color: #4ade80; }
+        .result-label { font-size: 11px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em; }
+        .result-note { font-size: 12px; color: var(--text-muted); line-height: 1.5; margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--border-color); }
+
+        /* ── Channel conflict table ── */
+        .channel-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+        .channel-table th { padding: 8px 12px; text-align: left; font-size: 11px; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-muted); border-bottom: 1px solid var(--border-color); }
+        .channel-table td { padding: 8px 12px; border-bottom: 1px solid rgba(255,255,255,0.03); font-family: var(--font-family); font-size: 12px; }
+        .conflict-dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; margin-right: 4px; }
+        .dot-ok { background: #4ade80; }
+        .dot-warn { background: #eab308; }
+        .dot-bad { background: #f87171; }
+
+        /* ── Harmonics bars ── */
+        .harmonic-row { display: flex; align-items: center; gap: 12px; padding: 8px 0; border-bottom: 1px solid rgba(255,255,255,0.04); }
+        .harmonic-n { font-size: 12px; color: var(--text-muted); font-family: var(--font-family); width: 28px; flex-shrink: 0; }
+        .harmonic-freq { font-size: 13px; color: var(--text-main); font-family: var(--font-family); width: 90px; flex-shrink: 0; }
+        .harmonic-bar-wrap { flex: 1; height: 8px; background: var(--bg-dark); border-radius: 4px; overflow: hidden; }
+        .harmonic-bar { height: 100%; border-radius: 4px; transition: width 0.3s; }
+        .harmonic-tag { font-size: 11px; padding: 2px 8px; border-radius: 99px; white-space: nowrap; }
+        .tag-danger { background: rgba(248,113,113,0.15); color: #f87171; }
+        .tag-warn { background: rgba(234,179,8,0.15); color: #eab308; }
+        .tag-clear { background: rgba(74,222,128,0.1); color: #4ade80; }
+
+        /* ── Fresnel visual ── */
+        .fresnel-svg-wrap { margin: 16px 0; border-radius: var(--radius-sm); overflow: hidden; border: 1px solid var(--border-color); background: var(--bg-dark); padding: 16px; }
+
+        /* ── Pilot channel grid ── */
+        .pilot-row { display: flex; align-items: center; gap: 12px; margin-bottom: 12px; }
+        .pilot-label { font-size: 13px; color: var(--text-muted); font-family: var(--font-family); width: 52px; flex-shrink: 0; }
+        .pilot-freq { font-size: 13px; color: var(--text-main); font-family: var(--font-family); width: 70px; }
+        .pilot-color { width: 12px; height: 12px; border-radius: 3px; flex-shrink: 0; }
+        .add-pilot-btn { display: flex; align-items: center; gap: 6px; padding: 8px 14px; border-radius: var(--radius-sm); border: 1px dashed var(--border-color); background: none; color: var(--text-muted); font-size: 13px; cursor: pointer; transition: all 0.15s; font-family: var(--font-family); }
+        .add-pilot-btn:hover { border-color: var(--accent-red); color: var(--accent-red); }
+
+        /* ── Divider ── */
+        .section-divider { font-size: 11px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--text-faint); margin: 28px 0 16px; display: flex; align-items: center; gap: 12px; }
+        .section-divider::after { content: ''; flex: 1; height: 1px; background: var(--border-color); }
+
+        /* ── Welcome panel ── */
+        .tools-welcome { padding: 48px 32px; }
+        .welcome-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 12px; margin-top: 24px; }
+        .welcome-card {
+            background: var(--bg-panel); border: 1px solid var(--border-color);
+            border-radius: var(--radius-md); padding: 18px; cursor: pointer;
+            transition: all 0.15s; display: flex; flex-direction: column; gap: 8px;
+        }
+        .welcome-card:hover { border-color: var(--border-hover); transform: translateY(-1px); box-shadow: var(--card-shadow-hover); }
+        .welcome-card-icon { font-size: 20px; color: var(--accent-red); }
+        .welcome-card-name { font-size: 14px; font-weight: 600; color: var(--text-main); }
+        .welcome-card-desc { font-size: 12px; color: var(--text-muted); line-height: 1.5; }
+
+        @media (max-width: 768px) {
+            .tools-sidebar { display: none; }
+            .tool-panel { padding: 20px 16px; }
+        }
+    </style>
+</head>
+<body>
+<div class="tools-page">
+
+    <!-- ── Sidebar ── -->
+    <aside class="tools-sidebar">
+        <div class="tools-sidebar-header">
+            <a href="/" style="text-decoration:none; display:flex; align-items:center; gap:8px; margin-bottom:16px;">
+                <span style="font-size:16px; font-weight:700; color:var(--text-main); font-family:var(--font-family);">Forge</span>
+                <span style="font-size:10px; color:var(--text-muted);">/ Tools</span>
+            </a>
+            <div class="tools-sidebar-title">RF Tools & Calculators</div>
+        </div>
+
+        <div class="tools-nav-section">
+            <span class="tools-nav-label">Calculators</span>
+            <button class="tools-nav-item active" data-tool="channel-planner">
+                <i class="ph ph-broadcast"></i> Channel planner
+            </button>
+            <button class="tools-nav-item" data-tool="harmonics">
+                <i class="ph ph-wave-sine"></i> Harmonics
+            </button>
+            <button class="tools-nav-item" data-tool="range">
+                <i class="ph ph-arrows-out"></i> Range estimator
+            </button>
+            <button class="tools-nav-item" data-tool="fresnel">
+                <i class="ph ph-eye"></i> Fresnel zone
+            </button>
+            <button class="tools-nav-item" data-tool="dipole">
+                <i class="ph ph-antenna"></i> Dipole length
+            </button>
+            <button class="tools-nav-item" data-tool="closest-channel">
+                <i class="ph ph-crosshair"></i> Closest channel
+            </button>
+        </div>
+
+        <div class="tools-nav-section">
+            <span class="tools-nav-label">Betaflight</span>
+            <button class="tools-nav-item" data-tool="vtx-config">
+                <i class="ph ph-sliders"></i> VTX config gen
+                <span class="tools-nav-badge badge-new">new</span>
+            </button>
+            <button class="tools-nav-item" data-tool="fc-matcher">
+                <i class="ph ph-magnifying-glass"></i> FC target matcher
+                <span class="tools-nav-badge badge-soon">soon</span>
+            </button>
+            <button class="tools-nav-item" data-tool="unlock-vtx">
+                <i class="ph ph-lock-open"></i> Unlock VTX table
+                <span class="tools-nav-badge badge-soon">soon</span>
+            </button>
+        </div>
+
+        <div class="tools-nav-section">
+            <span class="tools-nav-label">Firmware</span>
+            <button class="tools-nav-item" data-tool="elrs-info">
+                <i class="ph ph-cpu"></i> ELRS info
+                <span class="tools-nav-badge badge-soon">soon</span>
+            </button>
+            <button class="tools-nav-item" data-tool="mafiалrs">
+                <i class="ph ph-shield-warning"></i> MafiaLRS gen
+                <span class="tools-nav-badge badge-ua">UA</span>
+            </button>
+        </div>
+
+        <div style="padding: 24px 20px 0; border-top: 1px solid var(--border-color); margin-top: 16px;">
+            <button class="dark-mode-toggle" id="dark-mode-toggle" style="width:100%; justify-content:center; gap:6px; font-size:12px; color:var(--text-muted);">
+                <i class="ph ph-moon" id="dark-mode-icon"></i> Toggle theme
+            </button>
+        </div>
+    </aside>
+
+    <!-- ── Main ── -->
+    <main class="tools-main">
+        <div class="tools-topbar">
+            <div class="tools-breadcrumb">
+                <a href="/"><i class="ph ph-wrench"></i> The Bench</a>
+                <span class="sep">/</span>
+                <span class="current" id="breadcrumb-current">Channel planner</span>
+            </div>
+            <div style="display:flex; align-items:center; gap:12px;">
+                <a href="/browse/" style="color:var(--text-muted); text-decoration:none; font-size:13px;">Browse DB</a>
+                <a href="/builder/" style="color:var(--text-muted); text-decoration:none; font-size:13px;">Builder</a>
+            </div>
+        </div>
+
+        <!-- ═══════════════════════════════════════════════
+             TOOL 1: VTX Channel Planner
+        ═══════════════════════════════════════════════ -->
+        <div class="tool-panel active" id="tool-channel-planner">
+            <div class="tool-header">
+                <div class="tool-title"><i class="ph ph-broadcast" style="color:var(--accent-red)"></i> VTX channel planner</div>
+                <p class="tool-desc">Plan 5.8 GHz FPV channels for up to 6 simultaneous pilots. Flags conflicts where channels are too close (&lt;40 MHz separation causes crosstalk).</p>
+            </div>
+
+            <div id="pilots-list"></div>
+            <button class="add-pilot-btn" id="add-pilot-btn"><i class="ph ph-plus"></i> Add pilot</button>
+
+            <div class="section-divider">Conflict analysis</div>
+            <div class="result-card" id="channel-results">
+                <p style="color:var(--text-muted); font-size:13px;">Add at least 2 pilots to see conflict analysis.</p>
+            </div>
+
+            <div class="result-note" style="background:var(--bg-panel); border:1px solid var(--border-color); border-radius:var(--radius-sm); padding:14px; margin-top:8px;">
+                <strong style="color:var(--text-main);">Channel spacing rule:</strong> &lt;40 MHz = guaranteed interference. 40–80 MHz = marginal. &gt;80 MHz = clean. Raceband R1–R8 is most commonly used for multi-pilot flying.
+            </div>
+        </div>
+
+        <!-- ═══════════════════════════════════════════════
+             TOOL 2: Harmonics Calculator
+        ═══════════════════════════════════════════════ -->
+        <div class="tool-panel" id="tool-harmonics">
+            <div class="tool-header">
+                <div class="tool-title"><i class="ph ph-wave-sine" style="color:var(--accent-red)"></i> Harmonics calculator</div>
+                <p class="tool-desc">Your control link (ELRS, CRSF) generates harmonics that can corrupt specific FPV video channels. Enter your TX frequency to see which 5.8 GHz channels are affected.</p>
+            </div>
+
+            <div class="input-grid">
+                <div class="input-group">
+                    <label class="input-label">Control link frequency</label>
+                    <div class="input-row">
+                        <input type="number" class="tool-input" id="harm-freq" value="915" min="100" max="2400" step="1">
+                        <span class="input-unit">MHz</span>
+                    </div>
+                </div>
+                <div class="input-group">
+                    <label class="input-label">Video band start</label>
+                    <div class="input-row">
+                        <input type="number" class="tool-input" id="harm-vband-start" value="5600" min="5000" max="6000">
+                        <span class="input-unit">MHz</span>
+                    </div>
+                </div>
+                <div class="input-group">
+                    <label class="input-label">Video band end</label>
+                    <div class="input-row">
+                        <input type="number" class="tool-input" id="harm-vband-end" value="5950" min="5000" max="6100">
+                        <span class="input-unit">MHz</span>
+                    </div>
+                </div>
+                <div class="input-group">
+                    <label class="input-label">Danger window (±)</label>
+                    <div class="input-row">
+                        <input type="number" class="tool-input" id="harm-window" value="20" min="5" max="50">
+                        <span class="input-unit">MHz</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Preset buttons -->
+            <div style="display:flex; gap:8px; flex-wrap:wrap; margin-bottom:20px;">
+                <button onclick="setHarmPreset(433)" style="padding:5px 12px; border-radius:var(--radius-sm); border:1px solid var(--border-color); background:none; color:var(--text-muted); font-size:12px; cursor:pointer; font-family:var(--font-family);">433 MHz (MafiaLRS)</button>
+                <button onclick="setHarmPreset(868)" style="padding:5px 12px; border-radius:var(--radius-sm); border:1px solid var(--border-color); background:none; color:var(--text-muted); font-size:12px; cursor:pointer; font-family:var(--font-family);">868 MHz (ELRS EU)</button>
+                <button onclick="setHarmPreset(915)" style="padding:5px 12px; border-radius:var(--radius-sm); border:1px solid var(--border-color); background:none; color:var(--text-muted); font-size:12px; cursor:pointer; font-family:var(--font-family);">915 MHz (ELRS US)</button>
+                <button onclick="setHarmPreset(2400)" style="padding:5px 12px; border-radius:var(--radius-sm); border:1px solid var(--border-color); background:none; color:var(--text-muted); font-size:12px; cursor:pointer; font-family:var(--font-family);">2.4 GHz (ELRS 2.4)</button>
+            </div>
+
+            <div class="result-card accent" id="harm-results"></div>
+            <div class="result-note" style="background:var(--bg-panel); border:1px solid var(--border-color); border-radius:var(--radius-sm); padding:14px; margin-top:8px;">
+                Harmonics appear at N × f<sub>TX</sub>. A 915 MHz TX generates harmonics at 1830, 2745, 3660, 4575, <strong>5490 MHz</strong> — right in the low end of the 5.8 GHz video band. A 433 MHz TX hits 5629 MHz (H13). This is why channel selection matters.
+            </div>
+        </div>
+
+        <!-- ═══════════════════════════════════════════════
+             TOOL 3: FPV Range Estimator
+        ═══════════════════════════════════════════════ -->
+        <div class="tool-panel" id="tool-range">
+            <div class="tool-header">
+                <div class="tool-title"><i class="ph ph-arrows-out" style="color:var(--accent-red)"></i> FPV range estimator</div>
+                <p class="tool-desc">Friis transmission equation link budget for FPV and control link. Calculates usable range from TX power, antenna gains, frequency, and receiver sensitivity.</p>
+            </div>
+            <div class="input-grid">
+                <div class="input-group">
+                    <label class="input-label">TX power</label>
+                    <div class="input-row">
+                        <input type="number" class="tool-input" id="range-power" value="100" min="1" max="5000">
+                        <span class="input-unit">mW</span>
+                    </div>
+                </div>
+                <div class="input-group">
+                    <label class="input-label">TX antenna gain</label>
+                    <div class="input-row">
+                        <input type="number" class="tool-input" id="range-tx-gain" value="2" min="-5" max="20" step="0.5">
+                        <span class="input-unit">dBi</span>
+                    </div>
+                </div>
+                <div class="input-group">
+                    <label class="input-label">RX antenna gain</label>
+                    <div class="input-row">
+                        <input type="number" class="tool-input" id="range-rx-gain" value="2" min="-5" max="20" step="0.5">
+                        <span class="input-unit">dBi</span>
+                    </div>
+                </div>
+                <div class="input-group">
+                    <label class="input-label">Frequency</label>
+                    <div class="input-row">
+                        <input type="number" class="tool-input" id="range-freq" value="915" min="100" max="6000">
+                        <span class="input-unit">MHz</span>
+                    </div>
+                </div>
+                <div class="input-group">
+                    <label class="input-label">RX sensitivity</label>
+                    <div class="input-row">
+                        <input type="number" class="tool-input" id="range-sensitivity" value="-112" min="-130" max="-50" step="1">
+                        <span class="input-unit">dBm</span>
+                    </div>
+                </div>
+                <div class="input-group">
+                    <label class="input-label">Link margin (safety)</label>
+                    <div class="input-row">
+                        <input type="number" class="tool-input" id="range-margin" value="10" min="0" max="30">
+                        <span class="input-unit">dB</span>
+                    </div>
+                </div>
+            </div>
+            <!-- Presets -->
+            <div style="display:flex; gap:8px; flex-wrap:wrap; margin-bottom:20px;">
+                <button onclick="setRangePreset('elrs900')" style="padding:5px 12px; border-radius:var(--radius-sm); border:1px solid var(--border-color); background:none; color:var(--text-muted); font-size:12px; cursor:pointer; font-family:var(--font-family);">ELRS 900 100mW</button>
+                <button onclick="setRangePreset('elrs24')" style="padding:5px 12px; border-radius:var(--radius-sm); border:1px solid var(--border-color); background:none; color:var(--text-muted); font-size:12px; cursor:pointer; font-family:var(--font-family);">ELRS 2.4G 250mW</button>
+                <button onclick="setRangePreset('mafia433')" style="padding:5px 12px; border-radius:var(--radius-sm); border:1px solid var(--border-color); background:none; color:var(--text-muted); font-size:12px; cursor:pointer; font-family:var(--font-family);">MafiaLRS 433 1W</button>
+                <button onclick="setRangePreset('vtx58')" style="padding:5px 12px; border-radius:var(--radius-sm); border:1px solid var(--border-color); background:none; color:var(--text-muted); font-size:12px; cursor:pointer; font-family:var(--font-family);">5.8G VTX 600mW</button>
+                <button onclick="setRangePreset('vtx13')" style="padding:5px 12px; border-radius:var(--radius-sm); border:1px solid var(--border-color); background:none; color:var(--text-muted); font-size:12px; cursor:pointer; font-family:var(--font-family);">1.3G VTX 1W</button>
+            </div>
+            <div class="result-card accent" id="range-results"></div>
+        </div>
+
+        <!-- ═══════════════════════════════════════════════
+             TOOL 4: Fresnel Zone
+        ═══════════════════════════════════════════════ -->
+        <div class="tool-panel" id="tool-fresnel">
+            <div class="tool-header">
+                <div class="tool-title"><i class="ph ph-eye" style="color:var(--accent-red)"></i> Fresnel zone calculator</div>
+                <p class="tool-desc">The first Fresnel zone must be 60% clear of obstructions for a clean RF link. Calculate maximum zone radius at any point along the path.</p>
+            </div>
+            <div class="input-grid">
+                <div class="input-group">
+                    <label class="input-label">Link distance</label>
+                    <div class="input-row">
+                        <input type="number" class="tool-input" id="fres-dist" value="1000" min="10" max="50000">
+                        <span class="input-unit">m</span>
+                    </div>
+                </div>
+                <div class="input-group">
+                    <label class="input-label">Frequency</label>
+                    <div class="input-row">
+                        <input type="number" class="tool-input" id="fres-freq" value="915" min="100" max="6000">
+                        <span class="input-unit">MHz</span>
+                    </div>
+                </div>
+                <div class="input-group">
+                    <label class="input-label">Point along path</label>
+                    <div class="input-row">
+                        <input type="number" class="tool-input" id="fres-point" value="50" min="1" max="99">
+                        <span class="input-unit">%</span>
+                    </div>
+                </div>
+            </div>
+            <div class="result-card accent" id="fresnel-results"></div>
+            <div class="fresnel-svg-wrap">
+                <svg id="fresnel-svg" width="100%" height="120" viewBox="0 0 700 120" preserveAspectRatio="xMidYMid meet"></svg>
+            </div>
+            <div class="result-note" style="background:var(--bg-panel); border:1px solid var(--border-color); border-radius:var(--radius-sm); padding:14px; margin-top:8px;">
+                The Fresnel zone is an ellipsoid around the direct LOS path. Obstructions (trees, terrain, buildings) within 60% of the first zone radius cause significant signal degradation. At 915 MHz over 1 km, the first zone radius at midpoint is ~10 m.
+            </div>
+        </div>
+
+        <!-- ═══════════════════════════════════════════════
+             TOOL 5: Dipole Length
+        ═══════════════════════════════════════════════ -->
+        <div class="tool-panel" id="tool-dipole">
+            <div class="tool-header">
+                <div class="tool-title"><i class="ph ph-antenna" style="color:var(--accent-red)"></i> Dipole / antenna length</div>
+                <p class="tool-desc">Calculate quarter-wave and half-wave antenna element lengths for any frequency. Account for velocity factor of coax or wire.</p>
+            </div>
+            <div class="input-grid">
+                <div class="input-group">
+                    <label class="input-label">Frequency</label>
+                    <div class="input-row">
+                        <input type="number" class="tool-input" id="dip-freq" value="915" min="50" max="6000">
+                        <span class="input-unit">MHz</span>
+                    </div>
+                </div>
+                <div class="input-group">
+                    <label class="input-label">Velocity factor</label>
+                    <div class="input-row">
+                        <input type="number" class="tool-input" id="dip-vf" value="0.97" min="0.50" max="1.00" step="0.01">
+                        <span class="input-unit">VF</span>
+                    </div>
+                </div>
+                <div class="input-group">
+                    <label class="input-label">Unit</label>
+                    <select class="tool-select" id="dip-unit">
+                        <option value="mm">mm</option>
+                        <option value="cm">cm</option>
+                        <option value="in">inches</option>
+                    </select>
+                </div>
+            </div>
+            <div style="display:flex; gap:8px; flex-wrap:wrap; margin-bottom:20px;">
+                <button onclick="setDipPreset(433)" style="padding:5px 12px; border-radius:var(--radius-sm); border:1px solid var(--border-color); background:none; color:var(--text-muted); font-size:12px; cursor:pointer; font-family:var(--font-family);">433 MHz</button>
+                <button onclick="setDipPreset(868)" style="padding:5px 12px; border-radius:var(--radius-sm); border:1px solid var(--border-color); background:none; color:var(--text-muted); font-size:12px; cursor:pointer; font-family:var(--font-family);">868 MHz</button>
+                <button onclick="setDipPreset(915)" style="padding:5px 12px; border-radius:var(--radius-sm); border:1px solid var(--border-color); background:none; color:var(--text-muted); font-size:12px; cursor:pointer; font-family:var(--font-family);">915 MHz</button>
+                <button onclick="setDipPreset(1280)" style="padding:5px 12px; border-radius:var(--radius-sm); border:1px solid var(--border-color); background:none; color:var(--text-muted); font-size:12px; cursor:pointer; font-family:var(--font-family);">1.3 GHz</button>
+                <button onclick="setDipPreset(2400)" style="padding:5px 12px; border-radius:var(--radius-sm); border:1px solid var(--border-color); background:none; color:var(--text-muted); font-size:12px; cursor:pointer; font-family:var(--font-family);">2.4 GHz</button>
+                <button onclick="setDipPreset(5800)" style="padding:5px 12px; border-radius:var(--radius-sm); border:1px solid var(--border-color); background:none; color:var(--text-muted); font-size:12px; cursor:pointer; font-family:var(--font-family);">5.8 GHz</button>
+            </div>
+            <div class="result-card accent" id="dipole-results"></div>
+        </div>
+
+        <!-- ═══════════════════════════════════════════════
+             TOOL 6: Closest Channel Finder
+        ═══════════════════════════════════════════════ -->
+        <div class="tool-panel" id="tool-closest-channel">
+            <div class="tool-header">
+                <div class="tool-title"><i class="ph ph-crosshair" style="color:var(--accent-red)"></i> Closest channel finder</div>
+                <p class="tool-desc">Find the nearest named FPV channel to any target frequency. Useful when operating on non-standard or modified bands.</p>
+            </div>
+            <div class="input-grid">
+                <div class="input-group">
+                    <label class="input-label">Target frequency</label>
+                    <div class="input-row">
+                        <input type="number" class="tool-input" id="cc-freq" value="5800" min="5000" max="6000">
+                        <span class="input-unit">MHz</span>
+                    </div>
+                </div>
+                <div class="input-group">
+                    <label class="input-label">Band filter</label>
+                    <select class="tool-select" id="cc-band">
+                        <option value="all">All bands</option>
+                        <option value="R" selected>Raceband (R)</option>
+                        <option value="F">Fatshark (F)</option>
+                        <option value="E">Boscam E</option>
+                        <option value="A">Boscam A</option>
+                        <option value="B">Boscam B</option>
+                    </select>
+                </div>
+            </div>
+            <div class="result-card accent" id="cc-results"></div>
+            <div class="result-card" id="cc-table"></div>
+        </div>
+
+        <!-- ═══════════════════════════════════════════════
+             TOOL 7: VTX Config Generator
+        ═══════════════════════════════════════════════ -->
+        <div class="tool-panel" id="tool-vtx-config">
+            <div class="tool-header">
+                <div class="tool-title"><i class="ph ph-sliders" style="color:var(--accent-red)"></i> VTX config generator</div>
+                <p class="tool-desc">Generate ready-to-paste Betaflight <code style="font-size:12px; background:var(--bg-dark); padding:1px 6px; border-radius:4px;">vtxtable</code> CLI commands for your VTX. Select your model, copy, paste into CLI.</p>
+            </div>
+            <div class="input-grid">
+                <div class="input-group">
+                    <label class="input-label">Manufacturer</label>
+                    <select class="tool-select" id="vtx-mfr" onchange="updateVtxModels()"></select>
+                </div>
+                <div class="input-group">
+                    <label class="input-label">Model</label>
+                    <select class="tool-select" id="vtx-model" onchange="updateVtxConfig()"></select>
+                </div>
+                <div class="input-group">
+                    <label class="input-label">UART port</label>
+                    <select class="tool-select" id="vtx-uart">
+                        <option value="1">UART 1</option>
+                        <option value="2" selected>UART 2</option>
+                        <option value="3">UART 3</option>
+                        <option value="4">UART 4</option>
+                        <option value="5">UART 5</option>
+                        <option value="6">UART 6</option>
+                    </select>
+                </div>
+                <div class="input-group">
+                    <label class="input-label">AUX channel for power</label>
+                    <select class="tool-select" id="vtx-aux">
+                        <option value="">None</option>
+                        <option value="AUX10">AUX 10</option>
+                        <option value="AUX11">AUX 11</option>
+                        <option value="AUX12">AUX 12</option>
+                    </select>
+                </div>
+            </div>
+            <div class="section-divider">Generated CLI commands</div>
+            <div style="position:relative;">
+                <pre id="vtx-cli-output" style="background:var(--bg-dark); border:1px solid var(--border-color); border-radius:var(--radius-sm); padding:16px; font-size:12px; color:var(--accent-green); font-family:'JetBrains Mono',monospace; overflow-x:auto; line-height:1.7; white-space:pre-wrap; min-height:120px;"></pre>
+                <button id="vtx-copy-btn" onclick="copyVtxConfig()" style="position:absolute; top:10px; right:10px; padding:5px 12px; border-radius:var(--radius-sm); border:1px solid var(--border-color); background:var(--bg-panel); color:var(--text-muted); font-size:12px; cursor:pointer; font-family:var(--font-family); display:flex; align-items:center; gap:4px;">
+                    <i class="ph ph-copy"></i> Copy
+                </button>
+            </div>
+            <div class="result-note" style="background:var(--bg-panel); border:1px solid var(--border-color); border-radius:var(--radius-sm); padding:14px; margin-top:12px;">
+                Open Betaflight Configurator → CLI tab → paste commands → type <code style="font-size:11px; background:var(--bg-dark); padding:1px 5px; border-radius:3px;">save</code> and press Enter. Requires Betaflight 4.1+.
+            </div>
+        </div>
+
+        <!-- ═══════════════════════════════════════════════
+             MafiaLRS (external link)
+        ═══════════════════════════════════════════════ -->
+        <div class="tool-panel" id="tool-mafiалrs">
+            <div class="tool-header">
+                <div class="tool-title"><i class="ph ph-shield-warning" style="color:#eab308"></i> MafiaLRS firmware generator</div>
+                <p class="tool-desc">Combat-adapted ELRS fork used by Ukrainian drone units. Non-standard frequency operation (433–735 MHz) for electronic warfare evasion. 238 RX / 111 TX targets.</p>
+            </div>
+            <div class="result-card" style="border-color:#eab308; background:rgba(234,179,8,0.04);">
+                <div style="display:flex; align-items:center; gap:12px; margin-bottom:16px;">
+                    <i class="ph ph-warning" style="font-size:24px; color:#eab308;"></i>
+                    <div>
+                        <div style="font-size:14px; font-weight:600; color:var(--text-main);">Hosted at vtx.in.ua</div>
+                        <div style="font-size:12px; color:var(--text-muted);">The MafiaLRS firmware generator is maintained by the Ukrainian FPV community and hosted externally.</div>
+                    </div>
+                </div>
+                <div style="display:grid; grid-template-columns:1fr 1fr; gap:16px; margin-bottom:16px;">
+                    <div style="background:var(--bg-dark); border-radius:var(--radius-sm); padding:14px;">
+                        <div style="font-size:11px; color:var(--text-muted); text-transform:uppercase; letter-spacing:0.05em; margin-bottom:4px;">RX targets</div>
+                        <div style="font-size:28px; font-weight:700; color:var(--accent-red); font-family:var(--font-family);">238</div>
+                    </div>
+                    <div style="background:var(--bg-dark); border-radius:var(--radius-sm); padding:14px;">
+                        <div style="font-size:11px; color:var(--text-muted); text-transform:uppercase; letter-spacing:0.05em; margin-bottom:4px;">TX targets</div>
+                        <div style="font-size:28px; font-weight:700; color:var(--accent-red); font-family:var(--font-family);">111</div>
+                    </div>
+                </div>
+                <div style="display:flex; gap:12px; flex-wrap:wrap;">
+                    <a href="https://vtx.in.ua/elrs/" target="_blank" style="display:flex; align-items:center; gap:8px; padding:10px 20px; border-radius:var(--radius-sm); background:var(--accent-red); color:var(--bg-dark); font-size:13px; font-weight:600; text-decoration:none; font-family:var(--font-family);">
+                        <i class="ph ph-arrow-square-out"></i> Open MafiaLRS generator
+                    </a>
+                    <a href="https://vtx.in.ua/inf/" target="_blank" style="display:flex; align-items:center; gap:8px; padding:10px 20px; border-radius:var(--radius-sm); border:1px solid var(--border-color); background:none; color:var(--text-muted); font-size:13px; text-decoration:none; font-family:var(--font-family);">
+                        <i class="ph ph-info"></i> ELRS hardware info
+                    </a>
+                </div>
+            </div>
+            <div style="margin-top:16px; background:var(--bg-panel); border:1px solid var(--border-color); border-radius:var(--radius-sm); padding:14px; font-size:12px; color:var(--text-muted); line-height:1.6;">
+                <strong style="color:var(--text-main);">What is MafiaLRS?</strong> A Ukrainian fork of ExpressLRS modified for combat operations. Key differences from stock ELRS: operates on 433 MHz, 490–560 MHz, and modified 868/915 MHz bands outside standard EW jamming coverage; frequency hopping modifications; actively maintained and battle-tested. Source: <a href="https://github.com/BUSHA/targets/tree/mafia-targets" target="_blank" style="color:var(--accent-red);">BUSHA/targets@mafia-targets</a>.
+            </div>
+        </div>
+
+        <!-- Soon panels -->
+        <div class="tool-panel" id="tool-fc-matcher">
+            <div class="tool-header">
+                <div class="tool-title"><i class="ph ph-magnifying-glass" style="color:var(--accent-red)"></i> FC target matcher</div>
+                <p class="tool-desc">Paste your Betaflight <code style="font-size:12px; background:var(--bg-dark); padding:1px 6px; border-radius:4px;">status</code> + <code style="font-size:12px; background:var(--bg-dark); padding:1px 6px; border-radius:4px;">dump all</code> CLI output to automatically identify your flight controller target.</p>
+            </div>
+            <div style="text-align:center; padding:48px; color:var(--text-muted);">
+                <i class="ph ph-hammer" style="font-size:48px; display:block; margin-bottom:12px; opacity:0.3;"></i>
+                <div style="font-size:14px; margin-bottom:8px;">In development</div>
+                <div style="font-size:12px;">Available now at <a href="https://vtx.in.ua/btrgt/" target="_blank" style="color:var(--accent-red);">vtx.in.ua/btrgt/</a></div>
+            </div>
+        </div>
+        <div class="tool-panel" id="tool-unlock-vtx">
+            <div class="tool-header">
+                <div class="tool-title"><i class="ph ph-lock-open" style="color:var(--accent-red)"></i> Unlock VTX table</div>
+                <p class="tool-desc">Generate a region-unlocked vtxtable configuration — all power levels, all frequency bands.</p>
+            </div>
+            <div style="text-align:center; padding:48px; color:var(--text-muted);">
+                <i class="ph ph-hammer" style="font-size:48px; display:block; margin-bottom:12px; opacity:0.3;"></i>
+                <div style="font-size:14px; margin-bottom:8px;">In development</div>
+            </div>
+        </div>
+        <div class="tool-panel" id="tool-elrs-info">
+            <div class="tool-header">
+                <div class="tool-title"><i class="ph ph-cpu" style="color:var(--accent-red)"></i> ELRS info</div>
+                <p class="tool-desc">TX/RX hardware pin layout reference and firmware build links.</p>
+            </div>
+            <div style="text-align:center; padding:48px; color:var(--text-muted);">
+                <i class="ph ph-hammer" style="font-size:48px; display:block; margin-bottom:12px; opacity:0.3;"></i>
+                <div style="font-size:14px; margin-bottom:8px;">In development</div>
+                <div style="font-size:12px;">Available now at <a href="https://vtx.in.ua/inf/" target="_blank" style="color:var(--accent-red);">vtx.in.ua/inf/</a></div>
+            </div>
+        </div>
+
+    </main>
+</div>
+
+<script>
+// ── Theme toggle ──────────────────────────────────────────────────────────
+const dmBtn = document.getElementById('dark-mode-toggle');
+const dmIcon = document.getElementById('dark-mode-icon');
+function applyTheme(t) {
+    document.documentElement.setAttribute('data-theme', t);
+    localStorage.setItem('dc-theme', t);
+    dmIcon.className = t === 'dark' ? 'ph ph-sun' : 'ph ph-moon';
+}
+applyTheme(localStorage.getItem('dc-theme') || 'dark');
+dmBtn.addEventListener('click', () => applyTheme(document.documentElement.getAttribute('data-theme') === 'dark' ? 'light' : 'dark'));
+
+// ── Navigation ────────────────────────────────────────────────────────────
+const navItems = document.querySelectorAll('.tools-nav-item[data-tool]');
+const panels = document.querySelectorAll('.tool-panel');
+const breadcrumb = document.getElementById('breadcrumb-current');
+
+function showTool(id) {
+    navItems.forEach(n => n.classList.toggle('active', n.dataset.tool === id));
+    panels.forEach(p => p.classList.toggle('active', p.id === 'tool-' + id));
+    const active = document.querySelector(`.tools-nav-item[data-tool="${id}"]`);
+    if (active) breadcrumb.textContent = active.textContent.trim().replace(/\s+/g, ' ').split(' ').slice(0, -1).join(' ') || active.textContent.trim();
+}
+navItems.forEach(n => n.addEventListener('click', () => showTool(n.dataset.tool)));
+
+// ── FPV Channel data ───────────────────────────────────────────────────────
+const CHANNELS = {
+    R: { name: 'Raceband', freqs: [5658, 5695, 5732, 5769, 5806, 5843, 5880, 5917] },
+    F: { name: 'Fatshark', freqs: [5740, 5760, 5780, 5800, 5820, 5840, 5860, 5880] },
+    E: { name: 'Boscam E', freqs: [5705, 5685, 5665, 5645, 5885, 5905, 5925, 5945] },
+    A: { name: 'Boscam A', freqs: [5865, 5845, 5825, 5805, 5785, 5765, 5745, 5725] },
+    B: { name: 'Boscam B', freqs: [5733, 5752, 5771, 5790, 5809, 5828, 5847, 5866] },
+};
+const PILOT_COLORS = ['#22d3ee','#a78bfa','#4ade80','#f97316','#f87171','#facc15'];
+
+// ── TOOL 1: Channel Planner ───────────────────────────────────────────────
+let pilots = [
+    { band: 'R', ch: 1 },
+    { band: 'R', ch: 7 },
+];
+
+function getBandFreqs(band) { return CHANNELS[band]?.freqs || CHANNELS.R.freqs; }
+
+function renderPilots() {
+    const list = document.getElementById('pilots-list');
+    list.innerHTML = '';
+    pilots.forEach((p, i) => {
+        const freq = getBandFreqs(p.band)[p.ch - 1];
+        const row = document.createElement('div');
+        row.className = 'pilot-row';
+        row.innerHTML = `
+            <div class="pilot-color" style="background:${PILOT_COLORS[i % PILOT_COLORS.length]};"></div>
+            <span class="pilot-label">Pilot ${i + 1}</span>
+            <select class="tool-select" style="width:120px;" onchange="pilots[${i}].band=this.value; pilots[${i}].ch=1; renderPilots(); analyzeChannels();">
+                ${Object.entries(CHANNELS).map(([k,v]) => `<option value="${k}" ${p.band===k?'selected':''}>${v.name}</option>`).join('')}
+            </select>
+            <select class="tool-select" style="width:90px;" onchange="pilots[${i}].ch=+this.value; renderPilots(); analyzeChannels();">
+                ${getBandFreqs(p.band).map((f,ci) => `<option value="${ci+1}" ${p.ch===ci+1?'selected':''}>${p.band}${ci+1} ${f}</option>`).join('')}
+            </select>
+            <span class="pilot-freq" style="color:${PILOT_COLORS[i % PILOT_COLORS.length]};">${freq} MHz</span>
+            ${pilots.length > 1 ? `<button onclick="pilots.splice(${i},1); renderPilots(); analyzeChannels();" style="background:none; border:none; color:var(--text-faint); cursor:pointer; font-size:16px; padding:0 4px;">×</button>` : ''}
+        `;
+        list.appendChild(row);
+    });
+    analyzeChannels();
+}
+
+function analyzeChannels() {
+    if (pilots.length < 2) {
+        document.getElementById('channel-results').innerHTML = '<p style="color:var(--text-muted); font-size:13px;">Add at least 2 pilots to see conflict analysis.</p>';
+        return;
+    }
+    const freqs = pilots.map((p, i) => ({ pilot: i + 1, freq: getBandFreqs(p.band)[p.ch - 1], band: p.band, ch: p.ch }));
+    let rows = '';
+    let worst = 'ok';
+    for (let i = 0; i < freqs.length; i++) {
+        for (let j = i + 1; j < freqs.length; j++) {
+            const diff = Math.abs(freqs[i].freq - freqs[j].freq);
+            let status, dot, label;
+            if (diff === 0) { status = 'bad'; dot = 'dot-bad'; label = 'SAME CHANNEL'; worst = 'bad'; }
+            else if (diff < 40) { status = 'bad'; dot = 'dot-bad'; label = `${diff} MHz — CONFLICT`; if (worst !== 'bad') worst = 'bad'; }
+            else if (diff < 80) { status = 'warn'; dot = 'dot-warn'; label = `${diff} MHz — marginal`; if (worst === 'ok') worst = 'warn'; }
+            else { status = 'ok'; dot = 'dot-ok'; label = `${diff} MHz — clean`; }
+            rows += `<tr><td>P${freqs[i].pilot} (${freqs[i].band}${freqs[i].ch} ${freqs[i].freq})</td><td>P${freqs[j].pilot} (${freqs[j].band}${freqs[j].ch} ${freqs[j].freq})</td><td><span class="conflict-dot ${dot}"></span>${label}</td></tr>`;
+        }
+    }
+    const summary = worst === 'ok' ? '<span style="color:#4ade80">✓ All channels clear</span>' : worst === 'warn' ? '<span style="color:#eab308">⚠ Marginal separation — review</span>' : '<span style="color:#f87171">✗ Channel conflicts detected</span>';
+    document.getElementById('channel-results').innerHTML = `
+        <div style="margin-bottom:12px; font-size:14px; font-weight:600;">${summary}</div>
+        <table class="channel-table"><thead><tr><th>Pilot A</th><th>Pilot B</th><th>Separation</th></tr></thead><tbody>${rows}</tbody></table>`;
+}
+
+document.getElementById('add-pilot-btn').addEventListener('click', () => {
+    if (pilots.length >= 6) return;
+    pilots.push({ band: 'R', ch: pilots.length + 1 > 8 ? 1 : pilots.length + 1 });
+    renderPilots();
+});
+renderPilots();
+
+// ── TOOL 2: Harmonics ─────────────────────────────────────────────────────
+function calcHarmonics() {
+    const f = +document.getElementById('harm-freq').value;
+    const vStart = +document.getElementById('harm-vband-start').value;
+    const vEnd = +document.getElementById('harm-vband-end').value;
+    const window = +document.getElementById('harm-window').value;
+    if (!f) return;
+    let html = '<div style="margin-bottom:12px; font-size:12px; color:var(--text-muted);">Harmonics of ' + f + ' MHz within and near ' + vStart + '–' + vEnd + ' MHz video band</div>';
+    const maxN = Math.ceil(vEnd / f) + 2;
+    let hasConflict = false;
+    for (let n = 2; n <= maxN; n++) {
+        const hf = n * f;
+        const inBand = hf >= vStart && hf <= vEnd;
+        const nearBand = hf >= vStart - window && hf <= vEnd + window;
+        if (!nearBand && hf > vEnd + 200) break;
+        if (!nearBand) continue;
+        const danger = inBand;
+        const near = !inBand && nearBand;
+        if (danger) hasConflict = true;
+        const barWidth = Math.min(100, Math.max(5, 100 - Math.abs(hf - (vStart + vEnd) / 2) / 5));
+        const barColor = danger ? '#f87171' : near ? '#eab308' : '#4ade80';
+        const tag = danger ? '<span class="harmonic-tag tag-danger">IN BAND</span>' : near ? '<span class="harmonic-tag tag-warn">NEAR BAND</span>' : '<span class="harmonic-tag tag-clear">clear</span>';
+        html += `<div class="harmonic-row">
+            <span class="harmonic-n">H${n}</span>
+            <span class="harmonic-freq">${hf.toLocaleString()} MHz</span>
+            <div class="harmonic-bar-wrap"><div class="harmonic-bar" style="width:${barWidth}%; background:${barColor};"></div></div>
+            ${tag}
+        </div>`;
+    }
+    if (!html.includes('harmonic-row')) html += '<p style="color:var(--text-muted); font-size:13px;">No harmonics fall within or near the specified video band.</p>';
+    const summary = hasConflict
+        ? '<div style="margin-bottom:16px; padding:10px 14px; border-radius:var(--radius-sm); background:rgba(248,113,113,0.1); border:1px solid rgba(248,113,113,0.3); color:#f87171; font-size:13px; font-weight:600;"><i class="ph ph-warning"></i> Harmonics detected in video band — change control link frequency or avoid affected video channels</div>'
+        : '<div style="margin-bottom:16px; padding:10px 14px; border-radius:var(--radius-sm); background:rgba(74,222,128,0.1); border:1px solid rgba(74,222,128,0.3); color:#4ade80; font-size:13px; font-weight:600;"><i class="ph ph-check-circle"></i> No harmonics in video band at this frequency</div>';
+    document.getElementById('harm-results').innerHTML = summary + html;
+}
+function setHarmPreset(f) { document.getElementById('harm-freq').value = f; calcHarmonics(); }
+['harm-freq','harm-vband-start','harm-vband-end','harm-window'].forEach(id => document.getElementById(id).addEventListener('input', calcHarmonics));
+calcHarmonics();
+
+// ── TOOL 3: Range estimator ───────────────────────────────────────────────
+function calcRange() {
+    const pw_mw = +document.getElementById('range-power').value;
+    const txGain = +document.getElementById('range-tx-gain').value;
+    const rxGain = +document.getElementById('range-rx-gain').value;
+    const freq_mhz = +document.getElementById('range-freq').value;
+    const sens_dbm = +document.getElementById('range-sensitivity').value;
+    const margin = +document.getElementById('range-margin').value;
+    if (!pw_mw || !freq_mhz) return;
+    const pw_dbm = 10 * Math.log10(pw_mw) + 30;
+    const eirp = pw_dbm + txGain;
+    const fspl_per_km = 20 * Math.log10(freq_mhz) + 20 * Math.log10(1) + 20 * Math.log10(4 * Math.PI / 300) * 1;
+    const linkBudget = eirp + rxGain - sens_dbm - margin;
+    const fspl_needed = linkBudget;
+    const range_km = Math.pow(10, (fspl_needed - 20 * Math.log10(freq_mhz) - 20 * Math.log10(4 * Math.PI / 300)) / 20);
+    const range_m = Math.round(range_km * 1000);
+    const range_display = range_km >= 1 ? range_km.toFixed(1) + ' km' : range_m + ' m';
+    document.getElementById('range-results').innerHTML = `
+        <div class="result-grid">
+            <div class="result-item"><span class="result-value ${range_km > 10 ? 'ok' : range_km > 2 ? '' : 'warn'}">${range_display}</span><span class="result-label">Max range</span></div>
+            <div class="result-item"><span class="result-value sm">${pw_dbm.toFixed(1)} dBm</span><span class="result-label">TX power</span></div>
+            <div class="result-item"><span class="result-value sm">${eirp.toFixed(1)} dBm</span><span class="result-label">EIRP</span></div>
+            <div class="result-item"><span class="result-value sm">${linkBudget.toFixed(1)} dB</span><span class="result-label">Link budget</span></div>
+        </div>
+        <div class="result-note">Friis free-space path loss. Real-world range reduced by obstacles, multipath, and coax losses. ${margin} dB safety margin applied.</div>`;
+}
+const rangePresets = {
+    elrs900:  { power:100,  txGain:2,  rxGain:2,  freq:915,  sens:-112, margin:10 },
+    elrs24:   { power:250,  txGain:2,  rxGain:2,  freq:2400, sens:-105, margin:10 },
+    mafia433: { power:1000, txGain:2,  rxGain:2,  freq:433,  sens:-112, margin:10 },
+    vtx58:    { power:600,  txGain:2,  rxGain:2,  freq:5800, sens:-85,  margin:6  },
+    vtx13:    { power:1000, txGain:3,  rxGain:3,  freq:1280, sens:-88,  margin:6  },
+};
+function setRangePreset(k) {
+    const p = rangePresets[k];
+    document.getElementById('range-power').value = p.power;
+    document.getElementById('range-tx-gain').value = p.txGain;
+    document.getElementById('range-rx-gain').value = p.rxGain;
+    document.getElementById('range-freq').value = p.freq;
+    document.getElementById('range-sensitivity').value = p.sens;
+    document.getElementById('range-margin').value = p.margin;
+    calcRange();
+}
+['range-power','range-tx-gain','range-rx-gain','range-freq','range-sensitivity','range-margin'].forEach(id => document.getElementById(id).addEventListener('input', calcRange));
+calcRange();
+
+// ── TOOL 4: Fresnel zone ──────────────────────────────────────────────────
+function calcFresnel() {
+    const d = +document.getElementById('fres-dist').value;
+    const f_mhz = +document.getElementById('fres-freq').value;
+    const pct = +document.getElementById('fres-point').value / 100;
+    if (!d || !f_mhz) return;
+    const c = 3e8;
+    const lambda = c / (f_mhz * 1e6);
+    const d1 = d * pct, d2 = d * (1 - pct);
+    const r1 = Math.sqrt(lambda * d1 * d2 / d);
+    const r60 = r1 * 0.6;
+    const r1_display = r1 >= 1 ? r1.toFixed(1) + ' m' : (r1 * 100).toFixed(0) + ' cm';
+    const r60_display = r60 >= 1 ? r60.toFixed(1) + ' m' : (r60 * 100).toFixed(0) + ' cm';
+    document.getElementById('fresnel-results').innerHTML = `
+        <div class="result-grid">
+            <div class="result-item"><span class="result-value">${r1_display}</span><span class="result-label">Zone 1 radius at ${Math.round(pct*100)}%</span></div>
+            <div class="result-item"><span class="result-value ok">${r60_display}</span><span class="result-label">60% clearance needed</span></div>
+            <div class="result-item"><span class="result-value sm">${(lambda*100).toFixed(1)} cm</span><span class="result-label">Wavelength</span></div>
+        </div>`;
+    drawFresnel(d, r1, pct);
+}
+function drawFresnel(d, r1, pct) {
+    const svg = document.getElementById('fresnel-svg');
+    const W = 700, H = 120, pad = 40;
+    const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+    const col = isDark ? '#22d3ee' : '#0e7490';
+    const textCol = isDark ? '#737373' : '#64748b';
+    const scale = (W - pad * 2) / d;
+    const rScale = Math.min(50, r1 * scale * 2);
+    const cx = W / 2, cy = H / 2;
+    const xPt = pad + d * pct * scale;
+    svg.innerHTML = `
+        <line x1="${pad}" y1="${cy}" x2="${W-pad}" y2="${cy}" stroke="${col}" stroke-width="1.5"/>
+        <ellipse cx="${cx}" cy="${cy}" rx="${(W-pad*2)/2}" ry="${rScale}" stroke="${col}" stroke-width="1" fill="none" stroke-dasharray="4,3" opacity="0.5"/>
+        <ellipse cx="${cx}" cy="${cy}" rx="${(W-pad*2)/2}" ry="${rScale*0.6}" stroke="${col}" stroke-width="1.5" fill="${col}" fill-opacity="0.06"/>
+        <circle cx="${pad}" cy="${cy}" r="5" fill="${col}"/>
+        <circle cx="${W-pad}" cy="${cy}" r="5" fill="${col}"/>
+        <line x1="${xPt}" y1="${cy - rScale}" x2="${xPt}" y2="${cy + rScale}" stroke="#f87171" stroke-width="1.5" stroke-dasharray="3,2"/>
+        <text x="${pad}" y="${cy+24}" font-size="11" fill="${textCol}" font-family="monospace">TX</text>
+        <text x="${W-pad-4}" y="${cy+24}" font-size="11" fill="${textCol}" font-family="monospace">RX</text>
+        <text x="${xPt-12}" y="${cy-rScale-6}" font-size="10" fill="#f87171" font-family="monospace">${Math.round(pct*100)}%</text>`;
+}
+['fres-dist','fres-freq','fres-point'].forEach(id => document.getElementById(id).addEventListener('input', calcFresnel));
+calcFresnel();
+
+// ── TOOL 5: Dipole length ─────────────────────────────────────────────────
+function calcDipole() {
+    const f = +document.getElementById('dip-freq').value;
+    const vf = +document.getElementById('dip-vf').value;
+    const unit = document.getElementById('dip-unit').value;
+    if (!f) return;
+    const c = 3e8;
+    const lambda = (c / (f * 1e6)) * vf;
+    const convert = unit === 'mm' ? 1000 : unit === 'cm' ? 100 : 39.3701;
+    const suffix = unit;
+    const q = lambda / 4 * convert;
+    const h = lambda / 2 * convert;
+    const fiveEighths = lambda * 5 / 8 * convert;
+    const fmt = v => v >= 10 ? v.toFixed(1) : v.toFixed(2);
+    document.getElementById('dipole-results').innerHTML = `
+        <div class="result-grid">
+            <div class="result-item"><span class="result-value">${fmt(q)} ${suffix}</span><span class="result-label">Quarter-wave (λ/4)</span></div>
+            <div class="result-item"><span class="result-value">${fmt(h)} ${suffix}</span><span class="result-label">Half-wave (λ/2)</span></div>
+            <div class="result-item"><span class="result-value sm">${fmt(fiveEighths)} ${suffix}</span><span class="result-label">5/8 wave</span></div>
+            <div class="result-item"><span class="result-value sm">${(lambda * convert).toFixed(1)} ${suffix}</span><span class="result-label">Full wavelength</span></div>
+        </div>
+        <div class="result-note">At ${f} MHz with velocity factor ${vf}. Quarter-wave = standard whip / monopole element. Half-wave = dipole total length (two × λ/4 elements). Cut slightly long and trim for best SWR.</div>`;
+}
+function setDipPreset(f) { document.getElementById('dip-freq').value = f; calcDipole(); }
+['dip-freq','dip-vf','dip-unit'].forEach(id => document.getElementById(id).addEventListener('input', calcDipole));
+calcDipole();
+
+// ── TOOL 6: Closest channel ───────────────────────────────────────────────
+function calcClosestChannel() {
+    const target = +document.getElementById('cc-freq').value;
+    const band = document.getElementById('cc-band').value;
+    if (!target) return;
+    const bands = band === 'all' ? Object.entries(CHANNELS) : [[band, CHANNELS[band]]];
+    let best = null, bestDiff = Infinity;
+    let allRows = '';
+    bands.forEach(([k, b]) => {
+        b.freqs.forEach((f, i) => {
+            const diff = Math.abs(f - target);
+            if (diff < bestDiff) { bestDiff = diff; best = { band: k, ch: i + 1, freq: f }; }
+            const status = diff === 0 ? '<span style="color:#4ade80">exact</span>' : diff <= 10 ? `<span style="color:#4ade80">+${diff} MHz</span>` : diff <= 30 ? `<span style="color:#eab308">+${diff} MHz</span>` : `<span style="color:var(--text-muted)">${diff} MHz</span>`;
+            allRows += `<tr><td>${k}${i+1}</td><td>${b.name}</td><td style="font-family:var(--font-family)">${f}</td><td>${status}</td></tr>`;
+        });
+    });
+    document.getElementById('cc-results').innerHTML = best ? `
+        <div class="result-grid">
+            <div class="result-item"><span class="result-value">${best.band}${best.ch}</span><span class="result-label">Closest channel</span></div>
+            <div class="result-item"><span class="result-value">${best.freq} MHz</span><span class="result-label">Channel frequency</span></div>
+            <div class="result-item"><span class="result-value sm ${bestDiff === 0 ? 'ok' : bestDiff <= 20 ? '' : 'warn'}">${bestDiff === 0 ? 'Exact' : '±' + bestDiff + ' MHz'}</span><span class="result-label">Offset</span></div>
+        </div>` : '';
+    document.getElementById('cc-table').innerHTML = `<table class="channel-table"><thead><tr><th>Channel</th><th>Band</th><th>Freq (MHz)</th><th>Distance</th></tr></thead><tbody>${allRows}</tbody></table>`;
+}
+['cc-freq','cc-band'].forEach(id => document.getElementById(id).addEventListener('input', calcClosestChannel));
+calcClosestChannel();
+
+// ── TOOL 7: VTX Config Generator ─────────────────────────────────────────
+const VTX_BANDS_FULL = [
+    { name:'BOSCAM_A', letter:'A', flag:'FACTORY', freqs:[5865,5845,5825,5805,5785,5765,5745,5725] },
+    { name:'BOSCAM_B', letter:'B', flag:'FACTORY', freqs:[5733,5752,5771,5790,5809,5828,5847,5866] },
+    { name:'BOSCAM_E', letter:'E', flag:'FACTORY', freqs:[5705,5685,5665,5645,5885,5905,5925,5945] },
+    { name:'FATSHARK', letter:'F', flag:'FACTORY', freqs:[5740,5760,5780,5800,5820,5840,5860,5880] },
+    { name:'RACEBAND', letter:'R', flag:'FACTORY', freqs:[5658,5695,5732,5769,5806,5843,5880,5917] },
+];
+
+// VTX database from vtx.in.ua catalog (subset with known power configs)
+const VTX_DB = [
+    { mfr:'Rush', name:'Rush Tank Solo 1.6W', proto:2048, pw:[1,3,4], port:0, bands:5, channels:8 },
+    { mfr:'Rush', name:'Rush Max Solo 2.5W', proto:2048, pw:[1,3,4], port:0, bands:5, channels:8 },
+    { mfr:'Rush', name:'Rush Max Solo 2.5W (+ X-band)', proto:2048, pw:[1,3,4], port:0, bands:6, channels:8 },
+    { mfr:'Rush', name:'Rush 3.3G 2W VTX', proto:8192, pw:[1,3,4], port:0, bands:2, channels:8 },
+    { mfr:'Rush', name:'Rush 3.3G 4W VTX', proto:8192, pw:[1,3,4], port:0, bands:2, channels:8 },
+    { mfr:'Rush', name:'Rush 1.2/1.3GHz 4W', proto:8192, pw:[1,2,4], port:0, bands:1, channels:9 },
+    { mfr:'Foxeer', name:'Foxeer Reaper Extreme 1.8W 72Ch', proto:8192, pw:[1,3,5], port:0, bands:5, channels:8 },
+    { mfr:'Foxeer', name:'Foxeer Reaper Extreme 2.5W v2 72Ch', proto:8192, pw:[1,3,5], port:0, bands:5, channels:8 },
+    { mfr:'Foxeer', name:'Foxeer Reaper Extreme 3W 72Ch', proto:8192, pw:[1,3,5], port:0, bands:5, channels:8 },
+    { mfr:'Foxeer', name:'Foxeer Reaper 5G 4W 80Ch (X-band)', proto:8192, pw:[1,3,5], port:0, bands:6, channels:8 },
+    { mfr:'AKK', name:'AKK FX3-ultimate 3W', proto:8192, pw:[1,2,3,4,5], port:0, bands:5, channels:8 },
+    { mfr:'AKK', name:'AKK FX5 4W 96Ch', proto:8192, pw:[1,2,3,4,5], port:0, bands:5, channels:8 },
+    { mfr:'GEPRC', name:'GEPRC TX800 VTX 800mW', proto:8192, pw:[1,2,3,4,5], port:0, bands:5, channels:8 },
+    { mfr:'GEPRC', name:'GEPRC TX1000 VTX 1W', proto:8192, pw:[1,2,3,4,5], port:0, bands:5, channels:8 },
+    { mfr:'TBS', name:'TBS Unify Pro32 HV', proto:2048, pw:[1,2,3,4,5], port:0, bands:5, channels:8 },
+    { mfr:'TBS', name:'TBS Unify Pro HV', proto:2048, pw:[1,2,3,4,5], port:0, bands:5, channels:8 },
+    { mfr:'SpeedyBee', name:'SpeedyBee TX800 5.8G', proto:8192, pw:[1,2,3,4], port:0, bands:5, channels:8 },
+    { mfr:'ImmersionRC', name:'ImmersionRC Tramp HV', proto:8192, pw:[1,2,3,4,5], port:0, bands:5, channels:8 },
+    { mfr:'Stingbee', name:'StingBee Stellar VTX 2.5W 64Ch', proto:8192, pw:[1,2,4], port:0, bands:4, channels:8 },
+    { mfr:'DEC1', name:'DEC1 Spot VTX 2.5W', proto:8192, pw:[2,3,5], port:0, bands:5, channels:8 },
+    { mfr:'FT', name:'FT VTX 5.8GHz 4W 96CH', proto:8192, pw:[1,2,3,4,5], port:0, bands:5, channels:8 },
+    { mfr:'FT', name:'FT VTX 3.3GHz 4W 16CH', proto:8192, pw:[1,2,4], port:0, bands:2, channels:8 },
+    { mfr:'FT', name:'FT VTX 1.2GHz 4W 9CH', proto:8192, pw:[1,2,4], port:0, bands:1, channels:9 },
+    { mfr:'KaraFPV', name:'KaraFPV Teleport67 4W 6.1-7.2G', proto:8192, pw:[1,3,5], port:0, bands:2, channels:8 },
+    { mfr:'Pilotix', name:'Pilotix VTX 2.5W 64Ch', proto:8192, pw:[1,2,4], port:0, bands:4, channels:8 },
+    { mfr:'Scream Industries', name:'Scream Industries SI-MOD v1.0', proto:8192, pw:[1,3,5], port:0, bands:5, channels:8 },
+    { mfr:'Axisflying', name:'Axisflying Thor VTX 2.5W', proto:8192, pw:[1,2,3,4,5], port:0, bands:5, channels:8 },
+    { mfr:'SKYZONE', name:'SKYZONE VTX 2.5W 56Ch', proto:8192, pw:[1,2,4], port:0, bands:4, channels:8 },
+    { mfr:'HGLRC', name:'HGLRC Zeus VTX 3W', proto:8192, pw:[1,2,3,4,5], port:0, bands:5, channels:8 },
+    { mfr:'iFlight', name:'iFlight BLITZ WHOOP VTX 400mW', proto:8192, pw:[1,2,3,4], port:0, bands:5, channels:8 },
+];
+
+function populateVtxMfr() {
+    const sel = document.getElementById('vtx-mfr');
+    const mfrs = [...new Set(VTX_DB.map(v => v.mfr))].sort();
+    sel.innerHTML = mfrs.map(m => `<option value="${m}">${m}</option>`).join('');
+    updateVtxModels();
+}
+function updateVtxModels() {
+    const mfr = document.getElementById('vtx-mfr').value;
+    const sel = document.getElementById('vtx-model');
+    sel.innerHTML = VTX_DB.filter(v => v.mfr === mfr).map(v => `<option value="${v.name}">${v.name}</option>`).join('');
+    updateVtxConfig();
+}
+function updateVtxConfig() {
+    const name = document.getElementById('vtx-model').value;
+    const uart = document.getElementById('vtx-uart').value;
+    const vtx = VTX_DB.find(v => v.name === name);
+    if (!vtx) return;
+    const protoName = vtx.proto === 8192 ? 'IRC Tramp' : 'SmartAudio';
+    const numBands = Math.min(vtx.bands, 5);
+    const bands = VTX_BANDS_FULL.slice(0, numBands);
+    const pwCount = vtx.pw.length;
+    const pwLabels = vtx.pw.map(p => p === 1?'25':p===2?'100':p===3?'200':p===4?'400':'600');
+    let cli = `# VTX: ${vtx.name} (${protoName})\n`;
+    cli += `# Generated by Forge Tools\n\n`;
+    cli += `set vtx_softserial_alt = OFF\n`;
+    cli += `feature -SOFTSERIAL\n`;
+    cli += `resource UART${uart}_TX 1 NONE\n`;
+    cli += `resource UART${uart}_RX 1 NONE\n\n`;
+    cli += `set vtxtable_bands = ${numBands}\n`;
+    cli += `set vtxtable_channels = 8\n`;
+    bands.forEach((b, i) => {
+        cli += `vtxtable band ${i+1} ${b.name} ${b.letter} ${b.flag} ${b.freqs.join(' ')}\n`;
+    });
+    cli += `vtxtable powerlevels ${pwCount}\n`;
+    cli += `vtxtable powervalues ${vtx.pw.join(' ')}\n`;
+    cli += `vtxtable powerlabels ${pwLabels.join(' ')}\n\n`;
+    cli += `set vtx_band = 5\nset vtx_channel = 1\nset vtx_power = 1\n`;
+    cli += `set vtx_low_power_disarm = ON\n\nsave`;
+    document.getElementById('vtx-cli-output').textContent = cli;
+}
+function copyVtxConfig() {
+    const text = document.getElementById('vtx-cli-output').textContent;
+    navigator.clipboard.writeText(text).then(() => {
+        const btn = document.getElementById('vtx-copy-btn');
+        btn.innerHTML = '<i class="ph ph-check"></i> Copied!';
+        btn.style.color = '#4ade80';
+        setTimeout(() => { btn.innerHTML = '<i class="ph ph-copy"></i> Copy'; btn.style.color = ''; }, 2000);
+    });
+}
+['vtx-uart','vtx-aux'].forEach(id => document.getElementById(id).addEventListener('change', updateVtxConfig));
+populateVtxMfr();
+</script>
