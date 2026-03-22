@@ -10,7 +10,7 @@
 **Branch**: `master`
 
 ### Summary
-Full scrape and cross-reference of vtx.in.ua against Forge DB. Site runs on a single Google Sheet ([redacted], updated daily). 737 catalog entries parsed across 5 tabs. 199 new entries merged into forge_database.json. 4 entirely new component categories added.
+Full scrape and cross-reference of vtx.in.ua against Forge DB. Site runs on a single Google Sheet (community-maintained, updated daily). 737 catalog entries parsed across 5 tabs. 199 new entries merged into forge_database.json. 4 entirely new component categories added.
 
 ### Added
 - 199 Ukrainian-sourced component entries (vtx.in.ua, verified March 2026)
