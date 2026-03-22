@@ -217,17 +217,26 @@ def sync_handbook_data():
             forge_db['build_guides'] = guides
             print(f"  build_guides: {len(guides)} guides")
 
-    # Merge platforms from drone_database.json (the enriched platform DB)
+    # Sync platforms from drone_database.json (the enriched platform DB)
+    # Replaces industry.platforms wholesale AND merges new entries into drone_models.
     platform_db_path = os.path.join(DATA_CLONE_DIR, 'docs', 'database', 'drone_database.json')
     if os.path.exists(platform_db_path):
         with open(platform_db_path, 'r', encoding='utf-8') as f:
             platform_db = json.load(f)
         platforms = platform_db.get('platforms', [])
         if platforms:
-            # Merge into drone_models, avoiding duplicates by name
+            # 1. Replace industry.platforms wholesale — primary source for /platforms/ page
+            forge_db.setdefault('industry', {})['platforms'] = platforms
+            print(f"  industry.platforms: {len(platforms)} platforms synced from drone_database.json")
+
+            # 2. Merge into drone_models for builder/compare backward compat
             existing_names = set(m.get('name', '').lower() for m in forge_db.get('drone_models', []))
             added = 0
-            max_pid = max((int(m['pid'].split('-')[1]) for m in forge_db.get('drone_models', []) if m.get('pid', '').startswith('DM-')), default=0)
+            max_pid = max(
+                (int(m['pid'].split('-')[1]) for m in forge_db.get('drone_models', [])
+                 if m.get('pid', '').startswith('DM-')),
+                default=0
+            )
             for p in platforms:
                 name = f"{p.get('manufacturer', '')} {p.get('platform_name', p.get('name', ''))}".strip()
                 if name.lower() in existing_names:
@@ -238,11 +247,13 @@ def sync_handbook_data():
                     "pid": f"DM-{max_pid:04d}",
                     "name": name,
                     "manufacturer": p.get('manufacturer', ''),
-                    "description": (p.get('notes', '') or f"{name}. {p.get('category', '').replace('_', ' ').title()} from {p.get('country', '')}.")[:500],
+                    "description": (p.get('notes', '') or
+                                    f"{name}. {p.get('category', '').replace('_', ' ').title()} "
+                                    f"from {p.get('country', '')}.")[:500],
                     "vehicle_type": specs.get('type', 'fixed_wing'),
                     "build_class": "defense" if p.get('combat_proven') else "commercial",
                     "category": p.get('category', ''),
-                    "image_file": "",
+                    "image_file": p.get('image_url', ''),
                     "relations": {},
                     "country": p.get('country', 'Unknown'),
                     "compliance": p.get('compliance', {}),
@@ -250,11 +261,21 @@ def sync_handbook_data():
                     "combat_proven": p.get('combat_proven', False),
                     "status": p.get('status', 'production'),
                     "tags": p.get('tags', []),
+                    "industry_data": {
+                        "contracts": p.get('contracts', {}),
+                        "funding": p.get('funding', {}),
+                        "production": p.get('production', {}),
+                        "gcs": p.get('gcs', {}),
+                        "variants": p.get('variants', []),
+                        "manufacturer_hq": p.get('manufacturer_hq', ''),
+                        "manufacturer_url": p.get('manufacturer_url', ''),
+                        "image_url": p.get('image_url', ''),
+                    },
                 }
                 forge_db.setdefault('drone_models', []).append(entry)
                 existing_names.add(name.lower())
                 added += 1
-            print(f"  platforms: {added} merged from drone_database.json ({len(forge_db['drone_models'])} total)")
+            print(f"  drone_models: {added} new entries added ({len(forge_db['drone_models'])} total)")
 
     # Write updated forge_database.json
     with open(local_db_path, 'w', encoding='utf-8') as f:
@@ -313,43 +334,8 @@ def build():
         
         print(f"  {src_name} → {dst_path}")
     
-    # Create Netlify config
-    netlify_toml = """[build]
-  publish = "build"
-  command = "python3 build_static.py"
-
-[[redirects]]
-  from = "/builder"
-  to = "/builder/"
-  status = 301
-
-[[redirects]]
-  from = "/academy"
-  to = "/academy/"
-  status = 301
-
-[[redirects]]
-  from = "/audit"
-  to = "/audit/"
-  status = 301
-
-[[redirects]]
-  from = "/library"
-  to = "/library/"
-  status = 301
-
-[[redirects]]
-  from = "/guide"
-  to = "/guide/"
-  status = 301
-
-[[redirects]]
-  from = "/template"
-  to = "/template/"
-  status = 301
-"""
-    with open(os.path.join(BUILD_DIR, '..', 'netlify.toml'), 'w') as f:
-        f.write(netlify_toml)
+    # netlify.toml lives in the repo root — do not overwrite it from the build script.
+    # All redirect rules are maintained in the root netlify.toml.
     
     # Summary
     total_files = sum(1 for _, _, files in os.walk(BUILD_DIR) for _ in files)
