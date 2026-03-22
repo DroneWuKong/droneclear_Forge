@@ -104,6 +104,16 @@
         receivers: 'ph-radio',
         stacks: 'ph-stack',
         video_transmitters: 'ph-monitor-play',
+        thermal_cameras: 'ph-thermometer-hot',
+        lidar: 'ph-scan',
+        counter_uas: 'ph-shield-warning',
+        esad: 'ph-target',
+        mesh_radios: 'ph-wifi-high',
+        sensors: 'ph-compass',
+        fpv_detectors: 'ph-radio-button',
+        payload_droppers: 'ph-parachute',
+        video_scramblers: 'ph-lock-key',
+        control_link_tx: 'ph-broadcast',
     };
 
     function renderDbGrid(categories) {

@@ -40,6 +40,10 @@
             stacks: 'Stacks',
             video_transmitters: 'Video Transmitters',
             integrated_stacks: 'Integrated FC + Compute',
+            fpv_detectors: 'FPV Detectors',
+            payload_droppers: 'Payload Droppers',
+            video_scramblers: 'Video Scramblers',
+            control_link_tx: 'Control Link TX',
         };
         return Object.keys(_db.components).map((slug, i) => ({
             id: i + 1,

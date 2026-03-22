@@ -4,6 +4,37 @@
 > Each entry is written at session close using `/close-session`.
 
 ---
+
+## Session 2026-03-22 (cont.) — MafiaLRS Target Database Import
+
+**Agent**: Claude
+**Branch**: `master`
+
+### Summary
+Full parse of BUSHA/targets@mafia-targets repo (Ukrainian MafiaLRS ELRS fork).
+377 device targets extracted (254 RX, 123 TX) across 65 manufacturer groups.
+376 net-new entries merged into Forge DB. Total components now 3,533.
+
+### Added
+- 254 new RX entries from MafiaLRS target database
+- 122 new TX entries added to control_link_tx category
+- All entries include: platform, firmware type, lua_name, layout_file, upload_methods, min_fw_version
+- Source attributed: BUSHA/targets@mafia-targets (vtx.in.ua ecosystem)
+
+### Data Highlights
+- 73 Ukrainian-origin devices (50 RX + 23 TX): AERONETIX, BAYCKRC, AYZ, Cyclone, FPV Mafia, Flytex, DiFly, STELLAR/Stingbee, Edifier, BelinRC, MaxLink
+- 60 non-standard/combat frequency devices (433/490/500/520/560/735 MHz) tagged ew_resistant
+- 80 LR1121 wideband devices (150 MHz–2.1 GHz) tagged lr1121, wideband_150_2100mhz
+- Tags applied per entry: elrs, mafiалrs_compatible, ukraine, combat_proven, non_standard_freq, lr1121, dual_band as appropriate
+
+### Changed
+- receivers: 140 → 394
+- control_link_tx: 15 → 137
+
+---
+
+
+---
 ## Session 2026-03-22 — vtx.in.ua Database Cross-Check & Ukrainian Component Import
 
 **Agent**: Claude
