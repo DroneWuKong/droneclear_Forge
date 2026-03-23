@@ -294,21 +294,35 @@ def sync_handbook_data():
     total_parts = sum(len(v) for v in forge_db['components'].values())
     print(f"\n  forge_database.json updated: {total_parts} parts, {len(forge_db['drone_models'])} models")
 
-    # Fetch intel JSON from forge-data GitHub Pages (public, no auth needed)
-    FORGE_DATA_BASE = 'https://dronewukong.github.io/forge-data/intel'
-    for fname in ['articles.json', 'companies.json', 'platforms.json', 'programs.json']:
-        dst = os.path.join(SRC_DIR, 'intel_' + fname)
-        try:
-            import urllib.request
-            url = f'{FORGE_DATA_BASE}/{fname}'
-            with urllib.request.urlopen(url, timeout=15) as resp:
-                data = resp.read().decode('utf-8')
-            with open(dst, 'w') as f:
-                f.write(data)
-            count = len(json.loads(data)) if data.strip().startswith('[') else '?'
-            print(f"  intel_{fname}: {count} entries (from forge-data GitHub Pages)")
-        except Exception as e:
-            print(f"  WARNING: could not fetch {fname}: {e} — using cached placeholder")
+    # Clone forge-data (public) and copy intel JSON files into SRC_DIR
+    FORGE_DATA_REPO = 'https://github.com/DroneWuKong/forge-data.git'
+    FORGE_DATA_CLONE = '_forge_data_source'
+    if os.path.exists(FORGE_DATA_CLONE):
+        shutil.rmtree(FORGE_DATA_CLONE)
+    clone_result = subprocess.run(
+        ['git', 'clone', '--depth', '1', '--filter=blob:none', '--sparse', FORGE_DATA_REPO, FORGE_DATA_CLONE],
+        capture_output=True, text=True
+    )
+    if clone_result.returncode != 0:
+        print(f"  WARNING: could not clone forge-data: {clone_result.stderr.strip()}")
+    else:
+        subprocess.run(
+            ['git', '-C', FORGE_DATA_CLONE, 'sparse-checkout', 'set', 'intel'],
+            capture_output=True, text=True
+        )
+        intel_src = os.path.join(FORGE_DATA_CLONE, 'intel')
+        if os.path.isdir(intel_src):
+            for fname in ['articles.json', 'companies.json', 'platforms.json', 'programs.json']:
+                src = os.path.join(intel_src, fname)
+                dst = os.path.join(SRC_DIR, 'intel_' + fname)
+                if os.path.exists(src):
+                    shutil.copyfile(src, dst)
+                    with open(src) as f:
+                        count = len(json.load(f))
+                    print(f"  intel_{fname}: {count} entries (from forge-data clone)")
+        else:
+            print("  WARNING: forge-data/intel/ not found after clone")
+        shutil.rmtree(FORGE_DATA_CLONE, ignore_errors=True)
 
     # Cleanup
     shutil.rmtree(DATA_CLONE_DIR, ignore_errors=True)
