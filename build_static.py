@@ -47,6 +47,9 @@ PAGES = {
     'compare.html': 'compare/index.html',
     'cost.html': 'cost/index.html',
     'intel.html': 'intel/index.html',
+    'intel-defense.html': 'intel-defense/index.html',
+    'intel-financial.html': 'intel-financial/index.html',
+    'intel-commercial.html': 'intel-commercial/index.html',
     'tools.html': 'tools/index.html',
 }
 
@@ -105,6 +108,10 @@ def fix_paths(html, depth=0):
         # Fix fetch calls to static JSON
         html = html.replace("fetch('forge_database.json')", f"fetch('{prefix}static/forge_database.json')")
         html = html.replace("fetch('forge_intel.json')", f"fetch('{prefix}static/forge_intel.json')")
+        html = html.replace("fetch('intel_articles.json')", f"fetch('{prefix}static/intel_articles.json')")
+        html = html.replace("fetch('intel_companies.json')", f"fetch('{prefix}static/intel_companies.json')")
+        html = html.replace("fetch('intel_platforms.json')", f"fetch('{prefix}static/intel_platforms.json')")
+        html = html.replace("fetch('intel_programs.json')", f"fetch('{prefix}static/intel_programs.json')")
         html = html.replace("fetch('drone_parts_schema_v3.json')", f"fetch('{prefix}static/drone_parts_schema_v3.json')")
     
     # Fix nav links to use clean URLs
@@ -168,7 +175,7 @@ def sync_handbook_data():
         return False
 
     subprocess.run(
-        ['git', '-C', DATA_CLONE_DIR, 'sparse-checkout', 'set', 'data/parts-db', 'docs/database'],
+        ['git', '-C', DATA_CLONE_DIR, 'sparse-checkout', 'set', 'data/parts-db', 'data/intel-db', 'docs/database'],
         capture_output=True, text=True
     )
 
@@ -286,6 +293,20 @@ def sync_handbook_data():
 
     total_parts = sum(len(v) for v in forge_db['components'].values())
     print(f"\n  forge_database.json updated: {total_parts} parts, {len(forge_db['drone_models'])} models")
+
+    # Sync intel-db JSON files → SRC_DIR so they're served as static assets
+    intel_src = os.path.join(DATA_CLONE_DIR, 'data', 'intel-db')
+    if os.path.isdir(intel_src):
+        for fname in ['articles.json', 'companies.json', 'platforms.json', 'programs.json']:
+            src = os.path.join(intel_src, fname)
+            dst = os.path.join(SRC_DIR, 'intel_' + fname)  # prefix to avoid collisions
+            if os.path.exists(src):
+                shutil.copyfile(src, dst)
+                with open(src) as f:
+                    count = len(json.load(f))
+                print(f"  intel_{fname}: {count} entries")
+    else:
+        print("  WARNING: data/intel-db not found in clone — intel pages will use cached data")
 
     # Cleanup
     shutil.rmtree(DATA_CLONE_DIR, ignore_errors=True)

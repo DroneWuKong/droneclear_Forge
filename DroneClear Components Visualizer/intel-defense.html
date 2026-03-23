@@ -1,0 +1,112 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>DEFENSE FEED — Forge Intel</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="{% static 'base.css' %}">
+<link rel="stylesheet" href="{% static 'layout.css' %}?v=4">
+<link rel="stylesheet" href="{% static 'components.css' %}">
+<script src="https://unpkg.com/@phosphor-icons/web"></script>
+<script>(function(){document.documentElement.setAttribute('data-theme',localStorage.getItem('dc-theme')||'dark');})()</script>
+<style>
+:root{--feed-accent:#ef4444;--feed-glow:rgba(239,68,68,.13)}
+.feed-header{border-bottom:2px solid var(--feed-accent);padding:20px 28px;display:flex;align-items:center;gap:16px;flex-wrap:wrap}
+.feed-title{font-family:'JetBrains Mono',monospace;font-size:1.15rem;color:var(--feed-accent)}
+.feed-sub{font-size:.73rem;color:var(--text-muted);margin-top:3px}
+.feed-nav{margin-left:auto;display:flex;gap:6px;flex-wrap:wrap;align-items:center}
+.feed-nav a{color:var(--text-muted);text-decoration:none;font-size:.78rem;padding:4px 10px;border-radius:4px;border:1px solid var(--border-color);transition:all .15s;font-family:'JetBrains Mono',monospace}
+.feed-nav a:hover{color:var(--text-main);border-color:var(--text-muted)}
+.feed-nav a.active{color:var(--feed-accent);border-color:var(--feed-accent);background:var(--feed-glow)}
+.lobby-btn{padding:4px 10px;border-radius:4px;border:1px solid var(--feed-accent);background:var(--feed-glow);color:var(--feed-accent);font-size:.75rem;cursor:pointer;font-family:'JetBrains Mono',monospace;text-decoration:none;transition:all .15s}
+.lobby-btn:hover{background:var(--feed-accent);color:#000}
+.toolbar{padding:10px 28px;display:flex;gap:8px;align-items:center;flex-wrap:wrap;border-bottom:1px solid var(--border-color);background:var(--bg-main)}
+.fb{padding:4px 12px;border-radius:4px;border:1px solid var(--border-color);background:transparent;color:var(--text-muted);font-size:.75rem;cursor:pointer;transition:all .15s;font-family:'JetBrains Mono',monospace}
+.fb:hover,.fb.active{border-color:var(--feed-accent);color:var(--feed-accent);background:var(--feed-glow);font-weight:600}
+#q{margin-left:auto;padding:5px 12px;border-radius:4px;border:1px solid var(--border-color);background:var(--bg-panel);color:var(--text-main);font-size:.82rem;width:220px;font-family:'JetBrains Mono',monospace}
+#q:focus{outline:none;border-color:var(--feed-accent)}
+.statsbar{padding:6px 28px;font-size:.71rem;color:var(--text-muted);display:flex;gap:20px;flex-wrap:wrap;border-bottom:1px solid var(--border-color)}
+.statsbar b{color:var(--feed-accent)}
+.feed-main{padding:20px 28px;max-width:1600px}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:12px;margin-top:12px}
+.card{background:var(--bg-panel);border:1px solid var(--border-color);border-radius:var(--radius-md);padding:14px;text-decoration:none;display:block;transition:all .15s}
+.card:hover{border-color:var(--feed-accent);transform:translateY(-1px);box-shadow:0 4px 20px rgba(0,0,0,.3)}
+.badge{display:inline-block;font-size:.6rem;font-family:'JetBrains Mono',monospace;padding:2px 6px;border-radius:3px;margin-bottom:6px;font-weight:700;text-transform:uppercase;letter-spacing:.04em}
+.s-defensescoop{background:rgba(59,130,246,.15);color:#60a5fa}
+.s-defensenews{background:rgba(168,85,247,.15);color:#c084fc}
+.s-breakingdefense{background:rgba(249,115,22,.15);color:#fb923c}
+.s-twz{background:rgba(34,197,94,.15);color:#4ade80}
+.card h3{font-size:.87rem;color:var(--text-main);line-height:1.38;margin-bottom:6px;font-weight:600}
+.card .sum{font-size:.75rem;color:var(--text-muted);line-height:1.55;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}
+.tags{margin-top:6px;display:flex;flex-wrap:wrap;gap:3px}
+.tag{font-size:.6rem;padding:1px 5px;border-radius:3px;background:var(--feed-glow);color:var(--feed-accent);border:1px solid rgba(239,68,68,.2)}
+.meta{margin-top:8px;display:flex;gap:8px;font-size:.67rem;color:var(--text-muted);align-items:center;border-top:1px solid var(--border-color);padding-top:7px}
+.meta a{color:var(--feed-accent);text-decoration:none;margin-left:auto;font-weight:600}
+/* Ticker */
+.ticker{overflow:hidden;height:30px;border-bottom:1px solid var(--border-color);display:none;background:var(--bg-main)}
+body.lobby-mode .ticker{display:block}
+.ticker-inner{display:inline-flex;white-space:nowrap;animation:tick 80s linear infinite}
+@keyframes tick{0%{transform:translateX(0)}100%{transform:translateX(-50%)}}
+.tick-item{padding:0 24px;font-size:.72rem;color:var(--text-muted);line-height:30px;border-right:1px solid var(--border-color);font-family:'JetBrains Mono',monospace}
+.tick-item b{color:var(--feed-accent)}
+/* Lobby */
+body.lobby-mode .toolbar,body.lobby-mode .statsbar{display:none}
+body.lobby-mode .feed-main{padding:12px 16px}
+body.lobby-mode .grid{gap:10px}
+body.lobby-mode .card{animation:fadeUp .35s ease-out}
+@keyframes fadeUp{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+.msg{text-align:center;padding:60px 20px;color:var(--text-muted);font-family:'JetBrains Mono',monospace}
+</style>
+</head>
+<body>
+<!-- Standard Forge sidebar nav will be injected by build_static.py -->
+<div style="flex:1;overflow-y:auto">
+
+<div class="feed-header">
+  <div><div class="feed-title">// DEFENSE FEED</div><div class="feed-sub">Military · DoD programs · Policy · Counter-UAS</div></div>
+  <nav class="feed-nav">
+    <a href="/intel-defense/">Defense</a>
+    <a href="/intel-financial/">Financial</a>
+    <a href="/intel-commercial/">Commercial</a>
+    <span style="width:1px;height:18px;background:var(--border-color)"></span>
+    <a href="/intel/">All Intel</a>
+    <a class="lobby-btn" onclick="toggleLobby(this)">⊞ Lobby</a>
+  </nav>
+</div>
+
+<div class="ticker" id="ticker"><div class="ticker-inner" id="tickerInner"></div></div>
+
+<div class="toolbar">
+  <button class="fb active" data-src="all">All Sources</button>
+  <button class="fb" data-src="defensescoop">DefenseScoop</button>
+  <button class="fb" data-src="defensenews">Defense News</button>
+  <button class="fb" data-src="breakingdefense">Breaking Defense</button>
+  <button class="fb" data-src="twz">TWZ</button>
+  <input id="q" type="text" placeholder="Search articles…" />
+</div>
+<div class="statsbar" id="stats"><span>Loading…</span></div>
+<div class="feed-main"><div class="grid" id="grid"><div class="msg">Loading…</div></div></div>
+
+</div><!-- end flex -->
+
+<script>
+const CATEGORY='defense';
+const SRC_LABELS={defensescoop:'DefenseScoop',defensenews:'Defense News',breakingdefense:'Breaking Defense',twz:'TWZ'};
+const SRC_CLS={defensescoop:'s-defensescoop',defensenews:'s-defensenews',breakingdefense:'s-breakingdefense',twz:'s-twz'};
+const DEFENSE_KW=['pentagon','dod ','department of defense','military','army','navy','air force','marine corps','replicator','counter-uas','c-uas','jiatf','dawg','diu','ndaa','blue uas','combat','warfare','warfighter','deployed','tactical','darpa','socom','centcom','indopacom','program of record','weapon system','munition','loitering'];
+const FINANCE_KW=['billion','million','contract worth','contract valued','contract award','awarded a','funding','investment','raise','series a','series b','ipo','acquisition','merger','valuation','budget request','procurement','rfp ','fiscal year','fy2','fy3','defense budget','sbir','sttr','ota ','other transaction'];
+function categorize(a){const t=((a.title||'')+(a.summary||'')+(a.body_text||'')).toLowerCase();const d=DEFENSE_KW.filter(k=>t.includes(k)).length;const f=FINANCE_KW.filter(k=>t.includes(k)).length;if(f>=2&&f>=d*.6)return 'financial';if(d>=2)return 'defense';return 'commercial';}
+let all=[],curSrc='all',curQ='',lobbyTimer=null;
+function card(a){const tags=[...(a.platforms||[]).slice(0,2),...(a.programs||[]).slice(0,2)];return '<a class="card" href="'+(a.url||'#')+'" target="_blank" rel="noopener"><span class="badge '+(SRC_CLS[a.site]||'s-defensescoop')+'">'+(SRC_LABELS[a.site]||a.site)+'</span><h3>'+(a.title||'Untitled')+'</h3><div class="sum">'+(a.summary||(a.body_text||'').slice(0,200)||'—')+'</div>'+(tags.length?'<div class="tags">'+tags.map(t=>'<span class="tag">'+t+'</span>').join('')+'</div>':'')+'<div class="meta"><span>'+(a.pub_date||'').slice(0,10)+'</span>'+(a.author?'<span>'+a.author+'</span>':'')+'<a href="'+(a.url||'#')+'" target="_blank">Read →</a></div></a>';}
+function render(){let f=all.filter(a=>categorize(a)===CATEGORY);if(curSrc!=='all')f=f.filter(a=>a.site===curSrc);if(curQ){const q=curQ.toLowerCase();f=f.filter(a=>(a.title||'').toLowerCase().includes(q)||(a.summary||'').toLowerCase().includes(q)||(a.platforms||[]).some(p=>p.toLowerCase().includes(q)));}
+f.sort((a,b)=>(b.pub_date||'').localeCompare(a.pub_date||''));const cnt=all.filter(a=>categorize(a)===CATEGORY).length;const cnts={};all.forEach(a=>{if(categorize(a)===CATEGORY)cnts[a.site]=(cnts[a.site]||0)+1;});document.getElementById('stats').innerHTML='<span>Showing <b>'+f.length+'</b> of <b>'+cnt+'</b></span>'+Object.entries(SRC_LABELS).map(([k,v])=>'<span>'+v+': <b>'+(cnts[k]||0)+'</b></span>').join('');document.getElementById('grid').innerHTML=f.length?f.map(card).join(''):'<div class="msg">No articles in this category yet.</div>';document.getElementById('tickerInner').innerHTML=(f.slice(0,20).map(a=>'<span class="tick-item"><b>'+(SRC_LABELS[a.site]||a.site)+'</b> — '+a.title+'</span>').join('')).repeat(2);}
+document.querySelectorAll('.fb').forEach(b=>b.addEventListener('click',e=>{curSrc=e.currentTarget.dataset.src;document.querySelectorAll('.fb').forEach(x=>x.classList.remove('active'));e.currentTarget.classList.add('active');render();}));
+document.getElementById('q').addEventListener('input',e=>{curQ=e.target.value;render();});
+function toggleLobby(btn){const on=document.body.classList.toggle('lobby-mode');btn.textContent=on?'✕ Exit':'⊞ Lobby';if(on){lobbyTimer=setInterval(()=>{window.scrollBy({top:1,behavior:'smooth'});if((window.innerHeight+window.scrollY)>=document.body.scrollHeight-10)window.scrollTo({top:0,behavior:'smooth'});},35);}else{clearInterval(lobbyTimer);window.scrollTo({top:0,behavior:'smooth'});}}
+if(new URLSearchParams(location.search).get('lobby')==='1')setTimeout(()=>toggleLobby(document.querySelector('.lobby-btn')),500);
+fetch('intel_articles.json').then(r=>{if(!r.ok)throw new Error(r.status);return r.json();}).then(d=>{all=d;render();}).catch(e=>{document.getElementById('grid').innerHTML='<div class="msg">Error: '+e.message+'</div>';});
+</script>
+</body>
+</html>
