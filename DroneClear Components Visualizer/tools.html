@@ -208,11 +208,9 @@
             </button>
             <button class="tools-nav-item" data-tool="fc-matcher">
                 <i class="ph ph-magnifying-glass"></i> FC target matcher
-                <span class="tools-nav-badge badge-soon">soon</span>
             </button>
             <button class="tools-nav-item" data-tool="unlock-vtx">
                 <i class="ph ph-lock-open"></i> Unlock VTX table
-                <span class="tools-nav-badge badge-soon">soon</span>
             </button>
         </div>
 
@@ -220,7 +218,6 @@
             <span class="tools-nav-label">Firmware</span>
             <button class="tools-nav-item" data-tool="elrs-info">
                 <i class="ph ph-cpu"></i> ELRS info
-                <span class="tools-nav-badge badge-soon">soon</span>
             </button>
             <button class="tools-nav-item" data-tool="mafiалrs">
                 <i class="ph ph-shield-warning"></i> MafiaLRS gen
@@ -593,37 +590,153 @@
             </div>
         </div>
 
-        <!-- Soon panels -->
+        <!-- FC Target Matcher -->
         <div class="tool-panel" id="tool-fc-matcher">
             <div class="tool-header">
                 <div class="tool-title"><i class="ph ph-magnifying-glass" style="color:var(--accent-red)"></i> FC target matcher</div>
-                <p class="tool-desc">Paste your Betaflight <code style="font-size:12px; background:var(--bg-dark); padding:1px 6px; border-radius:4px;">status</code> + <code style="font-size:12px; background:var(--bg-dark); padding:1px 6px; border-radius:4px;">dump all</code> CLI output to automatically identify your flight controller target.</p>
+                <p class="tool-desc">Paste your Betaflight CLI <code style="font-size:12px; background:var(--bg-dark); padding:1px 6px; border-radius:4px;">status</code> output to identify your flight controller target.</p>
             </div>
-            <div style="text-align:center; padding:48px; color:var(--text-muted);">
-                <i class="ph ph-hammer" style="font-size:48px; display:block; margin-bottom:12px; opacity:0.3;"></i>
-                <div style="font-size:14px; margin-bottom:8px;">In development</div>
-                <div style="font-size:12px;">Available now at <a href="https://vtx.in.ua/btrgt/" target="_blank" style="color:var(--accent-red);">vtx.in.ua/btrgt/</a></div>
+            <div style="display:grid; grid-template-columns:1fr 1fr; gap:24px; padding:24px 32px;">
+                <div>
+                    <label style="font-size:11px; text-transform:uppercase; letter-spacing:0.06em; color:var(--text-muted); display:block; margin-bottom:8px;">Paste CLI output</label>
+                    <textarea id="fc-matcher-input" placeholder="Paste output from Betaflight CLI 'status' command here..." style="width:100%; height:220px; background:var(--bg-dark); border:1px solid var(--border-color); border-radius:var(--radius-sm); color:var(--text-main); font-family:'JetBrains Mono',monospace; font-size:12px; padding:12px; resize:vertical; box-sizing:border-box;"></textarea>
+                    <button onclick="runFcMatcher()" style="margin-top:10px; padding:8px 20px; background:var(--accent-red); color:#fff; border:none; border-radius:var(--radius-sm); cursor:pointer; font-size:13px; font-family:var(--font-family);">Identify FC</button>
+                    <button onclick="document.getElementById('fc-matcher-input').value=''; document.getElementById('fc-matcher-result').innerHTML=fcMatcherPlaceholder();" style="margin-top:10px; margin-left:8px; padding:8px 16px; background:var(--bg-panel); color:var(--text-muted); border:1px solid var(--border-color); border-radius:var(--radius-sm); cursor:pointer; font-size:13px; font-family:var(--font-family);">Clear</button>
+                </div>
+                <div id="fc-matcher-result"></div>
+            </div>
+            <div style="margin:0 32px 24px; background:var(--bg-panel); border:1px solid var(--border-color); border-radius:var(--radius-sm); padding:14px; font-size:12px; color:var(--text-muted); line-height:1.6;">
+                <strong style="color:var(--text-main);">How to get CLI output:</strong> Open Betaflight Configurator → CLI tab → type <code style="background:var(--bg-dark); padding:1px 5px; border-radius:3px;">status</code> → press Enter → copy all output and paste above.
             </div>
         </div>
+
+        <!-- Unlock VTX Table -->
         <div class="tool-panel" id="tool-unlock-vtx">
             <div class="tool-header">
                 <div class="tool-title"><i class="ph ph-lock-open" style="color:var(--accent-red)"></i> Unlock VTX table</div>
-                <p class="tool-desc">Generate a region-unlocked vtxtable configuration — all power levels, all frequency bands.</p>
+                <p class="tool-desc">Generate a region-unlocked vtxtable for Betaflight — all bands, all channels, all power levels.</p>
             </div>
-            <div style="text-align:center; padding:48px; color:var(--text-muted);">
-                <i class="ph ph-hammer" style="font-size:48px; display:block; margin-bottom:12px; opacity:0.3;"></i>
-                <div style="font-size:14px; margin-bottom:8px;">In development</div>
+            <div style="display:grid; grid-template-columns:280px 1fr; gap:24px; padding:24px 32px;">
+                <div>
+                    <label style="font-size:11px; text-transform:uppercase; letter-spacing:0.06em; color:var(--text-muted); display:block; margin-bottom:12px;">Configuration</label>
+                    <div style="margin-bottom:14px;">
+                        <div style="font-size:12px; color:var(--text-muted); margin-bottom:6px;">VTX Protocol</div>
+                        <select id="vtx-protocol" onchange="renderVtxTable()" style="width:100%; background:var(--bg-dark); border:1px solid var(--border-color); border-radius:var(--radius-sm); color:var(--text-main); font-size:13px; padding:7px 10px;">
+                            <option value="smartaudio">SmartAudio</option>
+                            <option value="tramp">IRC Tramp</option>
+                        </select>
+                    </div>
+                    <div style="margin-bottom:14px;">
+                        <div style="font-size:12px; color:var(--text-muted); margin-bottom:6px;">Max Power Level</div>
+                        <select id="vtx-maxpower" onchange="renderVtxTable()" style="width:100%; background:var(--bg-dark); border:1px solid var(--border-color); border-radius:var(--radius-sm); color:var(--text-main); font-size:13px; padding:7px 10px;">
+                            <option value="1">25 mW only</option>
+                            <option value="2">25 / 200 mW</option>
+                            <option value="3" selected>25 / 200 / 500 mW</option>
+                            <option value="4">25 / 200 / 500 / 800 mW</option>
+                        </select>
+                    </div>
+                    <div style="margin-bottom:16px;">
+                        <div style="font-size:12px; color:var(--text-muted); margin-bottom:8px;">Bands to include</div>
+                        <label style="display:flex; align-items:center; gap:8px; font-size:13px; color:var(--text-muted); margin-bottom:6px; cursor:pointer;"><input type="checkbox" id="vtx-band-R" checked onchange="renderVtxTable()"> Raceband (R)</label>
+                        <label style="display:flex; align-items:center; gap:8px; font-size:13px; color:var(--text-muted); margin-bottom:6px; cursor:pointer;"><input type="checkbox" id="vtx-band-F" checked onchange="renderVtxTable()"> Fatshark (F)</label>
+                        <label style="display:flex; align-items:center; gap:8px; font-size:13px; color:var(--text-muted); margin-bottom:6px; cursor:pointer;"><input type="checkbox" id="vtx-band-E" checked onchange="renderVtxTable()"> Boscam E</label>
+                        <label style="display:flex; align-items:center; gap:8px; font-size:13px; color:var(--text-muted); margin-bottom:6px; cursor:pointer;"><input type="checkbox" id="vtx-band-A" onchange="renderVtxTable()"> Boscam A</label>
+                        <label style="display:flex; align-items:center; gap:8px; font-size:13px; color:var(--text-muted); cursor:pointer;"><input type="checkbox" id="vtx-band-B" onchange="renderVtxTable()"> Boscam B</label>
+                    </div>
+                    <button onclick="copyVtxTable()" style="width:100%; padding:9px; background:var(--accent-red); color:#fff; border:none; border-radius:var(--radius-sm); cursor:pointer; font-size:13px; font-family:var(--font-family);">Copy to clipboard</button>
+                </div>
+                <div>
+                    <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:8px;">
+                        <label style="font-size:11px; text-transform:uppercase; letter-spacing:0.06em; color:var(--text-muted);">Betaflight CLI output</label>
+                        <span id="vtx-line-count" style="font-size:11px; color:var(--text-faint);"></span>
+                    </div>
+                    <textarea id="vtx-output" readonly style="width:100%; height:320px; background:var(--bg-dark); border:1px solid var(--border-color); border-radius:var(--radius-sm); color:#4ade80; font-family:'JetBrains Mono',monospace; font-size:11px; padding:12px; resize:vertical; box-sizing:border-box;"></textarea>
+                    <div style="font-size:11px; color:var(--text-faint); margin-top:8px;">Paste into Betaflight CLI, then type <code style="background:var(--bg-dark); padding:1px 4px; border-radius:3px;">save</code></div>
+                </div>
             </div>
         </div>
+
+        <!-- ELRS Info -->
         <div class="tool-panel" id="tool-elrs-info">
             <div class="tool-header">
                 <div class="tool-title"><i class="ph ph-cpu" style="color:var(--accent-red)"></i> ELRS info</div>
-                <p class="tool-desc">TX/RX hardware pin layout reference and firmware build links.</p>
+                <p class="tool-desc">ExpressLRS hardware reference — frequency bands, common hardware, firmware links.</p>
             </div>
-            <div style="text-align:center; padding:48px; color:var(--text-muted);">
-                <i class="ph ph-hammer" style="font-size:48px; display:block; margin-bottom:12px; opacity:0.3;"></i>
-                <div style="font-size:14px; margin-bottom:8px;">In development</div>
-                <div style="font-size:12px;">Available now at <a href="https://vtx.in.ua/inf/" target="_blank" style="color:var(--accent-red);">vtx.in.ua/inf/</a></div>
+            <div style="padding:8px 32px 32px; display:grid; grid-template-columns:1fr 1fr; gap:20px;">
+
+                <div style="background:var(--bg-panel); border:1px solid var(--border-color); border-radius:var(--radius-sm); padding:18px;">
+                    <div style="font-size:11px; text-transform:uppercase; letter-spacing:0.08em; color:var(--text-muted); margin-bottom:14px;">2.4 GHz (most common)</div>
+                    <table style="width:100%; font-size:12px; border-collapse:collapse;">
+                        <tr style="color:var(--text-faint); font-size:10px; text-transform:uppercase; letter-spacing:0.06em;">
+                            <th style="text-align:left; padding:4px 8px 8px 0;">Hardware</th>
+                            <th style="text-align:left; padding:4px 8px 8px 0;">Type</th>
+                            <th style="text-align:left; padding:4px 0 8px 0;">Notes</th>
+                        </tr>
+                        <tr style="border-top:1px solid var(--border-color);"><td style="padding:7px 8px 7px 0; color:var(--text-main);">RadioMaster Ranger</td><td style="padding:7px 8px 7px 0; color:var(--text-muted);">TX Module</td><td style="padding:7px 0; color:var(--text-muted);">1W, JR bay</td></tr>
+                        <tr style="border-top:1px solid var(--border-color);"><td style="padding:7px 8px 7px 0; color:var(--text-main);">RadioMaster Boxer/TX16S</td><td style="padding:7px 8px 7px 0; color:var(--text-muted);">Radio (internal)</td><td style="padding:7px 0; color:var(--text-muted);">250 mW internal</td></tr>
+                        <tr style="border-top:1px solid var(--border-color);"><td style="padding:7px 8px 7px 0; color:var(--text-main);">BetaFPV SuperG</td><td style="padding:7px 8px 7px 0; color:var(--text-muted);">TX Module</td><td style="padding:7px 0; color:var(--text-muted);">Gemini dual-antenna</td></tr>
+                        <tr style="border-top:1px solid var(--border-color);"><td style="padding:7px 8px 7px 0; color:var(--text-main);">RP1/RP2/RP3/RP4</td><td style="padding:7px 8px 7px 0; color:var(--text-muted);">RX</td><td style="padding:7px 0; color:var(--text-muted);">Nano form factor</td></tr>
+                        <tr style="border-top:1px solid var(--border-color);"><td style="padding:7px 8px 7px 0; color:var(--text-main);">EP1 / EP2</td><td style="padding:7px 8px 7px 0; color:var(--text-muted);">RX</td><td style="padding:7px 0; color:var(--text-muted);">HappyModel, TCXO</td></tr>
+                        <tr style="border-top:1px solid var(--border-color);"><td style="padding:7px 8px 7px 0; color:var(--text-main);">GEPRC Nano / GemX</td><td style="padding:7px 8px 7px 0; color:var(--text-muted);">RX</td><td style="padding:7px 0; color:var(--text-muted);">Dual-band capable</td></tr>
+                    </table>
+                </div>
+
+                <div style="background:var(--bg-panel); border:1px solid var(--border-color); border-radius:var(--radius-sm); padding:18px;">
+                    <div style="font-size:11px; text-transform:uppercase; letter-spacing:0.08em; color:var(--text-muted); margin-bottom:14px;">900 MHz (long range)</div>
+                    <table style="width:100%; font-size:12px; border-collapse:collapse;">
+                        <tr style="color:var(--text-faint); font-size:10px; text-transform:uppercase; letter-spacing:0.06em;">
+                            <th style="text-align:left; padding:4px 8px 8px 0;">Hardware</th>
+                            <th style="text-align:left; padding:4px 8px 8px 0;">Type</th>
+                            <th style="text-align:left; padding:4px 0 8px 0;">Notes</th>
+                        </tr>
+                        <tr style="border-top:1px solid var(--border-color);"><td style="padding:7px 8px 7px 0; color:var(--text-main);">RadioMaster Bandit</td><td style="padding:7px 8px 7px 0; color:var(--text-muted);">TX Module</td><td style="padding:7px 0; color:var(--text-muted);">1W, 915/868 MHz</td></tr>
+                        <tr style="border-top:1px solid var(--border-color);"><td style="padding:7px 8px 7px 0; color:var(--text-main);">HappyModel ES900TX</td><td style="padding:7px 8px 7px 0; color:var(--text-muted);">TX Module</td><td style="padding:7px 0; color:var(--text-muted);">JR nano bay</td></tr>
+                        <tr style="border-top:1px solid var(--border-color);"><td style="padding:7px 8px 7px 0; color:var(--text-main);">HappyModel ES900RX</td><td style="padding:7px 8px 7px 0; color:var(--text-muted);">RX</td><td style="padding:7px 0; color:var(--text-muted);">Nano, 915/868 MHz</td></tr>
+                        <tr style="border-top:1px solid var(--border-color);"><td style="padding:7px 8px 7px 0; color:var(--text-main);">GEPRC Nano 900</td><td style="padding:7px 8px 7px 0; color:var(--text-muted);">RX</td><td style="padding:7px 0; color:var(--text-muted);">PA500, 500 mW</td></tr>
+                        <tr style="border-top:1px solid var(--border-color);"><td style="padding:7px 8px 7px 0; color:var(--text-main);">BetaFPV SuperD 915</td><td style="padding:7px 8px 7px 0; color:var(--text-muted);">RX</td><td style="padding:7px 0; color:var(--text-muted);">True diversity</td></tr>
+                        <tr style="border-top:1px solid var(--border-color);"><td style="padding:7px 8px 7px 0; color:var(--text-main);">iFlight 915 True Div</td><td style="padding:7px 8px 7px 0; color:var(--text-muted);">RX</td><td style="padding:7px 0; color:var(--text-muted);">Dual antenna</td></tr>
+                    </table>
+                </div>
+
+                <div style="background:var(--bg-panel); border:1px solid var(--border-color); border-radius:var(--radius-sm); padding:18px;">
+                    <div style="font-size:11px; text-transform:uppercase; letter-spacing:0.08em; color:var(--text-muted); margin-bottom:14px;">Key settings reference</div>
+                    <table style="width:100%; font-size:12px; border-collapse:collapse;">
+                        <tr style="color:var(--text-faint); font-size:10px; text-transform:uppercase; letter-spacing:0.06em;">
+                            <th style="text-align:left; padding:4px 8px 8px 0;">Setting</th>
+                            <th style="text-align:left; padding:4px 0 8px 0;">Recommended</th>
+                        </tr>
+                        <tr style="border-top:1px solid var(--border-color);"><td style="padding:7px 8px 7px 0; color:var(--text-main);">Packet rate (2.4 GHz)</td><td style="padding:7px 0; color:var(--text-muted);">500 Hz racing / 250 Hz general</td></tr>
+                        <tr style="border-top:1px solid var(--border-color);"><td style="padding:7px 8px 7px 0; color:var(--text-main);">Packet rate (900 MHz)</td><td style="padding:7px 0; color:var(--text-muted);">200 Hz / 100 Hz long range</td></tr>
+                        <tr style="border-top:1px solid var(--border-color);"><td style="padding:7px 8px 7px 0; color:var(--text-main);">Switch mode</td><td style="padding:7px 0; color:var(--text-muted);">Wide (8ch) or HYBRID</td></tr>
+                        <tr style="border-top:1px solid var(--border-color);"><td style="padding:7px 8px 7px 0; color:var(--text-main);">Telemetry ratio</td><td style="padding:7px 0; color:var(--text-muted);">1:64 racing / 1:16 LR</td></tr>
+                        <tr style="border-top:1px solid var(--border-color);"><td style="padding:7px 8px 7px 0; color:var(--text-main);">Max power (race)</td><td style="padding:7px 0; color:var(--text-muted);">10–25 mW</td></tr>
+                        <tr style="border-top:1px solid var(--border-color);"><td style="padding:7px 8px 7px 0; color:var(--text-main);">Max power (LR/field)</td><td style="padding:7px 0; color:var(--text-muted);">250–1000 mW</td></tr>
+                        <tr style="border-top:1px solid var(--border-color);"><td style="padding:7px 8px 7px 0; color:var(--text-main);">UART baud rate</td><td style="padding:7px 0; color:var(--text-muted);">420000</td></tr>
+                    </table>
+                </div>
+
+                <div style="background:var(--bg-panel); border:1px solid var(--border-color); border-radius:var(--radius-sm); padding:18px;">
+                    <div style="font-size:11px; text-transform:uppercase; letter-spacing:0.08em; color:var(--text-muted); margin-bottom:14px;">Firmware & resources</div>
+                    <div style="display:flex; flex-direction:column; gap:10px;">
+                        <a href="https://expresslrs.org/quick-start/getting-started/" target="_blank" style="display:flex; align-items:center; gap:10px; padding:10px 12px; background:var(--bg-dark); border:1px solid var(--border-color); border-radius:var(--radius-sm); text-decoration:none; color:var(--text-main); font-size:13px;">
+                            <i class="ph ph-rocket" style="color:var(--accent-red); font-size:16px;"></i>
+                            <div><div style="font-size:13px;">ELRS Configurator</div><div style="font-size:11px; color:var(--text-muted);">expresslrs.org — flash TX & RX</div></div>
+                        </a>
+                        <a href="https://github.com/ExpressLRS/ExpressLRS/releases" target="_blank" style="display:flex; align-items:center; gap:10px; padding:10px 12px; background:var(--bg-dark); border:1px solid var(--border-color); border-radius:var(--radius-sm); text-decoration:none; color:var(--text-main); font-size:13px;">
+                            <i class="ph ph-github-logo" style="color:var(--accent-red); font-size:16px;"></i>
+                            <div><div style="font-size:13px;">GitHub Releases</div><div style="font-size:11px; color:var(--text-muted);">Latest firmware binaries</div></div>
+                        </a>
+                        <a href="https://expresslrs.org/hardware/supported-hardware/" target="_blank" style="display:flex; align-items:center; gap:10px; padding:10px 12px; background:var(--bg-dark); border:1px solid var(--border-color); border-radius:var(--radius-sm); text-decoration:none; color:var(--text-main); font-size:13px;">
+                            <i class="ph ph-list" style="color:var(--accent-red); font-size:16px;"></i>
+                            <div><div style="font-size:13px;">Supported Hardware List</div><div style="font-size:11px; color:var(--text-muted);">All TX/RX targets</div></div>
+                        </a>
+                        <a href="https://www.expresslrs.org/info/signal-health/" target="_blank" style="display:flex; align-items:center; gap:10px; padding:10px 12px; background:var(--bg-dark); border:1px solid var(--border-color); border-radius:var(--radius-sm); text-decoration:none; color:var(--text-main); font-size:13px;">
+                            <i class="ph ph-activity" style="color:var(--accent-red); font-size:16px;"></i>
+                            <div><div style="font-size:13px;">Signal Health Guide</div><div style="font-size:11px; color:var(--text-muted);">LQ, SNR, RSSI explained</div></div>
+                        </a>
+                    </div>
+                </div>
+
             </div>
         </div>
 
@@ -1007,4 +1120,172 @@ function copyVtxConfig() {
 }
 ['vtx-uart','vtx-aux'].forEach(id => document.getElementById(id).addEventListener('change', updateVtxConfig));
 populateVtxMfr();
+
+// ── FC Target Matcher ─────────────────────────────────────────────────────
+const FC_DB = [
+    { target:'BETAFLIGHTF4', mcu:'STM32F405', gyros:['MPU6000'], manufacturers:['Betaflight','Various'] },
+    { target:'OMNIBUSF4SD', mcu:'STM32F405', gyros:['MPU6000'], manufacturers:['Airbot','Omnibus'] },
+    { target:'OMNIBUSF7', mcu:'STM32F745', gyros:['MPU6000'], manufacturers:['Airbot'] },
+    { target:'SPRACINGF3', mcu:'STM32F303', gyros:['MPU6500'], manufacturers:['SP Racing'] },
+    { target:'SPRACINGF7DUAL', mcu:'STM32F745', gyros:['MPU6000','ICM20689'], manufacturers:['SP Racing'] },
+    { target:'MATEKF405', mcu:'STM32F405', gyros:['ICM20602','MPU6000'], manufacturers:['Matek'] },
+    { target:'MATEKF411', mcu:'STM32F411', gyros:['ICM20602'], manufacturers:['Matek'] },
+    { target:'MATEKF722', mcu:'STM32F722', gyros:['MPU6000','ICM20602'], manufacturers:['Matek'] },
+    { target:'MATEKF745', mcu:'STM32F745', gyros:['MPU6000'], manufacturers:['Matek'] },
+    { target:'MATEKH743', mcu:'STM32H743', gyros:['ICM42688P','MPU6000'], manufacturers:['Matek'] },
+    { target:'IFLIGHT_BLITZ_F7_AIO', mcu:'STM32F745', gyros:['BMI270'], manufacturers:['iFlight'] },
+    { target:'IFLIGHT_BLITZ_H7', mcu:'STM32H743', gyros:['ICM42688P'], manufacturers:['iFlight'] },
+    { target:'IFLIGHT_BLITZ_ATF435', mcu:'AT32F435', gyros:['ICM42688P'], manufacturers:['iFlight'] },
+    { target:'GEPRC_F405', mcu:'STM32F405', gyros:['MPU6000','ICM42688P'], manufacturers:['GEPRC'] },
+    { target:'GEPRC_F722', mcu:'STM32F722', gyros:['MPU6000','ICM42688P'], manufacturers:['GEPRC'] },
+    { target:'GEPRC_TAKER_H743', mcu:'STM32H743', gyros:['MPU6000','ICM42688'], manufacturers:['GEPRC'] },
+    { target:'SPEEDYBEEF405', mcu:'STM32F405', gyros:['ICM42688P','MPU6000'], manufacturers:['SpeedyBee'] },
+    { target:'SPEEDYBEEF7', mcu:'STM32F722', gyros:['MPU6000'], manufacturers:['SpeedyBee'] },
+    { target:'FLYWOOF745', mcu:'STM32F745', gyros:['ICM42688P'], manufacturers:['Flywoo'] },
+    { target:'FLYWOOF722', mcu:'STM32F722', gyros:['ICM42688P','MPU6000'], manufacturers:['Flywoo'] },
+    { target:'FOXEERF405V3', mcu:'STM32F405', gyros:['ICM42688P'], manufacturers:['Foxeer'] },
+    { target:'NEUTRONRCF435', mcu:'AT32F435', gyros:['ICM42688P'], manufacturers:['NeutronRC'] },
+    { target:'SKYSTARSF405', mcu:'STM32F405', gyros:['MPU6000'], manufacturers:['Skystars'] },
+    { target:'TMOTORF7', mcu:'STM32F722', gyros:['ICM20689','MPU6000'], manufacturers:['T-Motor'] },
+    { target:'TMOTORF405', mcu:'STM32F405', gyros:['MPU6000'], manufacturers:['T-Motor'] },
+    { target:'KAKUTEF7', mcu:'STM32F745', gyros:['ICM20689'], manufacturers:['Holybro'] },
+    { target:'KAKUTEH7', mcu:'STM32H743', gyros:['ICM42688P','MPU6000'], manufacturers:['Holybro'] },
+    { target:'LUXH743HD', mcu:'STM32H743', gyros:['ICM42688P'], manufacturers:['Lumenier'] },
+    { target:'MICOAIRF405', mcu:'STM32F405', gyros:['BMI270','ICM42688P'], manufacturers:['MicoAir'] },
+    { target:'MICOAIRH743', mcu:'STM32H743', gyros:['BMI270','BMI088'], manufacturers:['MicoAir'] },
+    { target:'TBSLUCIDH7', mcu:'STM32H743', gyros:['ICM42688P','MPU6000'], manufacturers:['TBS'] },
+    { target:'TBSLUCIDPRO', mcu:'STM32H743', gyros:['ICM42688P'], manufacturers:['TBS'] },
+    { target:'HGLRCF428', mcu:'STM32F405', gyros:['MPU6000','ICM42688P'], manufacturers:['HGLRC'] },
+    { target:'HGLRCH743', mcu:'STM32H743', gyros:['ICM42688P'], manufacturers:['HGLRC'] },
+    { target:'IFLIGHT_BLITZ_F722', mcu:'STM32F722', gyros:['BMI270'], manufacturers:['iFlight'] },
+];
+
+function fcMatcherPlaceholder() {
+    return `<div style="height:100%; display:flex; align-items:center; justify-content:center; flex-direction:column; gap:8px; color:var(--text-faint); text-align:center; padding:32px;">
+        <i class="ph ph-magnifying-glass" style="font-size:36px; opacity:0.3;"></i>
+        <div style="font-size:13px;">Paste CLI output and click Identify FC</div>
+    </div>`;
+}
+
+function runFcMatcher() {
+    const raw = document.getElementById('fc-matcher-input').value.trim();
+    const out = document.getElementById('fc-matcher-result');
+    if (!raw) { out.innerHTML = '<div style="color:var(--text-faint); font-size:13px; padding:16px;">No input detected.</div>'; return; }
+
+    // Parse key fields from status output
+    const mcuMatch = raw.match(/MCU\s+([A-Z0-9]+\s*[A-Z0-9]+)/i) || raw.match(/STM32\w+/i) || raw.match(/AT32\w+/i) || raw.match(/GD32\w+/i);
+    const gyroMatch = raw.match(/Gyro\s*[:#]?\s*([A-Za-z0-9]+)/i) || raw.match(/(MPU6000|MPU6500|ICM20602|ICM20689|ICM42688|ICM42688P|BMI270|BMI088|LSM6DSO)/i);
+    const targetMatch = raw.match(/target:\s*([A-Z0-9_]+)/i);
+    const boardMatch = raw.match(/board:\s*([A-Z0-9_]+)/i);
+    const cpuMatch = raw.match(/cpu:\s*([A-Za-z0-9]+)/i);
+
+    const detectedMcu = (mcuMatch?.[0] || cpuMatch?.[1] || '').toUpperCase().replace(/\s+/g,'');
+    const detectedGyro = (gyroMatch?.[1] || '').toUpperCase();
+    const detectedTarget = targetMatch?.[1] || boardMatch?.[1] || '';
+
+    // Score matches
+    let matches = FC_DB.map(fc => {
+        let score = 0;
+        const mcuNorm = detectedMcu.replace('STM32','').replace('AT32','');
+        if (detectedTarget && fc.target.toUpperCase().includes(detectedTarget.toUpperCase())) score += 10;
+        if (detectedMcu && fc.mcu.replace('STM32','').replace('AT32','') === mcuNorm) score += 5;
+        if (detectedGyro && fc.gyros.some(g => g.toUpperCase() === detectedGyro)) score += 4;
+        if (detectedMcu && fc.mcu.toUpperCase() === detectedMcu) score += 3;
+        return { ...fc, score };
+    }).filter(fc => fc.score > 0).sort((a,b) => b.score - a.score).slice(0, 5);
+
+    let html = '';
+    if (detectedTarget) {
+        html += `<div style="background:rgba(34,211,238,0.06); border:1px solid rgba(34,211,238,0.2); border-radius:var(--radius-sm); padding:12px 14px; margin-bottom:14px; font-size:12px;">
+            <div style="color:var(--text-faint); font-size:10px; text-transform:uppercase; letter-spacing:0.06em; margin-bottom:4px;">Target found in output</div>
+            <div style="font-family:'JetBrains Mono',monospace; color:var(--accent-red); font-size:16px;">${detectedTarget}</div>
+        </div>`;
+    }
+
+    if (detectedMcu || detectedGyro) {
+        html += `<div style="display:flex; gap:10px; margin-bottom:14px;">`;
+        if (detectedMcu) html += `<div style="flex:1; background:var(--bg-dark); border:1px solid var(--border-color); border-radius:var(--radius-sm); padding:10px 12px;"><div style="font-size:10px; text-transform:uppercase; color:var(--text-faint); margin-bottom:3px;">MCU detected</div><div style="font-size:13px; font-family:'JetBrains Mono',monospace;">${detectedMcu}</div></div>`;
+        if (detectedGyro) html += `<div style="flex:1; background:var(--bg-dark); border:1px solid var(--border-color); border-radius:var(--radius-sm); padding:10px 12px;"><div style="font-size:10px; text-transform:uppercase; color:var(--text-faint); margin-bottom:3px;">Gyro detected</div><div style="font-size:13px; font-family:'JetBrains Mono',monospace;">${detectedGyro}</div></div>`;
+        html += `</div>`;
+    }
+
+    if (matches.length > 0) {
+        html += `<div style="font-size:10px; text-transform:uppercase; letter-spacing:0.06em; color:var(--text-faint); margin-bottom:8px;">Possible targets (by confidence)</div>`;
+        matches.forEach((m, i) => {
+            const conf = i === 0 ? '#4ade80' : i === 1 ? '#eab308' : 'var(--text-muted)';
+            html += `<div style="display:flex; align-items:center; gap:10px; padding:9px 12px; background:var(--bg-dark); border:1px solid var(--border-color); border-radius:var(--radius-sm); margin-bottom:6px;">
+                <div style="width:6px; height:6px; border-radius:50%; background:${conf}; flex-shrink:0;"></div>
+                <div style="flex:1;">
+                    <div style="font-family:'JetBrains Mono',monospace; font-size:13px; color:var(--text-main);">${m.target}</div>
+                    <div style="font-size:11px; color:var(--text-muted); margin-top:2px;">${m.mcu} · ${m.gyros.join(' / ')} · ${m.manufacturers.join(', ')}</div>
+                </div>
+                <div style="font-size:10px; color:var(--text-faint);">score ${m.score}</div>
+            </div>`;
+        });
+    } else if (!detectedTarget) {
+        html += `<div style="font-size:13px; color:var(--text-muted); padding:16px 0;">Could not identify target from this output. Try pasting the full <code style="background:var(--bg-dark); padding:1px 5px; border-radius:3px;">status</code> output including the board/target lines.</div>`;
+    }
+
+    out.innerHTML = html || fcMatcherPlaceholder();
+}
+document.getElementById('fc-matcher-result').innerHTML = fcMatcherPlaceholder();
+
+// ── VTX Unlock Table ──────────────────────────────────────────────────────
+const VTX_UNLOCK_BANDS = {
+    R: { name:'RACEBAND', freqs:[5658,5695,5732,5769,5806,5843,5880,5917] },
+    F: { name:'FATSHARK', freqs:[5740,5760,5780,5800,5820,5840,5860,5880] },
+    E: { name:'BOSCAM_E', freqs:[5705,5685,5665,5645,5885,5905,5925,5945] },
+    A: { name:'BOSCAM_A', freqs:[5865,5845,5825,5805,5785,5765,5745,5725] },
+    B: { name:'BOSCAM_B', freqs:[5733,5752,5771,5790,5809,5828,5847,5866] },
+};
+const VTX_POWER_LEVELS = [
+    { mw: 25,  label: '25' },
+    { mw: 200, label: '200' },
+    { mw: 500, label: '500' },
+    { mw: 800, label: '800' },
+];
+
+function renderVtxTable() {
+    const proto = document.getElementById('vtx-protocol').value;
+    const maxPwr = +document.getElementById('vtx-maxpower').value;
+    const activeBands = Object.keys(VTX_UNLOCK_BANDS).filter(k => document.getElementById('vtx-band-' + k)?.checked);
+
+    const powers = VTX_POWER_LEVELS.slice(0, maxPwr);
+    const protoNum = proto === 'smartaudio' ? 3 : 4; // SA 2.1 = 3, Tramp = 4
+
+    let lines = [];
+    lines.push('# Unlocked VTX table — generated by Forge RF Tools');
+    lines.push(`# Protocol: ${proto === 'smartaudio' ? 'SmartAudio 2.1' : 'IRC Tramp'}`);
+    lines.push('vtxtable bands ' + activeBands.length);
+    lines.push('vtxtable channels 8');
+    lines.push('vtxtable powerlevels ' + powers.length);
+    lines.push('vtxtable powervalues ' + powers.map(p => p.mw).join(' '));
+    lines.push('vtxtable powerlabels ' + powers.map(p => p.label).join(' '));
+    lines.push('');
+
+    activeBands.forEach((k, i) => {
+        const b = VTX_UNLOCK_BANDS[k];
+        lines.push(`vtxtable band ${i+1} ${b.name} ${k} ${b.freqs.join(' ')}`);
+    });
+
+    lines.push('');
+    lines.push('saveVtxTable');
+    lines.push('save');
+
+    const output = lines.join('\n');
+    document.getElementById('vtx-output').value = output;
+    document.getElementById('vtx-line-count').textContent = lines.length + ' lines';
+}
+
+function copyVtxTable() {
+    const text = document.getElementById('vtx-output').value;
+    navigator.clipboard.writeText(text).then(() => {
+        const btn = event.target;
+        const orig = btn.textContent;
+        btn.textContent = '✓ Copied!';
+        btn.style.background = '#15803d';
+        setTimeout(() => { btn.textContent = orig; btn.style.background = ''; }, 2000);
+    });
+}
+renderVtxTable();
 </script>
