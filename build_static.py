@@ -46,6 +46,7 @@ PAGES = {
     'compliance.html': 'compliance/index.html',
     'compare.html': 'compare/index.html',
     'cost.html': 'cost/index.html',
+    'intel.html': 'intel/index.html',
     'tools.html': 'tools/index.html',
 }
 
@@ -103,6 +104,7 @@ def fix_paths(html, depth=0):
         html = re.sub(r"(href|src)='static/", rf"\1='{prefix}static/", html)
         # Fix fetch calls to static JSON
         html = html.replace("fetch('forge_database.json')", f"fetch('{prefix}static/forge_database.json')")
+        html = html.replace("fetch('forge_intel.json')", f"fetch('{prefix}static/forge_intel.json')")
         html = html.replace("fetch('drone_parts_schema_v3.json')", f"fetch('{prefix}static/drone_parts_schema_v3.json')")
     
     # Fix nav links to use clean URLs
