@@ -175,7 +175,7 @@ def sync_handbook_data():
         return False
 
     subprocess.run(
-        ['git', '-C', DATA_CLONE_DIR, 'sparse-checkout', 'set', 'data/parts-db', 'data/intel-db', 'docs/database'],
+        ['git', '-C', DATA_CLONE_DIR, 'sparse-checkout', 'set', 'data/parts-db', 'docs/database'],
         capture_output=True, text=True
     )
 
@@ -294,19 +294,21 @@ def sync_handbook_data():
     total_parts = sum(len(v) for v in forge_db['components'].values())
     print(f"\n  forge_database.json updated: {total_parts} parts, {len(forge_db['drone_models'])} models")
 
-    # Sync intel-db JSON files → SRC_DIR so they're served as static assets
-    intel_src = os.path.join(DATA_CLONE_DIR, 'data', 'intel-db')
-    if os.path.isdir(intel_src):
-        for fname in ['articles.json', 'companies.json', 'platforms.json', 'programs.json']:
-            src = os.path.join(intel_src, fname)
-            dst = os.path.join(SRC_DIR, 'intel_' + fname)  # prefix to avoid collisions
-            if os.path.exists(src):
-                shutil.copyfile(src, dst)
-                with open(src) as f:
-                    count = len(json.load(f))
-                print(f"  intel_{fname}: {count} entries")
-    else:
-        print("  WARNING: data/intel-db not found in clone — intel pages will use cached data")
+    # Fetch intel JSON from forge-data GitHub Pages (public, no auth needed)
+    FORGE_DATA_BASE = 'https://dronewukong.github.io/forge-data/intel'
+    for fname in ['articles.json', 'companies.json', 'platforms.json', 'programs.json']:
+        dst = os.path.join(SRC_DIR, 'intel_' + fname)
+        try:
+            import urllib.request
+            url = f'{FORGE_DATA_BASE}/{fname}'
+            with urllib.request.urlopen(url, timeout=15) as resp:
+                data = resp.read().decode('utf-8')
+            with open(dst, 'w') as f:
+                f.write(data)
+            count = len(json.loads(data)) if data.strip().startswith('[') else '?'
+            print(f"  intel_{fname}: {count} entries (from forge-data GitHub Pages)")
+        except Exception as e:
+            print(f"  WARNING: could not fetch {fname}: {e} — using cached placeholder")
 
     # Cleanup
     shutil.rmtree(DATA_CLONE_DIR, ignore_errors=True)
