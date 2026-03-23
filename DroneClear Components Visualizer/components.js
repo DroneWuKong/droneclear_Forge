@@ -358,7 +358,7 @@ function createComponentCard(comp, highlightData = null) {
         compatHtml = `<div class="card-compat-badges">${badges}</div>`;
     }
 
-    const priceHtml = comp.approx_price ? `<span class="card-price">${escapeHTML(comp.approx_price)}</span>` : '';
+    const priceHtml = comp.approx_price ? `<span class="card-price">${escapeHTML(formatPrice(comp.approx_price))}</span>` : '';
     const inBuildBadge = isInBuild ? `<span class="card-in-build-badge" style="font-size:12px; color:#10b981; font-weight:600;"><i class="ph-fill ph-check-circle"></i> In Build</span>` : '';
 
     // =========================================================================
@@ -496,4 +496,11 @@ function findSimilarComponents(targetComp) {
 
     scoredComps.sort((a, b) => b.score - a.score);
     return scoredComps.slice(0, 3).map(obj => obj.comp);
+}
+
+// Currency change re-render hook
+function renderCurrentView() {
+    const searchEl = document.getElementById('search-input');
+    const term = searchEl ? searchEl.value.trim() : '';
+    if (currentCategory) renderComponents(term);
 }

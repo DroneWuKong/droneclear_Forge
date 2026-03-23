@@ -150,7 +150,7 @@ function updateBuildTotals() {
     });
 
     if (elements.totalWeightEl) elements.totalWeightEl.textContent = `${totalWeight.toFixed(1)}g`;
-    if (elements.totalCostEl)   elements.totalCostEl.textContent   = `$${totalCost.toFixed(2)}`;
+    if (elements.totalCostEl)   elements.totalCostEl.textContent   = typeof formatPrice === 'function' ? formatPrice(totalCost) : `$${totalCost.toFixed(2)}`;
 }
 
 function updateBuildBadge() {

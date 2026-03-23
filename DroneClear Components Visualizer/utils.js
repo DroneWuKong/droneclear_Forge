@@ -107,3 +107,48 @@ function showToast(message, type = 'info') {
     clearTimeout(_toastTimer);
     _toastTimer = setTimeout(() => toast.classList.remove('show'), 3500);
 }
+
+// =============================================================
+// Currency conversion — global price display utility
+// =============================================================
+const _currencyRates = {
+    USD: 1, EUR: 0.92, GBP: 0.79, UAH: 41.0, PLN: 4.05,
+    HRK: 6.93, TRY: 36.5, ILS: 3.62, AUD: 1.55, CAD: 1.36, JPY: 150.0
+};
+const _currencySymbols = {
+    USD: '$', EUR: '\u20AC', GBP: '\u00A3', UAH: '\u20B4', PLN: 'z\u0142',
+    HRK: 'kn', TRY: '\u20BA', ILS: '\u20AA', AUD: 'A$', CAD: 'C$', JPY: '\u00A5'
+};
+
+function _getSelectedCurrency() {
+    return localStorage.getItem('forge-currency') || 'USD';
+}
+
+function formatPrice(usdAmount) {
+    if (!usdAmount && usdAmount !== 0) return '';
+    const cur = _getSelectedCurrency();
+    const rate = _currencyRates[cur] || 1;
+    const sym = _currencySymbols[cur] || cur + ' ';
+    const converted = usdAmount * rate;
+    // JPY and UAH: no decimals. Others: 2 decimals.
+    const decimals = (cur === 'JPY' || cur === 'UAH' || cur === 'HRK') ? 0 : 2;
+    return sym + converted.toLocaleString(undefined, { minimumFractionDigits: decimals, maximumFractionDigits: decimals });
+}
+
+// Init currency picker
+document.addEventListener('DOMContentLoaded', () => {
+    const picker = document.getElementById('currency-picker');
+    if (picker) {
+        picker.value = _getSelectedCurrency();
+        picker.addEventListener('change', () => {
+            localStorage.setItem('forge-currency', picker.value);
+            // Re-render current view if components are loaded
+            if (typeof renderCurrentView === 'function') renderCurrentView();
+            // Re-open modal if one is active
+            if (typeof activeModalComponent !== 'undefined' && activeModalComponent) {
+                openModal(activeModalComponent);
+            }
+            showToast('Currency: ' + picker.value, 'info');
+        });
+    }
+});

@@ -80,6 +80,23 @@ function openModal(comp) {
 
     elements.modalTags.innerHTML = (comp.schema_data?.tags || []).map(t => `<span class="tag">${escapeHTML(t)}</span>`).join('');
 
+    // Meta row — price, country, source as chips below description
+    const metaRow = document.getElementById('modal-meta-row');
+    if (metaRow) {
+        const chips = [];
+        const chipStyle = 'display:inline-flex;align-items:center;gap:4px;padding:4px 10px;border-radius:12px;font-size:12px;font-family:"JetBrains Mono",monospace;';
+        if (comp.approx_price) {
+            chips.push(`<span style="${chipStyle}background:rgba(34,197,94,0.12);color:#22c55e;border:1px solid rgba(34,197,94,0.25);"><i class="ph ph-currency-circle-dollar"></i>${escapeHTML(formatPrice(comp.approx_price))}</span>`);
+        }
+        if (comp.country) {
+            chips.push(`<span style="${chipStyle}background:rgba(59,130,246,0.12);color:#60a5fa;border:1px solid rgba(59,130,246,0.25);"><i class="ph ph-globe"></i>${escapeHTML(comp.country)}</span>`);
+        }
+        if (comp.source) {
+            chips.push(`<span style="${chipStyle}background:rgba(107,114,128,0.12);color:#9ca3af;border:1px solid rgba(107,114,128,0.25);"><i class="ph ph-link"></i>${escapeHTML(comp.source)}</span>`);
+        }
+        metaRow.innerHTML = chips.join('');
+    }
+
     // Specs
     const specsHtml = [];
     const sd = comp.schema_data || {};
@@ -207,7 +224,7 @@ function openModal(comp) {
     const similarComps = findSimilarComponents(comp);
     if (similarComps.length > 0) {
         elements.modalSimilarGrid.innerHTML = similarComps.map(simItem => {
-            const priceHtml = simItem.approx_price ? `<span style="color:var(--accent-green);font-size:12px;">${escapeHTML(simItem.approx_price)}</span>` : '';
+            const priceHtml = simItem.approx_price ? `<span style="color:var(--accent-green);font-size:12px;">${escapeHTML(formatPrice(simItem.approx_price))}</span>` : '';
             return `
                 <div class="similar-card" data-pid="${escapeHTML(simItem.pid)}" title="Switch to ${escapeHTML(simItem.name)}" style="cursor:pointer;padding:10px;border:1px solid rgba(255,255,255,0.1);border-radius:6px;background:rgba(0,0,0,0.2);">
                     <div style="font-size:11px;color:var(--text-muted);">${escapeHTML(simItem.manufacturer || 'Unknown')}</div>
