@@ -109,6 +109,7 @@
             <!-- ═══ FINANCE ═══ -->
             <div class="intel-panel" id="panel-finance">
                 <div class="intel-stat-row" id="fin-stats"></div>
+                <div id="fin-market-banner" style="margin-bottom:20px"></div>
                 <div class="section-title"><i class="ph ph-hand-coins"></i> Funding Rounds & Deals</div>
                 <div class="filter-chips" id="fin-type-chips"></div>
                 <div class="intel-grid" id="fin-deals"></div>
@@ -275,6 +276,7 @@
 
         function renderFinance() {
             const deals = intel.funding || [];
+            const ms = intel.market_stats || {};
             const totalRaised = deals.reduce((sum, d) => {
                 const m = (d.amount || '').match(/\$?([\d.]+)([MBK])/i);
                 if (!m) return sum;
@@ -288,6 +290,25 @@
                 <div class="intel-stat"><div class="intel-stat-value">$${totalRaised >= 1000 ? (totalRaised/1000).toFixed(1)+'B' : totalRaised.toFixed(0)+'M'}</div><div class="intel-stat-label">Total Tracked Capital</div></div>
                 <div class="intel-stat"><div class="intel-stat-value">${[...new Set(deals.map(d => d.sector))].length}</div><div class="intel-stat-label">Sectors</div></div>
                 <div class="intel-stat"><div class="intel-stat-value">${deals.filter(d => d.date?.startsWith('2026')).length}</div><div class="intel-stat-label">2026 Deals</div></div>`;
+
+            // Market banner
+            if (ms.key_trend) {
+                document.getElementById('fin-market-banner').innerHTML = `
+                    <div class="intel-card" style="border-color:var(--accent-red);background:linear-gradient(135deg,rgba(34,211,238,0.04),rgba(239,68,68,0.04))">
+                        <div class="intel-card-header">
+                            <span class="intel-card-title"><i class="ph ph-trend-up" style="color:var(--accent-red)"></i> Market Overview</span>
+                            <span class="intel-badge badge-red">2025-2026</span>
+                        </div>
+                        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px;margin:12px 0">
+                            ${ms['2025_total_funding'] ? `<div><div style="font-size:11px;color:var(--text-muted)">2025 Total Funding</div><div style="font-size:16px;font-weight:700;color:var(--text-main);font-family:'JetBrains Mono',monospace">${E(ms['2025_total_funding'])}</div></div>` : ''}
+                            ${ms['2025_defense_share'] ? `<div><div style="font-size:11px;color:var(--text-muted)">Defense Share</div><div style="font-size:16px;font-weight:700;color:#ef4444;font-family:'JetBrains Mono',monospace">${E(ms['2025_defense_share'])}</div></div>` : ''}
+                            ${ms['2026_ytd_funding'] ? `<div><div style="font-size:11px;color:var(--text-muted)">2026 YTD</div><div style="font-size:16px;font-weight:700;color:#22c55e;font-family:'JetBrains Mono',monospace">${E(ms['2026_ytd_funding'])}</div></div>` : ''}
+                            ${ms.largest_contract_2026 ? `<div><div style="font-size:11px;color:var(--text-muted)">Largest Contract 2026</div><div style="font-size:16px;font-weight:700;color:var(--accent-red);font-family:'JetBrains Mono',monospace">${E(ms.largest_contract_2026)}</div></div>` : ''}
+                        </div>
+                        <div class="intel-card-body">${E(ms.key_trend)}</div>
+                        <div class="intel-card-meta" style="margin-top:8px">Sources: ${E(ms.source || '')}</div>
+                    </div>`;
+            }
 
             const types = [...new Set(deals.map(d => d.type))];
             document.getElementById('fin-type-chips').innerHTML =
