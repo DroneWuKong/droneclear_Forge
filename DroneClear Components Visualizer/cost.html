@@ -116,6 +116,13 @@
                 <a href="/platforms/" style="color: var(--text-muted); text-decoration: none; font-size: 13px;">Platforms</a>
                 <a href="/compare/" style="color: var(--text-muted); text-decoration: none; font-size: 13px;">Compare</a>
                 <a href="/compliance/" style="color: var(--text-muted); text-decoration: none; font-size: 13px;">Compliance</a>
+                <a href="/intel/" style="color: var(--text-muted); text-decoration: none; font-size: 13px;">Intel</a>
+                <select id="currency-picker" title="Currency" style="background:var(--bg-dark);color:var(--text-muted);border:1px solid var(--border-color);border-radius:4px;padding:3px 6px;font-size:11px;font-family:'JetBrains Mono',monospace;cursor:pointer;">
+                    <option value="USD">USD $</option><option value="EUR">EUR &euro;</option><option value="GBP">GBP &pound;</option>
+                    <option value="UAH">UAH &#8372;</option><option value="PLN">PLN z&#322;</option><option value="HRK">HRK kn</option>
+                    <option value="TRY">TRY &#8378;</option><option value="ILS">ILS &#8362;</option>
+                    <option value="AUD">AUD $</option><option value="CAD">CAD $</option><option value="JPY">JPY &yen;</option>
+                </select>
                 <button class="dark-mode-toggle" id="dark-mode-toggle" title="Toggle dark mode"><i class="ph ph-moon" id="dark-mode-icon"></i></button>
             </div>
         </header>
@@ -133,6 +140,7 @@
         </main>
     </div>
 
+    <script src="{% static 'utils.js' %}?v=2"></script>
     <script src="{% static 'maintenance.js' %}"></script>
     <script>
     (function() {
@@ -216,9 +224,10 @@
 
             // Gauges
             const costClass = totalCost < 350 ? 'green' : totalCost < 500 ? 'amber' : 'red';
+            const fp = typeof formatPrice === 'function' ? formatPrice : (v) => '$' + v.toFixed(0);
             document.getElementById('cost-gauges').innerHTML = `
                 <div class="gauge-card">
-                    <div class="gauge-value ${costClass}">$${totalCost.toFixed(0)}</div>
+                    <div class="gauge-value ${costClass}">${fp(totalCost)}</div>
                     <div class="gauge-label">Total BOM Cost</div>
                     <div class="gauge-sub">Retail pricing, no shipping</div>
                 </div>
@@ -282,9 +291,9 @@
                         <div class="part-pid">${ESC(i.pid)}</div>
                     </td>
                     <td class="num">${i.qty}</td>
-                    <td class="num">${i.price ? '$' + i.price.toFixed(2) : '—'}</td>
+                    <td class="num">${i.price ? '' + (typeof formatPrice === 'function' ? formatPrice(i.price) : '$' + i.price.toFixed(2)) : '—'}</td>
                     <td class="num">${i.weight ? i.weight + 'g' : '—'}</td>
-                    <td class="num subtotal">${i.price ? '$' + (i.price * i.qty).toFixed(2) : '—'}</td>
+                    <td class="num subtotal">${i.price ? '' + (typeof formatPrice === 'function' ? formatPrice(i.price * i.qty) : '$' + (i.price * i.qty).toFixed(2)) : '—'}</td>
                     <td class="num">${i.weight ? (i.weight * i.qty) + 'g' : '—'}</td>
                 </tr>
             `).join('');
@@ -301,7 +310,7 @@
                         <tfoot><tr>
                             <td colspan="3">Total</td>
                             <td></td><td></td>
-                            <td class="num">$${totalCost.toFixed(2)}</td>
+                            <td class="num">${typeof formatPrice === 'function' ? formatPrice(totalCost) : '$' + totalCost.toFixed(2)}</td>
                             <td class="num">${totalWeight.toLocaleString()}g</td>
                         </tr></tfoot>
                     </table>
