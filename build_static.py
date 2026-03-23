@@ -294,35 +294,17 @@ def sync_handbook_data():
     total_parts = sum(len(v) for v in forge_db['components'].values())
     print(f"\n  forge_database.json updated: {total_parts} parts, {len(forge_db['drone_models'])} models")
 
-    # Clone forge-data (public) and copy intel JSON files into SRC_DIR
-    FORGE_DATA_REPO = 'https://github.com/DroneWuKong/forge-data.git'
-    FORGE_DATA_CLONE = '_forge_data_source'
-    if os.path.exists(FORGE_DATA_CLONE):
-        shutil.rmtree(FORGE_DATA_CLONE)
-    clone_result = subprocess.run(
-        ['git', 'clone', '--depth', '1', '--filter=blob:none', '--sparse', FORGE_DATA_REPO, FORGE_DATA_CLONE],
-        capture_output=True, text=True
-    )
-    if clone_result.returncode != 0:
-        print(f"  WARNING: could not clone forge-data: {clone_result.stderr.strip()}")
-    else:
-        subprocess.run(
-            ['git', '-C', FORGE_DATA_CLONE, 'sparse-checkout', 'set', 'intel'],
-            capture_output=True, text=True
-        )
-        intel_src = os.path.join(FORGE_DATA_CLONE, 'intel')
-        if os.path.isdir(intel_src):
-            for fname in ['articles.json', 'companies.json', 'platforms.json', 'programs.json']:
-                src = os.path.join(intel_src, fname)
-                dst = os.path.join(SRC_DIR, 'intel_' + fname)
-                if os.path.exists(src):
-                    shutil.copyfile(src, dst)
-                    with open(src) as f:
-                        count = len(json.load(f))
-                    print(f"  intel_{fname}: {count} entries (from forge-data clone)")
+    # intel_*.json are committed directly into the repo by sync-forge-data.yml
+    # Just report what's already there — no network call needed
+    for fname in ['articles.json', 'companies.json', 'platforms.json', 'programs.json']:
+        src = os.path.join(SRC_DIR, 'intel_' + fname)
+        if os.path.exists(src):
+            with open(src) as f:
+                data = json.load(f)
+            count = len(data) if isinstance(data, list) else '?'
+            print(f"  intel_{fname}: {count} entries")
         else:
-            print("  WARNING: forge-data/intel/ not found after clone")
-        shutil.rmtree(FORGE_DATA_CLONE, ignore_errors=True)
+            print(f"  WARNING: {fname} not found in repo — intel pages will be empty")
 
     # Cleanup
     shutil.rmtree(DATA_CLONE_DIR, ignore_errors=True)
