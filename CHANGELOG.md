@@ -1,3 +1,22 @@
+# Changelog
+
+## [Intel Lobby Feeds] - 2026-03-23
+
+### Added
+- `/intel-defense/` — Defense feed with lobby mode (red accent)
+- `/intel-financial/` — Financial/contract feed with lobby mode (amber accent)
+- `/intel-commercial/` — Commercial/COTS feed with lobby mode (teal accent)
+- All three pages: source filter, full-text search, `?lobby=1` kiosk URL
+- Intel Feed card on mission-control with DEF/FIN/COM quick-launch buttons
+
+### Fixed
+- `build_static.py`: now fetches intel JSON from `dronewukong.github.io/forge-data/intel/`
+  via urllib — no auth, no Ai-Project clone required
+- Removed `data/intel-db` from sparse checkout (data now flows via forge-data pipeline)
+
+### Data Flow
+`Ai-Project/data/intel-db/` → `sync-forge-data.yml` → `forge-data/intel/` → build fetches → `/static/intel_*.json`
+
 # DroneClear Changelog
 
 > Session-by-session development log. Newest sessions at the top.
