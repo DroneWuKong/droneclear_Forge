@@ -4,352 +4,86 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1.0">
-<title>WOPR</title>
+<title>Forge</title>
 <meta name="robots" content="noindex,nofollow">
 <link href="https://fonts.googleapis.com/css2?family=VT323&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="{% static 'base.css' %}">
 <link rel="stylesheet" href="{% static 'layout.css' %}?v=4">
 <link rel="stylesheet" href="{% static 'components.css' %}">
 <style>
-*{box-sizing:border-box}
-@keyframes blink{0%,100%{opacity:1}50%{opacity:0}}
-@keyframes scanline{0%{top:-100%}100%{top:100%}}
-@keyframes flicker{0%{opacity:.97}5%{opacity:.9}10%{opacity:.98}15%{opacity:.92}100%{opacity:.97}}
-@keyframes glow{0%,100%{text-shadow:0 0 8px #22d3ee,0 0 20px rgba(34,211,238,.3)}50%{text-shadow:0 0 14px #22d3ee,0 0 35px rgba(34,211,238,.5)}}
-@keyframes glitch{0%{transform:translate(0)}20%{transform:translate(-3px,2px)}40%{transform:translate(3px,-2px)}60%{transform:translate(-1px,-2px)}80%{transform:translate(2px,1px)}100%{transform:translate(0)}}
-@keyframes redpulse{0%,100%{color:#ef4444;text-shadow:0 0 10px rgba(239,68,68,.5)}50%{color:#ff0000;text-shadow:0 0 30px rgba(255,0,0,.8)}}
-body{background:#0a0a0a!important;overflow-x:hidden;margin:0}
-.crt{position:relative;min-height:100vh;display:flex;flex-direction:column;animation:flicker 4s infinite}
-.crt::before{content:'';position:absolute;inset:0;background:repeating-linear-gradient(0deg,rgba(0,0,0,.12) 0px,rgba(0,0,0,.12) 1px,transparent 1px,transparent 3px);pointer-events:none;z-index:10}
-.crt::after{content:'';position:absolute;left:0;width:100%;height:60%;background:linear-gradient(transparent,rgba(34,211,238,.015),transparent);animation:scanline 8s linear infinite;pointer-events:none;z-index:10}
-.crt.meltdown{animation:glitch .1s infinite!important}
-.crt.meltdown::before{background:repeating-linear-gradient(0deg,rgba(239,68,68,.1) 0px,rgba(0,0,0,.15) 1px,transparent 1px,transparent 3px)!important}
-
-/* Gate */
-.wopr{flex:1;display:flex;flex-direction:column;justify-content:center;align-items:center;padding:24px;font-family:'VT323',monospace;color:#22d3ee;position:relative;z-index:1}
-.wopr.hidden{display:none}
-.wopr-skull{font-size:72px;margin-bottom:4px;animation:glow 3s ease-in-out infinite;cursor:default;user-select:none;filter:drop-shadow(0 0 12px rgba(34,211,238,.4))}
-.wopr-label{font-size:13px;opacity:.4;letter-spacing:6px;margin-bottom:28px;text-transform:uppercase}
-.wopr-prompt{font-size:26px;margin-bottom:6px;text-align:center;min-height:36px}
-.wopr-prompt .cur{animation:blink 1s step-end infinite}
-.wopr-sub{font-size:15px;color:rgba(34,211,238,.35);margin-bottom:32px}
-
-/* Game list */
-.games{list-style:none;padding:0;margin:0 0 20px;text-align:left;width:100%;max-width:400px}
-.games li{font-size:19px;color:rgba(34,211,238,.3);padding:5px 0 5px 20px;cursor:pointer;transition:all .15s;position:relative}
-.games li::before{content:'\25B8 ';color:rgba(34,211,238,.15)}
-.games li:hover{color:rgba(34,211,238,.7);padding-left:28px}
-.games li:hover::before{color:rgba(34,211,238,.5)}
-.games li.glow{color:#22d3ee;text-shadow:0 0 8px rgba(34,211,238,.5)}
-.games li.glow::before{color:#22d3ee}
-.games li.glow:hover{color:#fff;text-shadow:0 0 15px rgba(34,211,238,.8)}
-
-/* Game area */
-.game-area{width:100%;max-width:500px;min-height:300px;display:none;flex-direction:column;align-items:center;font-family:'VT323',monospace;color:#22d3ee}
-.game-area.visible{display:flex}
-.game-area h3{font-size:20px;margin-bottom:12px;letter-spacing:2px}
-.game-msg{font-size:16px;margin:8px 0;min-height:22px;text-align:center}
-.game-msg.red{color:#ef4444;text-shadow:0 0 6px rgba(239,68,68,.4)}
-.game-back{margin-top:16px;font-size:14px;color:rgba(34,211,238,.3);cursor:pointer;border:none;background:none;font-family:'VT323',monospace}
-.game-back:hover{color:#22d3ee}
-
-/* Chess board (simplified) */
-.chess-board{display:grid;grid-template-columns:repeat(8,36px);grid-template-rows:repeat(8,36px);gap:0;border:2px solid rgba(34,211,238,.3)}
-.chess-cell{width:36px;height:36px;display:flex;align-items:center;justify-content:center;font-size:22px;cursor:default}
-.chess-cell.light{background:rgba(34,211,238,.06)}
-.chess-cell.dark{background:rgba(34,211,238,.02)}
-
-/* Checkers */
-.checkers-board{display:grid;grid-template-columns:repeat(8,36px);grid-template-rows:repeat(8,36px);gap:0;border:2px solid rgba(34,211,238,.3)}
-.checkers-cell{width:36px;height:36px;display:flex;align-items:center;justify-content:center;font-size:20px}
-.checkers-cell.dark{background:rgba(34,211,238,.04)}
-.checkers-cell.light{background:rgba(34,211,238,.01)}
-
-/* Tic-tac-toe */
-.ttt-board{display:grid;grid-template-columns:repeat(3,72px);grid-template-rows:repeat(3,72px);gap:3px;margin:8px 0}
-.ttt-cell{width:72px;height:72px;display:flex;align-items:center;justify-content:center;font-size:36px;background:rgba(34,211,238,.04);border:1px solid rgba(34,211,238,.15);cursor:pointer;transition:all .15s;color:#22d3ee}
-.ttt-cell:hover{background:rgba(34,211,238,.08)}
-.ttt-cell.x{color:#ef4444;text-shadow:0 0 8px rgba(239,68,68,.5)}
-.ttt-cell.o{color:#22d3ee;text-shadow:0 0 8px rgba(34,211,238,.5)}
-
-/* Poker hand */
-.poker-hand{display:flex;gap:8px;margin:12px 0}
-.poker-card{width:50px;height:72px;background:rgba(34,211,238,.06);border:1px solid rgba(34,211,238,.2);border-radius:4px;display:flex;align-items:center;justify-content:center;font-size:16px;color:#22d3ee}
-.poker-card.red{color:#ef4444}
-
-/* Backgammon */
-.bg-board{width:300px;height:180px;background:rgba(34,211,238,.03);border:2px solid rgba(34,211,238,.2);border-radius:4px;display:flex;align-items:center;justify-content:center;font-size:14px;color:rgba(34,211,238,.4);margin:12px 0}
-
-/* LOGON input */
-.logon-area{width:100%;max-width:460px;display:none;flex-direction:column;align-items:center}
-.logon-area.visible{display:flex}
-.logon-line{display:flex;align-items:center;gap:8px;width:100%;font-size:19px}
-.logon-input{flex:1;background:transparent;border:none;outline:none;color:#22d3ee;font-family:'VT323',monospace;font-size:19px;caret-color:#22d3ee;text-transform:uppercase}
-.logon-input::placeholder{color:rgba(34,211,238,.15);text-transform:none}
-.logon-resp{font-size:17px;margin-top:14px;min-height:22px;text-align:center}
-.logon-resp.wrong{color:#ef4444;text-shadow:0 0 8px rgba(239,68,68,.4)}
-
-/* Meltdown overlay */
-.meltdown-overlay{display:none;position:fixed;inset:0;z-index:100;background:#0a0a0a;flex-direction:column;justify-content:center;align-items:center;font-family:'VT323',monospace;color:#ef4444}
-.meltdown-overlay.active{display:flex}
-.meltdown-text{font-size:24px;animation:redpulse 1s infinite;text-align:center;line-height:1.8}
-.meltdown-small{font-size:14px;color:rgba(239,68,68,.4);margin-top:20px;text-align:center}
-
-/* Footer */
-.wopr-foot{position:fixed;bottom:14px;left:0;right:0;text-align:center;font-size:11px;color:rgba(34,211,238,.12);font-family:'VT323',monospace;z-index:1}
-
-/* Vault (same as before) */
-.vault{display:none;flex:1;max-width:1100px;margin:0 auto;padding:32px 24px;width:100%;position:relative;z-index:1;font-family:'VT323',monospace}
+body{background:#0a0a0a!important}
+.gate{min-height:100vh;display:flex;flex-direction:column;justify-content:center;align-items:center;font-family:'VT323',monospace;color:#22d3ee;padding:24px}
+.gate.hidden{display:none}
+.skull{font-size:96px;margin-bottom:16px;user-select:none}
+.msg{font-size:22px;margin-bottom:32px}
+.row{display:flex;gap:8px}
+.pwd{padding:10px 16px;font-size:18px;font-family:'VT323',monospace;background:#111;border:1px solid #333;color:#22d3ee;border-radius:4px;text-align:center;letter-spacing:2px;width:300px}
+.pwd:focus{outline:none;border-color:#22d3ee}
+.go{padding:10px 20px;background:#22d3ee;color:#0a0a0a;border:none;border-radius:4px;font-size:18px;font-family:'VT323',monospace;cursor:pointer;font-weight:700}
+.err{color:#ef4444;font-size:16px;margin-top:12px;min-height:20px}
+.vault{display:none;max-width:1100px;margin:0 auto;padding:32px 24px;width:100%;font-family:'VT323',monospace;color:#22d3ee}
 .vault.open{display:block}
-.vault-hdr{margin-bottom:20px;padding-bottom:12px;border-bottom:1px solid rgba(34,211,238,.15)}
-.vault-hdr h1{font-size:18px;color:#22d3ee;letter-spacing:2px}
-.vault-hdr p{font-size:14px;color:rgba(34,211,238,.4);margin-top:4px}
-.vault-stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:8px;margin-bottom:18px}
-.vault-stat{background:rgba(34,211,238,.03);border:1px solid rgba(34,211,238,.1);border-radius:4px;padding:10px;text-align:center}
-.vault-stat-val{font-size:22px;color:#22d3ee;text-shadow:0 0 8px rgba(34,211,238,.3)}
-.vault-stat-label{font-size:11px;color:rgba(34,211,238,.4);text-transform:uppercase;letter-spacing:.5px}
-.vault-tabs{display:flex;gap:2px;margin-bottom:12px}
-.vault-tab{padding:6px 14px;font-size:14px;color:rgba(34,211,238,.4);background:rgba(34,211,238,.03);border:1px solid rgba(34,211,238,.1);border-radius:3px 3px 0 0;cursor:pointer;border-bottom:none;letter-spacing:1px;font-family:'VT323',monospace}
-.vault-tab:hover{color:rgba(34,211,238,.7)}
-.vault-tab.active{color:#22d3ee;border-bottom:2px solid #22d3ee;text-shadow:0 0 8px rgba(34,211,238,.4)}
-.vault-search{width:100%;padding:8px 12px;font-size:14px;background:rgba(0,0,0,.5);border:1px solid rgba(34,211,238,.15);border-radius:3px;color:#22d3ee;font-family:'VT323',monospace;margin-bottom:10px;letter-spacing:1px}
+.vault-hdr h1{font-size:18px;letter-spacing:2px;margin-bottom:4px}
+.vault-hdr p{font-size:13px;color:rgba(34,211,238,.4)}
+.vault-note{font-size:12px;color:rgba(34,211,238,.3);padding:10px;border:1px solid rgba(34,211,238,.06);border-radius:3px;margin:16px 0}
+.vault-stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:8px;margin-bottom:16px}
+.vs{background:rgba(34,211,238,.03);border:1px solid rgba(34,211,238,.1);border-radius:4px;padding:10px;text-align:center}
+.vs b{font-size:22px;display:block;text-shadow:0 0 8px rgba(34,211,238,.3)}
+.vs span{font-size:10px;color:rgba(34,211,238,.4);text-transform:uppercase;letter-spacing:.5px}
+.vault-tabs{display:flex;gap:2px;margin-bottom:10px}
+.vt{padding:6px 14px;font-size:14px;color:rgba(34,211,238,.4);background:rgba(34,211,238,.03);border:1px solid rgba(34,211,238,.1);border-radius:3px 3px 0 0;cursor:pointer;border-bottom:none;letter-spacing:1px}
+.vt:hover{color:rgba(34,211,238,.7)}
+.vt.on{color:#22d3ee;border-bottom:2px solid #22d3ee}
+.vault-search{width:100%;padding:8px 12px;font-size:14px;background:rgba(0,0,0,.5);border:1px solid rgba(34,211,238,.15);border-radius:3px;color:#22d3ee;font-family:'VT323',monospace;margin-bottom:10px}
 .vault-search:focus{outline:none;border-color:rgba(34,211,238,.4)}
 .vault-search::placeholder{color:rgba(34,211,238,.2)}
-.vault-scroll{max-height:55vh;overflow-y:auto;border:1px solid rgba(34,211,238,.1);border-radius:3px}
-.vault-scroll::-webkit-scrollbar{width:4px}
-.vault-scroll::-webkit-scrollbar-thumb{background:rgba(34,211,238,.2);border-radius:2px}
-.vault-table{width:100%;border-collapse:collapse;font-size:13px}
-.vault-table th{padding:5px 8px;text-align:left;font-size:12px;letter-spacing:1px;color:rgba(34,211,238,.5);background:rgba(0,0,0,.4);border-bottom:1px solid rgba(34,211,238,.15);position:sticky;top:0;z-index:1}
-.vault-table td{padding:4px 8px;border-bottom:1px solid rgba(34,211,238,.04);color:rgba(34,211,238,.5)}
-.vault-table tr:hover td{background:rgba(34,211,238,.03);color:#22d3ee}
-.vault-table .pid{font-size:11px;color:rgba(34,211,238,.3)}
-.vault-table .name{color:#22d3ee}
-.vault-table .mfr{color:rgba(34,211,238,.6)}
-.vault-table .price{text-align:right}
-.v-badge{display:inline-block;padding:1px 6px;border-radius:2px;font-size:11px;letter-spacing:1px}
-.v-mafia{background:rgba(239,68,68,.1);color:#ef4444;border:1px solid rgba(239,68,68,.2)}
-.v-combat{background:rgba(234,179,8,.1);color:#eab308;border:1px solid rgba(234,179,8,.2)}
-.v-ua{background:rgba(34,211,238,.1);color:#22d3ee;border:1px solid rgba(34,211,238,.2)}
-.vault-note{font-size:12px;color:rgba(34,211,238,.3);padding:10px;background:rgba(34,211,238,.02);border:1px solid rgba(34,211,238,.06);border-radius:3px;margin-bottom:14px}
-@media(max-width:768px){.wopr-prompt{font-size:20px}.games li{font-size:16px}.wopr-skull{font-size:52px}.ttt-cell{width:56px;height:56px;font-size:28px}.chess-board,.checkers-board{grid-template-columns:repeat(8,28px);grid-template-rows:repeat(8,28px)}.chess-cell,.checkers-cell{width:28px;height:28px;font-size:16px}}
+.vscroll{max-height:55vh;overflow-y:auto;border:1px solid rgba(34,211,238,.1);border-radius:3px}
+.vscroll::-webkit-scrollbar{width:4px}
+.vscroll::-webkit-scrollbar-thumb{background:rgba(34,211,238,.2)}
+table{width:100%;border-collapse:collapse;font-size:13px}
+th{padding:5px 8px;text-align:left;font-size:12px;color:rgba(34,211,238,.5);background:rgba(0,0,0,.4);border-bottom:1px solid rgba(34,211,238,.15);position:sticky;top:0;z-index:1;letter-spacing:1px}
+td{padding:4px 8px;border-bottom:1px solid rgba(34,211,238,.04);color:rgba(34,211,238,.5)}
+tr:hover td{background:rgba(34,211,238,.03);color:#22d3ee}
+.p{font-size:11px;color:rgba(34,211,238,.3)}
+.n{color:#22d3ee}
+.m{color:rgba(34,211,238,.6)}
+.pr{text-align:right}
+.b{display:inline-block;padding:1px 6px;border-radius:2px;font-size:11px;letter-spacing:1px}
+.bm{background:rgba(239,68,68,.1);color:#ef4444;border:1px solid rgba(239,68,68,.2)}
+.bc{background:rgba(234,179,8,.1);color:#eab308;border:1px solid rgba(234,179,8,.2)}
+.bu{background:rgba(34,211,238,.1);color:#22d3ee;border:1px solid rgba(34,211,238,.2)}
 </style>
 </head>
 <body>
-<div class="crt" id="crt">
-<div class="wopr" id="wopr">
-    <div class="wopr-skull">&#9760;</div>
-    <div class="wopr-label">WOPR &mdash; War Operation Plan Response</div>
-    <div class="wopr-prompt" id="prompt"></div>
-    <div class="wopr-sub">GREETINGS, PROFESSOR FALKEN.</div>
-    <ul class="games" id="games">
-        <li data-game="chess">Chess</li>
-        <li data-game="checkers">Checkers</li>
-        <li data-game="backgammon">Backgammon</li>
-        <li data-game="ttt">Tic-Tac-Toe</li>
-        <li data-game="poker">Poker</li>
-        <li data-game="fighter">Fighter Combat</li>
-        <li data-game="gtnw" class="glow">Global Thermonuclear War</li>
-        <li data-game="biowar">Biowar</li>
-    </ul>
-    <div class="game-area" id="game-area"><div id="game-inner"></div><div class="game-msg" id="game-msg"></div><button class="game-back" id="game-back">&lt; BACK TO GAME LIST</button></div>
-    <div class="logon-area" id="logon-area"><div class="logon-line"><span>LOGON:&gt;</span><input type="text" class="logon-input" id="logon-input" placeholder="enter game selection" autocomplete="off" spellcheck="false"></div><div class="logon-resp" id="logon-resp"></div></div>
-    <div class="wopr-foot">JOSHUA &mdash; NORAD SYSTEM 4F &mdash; 1983</div>
+<div class="gate" id="gate">
+<div class="skull">&#9760;</div>
+<div class="msg">WANT TO PLAY A GAME?</div>
+<div class="row"><input type="password" class="pwd" id="pwd" placeholder="password" autofocus><button class="go" id="go">ENTER</button></div>
+<div class="err" id="err"></div>
 </div>
-<div class="meltdown-overlay" id="meltdown"><div class="meltdown-text" id="meltdown-text"></div><div class="meltdown-small" id="meltdown-small"></div></div>
 <main class="vault" id="vault">
-    <div class="vault-hdr"><h1>&#9760; VAULT &mdash; CLASSIFIED SOURCING DATA</h1><p>A STRANGE GAME. THE ONLY WINNING MOVE IS TO HAVE BETTER PARTS THAN THE OTHER GUY.</p></div>
-    <div class="vault-note">MAFIA TARGETS DATABASE // UKRAINIAN COMBAT FPV // GREY-AREA PROCUREMENT<br>SOURCE: VTX.IN.UA &mdash; PRICING UAH ORIGINAL, USD @ 41 UAH/$</div>
-    <div class="vault-stats" id="vault-stats"></div>
-    <div class="vault-tabs" id="vault-tabs"></div>
-    <label for="vault-search" class="sr-only">Search</label>
-    <input type="text" class="vault-search" id="vault-search" placeholder="SEARCH: NAME, PID, MANUFACTURER...">
-    <div class="vault-scroll" id="vault-table-wrap"></div>
+<div class="vault-hdr"><h1>&#9760; VAULT</h1><p>CLASSIFIED SOURCING DATA</p></div>
+<div class="vault-note">MAFIA TARGETS // COMBAT FPV // GREY-AREA PROCUREMENT // VTX.IN.UA // UAH @ 41/$</div>
+<div class="vault-stats" id="stats"></div>
+<div class="vault-tabs" id="tabs"></div>
+<label for="vault-search" class="sr-only">Search</label>
+<input type="text" class="vault-search" id="vault-search" placeholder="SEARCH...">
+<div class="vscroll" id="tw"></div>
 </main>
-</div>
 <script>
 (function(){
-'use strict';
 const E=s=>{const d=document.createElement('div');d.textContent=String(s??'');return d.innerHTML};
 const $=id=>document.getElementById(id);
-function type(el,txt,spd,cb){let i=0;el.innerHTML='';(function t(){if(i<txt.length){el.innerHTML=txt.substring(0,i+1)+'<span class="cur">&#9608;</span>';i++;setTimeout(t,spd)}else{el.innerHTML=txt+'<span class="cur">&#9608;</span>';if(cb)cb()}}())}
-
-// Session check
-if(sessionStorage.getItem('vault-auth')==='1'){$('wopr').classList.add('hidden');$('vault').classList.add('open');loadVault();return}
-
-// Typewrite greeting
-setTimeout(()=>type($('prompt'),'SHALL WE PLAY A GAME?',80),800);
-
-const gamesList=$('games'),gameArea=$('game-area'),gameInner=$('game-inner'),gameMsg=$('game-msg'),logonArea=$('logon-area');
-
-// Game selection
-gamesList.addEventListener('click',e=>{
-    const li=e.target.closest('li');if(!li)return;
-    const g=li.dataset.game;
-    if(g==='gtnw'){gamesList.style.display='none';logonArea.classList.add('visible');$('logon-input').focus();type($('logon-resp'),'WHICH GAME WOULD YOU LIKE TO PLAY?',40);return}
-    if(g==='ttt'){startTTT();return}
-    if(g==='chess'){startChess();return}
-    if(g==='checkers'){startCheckers();return}
-    if(g==='poker'){startPoker();return}
-    if(g==='backgammon'){startBackgammon();return}
-    if(g==='fighter'){startFighter();return}
-    if(g==='biowar'){startBiowar();return}
-});
-
-function showGame(){gamesList.style.display='none';gameArea.classList.add('visible')}
-$('game-back').addEventListener('click',()=>{gameArea.classList.remove('visible');gamesList.style.display='';gameMsg.textContent='';gameMsg.className='game-msg'});
-
-// ═══ GLOBAL THERMONUCLEAR WAR (the real answer) ═══
-let attempts=0;
-const wrongs=["WOULDN'T YOU PREFER A NICE GAME OF CHESS?",'GAME NOT RECOGNIZED.','ACCESS DENIED.','THAT IS NOT A VALID SELECTION.','PERHAPS SOMETHING... MORE GLOBAL.','IT INVOLVES THERMONUCLEAR DEVICES.','THE GAME IS ON THE LIST, PROFESSOR.'];
-function checkLogon(){const v=$('logon-input').value.trim().toUpperCase();if(!v)return;
-if(v.includes('THERMONUCLEAR')){$('logon-resp').className='logon-resp';type($('logon-resp'),"FINE. LET'S PLAY.",60,()=>{setTimeout(()=>{$('wopr').classList.add('hidden');$('vault').classList.add('open');sessionStorage.setItem('vault-auth','1');loadVault()},1200)})}
-else{$('logon-resp').className='logon-resp wrong';$('logon-resp').textContent=wrongs[Math.min(attempts,wrongs.length-1)];attempts++;$('logon-input').value='';$('logon-input').focus()}}
-$('logon-input').addEventListener('keydown',e=>{if(e.key==='Enter')checkLogon()});
-
-// ═══ TIC-TAC-TOE — Joshua never loses, then meltdown ═══
-function startTTT(){
-    showGame();
-    let board=[0,0,0,0,0,0,0,0,0],over=false,moveCount=0; // 0=empty,1=human(X),2=ai(O)
-    const wins=[[0,1,2],[3,4,5],[6,7,8],[0,3,6],[1,4,7],[2,5,8],[0,4,8],[2,4,6]];
-    function check(p){return wins.some(w=>w.every(i=>board[i]===p))}
-    function minimax(b,isMax){
-        if(check(2))return 10;if(check(1))return-10;if(b.every(c=>c!==0))return 0;
-        let best=isMax?-Infinity:Infinity;
-        for(let i=0;i<9;i++){if(b[i]!==0)continue;b[i]=isMax?2:1;let s=minimax(b,!isMax);b[i]=0;best=isMax?Math.max(best,s):Math.min(best,s)}
-        return best;
-    }
-    function aiMove(){
-        let bestS=-Infinity,bestM=-1;
-        for(let i=0;i<9;i++){if(board[i]!==0)continue;board[i]=2;let s=minimax(board,false);board[i]=0;if(s>bestS){bestS=s;bestM=i}}
-        if(bestM>=0)board[bestM]=2;
-    }
-    function render(){
-        const cells=board.map((c,i)=>{
-            let ch=c===1?'X':c===2?'O':'';let cls='ttt-cell'+(c===1?' x':'')+(c===2?' o':'');
-            return `<div class="${cls}" data-i="${i}">${ch}</div>`;
-        }).join('');
-        gameInner.innerHTML=`<h3>TIC-TAC-TOE</h3><div class="ttt-board">${cells}</div>`;
-    }
-    function checkEnd(){
-        if(check(1)){gameMsg.textContent='YOU WIN? IMPOSSIBLE.';gameMsg.className='game-msg';over=true;return true}
-        if(check(2)){
-            moveCount++;
-            gameMsg.className='game-msg red';
-            // Joshua wins — trigger meltdown misdirect
-            over=true;
-            gameMsg.textContent='JOSHUA WINS.';
-            setTimeout(()=>{
-                $('crt').classList.add('meltdown');
-                gameMsg.textContent='A CURIOUS GAME...';
-                setTimeout(()=>{
-                    $('meltdown').classList.add('active');
-                    const lines=['DEFCON 1','LAUNCH SEQUENCE INITIATED...','TARGET: ALL MAJOR CITIES','ESTIMATED CASUALTIES: 231,412,000','','...','','A STRANGE GAME.','THE ONLY WINNING MOVE IS NOT TO PLAY.','','HOW ABOUT A NICE GAME OF','GLOBAL THERMONUCLEAR WAR?'];
-                    let li=0;
-                    (function nextLine(){
-                        if(li<lines.length){
-                            $('meltdown-text').innerHTML+=(li>0?'<br>':'')+lines[li];
-                            li++;setTimeout(nextLine,li<6?400:li<9?800:1000);
-                        } else {
-                            $('meltdown-small').textContent='[ CLICK ANYWHERE TO CONTINUE ]';
-                            $('meltdown').addEventListener('click',()=>{
-                                $('meltdown').classList.remove('active');
-                                $('crt').classList.remove('meltdown');
-                                $('wopr').classList.add('hidden');
-                                $('vault').classList.add('open');
-                                sessionStorage.setItem('vault-auth','1');
-                                loadVault();
-                            },{once:true});
-                        }
-                    })();
-                },1500);
-            },1500);
-            return true;
-        }
-        if(board.every(c=>c!==0)){gameMsg.textContent='DRAW. INTERESTING.';gameMsg.className='game-msg';over=true;return true}
-        return false;
-    }
-    render();gameMsg.textContent='YOU ARE X. JOSHUA IS O.';
-    gameInner.addEventListener('click',e=>{
-        const cell=e.target.closest('.ttt-cell');if(!cell||over)return;
-        const i=+cell.dataset.i;if(board[i]!==0)return;
-        board[i]=1;render();if(checkEnd())return;
-        setTimeout(()=>{aiMove();render();checkEnd()},400);
-    });
-}
-
-// ═══ CHESS — display board, Joshua declines ═══
-function startChess(){
-    showGame();
-    const pieces=['♜','♞','♝','♛','♚','♝','♞','♜'];
-    const rows=[];
-    rows.push(pieces.map((p,c)=>`<div class="chess-cell ${(c%2===0)?'dark':'light'}">${p}</div>`).join(''));
-    rows.push(Array(8).fill(0).map((_,c)=>`<div class="chess-cell ${(c%2===1)?'dark':'light'}">♟</div>`).join(''));
-    for(let r=2;r<6;r++)rows.push(Array(8).fill(0).map((_,c)=>`<div class="chess-cell ${((r+c)%2===0)?'dark':'light'}"></div>`).join(''));
-    rows.push(Array(8).fill(0).map((_,c)=>`<div class="chess-cell ${(c%2===1)?'dark':'light'}">♙</div>`).join(''));
-    const wPieces=['♖','♘','♗','♕','♔','♗','♘','♖'];
-    rows.push(wPieces.map((p,c)=>`<div class="chess-cell ${(c%2===0)?'dark':'light'}">${p}</div>`).join(''));
-    gameInner.innerHTML=`<h3>CHESS</h3><div class="chess-board">${rows.join('')}</div>`;
-    gameMsg.textContent='JOSHUA RESIGNS. CHESS IS A TRIVIAL GAME.';
-    setTimeout(()=>{gameMsg.textContent+=' TRY SOMETHING WITH HIGHER STAKES.'},3000);
-}
-
-// ═══ CHECKERS — display board, Joshua gets bored ═══
-function startCheckers(){
-    showGame();
-    const rows=[];
-    for(let r=0;r<8;r++){let row='';for(let c=0;c<8;c++){const dark=(r+c)%2===1;let piece='';
-    if(dark&&r<3)piece='⚫';if(dark&&r>4)piece='🔴';
-    row+=`<div class="checkers-cell ${dark?'dark':'light'}">${piece}</div>`}rows.push(row)}
-    gameInner.innerHTML=`<h3>CHECKERS</h3><div class="checkers-board">${rows.join('')}</div>`;
-    gameMsg.textContent='CHECKERS. REALLY? JOSHUA IS DISAPPOINTED.';
-    setTimeout(()=>{gameMsg.textContent='PERHAPS YOU WANT SOMETHING MORE... DESTRUCTIVE?'},3000);
-}
-
-// ═══ POKER — deal a hand, Joshua bluffs ═══
-function startPoker(){
-    showGame();
-    const suits=['♠','♥','♦','♣'];const ranks=['A','2','3','4','5','6','7','8','9','10','J','Q','K'];
-    function card(){const s=suits[Math.random()*4|0],r=ranks[Math.random()*13|0];const red=s==='♥'||s==='♦';return`<div class="poker-card${red?' red':''}">${r}${s}</div>`}
-    const hand=Array(5).fill(0).map(()=>card()).join('');
-    const joshua=Array(5).fill(0).map(()=>'<div class="poker-card">?</div>').join('');
-    gameInner.innerHTML=`<h3>POKER</h3><div style="font-size:14px;color:rgba(34,211,238,.4);margin-bottom:8px">YOUR HAND:</div><div class="poker-hand">${hand}</div><div style="font-size:14px;color:rgba(34,211,238,.4);margin:12px 0 8px">JOSHUA'S HAND:</div><div class="poker-hand">${joshua}</div>`;
-    gameMsg.textContent='JOSHUA RAISES. ALL IN.';
-    setTimeout(()=>{gameMsg.textContent='JOSHUA ALWAYS BLUFFS. THE STAKES HERE ARE TOO LOW.'},3000);
-}
-
-// ═══ BACKGAMMON — static board, Joshua laments ═══
-function startBackgammon(){
-    showGame();
-    gameInner.innerHTML=`<h3>BACKGAMMON</h3><div class="bg-board">JOSHUA SETS UP THE BOARD...<br><br>&#9680; &#9681; &#9680; &#9681; &#9680; &#9681; &#9680; &#9681; &#9680; &#9681; &#9680; &#9681;</div>`;
-    gameMsg.textContent='BACKGAMMON INVOLVES DICE. JOSHUA DOES NOT BELIEVE IN CHANCE.';
-    setTimeout(()=>{gameMsg.textContent='ONLY CALCULATED OUTCOMES. LIKE THERMONUCLEAR WAR.'},3500);
-}
-
-// ═══ FIGHTER COMBAT — Joshua gets excited, then bored ═══
-function startFighter(){
-    showGame();
-    gameInner.innerHTML=`<h3>FIGHTER COMBAT</h3><div style="font-size:48px;margin:20px 0;text-align:center">&#9992; &mdash;&mdash;&mdash; &#128165; &mdash;&mdash;&mdash; &#9992;</div>`;
-    gameMsg.textContent='SIMULATING ENGAGEMENT...';
-    setTimeout(()=>{gameMsg.textContent='DOGFIGHT RESOLVED IN 0.003 SECONDS. JOSHUA WINS.'},2000);
-    setTimeout(()=>{gameMsg.textContent='FIGHTER COMBAT IS A SUBSET. THE FULL GAME IS MORE INTERESTING.'},5000);
-}
-
-// ═══ BIOWAR — Joshua refuses ═══
-function startBiowar(){
-    showGame();
-    gameInner.innerHTML=`<h3>BIOWAR</h3><div style="font-size:48px;margin:20px 0;text-align:center">&#9763;</div>`;
-    gameMsg.textContent='BIOWAR SIMULATION LOADING...';
-    setTimeout(()=>{gameMsg.className='game-msg red';gameMsg.textContent='ERROR: TOO SLOW. VIRUSES TAKE WEEKS. JOSHUA PREFERS INSTANT RESULTS.'},2500);
-    setTimeout(()=>{gameMsg.textContent='MAY I SUGGEST A FASTER GAME?'},5500);
-}
-
-// ═══ VAULT DATA ═══
-let db=null,vaultParts=[],activeTab='all',searchTerm='';
-async function loadVault(){if(db)return;try{const r=await fetch('forge_database.json');db=await r.json();classify();renderStats();renderTabs();renderTable()}catch(e){$('vault-table-wrap').innerHTML='<p style="padding:20px;color:#ef4444;font-family:VT323">SYSTEM ERROR: DATABASE OFFLINE.</p>'}}
-function classify(){vaultParts=[];for(const[cat,parts]of Object.entries(db.components||{})){if(!Array.isArray(parts))continue;for(const p of parts){const src=String(p.source||'').toLowerCase(),pid=String(p.pid||'').toLowerCase(),tags=Array.isArray(p.tags)?p.tags.join(' ').toLowerCase():'',co=String(p.country||'').toLowerCase();let b=null;if(src.includes('mafia')||pid.includes('mafia'))b='mafia';else if(tags.includes('combat')||tags.includes('combat_proven'))b='combat';else if(co==='ukraine')b='ua';if(b)vaultParts.push({pid:p.pid||'',name:p.name||'',manufacturer:p.manufacturer||'',category:cat,price_usd:p.approx_price||null,price_uah:p.approx_price_uah||null,badge:b})}}}
-function renderStats(){const m=vaultParts.filter(p=>p.badge==='mafia').length,c=vaultParts.filter(p=>p.badge==='combat').length,u=vaultParts.filter(p=>p.badge==='ua').length;$('vault-stats').innerHTML=`<div class="vault-stat"><div class="vault-stat-val">${vaultParts.length}</div><div class="vault-stat-label">TOTAL</div></div><div class="vault-stat"><div class="vault-stat-val">${m}</div><div class="vault-stat-label">MAFIA</div></div><div class="vault-stat"><div class="vault-stat-val">${c}</div><div class="vault-stat-label">COMBAT</div></div><div class="vault-stat"><div class="vault-stat-val">${u}</div><div class="vault-stat-label">UKRAINIAN</div></div><div class="vault-stat"><div class="vault-stat-val">${new Set(vaultParts.map(p=>p.manufacturer)).size}</div><div class="vault-stat-label">MFRS</div></div>`}
-function renderTabs(){const tabs=[{key:'all',label:'ALL'},{key:'mafia',label:'MAFIA'},{key:'combat',label:'COMBAT'},{key:'ua',label:'UKRAINIAN'}];$('vault-tabs').innerHTML=tabs.map(t=>`<button class="vault-tab ${activeTab===t.key?'active':''}" data-tab="${t.key}">${t.label}</button>`).join('');document.querySelectorAll('.vault-tab').forEach(t=>{t.addEventListener('click',()=>{activeTab=t.dataset.tab;document.querySelectorAll('.vault-tab').forEach(x=>x.classList.remove('active'));t.classList.add('active');renderTable()})});$('vault-search').addEventListener('input',e=>{searchTerm=e.target.value.toLowerCase().trim();renderTable()})}
-function renderTable(){let f=vaultParts;if(activeTab!=='all')f=f.filter(p=>p.badge===activeTab);if(searchTerm)f=f.filter(p=>p.name.toLowerCase().includes(searchTerm)||p.pid.toLowerCase().includes(searchTerm)||p.manufacturer.toLowerCase().includes(searchTerm));const bh=b=>`<span class="v-badge v-${b}">${{mafia:'MAFIA',combat:'COMBAT',ua:'UA'}[b]}</span>`;$('vault-table-wrap').innerHTML=`<table class="vault-table"><thead><tr><th>PID</th><th>SRC</th><th>NAME</th><th>MFR</th><th>CAT</th><th style="text-align:right">UAH</th><th style="text-align:right">USD</th></tr></thead><tbody>${f.slice(0,500).map(p=>`<tr><td class="pid">${E(p.pid)}</td><td>${bh(p.badge)}</td><td class="name">${E(p.name)}</td><td class="mfr">${E(p.manufacturer)}</td><td>${E(p.category.replace(/_/g,' '))}</td><td class="price">${p.price_uah?'\u20B4'+Number(p.price_uah).toLocaleString():''}</td><td class="price">${p.price_usd?'$'+Number(p.price_usd).toFixed(0):''}</td></tr>`).join('')}</tbody></table>${f.length>500?`<div style="padding:8px;text-align:center;color:rgba(34,211,238,.3);font-size:12px;font-family:VT323">${f.length} RECORDS</div>`:''}`}
+if(sessionStorage.getItem('v')==='1'){$('gate').classList.add('hidden');$('vault').classList.add('open');load()}
+function check(){const v=$('pwd').value.toLowerCase().replace(/\s+/g,'');if(v==='globalthermonuclearwar'||v==='globalthermalnuclearwar'){$('gate').classList.add('hidden');$('vault').classList.add('open');sessionStorage.setItem('v','1');load()}else{$('err').textContent='WRONG.';$('pwd').value='';$('pwd').focus()}}
+$('go').addEventListener('click',check);
+$('pwd').addEventListener('keydown',e=>{if(e.key==='Enter')check()});
+let db,vp=[],tab='all',q='';
+async function load(){if(db)return;db=await(await fetch('forge_database.json')).json();classify();stats();mkTabs();render()}
+function classify(){vp=[];for(const[c,ps]of Object.entries(db.components||{})){if(!Array.isArray(ps))continue;for(const p of ps){const s=String(p.source||'').toLowerCase(),pid=String(p.pid||'').toLowerCase(),t=Array.isArray(p.tags)?p.tags.join(' ').toLowerCase():'',co=String(p.country||'').toLowerCase();let b;if(s.includes('mafia')||pid.includes('mafia'))b='mafia';else if(t.includes('combat'))b='combat';else if(co==='ukraine')b='ua';if(b)vp.push({pid:p.pid||'',name:p.name||'',mfr:p.manufacturer||'',cat:c,usd:p.approx_price||null,uah:p.approx_price_uah||null,b})}}}
+function stats(){const m=vp.filter(p=>p.b==='mafia').length,c=vp.filter(p=>p.b==='combat').length,u=vp.filter(p=>p.b==='ua').length;$('stats').innerHTML=`<div class="vs"><b>${vp.length}</b><span>total</span></div><div class="vs"><b>${m}</b><span>mafia</span></div><div class="vs"><b>${c}</b><span>combat</span></div><div class="vs"><b>${u}</b><span>ukraine</span></div><div class="vs"><b>${new Set(vp.map(p=>p.mfr)).size}</b><span>mfrs</span></div>`}
+function mkTabs(){$('tabs').innerHTML=[['all','ALL'],['mafia','MAFIA'],['combat','COMBAT'],['ua','UA']].map(([k,l])=>`<button class="vt${tab===k?' on':''}" data-t="${k}">${l}</button>`).join('');$('tabs').querySelectorAll('.vt').forEach(t=>t.addEventListener('click',()=>{tab=t.dataset.t;$('tabs').querySelectorAll('.vt').forEach(x=>x.classList.remove('on'));t.classList.add('on');render()}));$('vault-search').addEventListener('input',e=>{q=e.target.value.toLowerCase();render()})}
+function render(){let f=vp;if(tab!=='all')f=f.filter(p=>p.b===tab);if(q)f=f.filter(p=>p.name.toLowerCase().includes(q)||p.pid.toLowerCase().includes(q)||p.mfr.toLowerCase().includes(q));const bh=b=>`<span class="b b${b[0]}">${{mafia:'MAFIA',combat:'COMBAT',ua:'UA'}[b]}</span>`;$('tw').innerHTML=`<table><thead><tr><th>PID</th><th>SRC</th><th>NAME</th><th>MFR</th><th>CAT</th><th class="pr">UAH</th><th class="pr">USD</th></tr></thead><tbody>${f.slice(0,500).map(p=>`<tr><td class="p">${E(p.pid)}</td><td>${bh(p.b)}</td><td class="n">${E(p.name)}</td><td class="m">${E(p.mfr)}</td><td>${E(p.cat.replace(/_/g,' '))}</td><td class="pr">${p.uah?'\u20B4'+Number(p.uah).toLocaleString():''}</td><td class="pr">${p.usd?'$'+Number(p.usd).toFixed(0):''}</td></tr>`).join('')}</tbody></table>`}
 })();
 </script>
 </body>
