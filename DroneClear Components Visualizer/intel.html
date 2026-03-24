@@ -60,10 +60,9 @@
 .meta{margin-top:8px;display:flex;gap:8px;font-size:.67rem;color:var(--text-muted);
   align-items:center;border-top:1px solid var(--border-color);padding-top:7px}
 .meta a{color:var(--accent-teal);text-decoration:none;margin-left:auto;font-weight:600}
-.ticker{overflow:hidden;height:30px;border-bottom:1px solid var(--border-color);display:none;background:var(--bg-main)}
+.ticker{overflow:hidden;height:30px;border-bottom:1px solid var(--border-color);display:none;background:var(--bg-main);position:sticky;top:0;z-index:10}
 body.lobby-mode .ticker{display:block}
-.ticker-inner{display:inline-flex;white-space:nowrap;animation:tick 90s linear infinite}
-@keyframes tick{0%{transform:translateX(0)}100%{transform:translateX(-50%)}}
+.ticker-inner{display:inline-flex;white-space:nowrap;will-change:transform}
 .tick-item{padding:0 24px;font-size:.72rem;color:var(--text-muted);line-height:30px;
   border-right:1px solid var(--border-color);font-family:'JetBrains Mono',monospace}
 .tick-item b{color:var(--accent-teal)}
@@ -71,6 +70,13 @@ body.lobby-mode .toolbar,.lobby-mode .statsbar{display:none}
 body.lobby-mode .feed-main{padding:12px 16px}
 body.lobby-mode .cat-tabs{padding:10px 16px 0}
 body.lobby-mode .grid{gap:10px}
+/* Lobby exit button stays visible, fixed top-right */
+.lobby-exit{display:none;position:fixed;top:10px;right:14px;z-index:100;
+  padding:6px 14px;border-radius:4px;border:1px solid var(--accent-teal);
+  background:rgba(0,0,0,.8);color:var(--accent-teal);font-size:.75rem;
+  cursor:pointer;font-family:'JetBrains Mono',monospace;backdrop-filter:blur(4px)}
+body.lobby-mode .lobby-exit{display:block}
+body.lobby-mode .lobby-btn{display:none}
 .msg{text-align:center;padding:60px 20px;color:var(--text-muted);font-family:'JetBrains Mono',monospace}
 </style>
 </head>
@@ -86,6 +92,7 @@ body.lobby-mode .grid{gap:10px}
 </div>
 
 <div class="ticker"><div class="ticker-inner" id="tickerInner"></div></div>
+<button class="lobby-exit" onclick="toggleLobby(this)">✕ Exit Lobby</button>
 
 <div class="cat-tabs">
   <button class="cat-tab active" data-cat="all">All</button>
@@ -174,11 +181,59 @@ document.querySelectorAll('.sb').forEach(b=>b.addEventListener('click',e=>{
 
 document.getElementById('q').addEventListener('input',e=>{curQ=e.target.value;render();});
 
+// Ticker driven by JS — speed tied to page scroll position for visual sync
+let tickerPos=0, tickerWidth=0, tickerRaf=null;
+function animateTicker(){
+  const inner=document.getElementById('tickerInner');
+  if(!inner) return;
+  if(!tickerWidth) tickerWidth=inner.scrollWidth/2||1;
+  tickerPos+=0.4; // px per frame — slow crawl
+  if(tickerPos>=tickerWidth) tickerPos=0;
+  inner.style.transform=`translateX(-${tickerPos}px)`;
+  tickerRaf=requestAnimationFrame(animateTicker);
+}
+
+// Gentle auto-scroll — pauses when user touches/scrolls, resumes after 2s
+let userScrolling=false, scrollResumeTimer=null, scrollEl=null;
+function startAutoScroll(){
+  scrollEl=document.querySelector('[style*="overflow-y"]')||document.scrollingElement||window;
+  function tick(){
+    if(!document.body.classList.contains('lobby-mode')) return;
+    if(!userScrolling){
+      const el=document.documentElement;
+      const atBottom=(el.scrollTop+el.clientHeight)>=el.scrollHeight-20;
+      if(atBottom) window.scrollTo({top:0});
+      else window.scrollBy({top:0.8});
+    }
+    requestAnimationFrame(tick);
+  }
+  requestAnimationFrame(tick);
+}
+function pauseAutoScroll(){
+  userScrolling=true;
+  clearTimeout(scrollResumeTimer);
+  scrollResumeTimer=setTimeout(()=>{userScrolling=false;},2500);
+}
+window.addEventListener('wheel',pauseAutoScroll,{passive:true});
+window.addEventListener('touchstart',pauseAutoScroll,{passive:true});
+window.addEventListener('touchmove',pauseAutoScroll,{passive:true});
+window.addEventListener('keydown',e=>{
+  if(['ArrowUp','ArrowDown','PageUp','PageDown','Home','End',' '].includes(e.key)) pauseAutoScroll();
+});
+
 function toggleLobby(btn){
   const on=document.body.classList.toggle('lobby-mode');
-  btn.textContent=on?'✕ Exit':'⊞ Lobby';
-  if(on){lobbyTimer=setInterval(()=>{window.scrollBy({top:1,behavior:'smooth'});if((window.innerHeight+window.scrollY)>=document.body.scrollHeight-10)window.scrollTo({top:0,behavior:'smooth'});},35);}
-  else{clearInterval(lobbyTimer);window.scrollTo({top:0,behavior:'smooth'});}
+  if(on){
+    animateTicker();
+    startAutoScroll();
+  } else {
+    cancelAnimationFrame(tickerRaf);
+    tickerRaf=null;
+    tickerPos=0;
+    const inner=document.getElementById('tickerInner');
+    if(inner) inner.style.transform='translateX(0)';
+    window.scrollTo({top:0,behavior:'smooth'});
+  }
 }
 
 // Check URL params for pre-selected category or lobby mode
