@@ -52,6 +52,42 @@ Full parse of BUSHA/targets@mafia-targets repo (Ukrainian MafiaLRS ELRS fork).
 
 ---
 
+## Session 2026-03-23 — Intel Hub, Miners, Currency Picker, 7-Company Deep Mine
+
+**Agent**: Claude
+**Branch**: `master`
+**Commits**: 20+
+
+### Summary
+Built Industry Intel hub (/intel/) with Commercial/Defense/Finance tabs, created 4 miner scripts for automated data extraction, added global currency picker (11 currencies), deep-mined 7 defense companies (Shield AI, Fortem, Red Cat, Tekever, XTEND, Firestorm, Doodle Labs), mined Obsidian Sensors from spec sheet, fixed mobile drawer, enriched GCS/thermal/contracts/funding data, completed parts pricing to 99.7%, and wrote comprehensive extraction plan for 20+ future miners.
+
+### Changes
+| Category | Description |
+|----------|-------------|
+| feat | **Industry Intel hub** (`/intel/`) — 3-tab dashboard: Commercial (sources, manufacturers), Defense (contracts, Blue UAS, regulatory), Finance (funding rounds, deals) |
+| feat | **Currency picker** — 11 currencies (USD/EUR/GBP/UAH/PLN/HRK/TRY/ILS/AUD/CAD/JPY), persists via localStorage, wired to all price displays |
+| feat | Component cloning (FEAT-001), Build CSV export (FEAT-002), Audit print/PDF (FEAT-009) |
+| feat | Modal price/country/source chips — replace raw spec rows |
+| feat | 4 miner scripts: mine_dronelife.py, mine_sbir.py, mine_blueuas.py, mine_all.py |
+| fix | Mobile build drawer (100dvh), Obsidian country USA (was Ukraine from shop sync) |
+| fix | UAH→USD conversion for 163 parts |
+| data | **Obsidian Sensors** deep mine — 6 products from spec sheet + research |
+| data | **7-company intel mine**: Shield AI ($12B talks), Fortem (Replicator 2), Red Cat (RCAT), Tekever (€1.33B unicorn), XTEND, Firestorm, Doodle Labs |
+| data | Parts pricing: 6% → 99.7% (3,528/3,538) |
+| data | Thermal sensors: 28% → 66%, Contracts: 14% → 26%, Funding: 22% → 36%, GCS: 26% → 51% |
+| data | forge_intel.json: 28 funding + 29 contracts + 8 grants = 65 entries |
+| debt | 12/12 DEBT closed, 11/13 POLISH closed (2 WONTFIX), 3/8 FEAT closed |
+| docs | OpenIPC handbook section, Industry Intelligence handbook page |
+| docs | EXTRACTION_PLAN.md — 20+ miner architecture, 4-week schedule |
+| docs | Obsidian Sensors intel report (EN + HR PDFs) |
+
+### Backlog Updates
+- FEAT-001/002/009: Closed
+- POLISH-003/009/010/011/012/015/016/017/018/019/020: Closed
+- Remaining: FEAT-003/004/005/006/008 (need backend)
+
+
+
 
 ---
 ## Session 2026-03-22 — vtx.in.ua Database Cross-Check & Ukrainian Component Import
