@@ -20,8 +20,21 @@
         .intel-tab:hover{color:var(--text-main)}
         .intel-tab.active{color:var(--accent-red);border-bottom-color:var(--accent-red)}
         .intel-panel{display:none}.intel-panel.active{display:block}
-        .intel-card{background:var(--bg-panel);border:1px solid var(--border-color);border-radius:var(--radius-md);padding:18px;margin-bottom:12px;transition:border-color .2s}
-        .intel-card:hover{border-color:var(--text-muted)}
+        .intel-card{background:var(--bg-panel);border:1px solid var(--border-color);border-radius:var(--radius-md);padding:18px;margin-bottom:12px;transition:all .2s;cursor:pointer}
+        .intel-card:hover{border-color:var(--accent-red);transform:translateY(-1px)}
+        .intel-card.expanded{border-color:var(--accent-red)}
+        .intel-card-expand{display:none;margin-top:12px;padding-top:12px;border-top:1px solid var(--border-color)}
+        .intel-card.expanded .intel-card-expand{display:block}
+        .intel-card-note{font-size:13px;color:var(--text-main);line-height:1.6;margin-bottom:10px}
+        .intel-card-actions{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+        .intel-search-link{display:inline-flex;align-items:center;gap:4px;padding:5px 12px;
+          border-radius:4px;border:1px solid var(--accent-red);color:var(--accent-red);
+          font-size:11px;font-family:'JetBrains Mono',monospace;text-decoration:none;
+          background:rgba(239,68,68,.08);transition:all .15s;white-space:nowrap}
+        .intel-search-link:hover{background:rgba(239,68,68,.18)}
+        .intel-expand-hint{font-size:10px;color:var(--text-muted);font-family:'JetBrains Mono',monospace;
+          margin-left:auto;transition:opacity .2s}
+        .intel-card:hover .intel-expand-hint{opacity:0}
         .intel-card-header{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;margin-bottom:8px}
         .intel-card-title{font-size:15px;font-weight:700;color:var(--text-main)}
         .intel-card-meta{font-size:11px;color:var(--text-muted);font-family:'JetBrains Mono',monospace}
@@ -121,6 +134,32 @@
         'use strict';
 
         const E = s => { const d=document.createElement('div'); d.textContent=String(s??''); return d.innerHTML; };
+
+        // ── Expandable card helpers ──────────────────────────
+        document.addEventListener('click', e => {
+            const card = e.target.closest('.intel-card[data-expandable]');
+            if (!card) return;
+            card.closest('section,div')
+                ?.querySelectorAll('.intel-card.expanded')
+                .forEach(c => { if (c !== card) c.classList.remove('expanded'); });
+            card.classList.toggle('expanded');
+        });
+
+        function searchLinks(entry) {
+            const term = entry.company || entry.awardee || entry.program || '';
+            const q = encodeURIComponent(term + ' UAS drone');
+            const src = (entry.source || '').replace(/^https?:\/\//, '').split('/')[0];
+            return (src ? `<a class="intel-search-link" href="https://${src}" target="_blank" rel="noopener">↗ ${src}</a>` : '')
+                 + `<a class="intel-search-link" href="https://www.google.com/search?q=${q}" target="_blank" rel="noopener">🔍 Google</a>`;
+        }
+
+        function expandPanel(entry) {
+            const note = entry.note || '';
+            return `<div class="intel-card-expand">
+                ${note ? `<div class="intel-card-note">${E(note)}</div>` : ''}
+                <div class="intel-card-actions">${searchLinks(entry)}</div>
+            </div>`;
+        }
 
         let intel = null;
         let db = null;
@@ -330,7 +369,7 @@
             const filter = activeFilter.fin;
             const filtered = filter === 'all' ? deals : deals.filter(d => d.type === filter);
             document.getElementById('fin-deals').innerHTML = filtered.map(d => `
-                <div class="intel-card">
+                <div class="intel-card" data-expandable>
                     <div class="intel-card-header">
                         <div>
                             <div class="intel-card-title">${E(d.company)}</div>
@@ -338,10 +377,9 @@
                         </div>
                         <span class="intel-badge badge-${badgeType(d.type)}">${E(d.type)}</span>
                     </div>
-                    <div class="intel-amount">${E(d.amount)}</div>
-                    ${d.valuation ? `<div style="font-size:12px;color:var(--text-muted);margin-top:2px">Valuation: ${E(d.valuation)}</div>` : ''}
-                    <div class="intel-card-body" style="margin-top:6px">${E(d.note)}</div>
-                    ${d.source ? `<div class="intel-card-meta" style="margin-top:6px">Source: ${E(d.source)}</div>` : ''}
+                    <div class="intel-amount" style="color:var(--accent-red)">${E(d.amount)}${d.valuation ? ` <span style="font-size:12px;color:var(--text-muted)">· val ${E(d.valuation)}</span>` : ''}</div>
+                    ${expandPanel(d)}
+                    <span class="intel-expand-hint">tap for details ›</span>
                 </div>`).join('');
         }
 
