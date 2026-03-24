@@ -49,7 +49,7 @@
 .statsbar b{color:var(--accent-teal)}
 
 /* ── Cards ── */
-.feed-main{padding:12px 16px}
+.feed-main{padding:12px 16px;overflow-y:auto;-webkit-overflow-scrolling:touch}
 .grid{display:grid;grid-template-columns:1fr;gap:14px}
 @media(min-width:700px){.grid{grid-template-columns:repeat(2,1fr)}}
 @media(min-width:1400px){.grid{grid-template-columns:repeat(3,1fr)}}
@@ -66,10 +66,10 @@ border-left:3px solid transparent;
 .cat-dot{width:6px;height:6px;border-radius:50%;display:inline-block;margin-right:4px;vertical-align:middle;flex-shrink:0}
 .badge{display:inline-block;font-size:.68rem;font-family:'JetBrains Mono',monospace;padding:3px 8px;
   border-radius:3px;margin-bottom:5px;font-weight:700;text-transform:uppercase;letter-spacing:.04em}
-.s-defensescoop{background:rgba(59,130,246,.15);color:#60a5fa}
-.s-defensenews{background:rgba(168,85,247,.15);color:#c084fc}
-.s-breakingdefense{background:rgba(249,115,22,.15);color:#fb923c}
-.s-twz{background:rgba(34,197,94,.15);color:#4ade80}
+.s-defensescoop{background:rgba(148,163,184,.12);color:#94a3b8}
+.s-defensenews{background:rgba(148,163,184,.12);color:#94a3b8}
+.s-breakingdefense{background:rgba(148,163,184,.12);color:#94a3b8}
+.s-twz{background:rgba(148,163,184,.12);color:#94a3b8}
 .s-suasnews,.s-dronelife,.s-militarnyi,.s-unmannedairspace,.s-defenceindeu{background:rgba(78,205,196,.12);color:#4ECDC4}
 .card h3{font-size:1rem;color:var(--text-main);line-height:1.45;margin-bottom:8px;font-weight:700;letter-spacing:-.01em}
 .card .sum{font-size:.85rem;color:var(--text-muted);line-height:1.6;display:-webkit-box;
@@ -151,7 +151,7 @@ const SRC_CLS={defensescoop:'s-defensescoop',defensenews:'s-defensenews',breakin
 const CAT_COLORS={defense:'#ef4444',financial:'#f59e0b',commercial:'#4ECDC4'};
 const DEFENSE_KW=['pentagon','dod ','department of defense','military','army','navy','air force','marine corps','replicator','counter-uas','c-uas','jiatf','dawg','diu','ndaa','blue uas','combat','warfare','warfighter','deployed','tactical','darpa','socom','centcom','indopacom','program of record','weapon system','munition','loitering'];
 const FINANCE_KW=['billion','million','contract worth','contract valued','contract award','awarded a','funding','investment','raise','series a','series b','ipo','acquisition','merger','valuation','budget request','procurement','rfp ','fiscal year','fy2','fy3','defense budget','sbir','sttr','ota ','other transaction'];
-function categorize(a){const t=((a.title||'')+(a.summary||'')+(a.body_text||'')).toLowerCase();const d=DEFENSE_KW.filter(k=>t.includes(k)).length;const f=FINANCE_KW.filter(k=>t.includes(k)).length;if(f>=2&&f>=d*.6)return'financial';if(d>=2)return'defense';return'commercial';}
+function categorize(a){const t=((a.title||'')+(a.summary||'')+(a.body_text||'')).toLowerCase();const d=DEFENSE_KW.filter(k=>t.includes(k)).length;const f=FINANCE_KW.filter(k=>t.includes(k)).length;if(d>=3)return'defense';if(f>=2&&f>=d*.6)return'financial';if(d>=2)return'defense';return'commercial';}
 let all=[],curCat='all',curSrc='all',curQ='',lobbyTimer=null;
 
 function card(a){
@@ -198,8 +198,11 @@ function render(){
 // Category tabs
 document.querySelectorAll('.chip[data-cat]').forEach(b=>b.addEventListener('click',e=>{
   curCat=e.currentTarget.dataset.cat;
+  curSrc='all';
   document.querySelectorAll('.chip[data-cat]').forEach(x=>x.classList.remove('active'));
   e.currentTarget.classList.add('active');
+  document.querySelectorAll('.chip[data-src]').forEach(x=>x.classList.remove('active'));
+  document.querySelector('.chip[data-src="all"]')?.classList.add('active');
   render();
 }));
 
