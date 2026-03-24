@@ -88,7 +88,13 @@ body.lobby-mode .lobby-btn{display:none}
     <div class="feed-title">// INTEL FEED</div>
     <div class="feed-sub">Defense news — curated &amp; indexed · 4 sources · live pipeline</div>
   </div>
-  <button class="lobby-btn" style="margin-left:auto;margin-top:4px" onclick="toggleLobby(this)">⊞ Lobby</button>
+  <div style="margin-left:auto;display:flex;gap:8px;align-items:center;margin-top:4px">
+    <label id="autoScrollLabel" style="display:flex;align-items:center;gap:5px;font-size:.73rem;color:var(--text-muted);cursor:pointer;font-family:'JetBrains Mono',monospace;user-select:none">
+      <input type="checkbox" id="autoScrollToggle" style="accent-color:var(--accent-teal);width:13px;height:13px;cursor:pointer">
+      auto-scroll
+    </label>
+    <button class="lobby-btn" onclick="toggleLobby(this)">⊞ Lobby</button>
+  </div>
 </div>
 
 <div class="ticker"><div class="ticker-inner" id="tickerInner"></div></div>
@@ -196,10 +202,10 @@ function animateTicker(){
 // Gentle auto-scroll — pauses when user touches/scrolls, resumes after 2s
 let userScrolling=false, scrollResumeTimer=null, scrollEl=null;
 function startAutoScroll(){
-  scrollEl=document.querySelector('[style*="overflow-y"]')||document.scrollingElement||window;
   function tick(){
     if(!document.body.classList.contains('lobby-mode')) return;
-    if(!userScrolling){
+    const cb=document.getElementById('autoScrollToggle');
+    if(!userScrolling && cb && cb.checked){
       const el=document.documentElement;
       const atBottom=(el.scrollTop+el.clientHeight)>=el.scrollHeight-20;
       if(atBottom) window.scrollTo({top:0});
@@ -207,6 +213,8 @@ function startAutoScroll(){
     }
     requestAnimationFrame(tick);
   }
+  requestAnimationFrame(tick);
+}
   requestAnimationFrame(tick);
 }
 function pauseAutoScroll(){
@@ -244,6 +252,32 @@ if(initCat&&['defense','financial','commercial'].includes(initCat)){
   document.querySelectorAll('.cat-tab').forEach(b=>{b.classList.toggle('active',b.dataset.cat===initCat);});
 }
 if(params.get('lobby')==='1') setTimeout(()=>toggleLobby(document.querySelector('.lobby-btn')),500);
+
+// Standalone auto-scroll — works outside lobby mode too
+(function(){
+  let rafId=null;
+  function scrollLoop(){
+    const cb=document.getElementById('autoScrollToggle');
+    if(cb && cb.checked && !userScrolling){
+      const el=document.documentElement;
+      const atBottom=(el.scrollTop+el.clientHeight)>=el.scrollHeight-20;
+      if(atBottom) window.scrollTo({top:0});
+      else window.scrollBy({top:0.8});
+    }
+    rafId=requestAnimationFrame(scrollLoop);
+  }
+  const cb=document.getElementById('autoScrollToggle');
+  if(cb){
+    cb.addEventListener('change',e=>{
+      if(e.target.checked){
+        userScrolling=false;
+        scrollLoop();
+      } else {
+        cancelAnimationFrame(rafId);
+      }
+    });
+  }
+})();
 
 fetch('intel_articles.json').then(r=>{if(!r.ok)throw new Error(r.status);return r.json();})
   .then(d=>{all=d;render();})
