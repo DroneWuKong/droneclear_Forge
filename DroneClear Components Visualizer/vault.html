@@ -1,0 +1,299 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Forge</title>
+    <meta name="robots" content="noindex, nofollow">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="{% static 'base.css' %}">
+    <link rel="stylesheet" href="{% static 'layout.css' %}?v=4">
+    <link rel="stylesheet" href="{% static 'components.css' %}">
+    <script src="https://unpkg.com/@phosphor-icons/web"></script>
+    <script>(function(){document.documentElement.setAttribute('data-theme',localStorage.getItem('dc-theme')||'dark');})()</script>
+    <style>
+        .vault-gate{max-width:440px;margin:0 auto;padding:80px 24px;text-align:center;min-height:100vh;display:flex;flex-direction:column;justify-content:center;align-items:center}
+        .vault-skull{font-size:96px;color:#ef4444;opacity:0.8;animation:skull-bob 3s ease-in-out infinite;cursor:default;user-select:none}
+        @keyframes skull-bob{0%,100%{transform:translateY(0) rotate(0deg)}25%{transform:translateY(-4px) rotate(-1deg)}75%{transform:translateY(-4px) rotate(1deg)}}
+        .vault-quote{font-size:13px;color:var(--text-muted);font-style:italic;margin:20px 0 32px;line-height:1.6;max-width:360px}
+        .vault-quote span{color:#ef4444;font-style:normal}
+        .vault-input-wrap{display:flex;gap:8px;width:100%;max-width:280px}
+        .vault-pwd{flex:1;padding:10px 14px;font-size:16px;font-family:'JetBrains Mono',monospace;background:var(--bg-dark);border:1px solid var(--border-color);border-radius:6px;color:var(--text-main);text-align:center;letter-spacing:4px}
+        .vault-pwd:focus{outline:none;border-color:#ef4444;box-shadow:0 0 0 2px rgba(239,68,68,.15)}
+        .vault-pwd::placeholder{letter-spacing:1px;font-size:12px;color:var(--text-faint)}
+        .vault-enter{padding:10px 20px;background:#ef4444;color:#fff;border:none;border-radius:6px;font-size:14px;font-weight:700;cursor:pointer;font-family:'JetBrains Mono',monospace;transition:all .2s}
+        .vault-enter:hover{background:#dc2626;transform:scale(1.02)}
+        .vault-wrong{color:#ef4444;font-size:12px;font-family:'JetBrains Mono',monospace;margin-top:12px;min-height:18px}
+        .vault-hint{font-size:10px;color:var(--text-faint);margin-top:24px;opacity:0.3}
+
+        /* ═══ Main vault content (hidden until authenticated) ═══ */
+        .vault-content{display:none;max-width:1100px;margin:0 auto;padding:32px 24px}
+        .vault-content.open{display:block}
+        .vault-header{margin-bottom:24px;padding-bottom:16px;border-bottom:1px solid var(--border-color)}
+        .vault-header h1{font-size:20px;font-weight:700;font-family:'JetBrains Mono',monospace;color:var(--text-main);display:flex;align-items:center;gap:8px}
+        .vault-header h1 i{color:#ef4444}
+        .vault-header p{font-size:12px;color:var(--text-muted);margin-top:4px}
+        .vault-stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px;margin-bottom:24px}
+        .vault-stat{background:var(--bg-panel);border:1px solid var(--border-color);border-radius:6px;padding:12px;text-align:center}
+        .vault-stat-val{font-size:22px;font-weight:700;font-family:'JetBrains Mono',monospace;color:#ef4444}
+        .vault-stat-label{font-size:10px;color:var(--text-muted);text-transform:uppercase;letter-spacing:.5px;margin-top:2px}
+        .vault-tabs{display:flex;gap:2px;margin-bottom:16px}
+        .vault-tab{padding:8px 16px;font-size:12px;font-weight:600;color:var(--text-muted);background:var(--bg-panel);border:1px solid var(--border-color);border-radius:4px 4px 0 0;cursor:pointer;font-family:'JetBrains Mono',monospace;border-bottom:none;transition:all .15s}
+        .vault-tab:hover{color:var(--text-main)}
+        .vault-tab.active{color:#ef4444;background:var(--bg-dark);border-bottom:2px solid #ef4444}
+        .vault-search{width:100%;padding:8px 12px;font-size:13px;background:var(--bg-dark);border:1px solid var(--border-color);border-radius:4px;color:var(--text-main);font-family:'JetBrains Mono',monospace;margin-bottom:12px}
+        .vault-search:focus{outline:none;border-color:#ef4444}
+        .vault-scroll{max-height:60vh;overflow-y:auto;border:1px solid var(--border-color);border-radius:4px}
+        .vault-table{width:100%;border-collapse:collapse;font-size:12px}
+        .vault-table th{padding:6px 8px;text-align:left;font-size:10px;text-transform:uppercase;letter-spacing:.3px;color:var(--text-muted);background:var(--bg-dark);border-bottom:1px solid var(--border-color);position:sticky;top:0;z-index:1}
+        .vault-table td{padding:6px 8px;border-bottom:1px solid rgba(255,255,255,.03);color:var(--text-muted)}
+        .vault-table tr:hover td{background:rgba(239,68,68,.03);color:var(--text-main)}
+        .vault-table .pid{font-family:'JetBrains Mono',monospace;font-size:10px;color:#ef4444}
+        .vault-table .name{color:var(--text-main);font-weight:500}
+        .vault-table .mfr{color:var(--accent-red)}
+        .vault-table .price{font-family:'JetBrains Mono',monospace;text-align:right}
+        .vault-badge{display:inline-block;padding:1px 6px;border-radius:8px;font-size:9px;font-weight:600;font-family:'JetBrains Mono',monospace}
+        .badge-mafia{background:rgba(239,68,68,.15);color:#ef4444;border:1px solid rgba(239,68,68,.3)}
+        .badge-combat{background:rgba(234,179,8,.15);color:#eab308;border:1px solid rgba(234,179,8,.3)}
+        .badge-ua{background:rgba(59,130,246,.15);color:#60a5fa;border:1px solid rgba(59,130,246,.3)}
+        .vault-note{font-size:11px;color:var(--text-muted);padding:12px;background:rgba(239,68,68,.03);border:1px solid rgba(239,68,68,.1);border-radius:4px;margin-bottom:16px}
+        @media(max-width:768px){
+            .vault-skull{font-size:64px}
+            .vault-table{font-size:11px}
+            .vault-table th,.vault-table td{padding:4px 6px}
+        }
+    </style>
+</head>
+<body>
+    <div class="app-container" style="display:flex;flex-direction:column;min-height:100vh">
+
+        <!-- ═══ PASSWORD GATE ═══ -->
+        <div class="vault-gate" id="vault-gate">
+            <div class="vault-skull">&#9760;</div>
+            <div class="vault-quote">
+                <span>"12345?"</span> That's the stupidest combination I've ever heard in my life!<br>
+                That's the kind of thing an idiot would have on his luggage!
+            </div>
+            <div class="vault-input-wrap">
+                <input type="password" class="vault-pwd" id="vault-pwd" placeholder="&#8226;&#8226;&#8226;&#8226;&#8226;" maxlength="5" autofocus>
+                <button class="vault-enter" id="vault-go">Enter</button>
+            </div>
+            <div class="vault-wrong" id="vault-wrong"></div>
+            <div class="vault-hint">The combination is... 1... 2... 3... 4... 5.</div>
+        </div>
+
+        <!-- ═══ VAULT CONTENT (hidden until password) ═══ -->
+        <main class="vault-content" id="vault-main">
+            <div class="vault-header">
+                <h1><i class="ph ph-skull"></i> Vault</h1>
+                <p>MAFIA targets, combat-proven Ukrainian components, grey-area procurement. Not indexed. Not linked.</p>
+            </div>
+            <div class="vault-note">
+                Data sourced from vtx.in.ua MAFIA targets database and Ukrainian combat FPV manufacturers.
+                Pricing in UAH where original, with USD conversion at 41 UAH/$. These components are field-tested in active combat zones.
+            </div>
+            <div class="vault-stats" id="vault-stats"></div>
+            <div class="vault-tabs" id="vault-tabs"></div>
+            <label for="vault-search" class="sr-only">Search vault</label>
+            <input type="text" class="vault-search" id="vault-search" placeholder="Filter by name, PID, manufacturer...">
+            <div class="vault-scroll" id="vault-table-wrap"></div>
+        </main>
+    </div>
+
+    <script>
+    (function(){
+        'use strict';
+
+        const E = s => { const d=document.createElement('div'); d.textContent=String(s??''); return d.innerHTML; };
+
+        // ═══ Password gate ═══
+        const THE_COMBINATION = '12345';
+        const gate = document.getElementById('vault-gate');
+        const main = document.getElementById('vault-main');
+        const pwdInput = document.getElementById('vault-pwd');
+        const wrongEl = document.getElementById('vault-wrong');
+        let attempts = 0;
+
+        const wrongMessages = [
+            'Wrong. Try again.',
+            'Nope.',
+            'That\'s not it either.',
+            'Come on... it\'s on his luggage.',
+            'Hint: it\'s the kind of thing an idiot would have on his luggage.',
+            'Seriously? The hint is RIGHT THERE.',
+            '1... 2... 3... 4... 5.',
+        ];
+
+        function checkPassword() {
+            if (pwdInput.value === THE_COMBINATION) {
+                gate.style.display = 'none';
+                main.classList.add('open');
+                sessionStorage.setItem('vault-auth', '1');
+                loadVault();
+            } else {
+                wrongEl.textContent = wrongMessages[Math.min(attempts, wrongMessages.length - 1)];
+                attempts++;
+                pwdInput.value = '';
+                pwdInput.focus();
+                pwdInput.style.borderColor = '#ef4444';
+                setTimeout(() => { pwdInput.style.borderColor = ''; }, 600);
+            }
+        }
+
+        document.getElementById('vault-go').addEventListener('click', checkPassword);
+        pwdInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') checkPassword(); });
+
+        // Auto-unlock if already authenticated this session
+        if (sessionStorage.getItem('vault-auth') === '1') {
+            gate.style.display = 'none';
+            main.classList.add('open');
+            loadVault();
+        }
+
+        // ═══ Vault data ═══
+        let db = null;
+        let vaultParts = [];
+        let activeTab = 'all';
+
+        async function loadVault() {
+            if (db) return;
+            try {
+                const res = await fetch('forge_database.json');
+                db = await res.json();
+                classifyParts();
+                renderStats();
+                renderTabs();
+                renderTable();
+            } catch(e) {
+                document.getElementById('vault-table-wrap').innerHTML = '<p style="padding:20px;color:#ef4444;">Failed to load database.</p>';
+            }
+        }
+
+        function classifyParts() {
+            vaultParts = [];
+            for (const [cat, parts] of Object.entries(db.components || {})) {
+                if (!Array.isArray(parts)) continue;
+                for (const p of parts) {
+                    const source = String(p.source || '').toLowerCase();
+                    const pid = String(p.pid || '').toLowerCase();
+                    const tags = Array.isArray(p.tags) ? p.tags.join(' ').toLowerCase() : '';
+                    const country = String(p.country || '').toLowerCase();
+
+                    let badge = null;
+                    if (source.includes('mafia') || pid.includes('mafia')) {
+                        badge = 'mafia';
+                    } else if (tags.includes('combat') || tags.includes('combat_proven')) {
+                        badge = 'combat';
+                    } else if (country === 'ukraine') {
+                        badge = 'ua';
+                    }
+
+                    if (badge) {
+                        vaultParts.push({
+                            pid: p.pid || '',
+                            name: p.name || '',
+                            manufacturer: p.manufacturer || '',
+                            category: cat,
+                            price_usd: p.approx_price || p.approx_price_usd || null,
+                            price_uah: p.approx_price_uah || null,
+                            source: p.source || '',
+                            badge: badge,
+                        });
+                    }
+                }
+            }
+        }
+
+        function renderStats() {
+            const mafia = vaultParts.filter(p => p.badge === 'mafia').length;
+            const combat = vaultParts.filter(p => p.badge === 'combat').length;
+            const ua = vaultParts.filter(p => p.badge === 'ua').length;
+            const cats = new Set(vaultParts.map(p => p.category)).size;
+            const mfrs = new Set(vaultParts.map(p => p.manufacturer)).size;
+
+            document.getElementById('vault-stats').innerHTML = `
+                <div class="vault-stat"><div class="vault-stat-val">${vaultParts.length}</div><div class="vault-stat-label">Total Parts</div></div>
+                <div class="vault-stat"><div class="vault-stat-val">${mafia}</div><div class="vault-stat-label">MAFIA Source</div></div>
+                <div class="vault-stat"><div class="vault-stat-val">${combat}</div><div class="vault-stat-label">Combat Tagged</div></div>
+                <div class="vault-stat"><div class="vault-stat-val">${ua}</div><div class="vault-stat-label">Ukrainian MFR</div></div>
+                <div class="vault-stat"><div class="vault-stat-val">${mfrs}</div><div class="vault-stat-label">Manufacturers</div></div>
+                <div class="vault-stat"><div class="vault-stat-val">${cats}</div><div class="vault-stat-label">Categories</div></div>`;
+        }
+
+        function renderTabs() {
+            const tabs = [
+                { key: 'all', label: 'All' },
+                { key: 'mafia', label: 'MAFIA' },
+                { key: 'combat', label: 'Combat' },
+                { key: 'ua', label: 'Ukrainian' },
+            ];
+            document.getElementById('vault-tabs').innerHTML = tabs.map(t =>
+                `<button class="vault-tab ${activeTab === t.key ? 'active' : ''}" data-tab="${t.key}">${t.label}</button>`
+            ).join('');
+
+            document.querySelectorAll('.vault-tab').forEach(tab => {
+                tab.addEventListener('click', () => {
+                    activeTab = tab.dataset.tab;
+                    document.querySelectorAll('.vault-tab').forEach(t => t.classList.remove('active'));
+                    tab.classList.add('active');
+                    renderTable();
+                });
+            });
+
+            document.getElementById('vault-search').addEventListener('input', (e) => {
+                searchTerm = e.target.value.toLowerCase().trim();
+                renderTable();
+            });
+        }
+
+        let searchTerm = '';
+
+        function renderTable() {
+            let filtered = vaultParts;
+            if (activeTab !== 'all') {
+                filtered = filtered.filter(p => p.badge === activeTab);
+            }
+            if (searchTerm) {
+                filtered = filtered.filter(p =>
+                    p.name.toLowerCase().includes(searchTerm) ||
+                    p.pid.toLowerCase().includes(searchTerm) ||
+                    p.manufacturer.toLowerCase().includes(searchTerm) ||
+                    p.category.toLowerCase().includes(searchTerm)
+                );
+            }
+
+            const badgeHtml = (b) => {
+                const labels = { mafia: 'MAFIA', combat: 'COMBAT', ua: 'UA' };
+                return `<span class="vault-badge badge-${b}">${labels[b]}</span>`;
+            };
+
+            const rows = filtered.slice(0, 500).map(p => `
+                <tr>
+                    <td class="pid">${E(p.pid)}</td>
+                    <td>${badgeHtml(p.badge)}</td>
+                    <td class="name">${E(p.name)}</td>
+                    <td class="mfr">${E(p.manufacturer)}</td>
+                    <td>${E(p.category.replace(/_/g, ' '))}</td>
+                    <td class="price">${p.price_uah ? '₴' + Number(p.price_uah).toLocaleString() : ''}</td>
+                    <td class="price">${p.price_usd ? '$' + Number(p.price_usd).toFixed(0) : ''}</td>
+                </tr>
+            `).join('');
+
+            document.getElementById('vault-table-wrap').innerHTML = `
+                <table class="vault-table">
+                    <thead><tr>
+                        <th>PID</th><th>Source</th><th>Name</th><th>Manufacturer</th>
+                        <th>Category</th><th style="text-align:right">UAH</th><th style="text-align:right">USD</th>
+                    </tr></thead>
+                    <tbody>${rows}</tbody>
+                </table>
+                ${filtered.length > 500 ? `<div style="padding:8px;text-align:center;color:var(--text-muted);font-size:11px;">Showing 500 of ${filtered.length}</div>` : ''}
+            `;
+        }
+    })();
+    </script>
+</body>
+</html>
