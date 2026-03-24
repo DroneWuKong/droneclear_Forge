@@ -551,40 +551,58 @@
         </div>
 
         <!-- ═══════════════════════════════════════════════
-             MafiaLRS (external link)
+             MafiaLRS firmware generator (self-hosted)
         ═══════════════════════════════════════════════ -->
         <div class="tool-panel" id="tool-mafiалrs">
             <div class="tool-header">
                 <div class="tool-title"><i class="ph ph-shield-warning" style="color:#eab308"></i> MafiaLRS firmware generator</div>
-                <p class="tool-desc">Combat-adapted ELRS fork used by Ukrainian drone units. Non-standard frequency operation (433–735 MHz) for electronic warfare evasion. 238 RX / 111 TX targets.</p>
+                <p class="tool-desc">Combat-adapted ELRS fork. Non-standard frequency operation (433–735 MHz) for EW evasion. Self-hosted target database.</p>
             </div>
-            <div class="result-card" style="border-color:#eab308; background:rgba(234,179,8,0.04);">
-                <div style="display:flex; align-items:center; gap:12px; margin-bottom:16px;">
-                    <i class="ph ph-warning" style="font-size:24px; color:#eab308;"></i>
-                    <div>
-                        <div style="font-size:14px; font-weight:600; color:var(--text-main);">Hosted at vtx.in.ua</div>
-                        <div style="font-size:12px; color:var(--text-muted);">The MafiaLRS firmware generator is maintained by the Ukrainian FPV community and hosted externally.</div>
-                    </div>
+
+            <div style="display:grid; grid-template-columns:1fr 1fr; gap:16px; margin-bottom:16px;">
+                <div style="background:var(--bg-dark); border-radius:var(--radius-sm); padding:14px;">
+                    <div style="font-size:11px; color:var(--text-muted); text-transform:uppercase; letter-spacing:0.05em; margin-bottom:4px;">RX targets</div>
+                    <div style="font-size:28px; font-weight:700; color:var(--accent-red); font-family:var(--font-family);" id="mafia-rx-count">—</div>
                 </div>
-                <div style="display:grid; grid-template-columns:1fr 1fr; gap:16px; margin-bottom:16px;">
-                    <div style="background:var(--bg-dark); border-radius:var(--radius-sm); padding:14px;">
-                        <div style="font-size:11px; color:var(--text-muted); text-transform:uppercase; letter-spacing:0.05em; margin-bottom:4px;">RX targets</div>
-                        <div style="font-size:28px; font-weight:700; color:var(--accent-red); font-family:var(--font-family);">238</div>
-                    </div>
-                    <div style="background:var(--bg-dark); border-radius:var(--radius-sm); padding:14px;">
-                        <div style="font-size:11px; color:var(--text-muted); text-transform:uppercase; letter-spacing:0.05em; margin-bottom:4px;">TX targets</div>
-                        <div style="font-size:28px; font-weight:700; color:var(--accent-red); font-family:var(--font-family);">111</div>
-                    </div>
-                </div>
-                <div style="display:flex; gap:12px; flex-wrap:wrap;">
-                    <a href="https://vtx.in.ua/elrs/" target="_blank" style="display:flex; align-items:center; gap:8px; padding:10px 20px; border-radius:var(--radius-sm); background:var(--accent-red); color:var(--bg-dark); font-size:13px; font-weight:600; text-decoration:none; font-family:var(--font-family);">
-                        <i class="ph ph-arrow-square-out"></i> Open MafiaLRS generator
-                    </a>
-                    <a href="https://vtx.in.ua/inf/" target="_blank" style="display:flex; align-items:center; gap:8px; padding:10px 20px; border-radius:var(--radius-sm); border:1px solid var(--border-color); background:none; color:var(--text-muted); font-size:13px; text-decoration:none; font-family:var(--font-family);">
-                        <i class="ph ph-info"></i> ELRS hardware info
-                    </a>
+                <div style="background:var(--bg-dark); border-radius:var(--radius-sm); padding:14px;">
+                    <div style="font-size:11px; color:var(--text-muted); text-transform:uppercase; letter-spacing:0.05em; margin-bottom:4px;">TX targets</div>
+                    <div style="font-size:28px; font-weight:700; color:var(--accent-red); font-family:var(--font-family);" id="mafia-tx-count">—</div>
                 </div>
             </div>
+
+            <!-- Target type selector -->
+            <div style="display:flex; gap:8px; margin-bottom:12px;">
+                <button class="mafia-type-btn active" data-type="rx" style="flex:1; padding:8px; border-radius:var(--radius-sm); border:1px solid var(--border-color); background:rgba(34,211,238,.08); color:var(--accent-red); font-size:13px; font-weight:600; cursor:pointer; font-family:var(--font-family);">RX Targets</button>
+                <button class="mafia-type-btn" data-type="tx" style="flex:1; padding:8px; border-radius:var(--radius-sm); border:1px solid var(--border-color); background:var(--bg-panel); color:var(--text-muted); font-size:13px; font-weight:600; cursor:pointer; font-family:var(--font-family);">TX Targets</button>
+            </div>
+
+            <!-- Search + manufacturer filter -->
+            <div style="display:flex; gap:8px; margin-bottom:12px;">
+                <label for="mafia-search" class="sr-only">Search targets</label>
+                <input type="text" id="mafia-search" placeholder="Search targets..." style="flex:1; padding:8px 12px; background:var(--bg-dark); border:1px solid var(--border-color); border-radius:var(--radius-sm); color:var(--text-main); font-size:13px; font-family:var(--font-family);">
+                <label for="mafia-mfr" class="sr-only">Filter manufacturer</label>
+                <select id="mafia-mfr" style="padding:8px; background:var(--bg-dark); border:1px solid var(--border-color); border-radius:var(--radius-sm); color:var(--text-muted); font-size:12px; font-family:var(--font-family); max-width:180px;">
+                    <option value="">All manufacturers</option>
+                </select>
+            </div>
+
+            <!-- Target list -->
+            <div style="max-height:320px; overflow-y:auto; border:1px solid var(--border-color); border-radius:var(--radius-sm); background:var(--bg-dark);" id="mafia-target-list"></div>
+
+            <!-- Selected target detail -->
+            <div id="mafia-selected" style="display:none; margin-top:12px; padding:14px; background:var(--bg-panel); border:1px solid var(--accent-red); border-radius:var(--radius-sm);">
+                <div style="font-size:14px; font-weight:600; color:var(--text-main); margin-bottom:6px;" id="mafia-sel-name"></div>
+                <div style="font-size:12px; color:var(--text-muted); margin-bottom:8px;" id="mafia-sel-detail"></div>
+                <div style="display:flex; gap:8px; flex-wrap:wrap;">
+                    <button id="mafia-copy-pid" style="padding:6px 14px; border-radius:var(--radius-sm); border:1px solid var(--accent-red); background:rgba(34,211,238,.08); color:var(--accent-red); font-size:12px; cursor:pointer; font-family:var(--font-family); display:flex; align-items:center; gap:4px;">
+                        <i class="ph ph-copy"></i> Copy target ID
+                    </button>
+                    <a href="https://github.com/BUSHA/targets/tree/mafia-targets" target="_blank" style="padding:6px 14px; border-radius:var(--radius-sm); border:1px solid var(--border-color); background:none; color:var(--text-muted); font-size:12px; text-decoration:none; font-family:var(--font-family); display:flex; align-items:center; gap:4px;">
+                        <i class="ph ph-github-logo"></i> Source repo
+                    </a>
+                </div>
+            </div>
+
             <div style="margin-top:16px; background:var(--bg-panel); border:1px solid var(--border-color); border-radius:var(--radius-sm); padding:14px; font-size:12px; color:var(--text-muted); line-height:1.6;">
                 <strong style="color:var(--text-main);">What is MafiaLRS?</strong> A Ukrainian fork of ExpressLRS modified for combat operations. Key differences from stock ELRS: operates on 433 MHz, 490–560 MHz, and modified 868/915 MHz bands outside standard EW jamming coverage; frequency hopping modifications; actively maintained and battle-tested. Source: <a href="https://github.com/BUSHA/targets/tree/mafia-targets" target="_blank" style="color:var(--accent-red);">BUSHA/targets@mafia-targets</a>.
             </div>
@@ -1288,4 +1306,91 @@ function copyVtxTable() {
     });
 }
 renderVtxTable();
+
+// ═══ MafiaLRS Self-Hosted Generator ═══
+(function(){
+    let mafiaDB=null, mafiaType='rx', mafiaSearch='', mafiaMfr='';
+
+    fetch('forge_database.json').then(r=>r.json()).then(db=>{
+        mafiaDB=db;
+        const rx=[], tx=[];
+        for(const p of (db.components.receivers||[])){
+            const s=String(p.source||'').toLowerCase(), pid=String(p.pid||'').toLowerCase();
+            if(s.includes('mafia')||pid.includes('mafia')) rx.push(p);
+        }
+        for(const p of (db.components.control_link_tx||[])){
+            const s=String(p.source||'').toLowerCase(), pid=String(p.pid||'').toLowerCase();
+            if(s.includes('mafia')||pid.includes('mafia')) tx.push(p);
+        }
+        window._mafiaRX=rx; window._mafiaTX=tx;
+        document.getElementById('mafia-rx-count').textContent=rx.length;
+        document.getElementById('mafia-tx-count').textContent=tx.length;
+
+        // Populate manufacturer dropdown
+        const allMfrs=new Set();
+        rx.forEach(p=>allMfrs.add(p.manufacturer||'Unknown'));
+        tx.forEach(p=>allMfrs.add(p.manufacturer||'Unknown'));
+        const sel=document.getElementById('mafia-mfr');
+        Array.from(allMfrs).sort().forEach(m=>{
+            const o=document.createElement('option');o.value=m;o.textContent=m;sel.appendChild(o);
+        });
+
+        renderMafiaTargets();
+    });
+
+    function renderMafiaTargets(){
+        const targets=mafiaType==='rx'?window._mafiaRX:window._mafiaTX;
+        if(!targets)return;
+        let filtered=targets;
+        if(mafiaSearch){
+            const q=mafiaSearch.toLowerCase();
+            filtered=filtered.filter(p=>(p.name||'').toLowerCase().includes(q)||(p.pid||'').toLowerCase().includes(q)||(p.manufacturer||'').toLowerCase().includes(q));
+        }
+        if(mafiaMfr) filtered=filtered.filter(p=>(p.manufacturer||'')=== mafiaMfr);
+
+        const list=document.getElementById('mafia-target-list');
+        if(!filtered.length){list.innerHTML='<div style="padding:20px;text-align:center;color:var(--text-muted);font-size:13px;">No targets found</div>';return}
+
+        list.innerHTML=filtered.map(p=>{
+            const esc=s=>{const d=document.createElement('div');d.textContent=s;return d.innerHTML};
+            return `<div class="mafia-target-row" data-pid="${esc(p.pid)}" data-name="${esc(p.name)}" data-mfr="${esc(p.manufacturer||'')}" style="padding:8px 12px;border-bottom:1px solid var(--border-color);cursor:pointer;display:flex;justify-content:space-between;align-items:center;font-size:13px;transition:background .1s;" onmouseover="this.style.background='rgba(34,211,238,.04)'" onmouseout="this.style.background=''">
+                <div><span style="color:var(--text-main);font-weight:500;">${esc(p.name)}</span><span style="color:var(--text-faint);font-size:11px;margin-left:8px;">${esc(p.manufacturer||'')}</span></div>
+                <span style="font-size:10px;color:var(--text-faint);font-family:var(--font-family);">${esc(p.pid)}</span>
+            </div>`;
+        }).join('');
+
+        list.querySelectorAll('.mafia-target-row').forEach(row=>{
+            row.addEventListener('click',()=>{
+                const sel=document.getElementById('mafia-selected');
+                sel.style.display='block';
+                document.getElementById('mafia-sel-name').textContent=row.dataset.name;
+                document.getElementById('mafia-sel-detail').textContent='PID: '+row.dataset.pid+' — Manufacturer: '+row.dataset.mfr;
+                sel.dataset.pid=row.dataset.pid;
+            });
+        });
+    }
+
+    // Type toggle
+    document.querySelectorAll('.mafia-type-btn').forEach(btn=>{
+        btn.addEventListener('click',()=>{
+            document.querySelectorAll('.mafia-type-btn').forEach(b=>{b.style.background='var(--bg-panel)';b.style.color='var(--text-muted)';b.classList.remove('active')});
+            btn.style.background='rgba(34,211,238,.08)';btn.style.color='var(--accent-red)';btn.classList.add('active');
+            mafiaType=btn.dataset.type;
+            document.getElementById('mafia-selected').style.display='none';
+            renderMafiaTargets();
+        });
+    });
+
+    // Search
+    document.getElementById('mafia-search').addEventListener('input',e=>{mafiaSearch=e.target.value;renderMafiaTargets()});
+
+    // Manufacturer filter
+    document.getElementById('mafia-mfr').addEventListener('change',e=>{mafiaMfr=e.target.value;renderMafiaTargets()});
+
+    // Copy PID
+    document.getElementById('mafia-copy-pid').addEventListener('click',function(){
+        const pid=document.getElementById('mafia-selected').dataset.pid;
+        if(pid){navigator.clipboard.writeText(pid).then(()=>{this.innerHTML='<i class="ph ph-check"></i> Copied!';setTimeout(()=>{this.innerHTML='<i class="ph ph-copy"></i> Copy target ID'},2000)})}
+    });
+})();
 </script>
