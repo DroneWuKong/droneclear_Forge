@@ -151,14 +151,15 @@ const SRC_CLS={defensescoop:'s-defensescoop',defensenews:'s-defensenews',breakin
 const CAT_COLORS={defense:'#ef4444',financial:'#f59e0b',commercial:'#4ECDC4'};
 const DEFENSE_KW=['pentagon','dod ','department of defense','military','army','navy','air force','marine corps','replicator','counter-uas','c-uas','jiatf','dawg','diu','ndaa','blue uas','combat','warfare','warfighter','deployed','tactical','darpa','socom','centcom','indopacom','program of record','weapon system','munition','loitering'];
 const FINANCE_KW=['billion','million','contract worth','contract valued','contract award','awarded a','funding','investment','raise','series a','series b','ipo','acquisition','merger','valuation','budget request','procurement','rfp ','fiscal year','fy2','fy3','defense budget','sbir','sttr','ota ','other transaction'];
-function categorize(a){const t=((a.title||'')+(a.summary||'')+(a.body_text||'')).toLowerCase();const d=DEFENSE_KW.filter(k=>t.includes(k)).length;const f=FINANCE_KW.filter(k=>t.includes(k)).length;if(d>=3)return'defense';if(f>=2&&f>=d*.6)return'financial';if(d>=2)return'defense';return'commercial';}
+function categorize(a){const t=((a.title||'')+(a.summary||'')+(a.body_text||'')).toLowerCase();const d=DEFENSE_KW.filter(k=>t.includes(k)).length;const f=FINANCE_KW.filter(k=>t.includes(k)).length;if(d>=4)return'defense';if(f>=2&&f>d)return'financial';if(d>=2&&d>f)return'defense';return'commercial';}
 let all=[],curCat='all',curSrc='all',curQ='',lobbyTimer=null;
 
 function card(a){
   const cat=categorize(a);
   const tags=[...(a.platforms||[]).slice(0,2),...(a.programs||[]).slice(0,2)];
   const col=CAT_COLORS[cat]||'#4ECDC4';
-  return `<a class="card" data-cat="${cat}" href="${a.url||'#'}" target="_blank" rel="noopener">
+  const url=a.url||'#';
+  return `<div class="card" data-cat="${cat}" data-url="${url}" role="link" tabindex="0" onclick="window.open(this.dataset.url,'_blank')">
     <div class="card-meta">
       <span class="cat-dot" style="background:${col}"></span>
       <span class="badge ${SRC_CLS[a.site]||''}">${SRC_LABELS[a.site]||a.site}</span>
@@ -168,8 +169,8 @@ function card(a){
     ${tags.length?'<div class="tags">'+tags.map(t=>`<span class="tag">${t}</span>`).join('')+'</div>':''}
     <div class="card-footer">
       <span class="date">${(a.pub_date||'').slice(0,10)}</span>
-      <a class="read-link" href="${a.url||'#'}" target="_blank" rel="noopener" onclick="event.stopPropagation()">Read →</a>
-    </div></a>`;
+      <a class="read-link" href="${url}" target="_blank" rel="noopener" onclick="event.stopPropagation()">Read →</a>
+    </div></div>`;
 }
 
 function render(){
