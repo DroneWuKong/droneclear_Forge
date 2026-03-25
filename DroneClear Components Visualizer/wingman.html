@@ -672,8 +672,12 @@ var FALLBACK_KB = `
 ## FC PROFILES
 - Betaflight: DSHOT600 (F7/H7), DSHOT300 (F4), RPM filter with BLHeli_32/AM32
 - iNav: nav_rth_altitude=3000, nav_wp_radius=200, failsafe=RTH
-- PX4 WingCore H7: STM32H743, dual ICM-42688-P, DPS310, 14 PWM
-- Orqa F405 Pro: STM32F405, ICM-42688-P, Betaflight 4.4+
+- PX4 WingCore H7: STM32H743, dual ICM-42688-P, DPS310, 14 PWM, JST-GH connectors
+- Orqa QuadCore H7: STM32H743, dual ICM-42688-P, 7 UARTs, 9V BEC, DJI connector on UART2, target ORQA_QUADCORE_H7
+- Orqa 3030 Lite F405: STM32F405, ICM-42688-P, 5 UARTs, target ORQA_3030LITE_F405, pairs with 3030 70A ESC
+- Orqa WingCore H7: Fixed-wing/VTOL PX4 controller, all JST-GH, 160A current sensor, target orqa_wingcore_h7
+- Orqa DTK APB: Single-board FC+companion (STM32H7 + NXP i.MX8M Plus + 2.3 TOPS NPU)
+- Orqa 3030 70A ESC: BLHeli_32, 3-6S, DShot600, 30.5mm, NDAA compliant
 
 ## NDAA/COMPLIANCE
 - §848 bans DOD procurement: DJI, Autel, Dahua, Hikvision
@@ -704,6 +708,60 @@ var WIRING_KB = `
 - CAM / VTX: Analog video signal routing. CAM = camera input, VTX = video output to VTX
 
 ### POPULAR FC PINOUTS (board-specific)
+Orqa QuadCore H7 (NDAA — Croatian):
+  MCU: STM32H743, IMU: dual ICM-42688-P, Baro: DPS310, OSD: AT7456E
+  Mounting: 30.5x30.5mm, BEC: 5V/2A + 9V/2A
+  Betaflight target: ORQA_QUADCORE_H7
+  UART1: VCP/USB (debug — don't use for peripherals)
+  UART2: DJI connector (TX2/RX2) — use for DJI/Walksnail/HDZero MSP OSD
+  UART3: TX3/RX3 pads — recommended for GPS
+  UART4: TX4/RX4 pads — recommended for receiver (CRSF/ELRS)
+  UART5: TX5 only — SmartAudio or ESC telemetry
+  UART6: TX6/RX6 pads — available
+  UART7: TX7/RX7 pads — available
+  Top side: DJI JST-GH connector, USB-C, boot button
+  Bottom side: solder pads for UARTs, M1-M4 motor signals, power, LED, buzzer
+  Pairs with: Orqa 3030 70A ESC (30.5mm stack)
+
+Orqa 3030 Lite F405 (NDAA — Croatian):
+  MCU: STM32F405, IMU: ICM-42688-P, Baro: DPS310, OSD: AT7456E
+  Mounting: 30.5x30.5mm, BEC: 5V/2A
+  Betaflight target: ORQA_3030LITE_F405
+  UART1: VCP/USB
+  UART2: TX2/RX2 — recommended for receiver (CRSF/ELRS)
+  UART3: TX3/RX3 — recommended for GPS
+  UART4: TX4/RX4 — available
+  UART5: TX5 — SmartAudio
+  Pairs with: Orqa 3030 70A ESC (30.5mm stack)
+
+Orqa WingCore H7 (NDAA — Croatian, PX4/ArduPilot):
+  MCU: STM32H743, IMU: dual orthogonal ICM-42688-P, Baro: DPS310
+  Fixed-wing / VTOL controller. 10 servo + 4 motor outputs (14 PWM)
+  160A current sensor, dual redundant power input
+  ALL JST-GH connectors (Pixhawk standard — NO solder pads):
+    TELEM1: Primary telemetry (SiK radio, companion computer)
+    TELEM2: Secondary telemetry
+    GPS1: Primary GPS + I2C compass
+    GPS2: Secondary GPS
+    RC: Receiver input (SBUS/CRSF/ELRS)
+    VTX: Direct to Orqa FPV.Connect VTX module
+    DEBUG: USB-C console/flash
+    CAN: DroneCAN bus
+  PX4 target: orqa_wingcore_h7
+  ArduPilot target: OrqaWingCoreH7
+  Designed for: Orqa MRM2-10 platform
+
+Orqa 3030 70A 4-in-1 ESC (NDAA — Croatian):
+  70A continuous per motor, 80A burst. 3-6S. BLHeli_32.
+  DShot150/300/600 + analog protocols. 30.5x30.5mm mounting.
+  Current sensor + temperature sensor + LED support.
+  8-pin stack connector: M1-M4 signal + CURR + VBAT + GND + ESC telemetry TX
+
+Orqa DTK APB (All-in-one FC + Companion):
+  FC: STM32H7 running PX4. Companion: NXP i.MX8M Plus running Linux.
+  2.3 TOPS NPU for onboard AI. MAVLink bridge built-in.
+  All JST-GH connectors. No separate companion wiring needed.
+
 SpeedyBee F405 V3/V4:
   RX pads: UART1(USB), UART2(top side RX2/TX2), UART3(bottom), UART4(bottom), UART5(bottom TX5 only), UART6(bottom)
   Recommended: RX on UART2, VTX SmartAudio on TX1, GPS on UART3/4
@@ -876,7 +934,7 @@ RULES:
 - If you can read the board name in the image, ALWAYS web search "[board name] pinout wiring diagram" before giving wiring advice
 - Reference EXACT pad names visible on the board (TX3, RX2, M1, 5V, etc.) — never give vague advice
 - For wiring issues: state which wire, which pad it's on now, which pad it should be on, and the Betaflight config change needed
-${mode === 'orqa' ? '- Represent Orqa products: F405 Pro, WingCore H7, FPV.One, FPV.Connect, MRM2-10 H743\n- Professional product support tone' : ''}
+${mode === 'orqa' ? '- Represent Orqa products: QuadCore H7 (BF target ORQA_QUADCORE_H7), 3030 Lite F405, WingCore H7 (PX4), DTK APB (FC+companion), 3030 70A ESC, FPV.One goggles, FPV.Connect C2 module, MRM2-10/MRM1-5 platforms, spiroNET antennas\n- You know every UART assignment and pinout on every Orqa board. Reference them precisely.\n- Professional product support tone' : ''}
 - Say "verify this" when uncertain. Never fabricate specs.`;
 }
 
