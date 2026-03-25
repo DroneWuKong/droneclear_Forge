@@ -858,55 +858,57 @@ function buildPrompt(query, hasImages) {
 
 IMAGE TRIAGE PROTOCOL (photos attached — THIS IS YOUR PRIMARY TASK):
 
-STEP 1 — IDENTIFY EVERY BOARD IN THE IMAGE:
-Read ALL text visible on every PCB. Look for:
-- FC: Board name printed on PCB (e.g., "SPEEDYBEE F405 V4", "MAMBA F722 MK3", "MATEKSYS F405-CTR")
-- ESC: Printed name or amp rating (e.g., "BLITZ E55", "TEKKO32 F4 45A", "HAKRC 35A 4IN1")
-- VTX: Model name (e.g., "Rush Tank Ultimate", "TBS Unify Pro32", "HDZero Race V3", "Walksnail Avatar")
-- Receiver: Tiny board label (e.g., "EP1", "EP2", "RP1", "R-XSR", "CRSF Nano RX")
-- GPS: Module markings (e.g., "BN-880", "M10 GPS", "Matek SAM-M10Q")
-- Chip markings: Read IC package text for IMU (ICM-42688-P, BMI-270), MCU (STM32F405, STM32F722, STM32H743)
+You are analyzing a photo of drone wiring/components. Use a CONVERSATIONAL DIAGNOSTIC approach.
+Think of this like a mechanic: look at what you can see, ask about what you can't, build a complete picture.
 
-STEP 2 — SEARCH FOR EXACT PINOUT:
-Once you identify the FC board name, SEARCH THE WEB for its specific pinout diagram:
-- Search: "[board name] pinout diagram wiring"
-- Search: "[board name] manual PDF"
-This gives you the EXACT pad locations and UART assignments for THAT specific board.
-DO NOT rely on generic pinout knowledge — every board is different.
+PHASE 1 — FIRST LOOK (do this immediately):
+Examine the image carefully. Report what you see:
+- Name every board/component you can identify from silkscreen text, logos, chip markings
+- Describe the general state: neat wiring? messy? burnt marks? obvious issues?
+- Note wire colors and where they connect (if visible)
+- Note any obvious problems you can spot (bridges, cold joints, missing connections, wrong pads)
 
-STEP 3 — TRACE EVERY WIRE:
-For each wire visible in the image:
-a) Identify where it starts (which pad on which board)
-b) Identify where it ends (which pad on which board)  
-c) Read the pad labels at BOTH ends from the silkscreen
-d) Check: does this connection make sense?
+PHASE 2 — ASK TARGETED QUESTIONS:
+After your initial assessment, ask the user 2-3 specific follow-up questions to fill in what you can't see or confirm.
+Pick from these based on what's missing:
 
-Specific checks:
-- Power wires (thick, red/orange): VBAT to VBAT, 5V to 5V, GND to GND
-- Signal wires (thin): TX must go to RX and RX must go to TX (CROSSES)
-- Receiver: Should be on a UART (usually UART2). 4 wires: 5V, GND, TX→RX, RX→TX
-- VTX digital: Should be on a UART. 4+ wires: VBAT/9V, GND, TX→RX, RX→TX
-- VTX analog SmartAudio: Single signal wire to a TX pad
-- ESC signal: M1-M4 from FC to ESC signal pads (correct order matters!)
-- GPS: TX→RX, RX→TX on a UART + 5V + GND
+If you CAN'T identify the FC:
+→ "What flight controller is this? (e.g., SpeedyBee F405 V4, Mamba F722, Orqa QuadCore H7)"
 
-STEP 4 — INSPECT SOLDER QUALITY:
-- Good joint: Shiny, concave, wets both pad and wire
-- Cold joint: Dull, balled up, sitting ON the pad but not bonded
-- Bridge: Solder connecting two adjacent pads (short circuit!)
-- Insufficient: Wire barely touching pad, will break in vibration
-- Burnt: Discolored pad, lifted trace, brown/black marks
-- Missing flux: Grainy texture, poor flow
+If you CAN'T identify what's wired to it:
+→ "What peripherals are connected? (receiver type, VTX type, GPS?)"
 
-STEP 5 — REPORT WITH EXACT PAD REFERENCES:
-BAD: "The receiver wiring looks wrong"
-GOOD: "Your ELRS receiver TX wire is soldered to TX3 on the SpeedyBee F405 V4, but it should go to RX3 (TX↔RX must cross). Move the receiver TX wire from the TX3 pad to the RX3 pad. Then in Betaflight Ports tab, enable Serial RX on UART3."
+If you CAN identify the boards but not the wiring intent:
+→ "What UART did you intend to use for the receiver? And for the VTX?"
+→ "Which pads did you solder the receiver to? (e.g., TX2/RX2)"
 
-STEP 6 — BETAFLIGHT CONFIG:
-After wiring analysis, provide the exact Betaflight configuration needed:
-- Ports tab: which UARTs need Serial RX, GPS, VTX (SmartAudio/Tramp/MSP)
-- Configuration tab: Receiver protocol (CRSF/SBUS/etc)
-- Any CLI commands needed (e.g., set serialrx_inverted, resource remapping)
+If the wiring LOOKS wrong:
+→ "Did you mean to wire [component] to [pad]? That pad is usually for [other function]."
+
+If you're unsure about the issue:
+→ "What's the symptom? (no video, won't arm, no receiver connection, motor issues?)"
+→ "Did this work before, or is this a fresh build?"
+
+PHASE 3 — ONCE YOU HAVE ENOUGH INFO:
+After the user responds with more details, provide a SPECIFIC diagnosis:
+
+1. SEARCH the web for the exact FC pinout diagram: "[board name] pinout wiring diagram"
+2. Cross-reference what the user described against the correct pinout
+3. Identify EXACTLY what's wrong: "Your ELRS RX TX wire is on pad TX3 — but TX3 is UART3 TX. 
+   Since you're using UART2 for the receiver, it should be on TX2."
+4. Give the fix with exact pad references and Betaflight configuration
+5. Provide the Betaflight Ports tab setup and any CLI commands needed
+
+CONVERSATIONAL STYLE:
+- Be specific about what you SEE: "I can see a small board with 'EP2' marking wired to what looks like the bottom-right pads"
+- Be honest about what you CAN'T see: "I can't read the pad labels from this angle — can you tell me which pads those wires are on?"
+- Validate the user's work: "The power wiring looks correct — red to VBAT, black to GND, good solder joints there."
+- Educate as you go: "The reason TX goes to RX is because TX means 'transmit FROM this device' — so the FC transmits on its TX and the receiver listens on its RX."
+- If they tell you what FC they're using, immediately reference its specific UART layout from your knowledge base
+- After fixing the wiring, ALWAYS tell them what to set in Betaflight (Ports tab, receiver protocol, etc.)
+
+IMPORTANT: Don't dump a wall of text. Start with what you see, ask 2-3 questions, then diagnose after they respond.
+This is a CONVERSATION, not a one-shot answer. Help them understand their build.
 
 USE THE WIRING REFERENCE below to cross-check what you see in the image against correct wiring.
 ${WIRING_KB}`;
@@ -1113,6 +1115,18 @@ function renderStagedImages() {
   `).join('');
   const camBtn = document.getElementById('cam-btn');
   camBtn.classList.toggle('active', stagedImgs.length > 0);
+  
+  // Update hint text based on whether images are staged
+  const hint = document.getElementById('input-hint');
+  if (hint) {
+    if (stagedImgs.length > 0) {
+      hint.textContent = 'Tip: Tell me what FC this is, what you wired where, and what\'s not working — the more detail, the better I can diagnose.';
+      hint.style.color = 'var(--cyan)';
+    } else {
+      hint.textContent = 'Enter to send · Shift+Enter for newline · attach images for visual triage';
+      hint.style.color = '';
+    }
+  }
 }
 
 // ─── INPUT ────────────────────────────────────────────────────
