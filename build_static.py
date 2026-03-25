@@ -53,6 +53,7 @@ PAGES = {
     'intel-financial.html': 'intel-financial/index.html',
     'intel-commercial.html': 'intel-commercial/index.html',
     'tools.html': 'tools/index.html',
+    'wingman.html': 'wingman/index.html',
 }
 
 # Static assets to copy (JS, CSS, JSON, images)
