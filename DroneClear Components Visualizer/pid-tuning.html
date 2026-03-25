@@ -308,6 +308,35 @@ input[type="range"]::-webkit-slider-thumb {
 .cfg-btn.primary { background: rgba(34,211,238,0.1); border-color: rgba(34,211,238,0.3); color: var(--cyan); }
 .cfg-btn:hover { border-color: var(--cyan); color: var(--cyan); }
 
+/* ── Spectral Analysis ── */
+.fft-canvas-wrap {
+  background: #0a0a0a; border: 1px solid var(--border); border-radius: var(--radius);
+  padding: 2px; margin-bottom: 14px; position: relative;
+}
+.fft-canvas-wrap canvas { width: 100%; height: 280px; display: block; }
+.fft-overlay { position: absolute; top: 8px; right: 8px; display: flex; gap: 4px; }
+.fft-overlay button {
+  padding: 3px 8px; font-size: 10px; border-radius: 3px;
+  border: 1px solid var(--border); background: rgba(0,0,0,0.7);
+  color: var(--g2); cursor: pointer; font-family: var(--font);
+}
+.fft-overlay button:hover { border-color: var(--cyan); color: var(--cyan); }
+.fft-overlay button.active { background: var(--cyan-dim); border-color: rgba(34,211,238,0.4); color: var(--cyan); }
+.upload-zone {
+  border: 2px dashed var(--border); border-radius: var(--radius); padding: 32px;
+  text-align: center; cursor: pointer; transition: all 0.15s; margin-bottom: 14px;
+}
+.upload-zone:hover, .upload-zone.dragover { border-color: var(--cyan); background: rgba(34,211,238,0.03); }
+.upload-zone .uz-icon { font-size: 28px; margin-bottom: 8px; opacity: 0.5; }
+.upload-zone .uz-label { font-size: 13px; color: var(--g2); }
+.upload-zone .uz-hint { font-size: 11px; color: var(--g3); margin-top: 4px; }
+.fft-legend { display: flex; gap: 16px; flex-wrap: wrap; padding: 10px 0; }
+.fft-legend-item { display: flex; align-items: center; gap: 6px; font-size: 11px; color: var(--g2); }
+.fft-legend-dot { width: 10px; height: 10px; border-radius: 2px; }
+.peak-table { width: 100%; border-collapse: collapse; font-size: 12px; margin-top: 10px; }
+.peak-table th { padding: 6px 8px; text-align: left; font-size: 10px; text-transform: uppercase; letter-spacing: 0.06em; color: var(--g3); border-bottom: 1px solid var(--border); }
+.peak-table td { padding: 6px 8px; border-bottom: 1px solid rgba(255,255,255,0.03); }
+
 /* ── Responsive ── */
 @media (max-width: 768px) {
   .sidebar { display: none; }
@@ -316,6 +345,7 @@ input[type="range"]::-webkit-slider-thumb {
   .topbar { padding: 10px 16px; }
   .input-grid { grid-template-columns: 1fr; }
   .chat-wrap { height: calc(100vh - 160px); }
+  .fft-canvas-wrap canvas { height: 200px; }
 }
 </style>
 </head>
@@ -339,6 +369,7 @@ input[type="range"]::-webkit-slider-thumb {
   <button class="nav-btn" data-panel="cli"><span class="nav-icon">⌨</span> CLI Generator</button>
   <span class="sidebar-label">Analysis</span>
   <button class="nav-btn" data-panel="noise"><span class="nav-icon">📊</span> Noise Zones</button>
+  <button class="nav-btn" data-panel="spectral"><span class="nav-icon">📈</span> Spectral Analysis</button>
   <button class="nav-btn" data-panel="filters"><span class="nav-icon">🎛</span> Filter Advisor</button>
   <span class="sidebar-label">Reference</span>
   <button class="nav-btn" data-panel="classref"><span class="nav-icon">📋</span> Tuning by Class</button>
@@ -594,7 +625,88 @@ input[type="range"]::-webkit-slider-thumb {
     <div class="result-card" id="noise-legend"></div>
   </div>
 
-  <!-- ═══ PANEL 5: FILTER ADVISOR ═══ -->
+  <!-- ═══ PANEL 5: SPECTRAL ANALYSIS ═══ -->
+  <div class="panel" id="panel-spectral">
+    <div class="panel-title">Blackbox Spectral Analysis</div>
+    <p class="panel-desc">Upload Blackbox CSV gyro data or paste raw values. Runs a real FFT to identify noise peaks, motor harmonics, and frame resonances — then recommends filter settings.</p>
+
+    <div class="divider">Data Source</div>
+    <div class="presets" id="spectral-source">
+      <button class="preset-btn active" onclick="setSpectralSource('paste')">Paste Gyro Data</button>
+      <button class="preset-btn" onclick="setSpectralSource('upload')">Upload CSV</button>
+      <button class="preset-btn" onclick="setSpectralSource('demo')">Demo Data</button>
+    </div>
+
+    <div id="spectral-paste">
+      <p style="font-size:12px; color:var(--g2); margin-bottom:10px;">
+        Paste gyro_scaled values from Blackbox Explorer (one value per line, or comma-separated). Use a single axis (e.g., gyro[0] = Roll).
+      </p>
+      <textarea class="tool-input" id="spectral-data-input" rows="6" placeholder="Paste gyro values here... e.g.:
+12.5
+-8.3
+15.1
+-3.7
+..." style="font-family:var(--mono); font-size:12px; resize:vertical;"></textarea>
+      <div class="input-grid" style="margin-top:12px;">
+        <div class="input-group">
+          <label class="input-label">Sample Rate</label>
+          <div class="input-row">
+            <select class="tool-select" id="spectral-rate">
+              <option value="1000">1 kHz (1K PID)</option>
+              <option value="2000">2 kHz (2K PID)</option>
+              <option value="4000" selected>4 kHz (4K PID / F4)</option>
+              <option value="8000">8 kHz (8K PID / F7/H7)</option>
+            </select>
+          </div>
+        </div>
+        <div class="input-group">
+          <label class="input-label">Axis</label>
+          <select class="tool-select" id="spectral-axis">
+            <option value="roll" selected>Roll (Gyro X)</option>
+            <option value="pitch">Pitch (Gyro Y)</option>
+            <option value="yaw">Yaw (Gyro Z)</option>
+          </select>
+        </div>
+      </div>
+      <button class="preset-btn" onclick="runFFT()" style="margin-top:10px; padding:8px 20px; border-color:rgba(34,211,238,0.4); color:var(--cyan);">▶ Run FFT Analysis</button>
+    </div>
+
+    <div id="spectral-upload" style="display:none;">
+      <div class="upload-zone" id="upload-drop"
+        onclick="document.getElementById('bbx-file-input').click()"
+        ondragover="event.preventDefault(); this.classList.add('dragover')"
+        ondragleave="this.classList.remove('dragover')"
+        ondrop="event.preventDefault(); this.classList.remove('dragover'); handleBBXFile(event.dataTransfer.files[0])">
+        <div class="uz-icon">📂</div>
+        <div class="uz-label">Drop Blackbox CSV here or click to browse</div>
+        <div class="uz-hint">Export from Blackbox Explorer as CSV. Column: gyro[0], gyro[1], or gyro[2]</div>
+      </div>
+      <input type="file" id="bbx-file-input" accept=".csv,.txt" style="display:none" onchange="handleBBXFile(this.files[0])">
+      <div id="upload-status" style="font-size:12px; color:var(--g3);"></div>
+    </div>
+
+    <div class="divider" id="spectral-results-divider" style="display:none;">FFT Results</div>
+
+    <div class="fft-canvas-wrap" id="fft-canvas-wrap" style="display:none;">
+      <canvas id="fft-canvas"></canvas>
+      <div class="fft-overlay">
+        <button class="active" onclick="setFFTScale('log')" id="fft-btn-log">Log</button>
+        <button onclick="setFFTScale('linear')" id="fft-btn-linear">Linear</button>
+      </div>
+    </div>
+
+    <div class="fft-legend" id="fft-legend" style="display:none;">
+      <div class="fft-legend-item"><div class="fft-legend-dot" style="background:var(--cyan);"></div>Gyro spectrum</div>
+      <div class="fft-legend-item"><div class="fft-legend-dot" style="background:var(--red);"></div>Detected peaks</div>
+      <div class="fft-legend-item"><div class="fft-legend-dot" style="background:rgba(255,255,255,0.1);"></div>Flight zone (&lt;20Hz)</div>
+      <div class="fft-legend-item"><div class="fft-legend-dot" style="background:rgba(234,179,8,0.2);"></div>Propwash zone (20-100Hz)</div>
+    </div>
+
+    <div class="result-card accent" id="fft-analysis" style="display:none;"></div>
+    <div class="result-card" id="fft-filter-rec" style="display:none;"></div>
+  </div>
+
+  <!-- ═══ PANEL 6: FILTER ADVISOR ═══ -->
   <div class="panel" id="panel-filters">
     <div class="panel-title">Filter Advisor</div>
     <p class="panel-desc">Determine recommended filter settings based on your hardware and noise profile.</p>
@@ -1139,6 +1251,464 @@ function copyFilterCli() {
 }
 
 // ═══════════════════════════════════════════════════════════════
+// PANEL 5: SPECTRAL ANALYSIS — Real FFT on Blackbox gyro data
+// ═══════════════════════════════════════════════════════════════
+var fftResult = null;    // {freqs[], magnitudes[], sampleRate, peaks[]}
+var fftScale = 'log';
+
+function setSpectralSource(src) {
+  document.querySelectorAll('#spectral-source .preset-btn').forEach(b => b.classList.remove('active'));
+  event.target.classList.add('active');
+  document.getElementById('spectral-paste').style.display = src === 'paste' ? '' : 'none';
+  document.getElementById('spectral-upload').style.display = src === 'upload' ? '' : 'none';
+  if (src === 'demo') loadDemoData();
+}
+
+function loadDemoData() {
+  // Generate realistic gyro noise: flight signal + propwash + motor harmonics + random noise
+  const N = 4096;
+  const rate = 4000;
+  const data = [];
+  for (let i = 0; i < N; i++) {
+    const t = i / rate;
+    let v = 0;
+    // Flight signal (5-15 Hz)
+    v += 80 * Math.sin(2 * Math.PI * 8 * t) + 40 * Math.sin(2 * Math.PI * 12 * t);
+    // Propwash oscillation (45-65 Hz)
+    v += 15 * Math.sin(2 * Math.PI * 52 * t) + 8 * Math.sin(2 * Math.PI * 68 * t);
+    // Motor fundamental (~280 Hz for typical 5" at mid-throttle)
+    v += 12 * Math.sin(2 * Math.PI * 278 * t + Math.random() * 0.5);
+    // Motor 2nd harmonic (~560 Hz)
+    v += 6 * Math.sin(2 * Math.PI * 556 * t + Math.random() * 0.3);
+    // Motor 3rd harmonic (~840 Hz)
+    v += 3 * Math.sin(2 * Math.PI * 834 * t + Math.random() * 0.2);
+    // Frame resonance (~160 Hz)
+    v += 5 * Math.sin(2 * Math.PI * 162 * t);
+    // Broadband noise
+    v += (Math.random() - 0.5) * 10;
+    data.push(v);
+  }
+  document.getElementById('spectral-data-input').value = data.map(v => v.toFixed(2)).join('\n');
+  document.getElementById('spectral-rate').value = '4000';
+  document.getElementById('spectral-paste').style.display = '';
+  document.getElementById('spectral-upload').style.display = 'none';
+  runFFT();
+}
+
+function handleBBXFile(file) {
+  if (!file) return;
+  document.getElementById('upload-status').textContent = 'Reading ' + file.name + '...';
+  const reader = new FileReader();
+  reader.onload = function(e) {
+    const text = e.target.result;
+    const lines = text.split('\n');
+    // Try to find gyro column
+    const header = lines[0];
+    let colIdx = -1;
+    if (header.includes(',')) {
+      const cols = header.split(',').map(c => c.trim().toLowerCase());
+      colIdx = cols.findIndex(c => c.includes('gyro[0]') || c.includes('gyroadata[0]') || c.includes('gyro_scaled[0]'));
+      if (colIdx < 0) colIdx = cols.findIndex(c => c.includes('gyro'));
+    }
+
+    const values = [];
+    for (let i = 1; i < lines.length; i++) {
+      const parts = lines[i].split(',');
+      const v = colIdx >= 0 ? parseFloat(parts[colIdx]) : parseFloat(lines[i]);
+      if (!isNaN(v)) values.push(v);
+    }
+
+    if (values.length < 64) {
+      document.getElementById('upload-status').textContent = `Only ${values.length} valid samples found — need at least 64. Check CSV format.`;
+      return;
+    }
+
+    document.getElementById('upload-status').textContent = `Loaded ${values.length} samples from ${file.name}`;
+    document.getElementById('spectral-data-input').value = values.join('\n');
+    document.getElementById('spectral-paste').style.display = '';
+    runFFT();
+  };
+  reader.readAsText(file);
+}
+
+// ── Cooley-Tukey FFT (radix-2, in-place) ──
+function fft(re, im) {
+  const N = re.length;
+  if (N <= 1) return;
+
+  // Bit-reversal permutation
+  for (let i = 1, j = 0; i < N; i++) {
+    let bit = N >> 1;
+    for (; j & bit; bit >>= 1) j ^= bit;
+    j ^= bit;
+    if (i < j) {
+      [re[i], re[j]] = [re[j], re[i]];
+      [im[i], im[j]] = [im[j], im[i]];
+    }
+  }
+
+  // FFT butterfly
+  for (let len = 2; len <= N; len *= 2) {
+    const halfLen = len / 2;
+    const angle = -2 * Math.PI / len;
+    const wRe = Math.cos(angle), wIm = Math.sin(angle);
+    for (let i = 0; i < N; i += len) {
+      let curRe = 1, curIm = 0;
+      for (let j = 0; j < halfLen; j++) {
+        const tRe = curRe * re[i + j + halfLen] - curIm * im[i + j + halfLen];
+        const tIm = curRe * im[i + j + halfLen] + curIm * re[i + j + halfLen];
+        re[i + j + halfLen] = re[i + j] - tRe;
+        im[i + j + halfLen] = im[i + j] - tIm;
+        re[i + j] += tRe;
+        im[i + j] += tIm;
+        const newCurRe = curRe * wRe - curIm * wIm;
+        curIm = curRe * wIm + curIm * wRe;
+        curRe = newCurRe;
+      }
+    }
+  }
+}
+
+function nextPow2(n) { let p = 1; while (p < n) p *= 2; return p; }
+
+function runFFT() {
+  const raw = document.getElementById('spectral-data-input').value.trim();
+  if (!raw) return;
+
+  // Parse values
+  let values;
+  if (raw.includes(',') && !raw.includes('\n')) {
+    values = raw.split(',').map(Number).filter(v => !isNaN(v));
+  } else {
+    values = raw.split(/[\n\r]+/).map(s => parseFloat(s.trim())).filter(v => !isNaN(v));
+  }
+
+  if (values.length < 64) {
+    alert('Need at least 64 samples for FFT analysis.');
+    return;
+  }
+
+  const sampleRate = parseInt(document.getElementById('spectral-rate').value);
+  const axis = document.getElementById('spectral-axis').value;
+
+  // Pad to next power of 2
+  const N = nextPow2(values.length);
+  const re = new Float64Array(N);
+  const im = new Float64Array(N);
+
+  // Apply Hann window to reduce spectral leakage
+  for (let i = 0; i < values.length; i++) {
+    const window = 0.5 * (1 - Math.cos(2 * Math.PI * i / (values.length - 1)));
+    re[i] = values[i] * window;
+  }
+
+  // Run FFT
+  fft(re, im);
+
+  // Compute magnitude spectrum (only positive frequencies)
+  const halfN = N / 2;
+  const freqs = new Float64Array(halfN);
+  const magnitudes = new Float64Array(halfN);
+  const freqRes = sampleRate / N;
+
+  for (let i = 0; i < halfN; i++) {
+    freqs[i] = i * freqRes;
+    magnitudes[i] = Math.sqrt(re[i] * re[i] + im[i] * im[i]) / halfN;
+  }
+
+  // Peak detection — find local maxima above noise floor
+  const noiseFloor = magnitudes.reduce((a, b) => a + b, 0) / halfN;
+  const peaks = [];
+  for (let i = 2; i < halfN - 2; i++) {
+    if (magnitudes[i] > magnitudes[i-1] && magnitudes[i] > magnitudes[i+1] &&
+        magnitudes[i] > magnitudes[i-2] && magnitudes[i] > magnitudes[i+2] &&
+        magnitudes[i] > noiseFloor * 3 && freqs[i] > 15) {
+      peaks.push({ freq: Math.round(freqs[i]), magnitude: magnitudes[i], bin: i });
+    }
+  }
+  // Sort by magnitude descending, keep top 10
+  peaks.sort((a, b) => b.magnitude - a.magnitude);
+  peaks.length = Math.min(peaks.length, 10);
+
+  fftResult = { freqs, magnitudes, sampleRate, peaks, axis, noiseFloor, N, numSamples: values.length };
+
+  // Show results
+  ['fft-canvas-wrap','fft-legend','fft-analysis','fft-filter-rec','spectral-results-divider'].forEach(id => {
+    document.getElementById(id).style.display = '';
+  });
+
+  renderFFTCanvas();
+  renderFFTAnalysis();
+
+  // Log to session
+  logSession({
+    source: 'spectral-analysis',
+    symptoms: peaks.filter(p => p.freq > 20 && p.freq < 100).length > 0 ? ['propwash oscillation detected'] : [],
+    diagnosis: `FFT: ${peaks.length} peaks detected. Strongest at ${peaks[0]?.freq || '?'} Hz.`,
+    ai_recommendation: buildFilterRecFromFFT(),
+    filter_settings: { sample_rate: sampleRate, axis, peak_freqs: peaks.map(p => p.freq) },
+  });
+  renderSessionLog();
+}
+
+function setFFTScale(s) {
+  fftScale = s;
+  document.getElementById('fft-btn-log').className = s === 'log' ? 'active' : '';
+  document.getElementById('fft-btn-linear').className = s === 'linear' ? 'active' : '';
+  renderFFTCanvas();
+}
+
+function renderFFTCanvas() {
+  if (!fftResult) return;
+  const canvas = document.getElementById('fft-canvas');
+  const ctx = canvas.getContext('2d');
+  const dpr = window.devicePixelRatio || 1;
+  const rect = canvas.getBoundingClientRect();
+  canvas.width = rect.width * dpr;
+  canvas.height = rect.height * dpr;
+  ctx.scale(dpr, dpr);
+  const W = rect.width, H = rect.height;
+
+  const { freqs, magnitudes, peaks, sampleRate } = fftResult;
+  const maxFreq = sampleRate / 2;
+  // Only show up to 1500 Hz or Nyquist, whichever is smaller
+  const displayMaxFreq = Math.min(maxFreq, 1500);
+  const maxBin = Math.floor(displayMaxFreq / (sampleRate / fftResult.N));
+
+  ctx.clearRect(0, 0, W, H);
+
+  // Background zones
+  const pad = { l: 50, r: 16, t: 16, b: 30 };
+  const pw = W - pad.l - pad.r;
+  const ph = H - pad.t - pad.b;
+
+  function freqToX(f) { return pad.l + (f / displayMaxFreq) * pw; }
+
+  // Zone shading
+  const zones = [
+    { min: 0, max: 20, color: 'rgba(74,222,128,0.06)', label: 'Flight' },
+    { min: 20, max: 100, color: 'rgba(234,179,8,0.06)', label: 'Propwash' },
+    { min: 100, max: 250, color: 'rgba(249,115,22,0.04)', label: 'Frame' },
+  ];
+  zones.forEach(z => {
+    ctx.fillStyle = z.color;
+    ctx.fillRect(freqToX(z.min), pad.t, freqToX(z.max) - freqToX(z.min), ph);
+  });
+
+  // Compute magnitude range
+  let maxMag = 0;
+  for (let i = 1; i < maxBin; i++) maxMag = Math.max(maxMag, magnitudes[i]);
+  if (maxMag === 0) maxMag = 1;
+
+  function magToY(m) {
+    if (fftScale === 'log') {
+      const dB = 20 * Math.log10(Math.max(m, 1e-10) / maxMag);
+      const clamped = Math.max(dB, -60); // -60 dB floor
+      return pad.t + ph * (1 - (clamped + 60) / 60);
+    }
+    return pad.t + ph * (1 - m / maxMag);
+  }
+
+  // Draw spectrum line
+  ctx.strokeStyle = 'rgba(34,211,238,0.8)';
+  ctx.lineWidth = 1.2;
+  ctx.beginPath();
+  for (let i = 1; i < maxBin; i++) {
+    const x = pad.l + (i / maxBin) * pw;
+    const y = magToY(magnitudes[i]);
+    if (i === 1) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+  }
+  ctx.stroke();
+
+  // Fill under curve
+  ctx.lineTo(pad.l + pw, pad.t + ph);
+  ctx.lineTo(pad.l, pad.t + ph);
+  ctx.closePath();
+  ctx.fillStyle = 'rgba(34,211,238,0.08)';
+  ctx.fill();
+
+  // Mark peaks
+  ctx.fillStyle = 'rgba(248,113,113,0.9)';
+  peaks.forEach(p => {
+    if (p.freq > displayMaxFreq) return;
+    const x = freqToX(p.freq);
+    const y = magToY(p.magnitude);
+    ctx.beginPath(); ctx.arc(x, y, 4, 0, Math.PI * 2); ctx.fill();
+    // Label
+    ctx.fillStyle = 'rgba(248,113,113,0.8)';
+    ctx.font = '10px monospace';
+    ctx.textAlign = 'center';
+    ctx.fillText(p.freq + 'Hz', x, y - 8);
+    ctx.fillStyle = 'rgba(248,113,113,0.9)';
+  });
+
+  // Axes
+  ctx.strokeStyle = 'rgba(255,255,255,0.15)';
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  ctx.moveTo(pad.l, pad.t); ctx.lineTo(pad.l, pad.t + ph); ctx.lineTo(pad.l + pw, pad.t + ph);
+  ctx.stroke();
+
+  // Frequency axis labels
+  ctx.fillStyle = 'var(--g3)';
+  ctx.font = '10px -apple-system, sans-serif';
+  ctx.textAlign = 'center';
+  const freqSteps = [0, 50, 100, 200, 300, 500, 750, 1000, 1500].filter(f => f <= displayMaxFreq);
+  freqSteps.forEach(f => {
+    const x = freqToX(f);
+    ctx.fillText(f + '', x, H - 6);
+    ctx.strokeStyle = 'rgba(255,255,255,0.05)';
+    ctx.beginPath(); ctx.moveTo(x, pad.t); ctx.lineTo(x, pad.t + ph); ctx.stroke();
+  });
+  ctx.fillText('Hz', pad.l + pw + 8, H - 6);
+
+  // Y-axis labels
+  ctx.textAlign = 'right';
+  if (fftScale === 'log') {
+    [-60, -40, -20, 0].forEach(dB => {
+      const y = pad.t + ph * (1 - (dB + 60) / 60);
+      ctx.fillText(dB + 'dB', pad.l - 4, y + 4);
+    });
+  } else {
+    [0, 0.25, 0.5, 0.75, 1].forEach(frac => {
+      const y = pad.t + ph * (1 - frac);
+      ctx.fillText((frac * maxMag).toFixed(1), pad.l - 4, y + 4);
+    });
+  }
+}
+
+function renderFFTAnalysis() {
+  if (!fftResult) return;
+  const { peaks, noiseFloor, axis, numSamples, sampleRate, N } = fftResult;
+
+  // Classify peaks
+  const propwash = peaks.filter(p => p.freq >= 20 && p.freq <= 100);
+  const frameRes = peaks.filter(p => p.freq > 100 && p.freq <= 250);
+  const motorNoise = peaks.filter(p => p.freq > 250);
+
+  let healthColor = 'var(--green)', healthLabel = 'CLEAN';
+  if (propwash.length >= 2 || motorNoise.length >= 3) { healthColor = 'var(--red)'; healthLabel = 'NOISY'; }
+  else if (propwash.length >= 1 || motorNoise.length >= 2) { healthColor = 'var(--yellow)'; healthLabel = 'MODERATE'; }
+
+  document.getElementById('fft-analysis').innerHTML = `
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:14px;">
+      <div style="font-size:14px; font-weight:600; color:var(--white);">Spectral Analysis — ${axis.charAt(0).toUpperCase() + axis.slice(1)} Axis</div>
+      <span style="font-size:11px; padding:3px 10px; border-radius:10px; font-weight:600; background:${healthColor}22; color:${healthColor}; border:1px solid ${healthColor}44;">${healthLabel}</span>
+    </div>
+    <div class="result-grid" style="grid-template-columns: repeat(4, 1fr); margin-bottom:14px;">
+      <div class="result-item"><span class="result-value sm">${numSamples}</span><span class="result-label">Samples</span></div>
+      <div class="result-item"><span class="result-value sm">${sampleRate}</span><span class="result-label">Sample Rate Hz</span></div>
+      <div class="result-item"><span class="result-value sm">${(sampleRate / N).toFixed(1)}</span><span class="result-label">Freq Resolution Hz</span></div>
+      <div class="result-item"><span class="result-value sm">${peaks.length}</span><span class="result-label">Peaks Found</span></div>
+    </div>
+    ${peaks.length > 0 ? `
+    <table class="peak-table">
+      <thead><tr><th>#</th><th>Frequency</th><th>Magnitude</th><th>Zone</th><th>Likely Source</th></tr></thead>
+      <tbody>${peaks.map((p, i) => {
+        let zone, src;
+        if (p.freq < 20) { zone = 'Flight'; src = 'Stick input'; }
+        else if (p.freq <= 100) { zone = '<span style="color:var(--yellow)">Propwash</span>'; src = 'PID oscillation / propwash'; }
+        else if (p.freq <= 250) { zone = '<span style="color:var(--orange)">Frame</span>'; src = 'Frame resonance / bent prop'; }
+        else { zone = '<span style="color:var(--red)">Motor</span>'; src = estimateHarmonic(p.freq, peaks); }
+        return `<tr>
+          <td style="color:var(--g3);">${i+1}</td>
+          <td style="color:var(--cyan); font-family:var(--mono); font-weight:700;">${p.freq} Hz</td>
+          <td style="font-family:var(--mono);">${p.magnitude.toFixed(2)}</td>
+          <td>${zone}</td>
+          <td style="color:var(--g2);">${src}</td>
+        </tr>`;
+      }).join('')}</tbody>
+    </table>` : '<p style="color:var(--g3);">No significant peaks above noise floor.</p>'}
+  `;
+
+  document.getElementById('fft-filter-rec').innerHTML = buildFilterRecHTML();
+}
+
+function estimateHarmonic(freq, peaks) {
+  // Try to identify if this is a motor harmonic
+  const motorPeaks = peaks.filter(p => p.freq > 200).sort((a, b) => a.freq - b.freq);
+  if (motorPeaks.length >= 2) {
+    const fundamental = motorPeaks[0].freq;
+    for (let h = 1; h <= 4; h++) {
+      if (Math.abs(freq - fundamental * h) < fundamental * 0.1) {
+        return h === 1 ? `Motor fundamental (~${Math.round(fundamental * 60)} RPM)` : `Motor ${h}${h===2?'nd':h===3?'rd':'th'} harmonic`;
+      }
+    }
+  }
+  return 'Motor / electrical noise';
+}
+
+function buildFilterRecFromFFT() {
+  if (!fftResult) return '';
+  const { peaks } = fftResult;
+  const recs = [];
+  const propwash = peaks.filter(p => p.freq >= 20 && p.freq <= 100);
+  const motorNoise = peaks.filter(p => p.freq > 250);
+
+  if (motorNoise.length >= 2) recs.push('Enable RPM filter — multiple motor harmonics detected. set rpm_filter_harmonics = 3');
+  if (propwash.length > 0) recs.push(`Propwash at ${propwash.map(p=>p.freq+'Hz').join(', ')} — increase D gain or Dynamic Idle`);
+  const lowestMotor = motorNoise.sort((a,b) => a.freq - b.freq)[0];
+  if (lowestMotor) recs.push(`Set gyro lowpass below ${lowestMotor.freq}Hz — try simplified_gyro_filter_multiplier = ${Math.round(lowestMotor.freq / 5)}`);
+  return recs.join('. ');
+}
+
+function buildFilterRecHTML() {
+  if (!fftResult) return '';
+  const { peaks, sampleRate } = fftResult;
+  const propwash = peaks.filter(p => p.freq >= 20 && p.freq <= 100);
+  const frameRes = peaks.filter(p => p.freq > 100 && p.freq <= 250);
+  const motorNoise = peaks.filter(p => p.freq > 250).sort((a, b) => a.freq - b.freq);
+
+  let recs = '<div style="font-size:14px; font-weight:600; color:var(--white); margin-bottom:12px;">Filter Recommendations</div>';
+
+  if (motorNoise.length >= 2) {
+    recs += `<p style="font-size:13px; color:var(--g1); margin-bottom:8px;">
+      <strong style="color:var(--cyan);">RPM Filter:</strong> ${motorNoise.length} motor harmonics detected (${motorNoise.map(p => p.freq + 'Hz').join(', ')}). 
+      RPM filter will precisely target these. <strong>Enable bidirectional DShot.</strong></p>`;
+  }
+
+  if (propwash.length > 0) {
+    recs += `<p style="font-size:13px; color:var(--g1); margin-bottom:8px;">
+      <strong style="color:var(--yellow);">Propwash:</strong> Energy at ${propwash.map(p => p.freq + 'Hz').join(', ')}. 
+      This is best addressed by increasing D gain, enabling Dynamic Idle (3000-3500 RPM), and improving motor authority at low throttle — 
+      <em>not</em> by filtering, which would add latency in the PID-critical range.</p>`;
+  }
+
+  if (frameRes.length > 0) {
+    recs += `<p style="font-size:13px; color:var(--g1); margin-bottom:8px;">
+      <strong style="color:var(--orange);">Frame Resonance:</strong> Peaks at ${frameRes.map(p => p.freq + 'Hz').join(', ')}. 
+      Check for loose hardware, prop balance, and FC soft-mounting. Dynamic notch filter should catch these.</p>`;
+  }
+
+  if (motorNoise.length > 0) {
+    const lowestMotor = motorNoise[0].freq;
+    const recGyroMult = Math.max(60, Math.min(150, Math.round(lowestMotor / 4)));
+    const recDtermMult = Math.max(40, Math.round(recGyroMult * 0.8));
+    recs += `
+      <div class="divider" style="margin:16px 0 10px;">Suggested CLI</div>
+      <div class="code-block" style="margin:0;">
+<button class="copy-btn" onclick="navigator.clipboard.writeText(this.parentElement.textContent.replace('Copy','').trim()).then(()=>{this.textContent='✓';setTimeout(()=>this.textContent='Copy',1500)})">Copy</button>
+# Filter settings from spectral analysis
+set rpm_filter_harmonics = 3
+set rpm_filter_min_hz = ${Math.max(80, Math.round(lowestMotor * 0.6))}
+set dyn_notch_count = ${frameRes.length >= 2 ? 4 : 3}
+set dyn_notch_q = ${frameRes.length >= 2 ? 250 : 350}
+set dyn_notch_min_hz = ${Math.max(80, Math.round(Math.min(...peaks.map(p => p.freq)) * 0.8))}
+set dyn_notch_max_hz = ${Math.round(Math.max(...motorNoise.map(p => p.freq)) * 1.2)}
+set simplified_gyro_filter_multiplier = ${recGyroMult}
+set simplified_dterm_filter_multiplier = ${recDtermMult}
+simplified_tuning apply
+save</div>`;
+  }
+
+  if (peaks.length === 0) {
+    recs += '<p style="font-size:13px; color:var(--green);">Spectrum looks clean — no significant noise peaks above noise floor. Your current filtering is likely adequate.</p>';
+  }
+
+  return recs;
+}
+
+// ═══════════════════════════════════════════════════════════════
 // CONFIG (API keys — same pattern as wingman.html)
 // ═══════════════════════════════════════════════════════════════
 var cfgProvider = localStorage.getItem('pid_provider') || 'gemini';
@@ -1669,6 +2239,9 @@ renderFilterAdvice();
 renderSessionLog();
 updateSessionCount();
 renderAIContextChips();
+
+// FFT canvas resize handler
+window.addEventListener('resize', () => { if (fftResult) renderFFTCanvas(); });
 
 // Update context chips whenever sliders change
 ['sl-p','sl-i','sl-d','sl-f'].forEach(id => {
