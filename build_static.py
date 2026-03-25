@@ -147,6 +147,253 @@ def fix_nav_links(html, depth=0):
     return html
 
 
+# ═══════════════════════════════════════════════════════════════════════════
+# SEO — Meta tags, Open Graph, Twitter Cards, Sitemap, robots.txt
+# ═══════════════════════════════════════════════════════════════════════════
+
+SITE_URL = 'https://nvmilldoitmyself.com'
+SITE_NAME = 'Forge — Drone Integration Handbook'
+
+# SEO metadata per page: (title, description, keywords)
+SEO_META = {
+    'mission-control.html': (
+        'Forge — Drone Build Planner & Intelligence Platform',
+        'Browse 3,500+ vetted drone parts, validate build compatibility, assemble step-by-step guides, and access defense intelligence. The interactive companion to the Drone Integration Handbook.',
+        'drone build planner, FPV parts database, drone compatibility, NDAA compliant drones, Blue UAS, drone components',
+    ),
+    'index.html': (
+        'Model Builder — Forge Drone Build Planner',
+        'Assemble drone builds from 3,500+ vetted parts with real-time 12-check compatibility validation. Flight controllers, ESCs, motors, frames, and more.',
+        'drone model builder, FPV build tool, drone parts compatibility, flight controller selector',
+    ),
+    'wingman.html': (
+        'Wingman AI — Drone Troubleshooter & Wiring Analyzer',
+        'AI-powered FPV drone troubleshooter. Upload photos for wiring analysis, get PID tuning help, firmware guidance, and real-time web search. Powered by Gemini.',
+        'drone troubleshooter AI, FPV wiring analyzer, Betaflight help, drone repair assistant, PID tuning AI',
+    ),
+    'pid-tuning.html': (
+        'PID Tuning Tool — Blackbox FFT Spectral Analysis & Calculator',
+        'Interactive PID calculator with Blackbox FFT spectral analysis, symptom diagnostic, filter advisor, and AI tune advisor. Betaflight CLI generator with session logging.',
+        'PID tuning calculator, Betaflight PID, Blackbox FFT analysis, drone filter tuning, propwash fix, D-term noise',
+    ),
+    'tools.html': (
+        'RF Tools & Calculators — FPV Channel Planner, Range Estimator',
+        'FPV channel planner, harmonics calculator, range estimator, Fresnel zone, dipole antenna length, VTX unlocker, and FC target matcher.',
+        'FPV channel planner, RF calculator, drone range estimator, VTX frequency, antenna calculator',
+    ),
+    'platforms.html': (
+        'Drone Platforms Database — 219 Defense & Commercial UAS',
+        'Searchable database of 219 drone platforms with specs, compliance status, country of origin, and Blue UAS certification. Filter by NDAA, propulsion, payload.',
+        'drone platforms database, Blue UAS list, NDAA compliant drones, military drones, commercial UAS database',
+    ),
+    'compliance.html': (
+        'Drone Compliance Dashboard — NDAA, Blue UAS, ITAR Status',
+        'Check NDAA 848 compliance, Blue UAS certification, ITAR restrictions, and country-of-origin status for all drone platforms. Traffic-light compliance tiers.',
+        'NDAA drone compliance, Blue UAS cleared drones, drone ITAR, drone procurement compliance',
+    ),
+    'compare.html': (
+        'Drone Platform Compare — Side-by-Side Spec Comparison',
+        'Compare 2-3 drone platforms side by side. Specs, compliance, flight time, payload, thermal cameras, and MAVLink support with best/worst highlighting.',
+        'drone comparison tool, compare drone specs, platform comparison, UAS specifications',
+    ),
+    'intel.html': (
+        'Intel Feed — Live Defense & Drone Industry News',
+        'Curated defense drone news from DefenseScoop, Defense News, Breaking Defense, and The War Zone. Real-time feed with defense, financial, and commercial categories.',
+        'drone defense news, UAS industry news, defense drone contracts, drone market intelligence',
+    ),
+    'industry.html': (
+        'Industry Intelligence — Drone Funding, Contracts & Market Data',
+        'Curated funding rounds, defense contracts, government grants, and market data for the drone industry. Hand-verified from the Forge data pipeline.',
+        'drone industry intelligence, UAS funding, defense drone contracts, drone market data',
+    ),
+    'slam-guide.html': (
+        'SLAM Integration Guide — Visual Odometry for Drones',
+        'Complete guide to SLAM integration on drones. ORB-SLAM3, VINS-Fusion, Kimera, and hardware selection.',
+        'drone SLAM guide, visual odometry drone, ORB-SLAM3 drone, VINS-Fusion integration',
+    ),
+    'slam-selector.html': (
+        'SLAM Stack Selector — Choose the Right SLAM for Your Drone',
+        'Interactive selector for SLAM stacks based on your drone, compute platform, sensors, and use case.',
+        'SLAM selector, drone SLAM comparison, visual SLAM for drones, LiDAR SLAM',
+    ),
+    'swarm-guide.html': (
+        'Drone Swarm Integration Guide — Multi-Agent Coordination',
+        'Technical guide to drone swarm coordination. Communication protocols, formation control, task allocation, and hardware.',
+        'drone swarm guide, multi-drone coordination, swarm communication, drone formation control',
+    ),
+    'swarm-selector.html': (
+        'Swarm Stack Selector — Drone Swarm Architecture Planner',
+        'Interactive selector for drone swarm communication and coordination stacks.',
+        'drone swarm selector, swarm stack, multi-drone architecture',
+    ),
+    'tak-guide.html': (
+        'TAK Integration Guide — ATAK/WinTAK for Drone Operations',
+        'Integrate drones with Team Awareness Kit. ATAK, WinTAK, TAK Server setup, CoT format, and video streaming.',
+        'TAK drone integration, ATAK drone, WinTAK UAS, CoT drone, tactical drone feed',
+    ),
+    'mesh-guide.html': (
+        'Mesh Radio Integration Guide — Silvus, Doodle Labs, Rajant',
+        'Guide to mesh radio networks for drones. Silvus StreamCaster, Doodle Labs Helix, Rajant Peregrine integration.',
+        'drone mesh radio, Silvus drone, Doodle Labs Helix, mesh network drone, MANET drone',
+    ),
+    'openhd-guide.html': (
+        'OpenHD Integration Guide — Open Source HD FPV Video',
+        'Set up OpenHD for low-latency HD digital FPV video on custom drones. Hardware selection and antenna setup.',
+        'OpenHD setup guide, open source FPV, HD video drone, digital FPV DIY',
+    ),
+    'fc-firmware-guide.html': (
+        'Flight Controller Firmware Guide — Betaflight, iNav, ArduPilot, PX4',
+        'Complete comparison of drone flight controller firmware. Betaflight for racing, iNav for GPS, ArduPilot for autonomy, PX4 for enterprise.',
+        'Betaflight vs iNav, drone firmware comparison, ArduPilot guide, PX4 setup, flight controller firmware',
+    ),
+    'academy.html': (
+        'FPV Academy — Learn Drone Building & Flight',
+        'Educational modules for FPV drone building, soldering, firmware configuration, and flight.',
+        'FPV drone tutorial, learn to build drone, FPV academy, drone building course',
+    ),
+    'guide.html': (
+        'Build Guide — Step-by-Step Drone Assembly',
+        'Step-by-step drone assembly instructions with photo capture, 3D STL viewer, media carousel, and build session tracking.',
+        'drone build guide, FPV assembly instructions, drone wiring guide, step by step drone build',
+    ),
+    'editor.html': (
+        'Parts Library — 3,500+ Vetted Drone Components',
+        'Browse and search the full parts library with specs, compatibility data, and filtering by category, manufacturer, and voltage.',
+        'drone parts library, FPV component database, flight controller database, motor database',
+    ),
+    'audit.html': (
+        'Build Audit — Drone Build Quality Checklist',
+        'Immutable event log, build snapshots, SHA-256 photo hashing, and quality control tracking for drone builds.',
+        'drone build audit, quality control drone, build verification, drone inspection checklist',
+    ),
+    'cost.html': (
+        'Cost Estimator — Drone Build BOM & Weight Breakdown',
+        'Full bill of materials cost and weight breakdown for drone builds. Per-slot pricing and weight distribution.',
+        'drone build cost, FPV build budget, drone BOM calculator, parts cost estimator',
+    ),
+    'troubleshoot.html': (
+        'Drone Troubleshooting Database — 52 Common Issues & Fixes',
+        'Searchable database of 52 drone troubleshooting entries across 13 categories. Symptoms, causes, and step-by-step fixes.',
+        'drone troubleshooting, FPV problems fixes, Betaflight issues, drone repair guide',
+    ),
+    'cuas-guide.html': (
+        'Counter-UAS Guide — Drone Detection & Defeat Systems',
+        'Technical guide to Counter-UAS systems. RF detection, radar, EO/IR, electronic warfare, and kinetic defeat.',
+        'counter UAS guide, drone detection system, C-UAS, drone defeat, RF drone detection',
+    ),
+    'guides-hub.html': (
+        'Implementation Guides — SLAM, Mesh, TAK, Swarm & More',
+        'Technical implementation guides for drone systems: SLAM, mesh networking, TAK integration, swarm coordination, OpenHD, and counter-UAS.',
+        'drone implementation guide, SLAM drone, mesh network drone, TAK drone, drone swarm',
+    ),
+    'ai-guide.html': (
+        'AI & Computer Vision Guide for Drones',
+        'Integrate AI and computer vision on drones. Object detection, tracking, YOLO, companion computers, and edge inference.',
+        'drone AI guide, drone computer vision, YOLO drone, edge AI drone, companion computer',
+    ),
+    'browse.html': (
+        'Browse Components — Full Drone Parts Catalog',
+        'Browse the complete catalog of 3,500+ drone components with search, filtering, and detailed specifications.',
+        'drone parts catalog, browse FPV parts, drone component search',
+    ),
+}
+
+DEFAULT_SEO = (
+    'Forge — Drone Integration Handbook',
+    'Interactive build planner and intelligence platform for the Drone Integration Handbook. 3,500+ parts, 219 platforms, compliance tracking.',
+    'drone build planner, FPV parts, drone intelligence platform',
+)
+
+
+def inject_seo(html, src_name, dst_path):
+    """Inject meta description, Open Graph, Twitter Card, and canonical URL."""
+    title, description, keywords = SEO_META.get(src_name, DEFAULT_SEO)
+
+    clean_path = dst_path.replace('index.html', '')
+    canonical = f'{SITE_URL}/{clean_path}'
+
+    seo_tags = f'''
+    <!-- SEO -->
+    <meta name="description" content="{description}">
+    <meta name="keywords" content="{keywords}">
+    <link rel="canonical" href="{canonical}">
+
+    <!-- Open Graph -->
+    <meta property="og:type" content="website">
+    <meta property="og:site_name" content="{SITE_NAME}">
+    <meta property="og:title" content="{title}">
+    <meta property="og:description" content="{description}">
+    <meta property="og:url" content="{canonical}">
+
+    <!-- Twitter Card -->
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="{title}">
+    <meta name="twitter:description" content="{description}">
+'''
+
+    # Update <title> tag
+    html = re.sub(r'<title>[^<]*</title>', f'<title>{title}</title>', html)
+
+    # Inject after viewport meta or before </head>
+    if '<meta name="viewport"' in html:
+        html = html.replace(
+            '<meta name="viewport"',
+            seo_tags + '    <meta name="viewport"',
+            1
+        )
+    else:
+        html = html.replace('</head>', seo_tags + '</head>', 1)
+
+    return html
+
+
+def generate_sitemap(pages):
+    """Generate sitemap.xml from the PAGES dict."""
+    from datetime import datetime
+    now = datetime.now().strftime('%Y-%m-%d')
+
+    priority_map = {
+        'mission-control.html': '1.0',
+        'index.html': '0.9', 'platforms.html': '0.9', 'wingman.html': '0.9',
+        'pid-tuning.html': '0.8', 'tools.html': '0.8', 'compliance.html': '0.8',
+        'intel.html': '0.8', 'industry.html': '0.8',
+        'compare.html': '0.7', 'browse.html': '0.7',
+    }
+
+    urls = []
+    for src_name, dst_path in pages.items():
+        clean_path = dst_path.replace('index.html', '')
+        url = f'{SITE_URL}/{clean_path}'
+        priority = priority_map.get(src_name, '0.5')
+        freq = 'weekly' if src_name in priority_map else 'monthly'
+        urls.append(f'''  <url>
+    <loc>{url}</loc>
+    <lastmod>{now}</lastmod>
+    <changefreq>{freq}</changefreq>
+    <priority>{priority}</priority>
+  </url>''')
+
+    return f'''<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+{chr(10).join(urls)}
+</urlset>'''
+
+
+def generate_robots_txt():
+    return f'''User-agent: *
+Allow: /
+
+Sitemap: {SITE_URL}/sitemap.xml
+
+Crawl-delay: 1
+
+Disallow: /analytics/
+Disallow: /vault/
+Disallow: /contribute/
+Disallow: /template/
+'''
+
+
 DATA_REPO = 'https://github.com/DroneWuKong/Ai-Project.git'
 DATA_CLONE_DIR = '_data_source'
 
@@ -318,6 +565,7 @@ def sync_handbook_data():
     return True
 
 
+
 def build():
     # Step 0: Sync data from handbook repo
     sync_handbook_data()
@@ -354,6 +602,7 @@ def build():
         
         html = strip_django_tags(html)
         html = fix_paths(html, depth)
+        html = inject_seo(html, src_name, dst_path)
         html = inject_adapter(html, depth)
         html = fix_nav_links(html, depth)
         
@@ -361,6 +610,17 @@ def build():
             f.write(html)
         
         print(f"  {src_name} → {dst_path}")
+    
+    # Generate sitemap.xml
+    sitemap = generate_sitemap(PAGES)
+    with open(os.path.join(BUILD_DIR, 'sitemap.xml'), 'w') as f:
+        f.write(sitemap)
+    print(f"  Generated sitemap.xml ({len(PAGES)} URLs)")
+    
+    # Generate robots.txt
+    with open(os.path.join(BUILD_DIR, 'robots.txt'), 'w') as f:
+        f.write(generate_robots_txt())
+    print(f"  Generated robots.txt")
     
     # netlify.toml lives in the repo root — do not overwrite it from the build script.
     # All redirect rules are maintained in the root netlify.toml.
