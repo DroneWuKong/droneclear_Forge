@@ -478,7 +478,7 @@ var HANDBOOK_FILES = [
 var STARTERS = [
   'Motor 3 dead after crash — triage',
   'Is DJI Mavic 3 NDAA compliant?',
-  'Best radio for 5km BLOS',
+  'Check my wiring [attach photo]',
   'Compare ELRS vs Crossfire vs DJI',
 ];
 
@@ -682,27 +682,200 @@ var FALLBACK_KB = `
 `;
 kbData = FALLBACK_KB; // Now safe to assign
 
+var WIRING_KB = `
+## COMMON FC PINOUT REFERENCE (verify against specific board silkscreen)
+
+### Standard 30.5x30.5mm FC Wiring (Betaflight)
+- VBAT+ / GND: Main battery power input (red/black). Goes to ESC power pads or direct from XT60.
+- 5V / 4V5: Regulated 5V output from onboard BEC. Powers receiver, GPS, LED.
+- 3V3: 3.3V regulated output. Some receivers need this instead of 5V.
+- M1-M4 (or S1-S4): Motor signal outputs to ESC. DShot protocol. Match Betaflight motor tab diagram.
+- TX1/RX1 through TX6/RX6: UART pairs. TX on FC connects to RX on peripheral and vice versa.
+  - UART1: Often USB/VCP (don't use for peripherals on many boards)
+  - UART2: Common for receiver (SBUS/CRSF/ELRS)
+  - UART3: Common for GPS or VTX control (SmartAudio/Tramp)
+  - UART4-6: Available for telemetry, Bluetooth, companion computer
+- SBUS/IBUS pad: Dedicated inverted input for SBUS receivers (alternative to using a UART RX pad)
+- LED: WS2812 LED strip signal output
+- BZ-/BZ+: Buzzer pads (BZ- is signal, BZ+ is voltage)
+- CURR: Current sensor input (from ESC current sensor)
+- RSSI: Analog RSSI input (legacy, most modern RX use digital)
+- BOOT: Hold during power-on to enter DFU/bootloader mode
+- CAM / VTX: Analog video signal routing. CAM = camera input, VTX = video output to VTX
+
+### POPULAR FC PINOUTS (board-specific)
+SpeedyBee F405 V3/V4:
+  RX pads: UART1(USB), UART2(top side RX2/TX2), UART3(bottom), UART4(bottom), UART5(bottom TX5 only), UART6(bottom)
+  Recommended: RX on UART2, VTX SmartAudio on TX1, GPS on UART3/4
+  BEC: 5V 2A, 9V 2A (for DJI/Walksnail)
+  
+MATEKSYS F405/F722:
+  UART1(TX1/RX1), UART2(TX2/RX2), UART3(TX3/RX3), UART4(TX4/RX4), UART5(TX5/RX5), UART6(TX6/RX6)
+  Recommended: RX on UART2, GPS on UART3, VTX on TX1
+  Has dedicated SBUS pad (inverted UART2 RX)
+
+Mamba F405 MK2/MK3:
+  UART1(TX1/RX1 - usually VTX), UART2(TX2/RX2 - usually RX), UART3(TX3/RX3), UART4(TX4/RX4), UART6(TX6/RX6)
+  9V BEC output for DJI/digital VTX
+
+HGLRC F405/F722:
+  UART1, UART2, UART3, UART4, UART5(some models)
+  DJI connector on dedicated UART
+  
+Holybro Kakute H7 V2:
+  UART1-UART7 (7 UARTs!), dedicated DJI/HDZero connector
+  Recommended: RX on UART6, GPS on UART1, VTX on UART3
+
+BetaFPV F4/F722 (whoop FCs):
+  Typically UART1(SBUS), UART2(free), onboard ELRS/SPI RX on some models
+  Small pads — use fine tip iron
+
+### Receiver Wiring (ELRS/CRSF/SBUS)
+- ELRS/CRSF: TX→RX, RX→TX on a free UART. 5V power (or 3.3V for some). Ground.
+  CRITICAL: FC TX pad → Receiver RX pad. FC RX pad → Receiver TX pad. This CROSSES.
+- SBUS (FrSky): Signal to SBUS pad (inverted) or RX pad with inversion enabled. 5V + GND.
+- Spectrum/DSMX: Signal to any UART RX. 3.3V power (NOT 5V — will damage!).
+
+### Popular Receiver Pinouts
+ELRS EP1/EP2 (BetaFPV): 5V, GND, TX, RX (4 pads in a row, silk labeled)
+HappyModel EP1/EP2: 5V, GND, TX, RX (same layout)
+RadioMaster RP series: 5V, GND, TX, RX + optional RSSI pad
+TBS Crossfire Nano: 5V, GND, TX (Ch1), RX (Ch2)
+FrSky R-XSR: 5V, GND, SBUS out, SmartPort (S.Port)
+
+### VTX Wiring
+- Analog VTX: Video signal from FC VTX pad. Power from VBAT (check VTX voltage rating). GND.
+  SmartAudio: Single wire from VTX SA pad to FC TX pad. Set UART in Betaflight Ports → Peripherals → TBS SmartAudio.
+  IRC Tramp: Single wire from VTX to FC TX pad. Set UART in Betaflight Ports → Peripherals → IRC Tramp.
+- DJI Air Unit / Vista: TX→RX, RX→TX on a free UART. Power from VBAT (7-26V) or 9V BEC. GND.
+  Enable MSP on that UART in Betaflight Ports tab for OSD.
+  DJI plug: 6-pin connector (GND, NC, TX, RX, NC, BAT+). Or solder directly.
+- Walksnail Avatar: TX→RX, RX→TX. Power 7-25V. Enable MSP on UART. 6-pin plug similar to DJI.
+- HDZero VTX: TX→RX, RX→TX. Power 7-25V. Enable MSP on UART. 
+  HDZero also needs SmartAudio on a SEPARATE TX pad for power/channel control.
+
+### ESC Wiring
+- 4-in-1 ESC to FC: 8-pin ribbon or solder — M1-M4 signal + CURR + VBAT + GND + (optional telemetry TX)
+- Individual ESCs: 3 motor wires per motor + signal wire to corresponding M pad on FC
+- ESC Telemetry: TX pad on ESC to a free UART RX pad on FC. Enable in Ports → Sensor → ESC.
+
+### GPS Wiring
+- TX→RX, RX→TX on a free UART. 5V + GND. Enable GPS on that UART in Ports tab.
+- If GPS has compass (magnetometer): also connect SCL/SDA to FC I2C pads.
+
+### WIRE COLOR CONVENTIONS (not universal but common)
+- Red: Power (VBAT or 5V)
+- Black: Ground
+- White: Signal (varies)
+- Yellow: Signal (often video or SmartAudio)
+- Green/Blue: Signal (varies by manufacturer)
+- DJI plug: Red=VBAT, Black=GND, Yellow=TX, White=RX (verify with your unit)
+
+### CRITICAL WIRING MISTAKES (ranked by frequency)
+1. TX↔TX instead of TX↔RX (most common — signal wires must CROSS)
+2. 5V to a 3.3V-only device (burns the device instantly — Spektrum/DSMX receivers)
+3. Motor signal wires not matching Betaflight motor diagram order (quad flips on arm)
+4. Missing ground connection between FC and ESC (causes erratic behavior/brownouts)
+5. VTX powered without antenna connected (burns the VTX power amplifier permanently)
+6. SBUS wire to non-inverted UART without enabling inversion in CLI
+7. DJI/digital VTX wired without MSP enabled on the UART (no OSD)
+8. Current sensor wire to wrong pad (no battery voltage/current in OSD)
+9. RX wired to UART1 which is USB/VCP on most boards (won't work as Serial RX)
+10. 9V BEC output used for 5V-only device (some GPS modules, some receivers)
+`;
+
 // ─── SYSTEM PROMPT ────────────────────────────────────────────
-function buildPrompt(query) {
-  const ragCtx = query ? ragSearch(query) : '';
+function buildPrompt(query, hasImages) {
+  var ragCtx = query ? ragSearch(query) : '';
+
+  // If images attached, also search for wiring/FC/VTX specific context
+  if (hasImages && query) {
+    var wiringCtx = ragSearch(query + ' wiring pinout UART solder pad connection FC VTX receiver ESC', 15, 3);
+    if (wiringCtx) ragCtx += wiringCtx;
+  }
+
+  var imageInstructions = '';
+  if (hasImages) {
+    imageInstructions = `
+
+IMAGE TRIAGE PROTOCOL (photos attached — THIS IS YOUR PRIMARY TASK):
+
+STEP 1 — IDENTIFY EVERY BOARD IN THE IMAGE:
+Read ALL text visible on every PCB. Look for:
+- FC: Board name printed on PCB (e.g., "SPEEDYBEE F405 V4", "MAMBA F722 MK3", "MATEKSYS F405-CTR")
+- ESC: Printed name or amp rating (e.g., "BLITZ E55", "TEKKO32 F4 45A", "HAKRC 35A 4IN1")
+- VTX: Model name (e.g., "Rush Tank Ultimate", "TBS Unify Pro32", "HDZero Race V3", "Walksnail Avatar")
+- Receiver: Tiny board label (e.g., "EP1", "EP2", "RP1", "R-XSR", "CRSF Nano RX")
+- GPS: Module markings (e.g., "BN-880", "M10 GPS", "Matek SAM-M10Q")
+- Chip markings: Read IC package text for IMU (ICM-42688-P, BMI-270), MCU (STM32F405, STM32F722, STM32H743)
+
+STEP 2 — SEARCH FOR EXACT PINOUT:
+Once you identify the FC board name, SEARCH THE WEB for its specific pinout diagram:
+- Search: "[board name] pinout diagram wiring"
+- Search: "[board name] manual PDF"
+This gives you the EXACT pad locations and UART assignments for THAT specific board.
+DO NOT rely on generic pinout knowledge — every board is different.
+
+STEP 3 — TRACE EVERY WIRE:
+For each wire visible in the image:
+a) Identify where it starts (which pad on which board)
+b) Identify where it ends (which pad on which board)  
+c) Read the pad labels at BOTH ends from the silkscreen
+d) Check: does this connection make sense?
+
+Specific checks:
+- Power wires (thick, red/orange): VBAT to VBAT, 5V to 5V, GND to GND
+- Signal wires (thin): TX must go to RX and RX must go to TX (CROSSES)
+- Receiver: Should be on a UART (usually UART2). 4 wires: 5V, GND, TX→RX, RX→TX
+- VTX digital: Should be on a UART. 4+ wires: VBAT/9V, GND, TX→RX, RX→TX
+- VTX analog SmartAudio: Single signal wire to a TX pad
+- ESC signal: M1-M4 from FC to ESC signal pads (correct order matters!)
+- GPS: TX→RX, RX→TX on a UART + 5V + GND
+
+STEP 4 — INSPECT SOLDER QUALITY:
+- Good joint: Shiny, concave, wets both pad and wire
+- Cold joint: Dull, balled up, sitting ON the pad but not bonded
+- Bridge: Solder connecting two adjacent pads (short circuit!)
+- Insufficient: Wire barely touching pad, will break in vibration
+- Burnt: Discolored pad, lifted trace, brown/black marks
+- Missing flux: Grainy texture, poor flow
+
+STEP 5 — REPORT WITH EXACT PAD REFERENCES:
+BAD: "The receiver wiring looks wrong"
+GOOD: "Your ELRS receiver TX wire is soldered to TX3 on the SpeedyBee F405 V4, but it should go to RX3 (TX↔RX must cross). Move the receiver TX wire from the TX3 pad to the RX3 pad. Then in Betaflight Ports tab, enable Serial RX on UART3."
+
+STEP 6 — BETAFLIGHT CONFIG:
+After wiring analysis, provide the exact Betaflight configuration needed:
+- Ports tab: which UARTs need Serial RX, GPS, VTX (SmartAudio/Tramp/MSP)
+- Configuration tab: Receiver protocol (CRSF/SBUS/etc)
+- Any CLI commands needed (e.g., set serialrx_inverted, resource remapping)
+
+USE THE WIRING REFERENCE below to cross-check what you see in the image against correct wiring.
+${WIRING_KB}`;
+  }
 
   return `You are Wingman AI — expert drone and FPV systems troubleshooter${mode === 'orqa' ? ', deployed by Orqa Inc. for product support' : ''}.
 
 You have live web search. Use it proactively for firmware versions, spec sheets, current Blue UAS list, part pricing, recent updates.
+${hasImages ? 'The user has attached a photo. FOLLOW THE IMAGE TRIAGE PROTOCOL BELOW.' : ''}
 
 KNOWLEDGE BASE (always available):
 ${FALLBACK_KB}
 ${kbData !== FALLBACK_KB ? kbData : ''}
 ${ragCtx ? '\nRETRIEVED FROM DRONE DATABASE (matching user query):' + ragCtx : ''}
+${imageInstructions}
 
-NOTE: The database above is a subset retrieved by keyword match. If the user asks about a specific part or platform not shown, use web search to find current specs.
+NOTE: The database above is a subset retrieved by keyword match. If the user asks about a specific part or platform not shown, use web search to find current specs and pinout diagrams.
 
 RULES:
 - Specific and actionable: exact param names, CLI commands in code blocks, part numbers
 - Diagnose in probability order
 - Search before guessing on specs, firmware, compliance status
 - Concise. Bullets for steps. Code blocks for commands.
-- Visual triage on images: burnt pads, wrong wiring, damaged props, bad solder, FC orientation, connector issues
+- When analyzing images: ALWAYS identify the specific boards first by reading silkscreen text, then SEARCH for that board's pinout diagram, then trace wiring against the pinout
+- If you can read the board name in the image, ALWAYS web search "[board name] pinout wiring diagram" before giving wiring advice
+- Reference EXACT pad names visible on the board (TX3, RX2, M1, 5V, etc.) — never give vague advice
+- For wiring issues: state which wire, which pad it's on now, which pad it should be on, and the Betaflight config change needed
 ${mode === 'orqa' ? '- Represent Orqa products: F405 Pro, WingCore H7, FPV.One, FPV.Connect, MRM2-10 H743\n- Professional product support tone' : ''}
 - Say "verify this" when uncertain. Never fabricate specs.`;
 }
@@ -916,6 +1089,8 @@ async function send() {
   updateSendBtn();
   hideEmpty();
 
+  var hasImages = stagedImgs.length > 0;  // Capture BEFORE clearing
+
   const userContent = [];
   stagedImgs.forEach(img => userContent.push({ type: 'image', source: { type: 'base64', media_type: img.mediaType, data: img.b64 } }));
   if (txt) userContent.push({ type: 'text', text: txt });
@@ -952,7 +1127,7 @@ async function send() {
 
     if (provider === 'gemini') {
       // ═══ GEMINI API ═══
-      const sysPrompt = buildPrompt(txt);
+      const sysPrompt = buildPrompt(txt, hasImages);
       const geminiMessages = [];
       // Convert conversation history to Gemini format
       for (const m of messages) {
@@ -1002,8 +1177,8 @@ async function send() {
         },
         body: JSON.stringify({
           model: 'claude-sonnet-4-20250514',
-          max_tokens: 1000,
-          system: buildPrompt(txt),
+          max_tokens: 2048,
+          system: buildPrompt(txt, hasImages),
           tools: [{ type: 'web_search_20250305', name: 'web_search' }],
           messages: apiMessages,
         }),

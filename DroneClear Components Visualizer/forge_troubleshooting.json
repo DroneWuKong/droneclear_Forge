@@ -2,7 +2,7 @@
   "meta": {
     "version": 1,
     "last_updated": "2026-03-24",
-    "total_entries": 52,
+    "total_entries": 58,
     "categories": [
       "motors",
       "escs",
@@ -2204,6 +2204,265 @@
         "compass",
         "magnetometer",
         "critical"
+      ]
+    },
+    {
+      "id": "TS-WIR-001",
+      "title": "TX/RX wires swapped \u2014 receiver or VTX not communicating",
+      "category": "radio_link",
+      "severity": "blocking",
+      "symptoms": [
+        "Receiver bound but Betaflight shows no channel movement",
+        "VTX SmartAudio/Tramp not responding",
+        "GPS connected but no data in Betaflight GPS tab"
+      ],
+      "causes": [
+        "TX pad on FC wired to TX pad on peripheral (should be TX\u2192RX)",
+        "RX pad on FC wired to RX pad on peripheral (should be RX\u2192TX)",
+        "This is the single most common wiring mistake in FPV"
+      ],
+      "diagnostics": [
+        "Betaflight Receiver tab: do channels move when you move sticks? If not, TX/RX likely swapped",
+        "Check physical wiring: FC TX pad should have wire going to peripheral RX pad",
+        "If you can read board silkscreen in photo: verify TX\u2192RX crossing",
+        "Try swapping the two signal wires \u2014 if it works, they were swapped"
+      ],
+      "fixes": [
+        "Swap the TX and RX wires: FC TX \u2192 peripheral RX, FC RX \u2192 peripheral TX",
+        "Remember: TX (transmit) sends data OUT, RX (receive) takes data IN",
+        "The crossing is correct: what one board transmits, the other receives",
+        "Some FCs label pads from the FC's perspective, some from the peripheral's \u2014 check the manual"
+      ],
+      "related_parts": [
+        "flight_controllers",
+        "receivers",
+        "video_transmitters",
+        "gps_modules"
+      ],
+      "difficulty": "beginner",
+      "tags": [
+        "wiring",
+        "tx-rx",
+        "swap",
+        "uart",
+        "common",
+        "first-build"
+      ]
+    },
+    {
+      "id": "TS-WIR-002",
+      "title": "Wrong voltage to receiver \u2014 5V to 3.3V device",
+      "category": "radio_link",
+      "severity": "critical",
+      "symptoms": [
+        "Receiver smells burnt after first power-on",
+        "Receiver LED never lights up",
+        "Receiver worked once then died"
+      ],
+      "causes": [
+        "Powered a 3.3V receiver from a 5V pad",
+        "Spektrum/DSMX receivers are 3.3V \u2014 5V will kill them",
+        "Some ELRS receivers are 3.3V only (check datasheet)",
+        "Wire accidentally touching VBAT pad instead of regulated output"
+      ],
+      "diagnostics": [
+        "Check receiver datasheet for input voltage range",
+        "Measure voltage on the power wire with multimeter before connecting receiver",
+        "If receiver is dead: check for burn marks on voltage regulator chip",
+        "Smell test \u2014 burnt electronics have distinct acrid smell"
+      ],
+      "fixes": [
+        "ALWAYS check receiver voltage requirement before wiring",
+        "Use FC's 3V3 pad for 3.3V receivers, 5V/4V5 pad for 5V receivers",
+        "If receiver is burnt: replace it \u2014 voltage regulators don't survive overvoltage",
+        "Add a 3.3V regulator if FC doesn't have a 3V3 pad",
+        "Label your power pads with a marker to prevent future mistakes"
+      ],
+      "related_parts": [
+        "receivers",
+        "flight_controllers"
+      ],
+      "difficulty": "beginner",
+      "tags": [
+        "wiring",
+        "voltage",
+        "3v3",
+        "5v",
+        "burnt",
+        "receiver",
+        "critical"
+      ]
+    },
+    {
+      "id": "TS-WIR-003",
+      "title": "No OSD on digital FPV \u2014 MSP not configured",
+      "category": "video",
+      "severity": "medium",
+      "symptoms": [
+        "DJI/Walksnail/HDZero video works but no OSD overlay",
+        "Can see camera image but no battery voltage, RSSI, etc.",
+        "OSD elements configured in Betaflight but not showing in goggles"
+      ],
+      "causes": [
+        "MSP (MSP DisplayPort) not enabled on the UART connected to the digital VTX",
+        "TX/RX wires between FC and VTX not connected or swapped",
+        "Wrong UART selected in Betaflight Ports tab"
+      ],
+      "diagnostics": [
+        "Betaflight Ports tab: is 'MSP' enabled (under Peripherals) on the UART your VTX is connected to?",
+        "Check which UART the VTX TX/RX wires are soldered to on the FC",
+        "For DJI: the VTX needs both TX and RX wires connected for MSP OSD"
+      ],
+      "fixes": [
+        "Betaflight \u2192 Ports tab \u2192 find the UART your VTX is on \u2192 enable MSP under Peripherals column",
+        "Verify wiring: FC TX \u2192 VTX RX, FC RX \u2192 VTX TX (both wires needed for MSP)",
+        "For DJI: also set OSD to 'Auto' or 'MSP DisplayPort' in DJI goggles settings",
+        "For HDZero: enable MSP on the correct UART, OSD shows automatically",
+        "CLI shortcut: `serial <uart_number> 0 115200 57600 0 115200` to enable MSP on a UART"
+      ],
+      "related_parts": [
+        "video_transmitters",
+        "flight_controllers"
+      ],
+      "difficulty": "beginner",
+      "tags": [
+        "osd",
+        "msp",
+        "dji",
+        "hdzero",
+        "walksnail",
+        "digital",
+        "wiring",
+        "uart"
+      ]
+    },
+    {
+      "id": "TS-WIR-004",
+      "title": "ESC signal wires wrong order \u2014 motors spin in wrong positions",
+      "category": "escs",
+      "severity": "high",
+      "symptoms": [
+        "Drone flips on arm but motor directions are correct",
+        "Motors spin but quad is uncontrollable",
+        "Motor 1 in Betaflight spins the wrong physical motor"
+      ],
+      "causes": [
+        "Motor signal wires soldered to wrong M1-M4 pads on FC",
+        "ESC ribbon cable upside down or offset by one pin",
+        "FC motor resource mapping doesn't match physical wiring"
+      ],
+      "diagnostics": [
+        "Props OFF \u2014 go to Betaflight Motors tab",
+        "Spin Motor 1 slider \u2014 which physical motor spins? Should match Betaflight diagram",
+        "Spin Motor 2, 3, 4 \u2014 each should match the Betaflight motor layout diagram",
+        "If wrong: note which motor spins for each number"
+      ],
+      "fixes": [
+        "Option 1 (easiest): Remap motors in Betaflight \u2014 Motors tab \u2192 drag motors to correct positions",
+        "Option 2: CLI `resource motor <number> <pin>` to reassign output pins",
+        "Option 3 (hardware): Re-solder signal wires to correct M pads",
+        "For 4-in-1 ESC with ribbon: check ribbon orientation matches FC pinout",
+        "After fixing: re-test all 4 motors individually before props on"
+      ],
+      "related_parts": [
+        "escs",
+        "flight_controllers",
+        "motors"
+      ],
+      "difficulty": "intermediate",
+      "tags": [
+        "motor-order",
+        "wiring",
+        "esc",
+        "resource",
+        "remap",
+        "flip"
+      ]
+    },
+    {
+      "id": "TS-WIR-005",
+      "title": "Missing ground wire causing erratic behavior",
+      "category": "mechanical",
+      "severity": "high",
+      "symptoms": [
+        "Random twitching or oscillation",
+        "Receiver intermittent",
+        "Video noise correlated with throttle",
+        "ESC desync-like symptoms but ESC is fine"
+      ],
+      "causes": [
+        "Ground wire not connected between FC and ESC board",
+        "Ground wire not connected to receiver",
+        "No common ground between VTX and FC",
+        "Ground wire broken inside insulation (invisible break)"
+      ],
+      "diagnostics": [
+        "Check continuity between GND pads on FC, ESC, receiver, and VTX with multimeter",
+        "All ground pads should show 0 ohms (continuity) to each other",
+        "Wiggle ground wires while powered \u2014 does behavior change?",
+        "If JST connector: check if ground pin is making contact"
+      ],
+      "fixes": [
+        "Solder a ground wire between every board in the system \u2014 FC, ESC, RX, VTX, GPS all share ground",
+        "Even if a JST connector has ground, add a direct solder ground wire as backup",
+        "For carbon fiber frames: the frame itself is NOT a reliable ground path",
+        "Check JST crimps \u2014 ground wire may look connected but have a bad crimp"
+      ],
+      "related_parts": [
+        "flight_controllers",
+        "escs",
+        "receivers",
+        "video_transmitters"
+      ],
+      "difficulty": "intermediate",
+      "tags": [
+        "ground",
+        "wiring",
+        "noise",
+        "erratic",
+        "common"
+      ]
+    },
+    {
+      "id": "TS-WIR-006",
+      "title": "UART conflict \u2014 two devices on same port",
+      "category": "flight_controllers",
+      "severity": "medium",
+      "symptoms": [
+        "One peripheral works but another stops",
+        "GPS works until receiver is powered",
+        "Betaflight shows data from wrong device"
+      ],
+      "causes": [
+        "Two peripherals physically wired to the same UART TX/RX pads",
+        "Betaflight Ports tab has two functions enabled on the same UART",
+        "SoftSerial conflicting with hardware UART on same timer"
+      ],
+      "diagnostics": [
+        "Betaflight Ports tab: check each UART row \u2014 only ONE function should be enabled per UART",
+        "Physically trace wires: are two devices sharing the same TX or RX pad?",
+        "CLI: `serial` command shows all UART assignments"
+      ],
+      "fixes": [
+        "Move one device to a different UART \u2014 desolder and rewire to unused TX/RX pads",
+        "In Ports tab: ensure each UART has only one peripheral assigned",
+        "If out of UARTs: enable SoftSerial for low-bandwidth devices (SmartAudio, GPS)",
+        "Consider upgrade to FC with more UARTs (F7/H7 boards have 6-8)",
+        "VTX SmartAudio only needs TX wire \u2014 can share a UART with a device that only uses RX"
+      ],
+      "related_parts": [
+        "flight_controllers",
+        "receivers",
+        "gps_modules",
+        "video_transmitters"
+      ],
+      "difficulty": "intermediate",
+      "tags": [
+        "uart",
+        "conflict",
+        "wiring",
+        "ports",
+        "softserial"
       ]
     }
   ]
