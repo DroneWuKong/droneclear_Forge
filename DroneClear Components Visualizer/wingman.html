@@ -548,16 +548,19 @@ async function loadRAG() {
   } catch(e) {}
 
   // Still load handbook MDs from GitHub (small text files, optional enrichment)
-  const hbPromises = [];
-  for (const file of HANDBOOK_FILES) {
-    hbPromises.push(
-      fetch(`${GH_RAW}/drone-integration-handbook/main/${file}`)
-        .then(r => r.ok ? r.text() : null)
-        .then(md => { if (md) indexHandbook(file, md); })
-        .catch(() => {})
-    );
-  }
-  await Promise.all(hbPromises);
+  try {
+    const hbPromises = [];
+    const hbFiles = typeof HANDBOOK_FILES !== 'undefined' ? HANDBOOK_FILES : [];
+    for (const file of hbFiles) {
+      hbPromises.push(
+        fetch(`${GH_RAW}/drone-integration-handbook/main/${file}`)
+          .then(r => r.ok ? r.text() : null)
+          .then(md => { if (md) indexHandbook(file, md); })
+          .catch(() => {})
+      );
+    }
+    await Promise.all(hbPromises);
+  } catch(e) { console.warn('Handbook load skipped:', e.message); }
 
   updateStats();
   updateSourcePills();
