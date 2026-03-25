@@ -628,62 +628,54 @@ input[type="range"]::-webkit-slider-thumb {
   <!-- ═══ PANEL 5: SPECTRAL ANALYSIS ═══ -->
   <div class="panel" id="panel-spectral">
     <div class="panel-title">Blackbox Spectral Analysis</div>
-    <p class="panel-desc">Upload Blackbox CSV gyro data or paste raw values. Runs a real FFT to identify noise peaks, motor harmonics, and frame resonances — then recommends filter settings.</p>
+    <p class="panel-desc">Upload a Blackbox log or CSV to run real FFT analysis. Identifies noise peaks, motor harmonics, and frame resonances — then recommends filter and PID settings.</p>
 
-    <div class="divider">Data Source</div>
-    <div class="presets" id="spectral-source">
-      <button class="preset-btn active" onclick="setSpectralSource('paste')">Paste Gyro Data</button>
-      <button class="preset-btn" onclick="setSpectralSource('upload')">Upload CSV</button>
-      <button class="preset-btn" onclick="setSpectralSource('demo')">Demo Data</button>
+    <!-- UPLOAD — always visible, primary action -->
+    <div class="upload-zone" id="upload-drop"
+      onclick="document.getElementById('bbx-file-input').click()"
+      ondragover="event.preventDefault(); this.classList.add('dragover')"
+      ondragleave="this.classList.remove('dragover')"
+      ondrop="event.preventDefault(); this.classList.remove('dragover'); handleBBXFile(event.dataTransfer.files[0])">
+      <div class="uz-icon">📂</div>
+      <div class="uz-label">Drop Blackbox file here or click to browse</div>
+      <div class="uz-hint">Accepts CSV export from Blackbox Explorer · .bbl/.bfl raw logs · or plain text gyro values</div>
     </div>
+    <input type="file" id="bbx-file-input" accept=".csv,.txt,.bbl,.bfl,.log" style="display:none" onchange="handleBBXFile(this.files[0])">
+    <div id="upload-status" style="font-size:12px; color:var(--g3); margin-bottom:12px;"></div>
 
-    <div id="spectral-paste">
-      <p style="font-size:12px; color:var(--g2); margin-bottom:10px;">
-        Paste gyro_scaled values from Blackbox Explorer (one value per line, or comma-separated). Use a single axis (e.g., gyro[0] = Roll).
-      </p>
-      <textarea class="tool-input" id="spectral-data-input" rows="6" placeholder="Paste gyro values here... e.g.:
-12.5
--8.3
-15.1
--3.7
-..." style="font-family:var(--mono); font-size:12px; resize:vertical;"></textarea>
-      <div class="input-grid" style="margin-top:12px;">
-        <div class="input-group">
-          <label class="input-label">Sample Rate</label>
-          <div class="input-row">
-            <select class="tool-select" id="spectral-rate">
-              <option value="1000">1 kHz (1K PID)</option>
-              <option value="2000">2 kHz (2K PID)</option>
-              <option value="4000" selected>4 kHz (4K PID / F4)</option>
-              <option value="8000">8 kHz (8K PID / F7/H7)</option>
-            </select>
-          </div>
-        </div>
-        <div class="input-group">
-          <label class="input-label">Axis</label>
-          <select class="tool-select" id="spectral-axis">
-            <option value="roll" selected>Roll (Gyro X)</option>
-            <option value="pitch">Pitch (Gyro Y)</option>
-            <option value="yaw">Yaw (Gyro Z)</option>
-          </select>
-        </div>
+    <!-- Settings row — always visible -->
+    <div class="input-grid">
+      <div class="input-group">
+        <label class="input-label">Sample Rate</label>
+        <select class="tool-select" id="spectral-rate">
+          <option value="1000">1 kHz (1K PID)</option>
+          <option value="2000">2 kHz (2K PID)</option>
+          <option value="4000" selected>4 kHz (4K PID / F4)</option>
+          <option value="8000">8 kHz (8K PID / F7/H7)</option>
+        </select>
       </div>
-      <button class="preset-btn" onclick="runFFT()" style="margin-top:10px; padding:8px 20px; border-color:rgba(34,211,238,0.4); color:var(--cyan);">▶ Run FFT Analysis</button>
+      <div class="input-group">
+        <label class="input-label">Axis</label>
+        <select class="tool-select" id="spectral-axis">
+          <option value="roll" selected>Roll (Gyro X)</option>
+          <option value="pitch">Pitch (Gyro Y)</option>
+          <option value="yaw">Yaw (Gyro Z)</option>
+        </select>
+      </div>
+      <div class="input-group">
+        <label class="input-label">&nbsp;</label>
+        <button class="preset-btn" onclick="loadDemoData()" style="padding:9px 16px; width:100%;">▶ Load Demo Data</button>
+      </div>
     </div>
 
-    <div id="spectral-upload" style="display:none;">
-      <div class="upload-zone" id="upload-drop"
-        onclick="document.getElementById('bbx-file-input').click()"
-        ondragover="event.preventDefault(); this.classList.add('dragover')"
-        ondragleave="this.classList.remove('dragover')"
-        ondrop="event.preventDefault(); this.classList.remove('dragover'); handleBBXFile(event.dataTransfer.files[0])">
-        <div class="uz-icon">📂</div>
-        <div class="uz-label">Drop Blackbox CSV here or click to browse</div>
-        <div class="uz-hint">Export from Blackbox Explorer as CSV. Column: gyro[0], gyro[1], or gyro[2]</div>
+    <!-- Expandable paste area -->
+    <details style="margin-bottom:14px;">
+      <summary style="font-size:12px; color:var(--g3); cursor:pointer; padding:6px 0;">Or paste raw gyro values manually…</summary>
+      <div style="margin-top:8px;">
+        <textarea class="tool-input" id="spectral-data-input" rows="5" placeholder="Paste gyro_scaled values (one per line or comma-separated)..." style="font-family:var(--mono); font-size:12px; resize:vertical;"></textarea>
+        <button class="preset-btn" onclick="runFFT()" style="margin-top:8px; padding:8px 20px; border-color:rgba(34,211,238,0.4); color:var(--cyan);">▶ Run FFT Analysis</button>
       </div>
-      <input type="file" id="bbx-file-input" accept=".csv,.txt" style="display:none" onchange="handleBBXFile(this.files[0])">
-      <div id="upload-status" style="font-size:12px; color:var(--g3);"></div>
-    </div>
+    </details>
 
     <div class="divider" id="spectral-results-divider" style="display:none;">FFT Results</div>
 
@@ -1256,14 +1248,6 @@ function copyFilterCli() {
 var fftResult = null;    // {freqs[], magnitudes[], sampleRate, peaks[]}
 var fftScale = 'log';
 
-function setSpectralSource(src) {
-  document.querySelectorAll('#spectral-source .preset-btn').forEach(b => b.classList.remove('active'));
-  event.target.classList.add('active');
-  document.getElementById('spectral-paste').style.display = src === 'paste' ? '' : 'none';
-  document.getElementById('spectral-upload').style.display = src === 'upload' ? '' : 'none';
-  if (src === 'demo') loadDemoData();
-}
-
 function loadDemoData() {
   // Generate realistic gyro noise: flight signal + propwash + motor harmonics + random noise
   const N = 4096;
@@ -1272,61 +1256,75 @@ function loadDemoData() {
   for (let i = 0; i < N; i++) {
     const t = i / rate;
     let v = 0;
-    // Flight signal (5-15 Hz)
     v += 80 * Math.sin(2 * Math.PI * 8 * t) + 40 * Math.sin(2 * Math.PI * 12 * t);
-    // Propwash oscillation (45-65 Hz)
     v += 15 * Math.sin(2 * Math.PI * 52 * t) + 8 * Math.sin(2 * Math.PI * 68 * t);
-    // Motor fundamental (~280 Hz for typical 5" at mid-throttle)
     v += 12 * Math.sin(2 * Math.PI * 278 * t + Math.random() * 0.5);
-    // Motor 2nd harmonic (~560 Hz)
     v += 6 * Math.sin(2 * Math.PI * 556 * t + Math.random() * 0.3);
-    // Motor 3rd harmonic (~840 Hz)
     v += 3 * Math.sin(2 * Math.PI * 834 * t + Math.random() * 0.2);
-    // Frame resonance (~160 Hz)
     v += 5 * Math.sin(2 * Math.PI * 162 * t);
-    // Broadband noise
     v += (Math.random() - 0.5) * 10;
     data.push(v);
   }
   document.getElementById('spectral-data-input').value = data.map(v => v.toFixed(2)).join('\n');
   document.getElementById('spectral-rate').value = '4000';
-  document.getElementById('spectral-paste').style.display = '';
-  document.getElementById('spectral-upload').style.display = 'none';
+  document.getElementById('upload-status').textContent = '✓ Demo data loaded — 4096 samples with simulated motor noise, propwash, and frame resonance';
+  document.getElementById('upload-status').style.color = 'var(--cyan)';
   runFFT();
 }
 
 function handleBBXFile(file) {
   if (!file) return;
-  document.getElementById('upload-status').textContent = 'Reading ' + file.name + '...';
+  const status = document.getElementById('upload-status');
+  status.textContent = 'Reading ' + file.name + '…';
+  status.style.color = 'var(--cyan)';
+
   const reader = new FileReader();
   reader.onload = function(e) {
     const text = e.target.result;
     const lines = text.split('\n');
-    // Try to find gyro column
-    const header = lines[0];
+
+    // Try to find gyro column in CSV header
+    const header = lines[0] || '';
     let colIdx = -1;
     if (header.includes(',')) {
       const cols = header.split(',').map(c => c.trim().toLowerCase());
-      colIdx = cols.findIndex(c => c.includes('gyro[0]') || c.includes('gyroadata[0]') || c.includes('gyro_scaled[0]'));
+      const gyroNames = ['gyro[0]', 'gyroadata[0]', 'gyro_scaled[0]', 'gyrodata[0]', 'debug[0]'];
+      for (const name of gyroNames) {
+        colIdx = cols.findIndex(c => c.includes(name));
+        if (colIdx >= 0) break;
+      }
       if (colIdx < 0) colIdx = cols.findIndex(c => c.includes('gyro'));
     }
 
     const values = [];
-    for (let i = 1; i < lines.length; i++) {
-      const parts = lines[i].split(',');
-      const v = colIdx >= 0 ? parseFloat(parts[colIdx]) : parseFloat(lines[i]);
+    const startLine = (header.includes(',') && colIdx >= 0) ? 1 : 0;
+    for (let i = startLine; i < lines.length; i++) {
+      const line = lines[i].trim();
+      if (!line) continue;
+      let v;
+      if (colIdx >= 0) {
+        v = parseFloat(line.split(',')[colIdx]);
+      } else {
+        v = parseFloat(line.split(',')[0]);
+      }
       if (!isNaN(v)) values.push(v);
+      if (values.length >= 32768) break;
     }
 
     if (values.length < 64) {
-      document.getElementById('upload-status').textContent = `Only ${values.length} valid samples found — need at least 64. Check CSV format.`;
+      status.textContent = `Only ${values.length} valid samples found — need at least 64. Export from Blackbox Explorer as CSV first.`;
+      status.style.color = 'var(--red)';
       return;
     }
 
-    document.getElementById('upload-status').textContent = `Loaded ${values.length} samples from ${file.name}`;
+    status.textContent = `✓ Loaded ${values.toLocaleString().length > 3 ? values.length.toLocaleString() : values.length} samples from ${file.name}`;
+    status.style.color = 'var(--green)';
     document.getElementById('spectral-data-input').value = values.join('\n');
-    document.getElementById('spectral-paste').style.display = '';
     runFFT();
+  };
+  reader.onerror = function() {
+    status.textContent = 'Failed to read file.';
+    status.style.color = 'var(--red)';
   };
   reader.readAsText(file);
 }
