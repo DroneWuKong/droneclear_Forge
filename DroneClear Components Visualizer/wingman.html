@@ -334,10 +334,10 @@
       </div>
     </div>
     <div class="stat-grid">
-      <div class="stat-card"><div class="icon">📡</div><div class="num">12</div><div class="lbl">RF Signatures</div></div>
-      <div class="stat-card"><div class="icon">⚙️</div><div class="num">5</div><div class="lbl">FC Profiles</div></div>
-      <div class="stat-card"><div class="icon">🔧</div><div class="num">7</div><div class="lbl">Forge Recs</div></div>
-      <div class="stat-card"><div class="icon">📋</div><div class="num">6</div><div class="lbl">Handbook Topics</div></div>
+      <div class="stat-card"><div class="icon">🛩️</div><div class="num" id="stat-platforms">—</div><div class="lbl">Platforms</div></div>
+      <div class="stat-card"><div class="icon">⚙️</div><div class="num" id="stat-components">—</div><div class="lbl">Components</div></div>
+      <div class="stat-card"><div class="icon">📖</div><div class="num" id="stat-handbook">—</div><div class="lbl">Handbook Pages</div></div>
+      <div class="stat-card"><div class="icon">📡</div><div class="num" id="stat-categories">—</div><div class="lbl">Categories</div></div>
     </div>
     <div class="starters-label">
       <span class="slash">//</span>
@@ -408,18 +408,39 @@ let kbSources  = ['fallback'];
 let loading    = false;
 let apiKey     = localStorage.getItem('wingman_api_key') || '';
 
-const GH = {
-  owner: 'DroneWuKong',
-  repo:  'Ai-Project',
-  files: [
-    'data/platforms.json',
-    'data/rf_signatures.json',
-    'data/fc_profiles.json',
-    'data/forge.json',
-    'docs/handbook.md',
-    'README.md',
-  ],
-};
+const GH_RAW = 'https://raw.githubusercontent.com/DroneWuKong';
+
+// Parts-DB JSON files to fetch from drone-integration-handbook
+const PARTS_DB_FILES = [
+  'flight_controllers','motors','escs','frames','batteries','propellers',
+  'antennas','receivers','video_transmitters','fpv_cameras','gps_modules',
+  'stacks','sensors','lidar','mesh_radios','companion_computers',
+  'integrated_stacks','drone_models','build_guides',
+];
+
+// Handbook markdown files to fetch
+const HANDBOOK_FILES = [
+  'components/flight-controllers.md','components/flight-controller-selection.md',
+  'components/motors.md','components/escs.md','components/batteries.md',
+  'components/battery-deep-dive.md','components/comms-datalinks.md',
+  'components/companion-computers.md','components/counter-uas.md',
+  'components/thermal-cameras.md','components/lidar-mapping-payloads.md',
+  'components/sensor-payload-integration.md','components/platforms-global.md',
+  'components/remote-id-custom-builds.md','components/propulsion-system-matching.md',
+  'components/power-architecture-emi.md','components/gnss-receiver-quality-ecosystem.md',
+  'components/detect-and-avoid-integration.md','components/industry-intelligence.md',
+  'components/bvlos-pathways.md','components/utm-airspace-awareness.md',
+  'components/uas-maintenance-standards.md','components/openhd-implementation-guide.md',
+  'components/rtk-ppk-gps-integration.md','components/rtk-ppk-the-real-story.md',
+  'components/propulsion-non-electric.md',
+  'field/troubleshooting.md','field/preflight.md','field/blackbox.md',
+  'field/pid-tuning.md','field/ghost-config.md','field/unsolved-problems.md',
+  'firmware/four-firmwares.md','firmware/mavlink-protocol.md',
+  'firmware/msp-protocol.md','firmware/uart-layout.md',
+  'fundamentals/antennas.md','fundamentals/five-link-types.md',
+  'fundamentals/frequency-bands.md','fundamentals/link-budgets.md',
+  'integration/companion.md','integration/mesh-radios.md','integration/tak.md',
+];
 
 const STARTERS = [
   'Motor 3 dead after crash — triage',
@@ -430,68 +451,180 @@ const STARTERS = [
   'Orqa F405 Pro Betaflight setup',
   'Detect DJI OcuSync on CC1101',
   'PX4 WingCore H7 first flash',
+  'Best companion computer for autonomous flight',
+  'Compare ELRS vs Crossfire vs DJI',
 ];
 
-// ─── FALLBACK KB ──────────────────────────────────────────────
+// ─── RAG INDEX ───────────────────────────────────────────────
+// Each entry: {cat, name, text, src, data}
+let ragIndex = [];
+let handbookChunks = []; // {title, text, src}
+let ragStats = { platforms: 0, components: 0, handbook: 0, categories: new Set() };
+
+async function loadRAG() {
+  const t0 = Date.now();
+  const promises = [];
+
+  // Load parts-db JSONs
+  for (const file of PARTS_DB_FILES) {
+    promises.push(
+      fetch(`${GH_RAW}/drone-integration-handbook/main/data/parts-db/${file}.json`)
+        .then(r => r.ok ? r.json() : null)
+        .then(data => { if (data) indexPartsDB(file, data); })
+        .catch(() => {})
+    );
+  }
+
+  // Load handbook MDs
+  for (const file of HANDBOOK_FILES) {
+    promises.push(
+      fetch(`${GH_RAW}/drone-integration-handbook/main/${file}`)
+        .then(r => r.ok ? r.text() : null)
+        .then(md => { if (md) indexHandbook(file, md); })
+        .catch(() => {})
+    );
+  }
+
+  await Promise.all(promises);
+  updateStats();
+  updateSourcePills();
+  console.log(`RAG loaded: ${ragIndex.length} components, ${handbookChunks.length} handbook chunks in ${Date.now()-t0}ms`);
+}
+
+function indexPartsDB(file, data) {
+  const items = Array.isArray(data) ? data : Object.values(data).flat();
+  for (const item of items) {
+    if (!item || typeof item !== 'object') continue;
+    const cat = item.category || file;
+    ragStats.categories.add(cat);
+    if (file === 'drone_models') ragStats.platforms++;
+    else ragStats.components++;
+    // Build searchable text blob from all string fields
+    const textParts = [item.name, item.manufacturer, item.description, item.category,
+      item.mcu_family, item.protocol, item.video_system, item.mesh_protocol,
+      item.processor, item.firmware, ...(item.tags || [])].filter(Boolean);
+    ragIndex.push({
+      cat, name: item.name || '?', text: textParts.join(' ').toLowerCase(),
+      src: file, data: item,
+    });
+  }
+}
+
+function indexHandbook(file, md) {
+  ragStats.handbook++;
+  // Split on ## headings into chunks
+  const sections = md.split(/^## /m);
+  for (const sec of sections) {
+    if (sec.trim().length < 50) continue;
+    const firstLine = sec.split('\n')[0].trim();
+    const title = firstLine || file.split('/').pop().replace('.md','');
+    handbookChunks.push({
+      title, text: sec.trim().toLowerCase(),
+      src: file, full: sec.trim(),
+    });
+  }
+}
+
+function updateStats() {
+  const el = (id, v) => { const e = document.getElementById(id); if (e) e.textContent = v; };
+  el('stat-platforms', ragStats.platforms || '—');
+  el('stat-components', ragStats.components || '—');
+  el('stat-handbook', ragStats.handbook || '—');
+  el('stat-categories', ragStats.categories.size || '—');
+}
+
+// ─── RAG RETRIEVAL ───────────────────────────────────────────
+function ragSearch(query, maxComponents = 25, maxHandbook = 5) {
+  const q = query.toLowerCase();
+  const terms = q.split(/\s+/).filter(t => t.length > 2);
+  if (terms.length === 0) return '';
+
+  // Score components
+  const scored = ragIndex.map(entry => {
+    let score = 0;
+    for (const t of terms) {
+      if (entry.name && entry.name.toLowerCase().includes(t)) score += 5;
+      if (entry.text.includes(t)) score += 1;
+    }
+    // Exact name match bonus
+    if (entry.name && q.includes(entry.name.toLowerCase())) score += 10;
+    return { ...entry, score };
+  }).filter(e => e.score > 0).sort((a, b) => b.score - a.score).slice(0, maxComponents);
+
+  // Score handbook chunks
+  const hScored = handbookChunks.map(ch => {
+    let score = 0;
+    for (const t of terms) {
+      if (ch.title.toLowerCase().includes(t)) score += 5;
+      const count = (ch.text.match(new RegExp(t, 'g')) || []).length;
+      score += Math.min(count, 5);
+    }
+    return { ...ch, score };
+  }).filter(e => e.score > 0).sort((a, b) => b.score - a.score).slice(0, maxHandbook);
+
+  // Build context string
+  let ctx = '';
+
+  if (scored.length > 0) {
+    ctx += '\n\n## MATCHING COMPONENTS FROM DATABASE\n';
+    for (const s of scored) {
+      const d = s.data;
+      const fields = Object.entries(d)
+        .filter(([k,v]) => v && typeof v !== 'object' && !['pid','image_file','pdf_file','link','description'].includes(k))
+        .map(([k,v]) => `${k}: ${v}`).join(' | ');
+      ctx += `- [${s.cat}] ${s.name}: ${fields}\n`;
+      if (d.description) ctx += `  ${d.description.slice(0, 200)}\n`;
+    }
+  }
+
+  if (hScored.length > 0) {
+    ctx += '\n\n## RELEVANT HANDBOOK SECTIONS\n';
+    for (const h of hScored) {
+      // Limit each chunk to ~800 chars to stay within budget
+      ctx += `\n### ${h.title} (${h.src})\n${h.full.slice(0, 800)}\n`;
+    }
+  }
+
+  return ctx;
+}
+
+// ─── FALLBACK KB (used before RAG loads) ─────────────────────
 const FALLBACK_KB = `
 ## RF SIGNATURES
 - DJI OcuSync 2.4GHz: FHSS burst, 72ch, ~10ms beacon
-- DJI OcuSync 5.8GHz: FHSS burst, fallback from 2.4
 - ELRS 900MHz: LoRa chirp SF6-10 BW500kHz, 868/915MHz
 - ELRS 2.4GHz: LoRa/FLRC, Gemini dual-ant, 250-1000Hz packet rate
 - Microhard pDDL 900: FHSS/DSSS 902-928MHz, AES-256, Blue UAS
-- Herelink 2.4GHz: OFDM, CubePilot, combined video+RC
-- TBS Crossfire: FHSS 868/915MHz, <10ms latency, 150km claimed
+- TBS Crossfire: FHSS 868/915MHz, <10ms latency
 - ELRS Airport mode: transparent serial bridge 115200 baud, both units RX firmware
-- FPV Analog 5.8GHz: FM, Raceband R1-R8, A/B/E/F/R bands
-- DJI O3/O4 Digital: OFDM 5.8GHz, 10km claim
-- Orqa FPV.Connect: Digital 2.4/5.8GHz, low latency goggle ecosystem
-- Skydio LTE/WiFi: dual comms, autonomy-first, NDAA compliant
+- DJI O3/O4 Digital: OFDM 5.8GHz
 
 ## FC PROFILES
 - Betaflight: DSHOT600 (F7/H7), DSHOT300 (F4), RPM filter with BLHeli_32/AM32
-- iNav: nav_rth_altitude=3000, nav_wp_radius=200, failsafe=RTH, DPS310 baro, 6+ sats
-- PX4 WingCore H7: STM32H743, dual ICM-42688-P, DPS310, 14 PWM, MatekH743 base
-- Orqa F405 Pro: STM32F405, ICM-42688-P, Betaflight 4.4+, integrated OSD/SmartAudio
-- S405: STM32F405, 6x UART, check resource mapping, UART1/UART3 conflict common
-
-## FORGE HARDWARE RECS
-- Long range FPV: ELRS 900MHz, DJI O3 Air Unit, M10Q GPS, F7/H7 FC ~$300
-- Racing FPV: ELRS 2.4GHz, analog VTX 200mW, F4/F7 FC, BLHeli_32 45A
-- RF Detection low cost: LILYGO T-Embed CC1101 ~$31, SX1262 add-on ~$41 combined
-- RF Detection mid: XIAO ESP32S3 + Wio-SX1262 ~$10
-- Ground robot: 6.5in hoverboard hub motors, ZS-X11H, ESP32-C6, RC/WiFi auto-switch
-
-## HANDBOOK
-- Pre-flight: props secure, battery nominal, 6+ GPS sats, failsafe tested, RTH above obstacles
-- ELRS binding: RX power→bind button→TX bind mode→ELRS Lua. Same band. Airport: both RX, 115200
-- Motor dead: check ESC signal, DSHOT match, resource mapping. Hot: prop balance, bearing
-- OSD missing: VTX power pad, SmartAudio UART in ports tab, NTSC/PAL match camera
-- GPS no lock: M10Q cold start 5-10min, UART 115200 UBX, mag calibrate away from motors
-- Blackbox: P high=oscillation, D high=hot motors, gyro noise=filtering issue
+- iNav: nav_rth_altitude=3000, nav_wp_radius=200, failsafe=RTH
+- PX4 WingCore H7: STM32H743, dual ICM-42688-P, DPS310, 14 PWM
+- Orqa F405 Pro: STM32F405, ICM-42688-P, Betaflight 4.4+
 
 ## NDAA/COMPLIANCE
 - §848 bans DOD procurement: DJI, Autel, Dahua, Hikvision
-- Blue UAS cleared: Skydio X10, Parrot ANAFI USA, Censys, Impossible Aerospace
+- Blue UAS cleared: Skydio X10, Parrot ANAFI USA, Censys
 - Orqa: Croatian origin, FOCI mitigation pathway for DOD
-- ITAR: EAR99 most commercial FPV, jammers/EW may need export license
-
-## PLATFORMS
-- DJI Mavic 3: NDAA non-compliant, covered entity
-- Skydio X10: Blue UAS cleared, AI autonomous
-- Parrot ANAFI USA: Blue UAS cleared, French origin, encrypted
-- Orqa FPV.One: Croatian, FOCI mitigation pathway
-- Orqa WingCore H7: Croatian, PX4, STM32H743
 `;
 
 // ─── SYSTEM PROMPT ────────────────────────────────────────────
-function buildPrompt() {
+function buildPrompt(query) {
+  const ragCtx = query ? ragSearch(query) : '';
+
   return `You are Wingman AI — expert drone and FPV systems troubleshooter${mode === 'orqa' ? ', deployed by Orqa Inc. for product support' : ''}.
 
 You have live web search. Use it proactively for firmware versions, spec sheets, current Blue UAS list, part pricing, recent updates.
 
-KNOWLEDGE BASE:
-${kbData}
+KNOWLEDGE BASE (always available):
+${FALLBACK_KB}
+${kbData !== FALLBACK_KB ? kbData : ''}
+${ragCtx ? '\nRETRIEVED FROM DRONE DATABASE (matching user query):' + ragCtx : ''}
+
+NOTE: The database above is a subset retrieved by keyword match. If the user asks about a specific part or platform not shown, use web search to find current specs.
 
 RULES:
 - Specific and actionable: exact param names, CLI commands in code blocks, part numbers
@@ -507,6 +640,7 @@ ${mode === 'orqa' ? '- Represent Orqa products: F405 Pro, WingCore H7, FPV.One, 
 document.addEventListener('DOMContentLoaded', () => {
   renderStarters();
   renderFileList();
+  loadRAG(); // fire and forget — UI works immediately with fallback
 });
 
 function renderStarters() {
@@ -530,8 +664,12 @@ function renderFileList() {
 
 function updateSourcePills() {
   const el = document.getElementById('source-pills');
-  el.innerHTML = kbSources.map(s =>
-    `<span class="source-pill">${s.includes('/') ? s.split('/').pop() : s}</span>`
+  const pills = ['fallback'];
+  if (ragIndex.length > 0) pills.push(`parts-db (${ragIndex.length})`);
+  if (handbookChunks.length > 0) pills.push(`handbook (${handbookChunks.length})`);
+  if (ghFiles.some(f => f.ok)) kbSources.filter(s => s !== 'fallback').forEach(s => pills.push(s));
+  el.innerHTML = pills.map(s =>
+    `<span class="source-pill${s.startsWith('parts-db') || s.startsWith('handbook') ? ' live' : ''}">${s}</span>`
   ).join('');
 }
 
@@ -726,7 +864,7 @@ async function send() {
       body: JSON.stringify({
         model: 'claude-sonnet-4-20250514',
         max_tokens: 1000,
-        system: buildPrompt(),
+        system: buildPrompt(txt),
         tools: [{ type: 'web_search_20250305', name: 'web_search' }],
         messages: apiMessages,
       }),
