@@ -330,7 +330,7 @@
       <div class="topper"></div>
       <div class="body">
         <h2>Welcome to <span id="welcome-name">Wingman AI</span></h2>
-        <p>Drone systems troubleshooter powered by your repo, the Forge KB, and live web search. Ask anything — or upload photos for visual triage.</p>
+        <p>Drone systems intelligence powered by the Forge KB and live web search. Tap ⚙️ to add your API key — supports <strong>Claude</strong> (Anthropic) or <strong>Gemini</strong> (Google, free).</p>
       </div>
     </div>
     <div class="stat-grid">
@@ -376,11 +376,28 @@
   <div id="cfg-panel">
     <h3><span class="slash">//</span><span>Settings</span></h3>
 
-    <label class="cfg-label">Anthropic API Key (required to chat)</label>
-    <input type="password" id="api-key-input" placeholder="sk-ant-api03-xxxxxxxxxxxx"/>
-    <div id="api-key-hint" style="font-size:10px;color:var(--g3);margin:-10px 0 16px;line-height:1.5;">
-      Stored in your browser only — never sent to our server.
-      <a href="https://console.anthropic.com/settings/keys" target="_blank" style="color:var(--cyan);">Get a key →</a>
+    <label class="cfg-label">AI Provider</label>
+    <div style="display:flex;gap:6px;margin-bottom:16px;">
+      <button id="prov-anthropic" onclick="setProvider('anthropic')" style="flex:1;padding:8px;border-radius:6px;border:1px solid var(--border);background:var(--bg-card);color:var(--g2);font-family:system-ui;font-size:12px;cursor:pointer;font-weight:600;">Claude (Anthropic)</button>
+      <button id="prov-gemini" onclick="setProvider('gemini')" style="flex:1;padding:8px;border-radius:6px;border:1px solid var(--border);background:var(--bg-card);color:var(--g2);font-family:system-ui;font-size:12px;cursor:pointer;font-weight:600;">Gemini (Google)</button>
+    </div>
+
+    <div id="anthropic-cfg">
+      <label class="cfg-label">Anthropic API Key</label>
+      <input type="password" id="api-key-input" placeholder="sk-ant-api03-xxxxxxxxxxxx"/>
+      <div id="api-key-hint" style="font-size:10px;color:var(--g3);margin:-10px 0 16px;line-height:1.5;">
+        Stored in your browser only — never sent to our server.
+        <a href="https://console.anthropic.com/settings/keys" target="_blank" style="color:var(--cyan);">Get a key →</a>
+      </div>
+    </div>
+
+    <div id="gemini-cfg" style="display:none;">
+      <label class="cfg-label">Google Gemini API Key</label>
+      <input type="password" id="gemini-key-input" placeholder="AIzaSy..."/>
+      <div style="font-size:10px;color:var(--g3);margin:-10px 0 16px;line-height:1.5;">
+        Free — no credit card. Stored in your browser only.
+        <a href="https://aistudio.google.com/apikey" target="_blank" style="color:var(--cyan);">Get a free key →</a>
+      </div>
     </div>
 
     <hr style="border:none;border-top:1px solid var(--border);margin:0 0 16px;"/>
@@ -407,6 +424,8 @@ let kbData     = FALLBACK_KB;
 let kbSources  = ['fallback'];
 let loading    = false;
 let apiKey     = localStorage.getItem('wingman_api_key') || '';
+let provider   = localStorage.getItem('wingman_provider') || 'anthropic';
+let geminiKey  = localStorage.getItem('wingman_gemini_key') || '';
 
 const GH_RAW = 'https://raw.githubusercontent.com/DroneWuKong';
 
@@ -685,8 +704,21 @@ function setMode(m) {
 }
 
 // ─── CONFIG ──────────────────────────────────────────────────
+function setProvider(p) {
+  provider = p;
+  localStorage.setItem('wingman_provider', p);
+  document.getElementById('anthropic-cfg').style.display = p === 'anthropic' ? '' : 'none';
+  document.getElementById('gemini-cfg').style.display = p === 'gemini' ? '' : 'none';
+  document.getElementById('prov-anthropic').style.borderColor = p === 'anthropic' ? 'var(--cyan)' : 'var(--border)';
+  document.getElementById('prov-anthropic').style.color = p === 'anthropic' ? 'var(--cyan)' : 'var(--g2)';
+  document.getElementById('prov-gemini').style.borderColor = p === 'gemini' ? 'var(--cyan)' : 'var(--border)';
+  document.getElementById('prov-gemini').style.color = p === 'gemini' ? 'var(--cyan)' : 'var(--g2)';
+}
+
 function openCfg() {
   document.getElementById('api-key-input').value = apiKey;
+  document.getElementById('gemini-key-input').value = geminiKey;
+  setProvider(provider);
   document.getElementById('cfg-overlay').classList.add('open');
 }
 function closeCfg() {
@@ -701,6 +733,11 @@ function saveCfgAndConnect() {
   if (newKey) {
     apiKey = newKey;
     localStorage.setItem('wingman_api_key', apiKey);
+  }
+  const newGemini = document.getElementById('gemini-key-input').value.trim();
+  if (newGemini) {
+    geminiKey = newGemini;
+    localStorage.setItem('wingman_gemini_key', geminiKey);
   }
   // Also connect GH if PAT is provided
   const pat = document.getElementById('pat-input').value.trim();
@@ -844,8 +881,12 @@ async function send() {
   const apiMessages = messages.map(m => ({ role: m.role, content: m.content }));
 
   try {
-    if (!apiKey) {
-      messages.push({ role: 'assistant', content: [], text: 'Please add your Anthropic API key in Settings (⚙️ button) to start chatting.\n\n[Get a free key →](https://console.anthropic.com/settings/keys)', searched: false });
+    const activeKey = provider === 'gemini' ? geminiKey : apiKey;
+    const keyName = provider === 'gemini' ? 'Google Gemini' : 'Anthropic';
+    const keyUrl = provider === 'gemini' ? 'https://aistudio.google.com/apikey' : 'https://console.anthropic.com/settings/keys';
+
+    if (!activeKey) {
+      messages.push({ role: 'assistant', content: [], text: `Please add your ${keyName} API key in Settings (⚙️ button) to start chatting.\n\n[Get a free key →](${keyUrl})`, searched: false });
       loading = false;
       hideThinking();
       renderMessages();
@@ -853,29 +894,68 @@ async function send() {
       scrollBottom();
       return;
     }
-    const res = await fetch('https://api.anthropic.com/v1/messages', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'x-api-key': apiKey,
-        'anthropic-version': '2023-06-01',
-        'anthropic-dangerous-direct-browser-access': 'true',
-      },
-      body: JSON.stringify({
-        model: 'claude-sonnet-4-20250514',
-        max_tokens: 1000,
-        system: buildPrompt(txt),
-        tools: [{ type: 'web_search_20250305', name: 'web_search' }],
-        messages: apiMessages,
-      }),
-    });
-    const data = await res.json();
+
     let text = '', searched = false;
-    for (const b of (data.content || [])) {
-      if (b.type === 'text') text += b.text;
-      if (b.type === 'tool_use' && b.name === 'web_search') searched = true;
+
+    if (provider === 'gemini') {
+      // ═══ GEMINI API ═══
+      const sysPrompt = buildPrompt(txt);
+      const geminiMessages = [];
+      // Convert conversation history to Gemini format
+      for (const m of messages) {
+        const role = m.role === 'assistant' ? 'model' : 'user';
+        const parts = [];
+        if (Array.isArray(m.content)) {
+          for (const c of m.content) {
+            if (c.type === 'text') parts.push({ text: c.text });
+            else if (c.type === 'image') parts.push({ inlineData: { mimeType: c.source.media_type, data: c.source.data } });
+          }
+        }
+        if (parts.length) geminiMessages.push({ role, parts });
+      }
+
+      const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${geminiKey}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          systemInstruction: { parts: [{ text: sysPrompt }] },
+          contents: geminiMessages,
+          generationConfig: { maxOutputTokens: 2048, temperature: 0.7 },
+        }),
+      });
+      const data = await res.json();
+      if (data.error) {
+        text = `Gemini error: ${data.error.message || JSON.stringify(data.error)}`;
+      } else {
+        text = (data.candidates?.[0]?.content?.parts || []).map(p => p.text || '').join('');
+      }
+
+    } else {
+      // ═══ ANTHROPIC API ═══
+      const res = await fetch('https://api.anthropic.com/v1/messages', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-api-key': apiKey,
+          'anthropic-version': '2023-06-01',
+          'anthropic-dangerous-direct-browser-access': 'true',
+        },
+        body: JSON.stringify({
+          model: 'claude-sonnet-4-20250514',
+          max_tokens: 1000,
+          system: buildPrompt(txt),
+          tools: [{ type: 'web_search_20250305', name: 'web_search' }],
+          messages: apiMessages,
+        }),
+      });
+      const data = await res.json();
+      for (const b of (data.content || [])) {
+        if (b.type === 'text') text += b.text;
+        if (b.type === 'tool_use' && b.name === 'web_search') searched = true;
+      }
     }
-    messages.push({ role: 'assistant', content: data.content || [], text: text || 'No response.', searched });
+
+    messages.push({ role: 'assistant', content: [], text: text || 'No response.', searched });
   } catch (err) {
     messages.push({ role: 'assistant', content: [], text: `Error: ${err.message}`, searched: false });
   }
