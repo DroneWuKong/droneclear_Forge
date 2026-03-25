@@ -1,21 +1,38 @@
 # Changelog
 
+## [Wingman UI — Forge Layout Redesign] - 2026-03-25
+
+### Added
+- Wingman AI chat tool (wingman.html) — AI-powered drone troubleshooting with GitHub repo fetch + live web search + multi-image visual triage
+- Wingman AI deployed as standalone HTML at /wingman/ route
+- Orqa POC mode toggle in Wingman AI (orange theme, Orqa product persona)
+
+### Changed
+- layout.css: compact Wingman-style topbar across all pages (10px padding vs 30px, no backdrop-filter)
+- layout.css: page titles now prefixed with // in monospace cyan
+- layout.css: nav active state uses cyan fill instead of gradient border
+- layout.css: content-body padding tightened (28px vs 40px)
+- mission-control.html (The Bench): welcome card replaced with centered floating bubble layout
+- The Bench: 4-column stat grid (Categories / Platforms / Components / Build Guides)
+- The Bench: // Quick Launch pill links including Wingman AI entry point
+
+
 ## [Intel Lobby Feeds] - 2026-03-23
 
 ### Added
-- `/intel-defense/` — Defense feed with lobby mode (red accent)
-- `/intel-financial/` — Financial/contract feed with lobby mode (amber accent)
-- `/intel-commercial/` — Commercial/COTS feed with lobby mode (teal accent)
+- `/intel-defense/` â Defense feed with lobby mode (red accent)
+- `/intel-financial/` â Financial/contract feed with lobby mode (amber accent)
+- `/intel-commercial/` â Commercial/COTS feed with lobby mode (teal accent)
 - All three pages: source filter, full-text search, `?lobby=1` kiosk URL
 - Intel Feed card on mission-control with DEF/FIN/COM quick-launch buttons
 
 ### Fixed
 - `build_static.py`: now fetches intel JSON from `dronewukong.github.io/forge-data/intel/`
-  via urllib — no auth, no Ai-Project clone required
+  via urllib â no auth, no Ai-Project clone required
 - Removed `data/intel-db` from sparse checkout (data now flows via forge-data pipeline)
 
 ### Data Flow
-`Ai-Project/data/intel-db/` → `sync-forge-data.yml` → `forge-data/intel/` → build fetches → `/static/intel_*.json`
+`Ai-Project/data/intel-db/` â `sync-forge-data.yml` â `forge-data/intel/` â build fetches â `/static/intel_*.json`
 
 # DroneClear Changelog
 
@@ -24,7 +41,7 @@
 
 ---
 
-## Session 2026-03-22 (cont.) — MafiaLRS Target Database Import
+## Session 2026-03-22 (cont.) â MafiaLRS Target Database Import
 
 **Agent**: Claude
 **Branch**: `master`
@@ -43,16 +60,16 @@ Full parse of BUSHA/targets@mafia-targets repo (Ukrainian MafiaLRS ELRS fork).
 ### Data Highlights
 - 73 Ukrainian-origin devices (50 RX + 23 TX): AERONETIX, BAYCKRC, AYZ, Cyclone, FPV Mafia, Flytex, DiFly, STELLAR/Stingbee, Edifier, BelinRC, MaxLink
 - 60 non-standard/combat frequency devices (433/490/500/520/560/735 MHz) tagged ew_resistant
-- 80 LR1121 wideband devices (150 MHz–2.1 GHz) tagged lr1121, wideband_150_2100mhz
-- Tags applied per entry: elrs, mafiалrs_compatible, ukraine, combat_proven, non_standard_freq, lr1121, dual_band as appropriate
+- 80 LR1121 wideband devices (150 MHzâ2.1 GHz) tagged lr1121, wideband_150_2100mhz
+- Tags applied per entry: elrs, mafiÐ°Ð»rs_compatible, ukraine, combat_proven, non_standard_freq, lr1121, dual_band as appropriate
 
 ### Changed
-- receivers: 140 → 394
-- control_link_tx: 15 → 137
+- receivers: 140 â 394
+- control_link_tx: 15 â 137
 
 ---
 
-## Session 2026-03-23 — Intel Hub, Miners, Currency Picker, 7-Company Deep Mine
+## Session 2026-03-23 â Intel Hub, Miners, Currency Picker, 7-Company Deep Mine
 
 **Agent**: Claude
 **Branch**: `master`
@@ -64,21 +81,21 @@ Built Industry Intel hub (/intel/) with Commercial/Defense/Finance tabs, created
 ### Changes
 | Category | Description |
 |----------|-------------|
-| feat | **Industry Intel hub** (`/intel/`) — 3-tab dashboard: Commercial (sources, manufacturers), Defense (contracts, Blue UAS, regulatory), Finance (funding rounds, deals) |
-| feat | **Currency picker** — 11 currencies (USD/EUR/GBP/UAH/PLN/HRK/TRY/ILS/AUD/CAD/JPY), persists via localStorage, wired to all price displays |
+| feat | **Industry Intel hub** (`/intel/`) â 3-tab dashboard: Commercial (sources, manufacturers), Defense (contracts, Blue UAS, regulatory), Finance (funding rounds, deals) |
+| feat | **Currency picker** â 11 currencies (USD/EUR/GBP/UAH/PLN/HRK/TRY/ILS/AUD/CAD/JPY), persists via localStorage, wired to all price displays |
 | feat | Component cloning (FEAT-001), Build CSV export (FEAT-002), Audit print/PDF (FEAT-009) |
-| feat | Modal price/country/source chips — replace raw spec rows |
+| feat | Modal price/country/source chips â replace raw spec rows |
 | feat | 4 miner scripts: mine_dronelife.py, mine_sbir.py, mine_blueuas.py, mine_all.py |
 | fix | Mobile build drawer (100dvh), Obsidian country USA (was Ukraine from shop sync) |
-| fix | UAH→USD conversion for 163 parts |
-| data | **Obsidian Sensors** deep mine — 6 products from spec sheet + research |
-| data | **7-company intel mine**: Shield AI ($12B talks), Fortem (Replicator 2), Red Cat (RCAT), Tekever (€1.33B unicorn), XTEND, Firestorm, Doodle Labs |
-| data | Parts pricing: 6% → 99.7% (3,528/3,538) |
-| data | Thermal sensors: 28% → 66%, Contracts: 14% → 26%, Funding: 22% → 36%, GCS: 26% → 51% |
+| fix | UAHâUSD conversion for 163 parts |
+| data | **Obsidian Sensors** deep mine â 6 products from spec sheet + research |
+| data | **7-company intel mine**: Shield AI ($12B talks), Fortem (Replicator 2), Red Cat (RCAT), Tekever (â¬1.33B unicorn), XTEND, Firestorm, Doodle Labs |
+| data | Parts pricing: 6% â 99.7% (3,528/3,538) |
+| data | Thermal sensors: 28% â 66%, Contracts: 14% â 26%, Funding: 22% â 36%, GCS: 26% â 51% |
 | data | forge_intel.json: 28 funding + 29 contracts + 8 grants = 65 entries |
 | debt | 12/12 DEBT closed, 11/13 POLISH closed (2 WONTFIX), 3/8 FEAT closed |
 | docs | OpenIPC handbook section, Industry Intelligence handbook page |
-| docs | EXTRACTION_PLAN.md — 20+ miner architecture, 4-week schedule |
+| docs | EXTRACTION_PLAN.md â 20+ miner architecture, 4-week schedule |
 | docs | Obsidian Sensors intel report (EN + HR PDFs) |
 
 ### Backlog Updates
@@ -90,7 +107,7 @@ Built Industry Intel hub (/intel/) with Commercial/Defense/Finance tabs, created
 
 
 ---
-## Session 2026-03-22 — vtx.in.ua Database Cross-Check & Ukrainian Component Import
+## Session 2026-03-22 â vtx.in.ua Database Cross-Check & Ukrainian Component Import
 
 **Agent**: Claude
 **Branch**: `master`
@@ -101,32 +118,32 @@ Full scrape and cross-reference of vtx.in.ua against Forge DB. Site runs on a si
 ### Added
 - 199 Ukrainian-sourced component entries (vtx.in.ua, verified March 2026)
 - 4 new component categories: `fpv_detectors`, `payload_droppers`, `video_scramblers`, `control_link_tx`
-- 30 FPV signal detector products ($57–$1,073) — Ukrainian counter-UAS detection ecosystem (VIDIK, KARA DAG, BlueBird, Kseonics, БАБАЙ, FPV Mafia, etc.)
+- 30 FPV signal detector products ($57â$1,073) â Ukrainian counter-UAS detection ecosystem (VIDIK, KARA DAG, BlueBird, Kseonics, ÐÐÐÐÐ, FPV Mafia, etc.)
 - 5 payload dropper systems incl. Carrier Electronics FPV v1.3/v2.0 + Mavic 3 kits
 - 5 video scrambler/encryption products (Sezam video, Carrier Electronics Chameleon)
-- 15 Ukrainian control link TX units (COALAS, Radion MaxLink, ЧДБ, Aeronetix LR1121)
+- 15 Ukrainian control link TX units (COALAS, Radion MaxLink, Ð§ÐÐ, Aeronetix LR1121)
 - 21 UA VTX products (Stingbee, DEC1, FT, Flytex, KaraFPV, Scream Industries)
 - 22 UA FC products (603700 Halychyna/Boryspil, Bloomtech, DiFly, FT, Flytex, Kiwi, Stingbee)
 - 13 UA ESC products (603700 Frankivsk/Stryi, DiFly, FT, Flytex, KaraFPV, LEADER Tech, SkyPulse, Stingbee)
 - 15 UA FC+ESC stacks, 22 UA frames, 13 UA props, 13 UA RX, 15 UA motors
 
 ### Changed
-- video_transmitters: 103 → 124
-- receivers: 127 → 140
-- motors: 288 → 303
-- flight_controllers: 300 → 322
-- escs: 152 → 165
-- stacks: 99 → 114
-- frames: 355 → 377
-- propellers: 471 → 484
-- fpv_cameras: 190 → 193
-- thermal_cameras: 31 → 38
+- video_transmitters: 103 â 124
+- receivers: 127 â 140
+- motors: 288 â 303
+- flight_controllers: 300 â 322
+- escs: 152 â 165
+- stacks: 99 â 114
+- frames: 355 â 377
+- propellers: 471 â 484
+- fpv_cameras: 190 â 193
+- thermal_cameras: 31 â 38
 
 ---
 
 ---
 
-## Session 2026-03-08-5 — Seed Drone Models, Build Guides & Bug Fixes
+## Session 2026-03-08-5 â Seed Drone Models, Build Guides & Bug Fixes
 
 **Agent**: Claude
 **Branch**: `claude/xenodochial-panini`
@@ -139,10 +156,10 @@ Created 12 curated seed drone models and 3 expert-quality build guides (42 total
 | Category | Description | Files |
 |----------|-------------|-------|
 | feat | 12 seed drone models (5"/6"/7"/10" builds) with real component PIDs | `docs/golden_parts_db_seed/drone_models.json` (new) |
-| feat | 3 detailed build guides — freestyle, long range, HD digital — 42 steps with Betaflight CLI, safety warnings, tools | `docs/golden_parts_db_seed/build_guides.json` (new) |
+| feat | 3 detailed build guides â freestyle, long range, HD digital â 42 steps with Betaflight CLI, safety warnings, tools | `docs/golden_parts_db_seed/build_guides.json` (new) |
 | feat | Seed system loads drone models + build guides on golden reset and auto-seed | `components/seed.py`, `components/apps.py` |
 | fix | Relations format: frontend now handles both string PIDs and `{pid, quantity}` objects | `guide-state.js`, `guide-selection.js`, `guide-editor.js` |
-| fix | Build session 500 — `perform_create` crashed adding list to set from relations | `components/views.py` |
+| fix | Build session 500 â `perform_create` crashed adding list to set from relations | `components/views.py` |
 | fix | Replace 7 `alert()` calls with `showToast()` in guide module | `guide-selection.js`, `guide-editor.js`, `guide-camera.js`, `guide-runner.js`, `audit.js` |
 | style | Build overview glass panel padding (20px/24px) | `guide.css` |
 
@@ -158,25 +175,25 @@ Created 12 curated seed drone models and 3 expert-quality build guides (42 total
 
 ---
 
-## Session 2026-03-08-4 — FPV Academy, Dynamic Versioning & DroneClear Rebrand
+## Session 2026-03-08-4 â FPV Academy, Dynamic Versioning & DroneClear Rebrand
 
 **Agent**: Claude
 **Branch**: `claude/elastic-brattain`
 **Commit(s)**: `274812a`, `8bb53b8`
 
 ### Summary
-Built the FPV Academy educational module (FEAT-014) — an 8-section learning hub for FPV beginners covering components, size classes, video systems, compatibility rules, first build checklist, tips, and glossary. Also added a git-based dynamic version context processor, rebranded "DroneClear Configurator" → "DroneClear" with red gradient logo, and activated the Mission Control FPV Academy card.
+Built the FPV Academy educational module (FEAT-014) â an 8-section learning hub for FPV beginners covering components, size classes, video systems, compatibility rules, first build checklist, tips, and glossary. Also added a git-based dynamic version context processor, rebranded "DroneClear Configurator" â "DroneClear" with red gradient logo, and activated the Mission Control FPV Academy card.
 
 ### Changes
 | Category | Description | Files |
 |----------|-------------|-------|
-| feat | FPV Academy page — hero, 8 topic cards, 8 `<details>` article sections with tables, callouts, glossary | `academy.html` (new) |
-| feat | FPV Academy CSS — `acad-` prefixed styles, accent colors, responsive, dark mode | `academy.css` (new) |
-| feat | FPV Academy JS — IIFE with card→article scroll/open, back-to-top, smooth anchors | `academy.js` (new) |
-| feat | Dynamic build version from git — context processor injects `dc_version` into all templates | `droneclear_backend/version.py` (new), `settings/base.py` |
-| style | Rebrand logo: "DroneClear Configurator" → "DroneClear", red gradient, 32px | `layout.css`, all 7 HTML templates |
+| feat | FPV Academy page â hero, 8 topic cards, 8 `<details>` article sections with tables, callouts, glossary | `academy.html` (new) |
+| feat | FPV Academy CSS â `acad-` prefixed styles, accent colors, responsive, dark mode | `academy.css` (new) |
+| feat | FPV Academy JS â IIFE with cardâarticle scroll/open, back-to-top, smooth anchors | `academy.js` (new) |
+| feat | Dynamic build version from git â context processor injects `dc_version` into all templates | `droneclear_backend/version.py` (new), `settings/base.py` |
+| style | Rebrand logo: "DroneClear Configurator" â "DroneClear", red gradient, 32px | `layout.css`, all 7 HTML templates |
 | style | Replace hardcoded version string with `{{ dc_version }}` template tag | all 7 HTML templates |
-| feat | Activate FPV Academy card on Mission Control (div→a, remove coming-soon) | `mission-control.html` |
+| feat | Activate FPV Academy card on Mission Control (divâa, remove coming-soon) | `mission-control.html` |
 | feat | Add FPV Academy sidebar link on all 6 existing pages | `index.html`, `editor.html`, `template.html`, `guide.html`, `audit.html`, `mission-control.html` |
 | fix | Add `?v=3` cache buster to layout.css across all templates | all 7 HTML templates |
 | feat | Register `/academy/` URL route | `droneclear_backend/urls.py` |
@@ -187,14 +204,14 @@ Built the FPV Academy educational module (FEAT-014) — an 8-section learning hu
 
 ### Notes
 - Academy uses native `<details>/<summary>` for accessible no-JS accordion behavior.
-- Content seeded from `docs/fpv_domain_knowledge.md` — covers the full beginner journey from "What is FPV?" to glossary of terms.
-- Version context processor reads `git rev-list --count HEAD` and `git rev-parse --short HEAD` once at server startup — zero per-request overhead.
-- Logo uses CSS `background-clip: text` with `var(--accent-red)` → `var(--accent-darkred)` gradient.
-- Cache buster `?v=3` on `layout.css` was necessary to pick up the logo size change — browser was serving stale stylesheet despite dev server restart.
+- Content seeded from `docs/fpv_domain_knowledge.md` â covers the full beginner journey from "What is FPV?" to glossary of terms.
+- Version context processor reads `git rev-list --count HEAD` and `git rev-parse --short HEAD` once at server startup â zero per-request overhead.
+- Logo uses CSS `background-clip: text` with `var(--accent-red)` â `var(--accent-darkred)` gradient.
+- Cache buster `?v=3` on `layout.css` was necessary to pick up the logo size change â browser was serving stale stylesheet despite dev server restart.
 
 ---
 
-## Session 2026-03-08-3 — Mission Control Dashboard (FEAT-013) & FPV Academy Placeholder (FEAT-014)
+## Session 2026-03-08-3 â Mission Control Dashboard (FEAT-013) & FPV Academy Placeholder (FEAT-014)
 
 **Agent**: Claude
 **Branch**: `claude/crazy-lovelace`
@@ -206,26 +223,26 @@ Added a Mission Control welcome page as the new root `/` landing page. Displays 
 ### Changes
 | Category | Description | Files |
 |----------|-------------|-------|
-| feat | Mission Control page — hero, live stats, module cards grid, About section | `mission-control.html` (new) |
-| feat | Mission Control CSS — `mc-` prefixed styles, accent colors, responsive grid, dark mode | `mission-control.css` (new) |
-| feat | Mission Control JS — parallel API fetch for stats with graceful degradation | `mission-control.js` (new) |
+| feat | Mission Control page â hero, live stats, module cards grid, About section | `mission-control.html` (new) |
+| feat | Mission Control CSS â `mc-` prefixed styles, accent colors, responsive grid, dark mode | `mission-control.css` (new) |
+| feat | Mission Control JS â parallel API fetch for stats with graceful degradation | `mission-control.js` (new) |
 | feat | FPV Academy "Coming Soon" placeholder card with purple accent badge | `mission-control.html` |
-| refactor | URL routing — Mission Control at `/`, Model Builder moved to `/builder/` | `droneclear_backend/urls.py` |
-| refactor | Sidebar nav updated on all 5 existing pages — added Mission Control link, updated builder href | `index.html`, `editor.html`, `template.html`, `guide.html`, `audit.html` |
+| refactor | URL routing â Mission Control at `/`, Model Builder moved to `/builder/` | `droneclear_backend/urls.py` |
+| refactor | Sidebar nav updated on all 5 existing pages â added Mission Control link, updated builder href | `index.html`, `editor.html`, `template.html`, `guide.html`, `audit.html` |
 
 ### Backlog Updates
 - Completed: FEAT-013
-- Added: FEAT-013 (Mission Control dashboard), FEAT-014 (FPV Academy educational module — next sprint)
+- Added: FEAT-013 (Mission Control dashboard), FEAT-014 (FPV Academy educational module â next sprint)
 
 ### Notes
 - Mission Control icon is `ph-command` (command center feel, matches drone/aerospace theme).
 - Stats fetch uses `textContent` assignment (inherently XSS-safe, no `escapeHTML()` needed).
 - FPV Academy activation requires: change `<div>` to `<a href="/academy/">`, remove `mc-card-coming-soon` class, add route + sidebar link.
-- The maintenance JS (restart, bug report, reset) is duplicated from other pages — reinforces DEBT-007.
+- The maintenance JS (restart, bug report, reset) is duplicated from other pages â reinforces DEBT-007.
 
 ---
 
-## Session 2026-03-08-2 — Guide Media Upload (FEAT-007) & StepPhoto Validation (SEC-003)
+## Session 2026-03-08-2 â Guide Media Upload (FEAT-007) & StepPhoto Validation (SEC-003)
 
 **Agent**: Claude
 **Branch**: `claude/vigilant-dirac`
@@ -237,27 +254,27 @@ Implemented direct file upload for guide step media (FEAT-007) with a production
 ### Changes
 | Category | Description | Files |
 |----------|-------------|-------|
-| feat | `GuideMediaFile` model — UUID PK, `FileField` with storage API, compartmentalized by guide PID | `components/models.py`, `migrations/0010_guidemediafile.py` |
-| feat | `GuideMediaUploadView` — POST `/api/guide-media/upload/` with full validation pipeline | `components/views.py`, `components/urls.py` |
-| feat | Shared upload validation module — size (10MB), MIME whitelist, PIL verify, UUID filenames | `components/upload_utils.py` (new) |
+| feat | `GuideMediaFile` model â UUID PK, `FileField` with storage API, compartmentalized by guide PID | `components/models.py`, `migrations/0010_guidemediafile.py` |
+| feat | `GuideMediaUploadView` â POST `/api/guide-media/upload/` with full validation pipeline | `components/views.py`, `components/urls.py` |
+| feat | Shared upload validation module â size (10MB), MIME whitelist, PIL verify, UUID filenames | `components/upload_utils.py` (new) |
 | feat | Guide editor upload button + thumbnail preview + toast notifications | `guide-editor.js`, `guide-state.js`, `guide.css` |
 | fix | SEC-003: StepPhotoUploadView now validates file size, MIME type, and image content | `components/views.py` |
-| test | 10 new tests — 8 for GuideMediaUpload, 2 for StepPhoto validation (92 total) | `components/tests.py` |
+| test | 10 new tests â 8 for GuideMediaUpload, 2 for StepPhoto validation (92 total) | `components/tests.py` |
 | config | Upload size limits in Django settings | `droneclear_backend/settings/base.py` |
-| docs | Updated CLAUDE.md — Claude is sole developer (removed multi-agent section) | `CLAUDE.md` |
+| docs | Updated CLAUDE.md â Claude is sole developer (removed multi-agent section) | `CLAUDE.md` |
 
 ### Backlog Updates
 - Completed: FEAT-007, SEC-003
 
 ### Notes
-- **Production migration path**: Swap `STORAGES["default"]` to S3/Azure backend — all `GuideMediaFile.file.url` calls automatically return signed/CDN URLs. Zero code changes needed.
+- **Production migration path**: Swap `STORAGES["default"]` to S3/Azure backend â all `GuideMediaFile.file.url` calls automatically return signed/CDN URLs. Zero code changes needed.
 - Files stored at `guide_media/<guide_pid>/<uuid>.<ext>` for per-guide access policies.
 - `upload_utils.py` is reusable for any future upload endpoint.
 - `alert()` dialogs in upload handler replaced with `showToast()` for consistent UX.
 
 ---
 
-## Session 2026-03-08-1 — Data Integrity Fixes (BUG-001 through BUG-004)
+## Session 2026-03-08-1 â Data Integrity Fixes (BUG-001 through BUG-004)
 
 **Agent**: Claude
 **Branch**: `claude/hungry-ishizaka`
@@ -275,20 +292,20 @@ Resolved all four high-priority data integrity bugs identified in the codebase a
 | fix | BUG-004: ImportPartsView uses per-item transaction.atomic() savepoints | `views.py` |
 | fix | Null guards for StepPhoto.step in audit view and __str__ | `views.py`, `models.py` |
 | test | 10 new tests for all four fixes across 4 test classes | `tests.py` |
-| migration | 0009_data_integrity_fixes — alters BuildEvent, BuildSession, StepPhoto FKs | `migrations/0009_data_integrity_fixes.py` |
+| migration | 0009_data_integrity_fixes â alters BuildEvent, BuildSession, StepPhoto FKs | `migrations/0009_data_integrity_fixes.py` |
 
 ### Backlog Updates
 - Completed: BUG-001, BUG-002, BUG-003, BUG-004
 
 ### Notes
-- The PROTECT on BuildEvent means sessions with audit events cannot be deleted without explicitly removing events first — this is intentional for audit trail integrity.
+- The PROTECT on BuildEvent means sessions with audit events cannot be deleted without explicitly removing events first â this is intentional for audit trail integrity.
 - SET_NULL on BuildSession.guide means guide_snapshot (frozen at build start) is the source of truth for audit, not the live guide FK.
 - The serializer update-in-place approach matches steps by `order` field, preserving step IDs and their photo FK references.
-- ResetToGoldenView was already protected by `@transaction.atomic` on `seed_golden()` — no change needed.
+- ResetToGoldenView was already protected by `@transaction.atomic` on `seed_golden()` â no change needed.
 
 ---
 
-## Session 2026-03-07-1 — Golden Seed, Schema Merge, Guide Fixes & Build Components Panel
+## Session 2026-03-07-1 â Golden Seed, Schema Merge, Guide Fixes & Build Components Panel
 
 **Agent**: Claude
 **Branch**: `claude/great-sinoussi`
@@ -300,7 +317,7 @@ Major data foundation session: seeded the database with 3,113 real FPV drone par
 ### Changes
 | Category | Description | Files |
 |----------|-------------|-------|
-| feat | Golden seed system — 3,113 real parts auto-seeded via post_migrate signal | `components/seed.py`, `components/apps.py`, `docs/golden_parts_db_seed/*.json` (12 files) |
+| feat | Golden seed system â 3,113 real parts auto-seeded via post_migrate signal | `components/seed.py`, `components/apps.py`, `docs/golden_parts_db_seed/*.json` (12 files) |
 | feat | Reset to Examples button on index, editor, template pages | `index.html`, `editor.html`, `template.html` |
 | feat | Build Components quick-select panel in guide step editor | `guide-editor.js`, `guide.html`, `guide.css` |
 | fix | Merge 79 seed data fields into schema v3 blueprints | `drone_parts_schema_v3.json` (both root and frontend copies) |
@@ -315,12 +332,12 @@ Major data foundation session: seeded the database with 3,113 real FPV drone par
 ### Notes
 - Golden seed loads once via `post_migrate` signal; subsequent migrations skip if data exists. `reset_to_golden` management command available for full reset.
 - Build Components panel resolves the UX gap where guide step editors required manual PID entry despite having a linked drone model with all parts already associated.
-- The `allow_blank` fix on BuildGuideStep was necessary because "+ Add Step" creates steps with empty fields — DRF's default validation rejects blank strings even with `required=False`.
+- The `allow_blank` fix on BuildGuideStep was necessary because "+ Add Step" creates steps with empty fields â DRF's default validation rejects blank strings even with `required=False`.
 - FPV domain knowledge (`docs/fpv_domain_knowledge.md`) is a living document capturing compatibility rules, naming conventions, and retailer patterns discovered during seed data analysis.
 
 ---
 
-## Session 2026-03-06-4 — Documentation Refactor
+## Session 2026-03-06-4 â Documentation Refactor
 
 **Agent**: Claude
 **Branch**: `claude/frosty-johnson`
@@ -332,7 +349,7 @@ Refactored the 710-line README into a modular documentation system. Created BACK
 ### Changes
 | Category | Description | Files |
 |----------|-------------|-------|
-| docs | Slim README from 710 → ~120 lines | `README.md` |
+| docs | Slim README from 710 â ~120 lines | `README.md` |
 | docs | Extract architecture reference | `docs/ARCHITECTURE.md` |
 | docs | Extract model reference | `docs/MODELS.md` |
 | docs | Extract feature reference | `docs/FEATURES.md` |
@@ -343,15 +360,15 @@ Refactored the 710-line README into a modular documentation system. Created BACK
 | docs | Archive original audit report | `docs/archive/AUDIT_REPORT.md` |
 
 ### Backlog Updates
-- Added: All items from AUDIT_REPORT.md migrated with permanent IDs (SEC-001–005, BUG-001–004, DEBT-001–008, POLISH-001–015, FEAT-001–009)
+- Added: All items from AUDIT_REPORT.md migrated with permanent IDs (SEC-001â005, BUG-001â004, DEBT-001â008, POLISH-001â015, FEAT-001â009)
 - XSS-M1 through XSS-M5 marked as completed (already resolved in prior session)
 
 ### Notes
-This session establishes the documentation system going forward. All future sessions should use `/close-session` to maintain the backlog and changelog. The AUDIT_REPORT.md has been archived — its content lives in BACKLOG.md and this changelog.
+This session establishes the documentation system going forward. All future sessions should use `/close-session` to maintain the backlog and changelog. The AUDIT_REPORT.md has been archived â its content lives in BACKLOG.md and this changelog.
 
 ---
 
-## Session 2026-03-06-3 — XSS Vulnerability Fixes
+## Session 2026-03-06-3 â XSS Vulnerability Fixes
 
 **Agent**: Claude
 **Branch**: `claude/frosty-johnson`
@@ -366,7 +383,7 @@ Resolved all remaining innerHTML XSS vulnerabilities (M1-M5 from the codebase au
 | fix | Card PID, name, manufacturer, description, tags, compat badges, price, weight, image src | `components.js` |
 | fix | Tags, spec labels/values, compat labels/values, similar item cards | `modal.js` |
 | fix | Build slot names, price, weight; warning titles/messages | `build.js` |
-| fix | Build summary names; saved builds list; onclick→data-pid+addEventListener | `persist.js` |
+| fix | Build summary names; saved builds list; onclickâdata-pid+addEventListener | `persist.js` |
 | fix | Item row PIDs and names | `editor.js` |
 
 ### Backlog Updates
@@ -374,7 +391,7 @@ Resolved all remaining innerHTML XSS vulnerabilities (M1-M5 from the codebase au
 
 ---
 
-## Session 2026-03-06-2 — Django Test Suite
+## Session 2026-03-06-2 â Django Test Suite
 
 **Agent**: Claude
 **Commit**: `c41e452`
@@ -389,7 +406,7 @@ Added 72-test Django test suite covering all API endpoints and models. Tests spa
 
 ---
 
-## Session 2026-03-06-1 — Comprehensive Codebase Audit & Refactor
+## Session 2026-03-06-1 â Comprehensive Codebase Audit & Refactor
 
 **Agent**: Claude
 **Branch**: `claude/trusting-galileo`
@@ -401,13 +418,13 @@ Full codebase audit across all backend (20 files) and frontend (19 JS, 6 CSS, 5 
 ### Changes
 | Category | Description | Files |
 |----------|-------------|-------|
-| fix | XSS in `showToast()` — added `escapeHTML()` | `utils.js` |
-| fix | Regex bug `/s+/g` → `/\s+/g` | `template.js` |
+| fix | XSS in `showToast()` â added `escapeHTML()` | `utils.js` |
+| fix | Regex bug `/s+/g` â `/\s+/g` | `template.js` |
 | fix | Orphaned DOM elements, stale v2 reference | `index.html` |
 | fix | Build drawer shortcut class check | `shortcuts.js` |
 | fix | CSRF tokens on 10+ mutating fetch calls | `editor.js`, `template.js`, `guide-state.js`, `guide-editor.js` |
-| fix | `datetime.now()` → `timezone.now()` | `views.py` |
-| fix | N+1 query — added `select_related('category')` | `views.py` |
+| fix | `datetime.now()` â `timezone.now()` | `views.py` |
+| fix | N+1 query â added `select_related('category')` | `views.py` |
 | feat | Reset to Golden endpoint + UI button | `views.py`, `urls.py`, `index.html`, `editor.html`, `template.html` |
 | feat | Import button always visible (empty DB fix) | `editor.html`, `editor.js` |
 | refactor | Missing CSS variables, dependency pins, dead CSS, imports consolidation | Multiple files |
@@ -415,14 +432,14 @@ Full codebase audit across all backend (20 files) and frontend (19 JS, 6 CSS, 5 
 
 ---
 
-## Session 2026-03-06-0 — Build Audit Module (Tier 10)
+## Session 2026-03-06-0 â Build Audit Module (Tier 10)
 
 **Agent**: Claude
 **Branch**: `claude/trusting-galileo`
 **Commit**: `8ab4e56`
 
 ### Summary
-Designed and implemented the entire Build Audit module in a single session — 16 files touched, 4 new files created, ~700 lines of new code. Added immutable event logging, guide/component snapshots frozen at build start, SHA-256 photo hashing, and a full audit viewer with serial lookup, event timeline, step accordion, BOM table, and integrity verification panel.
+Designed and implemented the entire Build Audit module in a single session â 16 files touched, 4 new files created, ~700 lines of new code. Added immutable event logging, guide/component snapshots frozen at build start, SHA-256 photo hashing, and a full audit viewer with serial lookup, event timeline, step accordion, BOM table, and integrity verification panel.
 
 ### Changes
 | Category | Description | Files |
@@ -438,7 +455,7 @@ Designed and implemented the entire Build Audit module in a single session — 1
 
 ## Historical Summary (Pre-Changelog)
 
-Tiers 1–10 were completed between 2026-02-21 and 2026-03-06 across ~20 sessions.
+Tiers 1â10 were completed between 2026-02-21 and 2026-03-06 across ~20 sessions.
 
 | Tier | Focus | Key Deliverables |
 |------|-------|-----------------|
@@ -446,7 +463,7 @@ Tiers 1–10 were completed between 2026-02-21 and 2026-03-06 across ~20 session
 | 2 | UX | Dark mode, keyboard shortcuts, filter/sort, list view, save/load builds |
 | 3 | UI hardening | Inline confirmations, sidebar meta drawer, true black mode, Quick Add, wizard compat highlighting |
 | 4 | Schema hardening | v3 schema with `_type`, `_required`, `_unit`, `_compat_hard`/`_compat_soft`; bulk import/export; LLM-assisted import |
-| 5 | Data population | 836 components scraped from RotorVillage.ca; modal cleanup; card thumbnails; 5→12 compat checks; stack awareness; wizard overhaul (9→12 steps) |
+| 5 | Data population | 836 components scraped from RotorVillage.ca; modal cleanup; card thumbnails; 5â12 compat checks; stack awareness; wizard overhaul (9â12 steps) |
 | 6 | Build Guide + Filters | Dynamic category-specific filters; Build Guide module with serial tracking, photo capture, STL viewer, Betaflight CLI; 4 new Django models; seed data |
 | 7 | Guide UX overhaul | Media carousel + lightbox; video embeds; editor media list; step transitions; build timer; step notes; markdown checklists; runner layout overhaul; nav bar grid |
 | 8 | Parts integration | Batch PID endpoint; component resolution; overview enrichment; configurable checklist fields (13 options, max 5); runner component cards; editor component chips; scroll fix; 630+ real parts imported |
