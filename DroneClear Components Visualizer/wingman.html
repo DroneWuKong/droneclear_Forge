@@ -305,6 +305,9 @@
       </svg>
       <span id="gh-label">GitHub</span>
     </button>
+    <button class="badge" onclick="openCfg()" style="cursor:pointer;" title="Settings">
+      <span style="font-size:14px;">⚙️</span>
+    </button>
     <div class="badge cyan">
       <div class="dot"></div>
       Web Search
@@ -484,32 +487,72 @@ let ragStats = { platforms: 0, components: 0, handbook: 0, categories: new Set()
 
 async function loadRAG() {
   const t0 = Date.now();
-  const promises = [];
 
-  // Load parts-db JSONs
-  for (const file of PARTS_DB_FILES) {
-    promises.push(
-      fetch(`${GH_RAW}/drone-integration-handbook/main/data/parts-db/${file}.json`)
-        .then(r => r.ok ? r.json() : null)
-        .then(data => { if (data) indexPartsDB(file, data); })
-        .catch(() => {})
-    );
-  }
+  // Load from local forge_database.json (bundled in build) — single fast fetch
+  try {
+    const res = await fetch('forge_database.json');
+    if (res.ok) {
+      const db = await res.json();
+      // Index components
+      for (const [cat, parts] of Object.entries(db.components || {})) {
+        if (!Array.isArray(parts)) continue;
+        ragStats.categories.add(cat);
+        for (const item of parts) {
+          if (!item || typeof item !== 'object') continue;
+          ragStats.components++;
+          const textParts = [item.name, item.manufacturer, item.description, item.category,
+            item.pid, item.protocol, item.firmware, ...(item.tags || [])].filter(Boolean);
+          ragIndex.push({
+            cat, name: item.name || '?', text: textParts.join(' ').toLowerCase(),
+            src: cat, data: item,
+          });
+        }
+      }
+      // Index platforms
+      for (const p of (db.drone_models || [])) {
+        ragStats.platforms++;
+        ragStats.categories.add('platforms');
+        const textParts = [p.name, p.manufacturer, p.country, p.propulsion,
+          p.group ? 'group ' + p.group : '', p.note].filter(Boolean);
+        ragIndex.push({
+          cat: 'platforms', name: p.name || '?', text: textParts.join(' ').toLowerCase(),
+          src: 'drone_models', data: p,
+        });
+      }
+    }
+  } catch(e) { console.warn('Failed to load forge_database.json:', e); }
 
-  // Load handbook MDs
+  // Also try loading troubleshooting DB
+  try {
+    const res = await fetch('forge_troubleshooting.json');
+    if (res.ok) {
+      const ts = await res.json();
+      for (const entry of (ts.entries || [])) {
+        const textParts = [entry.title, entry.category, ...(entry.symptoms||[]),
+          ...(entry.causes||[]), ...(entry.fixes||[]), ...(entry.tags||[])].filter(Boolean);
+        ragIndex.push({
+          cat: 'troubleshooting', name: entry.title, text: textParts.join(' ').toLowerCase(),
+          src: 'troubleshooting', data: entry,
+        });
+      }
+    }
+  } catch(e) {}
+
+  // Still load handbook MDs from GitHub (small text files, optional enrichment)
+  const hbPromises = [];
   for (const file of HANDBOOK_FILES) {
-    promises.push(
+    hbPromises.push(
       fetch(`${GH_RAW}/drone-integration-handbook/main/${file}`)
         .then(r => r.ok ? r.text() : null)
         .then(md => { if (md) indexHandbook(file, md); })
         .catch(() => {})
     );
   }
+  await Promise.all(hbPromises);
 
-  await Promise.all(promises);
   updateStats();
   updateSourcePills();
-  console.log(`RAG loaded: ${ragIndex.length} components, ${handbookChunks.length} handbook chunks in ${Date.now()-t0}ms`);
+  console.log(`RAG loaded: ${ragIndex.length} items, ${handbookChunks.length} handbook chunks in ${Date.now()-t0}ms`);
 }
 
 function indexPartsDB(file, data) {
