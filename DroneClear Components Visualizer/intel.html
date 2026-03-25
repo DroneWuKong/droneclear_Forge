@@ -103,6 +103,25 @@ body.lobby-mode .grid{gap:8px}
 body.lobby-mode .lobby-exit{display:block}
 body.lobby-mode .lobby-btn{display:none}
 .msg{text-align:center;padding:48px 20px;color:var(--text-muted);font-family:'JetBrains Mono',monospace}
+
+/* ── Article Reader Overlay ── */
+.reader-overlay{display:none;position:fixed;inset:0;z-index:300;background:rgba(0,0,0,.6);
+  backdrop-filter:blur(4px);align-items:center;justify-content:center;padding:16px}
+.reader-overlay.open{display:flex}
+.reader-frame{position:relative;width:100%;max-width:960px;height:90vh;background:var(--bg-panel);
+  border:1px solid var(--border-color);border-radius:var(--radius-md);overflow:hidden;
+  display:flex;flex-direction:column}
+.reader-bar{display:flex;align-items:center;gap:8px;padding:8px 12px;
+  border-bottom:1px solid var(--border-color);background:var(--bg-main);flex-shrink:0}
+.reader-bar .reader-title{flex:1;font-size:.75rem;color:var(--text-muted);
+  font-family:'JetBrains Mono',monospace;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.reader-bar button{padding:4px 10px;border-radius:4px;border:1px solid var(--border-color);
+  background:transparent;color:var(--text-muted);font-size:.72rem;cursor:pointer;
+  font-family:'JetBrains Mono',monospace;transition:all .15s;white-space:nowrap}
+.reader-bar button:hover{border-color:var(--accent-teal);color:var(--accent-teal)}
+.reader-iframe{flex:1;border:none;width:100%;background:#fff}
+@media(max-width:600px){.reader-frame{height:95vh;max-width:100%;border-radius:8px}
+  .reader-overlay{padding:8px}}
 </style>
 </head>
 <body>
@@ -146,6 +165,18 @@ body.lobby-mode .lobby-btn{display:none}
 
 </div>
 
+<!-- ── Article Reader Overlay ── -->
+<div class="reader-overlay" id="readerOverlay" onclick="if(event.target===this)closeReader()">
+  <div class="reader-frame">
+    <div class="reader-bar">
+      <span class="reader-title" id="readerTitle">Loading…</span>
+      <button onclick="openExternal()">↗ Open</button>
+      <button onclick="closeReader()">✕ Close</button>
+    </div>
+    <iframe class="reader-iframe" id="readerIframe" sandbox="allow-scripts allow-same-origin allow-popups"></iframe>
+  </div>
+</div>
+
 <script>
 const SRC_LABELS={defensescoop:'DefenseScoop',defensenews:'Defense News',breakingdefense:'Breaking Defense',twz:'TWZ'};
 const SRC_CLS={defensescoop:'s-defensescoop',defensenews:'s-defensenews',breakingdefense:'s-breakingdefense',twz:'s-twz'};
@@ -160,7 +191,7 @@ function card(a){
   const tags=[...(a.platforms||[]).slice(0,2),...(a.programs||[]).slice(0,2)];
   const col=CAT_COLORS[cat]||'#4ECDC4';
   const url=a.url||'#';
-  return `<div class="card" data-cat="${cat}" data-url="${url}" role="link" tabindex="0" onclick="window.open(this.dataset.url,'_blank')">
+  return `<div class="card" data-cat="${cat}" data-url="${url}" data-title="${(a.title||'Untitled').replace(/"/g,'&quot;')}" role="link" tabindex="0" onclick="openReader(this.dataset.url,this.dataset.title)">
     <div class="card-meta">
       <span class="cat-dot" style="background:${col}"></span>
       <span class="badge ${SRC_CLS[a.site]||''}">${SRC_LABELS[a.site]||a.site}</span>
@@ -307,6 +338,26 @@ if(params.get('lobby')==='1') setTimeout(()=>toggleLobby(document.querySelector(
     });
   }
 })();
+
+// ── Article Reader Overlay ──
+let readerUrl='';
+function openReader(url,title){
+  readerUrl=url;
+  document.getElementById('readerTitle').textContent=title||url;
+  document.getElementById('readerIframe').src=url;
+  document.getElementById('readerOverlay').classList.add('open');
+}
+function closeReader(){
+  document.getElementById('readerOverlay').classList.remove('open');
+  document.getElementById('readerIframe').src='about:blank';
+  readerUrl='';
+}
+function openExternal(){
+  if(readerUrl) window.open(readerUrl,'_blank');
+}
+document.addEventListener('keydown',e=>{
+  if(e.key==='Escape' && document.getElementById('readerOverlay').classList.contains('open')) closeReader();
+});
 
 fetch('intel_articles.json').then(r=>{if(!r.ok)throw new Error(r.status);return r.json();})
   .then(d=>{all=d;render();})
