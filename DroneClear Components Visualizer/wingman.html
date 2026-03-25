@@ -330,7 +330,7 @@
       <div class="topper"></div>
       <div class="body">
         <h2>Welcome to <span id="welcome-name">Wingman AI</span></h2>
-        <p>Drone systems intelligence powered by the Forge KB and live web search. Tap ⚙️ to add your API key — supports <strong>Claude</strong> (Anthropic) or <strong>Gemini</strong> (Google, free).</p>
+        <p>Drone systems intelligence powered by the Forge KB and live web search. Just start typing — powered by Gemini AI. Switch to Claude in ⚙️ Settings with your own API key.</p>
       </div>
     </div>
     <div class="stat-grid">
@@ -424,7 +424,7 @@ let kbData     = FALLBACK_KB;
 let kbSources  = ['fallback'];
 let loading    = false;
 let apiKey     = localStorage.getItem('wingman_api_key') || '';
-let provider   = localStorage.getItem('wingman_provider') || 'anthropic';
+let provider   = localStorage.getItem('wingman_provider') || 'gemini';
 let geminiKey  = localStorage.getItem('wingman_gemini_key') || '';
 
 const GH_RAW = 'https://raw.githubusercontent.com/DroneWuKong';
@@ -885,7 +885,8 @@ async function send() {
     const keyName = provider === 'gemini' ? 'Google Gemini' : 'Anthropic';
     const keyUrl = provider === 'gemini' ? 'https://aistudio.google.com/apikey' : 'https://console.anthropic.com/settings/keys';
 
-    if (!activeKey) {
+    // Gemini works without key (server proxy), Anthropic requires BYOK
+    if (!activeKey && provider !== 'gemini') {
       messages.push({ role: 'assistant', content: [], text: `Please add your ${keyName} API key in Settings (⚙️ button) to start chatting.\n\n[Get a free key →](${keyUrl})`, searched: false });
       loading = false;
       hideThinking();
@@ -914,14 +915,21 @@ async function send() {
         if (parts.length) geminiMessages.push({ role, parts });
       }
 
-      const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${geminiKey}`, {
+      const geminiBody = {
+        systemInstruction: { parts: [{ text: sysPrompt }] },
+        contents: geminiMessages,
+        generationConfig: { maxOutputTokens: 2048, temperature: 0.7 },
+      };
+
+      // Use proxy (free) if no user key, direct API if BYOK
+      const geminiUrl = geminiKey
+        ? `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${geminiKey}`
+        : '/.netlify/functions/gemini-proxy';
+
+      const res = await fetch(geminiUrl, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          systemInstruction: { parts: [{ text: sysPrompt }] },
-          contents: geminiMessages,
-          generationConfig: { maxOutputTokens: 2048, temperature: 0.7 },
-        }),
+        body: JSON.stringify(geminiBody),
       });
       const data = await res.json();
       if (data.error) {
