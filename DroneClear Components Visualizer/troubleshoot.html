@@ -1,0 +1,178 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>Troubleshoot — Forge</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="{% static 'base.css' %}">
+<link rel="stylesheet" href="{% static 'layout.css' %}?v=4">
+<link rel="stylesheet" href="{% static 'components.css' %}">
+<script src="https://unpkg.com/@phosphor-icons/web"></script>
+<script>(function(){document.documentElement.setAttribute('data-theme',localStorage.getItem('dc-theme')||'dark');})()</script>
+<style>
+.ts-page{max-width:960px;margin:0 auto;padding:24px}
+.ts-hdr{margin-bottom:20px}
+.ts-hdr h1{font-size:22px;font-weight:700;display:flex;align-items:center;gap:8px}
+.ts-hdr h1 i{color:var(--accent-red)}
+.ts-hdr p{font-size:13px;color:var(--text-muted);margin-top:4px}
+.ts-bar{display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap}
+.ts-search{flex:1;min-width:200px;padding:8px 12px;background:var(--bg-dark);border:1px solid var(--border-color);border-radius:var(--radius-sm);color:var(--text-main);font-size:13px;font-family:var(--font-family)}
+.ts-search:focus{outline:none;border-color:var(--accent-red)}
+.ts-sel{padding:8px;background:var(--bg-dark);border:1px solid var(--border-color);border-radius:var(--radius-sm);color:var(--text-muted);font-size:12px;font-family:var(--font-family)}
+.ts-chips{display:flex;gap:4px;margin-bottom:16px;flex-wrap:wrap}
+.ts-chip{padding:3px 10px;border-radius:12px;font-size:11px;border:1px solid var(--border-color);cursor:pointer;color:var(--text-muted);background:var(--bg-panel);font-family:var(--font-family);transition:all .15s}
+.ts-chip:hover{border-color:var(--accent-red);color:var(--text-main)}
+.ts-chip.on{background:rgba(34,211,238,.08);border-color:var(--accent-red);color:var(--accent-red)}
+.ts-count{font-size:12px;color:var(--text-faint);margin-bottom:12px}
+.ts-list{display:flex;flex-direction:column;gap:8px}
+.ts-card{background:var(--bg-panel);border:1px solid var(--border-color);border-radius:var(--radius-sm);overflow:hidden;transition:border-color .15s}
+.ts-card:hover{border-color:rgba(34,211,238,.3)}
+.ts-card.open{border-color:var(--accent-red)}
+.ts-card-hdr{padding:12px 16px;display:flex;align-items:center;gap:10px;cursor:pointer}
+.ts-sev{width:4px;height:32px;border-radius:2px;flex-shrink:0}
+.sev-critical{background:#ef4444}.sev-blocking{background:#f97316}.sev-high{background:#eab308}.sev-medium{background:#22d3ee}.sev-low{background:#6b7280}.sev-info{background:#8b5cf6}
+.ts-card-title{flex:1;font-size:14px;font-weight:600;color:var(--text-main)}
+.ts-card-meta{display:flex;gap:6px;align-items:center;flex-shrink:0}
+.ts-badge{padding:2px 8px;border-radius:8px;font-size:10px;font-weight:600;font-family:var(--font-family)}
+.badge-cat{background:rgba(34,211,238,.08);color:var(--accent-red);border:1px solid rgba(34,211,238,.15)}
+.badge-diff-beginner{background:rgba(34,197,94,.08);color:#22c55e;border:1px solid rgba(34,197,94,.15)}
+.badge-diff-intermediate{background:rgba(234,179,8,.08);color:#eab308;border:1px solid rgba(234,179,8,.15)}
+.badge-diff-advanced{background:rgba(239,68,68,.08);color:#ef4444;border:1px solid rgba(239,68,68,.15)}
+.ts-chevron{color:var(--text-faint);font-size:16px;transition:transform .2s}
+.ts-card.open .ts-chevron{transform:rotate(90deg)}
+.ts-body{display:none;padding:0 16px 16px;font-size:13px;line-height:1.7;color:var(--text-muted)}
+.ts-card.open .ts-body{display:block}
+.ts-section{margin-top:12px}
+.ts-section-title{font-size:11px;text-transform:uppercase;letter-spacing:.5px;color:var(--text-faint);margin-bottom:6px;font-weight:600}
+.ts-section ul{margin:0;padding-left:18px}
+.ts-section li{margin-bottom:4px}
+.ts-section li::marker{color:var(--accent-red)}
+.ts-tags{display:flex;gap:4px;flex-wrap:wrap;margin-top:10px}
+.ts-tag{padding:1px 6px;border-radius:4px;font-size:10px;background:var(--bg-dark);color:var(--text-faint);border:1px solid var(--border-color)}
+@media(max-width:768px){
+    .ts-bar{flex-direction:column}
+    .ts-card-meta{display:none}
+    .topbar-nav-links{display:none!important}
+}
+</style>
+</head>
+<body>
+<div class="app-container" style="display:flex;flex-direction:column;min-height:100vh;">
+    <header class="topbar" style="padding:12px 24px;display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid var(--border-color);">
+        <div style="display:flex;align-items:center;gap:16px;">
+            <a href="/" style="text-decoration:none;display:flex;align-items:center;gap:8px;">
+                <span style="font-size:18px;font-weight:700;color:var(--text-main);font-family:'JetBrains Mono',monospace;">Forge</span>
+                <span style="font-size:11px;color:var(--text-muted);">/ Troubleshoot</span>
+            </a>
+        </div>
+        <div style="display:flex;align-items:center;gap:8px;">
+            <div class="topbar-nav-links" style="display:flex;align-items:center;gap:12px;">
+                <a href="/platforms/" style="color:var(--text-muted);text-decoration:none;font-size:13px;">Platforms</a>
+                <a href="/compare/" style="color:var(--text-muted);text-decoration:none;font-size:13px;">Compare</a>
+                <a href="/tools/" style="color:var(--text-muted);text-decoration:none;font-size:13px;">Tools</a>
+                <a href="/intel/" style="color:var(--text-muted);text-decoration:none;font-size:13px;">Intel</a>
+                <a href="/guides/" style="color:var(--text-muted);text-decoration:none;font-size:13px;">Guides</a>
+            </div>
+            <button class="dark-mode-toggle" id="dark-mode-toggle" title="Toggle dark mode" aria-label="Toggle dark mode">
+                <i class="ph ph-moon" id="dark-mode-icon"></i>
+            </button>
+        </div>
+    </header>
+    <main style="flex:1;overflow-y:auto;">
+        <div class="ts-page">
+            <div class="ts-hdr">
+                <h1><i class="ph ph-wrench"></i> Troubleshoot</h1>
+                <p>Symptom → Diagnosis → Fix. <span id="ts-total">0</span> entries across Betaflight, ArduPilot, iNav, PX4.</p>
+            </div>
+            <div class="ts-bar">
+                <label for="ts-q" class="sr-only">Search</label>
+                <input type="text" class="ts-search" id="ts-q" placeholder="Describe your problem: motor won't spin, no video, flips on takeoff...">
+                <label for="ts-sev" class="sr-only">Severity</label>
+                <select class="ts-sel" id="ts-sev"><option value="">All severities</option><option value="critical">Critical</option><option value="blocking">Blocking</option><option value="high">High</option><option value="medium">Medium</option><option value="low">Low</option></select>
+                <label for="ts-diff" class="sr-only">Difficulty</label>
+                <select class="ts-sel" id="ts-diff"><option value="">All difficulties</option><option value="beginner">Beginner</option><option value="intermediate">Intermediate</option><option value="advanced">Advanced</option></select>
+            </div>
+            <div class="ts-chips" id="ts-cats"></div>
+            <div class="ts-count" id="ts-count"></div>
+            <div class="ts-list" id="ts-list"></div>
+        </div>
+    </main>
+</div>
+<script>
+(function(){
+'use strict';
+const E=s=>{const d=document.createElement('div');d.textContent=String(s??'');return d.innerHTML};
+const $=id=>document.getElementById(id);
+let entries=[],activeCat='',q='',sev='',diff='';
+
+fetch('forge_troubleshooting.json').then(r=>r.json()).then(d=>{
+    entries=d.entries||[];
+    $('ts-total').textContent=entries.length;
+    buildCats();render();
+});
+
+function buildCats(){
+    const cats={};
+    entries.forEach(e=>{cats[e.category]=(cats[e.category]||0)+1});
+    $('ts-cats').innerHTML=Object.entries(cats).sort((a,b)=>b[1]-a[1]).map(([c,n])=>
+        `<span class="ts-chip" data-cat="${c}">${c.replace(/_/g,' ')} (${n})</span>`
+    ).join('');
+    $('ts-cats').querySelectorAll('.ts-chip').forEach(ch=>{
+        ch.addEventListener('click',()=>{
+            if(activeCat===ch.dataset.cat){activeCat='';ch.classList.remove('on')}
+            else{$('ts-cats').querySelectorAll('.ts-chip').forEach(x=>x.classList.remove('on'));activeCat=ch.dataset.cat;ch.classList.add('on')}
+            render();
+        });
+    });
+}
+
+$('ts-q').addEventListener('input',e=>{q=e.target.value.toLowerCase();render()});
+$('ts-sev').addEventListener('change',e=>{sev=e.target.value;render()});
+$('ts-diff').addEventListener('change',e=>{diff=e.target.value;render()});
+
+function matches(e){
+    if(activeCat&&e.category!==activeCat)return false;
+    if(sev&&e.severity!==sev)return false;
+    if(diff&&e.difficulty!==diff)return false;
+    if(q){
+        const blob=[e.title,e.category,...(e.symptoms||[]),...(e.causes||[]),...(e.fixes||[]),...(e.tags||[])].join(' ').toLowerCase();
+        if(!q.split(/\s+/).every(w=>blob.includes(w)))return false;
+    }
+    return true;
+}
+
+function render(){
+    const f=entries.filter(matches);
+    const so={critical:0,blocking:1,high:2,medium:3,low:4,info:5};
+    f.sort((a,b)=>(so[a.severity]||3)-(so[b.severity]||3));
+    $('ts-count').textContent=`${f.length} of ${entries.length} entries`;
+    $('ts-list').innerHTML=f.map(e=>`<div class="ts-card" data-id="${e.id}">
+        <div class="ts-card-hdr">
+            <div class="ts-sev sev-${e.severity}"></div>
+            <div class="ts-card-title">${E(e.title)}</div>
+            <div class="ts-card-meta">
+                <span class="ts-badge badge-cat">${e.category.replace(/_/g,' ')}</span>
+                <span class="ts-badge badge-diff-${e.difficulty||'intermediate'}">${e.difficulty||''}</span>
+            </div>
+            <i class="ph ph-caret-right ts-chevron"></i>
+        </div>
+        <div class="ts-body">
+            ${sec('Symptoms',e.symptoms)}${sec('Likely causes',e.causes)}${sec('How to diagnose',e.diagnostics)}${sec('Fixes',e.fixes)}
+            ${e.tags?`<div class="ts-tags">${e.tags.map(t=>`<span class="ts-tag">${E(t)}</span>`).join('')}</div>`:''}
+        </div>
+    </div>`).join('');
+    $('ts-list').querySelectorAll('.ts-card-hdr').forEach(h=>{
+        h.addEventListener('click',()=>h.parentElement.classList.toggle('open'));
+    });
+}
+function sec(t,items){if(!items||!items.length)return'';return`<div class="ts-section"><div class="ts-section-title">${t}</div><ul>${items.map(i=>`<li>${E(i)}</li>`).join('')}</ul></div>`;}
+
+// Dark mode toggle
+const dt=$('dark-mode-toggle'),di=$('dark-mode-icon');
+if(dt)dt.addEventListener('click',()=>{const t=document.documentElement.getAttribute('data-theme')==='dark'?'light':'dark';document.documentElement.setAttribute('data-theme',t);localStorage.setItem('dc-theme',t);di.className=t==='dark'?'ph ph-moon':'ph ph-sun';});
+})();
+</script>
+</body>
+</html>

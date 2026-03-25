@@ -47,7 +47,8 @@ PAGES = {
     'compare.html': 'compare/index.html',
     'cost.html': 'cost/index.html',
     'intel.html': 'intel/index.html',
-    'vault.html': 'vault/index.html',  # Unlisted — no nav links
+    'vault.html': 'vault/index.html',
+    'troubleshoot.html': 'troubleshoot/index.html',  # Unlisted — no nav links
     'industry.html': 'industry/index.html',
     'intel-defense.html': 'intel-defense/index.html',
     'intel-financial.html': 'intel-financial/index.html',
