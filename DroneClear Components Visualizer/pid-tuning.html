@@ -1,0 +1,1687 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>PID Tuning Tool — Forge</title>
+<style>
+:root {
+  --bg: #0e0e0e;
+  --bg-panel: #161616;
+  --bg-dark: #111111;
+  --bg-hover: #1c1c1c;
+  --border: #252525;
+  --border-hover: #333;
+  --cyan: #22d3ee;
+  --cyan-dim: rgba(34,211,238,0.12);
+  --cyan-glow: rgba(34,211,238,0.25);
+  --green: #4ade80;
+  --yellow: #eab308;
+  --red: #f87171;
+  --orange: #f97316;
+  --purple: #a78bfa;
+  --white: #f0f0f0;
+  --g1: #cccccc;
+  --g2: #888888;
+  --g3: #555555;
+  --g4: #333333;
+  --font: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  --mono: 'Courier New', 'Lucida Console', monospace;
+  --radius: 8px;
+  --radius-sm: 5px;
+}
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html { height: 100%; }
+body {
+  min-height: 100%; background: var(--bg); color: var(--g1);
+  font-family: var(--font); font-size: 13px; line-height: 1.55;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* ── Layout ── */
+.page { display: flex; min-height: 100vh; }
+
+.sidebar {
+  width: 230px; flex-shrink: 0; background: var(--bg-panel);
+  border-right: 1px solid var(--border); padding: 20px 0;
+  position: sticky; top: 0; height: 100vh; overflow-y: auto;
+}
+.sidebar-head { padding: 0 20px 18px; border-bottom: 1px solid var(--border); margin-bottom: 14px; }
+.sidebar-brand { display: flex; align-items: baseline; gap: 8px; text-decoration: none; margin-bottom: 10px; }
+.sidebar-brand .name { font-size: 16px; font-weight: 700; color: var(--white); }
+.sidebar-brand .slash { color: var(--cyan); font-family: var(--mono); font-size: 14px; }
+.sidebar-brand .sub { font-size: 11px; color: var(--g3); }
+.sidebar-label { font-size: 10px; text-transform: uppercase; letter-spacing: 0.1em; color: var(--g3); padding: 10px 20px 4px; display: block; }
+
+.nav-btn {
+  display: flex; align-items: center; gap: 8px;
+  padding: 8px 12px; margin: 1px 10px; border-radius: var(--radius-sm);
+  font-size: 13px; color: var(--g2); cursor: pointer;
+  border: none; background: none; width: calc(100% - 20px); text-align: left;
+  font-family: var(--font); transition: all 0.12s;
+}
+.nav-btn:hover { background: var(--bg-hover); color: var(--white); }
+.nav-btn.active { background: var(--cyan-dim); color: var(--cyan); border-left: 2px solid var(--cyan); padding-left: 10px; }
+.nav-icon { font-size: 14px; width: 18px; text-align: center; flex-shrink: 0; }
+
+.main { flex: 1; min-width: 0; overflow-y: auto; }
+
+/* ── Top bar ── */
+.topbar {
+  padding: 12px 28px; display: flex; align-items: center; justify-content: space-between;
+  border-bottom: 1px solid var(--border); background: var(--bg-panel);
+  position: sticky; top: 0; z-index: 10;
+}
+.breadcrumb { display: flex; align-items: center; gap: 8px; font-size: 13px; }
+.breadcrumb a { color: var(--g2); text-decoration: none; }
+.breadcrumb a:hover { color: var(--white); }
+.breadcrumb .sep { color: var(--g3); }
+.breadcrumb .current { color: var(--white); font-weight: 500; }
+.topbar-badge {
+  font-size: 10px; padding: 3px 10px; border-radius: 20px; font-weight: 500;
+  background: var(--cyan-dim); color: var(--cyan); border: 1px solid rgba(34,211,238,0.25);
+}
+
+/* ── Panels ── */
+.panel { display: none; padding: 32px 28px; max-width: 920px; }
+.panel.active { display: block; }
+.panel-title { font-size: 21px; font-weight: 700; color: var(--white); margin-bottom: 6px; }
+.panel-desc { font-size: 13px; color: var(--g2); line-height: 1.6; margin-bottom: 24px; }
+
+/* ── Inputs ── */
+.input-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 14px; margin-bottom: 22px; }
+.input-group { display: flex; flex-direction: column; gap: 5px; }
+.input-label { font-size: 11px; color: var(--g2); text-transform: uppercase; letter-spacing: 0.06em; font-weight: 500; }
+.input-row { display: flex; align-items: center; gap: 8px; }
+.tool-input {
+  width: 100%; padding: 9px 12px; border-radius: var(--radius-sm);
+  border: 1px solid var(--border); background: var(--bg-dark);
+  color: var(--white); font-size: 14px; font-family: var(--font);
+  transition: border-color 0.15s;
+}
+.tool-input:focus { outline: none; border-color: var(--cyan); box-shadow: 0 0 0 2px rgba(34,211,238,0.1); }
+.tool-select {
+  width: 100%; padding: 9px 12px; border-radius: var(--radius-sm);
+  border: 1px solid var(--border); background: var(--bg-dark);
+  color: var(--white); font-size: 13px; font-family: var(--font);
+  cursor: pointer; appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='10' viewBox='0 0 10 10'%3E%3Cpath fill='%23555' d='M5 7L1 3h8z'/%3E%3C/svg%3E");
+  background-repeat: no-repeat; background-position: right 10px center;
+}
+.tool-select:focus { outline: none; border-color: var(--cyan); }
+.input-unit { font-size: 11px; color: var(--g3); white-space: nowrap; }
+
+/* ── Slider ── */
+.slider-group { margin-bottom: 16px; }
+.slider-header { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 6px; }
+.slider-label { font-size: 12px; color: var(--g2); font-weight: 500; }
+.slider-val { font-size: 14px; color: var(--cyan); font-weight: 700; font-family: var(--mono); }
+input[type="range"] {
+  -webkit-appearance: none; width: 100%; height: 6px;
+  background: var(--g4); border-radius: 3px; outline: none;
+}
+input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none; width: 16px; height: 16px;
+  background: var(--cyan); border-radius: 50%; cursor: pointer;
+  box-shadow: 0 0 6px var(--cyan-glow);
+}
+
+/* ── Result cards ── */
+.result-card {
+  background: var(--bg-panel); border: 1px solid var(--border);
+  border-radius: var(--radius); padding: 20px; margin-bottom: 14px;
+}
+.result-card.accent { border-color: rgba(34,211,238,0.35); background: rgba(34,211,238,0.03); }
+.result-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 14px; }
+.result-item { display: flex; flex-direction: column; gap: 3px; }
+.result-value { font-size: 26px; font-weight: 700; color: var(--cyan); font-family: var(--mono); line-height: 1; }
+.result-value.sm { font-size: 18px; }
+.result-label { font-size: 10px; color: var(--g2); text-transform: uppercase; letter-spacing: 0.06em; }
+.result-note { font-size: 12px; color: var(--g2); line-height: 1.5; margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--border); }
+
+/* ── Code block ── */
+.code-block {
+  background: #0a0a0a; border: 1px solid var(--border); border-radius: var(--radius-sm);
+  padding: 14px 16px; font-family: var(--mono); font-size: 12px;
+  color: var(--cyan); overflow-x: auto; line-height: 1.6;
+  white-space: pre-wrap; position: relative; margin-bottom: 14px;
+}
+.copy-btn {
+  position: absolute; top: 8px; right: 8px; padding: 4px 10px;
+  border-radius: var(--radius-sm); border: 1px solid var(--border);
+  background: var(--bg-panel); color: var(--g2); font-size: 11px;
+  cursor: pointer; font-family: var(--font); transition: all 0.12s;
+}
+.copy-btn:hover { border-color: var(--cyan); color: var(--cyan); }
+
+/* ── Presets row ── */
+.presets { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 20px; }
+.preset-btn {
+  padding: 6px 14px; border-radius: var(--radius-sm);
+  border: 1px solid var(--border); background: none;
+  color: var(--g2); font-size: 12px; cursor: pointer;
+  font-family: var(--font); transition: all 0.12s;
+}
+.preset-btn:hover { border-color: var(--cyan); color: var(--cyan); }
+.preset-btn.active { background: var(--cyan-dim); border-color: rgba(34,211,238,0.4); color: var(--cyan); }
+
+/* ── Diagnostic wizard ── */
+.diag-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 10px; margin-bottom: 20px; }
+.diag-card {
+  background: var(--bg-panel); border: 1px solid var(--border);
+  border-radius: var(--radius); padding: 14px 16px; cursor: pointer;
+  transition: all 0.15s; display: flex; align-items: flex-start; gap: 10px;
+}
+.diag-card:hover { border-color: var(--border-hover); transform: translateY(-1px); }
+.diag-card.selected { border-color: var(--cyan); background: var(--cyan-dim); }
+.diag-icon { font-size: 18px; flex-shrink: 0; margin-top: 1px; }
+.diag-name { font-size: 13px; font-weight: 600; color: var(--white); margin-bottom: 2px; }
+.diag-hint { font-size: 11px; color: var(--g3); line-height: 1.4; }
+
+.diag-result {
+  background: var(--bg-panel); border: 1px solid var(--border);
+  border-radius: var(--radius); padding: 20px; display: none;
+}
+.diag-result.show { display: block; }
+.diag-cause { font-size: 14px; font-weight: 600; color: var(--white); margin-bottom: 10px; }
+.diag-fix { font-size: 13px; color: var(--g1); line-height: 1.7; }
+.diag-fix code { background: #0a0a0a; padding: 1px 6px; border-radius: 3px; font-family: var(--mono); font-size: 12px; color: var(--cyan); }
+.diag-severity {
+  display: inline-block; font-size: 10px; padding: 2px 8px; border-radius: 20px;
+  font-weight: 600; letter-spacing: 0.05em; margin-bottom: 10px;
+}
+.sev-high { background: rgba(248,113,113,0.15); color: var(--red); }
+.sev-med { background: rgba(234,179,8,0.15); color: var(--yellow); }
+.sev-low { background: rgba(74,222,128,0.15); color: var(--green); }
+
+/* ── Vis bars ── */
+.bar-row { display: flex; align-items: center; gap: 10px; padding: 6px 0; }
+.bar-label { font-size: 12px; color: var(--g2); width: 60px; flex-shrink: 0; text-align: right; font-family: var(--mono); }
+.bar-track { flex: 1; height: 10px; background: var(--g4); border-radius: 5px; overflow: hidden; position: relative; }
+.bar-fill { height: 100%; border-radius: 5px; transition: width 0.4s ease; }
+.bar-tag { font-size: 11px; width: 50px; flex-shrink: 0; font-family: var(--mono); }
+
+/* ── Table ── */
+.ref-table { width: 100%; border-collapse: collapse; font-size: 12px; }
+.ref-table th {
+  padding: 8px 10px; text-align: left; font-size: 10px;
+  text-transform: uppercase; letter-spacing: 0.06em;
+  color: var(--g3); border-bottom: 1px solid var(--border); font-weight: 600;
+}
+.ref-table td { padding: 8px 10px; border-bottom: 1px solid rgba(255,255,255,0.03); color: var(--g1); }
+.ref-table tr:hover td { background: rgba(255,255,255,0.02); }
+
+/* ── Section divider ── */
+.divider { font-size: 10px; text-transform: uppercase; letter-spacing: 0.1em; color: var(--g3); margin: 28px 0 16px; display: flex; align-items: center; gap: 12px; }
+.divider::after { content: ''; flex: 1; height: 1px; background: var(--border); }
+
+/* ── AI Chat ── */
+.chat-wrap { display: flex; flex-direction: column; height: calc(100vh - 140px); max-height: 700px; }
+.chat-messages { flex: 1; overflow-y: auto; padding: 12px 0; scroll-behavior: smooth; }
+.chat-messages::-webkit-scrollbar { width: 4px; }
+.chat-messages::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+.chat-msg { margin-bottom: 14px; }
+.chat-meta { display: flex; align-items: center; gap: 6px; margin-bottom: 4px; font-size: 11px; }
+.chat-meta .who { color: var(--g2); font-weight: 600; }
+.chat-meta .slash { color: var(--cyan); font-family: var(--mono); }
+.chat-meta .tag { font-size: 9px; padding: 1px 6px; border-radius: 10px; background: rgba(34,211,238,0.1); color: var(--cyan); }
+.chat-bubble {
+  background: var(--bg-panel); border: 1px solid var(--border); border-radius: var(--radius);
+  padding: 12px 16px; font-size: 13px; color: var(--g1); line-height: 1.65; max-width: 95%;
+}
+.chat-bubble.user { background: rgba(34,211,238,0.06); border-color: rgba(34,211,238,0.2); }
+.chat-bubble h2, .chat-bubble h3 { font-size: 14px; color: var(--white); margin: 10px 0 4px; }
+.chat-bubble code { background: #0a0a0a; padding: 1px 5px; border-radius: 3px; font-family: var(--mono); font-size: 12px; color: var(--cyan); }
+.chat-bubble pre { background: #0a0a0a; border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 10px 12px; margin: 8px 0; overflow-x: auto; }
+.chat-bubble pre code { background: none; padding: 0; }
+.chat-bubble ul, .chat-bubble ol { padding-left: 18px; margin: 6px 0; }
+.chat-bubble li { margin-bottom: 3px; }
+.chat-bubble p { margin: 6px 0; }
+.chat-bubble strong { color: var(--white); }
+.chat-input-row { display: flex; gap: 8px; padding-top: 10px; border-top: 1px solid var(--border); }
+.chat-input {
+  flex: 1; padding: 10px 14px; border-radius: var(--radius-sm);
+  border: 1px solid var(--border); background: var(--bg-dark);
+  color: var(--white); font-size: 13px; font-family: var(--font);
+  resize: none; min-height: 40px; max-height: 100px;
+}
+.chat-input:focus { outline: none; border-color: var(--cyan); }
+.chat-send {
+  padding: 8px 16px; border-radius: var(--radius-sm); border: 1px solid var(--cyan);
+  background: rgba(34,211,238,0.1); color: var(--cyan); font-size: 13px;
+  cursor: pointer; font-family: var(--font); transition: all 0.12s; white-space: nowrap;
+}
+.chat-send:hover { background: rgba(34,211,238,0.2); }
+.chat-send:disabled { opacity: 0.4; cursor: not-allowed; }
+.thinking-dots { display: inline-flex; gap: 4px; padding: 8px 0; }
+.thinking-dots span { width: 6px; height: 6px; border-radius: 50%; background: var(--cyan); animation: blink 1.2s infinite; }
+.thinking-dots span:nth-child(2) { animation-delay: 0.2s; }
+.thinking-dots span:nth-child(3) { animation-delay: 0.4s; }
+@keyframes blink { 0%,80%,100%{opacity:0.2} 40%{opacity:1} }
+
+/* ── Context chips ── */
+.ctx-chips { display: flex; flex-wrap: wrap; gap: 5px; margin-bottom: 10px; }
+.ctx-chip {
+  font-size: 10px; padding: 3px 8px; border-radius: 10px;
+  background: rgba(255,255,255,0.04); border: 1px solid var(--border);
+  color: var(--g2); font-family: var(--mono);
+}
+.ctx-chip.active { background: var(--cyan-dim); border-color: rgba(34,211,238,0.3); color: var(--cyan); }
+
+/* ── Session log ── */
+.session-card {
+  background: var(--bg-panel); border: 1px solid var(--border); border-radius: var(--radius);
+  padding: 14px 16px; margin-bottom: 10px; transition: border-color 0.15s;
+}
+.session-card:hover { border-color: var(--border-hover); }
+.session-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
+.session-time { font-size: 11px; color: var(--g3); font-family: var(--mono); }
+.session-class { font-size: 11px; padding: 2px 8px; border-radius: 10px; background: var(--cyan-dim); color: var(--cyan); }
+.session-pids { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
+.session-pid-val { font-size: 12px; color: var(--g1); font-family: var(--mono); }
+.session-pid-lbl { font-size: 9px; color: var(--g3); text-transform: uppercase; }
+
+/* ── Config overlay ── */
+.cfg-overlay {
+  display: none; position: fixed; inset: 0; z-index: 100;
+  background: rgba(0,0,0,0.6); align-items: center; justify-content: center;
+}
+.cfg-overlay.open { display: flex; }
+.cfg-panel {
+  background: var(--bg-panel); border: 1px solid var(--border); border-radius: var(--radius);
+  padding: 24px; width: 380px; max-width: 90vw; max-height: 80vh; overflow-y: auto;
+}
+.cfg-title { font-size: 16px; font-weight: 700; color: var(--white); margin-bottom: 16px; }
+.cfg-label { display: block; font-size: 11px; color: var(--g2); text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 6px; font-weight: 500; }
+.cfg-input {
+  width: 100%; padding: 9px 12px; border-radius: var(--radius-sm);
+  border: 1px solid var(--border); background: var(--bg-dark);
+  color: var(--white); font-size: 13px; font-family: var(--font); margin-bottom: 14px;
+}
+.cfg-input:focus { outline: none; border-color: var(--cyan); }
+.cfg-btns { display: flex; gap: 8px; margin-top: 8px; }
+.cfg-btn {
+  flex: 1; padding: 9px; border-radius: var(--radius-sm); border: 1px solid var(--border);
+  background: none; color: var(--g2); font-size: 13px; cursor: pointer; font-family: var(--font);
+}
+.cfg-btn.primary { background: rgba(34,211,238,0.1); border-color: rgba(34,211,238,0.3); color: var(--cyan); }
+.cfg-btn:hover { border-color: var(--cyan); color: var(--cyan); }
+
+/* ── Responsive ── */
+@media (max-width: 768px) {
+  .sidebar { display: none; }
+  .page { display: block; }
+  .panel { padding: 20px 16px; }
+  .topbar { padding: 10px 16px; }
+  .input-grid { grid-template-columns: 1fr; }
+  .chat-wrap { height: calc(100vh - 160px); }
+}
+</style>
+</head>
+<body>
+<div class="page">
+
+<!-- ═══════════════════════════════════════════════
+     SIDEBAR
+═══════════════════════════════════════════════ -->
+<aside class="sidebar">
+  <div class="sidebar-head">
+    <a href="index.html" class="sidebar-brand">
+      <span class="slash">/</span>
+      <span class="name">Forge</span>
+      <span class="sub">PID Tuning</span>
+    </a>
+  </div>
+  <span class="sidebar-label">Tuning</span>
+  <button class="nav-btn active" data-panel="calculator"><span class="nav-icon">⚡</span> PID Calculator</button>
+  <button class="nav-btn" data-panel="diagnostic"><span class="nav-icon">🔍</span> Symptom Diagnostic</button>
+  <button class="nav-btn" data-panel="cli"><span class="nav-icon">⌨</span> CLI Generator</button>
+  <span class="sidebar-label">Analysis</span>
+  <button class="nav-btn" data-panel="noise"><span class="nav-icon">📊</span> Noise Zones</button>
+  <button class="nav-btn" data-panel="filters"><span class="nav-icon">🎛</span> Filter Advisor</button>
+  <span class="sidebar-label">Reference</span>
+  <button class="nav-btn" data-panel="classref"><span class="nav-icon">📋</span> Tuning by Class</button>
+  <button class="nav-btn" data-panel="algorithms"><span class="nav-icon">🧮</span> Algorithms</button>
+  <span class="sidebar-label">Wingman AI</span>
+  <button class="nav-btn" data-panel="ai-analyze"><span class="nav-icon">🤖</span> AI Tune Advisor</button>
+  <button class="nav-btn" data-panel="session-log"><span class="nav-icon">📝</span> Session Log</button>
+  <div style="margin-top:auto; padding:16px 16px 0; border-top:1px solid var(--border); margin-top:20px;">
+    <div style="font-size:10px; color:var(--g3); text-transform:uppercase; letter-spacing:0.08em; margin-bottom:8px;">Sessions Logged</div>
+    <div style="font-size:22px; font-weight:700; color:var(--cyan); font-family:var(--mono);" id="session-count">0</div>
+  </div>
+</aside>
+
+<!-- ═══════════════════════════════════════════════
+     MAIN
+═══════════════════════════════════════════════ -->
+<div class="main">
+  <div class="topbar">
+    <div class="breadcrumb">
+      <a href="index.html">Forge</a>
+      <span class="sep">›</span>
+      <span class="current" id="bc-current">PID Calculator</span>
+    </div>
+    <span class="topbar-badge">Wingman AI</span>
+    <button onclick="openCfg()" style="background:none; border:1px solid var(--border); border-radius:var(--radius-sm); padding:5px 10px; color:var(--g2); cursor:pointer; font-size:13px;" title="API Settings">⚙️</button>
+  </div>
+
+  <!-- Config Overlay -->
+  <div class="cfg-overlay" id="cfg-overlay" onclick="if(event.target===this)closeCfg()">
+    <div class="cfg-panel">
+      <div class="cfg-title">Wingman AI Settings</div>
+      <label class="cfg-label">Provider</label>
+      <div style="display:flex; gap:8px; margin-bottom:14px;">
+        <button class="cfg-btn primary" id="prov-gemini" onclick="setCfgProvider('gemini')">Gemini (Free)</button>
+        <button class="cfg-btn" id="prov-anthropic" onclick="setCfgProvider('anthropic')">Anthropic</button>
+      </div>
+      <div id="cfg-gemini">
+        <label class="cfg-label">Google Gemini API Key</label>
+        <input type="password" class="cfg-input" id="cfg-gemini-key" placeholder="AIzaSy...">
+        <div style="font-size:10px; color:var(--g3); margin:-10px 0 14px; line-height:1.5;">
+          Free — no credit card. <a href="https://aistudio.google.com/apikey" target="_blank" style="color:var(--cyan);">Get a free key →</a>
+        </div>
+      </div>
+      <div id="cfg-anthropic" style="display:none;">
+        <label class="cfg-label">Anthropic API Key</label>
+        <input type="password" class="cfg-input" id="cfg-anthropic-key" placeholder="sk-ant-...">
+      </div>
+      <label class="cfg-label">GitHub PAT (optional — export sessions to DB)</label>
+      <input type="password" class="cfg-input" id="cfg-gh-pat" placeholder="ghp_xxxxxxxxxxxx">
+      <div class="cfg-btns">
+        <button class="cfg-btn primary" onclick="saveCfg()">Save</button>
+        <button class="cfg-btn" onclick="closeCfg()">Cancel</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══ PANEL 1: PID CALCULATOR ═══ -->
+  <div class="panel active" id="panel-calculator">
+    <div class="panel-title">PID Calculator</div>
+    <p class="panel-desc">Compute starting PID values from Ziegler-Nichols ultimate gain method, or start from firmware presets and adjust with sliders.</p>
+
+    <div class="divider">Method</div>
+    <div class="presets" id="method-presets">
+      <button class="preset-btn active" onclick="setMethod('sliders')">Slider Tuning</button>
+      <button class="preset-btn" onclick="setMethod('zn')">Ziegler-Nichols</button>
+      <button class="preset-btn" onclick="setMethod('tl')">Tyreus-Luyben</button>
+    </div>
+
+    <!-- Slider method -->
+    <div id="method-sliders">
+      <div class="divider">Quad Class Preset</div>
+      <div class="presets" id="class-presets">
+        <button class="preset-btn active" onclick="loadClassPreset('5free')">5" Freestyle</button>
+        <button class="preset-btn" onclick="loadClassPreset('5race')">5" Racing</button>
+        <button class="preset-btn" onclick="loadClassPreset('3cine')">3" Cinewhoop</button>
+        <button class="preset-btn" onclick="loadClassPreset('7lr')">7" Long Range</button>
+        <button class="preset-btn" onclick="loadClassPreset('whoop')">Tiny Whoop</button>
+        <button class="preset-btn" onclick="loadClassPreset('cine8')">8-10" Cinelifter</button>
+      </div>
+
+      <div class="divider">Adjust Gains</div>
+      <div style="display:grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+        <div>
+          <div class="slider-group">
+            <div class="slider-header"><span class="slider-label">P (Proportional)</span><span class="slider-val" id="sv-p">45</span></div>
+            <input type="range" id="sl-p" min="10" max="100" value="45" oninput="updateSliders()">
+          </div>
+          <div class="slider-group">
+            <div class="slider-header"><span class="slider-label">I (Integral)</span><span class="slider-val" id="sv-i">80</span></div>
+            <input type="range" id="sl-i" min="10" max="200" value="80" oninput="updateSliders()">
+          </div>
+          <div class="slider-group">
+            <div class="slider-header"><span class="slider-label">D (Derivative)</span><span class="slider-val" id="sv-d">30</span></div>
+            <input type="range" id="sl-d" min="5" max="80" value="30" oninput="updateSliders()">
+          </div>
+          <div class="slider-group">
+            <div class="slider-header"><span class="slider-label">F (Feedforward)</span><span class="slider-val" id="sv-f">120</span></div>
+            <input type="range" id="sl-f" min="0" max="300" value="120" oninput="updateSliders()">
+          </div>
+        </div>
+        <div>
+          <div id="pid-vis"></div>
+        </div>
+      </div>
+
+      <div class="result-card accent" id="slider-result"></div>
+    </div>
+
+    <!-- Z-N / T-L method -->
+    <div id="method-zn" style="display:none;">
+      <div class="divider">Measured Parameters</div>
+      <p style="font-size:12px; color:var(--g2); margin-bottom:16px;">
+        Increase P with I=0, D=0 until sustained oscillation. Record the ultimate gain (Ku) and oscillation period (Tu).
+      </p>
+      <div class="input-grid">
+        <div class="input-group">
+          <label class="input-label">Ultimate Gain (Ku)</label>
+          <input type="number" class="tool-input" id="zn-ku" value="8.0" min="0.1" step="0.1" oninput="calcZN()">
+        </div>
+        <div class="input-group">
+          <label class="input-label">Ultimate Period (Tu)</label>
+          <div class="input-row">
+            <input type="number" class="tool-input" id="zn-tu" value="0.02" min="0.001" step="0.001" oninput="calcZN()">
+            <span class="input-unit">sec</span>
+          </div>
+        </div>
+      </div>
+      <div class="result-card accent" id="zn-result"></div>
+    </div>
+  </div>
+
+  <!-- ═══ PANEL 2: SYMPTOM DIAGNOSTIC ═══ -->
+  <div class="panel" id="panel-diagnostic">
+    <div class="panel-title">Symptom Diagnostic</div>
+    <p class="panel-desc">Select the symptom you're experiencing. Wingman will diagnose the most likely cause and provide the fix.</p>
+
+    <div class="diag-grid" id="symptoms-grid"></div>
+    <div class="diag-result" id="diag-result"></div>
+  </div>
+
+  <!-- ═══ PANEL 3: CLI GENERATOR ═══ -->
+  <div class="panel" id="panel-cli">
+    <div class="panel-title">CLI Command Generator</div>
+    <p class="panel-desc">Generate Betaflight CLI commands from your tuning values. Paste directly into the CLI tab in Betaflight Configurator.</p>
+
+    <div class="divider">PID Values</div>
+    <div class="input-grid">
+      <div class="input-group">
+        <label class="input-label">P Roll</label>
+        <input type="number" class="tool-input cli-in" id="cli-p-roll" value="45">
+      </div>
+      <div class="input-group">
+        <label class="input-label">I Roll</label>
+        <input type="number" class="tool-input cli-in" id="cli-i-roll" value="80">
+      </div>
+      <div class="input-group">
+        <label class="input-label">D Roll</label>
+        <input type="number" class="tool-input cli-in" id="cli-d-roll" value="30">
+      </div>
+      <div class="input-group">
+        <label class="input-label">F Roll</label>
+        <input type="number" class="tool-input cli-in" id="cli-f-roll" value="120">
+      </div>
+    </div>
+    <div class="input-grid">
+      <div class="input-group">
+        <label class="input-label">P Pitch</label>
+        <input type="number" class="tool-input cli-in" id="cli-p-pitch" value="47">
+      </div>
+      <div class="input-group">
+        <label class="input-label">I Pitch</label>
+        <input type="number" class="tool-input cli-in" id="cli-i-pitch" value="84">
+      </div>
+      <div class="input-group">
+        <label class="input-label">D Pitch</label>
+        <input type="number" class="tool-input cli-in" id="cli-d-pitch" value="32">
+      </div>
+      <div class="input-group">
+        <label class="input-label">F Pitch</label>
+        <input type="number" class="tool-input cli-in" id="cli-f-pitch" value="125">
+      </div>
+    </div>
+    <div class="input-grid">
+      <div class="input-group">
+        <label class="input-label">P Yaw</label>
+        <input type="number" class="tool-input cli-in" id="cli-p-yaw" value="35">
+      </div>
+      <div class="input-group">
+        <label class="input-label">I Yaw</label>
+        <input type="number" class="tool-input cli-in" id="cli-i-yaw" value="90">
+      </div>
+      <div class="input-group">
+        <label class="input-label">D Yaw</label>
+        <input type="number" class="tool-input cli-in" id="cli-d-yaw" value="0">
+      </div>
+      <div class="input-group">
+        <label class="input-label">F Yaw</label>
+        <input type="number" class="tool-input cli-in" id="cli-f-yaw" value="0">
+      </div>
+    </div>
+
+    <div class="divider">Advanced</div>
+    <div class="input-grid">
+      <div class="input-group">
+        <label class="input-label">I-term Relax Cutoff</label>
+        <input type="number" class="tool-input cli-in" id="cli-irelax" value="15">
+      </div>
+      <div class="input-group">
+        <label class="input-label">TPA Rate</label>
+        <input type="number" class="tool-input cli-in" id="cli-tpa-rate" value="75">
+      </div>
+      <div class="input-group">
+        <label class="input-label">TPA Breakpoint</label>
+        <input type="number" class="tool-input cli-in" id="cli-tpa-bp" value="1750">
+      </div>
+      <div class="input-group">
+        <label class="input-label">Dyn Idle RPM</label>
+        <input type="number" class="tool-input cli-in" id="cli-dynidle" value="3000">
+      </div>
+    </div>
+
+    <div class="divider">Generated CLI</div>
+    <div class="code-block" id="cli-output"><button class="copy-btn" onclick="copyCliOutput()">Copy</button></div>
+  </div>
+
+  <!-- ═══ PANEL 4: NOISE ZONES ═══ -->
+  <div class="panel" id="panel-noise">
+    <div class="panel-title">Noise Frequency Zones</div>
+    <p class="panel-desc">Visualize where different noise sources live in the frequency spectrum and how filters interact with them.</p>
+
+    <div class="input-grid">
+      <div class="input-group">
+        <label class="input-label">Motor KV</label>
+        <input type="number" class="tool-input" id="nz-kv" value="1950" oninput="renderNoiseZones()">
+      </div>
+      <div class="input-group">
+        <label class="input-label">Battery Voltage</label>
+        <div class="input-row">
+          <input type="number" class="tool-input" id="nz-volts" value="14.8" step="0.1" oninput="renderNoiseZones()">
+          <span class="input-unit">V</span>
+        </div>
+      </div>
+      <div class="input-group">
+        <label class="input-label">Throttle %</label>
+        <div class="input-row">
+          <input type="number" class="tool-input" id="nz-throttle" value="50" min="10" max="100" oninput="renderNoiseZones()">
+          <span class="input-unit">%</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="result-card" id="noise-chart"></div>
+    <div class="result-card" id="noise-legend"></div>
+  </div>
+
+  <!-- ═══ PANEL 5: FILTER ADVISOR ═══ -->
+  <div class="panel" id="panel-filters">
+    <div class="panel-title">Filter Advisor</div>
+    <p class="panel-desc">Determine recommended filter settings based on your hardware and noise profile.</p>
+
+    <div class="input-grid">
+      <div class="input-group">
+        <label class="input-label">RPM Filter</label>
+        <select class="tool-select" id="fa-rpm" onchange="renderFilterAdvice()">
+          <option value="yes">Enabled (BLHeli_32 / AM32)</option>
+          <option value="no">Disabled</option>
+        </select>
+      </div>
+      <div class="input-group">
+        <label class="input-label">Gyro Condition</label>
+        <select class="tool-select" id="fa-gyro" onchange="renderFilterAdvice()">
+          <option value="good">Good (soft mounted, clean build)</option>
+          <option value="okay">Okay (some vibration)</option>
+          <option value="noisy">Noisy (hard mount, prop issues)</option>
+        </select>
+      </div>
+      <div class="input-group">
+        <label class="input-label">FC MCU</label>
+        <select class="tool-select" id="fa-mcu" onchange="renderFilterAdvice()">
+          <option value="h7">H7 (STM32H743+)</option>
+          <option value="f7">F7 (STM32F722+)</option>
+          <option value="f4">F4 (STM32F405)</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="result-card accent" id="filter-result"></div>
+    <div class="code-block" id="filter-cli"><button class="copy-btn" onclick="copyFilterCli()">Copy</button></div>
+  </div>
+
+  <!-- ═══ PANEL 6: TUNING BY CLASS ═══ -->
+  <div class="panel" id="panel-classref">
+    <div class="panel-title">Tuning Reference by Drone Class</div>
+    <p class="panel-desc">Quick reference for recommended PID ranges, filter settings, and special considerations per quad class.</p>
+
+    <div class="result-card">
+      <table class="ref-table">
+        <thead>
+          <tr><th>Class</th><th>P</th><th>I</th><th>D</th><th>FF</th><th>Notes</th></tr>
+        </thead>
+        <tbody>
+          <tr><td style="color:var(--white); font-weight:600;">Tiny Whoop</td><td>30-50</td><td>60-100</td><td>15-30</td><td>60-100</td><td style="color:var(--g3)">48KHz PWM; thrust_linear=25; low authority</td></tr>
+          <tr><td style="color:var(--white); font-weight:600;">3" Cinewhoop</td><td>35-55</td><td>70-110</td><td>20-40</td><td>80-130</td><td style="color:var(--g3)">Prop guards add drag; reduced authority</td></tr>
+          <tr><td style="color:var(--white); font-weight:600;">5" Freestyle</td><td>40-65</td><td>70-120</td><td>25-45</td><td>80-140</td><td style="color:var(--g3)">Standard target; wide I range</td></tr>
+          <tr><td style="color:var(--white); font-weight:600;">5" Racing</td><td>50-75</td><td>70-100</td><td>25-40</td><td>120-200</td><td style="color:var(--g3)">High FF; low latency; iterm_relax=30</td></tr>
+          <tr><td style="color:var(--white); font-weight:600;">7" Long Range</td><td>35-55</td><td>50-90</td><td>20-35</td><td>60-120</td><td style="color:var(--g3)">Conservative; iterm_relax_cutoff=10</td></tr>
+          <tr><td style="color:var(--white); font-weight:600;">8-10" Cinelifter</td><td>25-45</td><td>40-80</td><td>15-30</td><td>40-100</td><td style="color:var(--g3)">Heavy; low D to avoid motor heat</td></tr>
+          <tr><td style="color:var(--white); font-weight:600;">Fixed Wing (BF 4.6)</td><td>5-50</td><td>5-50</td><td>5-30</td><td>—</td><td style="color:var(--g3)">S-term primary; SPA I_FREEZE; TPA=airspeed</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- ═══ PANEL 7: ALGORITHMS ═══ -->
+  <div class="panel" id="panel-algorithms">
+    <div class="panel-title">Tuning Algorithms Reference</div>
+    <p class="panel-desc">Overview of classical and modern PID tuning algorithms applicable to drone flight controllers.</p>
+
+    <div class="divider">Classical Methods</div>
+    <div class="result-card">
+      <div style="font-size:14px; font-weight:600; color:var(--white); margin-bottom:8px;">Ziegler-Nichols (1942)</div>
+      <p style="font-size:12px; color:var(--g2); line-height:1.6; margin-bottom:12px;">
+        Increase P until sustained oscillation → record ultimate gain Ku and period Tu → apply formulas.
+        Creates quarter-wave decay. Often too aggressive for drones — use as starting point only.
+      </p>
+      <table class="ref-table" style="max-width:400px;">
+        <thead><tr><th>Type</th><th>Kp</th><th>Ti</th><th>Td</th></tr></thead>
+        <tbody>
+          <tr><td>P</td><td>0.50·Ku</td><td>—</td><td>—</td></tr>
+          <tr><td>PI</td><td>0.45·Ku</td><td>Tu/1.2</td><td>—</td></tr>
+          <tr><td>PID</td><td>0.60·Ku</td><td>Tu/2</td><td>Tu/8</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="result-card">
+      <div style="font-size:14px; font-weight:600; color:var(--white); margin-bottom:8px;">Tyreus-Luyben (1992)</div>
+      <p style="font-size:12px; color:var(--g2); line-height:1.6; margin-bottom:12px;">
+        Less aggressive alternative. Better suited for systems where quarter-wave decay causes problems.
+      </p>
+      <table class="ref-table" style="max-width:400px;">
+        <thead><tr><th>Type</th><th>Kp</th><th>Ti</th><th>Td</th></tr></thead>
+        <tbody>
+          <tr><td>PI</td><td>0.31·Ku</td><td>2.2·Tu</td><td>—</td></tr>
+          <tr><td>PID</td><td>0.45·Ku</td><td>2.2·Tu</td><td>Tu/6.3</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="result-card">
+      <div style="font-size:14px; font-weight:600; color:var(--white); margin-bottom:8px;">Åström-Hägglund Relay (1984)</div>
+      <p style="font-size:12px; color:var(--g2); line-height:1.6;">
+        Replaces PID with an ON/OFF relay to produce controlled limit cycle. Safer than direct Z-N cycling — 
+        output stays close to setpoint, no risk of runaway instability. Basis for ArduPilot's AutoTune 
+        which performs controlled "twitches" per axis.
+      </p>
+    </div>
+
+    <div class="divider">Modern / ML Methods</div>
+    <div class="result-card">
+      <div style="font-size:14px; font-weight:600; color:var(--white); margin-bottom:8px;">Neural Network Blackbox Analysis</div>
+      <p style="font-size:12px; color:var(--g2); line-height:1.6;">
+        FPVtune: Trained on thousands of real blackbox logs. Analyzes gyro noise spectrum, step response, 
+        D-term resonance → generates optimized PIDF + filter CLI commands. Supports BF 4.3-4.5+. 
+        Accounts for RPM filter presence and flying style.
+      </p>
+    </div>
+
+    <div class="result-card">
+      <div style="font-size:14px; font-weight:600; color:var(--white); margin-bottom:8px;">Reinforcement Learning</div>
+      <p style="font-size:12px; color:var(--g2); line-height:1.6;">
+        <strong style="color:var(--g1);">Neuroflight</strong> — First NN drone controller (2018). Replaces PID entirely. Trained in simulation to adapt to changing conditions.<br>
+        <strong style="color:var(--g1);">RAPTOR</strong> — Single NN policy across 32g-2.4kg quadrotors (2025).<br>
+        <strong style="color:var(--g1);">TD3 Curriculum</strong> — 94% success in dynamic mass scenarios, 60%+ error reduction vs static PID.<br>
+        <strong style="color:var(--g1);">MRAC</strong> — Adaptive control for unknown payloads, outperforms static PID on PX4.
+      </p>
+    </div>
+  </div>
+
+  <!-- ═══ PANEL 8: AI TUNE ADVISOR ═══ -->
+  <div class="panel" id="panel-ai-analyze">
+    <div class="panel-title">AI Tune Advisor</div>
+    <p class="panel-desc">Describe your quad, symptoms, or paste Blackbox data. Wingman AI will analyze and recommend PID/filter settings — all sessions are logged to the database.</p>
+
+    <div class="divider">Current Context (auto-captured)</div>
+    <div class="ctx-chips" id="ai-ctx-chips"></div>
+
+    <div class="chat-wrap">
+      <div class="chat-messages" id="ai-messages">
+        <div class="chat-msg">
+          <div class="chat-meta"><span class="slash">//</span><span class="who">Wingman</span></div>
+          <div class="chat-bubble">
+            I can see your current PID settings from the calculator. Describe your quad (frame, motors, props, firmware) and what symptoms you're experiencing. I'll analyze and recommend tuned values.<br><br>
+            You can also paste Blackbox frequency data, motor temps, or describe flight behavior — the more detail, the better the recommendation.
+          </div>
+        </div>
+      </div>
+      <div class="chat-input-row">
+        <textarea class="chat-input" id="ai-input" placeholder="Describe your quad and symptoms..." rows="1" onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();aiSend()}" oninput="this.style.height='auto';this.style.height=Math.min(this.scrollHeight,100)+'px'"></textarea>
+        <button class="chat-send" id="ai-send-btn" onclick="aiSend()">Send</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══ PANEL 9: SESSION LOG ═══ -->
+  <div class="panel" id="panel-session-log">
+    <div class="panel-title">Tuning Session Log</div>
+    <p class="panel-desc">Every tuning interaction is logged locally. Export sessions to the Forge troubleshooting database for community knowledge.</p>
+
+    <div style="display:flex; gap:8px; margin-bottom:20px;">
+      <button class="preset-btn" onclick="exportSessionsJSON()" id="export-json-btn">Export JSON</button>
+      <button class="preset-btn" onclick="exportToForgeDB()" id="export-db-btn">Push to Forge DB</button>
+      <button class="preset-btn" onclick="if(confirm('Clear all logged sessions?')){clearSessions()}" style="margin-left:auto; border-color:rgba(248,113,113,0.3); color:var(--red);">Clear All</button>
+    </div>
+
+    <div id="sessions-list"></div>
+    <div id="sessions-empty" style="text-align:center; padding:40px 20px; color:var(--g3); display:none;">
+      <div style="font-size:36px; opacity:0.3; margin-bottom:10px;">📝</div>
+      No sessions logged yet. Use the PID Calculator, Diagnostic, or AI Advisor to start logging.
+    </div>
+  </div>
+
+</div><!-- /main -->
+</div><!-- /page -->
+
+<script>
+// ═══════════════════════════════════════════════════════════════
+// NAVIGATION
+// ═══════════════════════════════════════════════════════════════
+const navBtns = document.querySelectorAll('.nav-btn[data-panel]');
+const panels = document.querySelectorAll('.panel');
+const bc = document.getElementById('bc-current');
+
+function showPanel(id) {
+  navBtns.forEach(b => b.classList.toggle('active', b.dataset.panel === id));
+  panels.forEach(p => p.classList.toggle('active', p.id === 'panel-' + id));
+  const a = document.querySelector(`.nav-btn[data-panel="${id}"]`);
+  if (a) bc.textContent = a.textContent.trim();
+}
+navBtns.forEach(b => b.addEventListener('click', () => showPanel(b.dataset.panel)));
+
+// ═══════════════════════════════════════════════════════════════
+// PANEL 1: PID CALCULATOR
+// ═══════════════════════════════════════════════════════════════
+const CLASS_PRESETS = {
+  whoop:  { p: 35, i: 70, d: 20, f: 70,  label: 'Tiny Whoop 1S' },
+  '3cine': { p: 42, i: 85, d: 28, f: 100, label: '3" Cinewhoop' },
+  '5free': { p: 45, i: 80, d: 30, f: 120, label: '5" Freestyle' },
+  '5race': { p: 55, i: 80, d: 32, f: 160, label: '5" Racing' },
+  '7lr':   { p: 40, i: 65, d: 25, f: 90,  label: '7" Long Range' },
+  cine8:  { p: 32, i: 55, d: 18, f: 70,  label: '8-10" Cinelifter' },
+};
+
+let curMethod = 'sliders';
+
+function setMethod(m) {
+  curMethod = m;
+  document.querySelectorAll('#method-presets .preset-btn').forEach(b => b.classList.toggle('active', b.textContent.toLowerCase().includes(m === 'sliders' ? 'slider' : m === 'zn' ? 'ziegler' : 'tyreus')));
+  document.getElementById('method-sliders').style.display = m === 'sliders' ? '' : 'none';
+  document.getElementById('method-zn').style.display = m !== 'sliders' ? '' : 'none';
+  if (m !== 'sliders') calcZN();
+}
+
+function loadClassPreset(key) {
+  const p = CLASS_PRESETS[key]; if (!p) return;
+  document.getElementById('sl-p').value = p.p;
+  document.getElementById('sl-i').value = p.i;
+  document.getElementById('sl-d').value = p.d;
+  document.getElementById('sl-f').value = p.f;
+  document.querySelectorAll('#class-presets .preset-btn').forEach(b => b.classList.remove('active'));
+  event.target.classList.add('active');
+  updateSliders();
+}
+
+function updateSliders() {
+  const p = +document.getElementById('sl-p').value;
+  const i = +document.getElementById('sl-i').value;
+  const d = +document.getElementById('sl-d').value;
+  const f = +document.getElementById('sl-f').value;
+  document.getElementById('sv-p').textContent = p;
+  document.getElementById('sv-i').textContent = i;
+  document.getElementById('sv-d').textContent = d;
+  document.getElementById('sv-f').textContent = f;
+
+  // P:D ratio analysis
+  const pdRatio = (p / Math.max(d, 1)).toFixed(1);
+  const pdNote = pdRatio > 2.0 ? 'High P:D — responsive but less damped' : pdRatio < 1.2 ? 'Low P:D — heavily damped, may feel sluggish' : 'Balanced P:D ratio';
+
+  // Vis bars
+  const maxBar = 200;
+  document.getElementById('pid-vis').innerHTML = `
+    <div style="margin-bottom:8px; font-size:11px; color:var(--g3); text-transform:uppercase; letter-spacing:0.08em;">Gain Visualization</div>
+    ${[['P', p, 100, '--cyan'], ['I', i, 200, '--green'], ['D', d, 80, '--purple'], ['FF', f, 300, '--orange']].map(([lbl, val, max, col]) => `
+      <div class="bar-row">
+        <span class="bar-label">${lbl}</span>
+        <div class="bar-track"><div class="bar-fill" style="width:${(val/max*100).toFixed(0)}%; background:var(${col});"></div></div>
+        <span class="bar-tag" style="color:var(${col});">${val}</span>
+      </div>
+    `).join('')}
+    <div style="margin-top:12px; font-size:12px; color:var(--g2);">
+      P:D ratio <span style="color:var(--cyan); font-weight:700; font-family:var(--mono);">${pdRatio}</span>
+      <span style="color:var(--g3); margin-left:8px;">— ${pdNote}</span>
+    </div>
+  `;
+
+  // Pitch approximation (typically ~5-10% higher than roll)
+  const pPitch = Math.round(p * 1.05);
+  const iPitch = Math.round(i * 1.05);
+  const dPitch = Math.round(d * 1.07);
+  const fPitch = Math.round(f * 1.04);
+  const pYaw = Math.round(p * 0.75);
+  const iYaw = Math.round(i * 1.1);
+
+  document.getElementById('slider-result').innerHTML = `
+    <div style="font-size:14px; font-weight:600; color:var(--white); margin-bottom:12px;">Recommended Starting Values</div>
+    <table class="ref-table">
+      <thead><tr><th>Axis</th><th>P</th><th>I</th><th>D</th><th>FF</th></tr></thead>
+      <tbody>
+        <tr><td style="color:var(--white); font-weight:600;">Roll</td><td>${p}</td><td>${i}</td><td>${d}</td><td>${f}</td></tr>
+        <tr><td style="color:var(--white); font-weight:600;">Pitch</td><td>${pPitch}</td><td>${iPitch}</td><td>${dPitch}</td><td>${fPitch}</td></tr>
+        <tr><td style="color:var(--white); font-weight:600;">Yaw</td><td>${pYaw}</td><td>${iYaw}</td><td>0</td><td>0</td></tr>
+      </tbody>
+    </table>
+    <div class="result-note">Pitch values ~5% higher than roll (asymmetric drag). Yaw P at ~75% of roll P. Adjust yaw I up if it drifts in forward flight. D and F on yaw typically 0 for most builds.</div>
+  `;
+}
+
+function calcZN() {
+  const ku = +document.getElementById('zn-ku').value || 8;
+  const tu = +document.getElementById('zn-tu').value || 0.02;
+  const isTL = curMethod === 'tl';
+  const name = isTL ? 'Tyreus-Luyben' : 'Ziegler-Nichols';
+
+  let kp, ti, td;
+  if (isTL) {
+    kp = 0.45 * ku; ti = 2.2 * tu; td = tu / 6.3;
+  } else {
+    kp = 0.6 * ku; ti = tu / 2; td = tu / 8;
+  }
+  const ki = kp / ti;
+  const kd = kp * td;
+
+  document.getElementById('zn-result').innerHTML = `
+    <div style="font-size:14px; font-weight:600; color:var(--white); margin-bottom:12px;">${name} PID Result</div>
+    <div class="result-grid">
+      <div class="result-item"><span class="result-value">${kp.toFixed(1)}</span><span class="result-label">Kp</span></div>
+      <div class="result-item"><span class="result-value">${ki.toFixed(1)}</span><span class="result-label">Ki</span></div>
+      <div class="result-item"><span class="result-value">${kd.toFixed(3)}</span><span class="result-label">Kd</span></div>
+    </div>
+    <div class="result-note">
+      Ti = ${ti.toFixed(4)}s &nbsp;|&nbsp; Td = ${td.toFixed(5)}s<br>
+      <strong>Note:</strong> ${isTL ? 'Tyreus-Luyben is less aggressive than Z-N — better for drones where quarter-wave decay is too harsh.' : 'Z-N PID tends to be aggressive (quarter-wave decay). Consider detuning by 10-20% or using Tyreus-Luyben for safer starting values.'}
+      <br>These are <em>theoretical</em> gains from the continuous PID equation. Betaflight uses discrete integer PID values — 
+      use these ratios to inform your slider positions rather than entering directly.
+    </div>
+  `;
+}
+
+// ═══════════════════════════════════════════════════════════════
+// PANEL 2: SYMPTOM DIAGNOSTIC
+// ═══════════════════════════════════════════════════════════════
+const SYMPTOMS = [
+  { id: 'osc-hf', icon: '〰️', name: 'High-frequency oscillation', hint: 'Visible buzz, jello in HD, hot motors',
+    sev: 'high', cause: 'P too high, or D amplifying gyro noise through insufficient filtering.',
+    fix: 'Lower P by 10-15%. If motors hot but no visible oscillation, check D-term noise — enable RPM filter or lower <code>simplified_dterm_filter_multiplier</code>. Verify FC is soft-mounted and no bent props.' },
+  { id: 'bounceback', icon: '↩️', name: 'Bounceback after flips', hint: 'Wobble at end of rolls, overshoot',
+    sev: 'med', cause: 'I-term windup during the maneuver releases as a correction spike when the move ends.',
+    fix: 'Lower <code>iterm_relax_cutoff</code> (default 15 → try 10 for freestyle, 8 for cinelifters). Do NOT just lower I gain — that causes drift. I-term relax is the targeted fix.' },
+  { id: 'propwash', icon: '🌀', name: 'Propwash on descent', hint: 'Oscillation descending through own wake',
+    sev: 'med', cause: 'Propellers re-entering disturbed air. PID cannot fully compensate — this is partially physics.',
+    fix: 'Increase D if motors allow it. Enable Dynamic Idle: <code>set dyn_idle_min_rpm = 3500</code>. Reduce D-term filtering delay. Accept that some propwash is normal — the goal is minimizing, not eliminating.' },
+  { id: 'mushy', icon: '🫠', name: 'Sluggish / mushy response', hint: 'Drone feels slow and imprecise',
+    sev: 'low', cause: 'P too low, excessive filtering adding latency, or feedforward disabled.',
+    fix: 'Raise P in 10% increments until oscillation, then back off. Increase <code>simplified_gyro_filter_multiplier</code> (less filtering). Re-enable feedforward: slider to 1.0+.' },
+  { id: 'hot-motors', icon: '🔥', name: 'Hot motors (no visible oscillation)', hint: 'Motors too hot to touch after 2min',
+    sev: 'high', cause: 'D-term noise reaching motors. Filtering insufficient for the gyro noise floor.',
+    fix: 'Enable RPM filter (requires bidirectional DShot + BLHeli_32/AM32). Lower <code>simplified_dterm_filter_multiplier</code> to 80. Check for loose hardware, unbalanced props, or high-power wires near gyro. Try 220-470uF cap on FC power.' },
+  { id: 'throttle-osc', icon: '📈', name: 'Oscillation at high throttle only', hint: 'Smooth hover, rough at full stick',
+    sev: 'med', cause: 'PID gains (especially D) too high at top of throttle range.',
+    fix: 'Configure TPA: <code>set tpa_rate = 75</code>, <code>set tpa_breakpoint = 1750</code>. Set breakpoint just below where oscillation starts. Latest Betaflight attenuates only D by default.' },
+  { id: 'nose-dip', icon: '⬇️', name: 'Nose dip on punch-out', hint: 'Pitch drops on rapid throttle increase',
+    sev: 'low', cause: 'I-term cannot keep up with rapid throttle change. Thrust nonlinearity at low throttle.',
+    fix: 'Enable Anti-Gravity. Enable Thrust Linearization: <code>set thrust_linear = 20</code>. This boosts PID at low throttle and reduces at high throttle.' },
+  { id: 'drift', icon: '💨', name: 'Drift in hover / cruise', hint: 'Drone wanders without stick input',
+    sev: 'low', cause: 'I gain too low, or CG (center of gravity) significantly off center.',
+    fix: 'Increase I gain (slider up). Check that battery position keeps CG centered. In wind, some drift is normal — I compensates but cannot eliminate all external forces.' },
+  { id: 'twitchy', icon: '⚡', name: 'Twitchy around center stick', hint: 'Overreacts to small inputs, hard to fly smooth',
+    sev: 'low', cause: 'Feedforward too high for the flying style, or rates too sensitive at center.',
+    fix: 'Set <code>feedforward_transition = 0.3</code> to reduce FF around center stick. Lower FF slider if still twitchy. Also check rates — Expo of 0.2-0.4 softens center feel.' },
+  { id: 'noisy-axis', icon: '📉', name: 'One axis much noisier in Blackbox', hint: 'Asymmetric noise, one axis vibrates more',
+    sev: 'high', cause: 'Potentially defective gyro, vibration coupling on one axis, or high-power wires near gyro.',
+    fix: 'Test: rotate FC 90°. If noisy axis follows rotation → bad gyro (replace FC). If noise stays on same physical axis → mechanical issue. Check for high-power wires crossing the gyro. Try 1000uF low ESR cap at ESC power.' },
+];
+
+function renderSymptoms() {
+  const grid = document.getElementById('symptoms-grid');
+  grid.innerHTML = SYMPTOMS.map(s => `
+    <div class="diag-card" data-sym="${s.id}" onclick="selectSymptom('${s.id}')">
+      <span class="diag-icon">${s.icon}</span>
+      <div><div class="diag-name">${s.name}</div><div class="diag-hint">${s.hint}</div></div>
+    </div>
+  `).join('');
+}
+
+function selectSymptom(id) {
+  const s = SYMPTOMS.find(x => x.id === id); if (!s) return;
+  document.querySelectorAll('.diag-card').forEach(c => c.classList.toggle('selected', c.dataset.sym === id));
+  const r = document.getElementById('diag-result');
+  r.className = 'diag-result show';
+  const sevCls = s.sev === 'high' ? 'sev-high' : s.sev === 'med' ? 'sev-med' : 'sev-low';
+  const sevLabel = s.sev === 'high' ? 'HIGH PRIORITY' : s.sev === 'med' ? 'MEDIUM' : 'LOW';
+  r.innerHTML = `
+    <span class="diag-severity ${sevCls}">${sevLabel}</span>
+    <div class="diag-cause">Likely cause: ${s.cause}</div>
+    <div class="diag-fix">${s.fix}</div>
+  `;
+}
+
+// ═══════════════════════════════════════════════════════════════
+// PANEL 3: CLI GENERATOR
+// ═══════════════════════════════════════════════════════════════
+function generateCli() {
+  const v = id => document.getElementById(id)?.value || '0';
+  const lines = [
+    `# PID Tuning — generated by Forge Wingman`,
+    `set p_roll = ${v('cli-p-roll')}`,
+    `set i_roll = ${v('cli-i-roll')}`,
+    `set d_min_roll = ${v('cli-d-roll')}`,
+    `set d_max_roll = ${Math.round(+v('cli-d-roll') * 1.3)}`,
+    `set f_roll = ${v('cli-f-roll')}`,
+    `set p_pitch = ${v('cli-p-pitch')}`,
+    `set i_pitch = ${v('cli-i-pitch')}`,
+    `set d_min_pitch = ${v('cli-d-pitch')}`,
+    `set d_max_pitch = ${Math.round(+v('cli-d-pitch') * 1.3)}`,
+    `set f_pitch = ${v('cli-f-pitch')}`,
+    `set p_yaw = ${v('cli-p-yaw')}`,
+    `set i_yaw = ${v('cli-i-yaw')}`,
+    `set d_min_yaw = ${v('cli-d-yaw')}`,
+    `set f_yaw = ${v('cli-f-yaw')}`,
+    ``,
+    `# I-term Relax`,
+    `set iterm_relax = RP`,
+    `set iterm_relax_cutoff = ${v('cli-irelax')}`,
+    ``,
+    `# TPA`,
+    `set tpa_rate = ${v('cli-tpa-rate')}`,
+    `set tpa_breakpoint = ${v('cli-tpa-bp')}`,
+    ``,
+    `# Dynamic Idle`,
+    `set dyn_idle_min_rpm = ${v('cli-dynidle')}`,
+    ``,
+    `save`,
+  ];
+  document.getElementById('cli-output').innerHTML = `<button class="copy-btn" onclick="copyCliOutput()">Copy</button>` + lines.join('\n');
+}
+
+function copyCliOutput() {
+  const text = document.getElementById('cli-output').textContent.replace('Copy', '').trim();
+  navigator.clipboard.writeText(text).then(() => {
+    const btn = document.querySelector('#cli-output .copy-btn');
+    btn.textContent = '✓ Copied'; setTimeout(() => btn.textContent = 'Copy', 1500);
+  });
+}
+
+document.querySelectorAll('.cli-in').forEach(el => el.addEventListener('input', generateCli));
+
+// ═══════════════════════════════════════════════════════════════
+// PANEL 4: NOISE ZONES
+// ═══════════════════════════════════════════════════════════════
+function renderNoiseZones() {
+  const kv = +document.getElementById('nz-kv').value || 1950;
+  const volts = +document.getElementById('nz-volts').value || 14.8;
+  const throttle = (+document.getElementById('nz-throttle').value || 50) / 100;
+
+  // Motor RPM estimate: KV * voltage * throttle_fraction * unloaded_correction
+  const rpm = kv * volts * throttle * 0.75;
+  const motorHz = rpm / 60;
+  const h2 = motorHz * 2;
+  const h3 = motorHz * 3;
+
+  const zones = [
+    { label: 'Flight', min: 0, max: 20, color: 'var(--green)', desc: 'Normal stick movement' },
+    { label: 'Propwash', min: 20, max: 100, color: 'var(--yellow)', desc: 'Oscillation / bad ESC / poor RC' },
+    { label: 'Frame res.', min: 100, max: 250, color: 'var(--orange)', desc: 'Frame resonance / bent props' },
+    { label: 'Motor 1x', min: Math.round(motorHz * 0.9), max: Math.round(motorHz * 1.1), color: 'var(--red)', desc: `~${Math.round(motorHz)} Hz fundamental` },
+    { label: 'Motor 2x', min: Math.round(h2 * 0.9), max: Math.round(h2 * 1.1), color: 'var(--red)', desc: `~${Math.round(h2)} Hz 2nd harmonic` },
+    { label: 'Motor 3x', min: Math.round(h3 * 0.9), max: Math.round(h3 * 1.1), color: 'var(--purple)', desc: `~${Math.round(h3)} Hz 3rd harmonic` },
+  ];
+
+  const maxFreq = Math.max(1000, Math.round(h3 * 1.3));
+
+  const chart = document.getElementById('noise-chart');
+  chart.innerHTML = `
+    <div style="font-size:12px; color:var(--g3); text-transform:uppercase; letter-spacing:0.08em; margin-bottom:12px;">
+      Frequency Spectrum — ${Math.round(rpm)} RPM (${Math.round(motorHz)} Hz fundamental)
+    </div>
+    ${zones.map(z => {
+      const left = (z.min / maxFreq * 100).toFixed(1);
+      const width = Math.max(((z.max - z.min) / maxFreq * 100), 2).toFixed(1);
+      return `
+        <div class="bar-row">
+          <span class="bar-label" style="width:70px; font-size:11px;">${z.label}</span>
+          <div class="bar-track" style="position:relative;">
+            <div style="position:absolute; left:${left}%; width:${width}%; height:100%; background:${z.color}; opacity:0.7; border-radius:5px;"></div>
+          </div>
+          <span class="bar-tag" style="color:${z.color}; width:80px; font-size:11px;">${z.min}-${z.max}Hz</span>
+        </div>
+      `;
+    }).join('')}
+    <div style="display:flex; justify-content:space-between; margin-top:8px; font-size:10px; color:var(--g3); font-family:var(--mono);">
+      <span>0 Hz</span><span>${Math.round(maxFreq/4)} Hz</span><span>${Math.round(maxFreq/2)} Hz</span><span>${Math.round(maxFreq*3/4)} Hz</span><span>${maxFreq} Hz</span>
+    </div>
+  `;
+
+  document.getElementById('noise-legend').innerHTML = `
+    <div style="font-size:12px; color:var(--g2); line-height:1.7;">
+      <strong style="color:var(--white);">RPM filter</strong> targets motor harmonics precisely — the red/purple zones above.<br>
+      <strong style="color:var(--white);">Dynamic notch</strong> catches remaining resonances that RPM filter misses.<br>
+      <strong style="color:var(--white);">Gyro lowpass</strong> should cut above the propwash zone (~100Hz) but below motor noise.<br>
+      <strong style="color:var(--white);">D-term lowpass</strong> needs more aggressive filtering (lower cutoff) since D amplifies noise 10-100×.
+    </div>
+  `;
+}
+
+// ═══════════════════════════════════════════════════════════════
+// PANEL 5: FILTER ADVISOR
+// ═══════════════════════════════════════════════════════════════
+function renderFilterAdvice() {
+  const rpm = document.getElementById('fa-rpm').value;
+  const gyro = document.getElementById('fa-gyro').value;
+  const mcu = document.getElementById('fa-mcu').value;
+
+  const pidFreq = mcu === 'f4' ? '4K' : '8K';
+  const dshot = mcu === 'f4' ? 'DShot300' : 'DShot600';
+
+  let gyroMult, dtermMult, dynCount, dynQ, notes;
+
+  if (rpm === 'yes') {
+    if (gyro === 'good') {
+      gyroMult = 140; dtermMult = 120; dynCount = 2; dynQ = 350;
+      notes = 'Excellent combo — minimal filtering needed. You can run higher PIDs with crisp response.';
+    } else if (gyro === 'okay') {
+      gyroMult = 110; dtermMult = 100; dynCount = 3; dynQ = 300;
+      notes = 'Good filtering setup. Consider soft-mounting FC or checking prop balance for further improvement.';
+    } else {
+      gyroMult = 80; dtermMult = 80; dynCount = 4; dynQ = 250;
+      notes = 'Aggressive filtering compensates for noisy hardware. Fix mechanical issues first — no amount of filtering fully replaces a clean build.';
+    }
+  } else {
+    if (gyro === 'good') {
+      gyroMult = 100; dtermMult = 90; dynCount = 3; dynQ = 300;
+      notes = 'Without RPM filter, the dynamic notch does the heavy lifting. Consider upgrading ESCs to BLHeli_32/AM32 for bidirectional DShot.';
+    } else if (gyro === 'okay') {
+      gyroMult = 80; dtermMult = 70; dynCount = 4; dynQ = 250;
+      notes = 'Moderate filtering needed. Expect some added latency. RPM filter would significantly improve this.';
+    } else {
+      gyroMult = 60; dtermMult = 50; dynCount = 5; dynQ = 200;
+      notes = 'Heavy filtering required. Flight will feel soft/delayed. Strongly recommend fixing hardware issues and adding RPM filter.';
+    }
+  }
+
+  document.getElementById('filter-result').innerHTML = `
+    <div style="font-size:14px; font-weight:600; color:var(--white); margin-bottom:14px;">Recommended Filter Settings</div>
+    <div class="result-grid" style="grid-template-columns: repeat(4, 1fr); margin-bottom:14px;">
+      <div class="result-item"><span class="result-value sm">${gyroMult}</span><span class="result-label">Gyro Filter ×</span></div>
+      <div class="result-item"><span class="result-value sm">${dtermMult}</span><span class="result-label">D-term Filter ×</span></div>
+      <div class="result-item"><span class="result-value sm">${dynCount}</span><span class="result-label">Dyn Notch Count</span></div>
+      <div class="result-item"><span class="result-value sm">${dynQ}</span><span class="result-label">Dyn Notch Q</span></div>
+    </div>
+    <div style="font-size:12px; color:var(--g2);">
+      PID Loop: <span style="color:var(--cyan)">${pidFreq}</span> &nbsp;|&nbsp; ESC Protocol: <span style="color:var(--cyan)">${dshot}</span>
+      &nbsp;|&nbsp; RPM Filter: <span style="color:${rpm === 'yes' ? 'var(--green)' : 'var(--red)'}">${rpm === 'yes' ? 'ON' : 'OFF'}</span>
+    </div>
+    <div class="result-note">${notes}</div>
+  `;
+
+  const cli = [
+    `# Filter settings — generated by Forge Wingman`,
+    rpm === 'yes' ? `set rpm_filter_harmonics = 3\nset rpm_filter_min_hz = 100` : `# RPM filter disabled — no bidirectional DShot`,
+    `set dyn_notch_count = ${dynCount}`,
+    `set dyn_notch_q = ${dynQ}`,
+    `set dyn_notch_min_hz = 100`,
+    `set dyn_notch_max_hz = 600`,
+    `set simplified_gyro_filter_multiplier = ${gyroMult}`,
+    `set simplified_dterm_filter_multiplier = ${dtermMult}`,
+    `simplified_tuning apply`,
+    `save`,
+  ];
+  document.getElementById('filter-cli').innerHTML = `<button class="copy-btn" onclick="copyFilterCli()">Copy</button>` + cli.join('\n');
+}
+
+function copyFilterCli() {
+  const text = document.getElementById('filter-cli').textContent.replace('Copy', '').trim();
+  navigator.clipboard.writeText(text).then(() => {
+    const btn = document.querySelector('#filter-cli .copy-btn');
+    btn.textContent = '✓ Copied'; setTimeout(() => btn.textContent = 'Copy', 1500);
+  });
+}
+
+// ═══════════════════════════════════════════════════════════════
+// CONFIG (API keys — same pattern as wingman.html)
+// ═══════════════════════════════════════════════════════════════
+var cfgProvider = localStorage.getItem('pid_provider') || 'gemini';
+var cfgGeminiKey = localStorage.getItem('pid_gemini_key') || '';
+var cfgAnthropicKey = localStorage.getItem('pid_anthropic_key') || '';
+var cfgGhPat = localStorage.getItem('pid_gh_pat') || '';
+
+function openCfg() {
+  document.getElementById('cfg-gemini-key').value = cfgGeminiKey;
+  document.getElementById('cfg-anthropic-key').value = cfgAnthropicKey;
+  document.getElementById('cfg-gh-pat').value = cfgGhPat;
+  setCfgProvider(cfgProvider);
+  document.getElementById('cfg-overlay').classList.add('open');
+}
+function closeCfg() { document.getElementById('cfg-overlay').classList.remove('open'); }
+
+function setCfgProvider(p) {
+  cfgProvider = p;
+  document.getElementById('cfg-gemini').style.display = p === 'gemini' ? '' : 'none';
+  document.getElementById('cfg-anthropic').style.display = p === 'anthropic' ? '' : 'none';
+  document.getElementById('prov-gemini').className = 'cfg-btn' + (p === 'gemini' ? ' primary' : '');
+  document.getElementById('prov-anthropic').className = 'cfg-btn' + (p === 'anthropic' ? ' primary' : '');
+}
+
+function saveCfg() {
+  cfgGeminiKey = document.getElementById('cfg-gemini-key').value.trim();
+  cfgAnthropicKey = document.getElementById('cfg-anthropic-key').value.trim();
+  cfgGhPat = document.getElementById('cfg-gh-pat').value.trim();
+  localStorage.setItem('pid_provider', cfgProvider);
+  localStorage.setItem('pid_gemini_key', cfgGeminiKey);
+  localStorage.setItem('pid_anthropic_key', cfgAnthropicKey);
+  localStorage.setItem('pid_gh_pat', cfgGhPat);
+  closeCfg();
+}
+
+// ═══════════════════════════════════════════════════════════════
+// SESSION LOGGING
+// ═══════════════════════════════════════════════════════════════
+var SESSION_KEY = 'pid_tune_sessions';
+
+function getSessions() {
+  try { return JSON.parse(localStorage.getItem(SESSION_KEY)) || []; }
+  catch { return []; }
+}
+
+function saveSessions(sessions) {
+  localStorage.setItem(SESSION_KEY, JSON.stringify(sessions));
+  updateSessionCount();
+}
+
+function logSession(data) {
+  const sessions = getSessions();
+  const entry = {
+    id: 'PTS-' + Date.now().toString(36).toUpperCase(),
+    timestamp: new Date().toISOString(),
+    quad_class: data.quad_class || getActivePresetLabel(),
+    firmware: data.firmware || 'Betaflight',
+    pid_values: data.pid_values || getCurrentPIDs(),
+    filter_settings: data.filter_settings || null,
+    symptoms: data.symptoms || [],
+    diagnosis: data.diagnosis || null,
+    ai_recommendation: data.ai_recommendation || null,
+    source: data.source || 'calculator',
+    cli_commands: data.cli_commands || null,
+  };
+  sessions.unshift(entry);
+  // Keep max 200 sessions
+  if (sessions.length > 200) sessions.length = 200;
+  saveSessions(sessions);
+  return entry;
+}
+
+function getActivePresetLabel() {
+  const active = document.querySelector('#class-presets .preset-btn.active');
+  return active ? active.textContent.trim() : 'Custom';
+}
+
+function getCurrentPIDs() {
+  return {
+    p_roll: +document.getElementById('sl-p').value,
+    i_roll: +document.getElementById('sl-i').value,
+    d_roll: +document.getElementById('sl-d').value,
+    f_roll: +document.getElementById('sl-f').value,
+    p_pitch: Math.round(+document.getElementById('sl-p').value * 1.05),
+    i_pitch: Math.round(+document.getElementById('sl-i').value * 1.05),
+    d_pitch: Math.round(+document.getElementById('sl-d').value * 1.07),
+    f_pitch: Math.round(+document.getElementById('sl-f').value * 1.04),
+    p_yaw: Math.round(+document.getElementById('sl-p').value * 0.75),
+    i_yaw: Math.round(+document.getElementById('sl-i').value * 1.1),
+  };
+}
+
+function updateSessionCount() {
+  const el = document.getElementById('session-count');
+  if (el) el.textContent = getSessions().length;
+}
+
+function clearSessions() {
+  localStorage.removeItem(SESSION_KEY);
+  updateSessionCount();
+  renderSessionLog();
+}
+
+function renderSessionLog() {
+  const sessions = getSessions();
+  const list = document.getElementById('sessions-list');
+  const empty = document.getElementById('sessions-empty');
+
+  if (sessions.length === 0) {
+    list.innerHTML = '';
+    empty.style.display = '';
+    return;
+  }
+  empty.style.display = 'none';
+
+  list.innerHTML = sessions.slice(0, 50).map(s => {
+    const t = new Date(s.timestamp);
+    const time = t.toLocaleDateString() + ' ' + t.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'});
+    const pids = s.pid_values || {};
+    const sympList = (s.symptoms || []).join(', ') || '—';
+    return `
+      <div class="session-card">
+        <div class="session-head">
+          <span class="session-time">${s.id} — ${time}</span>
+          <span class="session-class">${s.quad_class || '?'}</span>
+        </div>
+        <div class="session-pids">
+          <div><span class="session-pid-val">${pids.p_roll||'—'}</span><br><span class="session-pid-lbl">P Roll</span></div>
+          <div><span class="session-pid-val">${pids.i_roll||'—'}</span><br><span class="session-pid-lbl">I Roll</span></div>
+          <div><span class="session-pid-val">${pids.d_roll||'—'}</span><br><span class="session-pid-lbl">D Roll</span></div>
+          <div><span class="session-pid-val">${pids.f_roll||'—'}</span><br><span class="session-pid-lbl">FF Roll</span></div>
+        </div>
+        ${s.symptoms && s.symptoms.length ? `<div style="margin-top:8px; font-size:11px; color:var(--g3);">Symptoms: ${sympList}</div>` : ''}
+        ${s.diagnosis ? `<div style="margin-top:4px; font-size:11px; color:var(--yellow);">Dx: ${s.diagnosis}</div>` : ''}
+        ${s.ai_recommendation ? `<div style="margin-top:4px; font-size:11px; color:var(--cyan);">AI: ${s.ai_recommendation.slice(0, 120)}${s.ai_recommendation.length > 120 ? '…' : ''}</div>` : ''}
+        <div style="margin-top:6px; font-size:10px; color:var(--g3);">Source: ${s.source} | FW: ${s.firmware}</div>
+      </div>
+    `;
+  }).join('');
+}
+
+function exportSessionsJSON() {
+  const sessions = getSessions();
+  if (!sessions.length) return alert('No sessions to export.');
+  const blob = new Blob([JSON.stringify(sessions, null, 2)], { type: 'application/json' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = `pid_tune_sessions_${new Date().toISOString().slice(0,10)}.json`;
+  a.click();
+}
+
+// ═══════════════════════════════════════════════════════════════
+// DATABASE ENRICHMENT — Export to forge_troubleshooting.json
+// ═══════════════════════════════════════════════════════════════
+function sessionsToTroubleshootingEntries(sessions) {
+  // Convert logged sessions into forge_troubleshooting.json compatible entries
+  return sessions.filter(s => s.symptoms && s.symptoms.length > 0 && s.diagnosis).map((s, i) => ({
+    id: `TS-PID-AUTO-${String(i+1).padStart(3,'0')}`,
+    title: s.symptoms[0] || 'PID tuning issue',
+    category: 'pid_tuning',
+    severity: 'medium',
+    symptoms: s.symptoms,
+    causes: [s.diagnosis],
+    diagnostics: s.ai_recommendation ? [s.ai_recommendation.slice(0, 300)] : [],
+    fixes: s.cli_commands ? [s.cli_commands] : ['See AI recommendation in session log'],
+    tags: ['pid', 'auto-logged', s.quad_class || '', s.firmware || ''].filter(Boolean),
+    meta: {
+      source: 'pid-tuning-tool',
+      session_id: s.id,
+      logged_at: s.timestamp,
+      pid_values: s.pid_values,
+      filter_settings: s.filter_settings,
+    },
+  }));
+}
+
+async function exportToForgeDB() {
+  const sessions = getSessions();
+  const entries = sessionsToTroubleshootingEntries(sessions);
+  if (!entries.length) return alert('No diagnosable sessions to export (need symptoms + diagnosis).');
+
+  if (!cfgGhPat) {
+    alert('GitHub PAT required for DB push. Add it in Settings (⚙️).');
+    openCfg();
+    return;
+  }
+
+  const btn = document.getElementById('export-db-btn');
+  const orig = btn.textContent;
+  btn.textContent = 'Pushing…'; btn.disabled = true;
+
+  try {
+    // Fetch current troubleshooting DB from repo
+    const owner = 'DroneWuKong', repo = 'droneclear_Forge';
+    const path = 'DroneClear Components Visualizer/forge_troubleshooting.json';
+
+    const getRes = await fetch(`https://api.github.com/repos/${owner}/${repo}/contents/${path}`, {
+      headers: { Authorization: `token ${cfgGhPat}`, Accept: 'application/vnd.github.v3+json' }
+    });
+
+    if (!getRes.ok) throw new Error('Failed to fetch current DB: ' + getRes.status);
+    const fileData = await getRes.json();
+    const currentContent = JSON.parse(atob(fileData.content.replace(/\n/g, '')));
+
+    // Merge new entries (avoid duplicates by session_id)
+    const existingIds = new Set((currentContent.entries || []).map(e => e.meta?.session_id).filter(Boolean));
+    const newEntries = entries.filter(e => !existingIds.has(e.meta.session_id));
+
+    if (!newEntries.length) {
+      btn.textContent = 'Already synced'; setTimeout(() => { btn.textContent = orig; btn.disabled = false; }, 2000);
+      return;
+    }
+
+    currentContent.entries = [...(currentContent.entries || []), ...newEntries];
+    if (currentContent.meta) {
+      currentContent.meta.count = currentContent.entries.length;
+      currentContent.meta.last_updated = new Date().toISOString();
+    }
+
+    // Push updated file
+    const putRes = await fetch(`https://api.github.com/repos/${owner}/${repo}/contents/${path}`, {
+      method: 'PUT',
+      headers: { Authorization: `token ${cfgGhPat}`, Accept: 'application/vnd.github.v3+json', 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        message: `[pid-tuning-tool] Add ${newEntries.length} auto-logged troubleshooting entries`,
+        content: btoa(unescape(encodeURIComponent(JSON.stringify(currentContent, null, 2)))),
+        sha: fileData.sha,
+      }),
+    });
+
+    if (!putRes.ok) throw new Error('Push failed: ' + putRes.status);
+    btn.textContent = `✓ Pushed ${newEntries.length}`;
+    setTimeout(() => { btn.textContent = orig; btn.disabled = false; }, 3000);
+  } catch (err) {
+    btn.textContent = 'Error'; btn.disabled = false;
+    setTimeout(() => btn.textContent = orig, 2000);
+    alert('Export failed: ' + err.message);
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════
+// AI TUNE ADVISOR — Chat with Wingman
+// ═══════════════════════════════════════════════════════════════
+var aiMessages = []; // {role, text}
+var aiLoading = false;
+
+function getAIContext() {
+  // Gather current tool state as context for the AI
+  const pids = getCurrentPIDs();
+  const quadClass = getActivePresetLabel();
+  const rpm = document.getElementById('fa-rpm')?.value || '?';
+  const gyro = document.getElementById('fa-gyro')?.value || '?';
+  const mcu = document.getElementById('fa-mcu')?.value || '?';
+
+  // Check if a symptom is selected
+  const selSym = document.querySelector('.diag-card.selected');
+  const symptom = selSym ? selSym.querySelector('.diag-name')?.textContent : null;
+
+  return {
+    summary: `Quad: ${quadClass} | P:${pids.p_roll} I:${pids.i_roll} D:${pids.d_roll} FF:${pids.f_roll} | RPM Filter: ${rpm} | Gyro: ${gyro} | MCU: ${mcu}${symptom ? ' | Symptom: ' + symptom : ''}`,
+    pids, quadClass, rpm, gyro, mcu, symptom,
+  };
+}
+
+function renderAIContextChips() {
+  const ctx = getAIContext();
+  const chips = [
+    { label: ctx.quadClass, active: true },
+    { label: `P:${ctx.pids.p_roll} I:${ctx.pids.i_roll} D:${ctx.pids.d_roll} F:${ctx.pids.f_roll}`, active: true },
+    { label: `RPM: ${ctx.rpm}`, active: ctx.rpm === 'yes' },
+    { label: ctx.mcu.toUpperCase(), active: true },
+  ];
+  if (ctx.symptom) chips.push({ label: ctx.symptom, active: true });
+  document.getElementById('ai-ctx-chips').innerHTML = chips.map(c =>
+    `<span class="ctx-chip${c.active ? ' active' : ''}">${c.label}</span>`
+  ).join('');
+}
+
+function buildAISystemPrompt() {
+  const ctx = getAIContext();
+  return `You are Wingman AI — expert PID tuning advisor for FPV drones and autonomous platforms.
+
+CURRENT QUAD CONTEXT:
+- Quad class: ${ctx.quadClass}
+- Current PIDs (Roll): P=${ctx.pids.p_roll}, I=${ctx.pids.i_roll}, D=${ctx.pids.d_roll}, FF=${ctx.pids.f_roll}
+- Pitch PIDs: P=${ctx.pids.p_pitch}, I=${ctx.pids.i_pitch}, D=${ctx.pids.d_pitch}, FF=${ctx.pids.f_pitch}
+- Yaw: P=${ctx.pids.p_yaw}, I=${ctx.pids.i_yaw}
+- RPM Filter: ${ctx.rpm} | Gyro condition: ${ctx.gyro} | MCU: ${ctx.mcu}
+${ctx.symptom ? '- Active symptom: ' + ctx.symptom : ''}
+
+YOUR ROLE:
+1. Analyze the user's description of their quad, flight behavior, and symptoms
+2. Cross-reference against PID tuning best practices for their quad class
+3. Recommend specific PID/filter changes with exact values and CLI commands
+4. Explain WHY each change helps (educate, don't just prescribe)
+5. If they mention Blackbox data, interpret the frequency/noise patterns
+6. Always give values as Betaflight CLI commands in code blocks
+
+KNOWLEDGE:
+- Betaflight PIDF controller: P corrects error, I holds attitude, D damps, FF anticipates sticks
+- P:D ratio is critical — moving both together preserves feel
+- I-term relax (cutoff) fixes bounceback better than lowering I
+- TPA reduces D at high throttle — set breakpoint below oscillation threshold
+- Dynamic Idle (3000-3500 RPM for 5") improves low-throttle authority
+- RPM filter is the single biggest improvement for clean builds
+- Filter multiplier: higher = less filtering = less latency but more noise
+- For 5" freestyle: P 40-65, I 70-120, D 25-45, FF 80-140
+- For racing: higher FF (150+), iterm_relax_cutoff=30
+- For 7"+ long range: conservative PIDs, iterm_relax_cutoff=10
+
+FORMAT: Be concise. Use code blocks for CLI. Ask clarifying questions if needed. When giving PID recommendations, always include the complete set (all 3 axes).`;
+}
+
+async function aiSend() {
+  const input = document.getElementById('ai-input');
+  const txt = input.value.trim();
+  if (!txt || aiLoading) return;
+
+  aiLoading = true;
+  document.getElementById('ai-send-btn').disabled = true;
+  input.value = ''; input.style.height = 'auto';
+
+  // Add user message
+  aiMessages.push({ role: 'user', text: txt });
+  renderAIChat();
+
+  // Show thinking
+  const msgsEl = document.getElementById('ai-messages');
+  const thinkDiv = document.createElement('div');
+  thinkDiv.className = 'chat-msg';
+  thinkDiv.id = 'ai-thinking';
+  thinkDiv.innerHTML = '<div class="chat-meta"><span class="slash">//</span><span class="who">Wingman</span><span class="tag">analyzing</span></div><div class="thinking-dots"><span></span><span></span><span></span></div>';
+  msgsEl.appendChild(thinkDiv);
+  msgsEl.scrollTop = msgsEl.scrollHeight;
+
+  try {
+    const activeKey = cfgProvider === 'gemini' ? cfgGeminiKey : cfgAnthropicKey;
+    if (!activeKey && cfgProvider !== 'gemini') {
+      throw new Error('API key required. Click ⚙️ to add your key.');
+    }
+
+    let responseText = '';
+    const sysPrompt = buildAISystemPrompt();
+
+    if (cfgProvider === 'gemini') {
+      // Gemini API
+      const geminiMsgs = aiMessages.map(m => ({
+        role: m.role === 'assistant' ? 'model' : 'user',
+        parts: [{ text: m.text }],
+      }));
+
+      const geminiUrl = cfgGeminiKey
+        ? `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${cfgGeminiKey}`
+        : '/.netlify/functions/gemini-proxy';
+
+      const res = await fetch(geminiUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          systemInstruction: { parts: [{ text: sysPrompt }] },
+          contents: geminiMsgs,
+          generationConfig: { maxOutputTokens: 4096, temperature: 0.7 },
+        }),
+      });
+      const data = await res.json();
+      if (data.error) throw new Error(data.error.message || JSON.stringify(data.error));
+      responseText = (data.candidates?.[0]?.content?.parts || []).map(p => p.text || '').join('');
+
+    } else {
+      // Anthropic API
+      const apiMsgs = aiMessages.map(m => ({ role: m.role, content: m.text }));
+      const res = await fetch('https://api.anthropic.com/v1/messages', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-api-key': cfgAnthropicKey,
+          'anthropic-version': '2023-06-01',
+          'anthropic-dangerous-direct-browser-access': 'true',
+        },
+        body: JSON.stringify({
+          model: 'claude-sonnet-4-20250514',
+          max_tokens: 4096,
+          system: sysPrompt,
+          messages: apiMsgs,
+        }),
+      });
+      const data = await res.json();
+      responseText = (data.content || []).filter(b => b.type === 'text').map(b => b.text).join('');
+    }
+
+    if (!responseText) responseText = 'No response received.';
+    aiMessages.push({ role: 'assistant', text: responseText });
+
+    // LOG THE SESSION with AI recommendation
+    const ctx = getAIContext();
+    logSession({
+      quad_class: ctx.quadClass,
+      pid_values: ctx.pids,
+      symptoms: ctx.symptom ? [ctx.symptom] : [],
+      diagnosis: ctx.symptom || txt.slice(0, 100),
+      ai_recommendation: responseText.slice(0, 500),
+      source: 'ai-advisor',
+      filter_settings: { rpm: ctx.rpm, gyro: ctx.gyro, mcu: ctx.mcu },
+    });
+
+  } catch (err) {
+    aiMessages.push({ role: 'assistant', text: `Error: ${err.message}` });
+  }
+
+  aiLoading = false;
+  document.getElementById('ai-send-btn').disabled = false;
+  const think = document.getElementById('ai-thinking');
+  if (think) think.remove();
+  renderAIChat();
+  renderSessionLog();
+}
+
+function renderAIChat() {
+  const el = document.getElementById('ai-messages');
+  // Keep the initial welcome message
+  const welcome = el.querySelector('.chat-msg');
+  el.innerHTML = '';
+  if (welcome && aiMessages.length === 0) { el.appendChild(welcome); return; }
+
+  // Re-render welcome
+  el.innerHTML = `<div class="chat-msg">
+    <div class="chat-meta"><span class="slash">//</span><span class="who">Wingman</span></div>
+    <div class="chat-bubble">I can see your current PID settings. Describe your quad and symptoms — I'll recommend tuned values.</div>
+  </div>`;
+
+  aiMessages.forEach(m => {
+    const div = document.createElement('div');
+    div.className = 'chat-msg';
+    if (m.role === 'user') {
+      div.innerHTML = `<div class="chat-meta"><span class="who">You</span></div><div class="chat-bubble user">${escHtml(m.text)}</div>`;
+    } else {
+      div.innerHTML = `<div class="chat-meta"><span class="slash">//</span><span class="who">Wingman</span><span class="tag">AI</span></div><div class="chat-bubble">${parseMarkdown(m.text)}</div>`;
+    }
+    el.appendChild(div);
+  });
+  el.scrollTop = el.scrollHeight;
+}
+
+function escHtml(s) { return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+function parseMarkdown(text) {
+  const lines = text.split('\n');
+  let html = '', inCode = false, codeBuf = '';
+  for (const line of lines) {
+    if (line.startsWith('```')) {
+      if (inCode) { html += `<pre><code>${escHtml(codeBuf.replace(/\n$/, ''))}</code></pre>`; codeBuf = ''; inCode = false; }
+      else { inCode = true; }
+      continue;
+    }
+    if (inCode) { codeBuf += line + '\n'; continue; }
+    if (line.match(/^### /)) html += `<h3>${inlineFmt(line.slice(4))}</h3>`;
+    else if (line.match(/^## /)) html += `<h2>${inlineFmt(line.slice(3))}</h2>`;
+    else if (line.startsWith('- ')) html += `<ul><li>${inlineFmt(line.slice(2))}</li></ul>`;
+    else if (line.match(/^\d+\. /)) html += `<ol><li>${inlineFmt(line.replace(/^\d+\. /, ''))}</li></ol>`;
+    else if (line.trim() === '') html += '<br>';
+    else html += `<p>${inlineFmt(line)}</p>`;
+  }
+  if (inCode) html += `<pre><code>${escHtml(codeBuf)}</code></pre>`;
+  html = html.replace(/<\/ul><ul>/g, '').replace(/<\/ol><ol>/g, '');
+  return html;
+}
+
+function inlineFmt(s) {
+  s = escHtml(s);
+  s = s.replace(/`([^`]+)`/g, '<code>$1</code>');
+  s = s.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
+  return s;
+}
+
+// ═══════════════════════════════════════════════════════════════
+// HOOK: Log sessions from other panels
+// ═══════════════════════════════════════════════════════════════
+
+// Wrap existing selectSymptom to also log
+const _origSelectSymptom = selectSymptom;
+selectSymptom = function(id) {
+  _origSelectSymptom(id);
+  const s = SYMPTOMS.find(x => x.id === id);
+  if (s) {
+    logSession({
+      symptoms: [s.name],
+      diagnosis: s.cause,
+      ai_recommendation: s.fix.replace(/<\/?code>/g, '`'),
+      source: 'diagnostic',
+    });
+    renderSessionLog();
+  }
+};
+
+// Wrap generateCli to log when user explicitly generates
+const _origGenCli = generateCli;
+generateCli = function() {
+  _origGenCli();
+  // We'll log on a debounce so we don't log every keystroke
+  clearTimeout(generateCli._timer);
+  generateCli._timer = setTimeout(() => {
+    const pids = {
+      p_roll: +document.getElementById('cli-p-roll').value,
+      i_roll: +document.getElementById('cli-i-roll').value,
+      d_roll: +document.getElementById('cli-d-roll').value,
+      f_roll: +document.getElementById('cli-f-roll').value,
+      p_pitch: +document.getElementById('cli-p-pitch').value,
+      i_pitch: +document.getElementById('cli-i-pitch').value,
+      d_pitch: +document.getElementById('cli-d-pitch').value,
+      f_pitch: +document.getElementById('cli-f-pitch').value,
+      p_yaw: +document.getElementById('cli-p-yaw').value,
+      i_yaw: +document.getElementById('cli-i-yaw').value,
+    };
+    logSession({ pid_values: pids, source: 'cli-generator', cli_commands: document.getElementById('cli-output').textContent.replace('Copy','').trim().slice(0, 500) });
+    renderSessionLog();
+  }, 3000);
+};
+
+// ═══════════════════════════════════════════════════════════════
+// INIT
+// ═══════════════════════════════════════════════════════════════
+updateSliders();
+calcZN();
+renderSymptoms();
+generateCli();
+renderNoiseZones();
+renderFilterAdvice();
+renderSessionLog();
+updateSessionCount();
+renderAIContextChips();
+
+// Update context chips whenever sliders change
+['sl-p','sl-i','sl-d','sl-f'].forEach(id => {
+  document.getElementById(id).addEventListener('input', () => {
+    setTimeout(renderAIContextChips, 50);
+  });
+});
+
+// Update context chips on panel switch
+navBtns.forEach(b => b.addEventListener('click', () => {
+  setTimeout(renderAIContextChips, 50);
+  if (b.dataset.panel === 'session-log') renderSessionLog();
+}));
+</script>
+</body>
+</html>

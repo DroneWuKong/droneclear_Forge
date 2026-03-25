@@ -55,6 +55,7 @@ PAGES = {
     'intel-commercial.html': 'intel-commercial/index.html',
     'tools.html': 'tools/index.html',
     'wingman.html': 'wingman/index.html',
+    'pid-tuning.html': 'pid-tuning/index.html',
 }
 
 # Static assets to copy (JS, CSS, JSON, images)
