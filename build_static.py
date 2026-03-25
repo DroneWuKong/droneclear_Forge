@@ -112,6 +112,7 @@ def fix_paths(html, depth=0):
         # Fix fetch calls to static JSON
         html = html.replace("fetch('forge_database.json')", f"fetch('{prefix}static/forge_database.json')")
         html = html.replace("fetch('forge_intel.json')", f"fetch('{prefix}static/forge_intel.json')")
+        html = html.replace("fetch('forge_troubleshooting.json')", f"fetch('{prefix}static/forge_troubleshooting.json')")
         html = html.replace("fetch('intel_articles.json')", f"fetch('{prefix}static/intel_articles.json')")
         html = html.replace("fetch('intel_companies.json')", f"fetch('{prefix}static/intel_companies.json')")
         html = html.replace("fetch('intel_platforms.json')", f"fetch('{prefix}static/intel_platforms.json')")
