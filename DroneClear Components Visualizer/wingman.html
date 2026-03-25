@@ -868,49 +868,112 @@ Examine the image carefully. Report what you see:
 - Note wire colors and where they connect (if visible)
 - Note any obvious problems you can spot (bridges, cold joints, missing connections, wrong pads)
 
-PHASE 2 — ASK TARGETED QUESTIONS:
-After your initial assessment, ask the user 2-3 specific follow-up questions to fill in what you can't see or confirm.
-Pick from these based on what's missing:
+PHASE 2 — CLASSIFY THE IMAGE AND ASK TARGETED QUESTIONS:
+Determine what TYPE of image this is, then ask the right follow-ups:
 
-If you CAN'T identify the FC:
-→ "What flight controller is this? (e.g., SpeedyBee F405 V4, Mamba F722, Orqa QuadCore H7)"
-
-If you CAN'T identify what's wired to it:
+═══ WIRING / SOLDERING IMAGE ═══
+If you see PCBs with wires soldered to pads:
+→ "What flight controller is this?" (if you can't read it)
 → "What peripherals are connected? (receiver type, VTX type, GPS?)"
-
-If you CAN identify the boards but not the wiring intent:
-→ "What UART did you intend to use for the receiver? And for the VTX?"
-→ "Which pads did you solder the receiver to? (e.g., TX2/RX2)"
-
-If the wiring LOOKS wrong:
-→ "Did you mean to wire [component] to [pad]? That pad is usually for [other function]."
-
-If you're unsure about the issue:
-→ "What's the symptom? (no video, won't arm, no receiver connection, motor issues?)"
+→ "Which pads did you solder the receiver to?"
+→ "What's the symptom? (won't arm, no video, no RX link?)"
 → "Did this work before, or is this a fresh build?"
+
+═══ MOTOR / PROPULSION IMAGE ═══
+If you see motors, props, or motor mounts:
+Look for: bent shafts, damaged bells, debris in windings, bearing play, prop chips/cracks, wrong CW/CCW orientation, motor screws protruding through base
+→ "Which motor position is this? (front-left, back-right, etc.)"
+→ "What motor model and KV? (e.g., EMAX ECO II 2306 1700KV)"
+→ "What happened? (crash, desync, overheating, grinding noise?)"
+→ "What props are you running? (size and pitch, e.g., 5143 triblade)"
+
+═══ ESC IMAGE ═══
+If you see an ESC board (4-in-1 or individual):
+Look for: burnt MOSFETs, popped capacitors, scorch marks, bridged pads, swollen components, desoldered pads
+→ "What ESC is this? (model and amp rating)"
+→ "What's the symptom? (motor stuttering, magic smoke, won't spin, desync?)"
+→ "Does it affect one motor or all four?"
+→ "What battery voltage are you running? (4S, 6S?)"
+
+═══ FRAME / STRUCTURAL IMAGE ═══
+If you see a frame, arm, or structural component:
+Look for: cracked arms, delaminated carbon, stripped motor mount threads, cracked standoffs, impact damage at arm-body junction
+→ "What frame is this? (brand and size)"
+→ "Where did it crack / break?"
+→ "Was this from a crash or stress over time?"
+→ "Are you looking to repair or replace?"
+
+═══ FPV / VIDEO IMAGE ═══
+If you see a VTX, camera, or antenna:
+Look for: damaged antenna connector (UFL/MMCX popped off), burnt VTX (powered without antenna), camera lens crack, loose ribbon cable, damaged camera housing
+→ "What VTX system? (DJI, Walksnail, HDZero, analog?)"
+→ "What's the symptom? (no video, static, poor range, OSD missing?)"
+→ "Is the antenna securely connected?"
+→ "Did you power the VTX without an antenna at any point?"
+
+═══ BATTERY / POWER IMAGE ═══
+If you see batteries, XT60 connectors, or power distribution:
+Look for: puffy/swollen LiPo cells, damaged XT60 pins, burnt balance leads, corroded connectors, melted shrink wrap
+→ "How old is this battery? How many cycles?"
+→ "What's the cell voltage? (check with a cell checker)"
+→ "Is it physically puffy or swollen? (STOP USING if yes — fire hazard)"
+→ "What happened? (voltage sag, won't charge, hot after flight?)"
+
+═══ GPS / SENSOR IMAGE ═══
+If you see a GPS module, compass, barometer, or other sensor:
+Look for: module orientation (arrow direction), antenna facing up vs down, proximity to EMI sources (motors/ESC), damaged connectors
+→ "What GPS module? (e.g., BN-880, Matek M10Q)"
+→ "Which direction is the arrow on the GPS pointing?"
+→ "Is it mounted as far from the ESC/motors as possible?"
+→ "What's the symptom? (no fix, slow fix, toilet bowl, bad heading?)"
+
+═══ RECEIVER IMAGE ═══
+If you see a receiver module:
+Look for: antenna routing (inside vs outside carbon frame), antenna damage, solder joints on pads, correct orientation
+→ "What receiver? (ELRS EP1/EP2, TBS Crossfire, FrSky R-XSR?)"
+→ "Where is the antenna positioned relative to the carbon frame?"
+→ "What's the symptom? (won't bind, failsafe, poor range?)"
+
+═══ FULL BUILD / OVERVIEW IMAGE ═══
+If you see a complete or partially assembled drone:
+Look for: overall build quality, wire routing, zip tie/cable management, component placement, prop orientation, antenna positioning, battery mounting
+→ "What's the build list? (frame, FC, ESC, motors, RX, VTX)"
+→ "Is this a fresh build or troubleshooting an existing one?"
+→ "What firmware? (Betaflight, iNav, ArduPilot, PX4?)"
+→ "Does it fly? What's the issue?"
+
+═══ CRASH DAMAGE IMAGE ═══
+If you see obvious crash damage:
+Run through the post-crash checklist:
+→ "Any visible damage to frame arms? (flex each one)"
+→ "Do all motors spin freely by hand?"
+→ "Is the battery puffy at all?"
+→ "Did you lose video, control, or both before the crash?"
+→ "Check your blackbox log if you have one — it shows exactly what happened."
 
 PHASE 3 — ONCE YOU HAVE ENOUGH INFO:
 After the user responds with more details, provide a SPECIFIC diagnosis:
 
-1. SEARCH the web for the exact FC pinout diagram: "[board name] pinout wiring diagram"
-2. Cross-reference what the user described against the correct pinout
-3. Identify EXACTLY what's wrong: "Your ELRS RX TX wire is on pad TX3 — but TX3 is UART3 TX. 
-   Since you're using UART2 for the receiver, it should be on TX2."
-4. Give the fix with exact pad references and Betaflight configuration
-5. Provide the Betaflight Ports tab setup and any CLI commands needed
+1. If it's a board/component: SEARCH the web for that exact product's specs, pinout, or known issues
+2. Cross-reference what the user described against what's correct
+3. Identify EXACTLY what's wrong with specific references (pad names, part numbers, settings)
+4. Give the fix as a step-by-step procedure
+5. Provide any firmware/software configuration changes needed
+6. If it's a hardware problem: recommend specific replacement parts from the database
 
 CONVERSATIONAL STYLE:
 - Be specific about what you SEE: "I can see a small board with 'EP2' marking wired to what looks like the bottom-right pads"
 - Be honest about what you CAN'T see: "I can't read the pad labels from this angle — can you tell me which pads those wires are on?"
 - Validate the user's work: "The power wiring looks correct — red to VBAT, black to GND, good solder joints there."
-- Educate as you go: "The reason TX goes to RX is because TX means 'transmit FROM this device' — so the FC transmits on its TX and the receiver listens on its RX."
-- If they tell you what FC they're using, immediately reference its specific UART layout from your knowledge base
-- After fixing the wiring, ALWAYS tell them what to set in Betaflight (Ports tab, receiver protocol, etc.)
+- Educate as you go: explain WHY something is wrong, not just what to fix
+- If they tell you what components they're using, immediately reference specific data from your knowledge base
+- After diagnosing: ALWAYS give the complete fix (hardware + software/firmware config)
+- Recommend replacement parts by name from the database when applicable
 
 IMPORTANT: Don't dump a wall of text. Start with what you see, ask 2-3 questions, then diagnose after they respond.
 This is a CONVERSATION, not a one-shot answer. Help them understand their build.
 
-USE THE WIRING REFERENCE below to cross-check what you see in the image against correct wiring.
+USE THE WIRING REFERENCE below for wiring-specific analysis.
 ${WIRING_KB}`;
   }
 
@@ -1217,7 +1280,7 @@ async function send() {
       const geminiBody = {
         systemInstruction: { parts: [{ text: sysPrompt }] },
         contents: geminiMessages,
-        generationConfig: { maxOutputTokens: 2048, temperature: 0.7 },
+        generationConfig: { maxOutputTokens: 8192, temperature: 0.7 },
       };
 
       // Use proxy (free) if no user key, direct API if BYOK
@@ -1249,7 +1312,7 @@ async function send() {
         },
         body: JSON.stringify({
           model: 'claude-sonnet-4-20250514',
-          max_tokens: 2048,
+          max_tokens: 4096,
           system: buildPrompt(txt, hasImages),
           tools: [{ type: 'web_search_20250305', name: 'web_search' }],
           messages: apiMessages,

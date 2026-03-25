@@ -56,7 +56,7 @@ export default async (req) => {
 
     // Enforce limits server-side
     if (body.generationConfig) {
-      body.generationConfig.maxOutputTokens = Math.min(body.generationConfig.maxOutputTokens || 2048, 4096);
+      body.generationConfig.maxOutputTokens = Math.min(body.generationConfig.maxOutputTokens || 8192, 8192);
     }
 
     const res = await fetch(
