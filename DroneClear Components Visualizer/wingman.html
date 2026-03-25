@@ -259,14 +259,14 @@
   #cfg-panel h3 .slash { color: var(--cyan); font-family: var(--mono); font-size: 11px; }
   #cfg-panel h3 span { color: var(--white); font-size: 13px; font-weight: 700; letter-spacing: .05em; text-transform: uppercase; }
   .cfg-label { display: block; color: var(--g2); font-size: 11px; letter-spacing: .04em; text-transform: uppercase; margin-bottom: 6px; }
-  #pat-input {
+  #api-key-input, #pat-input {
     width: 100%; background: #0d0d0d; border: 1px solid var(--border); border-radius: 6px;
     color: var(--white); font-family: var(--mono); font-size: 12px; padding: 9px 12px;
     outline: none; margin-bottom: 16px;
     transition: border-color 0.12s;
   }
-  #pat-input:focus { border-color: var(--border-act); }
-  #pat-input::placeholder { color: var(--g3); }
+  #api-key-input:focus, #pat-input:focus { border-color: var(--border-act); }
+  #api-key-input::placeholder, #pat-input::placeholder { color: var(--g3); }
   #file-list { background: #0d0d0d; border: 1px solid var(--border); border-radius: 6px; padding: 10px 12px; margin-bottom: 20px; }
   .file-row { display: flex; gap: 8px; align-items: center; margin-bottom: 4px; font-size: 11px; font-family: var(--mono); }
   .file-row .fi { width: 12px; flex-shrink: 0; }
@@ -374,13 +374,23 @@
 <!-- ── CONFIG MODAL ──────────────────────────────────────────── -->
 <div id="cfg-overlay" onclick="closeCfgOutside(event)">
   <div id="cfg-panel">
-    <h3><span class="slash">//</span><span>GitHub Config</span></h3>
-    <label class="cfg-label">Personal Access Token (read-only, repo scope)</label>
+    <h3><span class="slash">//</span><span>Settings</span></h3>
+
+    <label class="cfg-label">Anthropic API Key (required to chat)</label>
+    <input type="password" id="api-key-input" placeholder="sk-ant-api03-xxxxxxxxxxxx"/>
+    <div id="api-key-hint" style="font-size:10px;color:var(--g3);margin:-10px 0 16px;line-height:1.5;">
+      Stored in your browser only — never sent to our server.
+      <a href="https://console.anthropic.com/settings/keys" target="_blank" style="color:var(--cyan);">Get a key →</a>
+    </div>
+
+    <hr style="border:none;border-top:1px solid var(--border);margin:0 0 16px;"/>
+
+    <label class="cfg-label">GitHub PAT (optional — loads repo knowledge base)</label>
     <input type="password" id="pat-input" placeholder="ghp_xxxxxxxxxxxxxxxxxxxx"/>
     <label class="cfg-label">Files to Fetch</label>
     <div id="file-list"></div>
     <div class="cfg-btns">
-      <button id="cfg-connect" onclick="connectGH()">Connect + Fetch</button>
+      <button id="cfg-connect" onclick="saveCfgAndConnect()">Save & Connect</button>
       <button id="cfg-cancel" onclick="closeCfg()">Cancel</button>
     </div>
   </div>
@@ -396,6 +406,7 @@ let ghFiles    = [];
 let kbData     = FALLBACK_KB;
 let kbSources  = ['fallback'];
 let loading    = false;
+let apiKey     = localStorage.getItem('wingman_api_key') || '';
 
 const GH = {
   owner: 'DroneWuKong',
@@ -535,8 +546,9 @@ function setMode(m) {
   renderMessages();
 }
 
-// ─── GITHUB ───────────────────────────────────────────────────
+// ─── CONFIG ──────────────────────────────────────────────────
 function openCfg() {
+  document.getElementById('api-key-input').value = apiKey;
   document.getElementById('cfg-overlay').classList.add('open');
 }
 function closeCfg() {
@@ -544,6 +556,22 @@ function closeCfg() {
 }
 function closeCfgOutside(e) {
   if (e.target === document.getElementById('cfg-overlay')) closeCfg();
+}
+
+function saveCfgAndConnect() {
+  const newKey = document.getElementById('api-key-input').value.trim();
+  if (newKey) {
+    apiKey = newKey;
+    localStorage.setItem('wingman_api_key', apiKey);
+  }
+  // Also connect GH if PAT is provided
+  const pat = document.getElementById('pat-input').value.trim();
+  if (pat) {
+    closeCfg();
+    connectGH();
+  } else {
+    closeCfg();
+  }
 }
 
 async function connectGH() {
@@ -678,9 +706,23 @@ async function send() {
   const apiMessages = messages.map(m => ({ role: m.role, content: m.content }));
 
   try {
-    const res = await fetch('/.netlify/functions/wingman-api', {
+    if (!apiKey) {
+      messages.push({ role: 'assistant', content: [], text: 'Please add your Anthropic API key in Settings (⚙️ button) to start chatting.\n\n[Get a free key →](https://console.anthropic.com/settings/keys)', searched: false });
+      loading = false;
+      hideThinking();
+      renderMessages();
+      updateSendBtn();
+      scrollBottom();
+      return;
+    }
+    const res = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: {
+        'Content-Type': 'application/json',
+        'x-api-key': apiKey,
+        'anthropic-version': '2023-06-01',
+        'anthropic-dangerous-direct-browser-access': 'true',
+      },
       body: JSON.stringify({
         model: 'claude-sonnet-4-20250514',
         max_tokens: 1000,
