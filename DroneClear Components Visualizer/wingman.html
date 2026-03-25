@@ -1719,6 +1719,13 @@ function trackQuery(query, hasImage, responseLength, category) {
     analytics.queries = analytics.queries.slice(-500);
   }
   localStorage.setItem('wingman_analytics', JSON.stringify(analytics));
+
+  // Send to central analytics (fire and forget)
+  fetch('/.netlify/functions/analytics', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ type: 'query', ...entry }),
+  }).catch(function() {});
 }
 
 function autoCategory(text) {
@@ -1748,7 +1755,7 @@ function autoCategory(text) {
 
 function endSession() {
   if (currentSession.turns > 0) {
-    analytics.sessions.push({
+    var sessionSummary = {
       id: currentSession.id,
       started: currentSession.started,
       ended: new Date().toISOString(),
@@ -1756,12 +1763,32 @@ function endSession() {
       mode: currentSession.mode,
       provider: currentSession.provider,
       topQueries: currentSession.queries.slice(0, 5),
-    });
+    };
+    analytics.sessions.push(sessionSummary);
     // Keep last 200 sessions
     if (analytics.sessions.length > 200) {
       analytics.sessions = analytics.sessions.slice(-200);
     }
     localStorage.setItem('wingman_analytics', JSON.stringify(analytics));
+
+    // Send to central analytics (use sendBeacon for page unload reliability)
+    var payload = JSON.stringify({
+      type: 'session',
+      turns: currentSession.turns,
+      mode: currentSession.mode,
+      provider: currentSession.provider,
+      duration: Math.round((Date.now() - new Date(currentSession.started).getTime()) / 1000),
+    });
+    if (navigator.sendBeacon) {
+      navigator.sendBeacon('/.netlify/functions/analytics', new Blob([payload], { type: 'application/json' }));
+    } else {
+      fetch('/.netlify/functions/analytics', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: payload,
+        keepalive: true,
+      }).catch(function() {});
+    }
   }
 }
 
@@ -1807,6 +1834,42 @@ function getAnalyticsSummary() {
 }
 
 function showAnalyticsDashboard() {
+  // Try central analytics first, fall back to local
+  var adminKey = prompt('Admin key for central analytics (or cancel for local-only):', '');
+  if (adminKey) {
+    fetch('/.netlify/functions/analytics?key=' + encodeURIComponent(adminKey) + '&range=30')
+      .then(function(r) { return r.json(); })
+      .then(function(data) {
+        if (data.error) { alert('Central: ' + data.error); showLocalDashboard(); return; }
+        var t = data.totals || {};
+        var cats = Object.entries(t.cats || {}).sort(function(a,b) { return b[1]-a[1]; });
+        var total = t.queries || 0;
+        var catStr = cats.map(function(c) { return c[0] + ': ' + c[1] + ' (' + Math.round(c[1]/total*100) + '%)'; }).join('\n  ');
+        var dailyStr = Object.keys(data.daily || {}).sort().reverse().slice(0, 14).map(function(d) {
+          return d + ': ' + data.daily[d].count + ' queries (' + data.daily[d].images + ' with images)';
+        }).join('\n  ');
+        var recentStr = (data.recentQueries || []).slice(0, 15).map(function(q, i) {
+          return (i+1) + '. [' + q.cat + '] ' + (q.img ? '📷 ' : '') + q.q;
+        }).join('\n  ');
+        var report = '═══ WINGMAN CENTRAL ANALYTICS ═══\n\n' +
+          'Total queries (all users): ' + total + '\n' +
+          'Total sessions: ' + (t.sessions || 0) + '\n' +
+          'Image queries: ' + (t.imageQueries || 0) + ' (' + (total ? Math.round((t.imageQueries||0)/total*100) : 0) + '%)\n' +
+          'This month sessions: ' + (data.thisMonth?.sessions || 0) + '\n' +
+          'Avg turns/session: ' + (data.thisMonth?.avgTurns || 0) + '\n\n' +
+          'TOP CATEGORIES (all time):\n  ' + catStr + '\n\n' +
+          'DAILY BREAKDOWN (last 14 days):\n  ' + dailyStr + '\n\n' +
+          'RECENT QUERIES (all users):\n  ' + recentStr + '\n\n' +
+          'Last updated: ' + (t.lastUpdated || 'never');
+        alert(report);
+      })
+      .catch(function(e) { alert('Central error: ' + e.message); showLocalDashboard(); });
+  } else {
+    showLocalDashboard();
+  }
+}
+
+function showLocalDashboard() {
   var s = getAnalyticsSummary();
   if (typeof s === 'string') { alert(s); return; }
   
@@ -1822,7 +1885,7 @@ function showAnalyticsDashboard() {
     return d + ': ' + s.dailyCounts[d] + ' queries';
   }).join('\n  ');
   
-  var report = '═══ WINGMAN ANALYTICS ═══\n\n' +
+  var report = '═══ WINGMAN LOCAL ANALYTICS ═══\n(this browser only)\n\n' +
     'Total queries: ' + s.totalQueries + '\n' +
     'Total sessions: ' + s.totalSessions + '\n' +
     'Avg turns/session: ' + s.avgTurnsPerSession + '\n' +
@@ -1837,18 +1900,34 @@ function showAnalyticsDashboard() {
 }
 
 function exportAnalytics() {
-  var s = getAnalyticsSummary();
-  var output = {
-    exported: new Date().toISOString(),
-    summary: s,
-    raw_queries: analytics.queries,
-    sessions: analytics.sessions,
-  };
-  var blob = new Blob([JSON.stringify(output, null, 2)], { type: 'application/json' });
-  var a = document.createElement('a');
-  a.href = URL.createObjectURL(blob);
-  a.download = 'wingman_analytics_' + new Date().toISOString().split('T')[0] + '.json';
-  a.click();
+  // Export central if admin key available, otherwise local
+  var adminKey = prompt('Admin key for central export (or cancel for local):', '');
+  if (adminKey) {
+    fetch('/.netlify/functions/analytics?key=' + encodeURIComponent(adminKey) + '&range=90')
+      .then(function(r) { return r.json(); })
+      .then(function(data) {
+        var blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+        var a = document.createElement('a');
+        a.href = URL.createObjectURL(blob);
+        a.download = 'wingman_central_analytics_' + new Date().toISOString().split('T')[0] + '.json';
+        a.click();
+      })
+      .catch(function(e) { alert('Error: ' + e.message); });
+  } else {
+    var s = getAnalyticsSummary();
+    var output = {
+      exported: new Date().toISOString(),
+      source: 'local',
+      summary: s,
+      raw_queries: analytics.queries,
+      sessions: analytics.sessions,
+    };
+    var blob = new Blob([JSON.stringify(output, null, 2)], { type: 'application/json' });
+    var a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = 'wingman_local_analytics_' + new Date().toISOString().split('T')[0] + '.json';
+    a.click();
+  }
 }
 
 function clearAnalytics() {
