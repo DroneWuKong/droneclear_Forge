@@ -1,0 +1,273 @@
+name: Wingman Intelligence Pipeline
+
+# Runs on schedule + manual trigger
+on:
+  schedule:
+    # Daily at 6 AM UTC — analytics gap analysis + troubleshooting mining
+    - cron: '0 6 * * *'
+    # Weekly Sunday 4 AM UTC — full enrichment cycle (Blue UAS, SBIR, news)
+    - cron: '0 4 * * 0'
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: 'What to run'
+        required: true
+        default: 'daily'
+        type: choice
+        options:
+          - daily
+          - weekly
+          - analyze-only
+          - mine-wiring
+          - mine-motors
+          - mine-all-gaps
+          - blueuas
+          - sbir
+          - troubleshooting
+
+jobs:
+  # ─── DAILY: Analytics gap analysis + auto-mine top gaps ───
+  daily-intelligence:
+    if: github.event.schedule == '0 6 * * *' || github.event.inputs.mode == 'daily' || github.event.inputs.mode == 'analyze-only' || github.event.inputs.mode == 'mine-all-gaps'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - name: Checkout Forge
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Run gap analysis
+        env:
+          ANALYTICS_ADMIN_KEY: ${{ secrets.ANALYTICS_ADMIN_KEY }}
+          FORGE_SITE: https://forgeprole.netlify.app
+        run: |
+          echo "═══ WINGMAN DAILY INTELLIGENCE ═══"
+          echo ""
+          echo "Step 1: Fetching analytics and analyzing gaps..."
+          python3 miners/mine_from_analytics.py --analyze --days 7
+          echo ""
+
+      - name: Mine solutions for top gaps
+        if: github.event.inputs.mode != 'analyze-only'
+        env:
+          ANALYTICS_ADMIN_KEY: ${{ secrets.ANALYTICS_ADMIN_KEY }}
+          FORGE_SITE: https://forgeprole.netlify.app
+        run: |
+          echo "Step 2: Mining solutions for top 3 gaps..."
+          python3 miners/mine_from_analytics.py --mine --top 3 --days 7
+          echo ""
+
+      - name: Mine specific category (if requested)
+        if: startsWith(github.event.inputs.mode, 'mine-')
+        env:
+          ANALYTICS_ADMIN_KEY: ${{ secrets.ANALYTICS_ADMIN_KEY }}
+          FORGE_SITE: https://forgeprole.netlify.app
+        run: |
+          CATEGORY="${{ github.event.inputs.mode }}"
+          CATEGORY="${CATEGORY#mine-}"
+          if [ "$CATEGORY" != "all-gaps" ]; then
+            echo "Mining specific category: $CATEGORY"
+            python3 miners/mine_from_analytics.py --mine --category "$CATEGORY" --days 30
+          fi
+
+      - name: Upload mined entries as artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: mined-entries-${{ github.run_id }}
+          path: miners/.analytics_output/
+          retention-days: 30
+          if-no-files-found: ignore
+
+      - name: Summary
+        if: always()
+        run: |
+          echo "## Wingman Daily Intelligence Report" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Date:** $(date -u +%Y-%m-%d)" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          if [ -d "miners/.analytics_output" ]; then
+            GAP_FILES=$(ls miners/.analytics_output/gap_analysis_*.json 2>/dev/null | wc -l)
+            MINED_FILES=$(ls miners/.analytics_output/mined_entries_*.json 2>/dev/null | wc -l)
+            echo "- Gap analysis files: $GAP_FILES" >> $GITHUB_STEP_SUMMARY
+            echo "- Mined entry files: $MINED_FILES" >> $GITHUB_STEP_SUMMARY
+            # Show gap analysis if available
+            LATEST_GAP=$(ls -t miners/.analytics_output/gap_analysis_*.json 2>/dev/null | head -1)
+            if [ -n "$LATEST_GAP" ]; then
+              echo "" >> $GITHUB_STEP_SUMMARY
+              echo "### Top Gaps" >> $GITHUB_STEP_SUMMARY
+              echo '```' >> $GITHUB_STEP_SUMMARY
+              python3 -c "
+import json
+with open('$LATEST_GAP') as f:
+    data = json.load(f)
+print(f'Total queries: {data.get(\"total_queries\", 0)}')
+print(f'Total sessions: {data.get(\"total_sessions\", 0)}')
+print()
+for g in data.get('gaps', [])[:10]:
+    print(f'{g[\"category\"]:<15} queries={g[\"queries\"]:<6} ts_entries={g[\"ts_entries\"]:<4} gap={g[\"gap_score\"]:<8} {g[\"priority\"]}')
+" >> $GITHUB_STEP_SUMMARY 2>&1
+              echo '```' >> $GITHUB_STEP_SUMMARY
+            fi
+          else
+            echo "- No output generated (analytics may be empty)" >> $GITHUB_STEP_SUMMARY
+          fi
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Next steps:** Download artifacts → review mined entries → run merge script" >> $GITHUB_STEP_SUMMARY
+
+  # ─── WEEKLY: Full enrichment cycle ───
+  weekly-enrichment:
+    if: github.event.schedule == '0 4 * * 0' || github.event.inputs.mode == 'weekly'
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+
+    steps:
+      - name: Checkout Forge
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Refresh Blue UAS list
+        run: |
+          echo "═══ WEEKLY ENRICHMENT ═══"
+          echo ""
+          echo "Step 1: Blue UAS compliance data..."
+          python3 miners/mine_blueuas.py || echo "Blue UAS mine failed (non-fatal)"
+          echo ""
+
+      - name: Mine SBIR grants
+        run: |
+          echo "Step 2: SBIR grants..."
+          python3 miners/mine_sbir.py || echo "SBIR mine failed (non-fatal)"
+          echo ""
+
+      - name: Mine news and funding
+        run: |
+          echo "Step 3: DroneLife news/funding/contracts..."
+          python3 miners/mine_dronelife.py || echo "DroneLife mine failed (non-fatal)"
+          echo ""
+
+      - name: Mine community troubleshooting
+        run: |
+          echo "Step 4: Community troubleshooting (BF/AP/iNav/Oscar Liang)..."
+          python3 miners/troubleshooting/mine_troubleshooting.py || echo "TS mine failed (non-fatal)"
+          echo ""
+
+      - name: Analytics-driven mining (top 5 gaps)
+        env:
+          ANALYTICS_ADMIN_KEY: ${{ secrets.ANALYTICS_ADMIN_KEY }}
+          FORGE_SITE: https://forgeprole.netlify.app
+        run: |
+          echo "Step 5: Analytics gap mining..."
+          python3 miners/mine_from_analytics.py --mine --top 5 --days 30 || echo "Analytics mine failed (non-fatal)"
+          echo ""
+
+      - name: Check for data changes
+        id: changes
+        run: |
+          git diff --name-only | head -20
+          if git diff --quiet; then
+            echo "changed=false" >> $GITHUB_OUTPUT
+          else
+            echo "changed=true" >> $GITHUB_OUTPUT
+            echo "Changes detected:"
+            git diff --stat
+          fi
+
+      - name: Commit enrichment data (non-DB files only)
+        if: steps.changes.outputs.changed == 'true'
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          # Only auto-commit snapshots and non-DB files
+          # DB changes (troubleshooting entries) need human review
+          git add miners/.snapshots/ 2>/dev/null || true
+          git add miners/.analytics_output/ 2>/dev/null || true
+          if git diff --staged --quiet; then
+            echo "No snapshot changes to commit"
+          else
+            git commit -m "chore(miners): weekly enrichment snapshots [skip ci]"
+            git push
+          fi
+
+      - name: Upload all mined data as artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: weekly-enrichment-${{ github.run_id }}
+          path: |
+            miners/.analytics_output/
+            miners/.snapshots/
+          retention-days: 60
+          if-no-files-found: ignore
+
+      - name: Weekly Summary
+        if: always()
+        run: |
+          echo "## Weekly Enrichment Report" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Date:** $(date -u +%Y-%m-%d)" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "| Miner | Status |" >> $GITHUB_STEP_SUMMARY
+          echo "|-------|--------|" >> $GITHUB_STEP_SUMMARY
+          echo "| Blue UAS | Ran |" >> $GITHUB_STEP_SUMMARY
+          echo "| SBIR Grants | Ran |" >> $GITHUB_STEP_SUMMARY
+          echo "| DroneLife News | Ran |" >> $GITHUB_STEP_SUMMARY
+          echo "| Community TS | Ran |" >> $GITHUB_STEP_SUMMARY
+          echo "| Analytics Mining | Ran |" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Next steps:** Download artifacts → review mined entries → merge approved ones" >> $GITHUB_STEP_SUMMARY
+
+  # ─── ON-DEMAND: Individual miners ───
+  single-miner:
+    if: github.event.inputs.mode == 'blueuas' || github.event.inputs.mode == 'sbir' || github.event.inputs.mode == 'troubleshooting'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      - name: Checkout Forge
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Run selected miner
+        env:
+          ANALYTICS_ADMIN_KEY: ${{ secrets.ANALYTICS_ADMIN_KEY }}
+          FORGE_SITE: https://forgeprole.netlify.app
+        run: |
+          case "${{ github.event.inputs.mode }}" in
+            blueuas)
+              echo "Running Blue UAS miner..."
+              python3 miners/mine_blueuas.py
+              ;;
+            sbir)
+              echo "Running SBIR miner..."
+              python3 miners/mine_sbir.py
+              ;;
+            troubleshooting)
+              echo "Running community troubleshooting miner..."
+              python3 miners/troubleshooting/mine_troubleshooting.py
+              ;;
+          esac
+
+      - name: Upload results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: miner-${{ github.event.inputs.mode }}-${{ github.run_id }}
+          path: |
+            miners/.analytics_output/
+            miners/.snapshots/
+          retention-days: 30
+          if-no-files-found: ignore
