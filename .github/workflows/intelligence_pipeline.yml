@@ -15,8 +15,6 @@ on:
           - daily
           - weekly
           - analyze-only
-          - mine-wiring
-          - mine-motors
           - mine-all-gaps
           - blueuas
           - sbir
@@ -42,10 +40,8 @@ jobs:
           FORGE_SITE: https://forgeprole.netlify.app
         run: |
           echo "=== WINGMAN DAILY INTELLIGENCE ==="
-          echo ""
           echo "Step 1: Fetching analytics and analyzing gaps..."
-          python3 miners/mine_from_analytics.py --analyze --days 7
-          echo ""
+          python3 miners/mine_from_analytics.py --analyze --days 7 || echo "Analytics analyze failed (non-fatal)"
 
       - name: Mine solutions for top gaps
         if: github.event.inputs.mode != 'analyze-only'
@@ -54,30 +50,47 @@ jobs:
           FORGE_SITE: https://forgeprole.netlify.app
         run: |
           echo "Step 2: Mining solutions for top 3 gaps..."
-          python3 miners/mine_from_analytics.py --mine --top 3 --days 7
-          echo ""
+          python3 miners/mine_from_analytics.py --mine --top 3 --days 7 || echo "Gap mining failed (non-fatal)"
 
-      - name: Mine specific category (if requested)
-        if: startsWith(github.event.inputs.mode, 'mine-')
+      - name: Auto-commit and notify
+        if: always()
         env:
-          ANALYTICS_ADMIN_KEY: ${{ secrets.ANALYTICS_ADMIN_KEY }}
-          FORGE_SITE: https://forgeprole.netlify.app
+          NOTIFY_EMAIL: jeremiah@midwestniceuas.com
         run: |
-          CATEGORY="${{ github.event.inputs.mode }}"
-          CATEGORY="${CATEGORY#mine-}"
-          if [ "$CATEGORY" != "all-gaps" ]; then
-            echo "Mining specific category: $CATEGORY"
-            python3 miners/mine_from_analytics.py --mine --category "$CATEGORY" --days 30
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add -A
+          if git diff --staged --quiet; then
+            echo "No changes to commit"
+            echo "CHANGES=none" >> $GITHUB_ENV
+          else
+            SUMMARY=$(git diff --staged --stat)
+            echo "CHANGES<<EOF" >> $GITHUB_ENV
+            echo "$SUMMARY" >> $GITHUB_ENV
+            echo "EOF" >> $GITHUB_ENV
+            git commit -m "chore(miners): daily intelligence update $(date -u +%Y-%m-%d) [skip ci]"
+            git push
           fi
 
-      - name: Upload mined entries as artifact
+      - name: Send email notification
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: dawidd6/action-send-mail@v3
         with:
-          name: mined-entries-${{ github.run_id }}
-          path: miners/.analytics_output/
-          retention-days: 30
-          if-no-files-found: ignore
+          server_address: smtp.gmail.com
+          server_port: 465
+          secure: true
+          username: ${{ secrets.SMTP_USER }}
+          password: ${{ secrets.SMTP_PASS }}
+          subject: "Forge Intel Daily â ${{ job.status }} â $(date -u +%Y-%m-%d)"
+          to: jeremiah@midwestniceuas.com
+          from: Forge Intelligence Pipeline <${{ secrets.SMTP_USER }}>
+          body: |
+            Wingman Daily Intelligence Pipeline â ${{ job.status }}
+            Run: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+
+            Changes committed:
+            ${{ env.CHANGES }}
+        continue-on-error: true
 
       - name: Summary
         if: always()
@@ -85,25 +98,21 @@ jobs:
           echo "## Wingman Daily Intelligence Report" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "**Date:** $(date -u +%Y-%m-%d)" >> $GITHUB_STEP_SUMMARY
+          echo "**Status:** ${{ job.status }}" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           if [ -d "miners/.analytics_output" ]; then
-            GAP_FILES=$(ls miners/.analytics_output/gap_analysis_*.json 2>/dev/null | wc -l)
-            MINED_FILES=$(ls miners/.analytics_output/mined_entries_*.json 2>/dev/null | wc -l)
-            echo "- Gap analysis files: $GAP_FILES" >> $GITHUB_STEP_SUMMARY
-            echo "- Mined entry files: $MINED_FILES" >> $GITHUB_STEP_SUMMARY
             LATEST_GAP=$(ls -t miners/.analytics_output/gap_analysis_*.json 2>/dev/null | head -1)
             if [ -n "$LATEST_GAP" ]; then
-              echo "" >> $GITHUB_STEP_SUMMARY
               echo "### Top Gaps" >> $GITHUB_STEP_SUMMARY
               echo '```' >> $GITHUB_STEP_SUMMARY
               python3 miners/format_gap_summary.py "$LATEST_GAP" >> $GITHUB_STEP_SUMMARY 2>&1
               echo '```' >> $GITHUB_STEP_SUMMARY
             fi
           else
-            echo "- No output generated (analytics may be empty)" >> $GITHUB_STEP_SUMMARY
+            echo "No analytics output generated" >> $GITHUB_STEP_SUMMARY
           fi
           echo "" >> $GITHUB_STEP_SUMMARY
-          echo "**Next steps:** Download artifacts > review mined entries > run merge script" >> $GITHUB_STEP_SUMMARY
+          echo "**Changes:** ${{ env.CHANGES }}" >> $GITHUB_STEP_SUMMARY
 
   weekly-enrichment:
     if: github.event.schedule == '0 4 * * 0' || github.event.inputs.mode == 'weekly'
@@ -121,28 +130,23 @@ jobs:
       - name: Refresh Blue UAS list
         run: |
           echo "=== WEEKLY ENRICHMENT ==="
-          echo ""
           echo "Step 1: Blue UAS compliance data..."
           python3 miners/mine_blueuas.py || echo "Blue UAS mine failed (non-fatal)"
-          echo ""
 
       - name: Mine SBIR grants
         run: |
           echo "Step 2: SBIR grants..."
           python3 miners/mine_sbir.py || echo "SBIR mine failed (non-fatal)"
-          echo ""
 
       - name: Mine news and funding
         run: |
           echo "Step 3: DroneLife news/funding/contracts..."
           python3 miners/mine_dronelife.py || echo "DroneLife mine failed (non-fatal)"
-          echo ""
 
       - name: Mine community troubleshooting
         run: |
-          echo "Step 4: Community troubleshooting (BF/AP/iNav/Oscar Liang)..."
+          echo "Step 4: Community troubleshooting..."
           python3 miners/troubleshooting/mine_troubleshooting.py || echo "TS mine failed (non-fatal)"
-          echo ""
 
       - name: Analytics-driven mining (top 5 gaps)
         env:
@@ -151,51 +155,62 @@ jobs:
         run: |
           echo "Step 5: Analytics gap mining..."
           python3 miners/mine_from_analytics.py --mine --top 5 --days 30 || echo "Analytics mine failed (non-fatal)"
-          echo ""
 
-      - name: Check for data changes
-        id: changes
+      - name: Merge all mined entries into forge_intel.json
         run: |
-          git diff --name-only | head -20
-          if git diff --quiet; then
-            echo "changed=false" >> $GITHUB_OUTPUT
-          else
-            echo "changed=true" >> $GITHUB_OUTPUT
-            echo "Changes detected:"
-            git diff --stat
-          fi
+          echo "Step 6: Merging mined entries..."
+          python3 miners/merge_mined_entries.py || echo "Merge failed (non-fatal)"
 
-      - name: Commit enrichment data (non-DB files only)
-        if: steps.changes.outputs.changed == 'true'
+      - name: Run mine_all.py for full consolidation
+        run: |
+          echo "Step 7: Full consolidation via mine_all.py..."
+          python3 miners/mine_all.py || echo "mine_all failed (non-fatal)"
+
+      - name: Auto-commit all changes
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add miners/.snapshots/ 2>/dev/null || true
-          git add miners/.analytics_output/ 2>/dev/null || true
+          git add -A
           if git diff --staged --quiet; then
-            echo "No snapshot changes to commit"
+            echo "No changes to commit"
+            echo "CHANGES=none" >> $GITHUB_ENV
           else
-            git commit -m "chore(miners): weekly enrichment snapshots [skip ci]"
+            SUMMARY=$(git diff --staged --stat)
+            echo "CHANGES<<EOF" >> $GITHUB_ENV
+            echo "$SUMMARY" >> $GITHUB_ENV
+            echo "EOF" >> $GITHUB_ENV
+            git commit -m "chore(miners): weekly enrichment $(date -u +%Y-%m-%d) [skip ci]"
             git push
           fi
 
-      - name: Upload all mined data as artifact
+      - name: Send email notification
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: dawidd6/action-send-mail@v3
         with:
-          name: weekly-enrichment-${{ github.run_id }}
-          path: |
-            miners/.analytics_output/
-            miners/.snapshots/
-          retention-days: 60
-          if-no-files-found: ignore
+          server_address: smtp.gmail.com
+          server_port: 465
+          secure: true
+          username: ${{ secrets.SMTP_USER }}
+          password: ${{ secrets.SMTP_PASS }}
+          subject: "Forge Intel Weekly â ${{ job.status }} â $(date -u +%Y-%m-%d)"
+          to: jeremiah@midwestniceuas.com
+          from: Forge Intelligence Pipeline <${{ secrets.SMTP_USER }}>
+          body: |
+            Wingman Weekly Enrichment â ${{ job.status }}
+            Run: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+
+            Miners executed: Blue UAS, SBIR, DroneLife, Troubleshooting, Analytics
+
+            Changes committed:
+            ${{ env.CHANGES }}
+        continue-on-error: true
 
       - name: Weekly Summary
         if: always()
         run: |
           echo "## Weekly Enrichment Report" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
-          echo "**Date:** $(date -u +%Y-%m-%d)" >> $GITHUB_STEP_SUMMARY
+          echo "**Date:** $(date -u +%Y-%m-%d) | **Status:** ${{ job.status }}" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "| Miner | Status |" >> $GITHUB_STEP_SUMMARY
           echo "|-------|--------|" >> $GITHUB_STEP_SUMMARY
@@ -204,8 +219,9 @@ jobs:
           echo "| DroneLife News | Ran |" >> $GITHUB_STEP_SUMMARY
           echo "| Community TS | Ran |" >> $GITHUB_STEP_SUMMARY
           echo "| Analytics Mining | Ran |" >> $GITHUB_STEP_SUMMARY
+          echo "| Merge + Consolidation | Ran |" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
-          echo "**Next steps:** Download artifacts > review mined entries > merge approved ones" >> $GITHUB_STEP_SUMMARY
+          echo "**Changes:** ${{ env.CHANGES }}" >> $GITHUB_STEP_SUMMARY
 
   single-miner:
     if: github.event.inputs.mode == 'blueuas' || github.event.inputs.mode == 'sbir' || github.event.inputs.mode == 'troubleshooting'
@@ -240,13 +256,31 @@ jobs:
               ;;
           esac
 
-      - name: Upload results
+      - name: Auto-commit
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add -A
+          if git diff --staged --quiet; then
+            echo "No changes"
+          else
+            git commit -m "chore(miners): ${{ github.event.inputs.mode }} run $(date -u +%Y-%m-%d) [skip ci]"
+            git push
+          fi
+
+      - name: Send email notification
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: dawidd6/action-send-mail@v3
         with:
-          name: miner-${{ github.event.inputs.mode }}-${{ github.run_id }}
-          path: |
-            miners/.analytics_output/
-            miners/.snapshots/
-          retention-days: 30
-          if-no-files-found: ignore
+          server_address: smtp.gmail.com
+          server_port: 465
+          secure: true
+          username: ${{ secrets.SMTP_USER }}
+          password: ${{ secrets.SMTP_PASS }}
+          subject: "Forge Miner: ${{ github.event.inputs.mode }} â ${{ job.status }}"
+          to: jeremiah@midwestniceuas.com
+          from: Forge Intelligence Pipeline <${{ secrets.SMTP_USER }}>
+          body: |
+            Single miner run: ${{ github.event.inputs.mode }} â ${{ job.status }}
+            Run: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        continue-on-error: true
