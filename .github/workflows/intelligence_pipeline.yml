@@ -1,11 +1,8 @@
 name: Wingman Intelligence Pipeline
 
-# Runs on schedule + manual trigger
 on:
   schedule:
-    # Daily at 6 AM UTC — analytics gap analysis + troubleshooting mining
     - cron: '0 6 * * *'
-    # Weekly Sunday 4 AM UTC — full enrichment cycle (Blue UAS, SBIR, news)
     - cron: '0 4 * * 0'
   workflow_dispatch:
     inputs:
@@ -26,12 +23,10 @@ on:
           - troubleshooting
 
 jobs:
-  # ─── DAILY: Analytics gap analysis + auto-mine top gaps ───
   daily-intelligence:
     if: github.event.schedule == '0 6 * * *' || github.event.inputs.mode == 'daily' || github.event.inputs.mode == 'analyze-only' || github.event.inputs.mode == 'mine-all-gaps'
     runs-on: ubuntu-latest
     timeout-minutes: 30
-
     steps:
       - name: Checkout Forge
         uses: actions/checkout@v4
@@ -46,7 +41,7 @@ jobs:
           ANALYTICS_ADMIN_KEY: ${{ secrets.ANALYTICS_ADMIN_KEY }}
           FORGE_SITE: https://forgeprole.netlify.app
         run: |
-          echo "═══ WINGMAN DAILY INTELLIGENCE ═══"
+          echo "=== WINGMAN DAILY INTELLIGENCE ==="
           echo ""
           echo "Step 1: Fetching analytics and analyzing gaps..."
           python3 miners/mine_from_analytics.py --analyze --days 7
@@ -96,36 +91,24 @@ jobs:
             MINED_FILES=$(ls miners/.analytics_output/mined_entries_*.json 2>/dev/null | wc -l)
             echo "- Gap analysis files: $GAP_FILES" >> $GITHUB_STEP_SUMMARY
             echo "- Mined entry files: $MINED_FILES" >> $GITHUB_STEP_SUMMARY
-            # Show gap analysis if available
             LATEST_GAP=$(ls -t miners/.analytics_output/gap_analysis_*.json 2>/dev/null | head -1)
             if [ -n "$LATEST_GAP" ]; then
               echo "" >> $GITHUB_STEP_SUMMARY
               echo "### Top Gaps" >> $GITHUB_STEP_SUMMARY
               echo '```' >> $GITHUB_STEP_SUMMARY
-              python3 -c "
-import json
-with open('$LATEST_GAP') as f:
-    data = json.load(f)
-print(f'Total queries: {data.get(\"total_queries\", 0)}')
-print(f'Total sessions: {data.get(\"total_sessions\", 0)}')
-print()
-for g in data.get('gaps', [])[:10]:
-    print(f'{g[\"category\"]:<15} queries={g[\"queries\"]:<6} ts_entries={g[\"ts_entries\"]:<4} gap={g[\"gap_score\"]:<8} {g[\"priority\"]}')
-" >> $GITHUB_STEP_SUMMARY 2>&1
+              python3 miners/format_gap_summary.py "$LATEST_GAP" >> $GITHUB_STEP_SUMMARY 2>&1
               echo '```' >> $GITHUB_STEP_SUMMARY
             fi
           else
             echo "- No output generated (analytics may be empty)" >> $GITHUB_STEP_SUMMARY
           fi
           echo "" >> $GITHUB_STEP_SUMMARY
-          echo "**Next steps:** Download artifacts → review mined entries → run merge script" >> $GITHUB_STEP_SUMMARY
+          echo "**Next steps:** Download artifacts > review mined entries > run merge script" >> $GITHUB_STEP_SUMMARY
 
-  # ─── WEEKLY: Full enrichment cycle ───
   weekly-enrichment:
     if: github.event.schedule == '0 4 * * 0' || github.event.inputs.mode == 'weekly'
     runs-on: ubuntu-latest
     timeout-minutes: 45
-
     steps:
       - name: Checkout Forge
         uses: actions/checkout@v4
@@ -137,7 +120,7 @@ for g in data.get('gaps', [])[:10]:
 
       - name: Refresh Blue UAS list
         run: |
-          echo "═══ WEEKLY ENRICHMENT ═══"
+          echo "=== WEEKLY ENRICHMENT ==="
           echo ""
           echo "Step 1: Blue UAS compliance data..."
           python3 miners/mine_blueuas.py || echo "Blue UAS mine failed (non-fatal)"
@@ -187,8 +170,6 @@ for g in data.get('gaps', [])[:10]:
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          # Only auto-commit snapshots and non-DB files
-          # DB changes (troubleshooting entries) need human review
           git add miners/.snapshots/ 2>/dev/null || true
           git add miners/.analytics_output/ 2>/dev/null || true
           if git diff --staged --quiet; then
@@ -224,14 +205,12 @@ for g in data.get('gaps', [])[:10]:
           echo "| Community TS | Ran |" >> $GITHUB_STEP_SUMMARY
           echo "| Analytics Mining | Ran |" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
-          echo "**Next steps:** Download artifacts → review mined entries → merge approved ones" >> $GITHUB_STEP_SUMMARY
+          echo "**Next steps:** Download artifacts > review mined entries > merge approved ones" >> $GITHUB_STEP_SUMMARY
 
-  # ─── ON-DEMAND: Individual miners ───
   single-miner:
     if: github.event.inputs.mode == 'blueuas' || github.event.inputs.mode == 'sbir' || github.event.inputs.mode == 'troubleshooting'
     runs-on: ubuntu-latest
     timeout-minutes: 20
-
     steps:
       - name: Checkout Forge
         uses: actions/checkout@v4
