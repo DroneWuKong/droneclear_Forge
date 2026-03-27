@@ -83,7 +83,7 @@ class DroneLifeParser(HTMLParser):
 
     def handle_starttag(self, tag, attrs):
         attrs_d = dict(attrs)
-        if tag == 'h2' and 'entry-title' in attrs_d.get('class', ''):
+        if tag in ('h2', 'h3') and any(c in attrs_d.get('class', '') for c in ('entry-title', 'gb-block-post-grid-title')):
             self._in_title = True
         if self._in_title and tag == 'a' and attrs_d.get('href'):
             self._current = {'url': attrs_d['href'], 'title': ''}
@@ -93,7 +93,7 @@ class DroneLifeParser(HTMLParser):
             self._current['title'] += data.strip()
 
     def handle_endtag(self, tag):
-        if tag == 'h2' and self._in_title:
+        if tag in ('h2', 'h3') and self._in_title:
             self._in_title = False
             if self._current and self._current['title']:
                 self.articles.append(self._current)
