@@ -50,7 +50,7 @@
         .badge-new { background: rgba(74,222,128,0.15); color: #16a34a; }
 
         /* ── Main area ── */
-        .tools-main { flex: 1; min-width: 0; }
+        .tools-main { flex: 1; min-width: 0; height: 100vh; overflow-y: auto; }
         .tools-topbar {
             padding: 14px 32px; display: flex; align-items: center; justify-content: space-between;
             border-bottom: 1px solid var(--border-color);
@@ -181,12 +181,10 @@
         </div>
 
         <div class="tools-nav-section">
-            <span class="tools-nav-label">Calculators</span>
-            <button class="tools-nav-item active" data-tool="channel-planner">
-                <i class="ph ph-broadcast"></i> Channel planner
-            </button>
-            <button class="tools-nav-item" data-tool="harmonics">
-                <i class="ph ph-wave-sine"></i> Harmonics
+            <span class="tools-nav-label">RF Planning</span>
+            <button class="tools-nav-item active" data-tool="rf-terrain">
+                <i class="ph ph-mountains"></i> RF terrain map
+                <span class="tools-nav-badge badge-new">NEW</span>
             </button>
             <button class="tools-nav-item" data-tool="range">
                 <i class="ph ph-arrows-out"></i> Range estimator
@@ -194,29 +192,35 @@
             <button class="tools-nav-item" data-tool="fresnel">
                 <i class="ph ph-eye"></i> Fresnel zone
             </button>
+            <button class="tools-nav-item" data-tool="harmonics">
+                <i class="ph ph-wave-sine"></i> Harmonics
+            </button>
             <button class="tools-nav-item" data-tool="dipole">
                 <i class="ph ph-antenna"></i> Dipole length
+            </button>
+        </div>
+
+        <div class="tools-nav-section">
+            <span class="tools-nav-label">FPV / Video</span>
+            <button class="tools-nav-item" data-tool="channel-planner">
+                <i class="ph ph-broadcast"></i> Channel planner
             </button>
             <button class="tools-nav-item" data-tool="closest-channel">
                 <i class="ph ph-crosshair"></i> Closest channel
             </button>
-            <button class="tools-nav-item" data-tool="rf-terrain">
-                <i class="ph ph-mountains"></i> RF terrain map
-                <span class="tools-nav-badge badge-new">NEW</span>
+            <button class="tools-nav-item" data-tool="vtx-config">
+                <i class="ph ph-sliders"></i> VTX config gen
+                <span class="tools-nav-badge badge-new">new</span>
+            </button>
+            <button class="tools-nav-item" data-tool="unlock-vtx">
+                <i class="ph ph-lock-open"></i> Unlock VTX table
             </button>
         </div>
 
         <div class="tools-nav-section">
             <span class="tools-nav-label">Betaflight</span>
-            <button class="tools-nav-item" data-tool="vtx-config">
-                <i class="ph ph-sliders"></i> VTX config gen
-                <span class="tools-nav-badge badge-new">new</span>
-            </button>
             <button class="tools-nav-item" data-tool="fc-matcher">
                 <i class="ph ph-magnifying-glass"></i> FC target matcher
-            </button>
-            <button class="tools-nav-item" data-tool="unlock-vtx">
-                <i class="ph ph-lock-open"></i> Unlock VTX table
             </button>
             <button class="tools-nav-item" onclick="window.location.href='pid-tuning.html'" style="border-left:2px solid rgba(34,211,238,0.4);">
                 <i class="ph ph-sliders-horizontal"></i> PID Tuning Tool
@@ -776,6 +780,20 @@
                 <div class="tool-title"><i class="ph ph-mountains" style="color:var(--accent-red)"></i> RF Terrain Propagation</div>
                 <p class="tool-desc">Real-terrain link analysis using elevation data. Drag TX/RX markers on the map. Computes path profile, Fresnel zone clearance, knife-edge diffraction, and full link budget. Uses USGS 3DEP (1m, US) with SRTM (30m, global) fallback.</p>
             </div>
+
+            <!-- Coordinate search -->
+            <div style="display:flex; gap:8px; margin-bottom:8px;">
+                <input type="text" id="rf-coord-input" class="tool-input" placeholder="Search address, city, or enter coords (DD, DMS, MGRS)"
+                    style="flex:1; font-size:13px; padding:8px 12px;">
+                <select id="rf-coord-format" class="tool-select" style="width:80px; font-size:11px;">
+                    <option value="DD">DD</option>
+                    <option value="DMS">DMS</option>
+                    <option value="MGRS">MGRS</option>
+                    <option value="UTM">UTM</option>
+                </select>
+                <button onclick="rfSearchCoord()" style="background:var(--accent-red); color:#fff; border:none; border-radius:var(--radius-sm); padding:6px 14px; font-size:12px; font-family:var(--font-family); cursor:pointer;">Go</button>
+            </div>
+            <div id="rf-coord-display" style="font-size:10px; color:var(--text-faint); margin-bottom:8px; font-family:var(--font-mono);"></div>
 
             <!-- Map container -->
             <div id="rf-map" style="width:100%; height:300px; border-radius:var(--radius-md); border:1px solid var(--border-color); margin-bottom:12px; background:var(--bg-dark);"></div>
@@ -1632,6 +1650,133 @@ renderVtxTable();
 
     function getVal(id){return parseFloat(document.getElementById(id).value)||0;}
     function getProto(){return RF_PROTOCOLS[document.getElementById('rf-protocol').value]||RF_PROTOCOLS.ELRS_900;}
+
+    // ── Coordinate search + MGRS/DMS/UTM parsing ──
+    function rfSearchCoord(){
+        const input=document.getElementById('rf-coord-input').value.trim();
+        if(!input)return;
+        const parsed=parseCoordInput(input);
+        if(parsed){
+            rfMoveMapTo(parsed.lat,parsed.lon);
+            rfShowCoordFormats(parsed.lat,parsed.lon);
+        } else {
+            // Try geocoding via Nominatim (address search)
+            fetch('https://nominatim.openstreetmap.org/search?q='+encodeURIComponent(input)+'&format=json&limit=1',
+                {headers:{'User-Agent':'Forge-RF-Tool/1.0'}})
+            .then(r=>r.json()).then(data=>{
+                if(data.length>0){
+                    const lat=parseFloat(data[0].lat),lon=parseFloat(data[0].lon);
+                    rfMoveMapTo(lat,lon);
+                    rfShowCoordFormats(lat,lon);
+                    document.getElementById('rf-coord-input').value=data[0].display_name.substring(0,60);
+                } else {
+                    document.getElementById('rf-coord-display').textContent='Location not found';
+                }
+            }).catch(()=>{document.getElementById('rf-coord-display').textContent='Search failed (offline?)';});
+        }
+    }
+    // Enter key triggers search
+    document.addEventListener('DOMContentLoaded',function(){
+        const ci=document.getElementById('rf-coord-input');
+        if(ci)ci.addEventListener('keydown',function(e){if(e.key==='Enter')rfSearchCoord();});
+    });
+
+    function rfMoveMapTo(lat,lon){
+        txPos={lat:lat,lon:lon};
+        rxPos={lat:lat+0.02,lon:lon+0.02};
+        if(rfMap&&txMarker&&rxMarker){
+            txMarker.setLatLng([txPos.lat,txPos.lon]);
+            rxMarker.setLatLng([rxPos.lat,rxPos.lon]);
+            rfMap.setView([lat,lon],13);
+            rfUpdateCoords();
+        }
+    }
+
+    function rfShowCoordFormats(lat,lon){
+        const el=document.getElementById('rf-coord-display');
+        if(!el)return;
+        const dd=lat.toFixed(6)+', '+lon.toFixed(6);
+        const dms=toDMS(lat,'NS')+' '+toDMS(lon,'EW');
+        const mgrs=toMGRS(lat,lon);
+        const fmt=document.getElementById('rf-coord-format').value;
+        el.innerHTML='DD: '+dd+' &nbsp;·&nbsp; DMS: '+dms+' &nbsp;·&nbsp; MGRS: '+mgrs;
+    }
+
+    function parseCoordInput(input){
+        // Try DD: "39.7392, -104.9903"
+        let m=input.match(/^(-?\d+\.?\d*)[,\s]+(-?\d+\.?\d*)$/);
+        if(m){const lat=parseFloat(m[1]),lon=parseFloat(m[2]);if(Math.abs(lat)<=90&&Math.abs(lon)<=180)return{lat,lon};}
+        // Try DMS: "39°44'21"N 104°59'25"W"
+        const dmsRe=/(\d+)[°](\d+)[']([0-9.]+)["]?\s*([NSEW])/gi;
+        const parts=[...input.matchAll(dmsRe)];
+        if(parts.length===2){
+            function dm(p){let d=parseFloat(p[1])+parseFloat(p[2])/60+parseFloat(p[3])/3600;if(p[4]==='S'||p[4]==='W'||p[4]==='s'||p[4]==='w')d=-d;return d;}
+            return{lat:dm(parts[0]),lon:dm(parts[1])};
+        }
+        // Try MGRS: "13SDE8401012345" (basic regex — 10+ chars starting with digit)
+        if(/^\d{1,2}[A-Z]{1,3}\d{4,10}$/i.test(input.replace(/\s/g,''))){
+            const ll=mgrsToLatLon(input.replace(/\s/g,'').toUpperCase());
+            if(ll)return ll;
+        }
+        return null;
+    }
+
+    function toDMS(dec,dir){
+        const a=Math.abs(dec),d=Math.floor(a),mf=(a-d)*60,m=Math.floor(mf),s=((mf-m)*60).toFixed(1);
+        const c=dir==='NS'?(dec>=0?'N':'S'):(dec>=0?'E':'W');
+        return d+'°'+String(m).padStart(2,'0')+"'"+String(s).padStart(4,'0')+'"'+c;
+    }
+
+    // Simplified MGRS→LatLon (covers most cases without external lib)
+    function mgrsToLatLon(mgrs){
+        // This is a basic decoder. For full accuracy use a proper lib.
+        // Format: ZZB EE NN (zone, band, sq letters, easting, northing)
+        try{
+            const zoneMatch=mgrs.match(/^(\d{1,2})([C-X])([A-Z]{2})(\d+)$/);
+            if(!zoneMatch)return null;
+            const zone=parseInt(zoneMatch[1]),band=zoneMatch[2],sq=zoneMatch[3],digits=zoneMatch[4];
+            if(digits.length%2!==0)return null;
+            const half=digits.length/2;
+            const eStr=digits.substring(0,half),nStr=digits.substring(half);
+            const scale=Math.pow(10,5-half);
+            const e=parseInt(eStr)*scale+scale/2;
+            const n=parseInt(nStr)*scale+scale/2;
+            // UTM to lat/lon (simplified)
+            const col=sq.charCodeAt(0)-'A'.charCodeAt(0);
+            const row=sq.charCodeAt(1)-'A'.charCodeAt(0);
+            const easting=((col%8)*100000)+e;
+            const northing=(row*100000)+n;
+            // Approximate conversion
+            const lon0=(zone-1)*6-180+3;
+            const lat0=bandToLat(band);
+            const lonApprox=lon0+(easting-500000)/(111320*Math.cos(lat0*Math.PI/180));
+            const latApprox=lat0+northing/110540;
+            if(Math.abs(latApprox)>84||Math.abs(lonApprox)>180)return null;
+            return{lat:latApprox,lon:lonApprox};
+        }catch(e){return null;}
+    }
+    function bandToLat(b){const bands='CDEFGHJKLMNPQRSTUVWX';const i=bands.indexOf(b);return i>=0?-80+i*8:-80;}
+    function toMGRS(lat,lon){
+        // Simplified lat/lon→MGRS (approximate, 100m precision)
+        const zone=Math.floor((lon+180)/6)+1;
+        const bands='CDEFGHJKLMNPQRSTUVWX';
+        const bandIdx=Math.min(19,Math.max(0,Math.floor((lat+80)/8)));
+        const band=bands[bandIdx];
+        const lon0=(zone-1)*6-180+3;
+        const k0=0.9996,a=6378137;
+        const easting=500000+k0*a*(lon-lon0)*Math.PI/180*Math.cos(lat*Math.PI/180);
+        const northing=k0*a*(lat*Math.PI/180);
+        const e100k=Math.floor(easting/100000);
+        const n100k=Math.floor((northing%2000000)/100000);
+        const setNum=(zone-1)%6;
+        const colLetters='ABCDEFGHJKLMNPQRSTUVWXYZ';
+        const rowLetters='ABCDEFGHJKLMNPQRSTUV';
+        const colLetter=colLetters[(setNum*8+e100k-1)%24];
+        const rowLetter=rowLetters[(setNum%2===0?0:5+n100k)%20];
+        const eRem=Math.floor(easting%100000/100);
+        const nRem=Math.floor((northing<0?northing+10000000:northing)%100000/100);
+        return zone+band+colLetter+rowLetter+String(eRem).padStart(3,'0')+String(nRem).padStart(3,'0');
+    }
 
     let mapInited=false;
     function initRFMap(){
