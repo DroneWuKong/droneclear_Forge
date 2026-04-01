@@ -164,9 +164,30 @@
         @media (max-width: 768px) {
             .tools-sidebar { display: none; }
             .tools-page { display: block; min-height: unset; }
-            .tools-main { overflow-y: unset; }
+            .tools-main { overflow-y: unset; height: auto; }
             .tool-panel { padding: 20px 16px; }
             .tools-topbar { padding: 12px 16px; }
+            .mobile-tool-nav { display: block !important; }
+        }
+        .mobile-tool-nav {
+            display: none; padding: 8px 12px; background: var(--bg-panel);
+            border-bottom: 1px solid var(--border-color); overflow-x: auto;
+            -webkit-overflow-scrolling: touch; white-space: nowrap;
+        }
+        .mobile-tool-btn {
+            display: inline-block; padding: 6px 12px; margin: 0 4px 4px 0;
+            border-radius: var(--radius-sm); border: 1px solid var(--border-color);
+            background: none; color: var(--text-muted); font-size: 11px;
+            font-family: var(--font-family); cursor: pointer; white-space: nowrap;
+        }
+        .mobile-tool-btn:hover, .mobile-tool-btn.active {
+            background: rgba(34,211,238,0.08); border-color: var(--accent-red);
+            color: var(--accent-red);
+        }
+        .mobile-tool-section {
+            display: inline-block; font-size: 9px; text-transform: uppercase;
+            letter-spacing: 0.08em; color: var(--text-faint); padding: 6px 8px 2px;
+            font-weight: 600;
         }
     </style>
 </head>
@@ -251,6 +272,25 @@
 
     <!-- ── Main ── -->
     <main class="tools-main">
+        <!-- Mobile tool navigation (hidden on desktop) -->
+        <div class="mobile-tool-nav" id="mobile-tool-nav">
+            <span class="mobile-tool-section">RF</span>
+            <button class="mobile-tool-btn active" data-mtool="rf-terrain">▲ Terrain</button>
+            <button class="mobile-tool-btn" data-mtool="range">↔ Range</button>
+            <button class="mobile-tool-btn" data-mtool="fresnel">◎ Fresnel</button>
+            <button class="mobile-tool-btn" data-mtool="harmonics">∿ Harmonics</button>
+            <button class="mobile-tool-btn" data-mtool="dipole">⊤ Dipole</button>
+            <span class="mobile-tool-section">FPV</span>
+            <button class="mobile-tool-btn" data-mtool="channel-planner">≋ Channels</button>
+            <button class="mobile-tool-btn" data-mtool="closest-channel">⊕ Closest</button>
+            <button class="mobile-tool-btn" data-mtool="vtx-config">⚙ VTX Config</button>
+            <button class="mobile-tool-btn" data-mtool="unlock-vtx">🔓 Unlock VTX</button>
+            <span class="mobile-tool-section">BF</span>
+            <button class="mobile-tool-btn" data-mtool="fc-matcher">🔍 FC Match</button>
+            <span class="mobile-tool-section">FW</span>
+            <button class="mobile-tool-btn" data-mtool="elrs-info">ELRS</button>
+            <button class="mobile-tool-btn" data-mtool="mafiалrs">MafiaLRS</button>
+        </div>
         <div class="tools-topbar">
             <div class="tools-breadcrumb">
                 <a href="/"><i class="ph ph-wrench"></i> The Bench</a>
@@ -945,6 +985,14 @@ function showTool(id) {
     if (active) breadcrumb.textContent = active.textContent.trim().replace(/\s+/g, ' ').split(' ').slice(0, -1).join(' ') || active.textContent.trim();
 }
 navItems.forEach(n => n.addEventListener('click', () => showTool(n.dataset.tool)));
+// Mobile tool nav
+document.querySelectorAll('.mobile-tool-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+        const tool = btn.dataset.mtool;
+        showTool(tool);
+        document.querySelectorAll('.mobile-tool-btn').forEach(b => b.classList.toggle('active', b.dataset.mtool === tool));
+    });
+});
 
 // ── FPV Channel data ───────────────────────────────────────────────────────
 const CHANNELS = {
