@@ -12,6 +12,8 @@
     <link rel="stylesheet" href="{% static 'layout.css' %}?v=4">
     <link rel="stylesheet" href="{% static 'components.css' %}">
     <link rel="stylesheet" href="{% static 'utilities.css' %}">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
     <script src="https://unpkg.com/@phosphor-icons/web"></script>
     <script>(function(){ document.documentElement.setAttribute('data-theme', localStorage.getItem('dc-theme') || 'dark'); })();</script>
     <style>
@@ -197,6 +199,10 @@
             </button>
             <button class="tools-nav-item" data-tool="closest-channel">
                 <i class="ph ph-crosshair"></i> Closest channel
+            </button>
+            <button class="tools-nav-item" data-tool="rf-terrain">
+                <i class="ph ph-mountains"></i> RF terrain map
+                <span class="tools-nav-badge badge-new">NEW</span>
             </button>
         </div>
 
@@ -759,6 +765,122 @@
                     </div>
                 </div>
 
+            </div>
+        </div>
+
+        <!-- ═══════════════════════════════════════════════
+             TOOL: RF Terrain Propagation Map
+        ═══════════════════════════════════════════════ -->
+        <div class="tool-panel" id="tool-rf-terrain" style="max-width:960px;">
+            <div class="tool-header">
+                <div class="tool-title"><i class="ph ph-mountains" style="color:var(--accent-red)"></i> RF Terrain Propagation</div>
+                <p class="tool-desc">Real-terrain link analysis using elevation data. Drag TX/RX markers on the map. Computes path profile, Fresnel zone clearance, knife-edge diffraction, and full link budget. Uses USGS 3DEP (1m, US) with SRTM (30m, global) fallback.</p>
+            </div>
+
+            <!-- Map container -->
+            <div id="rf-map" style="width:100%; height:300px; border-radius:var(--radius-md); border:1px solid var(--border-color); margin-bottom:12px; background:var(--bg-dark);"></div>
+            <div style="display:flex; justify-content:space-between; font-size:11px; color:var(--text-muted); margin-bottom:16px; flex-wrap:wrap; gap:4px;">
+                <span><span style="color:var(--accent-red);">●</span> TX: <span id="rf-tx-coords">39.73920, -104.99030</span> &nbsp; <span style="color:#2a9d8f;">●</span> RX: <span id="rf-rx-coords">39.76000, -104.95000</span></span>
+                <span id="rf-status">Distance: — · Elev: —</span>
+            </div>
+
+            <!-- RF Config -->
+            <div class="input-grid" style="margin-bottom:16px;">
+                <div class="input-group">
+                    <label class="input-label">Protocol</label>
+                    <select class="tool-select" id="rf-protocol">
+                        <option value="GHST">GHST (ImmersionRC)</option>
+                        <option value="ELRS_2G4">ExpressLRS 2.4G</option>
+                        <option value="ELRS_900" selected>ExpressLRS 900M</option>
+                        <option value="CRSF">Crossfire (TBS)</option>
+                        <option value="DJI_O3">DJI O3/O4</option>
+                        <option value="HDZERO">HDZero</option>
+                        <option value="WALKSNAIL">Walksnail Avatar</option>
+                        <option value="ANALOG_FPV">Analog FPV</option>
+                        <option value="DOODLE_MESH">Doodle Labs Mesh</option>
+                        <option value="SILVUS">Silvus StreamCaster</option>
+                        <option value="RFD900X">RFD900x</option>
+                        <option value="PERSISTENT">Persistent MPU5</option>
+                    </select>
+                </div>
+                <div class="input-group">
+                    <label class="input-label">TX power</label>
+                    <div class="input-row">
+                        <input type="number" class="tool-input" id="rf-tx-power" value="27" min="0" max="40">
+                        <span class="input-unit">dBm</span>
+                    </div>
+                </div>
+                <div class="input-group">
+                    <label class="input-label">TX height (AGL)</label>
+                    <div class="input-row">
+                        <input type="number" class="tool-input" id="rf-tx-height" value="2" min="0" max="500" step="0.5">
+                        <span class="input-unit">m</span>
+                    </div>
+                </div>
+                <div class="input-group">
+                    <label class="input-label">RX height (AGL)</label>
+                    <div class="input-row">
+                        <input type="number" class="tool-input" id="rf-rx-height" value="50" min="0" max="500" step="0.5">
+                        <span class="input-unit">m</span>
+                    </div>
+                </div>
+                <div class="input-group">
+                    <label class="input-label">TX antenna gain</label>
+                    <div class="input-row">
+                        <input type="number" class="tool-input" id="rf-tx-gain" value="2" min="-5" max="20" step="0.5">
+                        <span class="input-unit">dBi</span>
+                    </div>
+                </div>
+                <div class="input-group">
+                    <label class="input-label">RX antenna gain</label>
+                    <div class="input-row">
+                        <input type="number" class="tool-input" id="rf-rx-gain" value="2" min="-5" max="20" step="0.5">
+                        <span class="input-unit">dBi</span>
+                    </div>
+                </div>
+                <div class="input-group">
+                    <label class="input-label">Fade margin</label>
+                    <div class="input-row">
+                        <input type="number" class="tool-input" id="rf-fade-margin" value="6" min="0" max="20">
+                        <span class="input-unit">dB</span>
+                    </div>
+                </div>
+                <div class="input-group">
+                    <label class="input-label">Path samples</label>
+                    <div class="input-row">
+                        <input type="number" class="tool-input" id="rf-samples" value="25" min="10" max="50" step="5">
+                        <span class="input-unit">pts</span>
+                    </div>
+                </div>
+            </div>
+
+            <div style="display:flex; gap:8px; flex-wrap:wrap; margin-bottom:16px; font-size:11px; color:var(--text-muted);">
+                Freq: <span id="rf-freq-label" style="color:var(--accent-red);">915 MHz</span> &nbsp;
+                Sens: <span id="rf-sens-label" style="color:var(--accent-red);">-123 dBm</span> &nbsp;
+                Mod: <span id="rf-mod-label" style="color:var(--accent-red);">LoRa</span>
+            </div>
+
+            <!-- Link quality badge -->
+            <div style="text-align:center; margin-bottom:16px;">
+                <span id="rf-quality-badge" style="display:inline-flex; align-items:center; gap:8px; padding:6px 16px; border-radius:20px; font-size:12px; font-weight:700; letter-spacing:1px; font-family:var(--font-family);"></span>
+            </div>
+
+            <!-- Elevation profile SVG -->
+            <div class="fresnel-svg-wrap" style="margin-bottom:16px;">
+                <svg id="rf-profile-svg" width="100%" height="200" viewBox="0 0 700 200" preserveAspectRatio="xMidYMid meet"></svg>
+            </div>
+
+            <!-- Results -->
+            <div class="result-card accent" id="rf-results"></div>
+
+            <!-- Link budget breakdown -->
+            <div class="result-card" id="rf-budget" style="font-size:12px;"></div>
+
+            <!-- Path details -->
+            <div class="result-card" id="rf-path-details" style="font-size:12px;"></div>
+
+            <div style="font-size:11px; color:var(--text-muted); margin-top:12px; line-height:1.6; text-align:center;">
+                ⚠ Elevation data approximated from SRTM (30m) or 3DEP (1–10m). Does not model vegetation, structures, atmospheric absorption, rain fade, multipath, or antenna radiation patterns. Link quality predictions help you plan — they don't promise "safe" or "reliable" operation.
             </div>
         </div>
 
@@ -1396,5 +1518,327 @@ renderVtxTable();
         const pid=document.getElementById('mafia-selected').dataset.pid;
         if(pid){navigator.clipboard.writeText(pid).then(()=>{this.innerHTML='<i class="ph ph-check"></i> Copied!';setTimeout(()=>{this.innerHTML='<i class="ph ph-copy"></i> Copy target ID'},2000)})}
     });
+})();
+
+// ═══════════════════════════════════════════════════════════════════════════
+// RF TERRAIN PROPAGATION ENGINE
+// ═══════════════════════════════════════════════════════════════════════════
+(function(){
+    const RF_PROTOCOLS = {
+        GHST:       { name:"GHST (ImmersionRC)",   freq:2400, txPower:27, rxSens:-108, mod:"LoRa-like" },
+        ELRS_2G4:   { name:"ExpressLRS 2.4G",      freq:2400, txPower:27, rxSens:-123, mod:"LoRa" },
+        ELRS_900:   { name:"ExpressLRS 900M",       freq:915,  txPower:27, rxSens:-123, mod:"LoRa" },
+        CRSF:       { name:"Crossfire (TBS)",       freq:915,  txPower:30, rxSens:-130, mod:"LoRa" },
+        DJI_O3:     { name:"DJI O3/O4",            freq:5800, txPower:25, rxSens:-93,  mod:"OFDM" },
+        HDZERO:     { name:"HDZero",                freq:5800, txPower:25, rxSens:-90,  mod:"OFDM" },
+        WALKSNAIL:  { name:"Walksnail Avatar",      freq:5800, txPower:25, rxSens:-92,  mod:"OFDM" },
+        ANALOG_FPV: { name:"Analog FPV",            freq:5800, txPower:25, rxSens:-85,  mod:"FM" },
+        DOODLE_MESH:{ name:"Doodle Labs Mesh",      freq:2400, txPower:30, rxSens:-96,  mod:"OFDM" },
+        SILVUS:     { name:"Silvus StreamCaster",    freq:1625, txPower:33, rxSens:-100, mod:"MIMO-OFDM" },
+        RFD900X:    { name:"RFD900x",               freq:915,  txPower:30, rxSens:-121, mod:"FHSS" },
+        PERSISTENT: { name:"Persistent MPU5",       freq:2400, txPower:33, rxSens:-98,  mod:"MIMO-OFDM" },
+    };
+
+    function haversine(lat1,lon1,lat2,lon2){
+        const R=6371000,dLat=(lat2-lat1)*Math.PI/180,dLon=(lon2-lon1)*Math.PI/180;
+        const a=Math.sin(dLat/2)**2+Math.cos(lat1*Math.PI/180)*Math.cos(lat2*Math.PI/180)*Math.sin(dLon/2)**2;
+        return R*2*Math.atan2(Math.sqrt(a),Math.sqrt(1-a));
+    }
+    function fspl(dKm,fMHz){ return dKm<=0||fMHz<=0?0:20*Math.log10(dKm)+20*Math.log10(fMHz)+32.44; }
+    function fresnelR(d1,d2,fMHz,n){
+        const lam=300/fMHz,D=d1+d2;
+        return D<=0?0:Math.sqrt(n*lam*d1*d2/D);
+    }
+    function knifeEdgeLoss(v){
+        if(v<=-0.78)return 0;
+        if(v<0)return 6.02+9.11*v+1.27*v*v;
+        return 6.02+9.0*v+1.65*v*v;
+    }
+    function fresnelV(h,d1,d2,fMHz){
+        const lam=300/fMHz,D=d1+d2;
+        return D<=0?0:h*Math.sqrt(2*D/(lam*d1*d2));
+    }
+    function interpolatePoints(lat1,lon1,lat2,lon2,n){
+        const pts=[];
+        for(let i=0;i<=n;i++){const t=i/n;pts.push({lat:lat1+t*(lat2-lat1),lon:lon1+t*(lon2-lon1)});}
+        return pts;
+    }
+
+    const elevCache=new Map();
+    async function fetchSRTM(pts){
+        const locs=pts.map(p=>p.lat+','+p.lon).join('|');
+        try{
+            const r=await fetch('https://api.open-elevation.com/api/v1/lookup?locations='+locs);
+            if(!r.ok)throw new Error(r.status);
+            const d=await r.json();
+            return d.results.map(x=>x.elevation);
+        }catch{return null;}
+    }
+    async function fetch3DEP(pts){
+        try{
+            const results=await Promise.all(pts.map(async p=>{
+                const r=await fetch('https://epqs.nationalmap.gov/v1/json?x='+p.lon+'&y='+p.lat+'&wkid=4326&units=Meters&includeDate=false');
+                if(!r.ok)return null;
+                const d=await r.json();
+                return d.value!==undefined?parseFloat(d.value):null;
+            }));
+            return results.some(r=>r===null||r===-1000000)?null:results;
+        }catch{return null;}
+    }
+    async function getElevations(pts){
+        const key=pts.map(p=>p.lat.toFixed(5)+','+p.lon.toFixed(5)).join('|');
+        if(elevCache.has(key))return elevCache.get(key);
+        const isUS=pts.every(p=>p.lat>=24&&p.lat<=50&&p.lon>=-125&&p.lon<=-66);
+        let result=null,source='none';
+        if(isUS&&pts.length<=30){result=await fetch3DEP(pts);if(result)source='3DEP';}
+        if(!result){result=await fetchSRTM(pts);if(result)source='SRTM';}
+        if(!result){result=pts.map(()=>0);source='flat';}
+        const out={elevations:result,source};
+        elevCache.set(key,out);
+        return out;
+    }
+
+    function analyzePath(elevs,dists,txH,rxH,fMHz){
+        const totalD=dists[dists.length-1];
+        const txE=elevs[0]+txH,rxE=elevs[elevs.length-1]+rxH;
+        const losH=i=>txE+(rxE-txE)*(dists[i]/totalD);
+        let worstV=-999,worstIdx=-1;
+        const points=elevs.map((e,i)=>{
+            const d1=Math.max(dists[i],0.1),d2=Math.max(totalD-dists[i],0.1);
+            const los=losH(i),cl=los-e;
+            const f1=fresnelR(d1,d2,fMHz,1),f60=f1*0.6;
+            const v=fresnelV(-cl,d1,d2,fMHz);
+            if(v>worstV&&i>0&&i<elevs.length-1){worstV=v;worstIdx=i;}
+            return{dist:dists[i],elev:e,los,clearance:cl,f1,f60,obstructed:cl<0,fresnelObs:cl<f60};
+        });
+        const diffLoss=worstV>-0.78?knifeEdgeLoss(worstV):0;
+        const losObs=points.filter(p=>p.obstructed).length;
+        const fObs=points.filter(p=>p.fresnelObs).length;
+        const minCl=Math.min(...points.map(p=>p.clearance));
+        return{points,totalD,totalDkm:totalD/1000,diffLoss,losObs,fObs,minCl,worstV,worstIdx,hasLOS:losObs===0,hasF60:fObs===0};
+    }
+    function linkBudget(analysis,txP,rxS,txG,rxG,fMHz,fade){
+        const fLoss=fspl(analysis.totalDkm,fMHz);
+        const total=fLoss+analysis.diffLoss;
+        const rxPow=txP+txG+rxG-total;
+        const margin=rxPow-rxS-fade;
+        const q=margin>20?'excellent':margin>10?'good':margin>3?'marginal':margin>0?'weak':'fail';
+        return{fLoss,diffLoss:analysis.diffLoss,total,rxPow,margin,ok:margin>0,quality:q};
+    }
+
+    let rfMap=null,txMarker=null,rxMarker=null,pathLine=null;
+    let txPos={lat:39.7392,lon:-104.9903},rxPos={lat:39.7600,lon:-104.9500};
+    let rfTimer=null;
+
+    function getVal(id){return parseFloat(document.getElementById(id).value)||0;}
+    function getProto(){return RF_PROTOCOLS[document.getElementById('rf-protocol').value]||RF_PROTOCOLS.ELRS_900;}
+
+    let mapInited=false;
+    function initRFMap(){
+        if(mapInited)return;
+        mapInited=true;
+        const L=window.L;
+        if(!L||!document.getElementById('rf-map'))return;
+        rfMap=L.map('rf-map',{center:[(txPos.lat+rxPos.lat)/2,(txPos.lon+rxPos.lon)/2],zoom:13,zoomControl:true});
+        L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',{attribution:'&copy; OSM &copy; CARTO',maxZoom:19}).addTo(rfMap);
+        function makeIcon(c){return L.divIcon({className:'',html:'<div style="width:16px;height:16px;border-radius:50%;background:'+c+';border:3px solid #0b0f14;box-shadow:0 0 8px '+c+'88;"></div>',iconSize:[16,16],iconAnchor:[8,8]});}
+        txMarker=L.marker([txPos.lat,txPos.lon],{draggable:true,icon:makeIcon('#22d3ee')}).addTo(rfMap);
+        rxMarker=L.marker([rxPos.lat,rxPos.lon],{draggable:true,icon:makeIcon('#2a9d8f')}).addTo(rfMap);
+        pathLine=L.polyline([[txPos.lat,txPos.lon],[rxPos.lat,rxPos.lon]],{color:'#22d3ee',weight:2,opacity:0.6,dashArray:'6,4'}).addTo(rfMap);
+        txMarker.on('dragend',function(){var p=txMarker.getLatLng();txPos={lat:p.lat,lon:p.lng};scheduleCompute();});
+        rxMarker.on('dragend',function(){var p=rxMarker.getLatLng();rxPos={lat:p.lat,lon:p.lng};scheduleCompute();});
+        setTimeout(function(){rfMap.invalidateSize();},200);
+    }
+
+    function updateMapMarkers(){
+        if(!rfMap)return;
+        txMarker.setLatLng([txPos.lat,txPos.lon]);
+        rxMarker.setLatLng([rxPos.lat,rxPos.lon]);
+        pathLine.setLatLngs([[txPos.lat,txPos.lon],[rxPos.lat,rxPos.lon]]);
+    }
+
+    function drawProfile(analysis,fMHz){
+        var svg=document.getElementById('rf-profile-svg');
+        if(!svg||!analysis)return;
+        var pts=analysis.points,totalD=analysis.totalD;
+        var W=700,H=200,PX=50,PY=16,PB=24;
+        var plotW=W-2*PX,plotH=H-PY-PB;
+        var elevs=pts.map(function(p){return p.elev;}),losVals=pts.map(function(p){return p.los;});
+        var maxF=Math.max.apply(null,pts.map(function(p){return p.f1;}));
+        var allH=elevs.concat(losVals);
+        var minH=Math.min.apply(null,allH)-maxF*0.3,maxH=Math.max.apply(null,allH)+maxF*0.5;
+        var rangeH=maxH-minH||1;
+        function toX(d){return PX+(plotW*d)/totalD;}
+        function toY(h){return PY+plotH*(1-(h-minH)/rangeH);}
+
+        var html='<defs><linearGradient id="tg" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#1a3a2a" stop-opacity="0.9"/><stop offset="100%" stop-color="#0a1510" stop-opacity="0.5"/></linearGradient></defs>';
+
+        var step=Math.pow(10,Math.floor(Math.log10(rangeH/4)));
+        for(var v=Math.ceil(minH/step)*step;v<=maxH;v+=step){
+            html+='<line x1="'+PX+'" y1="'+toY(v)+'" x2="'+(W-PX)+'" y2="'+toY(v)+'" stroke="#162030" stroke-width="0.3"/>';
+            html+='<text x="'+(PX-4)+'" y="'+(toY(v)+3)+'" fill="#4a5f75" font-size="7" text-anchor="end" font-family="monospace">'+Math.round(v)+'m</text>';
+        }
+        var xStep=totalD>5000?1000:totalD>1000?500:100;
+        for(var xv=0;xv<=totalD;xv+=xStep){
+            html+='<line x1="'+toX(xv)+'" y1="'+PY+'" x2="'+toX(xv)+'" y2="'+(H-PB)+'" stroke="#162030" stroke-width="0.3"/>';
+            var lbl=xv>=1000?(xv/1000).toFixed(1)+'km':xv+'m';
+            html+='<text x="'+toX(xv)+'" y="'+(H-PB+12)+'" fill="#4a5f75" font-size="7" text-anchor="middle" font-family="monospace">'+lbl+'</text>';
+        }
+
+        var tPath=pts.map(function(p,i){return(i===0?'M':'L')+toX(p.dist).toFixed(1)+','+toY(p.elev).toFixed(1);}).join(' ');
+        tPath+=' L'+toX(totalD).toFixed(1)+','+(H-PB)+' L'+PX+','+(H-PB)+' Z';
+        html+='<path d="'+tPath+'" fill="url(#tg)"/>';
+
+        for(var i=0;i<pts.length-1;i++){
+            var c=pts[i].obstructed?'#f87171':pts[i].fresnelObs?'#eab308':'#4ade80';
+            html+='<line x1="'+toX(pts[i].dist)+'" y1="'+toY(pts[i].elev)+'" x2="'+toX(pts[i+1].dist)+'" y2="'+toY(pts[i+1].elev)+'" stroke="'+c+'" stroke-width="1.5"/>';
+        }
+
+        var fTop=pts.map(function(p,i){return(i===0?'M':'L')+toX(p.dist).toFixed(1)+','+toY(p.los+p.f1).toFixed(1);}).join(' ');
+        var fBot=pts.slice().reverse().map(function(p){return'L'+toX(p.dist).toFixed(1)+','+toY(p.los-p.f1).toFixed(1);}).join(' ');
+        html+='<path d="'+fTop+' '+fBot+' Z" fill="rgba(34,211,238,0.04)" stroke="rgba(34,211,238,0.2)" stroke-width="0.5"/>';
+
+        var f60Top=pts.map(function(p,i){return(i===0?'M':'L')+toX(p.dist).toFixed(1)+','+toY(p.los+p.f60).toFixed(1);}).join(' ');
+        var f60Bot=pts.slice().reverse().map(function(p){return'L'+toX(p.dist).toFixed(1)+','+toY(p.los-p.f60).toFixed(1);}).join(' ');
+        html+='<path d="'+f60Top+' '+f60Bot+' Z" fill="rgba(34,211,238,0.07)" stroke="rgba(34,211,238,0.35)" stroke-width="0.5" stroke-dasharray="3,2"/>';
+
+        html+='<line x1="'+toX(0)+'" y1="'+toY(pts[0].los)+'" x2="'+toX(totalD)+'" y2="'+toY(pts[pts.length-1].los)+'" stroke="#22d3ee" stroke-width="1.5"/>';
+
+        if(analysis.worstIdx>0&&analysis.worstV>-0.78){
+            var wp=pts[analysis.worstIdx];
+            html+='<line x1="'+toX(wp.dist)+'" y1="'+toY(wp.elev)+'" x2="'+toX(wp.dist)+'" y2="'+toY(wp.los)+'" stroke="#f87171" stroke-width="1" stroke-dasharray="2,2"/>';
+            html+='<circle cx="'+toX(wp.dist)+'" cy="'+toY(wp.elev)+'" r="3" fill="#f87171"/>';
+        }
+
+        html+='<circle cx="'+toX(0)+'" cy="'+toY(pts[0].los)+'" r="5" fill="#22d3ee" stroke="#0b0f14" stroke-width="1.5"/>';
+        html+='<text x="'+toX(0)+'" y="'+(toY(pts[0].los)-9)+'" fill="#22d3ee" font-size="9" text-anchor="middle" font-family="monospace" font-weight="700">TX</text>';
+        html+='<circle cx="'+toX(totalD)+'" cy="'+toY(pts[pts.length-1].los)+'" r="5" fill="#2a9d8f" stroke="#0b0f14" stroke-width="1.5"/>';
+        html+='<text x="'+toX(totalD)+'" y="'+(toY(pts[pts.length-1].los)-9)+'" fill="#2a9d8f" font-size="9" text-anchor="middle" font-family="monospace" font-weight="700">RX</text>';
+
+        html+='<g transform="translate('+(PX+8)+','+(PY+4)+')">';
+        html+='<rect x="0" y="0" width="8" height="3" fill="#4ade80"/><text x="12" y="3" fill="#4a5f75" font-size="6" font-family="monospace">Clear</text>';
+        html+='<rect x="50" y="0" width="8" height="3" fill="#eab308"/><text x="62" y="3" fill="#4a5f75" font-size="6" font-family="monospace">Fresnel</text>';
+        html+='<rect x="110" y="0" width="8" height="3" fill="#f87171"/><text x="122" y="3" fill="#4a5f75" font-size="6" font-family="monospace">Blocked</text>';
+        html+='</g>';
+        svg.innerHTML=html;
+    }
+
+    function renderResults(analysis,budget,proto,elevSrc){
+        var distKm=analysis.totalDkm;
+        var qMap={
+            excellent:{c:'#4ade80',l:'EXCELLENT',i:'\u25C6\u25C6\u25C6\u25C6'},
+            good:{c:'#4ade80',l:'GOOD',i:'\u25C6\u25C6\u25C6\u25C7'},
+            marginal:{c:'#eab308',l:'MARGINAL',i:'\u25C6\u25C6\u25C7\u25C7'},
+            weak:{c:'#f87171',l:'WEAK',i:'\u25C6\u25C7\u25C7\u25C7'},
+            fail:{c:'#f87171',l:'NO LINK',i:'\u25C7\u25C7\u25C7\u25C7'},
+        };
+        var q=qMap[budget.quality]||qMap.fail;
+        var badge=document.getElementById('rf-quality-badge');
+        badge.innerHTML='<span style="color:'+q.c+';letter-spacing:2px;">'+q.i+'</span> <span style="color:'+q.c+';">'+q.l+'</span>';
+        badge.style.background=q.c+'12';
+        badge.style.border='1px solid '+q.c+'40';
+
+        document.getElementById('rf-tx-coords').textContent=txPos.lat.toFixed(5)+', '+txPos.lon.toFixed(5);
+        document.getElementById('rf-rx-coords').textContent=rxPos.lat.toFixed(5)+', '+rxPos.lon.toFixed(5);
+        var srcColor=elevSrc==='3DEP'?'#4ade80':elevSrc==='SRTM'?'#22d3ee':'#eab308';
+        document.getElementById('rf-status').innerHTML='Distance: <span style="color:var(--accent-red)">'+distKm.toFixed(2)+' km</span> \u00B7 Elev: <span style="color:'+srcColor+'">'+elevSrc+'</span>';
+
+        document.getElementById('rf-freq-label').textContent=proto.freq+' MHz';
+        document.getElementById('rf-sens-label').textContent=proto.rxSens+' dBm';
+        document.getElementById('rf-mod-label').textContent=proto.mod;
+
+        var mColor=budget.margin>10?'ok':budget.margin>0?'warn':'warn';
+        var mcColor=analysis.hasF60?'ok':analysis.hasLOS?'warn':'warn';
+        var mc=analysis.minCl;
+        document.getElementById('rf-results').innerHTML=
+            '<div class="result-grid">'+
+            '<div class="result-item"><div class="result-value">'+distKm.toFixed(2)+'</div><div class="result-label">Distance (km)</div></div>'+
+            '<div class="result-item"><div class="result-value">'+budget.fLoss.toFixed(1)+'</div><div class="result-label">FSPL (dB)</div></div>'+
+            '<div class="result-item"><div class="result-value '+(analysis.diffLoss>6?'warn':analysis.diffLoss>0?'warn':'ok')+'">'+analysis.diffLoss.toFixed(1)+'</div><div class="result-label">Diffraction (dB)</div></div>'+
+            '<div class="result-item"><div class="result-value '+(budget.ok?'ok':'warn')+'">'+budget.rxPow.toFixed(1)+'</div><div class="result-label">RX Power (dBm)</div></div>'+
+            '<div class="result-item"><div class="result-value '+mColor+'">'+budget.margin.toFixed(1)+'</div><div class="result-label">Link Margin (dB)</div></div>'+
+            '<div class="result-item"><div class="result-value '+mcColor+'">'+mc.toFixed(1)+'</div><div class="result-label">Min Clearance (m)</div></div>'+
+            '</div>';
+
+        var fade=getVal('rf-fade-margin'),txP=getVal('rf-tx-power'),txG=getVal('rf-tx-gain'),rxG=getVal('rf-rx-gain');
+        var rows=[
+            ['TX Power','+'+txP,'dBm','#4ade80'],
+            ['TX Antenna Gain','+'+txG,'dBi','#4ade80'],
+            ['RX Antenna Gain','+'+rxG,'dBi','#4ade80'],
+            ['Free Space Path Loss','-'+budget.fLoss.toFixed(1),'dB','#f87171'],
+            ['Knife-Edge Diffraction','-'+analysis.diffLoss.toFixed(1),'dB',analysis.diffLoss>0?'#f87171':'#4a5f75'],
+            ['Fade Margin','-'+fade,'dB','#eab308'],
+            null,
+            ['Received Power',budget.rxPow.toFixed(1),'dBm','#22d3ee'],
+            ['RX Sensitivity',''+proto.rxSens,'dBm','#4a5f75'],
+            ['Link Margin',budget.margin.toFixed(1),'dB',budget.margin>0?'#4ade80':'#f87171'],
+        ];
+        var bHtml='<div style="font-size:11px;text-transform:uppercase;letter-spacing:0.08em;color:var(--text-faint);margin-bottom:10px;">Link Budget Breakdown</div>';
+        rows.forEach(function(r){
+            if(!r){bHtml+='<div style="border-top:1px solid var(--border-color);margin:6px 0;"></div>';return;}
+            bHtml+='<div style="display:flex;justify-content:space-between;padding:3px 0;border-bottom:1px solid rgba(255,255,255,0.02);"><span style="color:var(--text-muted);">'+r[0]+'</span><span style="color:'+r[3]+';font-weight:600;">'+r[1]+' '+r[2]+'</span></div>';
+        });
+        document.getElementById('rf-budget').innerHTML=bHtml;
+
+        var samples=getVal('rf-samples');
+        var dHtml='<div style="font-size:11px;text-transform:uppercase;letter-spacing:0.08em;color:var(--text-faint);margin-bottom:10px;">Path Details</div>';
+        dHtml+='<div style="display:grid;grid-template-columns:1fr 1fr;gap:4px;font-size:11px;">';
+        var detRows=[
+            ['LOS Clear',analysis.hasLOS?'Yes':'No',analysis.hasLOS?'#4ade80':'#f87171'],
+            ['60% Fresnel Clear',analysis.hasF60?'Yes':'No',analysis.hasF60?'#4ade80':'#f87171'],
+            ['LOS Obstructions',analysis.losObs+' / '+(samples+1),'var(--text-main)'],
+            ['Fresnel Obstructions',analysis.fObs+' / '+(samples+1),'var(--text-main)'],
+            ['Min Clearance',mc.toFixed(1)+' m','var(--text-main)'],
+            ['Worst \u03BD',analysis.worstV.toFixed(3),'var(--text-main)'],
+            ['Elevation Source',elevSrc,'var(--text-main)'],
+            ['Path Samples',(samples+1)+' points','var(--text-main)'],
+        ];
+        detRows.forEach(function(r){dHtml+='<span style="color:var(--text-muted);">'+r[0]+'</span><span style="color:'+r[2]+';">'+r[1]+'</span>';});
+        dHtml+='</div>';
+        document.getElementById('rf-path-details').innerHTML=dHtml;
+    }
+
+    var computing=false;
+    async function computeRFTerrain(){
+        if(computing)return;
+        computing=true;
+        document.getElementById('rf-status').innerHTML='<span style="color:#eab308;">\u25CF computing...</span>';
+        try{
+            var proto=getProto(),txH=getVal('rf-tx-height'),rxH=getVal('rf-rx-height');
+            var txP=getVal('rf-tx-power'),txG=getVal('rf-tx-gain'),rxG=getVal('rf-rx-gain');
+            var fade=getVal('rf-fade-margin'),samples=getVal('rf-samples');
+            var pts=interpolatePoints(txPos.lat,txPos.lon,rxPos.lat,rxPos.lon,samples);
+            var elev=await getElevations(pts);
+            var dists=pts.map(function(p){return haversine(txPos.lat,txPos.lon,p.lat,p.lon);});
+            var analysis=analyzePath(elev.elevations,dists,txH,rxH,proto.freq);
+            var budget=linkBudget(analysis,txP,proto.rxSens,txG,rxG,proto.freq,fade);
+            updateMapMarkers();
+            drawProfile(analysis,proto.freq);
+            renderResults(analysis,budget,proto,elev.source);
+        }catch(e){
+            document.getElementById('rf-status').innerHTML='<span style="color:#f87171;">\u26A0 '+e.message+'</span>';
+        }
+        computing=false;
+    }
+
+    function scheduleCompute(){
+        clearTimeout(rfTimer);
+        rfTimer=setTimeout(computeRFTerrain,600);
+    }
+
+    ['rf-protocol','rf-tx-power','rf-tx-height','rf-rx-height','rf-tx-gain','rf-rx-gain','rf-fade-margin','rf-samples'].forEach(function(id){
+        var el=document.getElementById(id);
+        if(el){el.addEventListener('change',scheduleCompute);el.addEventListener('input',scheduleCompute);}
+    });
+
+    var _origShowTool=window.showTool;
+    window.showTool=function(id){
+        _origShowTool(id);
+        if(id==='rf-terrain'){
+            initRFMap();
+            if(!computing)scheduleCompute();
+        }
+    };
+    if(location.hash==='#rf-terrain'){setTimeout(function(){showTool('rf-terrain');},300);}
 })();
 </script>
