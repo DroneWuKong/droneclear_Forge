@@ -48,6 +48,9 @@
         .badge-soon { background: rgba(255,255,255,0.06); color: var(--text-faint); }
         .badge-ua { background: rgba(234,179,8,0.15); color: #ca8a04; }
         .badge-new { background: rgba(74,222,128,0.15); color: #16a34a; }
+        .harm-cat-btn { padding:5px 12px; border-radius:var(--radius-sm); border:1px solid var(--border-color); background:none; color:var(--text-muted); font-size:12px; cursor:pointer; font-family:var(--font-family); transition:all 0.15s; }
+        .harm-cat-btn:hover { background:var(--bg-panel-hover); color:var(--text-main); }
+        .harm-cat-btn.active { background:rgba(34,211,238,0.1); border-color:var(--accent-red); color:var(--accent-red); }
 
         /* ── Main area ── */
         .tools-main { flex: 1; min-width: 0; height: 100vh; overflow-y: auto; }
@@ -288,51 +291,64 @@
         <div class="tool-panel" id="tool-harmonics">
             <div class="tool-header">
                 <div class="tool-title"><i class="ph ph-wave-sine" style="color:var(--accent-red)"></i> Harmonics calculator</div>
-                <p class="tool-desc">Your control link (ELRS, CRSF) generates harmonics that can corrupt specific FPV video channels. Enter your TX frequency to see which 5.8 GHz channels are affected.</p>
+                <p class="tool-desc">Every transmitter on the airframe generates harmonics. Check for interference with FPV video channels AND GPS/GNSS receivers. Applies to C2 links, telemetry radios, video TX, mesh radios, and any other RF source.</p>
             </div>
+
+            <!-- Source category -->
+            <div style="margin-bottom:12px;">
+                <label class="input-label" style="margin-bottom:6px; display:block;">Source category</label>
+                <div style="display:flex; gap:6px; flex-wrap:wrap;">
+                    <button class="harm-cat-btn active" data-cat="c2" onclick="setHarmCat('c2')">C2 / Control Link</button>
+                    <button class="harm-cat-btn" data-cat="telem" onclick="setHarmCat('telem')">Telemetry</button>
+                    <button class="harm-cat-btn" data-cat="video" onclick="setHarmCat('video')">Video TX</button>
+                    <button class="harm-cat-btn" data-cat="mesh" onclick="setHarmCat('mesh')">Mesh Radio</button>
+                    <button class="harm-cat-btn" data-cat="other" onclick="setHarmCat('other')">Other</button>
+                </div>
+            </div>
+
+            <!-- Preset buttons (dynamic per category) -->
+            <div id="harm-presets" style="display:flex; gap:6px; flex-wrap:wrap; margin-bottom:12px;"></div>
 
             <div class="input-grid">
                 <div class="input-group">
-                    <label class="input-label">Control link frequency</label>
+                    <label class="input-label">TX frequency</label>
                     <div class="input-row">
-                        <input type="number" class="tool-input" id="harm-freq" value="915" min="100" max="2400" step="1">
+                        <input type="number" class="tool-input" id="harm-freq" value="915" min="1" max="10000" step="1">
                         <span class="input-unit">MHz</span>
+                    </div>
+                </div>
+                <div class="input-group">
+                    <label class="input-label">TX power</label>
+                    <div class="input-row">
+                        <input type="number" class="tool-input" id="harm-txpower" value="27" min="0" max="50" step="1">
+                        <span class="input-unit">dBm</span>
                     </div>
                 </div>
                 <div class="input-group">
                     <label class="input-label">Video band start</label>
                     <div class="input-row">
-                        <input type="number" class="tool-input" id="harm-vband-start" value="5600" min="5000" max="6000">
+                        <input type="number" class="tool-input" id="harm-vband-start" value="5600" min="1000" max="8000">
                         <span class="input-unit">MHz</span>
                     </div>
                 </div>
                 <div class="input-group">
                     <label class="input-label">Video band end</label>
                     <div class="input-row">
-                        <input type="number" class="tool-input" id="harm-vband-end" value="5950" min="5000" max="6100">
-                        <span class="input-unit">MHz</span>
-                    </div>
-                </div>
-                <div class="input-group">
-                    <label class="input-label">Danger window (±)</label>
-                    <div class="input-row">
-                        <input type="number" class="tool-input" id="harm-window" value="20" min="5" max="50">
+                        <input type="number" class="tool-input" id="harm-vband-end" value="5950" min="1000" max="8000">
                         <span class="input-unit">MHz</span>
                     </div>
                 </div>
             </div>
 
-            <!-- Preset buttons -->
-            <div style="display:flex; gap:8px; flex-wrap:wrap; margin-bottom:20px;">
-                <button onclick="setHarmPreset(433)" style="padding:5px 12px; border-radius:var(--radius-sm); border:1px solid var(--border-color); background:none; color:var(--text-muted); font-size:12px; cursor:pointer; font-family:var(--font-family);">433 MHz (MafiaLRS)</button>
-                <button onclick="setHarmPreset(868)" style="padding:5px 12px; border-radius:var(--radius-sm); border:1px solid var(--border-color); background:none; color:var(--text-muted); font-size:12px; cursor:pointer; font-family:var(--font-family);">868 MHz (ELRS EU)</button>
-                <button onclick="setHarmPreset(915)" style="padding:5px 12px; border-radius:var(--radius-sm); border:1px solid var(--border-color); background:none; color:var(--text-muted); font-size:12px; cursor:pointer; font-family:var(--font-family);">915 MHz (ELRS US)</button>
-                <button onclick="setHarmPreset(2400)" style="padding:5px 12px; border-radius:var(--radius-sm); border:1px solid var(--border-color); background:none; color:var(--text-muted); font-size:12px; cursor:pointer; font-family:var(--font-family);">2.4 GHz (ELRS 2.4)</button>
-            </div>
-
+            <!-- Results: GPS warnings + video band conflicts -->
+            <div id="harm-gps-warnings" style="margin-bottom:12px;"></div>
             <div class="result-card accent" id="harm-results"></div>
-            <div class="result-note" style="background:var(--bg-panel); border:1px solid var(--border-color); border-radius:var(--radius-sm); padding:14px; margin-top:8px;">
-                Harmonics appear at N × f<sub>TX</sub>. A 915 MHz TX generates harmonics at 1830, 2745, 3660, 4575, <strong>5490 MHz</strong> — right in the low end of the 5.8 GHz video band. A 433 MHz TX hits 5629 MHz (H13). This is why channel selection matters.
+
+            <div class="result-note" style="background:var(--bg-panel); border:1px solid var(--border-color); border-radius:var(--radius-sm); padding:14px; margin-top:8px; font-size:12px; color:var(--text-muted); line-height:1.6;">
+                <strong style="color:var(--text-main);">GPS/GNSS bands:</strong> L1 = 1575.42 MHz · L2 = 1227.60 MHz · L5 = 1176.45 MHz<br>
+                <strong style="color:var(--text-main);">Rule of thumb:</strong> Any harmonic within 150 MHz of a GNSS band at >1W TX is a risk.
+                At 3W+, even 200 MHz separation can cause C/N0 degradation through receiver front-end nonlinearity.<br>
+                <strong style="color:var(--text-main);">Mitigation:</strong> Add an output LPF tuned above the fundamental. A 3-element LC filter costs ~$0.15.
             </div>
         </div>
 
@@ -1005,15 +1021,114 @@ document.getElementById('add-pilot-btn').addEventListener('click', () => {
 renderPilots();
 
 // ── TOOL 2: Harmonics ─────────────────────────────────────────────────────
+// ── Harmonics: Category presets ──
+const HARM_PRESETS = {
+    c2: [
+        {label:'433 MHz (MafiaLRS)',f:433}, {label:'490 MHz (MafiaLRS)',f:490}, {label:'560 MHz (MafiaLRS)',f:560},
+        {label:'735 MHz (MafiaLRS)',f:735}, {label:'868 MHz (ELRS EU)',f:868}, {label:'915 MHz (ELRS US)',f:915},
+        {label:'2.4 GHz (ELRS)',f:2400}, {label:'Crossfire 868',f:868}, {label:'Crossfire 915',f:915},
+    ],
+    telem: [
+        {label:'RFD900x (915)',f:915}, {label:'RFD868x',f:868}, {label:'SiK 433',f:433},
+        {label:'MicroHard P900',f:900}, {label:'Doodle Labs 2.4G',f:2400}, {label:'Doodle Labs 1.6G',f:1625},
+        {label:'Silvus 1.6G',f:1625}, {label:'Persistent 2.4G',f:2400},
+    ],
+    video: [
+        {label:'5.8 GHz Analog/Digital',f:5800}, {label:'2.4 GHz (DJI O4)',f:2400},
+        {label:'1.3 GHz Long Range',f:1300}, {label:'HDZero 5.8G',f:5800},
+    ],
+    mesh: [
+        {label:'Doodle Labs 2.4G',f:2400}, {label:'Silvus 1625',f:1625},
+        {label:'Persistent 2.4G',f:2400}, {label:'Rajant 2.4G',f:2400}, {label:'Rajant 5.8G',f:5800},
+    ],
+    other: [
+        {label:'Custom...',f:0},
+    ],
+};
+let harmCat='c2';
+function setHarmCat(cat){
+    harmCat=cat;
+    document.querySelectorAll('.harm-cat-btn').forEach(b=>b.classList.toggle('active',b.dataset.cat===cat));
+    const el=document.getElementById('harm-presets');
+    el.innerHTML='';
+    (HARM_PRESETS[cat]||[]).forEach(p=>{
+        if(p.f===0)return;
+        const btn=document.createElement('button');
+        btn.textContent=p.label;
+        btn.style.cssText='padding:4px 10px; border-radius:var(--radius-sm); border:1px solid var(--border-color); background:none; color:var(--text-muted); font-size:11px; cursor:pointer; font-family:var(--font-family);';
+        btn.onclick=()=>{document.getElementById('harm-freq').value=p.f; calcHarmonics();};
+        el.appendChild(btn);
+    });
+}
+
+// GPS/GNSS bands
+const GNSS_BANDS=[
+    {name:'GPS L5',freq:1176.45,bw:24,color:'#06b6d4'},
+    {name:'GPS L2',freq:1227.60,bw:24,color:'#3b82f6'},
+    {name:'GPS L1',freq:1575.42,bw:24,color:'#ef4444'},
+    {name:'Galileo E5a',freq:1176.45,bw:20,color:'#06b6d4'},
+    {name:'Galileo E1',freq:1575.42,bw:24,color:'#ef4444'},
+    {name:'GLONASS L1',freq:1602.0,bw:10,color:'#f59e0b'},
+    {name:'BeiDou B1',freq:1561.098,bw:20,color:'#8b5cf6'},
+];
+
 function calcHarmonics() {
     const f = +document.getElementById('harm-freq').value;
+    const txP = +document.getElementById('harm-txpower').value;
     const vStart = +document.getElementById('harm-vband-start').value;
     const vEnd = +document.getElementById('harm-vband-end').value;
-    const window = +document.getElementById('harm-window').value;
     if (!f) return;
-    let html = '<div style="margin-bottom:12px; font-size:12px; color:var(--text-muted);">Harmonics of ' + f + ' MHz within and near ' + vStart + '–' + vEnd + ' MHz video band</div>';
-    const maxN = Math.ceil(vEnd / f) + 2;
+
+    // ── GPS/GNSS warnings ──
+    let gpsHtml='';
+    const maxN=Math.ceil(6000/f)+1;
+    let gpsRisks=[];
+    for(let n=2;n<=maxN&&n<=20;n++){
+        const hf=n*f;
+        GNSS_BANDS.forEach(band=>{
+            const sep=Math.abs(hf-band.freq);
+            if(sep<200){
+                // Estimate harmonic power (rough: -10dBc per harmonic order for PA)
+                const suppressionDb=n<=2?25:n<=3?30:n<=4?35:40;
+                const harmPower=txP-suppressionDb;
+                let risk='low';
+                if(sep<30){risk=harmPower>-10?'critical':'high';}
+                else if(sep<80){risk=harmPower>0?'high':'moderate';}
+                else if(sep<150){risk=harmPower>10?'moderate':'low';}
+                if(risk!=='low'||sep<100) gpsRisks.push({n,hf,band:band.name,sep:sep.toFixed(1),risk,harmPower:harmPower.toFixed(0),color:band.color});
+            }
+        });
+    }
+    // Deduplicate by band+harmonic
+    const seen=new Set();
+    gpsRisks=gpsRisks.filter(r=>{const k=r.n+'-'+r.band;if(seen.has(k))return false;seen.add(k);return true;});
+
+    if(gpsRisks.length>0){
+        gpsHtml='<div style="margin-bottom:12px;">';
+        gpsHtml+='<div style="font-size:11px; font-weight:600; color:var(--text-main); margin-bottom:8px; text-transform:uppercase; letter-spacing:0.08em;">GPS / GNSS Interference Check</div>';
+        gpsRisks.forEach(r=>{
+            const riskColor=r.risk==='critical'?'#ef4444':r.risk==='high'?'#f87171':r.risk==='moderate'?'#eab308':'#4ade80';
+            const riskBg=r.risk==='critical'?'rgba(239,68,68,0.1)':r.risk==='high'?'rgba(248,113,113,0.08)':r.risk==='moderate'?'rgba(234,179,8,0.08)':'rgba(74,222,128,0.05)';
+            gpsHtml+=`<div style="display:flex; align-items:center; gap:8px; padding:6px 10px; margin-bottom:4px; border-radius:var(--radius-sm); background:${riskBg}; border-left:3px solid ${riskColor}; font-size:12px;">
+                <span style="color:${r.color}; font-weight:600; min-width:60px;">${r.band}</span>
+                <span style="color:var(--text-muted);">H${r.n} = ${r.hf.toLocaleString()} MHz</span>
+                <span style="color:var(--text-muted);">Δ ${r.sep} MHz</span>
+                <span style="color:var(--text-muted);">~${r.harmPower} dBm</span>
+                <span style="margin-left:auto; color:${riskColor}; font-weight:700; text-transform:uppercase; font-size:10px;">${r.risk}</span>
+            </div>`;
+        });
+        const hasCrit=gpsRisks.some(r=>r.risk==='critical'||r.risk==='high');
+        if(hasCrit) gpsHtml+='<div style="padding:8px 10px; margin-top:4px; font-size:11px; color:#f87171; background:rgba(248,113,113,0.08); border-radius:var(--radius-sm);">⚠ Add output LPF above fundamental frequency. At '+txP+' dBm TX, GPS receiver desensing is likely.</div>';
+        gpsHtml+='</div>';
+    } else {
+        gpsHtml='<div style="padding:8px 10px; margin-bottom:12px; font-size:12px; color:#4ade80; background:rgba(74,222,128,0.08); border-radius:var(--radius-sm);">✓ No GPS/GNSS harmonic risks detected at '+f+' MHz</div>';
+    }
+    document.getElementById('harm-gps-warnings').innerHTML=gpsHtml;
+
+    // ── Video band conflicts (original logic) ──
+    let html = '<div style="margin-bottom:8px; font-size:11px; font-weight:600; color:var(--text-main); text-transform:uppercase; letter-spacing:0.08em;">Video Band Conflicts ('+vStart+'–'+vEnd+' MHz)</div>';
     let hasConflict = false;
+    const window = 20;
     for (let n = 2; n <= maxN; n++) {
         const hf = n * f;
         const inBand = hf >= vStart && hf <= vEnd;
@@ -1033,14 +1148,15 @@ function calcHarmonics() {
             ${tag}
         </div>`;
     }
-    if (!html.includes('harmonic-row')) html += '<p style="color:var(--text-muted); font-size:13px;">No harmonics fall within or near the specified video band.</p>';
+    if (!html.includes('harmonic-row')) html += '<p style="color:var(--text-muted); font-size:13px;">No harmonics in video band at this frequency.</p>';
     const summary = hasConflict
-        ? '<div style="margin-bottom:16px; padding:10px 14px; border-radius:var(--radius-sm); background:rgba(248,113,113,0.1); border:1px solid rgba(248,113,113,0.3); color:#f87171; font-size:13px; font-weight:600;"><i class="ph ph-warning"></i> Harmonics detected in video band — change control link frequency or avoid affected video channels</div>'
-        : '<div style="margin-bottom:16px; padding:10px 14px; border-radius:var(--radius-sm); background:rgba(74,222,128,0.1); border:1px solid rgba(74,222,128,0.3); color:#4ade80; font-size:13px; font-weight:600;"><i class="ph ph-check-circle"></i> No harmonics in video band at this frequency</div>';
+        ? '<div style="margin-bottom:12px; padding:8px 12px; border-radius:var(--radius-sm); background:rgba(248,113,113,0.1); border:1px solid rgba(248,113,113,0.3); color:#f87171; font-size:12px; font-weight:600;"><i class="ph ph-warning"></i> Harmonics in video band — avoid affected channels</div>'
+        : '<div style="margin-bottom:12px; padding:8px 12px; border-radius:var(--radius-sm); background:rgba(74,222,128,0.1); border:1px solid rgba(74,222,128,0.3); color:#4ade80; font-size:12px; font-weight:600;"><i class="ph ph-check-circle"></i> No video band conflicts</div>';
     document.getElementById('harm-results').innerHTML = summary + html;
 }
 function setHarmPreset(f) { document.getElementById('harm-freq').value = f; calcHarmonics(); }
-['harm-freq','harm-vband-start','harm-vband-end','harm-window'].forEach(id => document.getElementById(id).addEventListener('input', calcHarmonics));
+['harm-freq','harm-txpower','harm-vband-start','harm-vband-end'].forEach(id => document.getElementById(id).addEventListener('input', calcHarmonics));
+document.addEventListener('DOMContentLoaded',function(){setHarmCat('c2');});
 calcHarmonics();
 
 // ── TOOL 3: Range estimator ───────────────────────────────────────────────
