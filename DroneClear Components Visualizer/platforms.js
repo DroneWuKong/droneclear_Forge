@@ -7,38 +7,51 @@
     // ── Clean unified category taxonomy ──
     const UNIFIED_CATS = {
         // Map raw build_class / industry category → clean group
-        'enterprise_cots': 'enterprise',
-        'enterprise_blue_uas': 'blue_uas',
-        'enterprise': 'enterprise',
+        'enterprise_cots': 'enterprise', 'enterprise_blue_uas': 'blue_uas', 'enterprise': 'enterprise',
+        'cots_enterprise': 'enterprise', 'commercial': 'enterprise', 'complete_platform': 'enterprise',
         'tactical_blue_uas': 'blue_uas',
-        'tactical_fpv': 'tactical',
-        'tactical_defense': 'tactical',
-        'tactical_indoor': 'tactical',
-        'tethered': 'tethered',
-        'tethered_persistent': 'tethered',
+        'tactical_fpv': 'tactical', 'tactical_defense': 'tactical', 'tactical_indoor': 'tactical',
+        'tactical': 'tactical', 'defense': 'tactical',
+        'tethered': 'tethered', 'tethered_persistent': 'tethered',
         'agriculture': 'agriculture',
         'mapping': 'mapping',
-        'delivery': 'specialty',
-        'confined_space': 'specialty',
-        'development': 'open_source',
-        'open_source': 'open_source',
-        // Industry categories
-        'fpv_strike': 'tactical',
-        'fpv_strike_fiber': 'tactical',
-        'fpv_strike_and_tactical': 'tactical',
-        'fpv_isr': 'isr',
-        'fpv_isr_dev': 'isr',
-        'fpv_indoor_recon': 'tactical',
-        'fpv': 'tactical',
-        'loitering_munition': 'loitering',
-        'tactical_isr': 'isr',
-        'nano_isr': 'isr',
-        'heavy_lift_multi_mission': 'specialty',
-        'fixed_wing_isr': 'fixed_wing',
+        'delivery': 'specialty', 'confined_space': 'specialty', 'cargo': 'specialty',
+        'development': 'open_source', 'open_source': 'open_source',
+        // FPV / strike
+        'fpv_strike': 'tactical', 'fpv_strike_fiber': 'tactical', 'fpv_strike_and_tactical': 'tactical',
+        'fpv_multirole': 'tactical', 'fpv': 'tactical', 'fpv_indoor_recon': 'tactical',
+        'expendable_strike': 'tactical', 'armed_multirotor': 'tactical',
+        'heavy_multirotor_strike': 'tactical', 'fixed_wing_strike': 'tactical',
+        'deep_strike': 'tactical', 'deep_strike_kamikaze': 'tactical', 'deep_strike_owa': 'tactical',
+        'ai_fpv_swarm': 'tactical', 'swarm_autonomy': 'tactical',
+        // ISR
+        'fpv_isr': 'isr', 'fpv_isr_dev': 'isr', 'tactical_isr': 'isr',
+        'nano_isr': 'isr', 'micro_isr': 'isr', 'mini_isr': 'isr',
+        'commercial_isr': 'isr', 'deep_isr': 'isr', 'rotary_maritime_isr': 'isr',
+        'tactical_isr_and_lm': 'isr',
+        // Loitering munition
+        'loitering_munition': 'loitering', 'micro_indoor_lm': 'loitering',
+        // Fixed wing
+        'fixed_wing_isr': 'fixed_wing', 'fixed_wing_vtol': 'fixed_wing',
+        'group3_vtol_isr': 'fixed_wing', 'evtol_fixed_wing_isr': 'fixed_wing',
+        'vtol_fixed_wing_isr': 'fixed_wing', 'vtol_isr': 'fixed_wing',
+        'group3_plus_isr': 'fixed_wing', 'group3_tactical_male': 'fixed_wing',
+        // UCAV / heavy
+        'male_ucav': 'ucav', 'male_ucav_and_lm': 'ucav', 'male_isr': 'ucav',
+        'jet_ucav': 'ucav', 'heavy_ucav': 'ucav', 'stealth_ucav': 'ucav',
+        'loyal_wingman_ucav': 'ucav', 'tactical_ucav': 'ucav',
+        'group3_plus_ucav': 'ucav', 'autonomous_combat': 'ucav',
+        'armed_helo_uav': 'ucav',
+        // Specialty
+        'heavy_lift_multi_mission': 'specialty', 'heavy_lift_vtol': 'specialty',
+        'modular_multi_mission': 'specialty', 'counter_uas': 'specialty',
+        'naval': 'specialty',
+        // FPV build classes (from parts DB)
+        '5inch_freestyle': 'tactical', '5inch_racing': 'tactical',
+        '6inch_long_range': 'tactical', '7inch_long_range': 'tactical',
+        '7inch_cinematic': 'tactical', '10inch_cinelifter': 'specialty',
+        // Catch-all for autonomous interceptor
         'autonomous_interceptor': 'tactical',
-        'group3_vtol_isr': 'fixed_wing',
-        'evtol_fixed_wing_isr': 'fixed_wing',
-        'modular_multi_mission': 'specialty',
     };
 
     const CAT_DISPLAY = {
@@ -48,6 +61,7 @@
         'isr':         { label: 'ISR',           icon: 'ph-binoculars',     color: '#06b6d4' },
         'loitering':   { label: 'Loitering',     icon: 'ph-timer',          color: '#f59e0b' },
         'fixed_wing':  { label: 'Fixed Wing',    icon: 'ph-airplane-tilt',  color: '#0ea5e9' },
+        'ucav':        { label: 'UCAV / MALE',   icon: 'ph-rocket-launch',  color: '#dc2626' },
         'agriculture': { label: 'Agriculture',   icon: 'ph-plant',          color: '#22c55e' },
         'mapping':     { label: 'Mapping',       icon: 'ph-map-trifold',    color: '#0ea5e9' },
         'tethered':    { label: 'Tethered',      icon: 'ph-link-simple',    color: '#64748b' },
@@ -64,45 +78,51 @@
     async function init() {
         try {
             const [platRes, modelRes] = await Promise.all([
-                fetch('/api/industry/platforms/'),
-                fetch('/api/drone-models/'),
+                fetch('/static/intel_platforms.json'),
+                fetch('/static/forge_database.json'),
             ]);
 
             let industryPlatforms = [];
             let droneModels = [];
 
             if (platRes.ok) industryPlatforms = await platRes.json();
-            if (modelRes.ok) droneModels = await modelRes.json();
+            if (modelRes.ok) {
+                const forgeDB = await modelRes.json();
+                droneModels = forgeDB.drone_models || forgeDB || [];
+            }
 
-            // Normalize ALL drone_models (MDL-2xxx) into cards
+            // Normalize ALL drone_models into cards
             const modelNamesLower = new Set();
             const normalizedModels = droneModels
-                .filter(m => m.pid && m.pid.startsWith('MDL-2'))
+                .filter(m => m.pid && (m.pid.startsWith('MDL-') || m.pid.startsWith('DM-')))
                 .map(m => {
                     modelNamesLower.add((m.name || '').toLowerCase());
-                    const rawCat = m.build_class || m.platform_category || '';
+                    const rawCat = m.build_class || m.category || m.platform_category || '';
                     return {
                         id: m.pid,
                         manufacturer: m.manufacturer || '',
-                        manufacturer_hq: (m.industry_data && m.industry_data.manufacturer_hq) || '',
-                        manufacturer_url: (m.industry_data && m.industry_data.manufacturer_url) || '',
+                        manufacturer_hq: m.manufacturer_hq || (m.industry_data && m.industry_data.manufacturer_hq) || '',
+                        manufacturer_url: m.manufacturer_url || (m.industry_data && m.industry_data.manufacturer_url) || '',
                         platform_name: m.name || '',
                         category: normalizeCategory(rawCat),
                         _raw_category: rawCat,
                         _source: 'handbook',
                         compliance: {
-                            blue_uas: m.blue_uas || false,
-                            ndaa_compliant: m.ndaa_compliant || false,
-                            note: '',
+                            blue_uas: (m.compliance && m.compliance.blue_uas) || m.blue_uas || false,
+                            ndaa_compliant: (m.compliance && m.compliance.ndaa_compliant) || m.ndaa_compliant || false,
+                            note: (m.compliance && m.compliance.note) || '',
                         },
                         specs: {
                             type: m.vehicle_type || 'quad',
                             flight_time_min: m.max_flight_time_min || null,
                             payload_kg: m.max_payload_kg || null,
+                            mtow_kg: m.mtow_kg || null,
+                            max_range_km: m.max_range_km || null,
+                            max_speed_kmh: m.max_speed_kmh || null,
                             ...(m.industry_data && m.industry_data.specs || {}),
                         },
-                        tags: [m.platform_category || '', m.build_class || ''].filter(Boolean),
-                        variants: (m.industry_data && m.industry_data.variants) || [],
+                        tags: [m.category || '', m.platform_category || '', m.build_class || '', ...(m.tags || [])].filter(Boolean),
+                        variants: m.variants || (m.industry_data && m.industry_data.variants) || [],
                         contracts: (m.industry_data && m.industry_data.contracts) || {},
                         production: (m.industry_data && m.industry_data.production) || {},
                         funding: (m.industry_data && m.industry_data.funding) || {},
@@ -110,6 +130,9 @@
                         image_url: m.image_file || (m.industry_data && m.industry_data.image_url) || '',
                         documentation_availability: (m.industry_data && m.industry_data.documentation_availability) || {},
                         _description: m.description || '',
+                        country: m.country || '',
+                        combat_proven: m.combat_proven || false,
+                        status: m.status || '',
                     };
                 });
 
