@@ -861,9 +861,80 @@
             </div>
 
             <!-- Calculate button -->
-            <button id="rf-calc-btn" onclick="rfCompute()" style="width:100%; padding:10px; background:var(--accent-red); color:#fff; border:none; border-radius:var(--radius-sm); font-size:14px; font-weight:600; font-family:var(--font-family); cursor:pointer; margin-bottom:16px; letter-spacing:0.05em;">
+            <button id="rf-calc-btn" onclick="rfCompute()" style="width:100%; padding:10px; background:var(--accent-red); color:#fff; border:none; border-radius:var(--radius-sm); font-size:14px; font-weight:600; font-family:var(--font-family); cursor:pointer; margin-bottom:12px; letter-spacing:0.05em;">
                 CALCULATE LINK
             </button>
+
+            <!-- Advanced mode toggle -->
+            <div style="margin-bottom:16px;">
+                <label style="display:flex; align-items:center; gap:8px; cursor:pointer; font-size:12px; color:var(--text-muted); font-family:var(--font-family);">
+                    <input type="checkbox" id="rf-advanced-toggle" onchange="rfToggleAdvanced()" style="accent-color:var(--accent-red);">
+                    Advanced — Multi-leg waypoints &amp; repeater relay
+                </label>
+            </div>
+
+            <!-- Advanced panel (hidden by default) -->
+            <div id="rf-advanced-panel" style="display:none; margin-bottom:16px;">
+                <!-- Mode selector -->
+                <div style="display:flex; gap:8px; margin-bottom:12px;">
+                    <button class="rf-mode-btn active" data-mode="waypoint" onclick="rfSetMode('waypoint')"
+                        style="flex:1; padding:8px; border:1px solid var(--border-color); border-radius:var(--radius-sm); background:rgba(34,211,238,0.08); color:var(--accent-red); font-size:12px; font-family:var(--font-family); cursor:pointer;">
+                        ◆ Multi-Leg Waypoints
+                    </button>
+                    <button class="rf-mode-btn" data-mode="repeater" onclick="rfSetMode('repeater')"
+                        style="flex:1; padding:8px; border:1px solid var(--border-color); border-radius:var(--radius-sm); background:none; color:var(--text-muted); font-size:12px; font-family:var(--font-family); cursor:pointer;">
+                        ◈ Repeater Relay
+                    </button>
+                </div>
+
+                <!-- Waypoint mode -->
+                <div id="rf-waypoint-panel">
+                    <div style="font-size:11px; color:var(--text-muted); margin-bottom:8px; padding:6px 10px; background:var(--bg-dark); border-radius:var(--radius-sm);">
+                        Click map to add waypoints: TX → WP1 → WP2 → ... → RX. The link is only as strong as the weakest leg.
+                    </div>
+                    <div id="rf-waypoint-list" style="margin-bottom:8px;"></div>
+                    <div style="display:flex; gap:8px;">
+                        <button onclick="rfClearWaypoints()" style="padding:6px 12px; border:1px solid var(--border-color); border-radius:var(--radius-sm); background:none; color:var(--text-muted); font-size:11px; font-family:var(--font-family); cursor:pointer;">
+                            Clear all
+                        </button>
+                        <button onclick="rfUndoWaypoint()" style="padding:6px 12px; border:1px solid var(--border-color); border-radius:var(--radius-sm); background:none; color:var(--text-muted); font-size:11px; font-family:var(--font-family); cursor:pointer;">
+                            Undo last
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Repeater mode -->
+                <div id="rf-repeater-panel" style="display:none;">
+                    <div style="font-size:11px; color:var(--text-muted); margin-bottom:8px; padding:6px 10px; background:var(--bg-dark); border-radius:var(--radius-sm);">
+                        Click map: 1st = Pilot (GCS), 2nd = Repeater drone, 3rd = Target drone. Calculates both relay legs.
+                    </div>
+                    <div class="input-grid" style="margin-bottom:8px;">
+                        <div class="input-group">
+                            <label class="input-label">Repeater height (AGL)</label>
+                            <div class="input-row">
+                                <input type="number" class="tool-input" id="rf-repeater-height" value="80" min="5" max="500" step="5">
+                                <span class="input-unit">m</span>
+                            </div>
+                        </div>
+                        <div class="input-group">
+                            <label class="input-label">Repeater→Target protocol</label>
+                            <select class="tool-select" id="rf-repeater-proto">
+                                <option value="same">Same as primary</option>
+                                <option value="ELRS_2G4">ExpressLRS 2.4G</option>
+                                <option value="ELRS_900">ExpressLRS 900M</option>
+                                <option value="CRSF">Crossfire (TBS)</option>
+                                <option value="DJI_O3">DJI O3/O4</option>
+                                <option value="DOODLE_MESH">Doodle Labs Mesh</option>
+                                <option value="SILVUS">Silvus StreamCaster</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div id="rf-repeater-status" style="font-size:11px; color:var(--text-muted);"></div>
+                </div>
+            </div>
+
+            <!-- Multi-leg / repeater results (shown below main results when in advanced mode) -->
+            <div id="rf-advanced-results" style="display:none;"></div>
 
             <!-- RF Config -->
             <div class="input-grid" style="margin-bottom:16px;">
@@ -1921,6 +1992,18 @@ renderVtxTable();
     // ── Click-to-place markers ──
     function rfMapClick(e){
         const lat=e.latlng.lat,lon=e.latlng.lng;
+
+        // Route to mode-specific handler
+        if(rfAdvanced&&rfAdvMode==='waypoint'){
+            rfWaypointClick(lat,lon);
+            return;
+        }
+        if(rfAdvanced&&rfAdvMode==='repeater'){
+            rfRepeaterClick(lat,lon);
+            return;
+        }
+
+        // Simple mode: TX then RX
         const L=window.L;
         function makeIcon(c){return L.divIcon({className:'',html:'<div style="width:16px;height:16px;border-radius:50%;background:'+c+';border:3px solid #0b0f14;box-shadow:0 0 8px '+c+'88;"></div>',iconSize:[16,16],iconAnchor:[8,8]});}
 
@@ -2228,12 +2311,336 @@ renderVtxTable();
 
     // rfCompute is the public function called by the Calculate button
     window.rfCompute=function(){
+        if(rfAdvMode==='waypoint'&&rfWaypoints.length>=2){
+            rfComputeMultiLeg();
+            return;
+        }
+        if(rfAdvMode==='repeater'&&rfRepeaterPts.length===3){
+            rfComputeRepeater();
+            return;
+        }
         if(!txPos||!rxPos){
             document.getElementById('rf-status').textContent='Place TX and RX markers first';
             return;
         }
         scheduleCompute();
     };
+
+    // ── Advanced mode state ──
+    let rfAdvanced=false;
+    let rfAdvMode='waypoint'; // 'waypoint' or 'repeater'
+    let rfWaypoints=[]; // [{lat,lon,marker,label}]
+    let rfWaypointLines=[];
+    let rfRepeaterPts=[]; // [pilot, repeater, target]
+    let rfRepeaterMarkers=[];
+
+    window.rfToggleAdvanced=function(){
+        rfAdvanced=document.getElementById('rf-advanced-toggle').checked;
+        document.getElementById('rf-advanced-panel').style.display=rfAdvanced?'block':'none';
+        if(!rfAdvanced){
+            // Revert to simple mode
+            rfClearWaypoints();
+            rfClearRepeater();
+            rfClickState=0;
+        } else {
+            rfSetMode(rfAdvMode);
+        }
+    };
+
+    window.rfSetMode=function(mode){
+        rfAdvMode=mode;
+        document.querySelectorAll('.rf-mode-btn').forEach(b=>{
+            const active=b.dataset.mode===mode;
+            b.style.background=active?'rgba(34,211,238,0.08)':'none';
+            b.style.color=active?'var(--accent-red)':'var(--text-muted)';
+        });
+        document.getElementById('rf-waypoint-panel').style.display=mode==='waypoint'?'block':'none';
+        document.getElementById('rf-repeater-panel').style.display=mode==='repeater'?'block':'none';
+        rfClearWaypoints();
+        rfClearRepeater();
+    };
+
+    // ── Multi-Leg Waypoints ──
+    function rfWaypointClick(lat,lon){
+        const L=window.L;
+        const n=rfWaypoints.length;
+        const colors=['#22d3ee','#f59e0b','#a78bfa','#f87171','#4ade80','#fb923c','#38bdf8','#e879f9'];
+        const label=n===0?'TX':('WP'+n);
+        const color=colors[n%colors.length];
+        const icon=L.divIcon({className:'',html:'<div style="width:14px;height:14px;border-radius:50%;background:'+color+';border:2px solid #0b0f14;box-shadow:0 0 6px '+color+'88;"></div>',iconSize:[14,14],iconAnchor:[7,7]});
+        const marker=L.marker([lat,lon],{draggable:true,icon:icon}).addTo(rfMap);
+        marker.bindTooltip(label,{permanent:true,direction:'top',offset:[0,-10],className:'rf-wp-tooltip'});
+        marker.on('dragend',function(){
+            const p=marker.getLatLng();
+            rfWaypoints[n].lat=p.lat;
+            rfWaypoints[n].lon=p.lng;
+            rfUpdateWaypointList();
+            rfDrawWaypointLines();
+        });
+        rfWaypoints.push({lat:lat,lon:lon,marker:marker,label:label});
+        // Draw connecting lines
+        rfDrawWaypointLines();
+        rfUpdateWaypointList();
+    }
+
+    function rfDrawWaypointLines(){
+        const L=window.L;
+        rfWaypointLines.forEach(l=>rfMap.removeLayer(l));
+        rfWaypointLines=[];
+        for(let i=0;i<rfWaypoints.length-1;i++){
+            const a=rfWaypoints[i],b=rfWaypoints[i+1];
+            const line=L.polyline([[a.lat,a.lon],[b.lat,b.lon]],{color:'#22d3ee',weight:2,dashArray:'6,4',opacity:0.7}).addTo(rfMap);
+            rfWaypointLines.push(line);
+        }
+    }
+
+    function rfUpdateWaypointList(){
+        const el=document.getElementById('rf-waypoint-list');
+        if(!el)return;
+        if(rfWaypoints.length===0){el.innerHTML='<div style="font-size:11px; color:var(--text-faint);">No waypoints placed. Click map to add.</div>';return;}
+        let html='';
+        rfWaypoints.forEach((wp,i)=>{
+            const label=i===0?'TX':(i===rfWaypoints.length-1&&rfWaypoints.length>1?'RX (WP'+i+')':'WP'+i);
+            html+='<div style="display:flex; align-items:center; gap:8px; padding:3px 0; font-size:11px;">';
+            html+='<span style="color:var(--accent-red); font-weight:600; min-width:35px;">'+label+'</span>';
+            html+='<span style="color:var(--text-muted); font-family:var(--font-mono);">'+wp.lat.toFixed(5)+', '+wp.lon.toFixed(5)+'</span>';
+            if(i>0){
+                const prev=rfWaypoints[i-1];
+                const d=haversine(prev.lat,prev.lon,wp.lat,wp.lon);
+                html+='<span style="color:var(--text-faint); font-size:10px;">'+formatDist(d)+'</span>';
+            }
+            html+='</div>';
+        });
+        el.innerHTML=html;
+    }
+
+    window.rfClearWaypoints=function(){
+        rfWaypoints.forEach(wp=>rfMap&&rfMap.removeLayer(wp.marker));
+        rfWaypointLines.forEach(l=>rfMap&&rfMap.removeLayer(l));
+        rfWaypoints=[];
+        rfWaypointLines=[];
+        rfUpdateWaypointList();
+        document.getElementById('rf-advanced-results').style.display='none';
+        document.getElementById('rf-advanced-results').innerHTML='';
+    };
+
+    window.rfUndoWaypoint=function(){
+        if(rfWaypoints.length===0)return;
+        const last=rfWaypoints.pop();
+        if(rfMap)rfMap.removeLayer(last.marker);
+        rfDrawWaypointLines();
+        rfUpdateWaypointList();
+    };
+
+    function formatDist(m){return m>=1000?(m/1000).toFixed(2)+' km':Math.round(m)+' m';}
+
+    // ── Repeater Relay ──
+    function rfRepeaterClick(lat,lon){
+        const L=window.L;
+        const n=rfRepeaterPts.length;
+        const labels=['Pilot (GCS)','Repeater','Target'];
+        const colors=['#22d3ee','#f59e0b','#2a9d8f'];
+        if(n>=3){rfClearRepeater();}
+        const icon=L.divIcon({className:'',html:'<div style="width:16px;height:16px;border-radius:50%;background:'+colors[n]+';border:3px solid #0b0f14;box-shadow:0 0 8px '+colors[n]+'88;"></div>',iconSize:[16,16],iconAnchor:[8,8]});
+        const marker=L.marker([lat,lon],{draggable:true,icon:icon}).addTo(rfMap);
+        marker.bindTooltip(labels[n],{permanent:true,direction:'top',offset:[0,-10],className:'rf-wp-tooltip'});
+        marker.on('dragend',function(){
+            rfRepeaterPts[n]={lat:marker.getLatLng().lat,lon:marker.getLatLng().lng};
+            rfUpdateRepeaterStatus();
+        });
+        rfRepeaterPts.push({lat:lat,lon:lon});
+        rfRepeaterMarkers.push(marker);
+        rfUpdateRepeaterStatus();
+
+        // Draw lines when we have 2+ points
+        rfDrawRepeaterLines();
+    }
+
+    function rfDrawRepeaterLines(){
+        const L=window.L;
+        // Remove old lines
+        rfWaypointLines.forEach(l=>rfMap.removeLayer(l));
+        rfWaypointLines=[];
+        if(rfRepeaterPts.length>=2){
+            const line1=L.polyline([[rfRepeaterPts[0].lat,rfRepeaterPts[0].lon],[rfRepeaterPts[1].lat,rfRepeaterPts[1].lon]],{color:'#22d3ee',weight:2,dashArray:'6,4',opacity:0.7}).addTo(rfMap);
+            rfWaypointLines.push(line1);
+        }
+        if(rfRepeaterPts.length>=3){
+            const line2=L.polyline([[rfRepeaterPts[1].lat,rfRepeaterPts[1].lon],[rfRepeaterPts[2].lat,rfRepeaterPts[2].lon]],{color:'#f59e0b',weight:2,dashArray:'6,4',opacity:0.7}).addTo(rfMap);
+            rfWaypointLines.push(line2);
+        }
+    }
+
+    function rfUpdateRepeaterStatus(){
+        const el=document.getElementById('rf-repeater-status');
+        if(!el)return;
+        const labels=['Pilot','Repeater','Target'];
+        let html='';
+        rfRepeaterPts.forEach((p,i)=>{
+            html+='<span style="color:var(--accent-red); font-weight:600;">'+labels[i]+':</span> '+p.lat.toFixed(5)+', '+p.lon.toFixed(5)+'&nbsp;&nbsp;';
+        });
+        if(rfRepeaterPts.length<3) html+='<span style="color:var(--text-faint);">Click map to place '+(labels[rfRepeaterPts.length]||'')+'</span>';
+        el.innerHTML=html;
+    }
+
+    function rfClearRepeater(){
+        rfRepeaterMarkers.forEach(m=>rfMap&&rfMap.removeLayer(m));
+        rfWaypointLines.forEach(l=>rfMap&&rfMap.removeLayer(l));
+        rfRepeaterPts=[];
+        rfRepeaterMarkers=[];
+        rfWaypointLines=[];
+        rfUpdateRepeaterStatus();
+        document.getElementById('rf-advanced-results').style.display='none';
+    }
+
+    // ── Multi-leg compute ──
+    async function rfComputeMultiLeg(){
+        if(rfWaypoints.length<2)return;
+        const proto=getProto();
+        const txP=getVal('rf-tx-power'),txG=getVal('rf-tx-gain'),rxG=getVal('rf-rx-gain');
+        const txH=getVal('rf-tx-height'),rxH=getVal('rf-rx-height');
+        const fade=getVal('rf-fade-margin'),samples=getVal('rf-samples');
+        document.getElementById('rf-status').innerHTML='<span style="color:#eab308;">● computing multi-leg...</span>';
+
+        let legs=[];
+        let worstMargin=999;
+        let totalDist=0;
+
+        for(let i=0;i<rfWaypoints.length-1;i++){
+            const a=rfWaypoints[i],b=rfWaypoints[i+1];
+            const dist=haversine(a.lat,a.lon,b.lat,b.lon);
+            totalDist+=dist;
+            const distKm=dist/1000;
+            const fsplDb=20*Math.log10(distKm)+20*Math.log10(proto.freq)+32.44;
+            const rxPower=txP+txG+rxG-fsplDb;
+            const margin=rxPower-proto.sens-fade;
+            const quality=margin>20?'excellent':margin>10?'good':margin>3?'marginal':margin>0?'weak':'fail';
+            if(margin<worstMargin) worstMargin=margin;
+            legs.push({from:a.label||('WP'+i),to:b.label||('WP'+(i+1)),distKm,fsplDb,rxPower,margin,quality});
+        }
+
+        const overallQuality=worstMargin>20?'excellent':worstMargin>10?'good':worstMargin>3?'marginal':worstMargin>0?'weak':'fail';
+        const qColor=overallQuality==='excellent'||overallQuality==='good'?'#4ade80':overallQuality==='marginal'?'#eab308':'#f87171';
+
+        let html='<div style="margin-bottom:12px; font-size:13px; font-weight:700; color:var(--text-main);">MULTI-LEG ANALYSIS — '+rfWaypoints.length+' points, '+(totalDist/1000).toFixed(2)+' km total</div>';
+        html+='<div style="margin-bottom:12px; padding:8px 12px; border-radius:var(--radius-sm); background:'+qColor+'15; border:1px solid '+qColor+'40; color:'+qColor+'; font-size:12px; font-weight:600;">Overall: '+overallQuality.toUpperCase()+' — weakest leg margin: '+worstMargin.toFixed(1)+' dB</div>';
+        html+='<table style="width:100%; font-size:11px; border-collapse:collapse;">';
+        html+='<tr style="color:var(--text-faint); text-transform:uppercase; letter-spacing:0.05em;"><th style="text-align:left; padding:4px;">Leg</th><th>Distance</th><th>FSPL</th><th>RX Power</th><th>Margin</th><th>Status</th></tr>';
+        legs.forEach((leg,i)=>{
+            const lc=leg.quality==='excellent'||leg.quality==='good'?'#4ade80':leg.quality==='marginal'?'#eab308':'#f87171';
+            html+='<tr style="border-top:1px solid var(--border-color);">';
+            html+='<td style="padding:4px; color:var(--text-muted);">'+leg.from+' → '+leg.to+'</td>';
+            html+='<td style="text-align:center; color:var(--text-muted);">'+leg.distKm.toFixed(2)+' km</td>';
+            html+='<td style="text-align:center; color:var(--text-muted);">'+leg.fsplDb.toFixed(1)+' dB</td>';
+            html+='<td style="text-align:center; color:var(--accent-red);">'+leg.rxPower.toFixed(1)+' dBm</td>';
+            html+='<td style="text-align:center; color:'+lc+'; font-weight:600;">'+leg.margin.toFixed(1)+' dB</td>';
+            html+='<td style="text-align:center; color:'+lc+'; font-weight:600; text-transform:uppercase;">'+leg.quality+'</td>';
+            html+='</tr>';
+        });
+        html+='</table>';
+
+        const el=document.getElementById('rf-advanced-results');
+        el.innerHTML=html;
+        el.style.display='block';
+        document.getElementById('rf-status').innerHTML='<span style="color:#4ade80;">● '+legs.length+' legs computed</span>';
+    }
+
+    // ── Repeater relay compute ──
+    async function rfComputeRepeater(){
+        if(rfRepeaterPts.length<3)return;
+        const proto1=getProto();
+        const rProtoKey=document.getElementById('rf-repeater-proto').value;
+        const proto2=rProtoKey==='same'?proto1:RF_PROTOCOLS[rProtoKey]||proto1;
+        const txP=getVal('rf-tx-power'),txG=getVal('rf-tx-gain'),rxG=getVal('rf-rx-gain');
+        const pilotH=getVal('rf-tx-height'),targetH=getVal('rf-rx-height');
+        const repeaterH=parseFloat(document.getElementById('rf-repeater-height').value)||80;
+        const fade=getVal('rf-fade-margin');
+        document.getElementById('rf-status').innerHTML='<span style="color:#eab308;">● computing relay...</span>';
+
+        // Leg 1: Pilot → Repeater
+        const d1=haversine(rfRepeaterPts[0].lat,rfRepeaterPts[0].lon,rfRepeaterPts[1].lat,rfRepeaterPts[1].lon)/1000;
+        const fspl1=20*Math.log10(d1)+20*Math.log10(proto1.freq)+32.44;
+        const rx1=txP+txG+rxG-fspl1;
+        const m1=rx1-proto1.sens-fade;
+
+        // Leg 2: Repeater → Target
+        const d2=haversine(rfRepeaterPts[1].lat,rfRepeaterPts[1].lon,rfRepeaterPts[2].lat,rfRepeaterPts[2].lon)/1000;
+        const fspl2=20*Math.log10(d2)+20*Math.log10(proto2.freq)+32.44;
+        const rx2=txP+txG+rxG-fspl2;
+        const m2=rx2-proto2.sens-fade;
+
+        // Total distance (direct vs relay)
+        const dDirect=haversine(rfRepeaterPts[0].lat,rfRepeaterPts[0].lon,rfRepeaterPts[2].lat,rfRepeaterPts[2].lon)/1000;
+        const fsplDirect=20*Math.log10(dDirect)+20*Math.log10(proto1.freq)+32.44;
+        const rxDirect=txP+txG+rxG-fsplDirect;
+        const mDirect=rxDirect-proto1.sens-fade;
+
+        const worstRelay=Math.min(m1,m2);
+        const qRelay=worstRelay>20?'excellent':worstRelay>10?'good':worstRelay>3?'marginal':worstRelay>0?'weak':'fail';
+        const qDirect=mDirect>20?'excellent':mDirect>10?'good':mDirect>3?'marginal':mDirect>0?'weak':'fail';
+        const relayColor=qRelay==='excellent'||qRelay==='good'?'#4ade80':qRelay==='marginal'?'#eab308':'#f87171';
+        const directColor=qDirect==='excellent'||qDirect==='good'?'#4ade80':qDirect==='marginal'?'#eab308':'#f87171';
+
+        let html='<div style="margin-bottom:12px; font-size:13px; font-weight:700; color:var(--text-main);">REPEATER RELAY ANALYSIS</div>';
+
+        // Relay vs Direct comparison
+        html+='<div style="display:flex; gap:8px; margin-bottom:12px;">';
+        html+='<div style="flex:1; padding:10px; border-radius:var(--radius-sm); background:'+relayColor+'12; border:1px solid '+relayColor+'40; text-align:center;">';
+        html+='<div style="font-size:10px; color:var(--text-muted); text-transform:uppercase;">Via Repeater</div>';
+        html+='<div style="font-size:18px; font-weight:700; color:'+relayColor+';">'+worstRelay.toFixed(1)+' dB</div>';
+        html+='<div style="font-size:10px; color:'+relayColor+'; text-transform:uppercase;">'+qRelay+'</div>';
+        html+='</div>';
+        html+='<div style="flex:1; padding:10px; border-radius:var(--radius-sm); background:'+directColor+'12; border:1px solid '+directColor+'40; text-align:center;">';
+        html+='<div style="font-size:10px; color:var(--text-muted); text-transform:uppercase;">Direct (no relay)</div>';
+        html+='<div style="font-size:18px; font-weight:700; color:'+directColor+';">'+mDirect.toFixed(1)+' dB</div>';
+        html+='<div style="font-size:10px; color:'+directColor+'; text-transform:uppercase;">'+qDirect+'</div>';
+        html+='</div>';
+        html+='</div>';
+
+        // Per-leg table
+        html+='<table style="width:100%; font-size:11px; border-collapse:collapse;">';
+        html+='<tr style="color:var(--text-faint); text-transform:uppercase; letter-spacing:0.05em;"><th style="text-align:left; padding:4px;">Leg</th><th>Protocol</th><th>Distance</th><th>Height</th><th>FSPL</th><th>Margin</th></tr>';
+        // Leg 1
+        const c1=m1>10?'#4ade80':m1>0?'#eab308':'#f87171';
+        html+='<tr style="border-top:1px solid var(--border-color);">';
+        html+='<td style="padding:4px; color:var(--text-muted);">Pilot → Repeater</td>';
+        html+='<td style="text-align:center; color:var(--accent-red);">'+proto1.freq+' MHz</td>';
+        html+='<td style="text-align:center; color:var(--text-muted);">'+d1.toFixed(2)+' km</td>';
+        html+='<td style="text-align:center; color:var(--text-muted);">'+pilotH+'→'+repeaterH+'m</td>';
+        html+='<td style="text-align:center; color:var(--text-muted);">'+fspl1.toFixed(1)+' dB</td>';
+        html+='<td style="text-align:center; color:'+c1+'; font-weight:600;">'+m1.toFixed(1)+' dB</td>';
+        html+='</tr>';
+        // Leg 2
+        const c2=m2>10?'#4ade80':m2>0?'#eab308':'#f87171';
+        html+='<tr style="border-top:1px solid var(--border-color);">';
+        html+='<td style="padding:4px; color:var(--text-muted);">Repeater → Target</td>';
+        html+='<td style="text-align:center; color:var(--accent-red);">'+proto2.freq+' MHz</td>';
+        html+='<td style="text-align:center; color:var(--text-muted);">'+d2.toFixed(2)+' km</td>';
+        html+='<td style="text-align:center; color:var(--text-muted);">'+repeaterH+'→'+targetH+'m</td>';
+        html+='<td style="text-align:center; color:var(--text-muted);">'+fspl2.toFixed(1)+' dB</td>';
+        html+='<td style="text-align:center; color:'+c2+'; font-weight:600;">'+m2.toFixed(1)+' dB</td>';
+        html+='</tr>';
+        html+='</table>';
+
+        // Advantage note
+        const advantage=worstRelay-mDirect;
+        if(advantage>0){
+            html+='<div style="margin-top:8px; padding:6px 10px; font-size:11px; color:#4ade80; background:rgba(74,222,128,0.08); border-radius:var(--radius-sm);">↑ Repeater improves worst-case margin by '+advantage.toFixed(1)+' dB over direct link</div>';
+        } else {
+            html+='<div style="margin-top:8px; padding:6px 10px; font-size:11px; color:#eab308; background:rgba(234,179,8,0.08); border-radius:var(--radius-sm);">Direct link is stronger — repeater adds '+Math.abs(advantage).toFixed(1)+' dB overhead</div>';
+        }
+
+        const el=document.getElementById('rf-advanced-results');
+        el.innerHTML=html;
+        el.style.display='block';
+        document.getElementById('rf-status').innerHTML='<span style="color:#4ade80;">● relay computed</span>';
+    }
+
+    function haversine(lat1,lon1,lat2,lon2){
+        const R=6371000,dLat=(lat2-lat1)*Math.PI/180,dLon=(lon2-lon1)*Math.PI/180;
+        const a=Math.sin(dLat/2)**2+Math.cos(lat1*Math.PI/180)*Math.cos(lat2*Math.PI/180)*Math.sin(dLon/2)**2;
+        return R*2*Math.atan2(Math.sqrt(a),Math.sqrt(1-a));
+    }
 
     // No auto-compute on input changes — user clicks Calculate
     // ['rf-protocol','rf-tx-power',...].forEach — removed
