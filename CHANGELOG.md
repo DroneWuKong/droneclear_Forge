@@ -1,5 +1,17 @@
 # Changelog
 
+## [Data Quality Gate] - 2026-04-02
+
+### Added
+- `miners/validate_entry.py` — quality gate that validates part names, manufacturers, categories, and PIDs before any mined data enters the DB
+- Validation wired into all 3 commercial miners (`mine_getfpv.py`, `mine_rdq.py`, `mine_manufacturer.py`) — garbage entries are logged and rejected before merge
+
+### Fixed
+- Removed 9 garbage entries from `forge_database.json` (empty names, generic "VTX"/"VTX SMA" entries from vtx.in.ua scraper)
+- Removed 34 exact duplicate entries across frames, VTX, receivers, and motors
+- Fixed 261 missing manufacturer fields by extracting brand names from product names (Gemfan, HQProp, Lumenier, RunCam, DALProp, iFlight, etc.)
+- Total parts: 3553 → 3510 (cleaner, no junk in front of users)
+
 ## [Firmware Miner + Bulk Data Enrichment] - 2026-04-02
 
 ### Added

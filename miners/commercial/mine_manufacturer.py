@@ -338,4 +338,13 @@ if __name__ == '__main__':
     print(f"\nTotal: {len(all_entries)} products from {len(targets)} manufacturers")
     
     if all_entries:
-        merge_into_db(all_entries, db_path, dry_run=args.dry_run)
+        # Quality gate
+        sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
+        from validate_entry import validate_parts_batch
+        accepted, rejected = validate_parts_batch(all_entries)
+        if rejected:
+            print(f"\n  ⚠️  Quality gate rejected {len(rejected)} entries:")
+            for entry, reason in rejected[:10]:
+                print(f"    REJECT: \"{entry.get('name','')}\" — {reason}")
+        print(f"  ✓ {len(accepted)} entries passed validation")
+        merge_into_db(accepted, db_path, dry_run=args.dry_run)
