@@ -1219,6 +1219,16 @@
             <!-- Issue list -->
             <div id="mesh-issues" style="display:none;margin-bottom:10px;"></div>
 
+            <!-- Link profile viewer — click a link to see elevation profile -->
+            <div id="mesh-link-profile" style="display:none;margin-bottom:10px;padding:10px;background:var(--bg-panel);border:1px solid var(--border-color);border-radius:var(--radius-sm);">
+                <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
+                    <span id="mesh-profile-title" style="font-size:10px;font-weight:600;color:var(--text-main);text-transform:uppercase;letter-spacing:0.08em;"></span>
+                    <button onclick="document.getElementById('mesh-link-profile').style.display='none'" style="border:none;background:none;color:var(--text-faint);cursor:pointer;font-size:12px;">✕</button>
+                </div>
+                <svg id="mesh-profile-svg" width="100%" height="180" viewBox="0 0 700 180" preserveAspectRatio="xMidYMid meet" style="border:1px solid var(--border-color);border-radius:var(--radius-sm);background:var(--bg-dark);"></svg>
+                <div id="mesh-profile-detail" style="font-size:10px;color:var(--text-muted);margin-top:4px;"></div>
+            </div>
+
             <!-- Export -->
             <div style="text-align:center;margin:12px 0;">
                 <button onclick="meshExport()" style="padding:8px 20px;background:none;border:1px solid var(--accent-red);border-radius:var(--radius-sm);color:var(--accent-red);font-size:11px;font-weight:600;font-family:var(--font-family);cursor:pointer;">↓ EXPORT MESH REPORT</button>
@@ -2139,6 +2149,7 @@ renderVtxTable();
     window._rfGetElevations=getElevations;
     window._rfAnalyzePath=analyzePath;
     window._rfLinkBudget=linkBudget;
+    window._rfDrawProfile=drawProfile;
 
     // ── Shared: compute full terrain link between two points ──
     async function computeFullLink(fromLat,fromLon,fromH,toLat,toLon,toH,proto,txP,txG,rxG,fade,samples,label){
@@ -3525,29 +3536,53 @@ renderVtxTable();
             }
         }
         // Pass 2: terrain for borderline links (margin between -10 and +30 dB)
-        // Skip pairs that are clearly connected (>30 dB) or clearly dead (<-10 dB)
         var terrainLinks=links.filter(function(l){return l.margin>-10&&l.margin<30;});
+        var terrainOK=0,terrainFail=0;
         if(terrainLinks.length>0&&terrainLinks.length<=60){
             document.getElementById('mesh-link-count').textContent='terrain for '+terrainLinks.length+'/'+totalPairs+' links...';
             for(var k=0;k<terrainLinks.length;k++){
                 var tl=terrainLinks[k];
                 try{
                     var pts=window._rfInterpolatePoints(tl.fromNode.lat,tl.fromNode.lon,tl.toNode.lat,tl.toNode.lon,15);
-                    var elev;
-                    try{elev=await window._rfGetElevations(pts);}catch(e){elev={elevations:pts.map(function(){return 0;}),source:'flat'};}
+                    var elev=null;
+                    // Try elevation with retry
+                    for(var attempt=0;attempt<2&&!elev;attempt++){
+                        try{
+                            var result=await window._rfGetElevations(pts);
+                            if(result&&result.elevations)elev=result;
+                        }catch(e){}
+                    }
+                    if(!elev)elev={elevations:pts.map(function(){return 0;}),source:'flat'};
                     var dists=pts.map(function(p){return hav(tl.fromNode.lat,tl.fromNode.lon,p.lat,p.lon);});
                     var hFrom=tl.fromNode.height||defaultH,hTo=tl.toNode.height||defaultH;
                     var pwr=Math.min(tl.fromNode.power||defaultTxP,tl.toNode.power||defaultTxP);
                     var analysis=window._rfAnalyzePath(elev.elevations,dists,hFrom,hTo,proto.freq);
                     var budget=window._rfLinkBudget(analysis,pwr,proto.rxSens,txG,rxG,proto.freq,0);
-                    tl.margin=budget.margin;
-                    tl.diffLoss=analysis.diffLoss;
-                    tl.hasLOS=analysis.hasLOS;
-                    tl.fspl=budget.fLoss;
-                    tl.rxPow=budget.rxPow;
-                    tl.terrainDone=true;
-                }catch(e){/* keep FSPL values */}
+                    tl.margin=budget.margin;tl.diffLoss=analysis.diffLoss;
+                    tl.hasLOS=analysis.hasLOS;tl.fspl=budget.fLoss;tl.rxPow=budget.rxPow;
+                    tl.terrainDone=true;tl.analysis=analysis;tl.elevSource=elev.source;
+                    terrainOK++;
+                }catch(e){terrainFail++;}
             }
+        }
+        // Also compute terrain for ALL connected links (even strong ones) for profile viewing
+        var nonTerrainConnected=links.filter(function(l){return !l.terrainDone&&l.margin>=minMargin;});
+        for(var k=0;k<nonTerrainConnected.length&&k<30;k++){
+            var tl=nonTerrainConnected[k];
+            try{
+                var pts=window._rfInterpolatePoints(tl.fromNode.lat,tl.fromNode.lon,tl.toNode.lat,tl.toNode.lon,15);
+                var elev=null;
+                try{elev=await window._rfGetElevations(pts);}catch(e){}
+                if(!elev)elev={elevations:pts.map(function(){return 0;}),source:'flat'};
+                var dists=pts.map(function(p){return hav(tl.fromNode.lat,tl.fromNode.lon,p.lat,p.lon);});
+                var hFrom=tl.fromNode.height||defaultH,hTo=tl.toNode.height||defaultH;
+                var pwr=Math.min(tl.fromNode.power||defaultTxP,tl.toNode.power||defaultTxP);
+                var analysis=window._rfAnalyzePath(elev.elevations,dists,hFrom,hTo,proto.freq);
+                var budget=window._rfLinkBudget(analysis,pwr,proto.rxSens,txG,rxG,proto.freq,0);
+                tl.margin=budget.margin;tl.diffLoss=analysis.diffLoss;tl.hasLOS=analysis.hasLOS;
+                tl.terrainDone=true;tl.analysis=analysis;tl.elevSource=elev.source;
+                terrainOK++;
+            }catch(e){terrainFail++;}
         }
         // Classify and draw
         links.forEach(function(l){
@@ -3557,10 +3592,12 @@ renderVtxTable();
             var tip=l.from+' \u2194 '+l.to+': '+l.margin.toFixed(1)+' dB';
             if(l.terrainDone)tip+=' (terrain'+(l.hasLOS?'':' \u2014 LOS blocked')+')';
             if(l.connected){
-                l.polyline=L.polyline([[l.fromNode.lat,l.fromNode.lon],[l.toNode.lat,l.toNode.lon]],{color:color,weight:2,opacity:0.7}).addTo(meshMap);
-                l.polyline.bindTooltip(tip,{sticky:true});
+                l.polyline=L.polyline([[l.fromNode.lat,l.fromNode.lon],[l.toNode.lat,l.toNode.lon]],{color:color,weight:3,opacity:0.7}).addTo(meshMap);
+                l.polyline.bindTooltip(tip+' — click for profile',{sticky:true});
+                (function(link){l.polyline.on('click',function(){meshShowLinkProfile(link);});})(l);
             } else {
                 l.polyline=L.polyline([[l.fromNode.lat,l.fromNode.lon],[l.toNode.lat,l.toNode.lon]],{color:'#333',weight:1,opacity:0.3,dashArray:'4,8'}).addTo(meshMap);
+                (function(link){l.polyline.on('click',function(){meshShowLinkProfile(link);});})(l);
             }
         });
         meshLinks=links;
@@ -3743,6 +3780,67 @@ renderVtxTable();
         meshHeatLayer=L.layerGroup(rects).addTo(meshMap);
         // Move heatmap below markers
         if(meshHeatLayer._map)meshHeatLayer.eachLayer(function(l){l.bringToBack();});
+    }
+
+    // ── Link profile viewer ──
+    function meshShowLinkProfile(link){
+        var panel=document.getElementById('mesh-link-profile');
+        var title=document.getElementById('mesh-profile-title');
+        var detail=document.getElementById('mesh-profile-detail');
+        var svg=document.getElementById('mesh-profile-svg');
+        if(!panel||!svg)return;
+        title.textContent=link.from+' \u2194 '+link.to+' — '+link.dist.toFixed(2)+' km';
+        if(link.analysis&&window._rfDrawProfile){
+            // Draw the profile using the RF terrain draw function but targeting our SVG
+            var analysis=link.analysis;
+            var proto=meshGetProto();
+            // Build profile HTML manually (same as drawProfile but for mesh SVG)
+            var pts=analysis.points,totalD=analysis.totalD;
+            var W=700,H=180,PX=50,PY=14,PB=22;
+            var plotW=W-2*PX,plotH=H-PY-PB;
+            var elevs=pts.map(function(p){return p.elev;}),losVals=pts.map(function(p){return p.los;});
+            var maxF=Math.max.apply(null,pts.map(function(p){return p.f1;}));
+            var allH=elevs.concat(losVals);
+            var minHv=Math.min.apply(null,allH)-maxF*0.3,maxHv=Math.max.apply(null,allH)+maxF*0.5;
+            var rangeH=maxHv-minHv||1;
+            function toX(d){return PX+(plotW*d)/totalD;}
+            function toY(h){return PY+plotH*(1-(h-minHv)/rangeH);}
+            var html='<defs><linearGradient id="mtg" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#1a3a2a" stop-opacity="0.9"/><stop offset="100%" stop-color="#0a1510" stop-opacity="0.5"/></linearGradient></defs>';
+            // Grid
+            var step=Math.pow(10,Math.floor(Math.log10(rangeH/4)));
+            for(var v=Math.ceil(minHv/step)*step;v<=maxHv;v+=step){
+                html+='<line x1="'+PX+'" y1="'+toY(v)+'" x2="'+(W-PX)+'" y2="'+toY(v)+'" stroke="#162030" stroke-width="0.3"/>';
+                html+='<text x="'+(PX-4)+'" y="'+(toY(v)+3)+'" fill="#4a5f75" font-size="7" text-anchor="end">'+Math.round(v)+'m</text>';
+            }
+            // Terrain fill
+            var tPath=pts.map(function(p,i){return(i===0?'M':'L')+toX(p.dist).toFixed(1)+','+toY(p.elev).toFixed(1);}).join(' ');
+            tPath+=' L'+toX(totalD).toFixed(1)+','+(H-PB)+' L'+PX+','+(H-PB)+' Z';
+            html+='<path d="'+tPath+'" fill="url(#mtg)"/>';
+            // Terrain color segments
+            for(var i=0;i<pts.length-1;i++){
+                var c=pts[i].obstructed?'#f87171':pts[i].fresnelObs?'#eab308':'#4ade80';
+                html+='<line x1="'+toX(pts[i].dist)+'" y1="'+toY(pts[i].elev)+'" x2="'+toX(pts[i+1].dist)+'" y2="'+toY(pts[i+1].elev)+'" stroke="'+c+'" stroke-width="1.5"/>';
+            }
+            // LOS line
+            html+='<line x1="'+toX(0)+'" y1="'+toY(pts[0].los)+'" x2="'+toX(totalD)+'" y2="'+toY(pts[pts.length-1].los)+'" stroke="#22d3ee" stroke-width="1.5"/>';
+            // Fresnel zone
+            var fTop=pts.map(function(p,i){return(i===0?'M':'L')+toX(p.dist).toFixed(1)+','+toY(p.los+p.f60).toFixed(1);}).join(' ');
+            var fBot=pts.slice().reverse().map(function(p){return'L'+toX(p.dist).toFixed(1)+','+toY(p.los-p.f60).toFixed(1);}).join(' ');
+            html+='<path d="'+fTop+' '+fBot+' Z" fill="rgba(34,211,238,0.06)" stroke="rgba(34,211,238,0.3)" stroke-width="0.5" stroke-dasharray="3,2"/>';
+            // Endpoints
+            html+='<circle cx="'+toX(0)+'" cy="'+toY(pts[0].los)+'" r="4" fill="'+link.fromNode.color+'" stroke="#0b0f14" stroke-width="1.5"/>';
+            html+='<text x="'+toX(0)+'" y="'+(toY(pts[0].los)-8)+'" fill="'+link.fromNode.color+'" font-size="8" text-anchor="middle" font-weight="700">'+link.from+'</text>';
+            html+='<circle cx="'+toX(totalD)+'" cy="'+toY(pts[pts.length-1].los)+'" r="4" fill="'+link.toNode.color+'" stroke="#0b0f14" stroke-width="1.5"/>';
+            html+='<text x="'+toX(totalD)+'" y="'+(toY(pts[pts.length-1].los)-8)+'" fill="'+link.toNode.color+'" font-size="8" text-anchor="middle" font-weight="700">'+link.to+'</text>';
+            svg.innerHTML=html;
+        } else {
+            svg.innerHTML='<text x="350" y="90" fill="#4a5f75" font-size="11" text-anchor="middle">No terrain data — analyze mesh first</text>';
+        }
+        // Detail line
+        var mc=link.margin>10?'#4ade80':link.margin>0?'#eab308':'#f87171';
+        detail.innerHTML='<span style="color:'+mc+';font-weight:700;">'+link.margin.toFixed(1)+' dB margin</span> · FSPL '+link.fspl.toFixed(1)+' dB · '+(link.terrainDone?'Diffr '+link.diffLoss.toFixed(1)+' dB · LOS '+(link.hasLOS?'<span style=color:#4ade80>clear</span>':'<span style=color:#f87171>blocked</span>')+' · '+link.elevSource:'FSPL only');
+        panel.style.display='block';
+        panel.scrollIntoView({behavior:'smooth',block:'nearest'});
     }
 
     window.meshExport=function(){
