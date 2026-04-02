@@ -1262,6 +1262,13 @@
                 </div>
                 <svg id="mesh-profile-svg" width="100%" height="180" viewBox="0 0 700 180" preserveAspectRatio="xMidYMid meet" style="border:1px solid var(--border-color);border-radius:var(--radius-sm);background:var(--bg-dark);"></svg>
                 <div id="mesh-profile-detail" style="font-size:10px;color:var(--text-muted);margin-top:4px;"></div>
+                <div id="mesh-link-trace" style="display:none;margin-top:6px;">
+                    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:3px;">
+                        <span style="font-size:8px;color:var(--text-faint);text-transform:uppercase;">Trace link</span>
+                        <span id="mesh-trace-info" style="font-size:9px;color:var(--accent-red);font-family:var(--font-mono);"></span>
+                    </div>
+                    <input type="range" id="mesh-trace-slider" min="0" max="100" value="0" style="width:100%;accent-color:var(--accent-red);" oninput="meshTraceUpdate()">
+                </div>
             </div>
 
             <!-- Export -->
@@ -3222,9 +3229,9 @@ renderVtxTable();
         html+='<div style="margin-bottom:8px;padding:6px 10px;border-radius:var(--radius-sm);background:'+qc+'15;border:1px solid '+qc+'40;color:'+qc+';font-size:11px;font-weight:600;">Weakest: '+oq.toUpperCase()+' \u2014 '+worstMargin.toFixed(1)+' dB</div>';
         html+='<table style="width:100%;font-size:10px;border-collapse:collapse;">';
         html+='<tr style="color:var(--text-faint);text-transform:uppercase;font-size:9px;"><th style="text-align:left;padding:3px;">Pilot\u2192</th><th>Dist</th><th>FSPL</th><th>Diffr</th><th>RX</th><th>Margin</th><th>LOS</th></tr>';
-        links.forEach(function(l){
+        links.forEach(function(l,idx){
             var lc=l.quality==='excellent'||l.quality==='good'?'#4ade80':l.quality==='marginal'?'#eab308':'#f87171';
-            html+='<tr style="border-top:1px solid var(--border-color);"><td style="padding:3px;color:var(--text-muted);">'+l.to+'</td>';
+            html+='<tr onclick="rfShowWpProfile('+idx+')" style="border-top:1px solid var(--border-color);cursor:pointer;" onmouseover="this.style.background=\'rgba(34,211,238,0.05)\'" onmouseout="this.style.background=\'none\'"><td style="padding:3px;color:var(--text-muted);">'+l.to+' \u203A</td>';
             html+='<td style="text-align:center;color:var(--text-muted);">'+l.distKm.toFixed(2)+'</td>';
             html+='<td style="text-align:center;color:var(--text-muted);">'+l.fsplDb.toFixed(1)+'</td>';
             html+='<td style="text-align:center;color:'+(l.diffLoss>3?'#f87171':'var(--text-muted)')+';">'+l.diffLoss.toFixed(1)+'</td>';
@@ -3233,6 +3240,8 @@ renderVtxTable();
             html+='<td style="text-align:center;color:'+(l.hasLOS?'#4ade80':'#f87171')+';">'+(l.hasLOS?'\u2713':'\u2717')+'</td></tr>';
         });
         html+='</table>';
+        // Store links for click handler
+        window._rfWpLinks=links;
         var maxD=Math.max.apply(null,links.map(function(l){return l.distKm;}));
         html+='<div style="margin-top:8px;">';
         links.sort(function(a,b){return a.distKm-b.distKm;}).forEach(function(l){
@@ -3363,6 +3372,32 @@ renderVtxTable();
         rfHeatLayer=L.layerGroup(rects).addTo(rfMap);
         rfHeatLayer.eachLayer(function(l){l.bringToBack();});
     }
+
+    // ── Clickable waypoint profile viewer ──
+    var rfWpSightLine=null;
+    window.rfShowWpProfile=function(idx){
+        var links=window._rfWpLinks;
+        if(!links||!links[idx]||!links[idx].result)return;
+        var link=links[idx];
+        var analysis=link.result.analysis;
+        var proto=getProto();
+        // Draw profile into the main profile SVG
+        drawProfile(analysis,proto.freq);
+        // Show sight line from pilot to this waypoint on the map
+        if(rfWpSightLine&&rfMap){rfMap.removeLayer(rfWpSightLine);rfWpSightLine=null;}
+        var L=window.L;
+        if(L&&rfMap&&rfWaypoints.length>0){
+            var pilot=rfWaypoints[0];
+            var wp=rfWaypoints[idx+1]; // +1 because links[0] = pilot→WP1
+            if(wp){
+                rfWpSightLine=L.polyline([[pilot.lat,pilot.lon],[wp.lat,wp.lon]],{color:'#ffffff',weight:2,dashArray:'4,6',opacity:0.6}).addTo(rfMap);
+                rfMap.fitBounds([[pilot.lat,pilot.lon],[wp.lat,wp.lon]],{padding:[30,30]});
+            }
+        }
+        // Update status
+        var mc=link.margin>10?'#4ade80':link.margin>0?'#eab308':'#f87171';
+        document.getElementById('rf-status').innerHTML='Profile: Pilot \u2192 '+link.to+' \u2014 <span style="color:'+mc+';">'+link.margin.toFixed(1)+' dB</span> \u2014 '+(link.hasLOS?'LOS clear':'LOS blocked');
+    };
 
     window.rfExportReport=function(){
         // Capture map as image via Leaflet
@@ -3617,7 +3652,11 @@ renderVtxTable();
     function meshClearLinks(){
         meshLinks.forEach(function(l){if(l.polyline&&meshMap)meshMap.removeLayer(l.polyline);});
         meshLinks=[];
+        if(meshProfileSightLine&&meshMap){meshMap.removeLayer(meshProfileSightLine);meshProfileSightLine=null;}
+        if(meshTraceMarker&&meshMap){meshMap.removeLayer(meshTraceMarker);meshTraceMarker=null;}
+        meshTraceData=null;
         document.getElementById('mesh-link-count').textContent='0 links';
+        document.getElementById('mesh-link-profile').style.display='none';
     }
 
     // ── Haversine (local copy) ──
@@ -3960,9 +3999,58 @@ renderVtxTable();
         // Detail line
         var mc=link.margin>10?'#4ade80':link.margin>0?'#eab308':'#f87171';
         detail.innerHTML='<span style="color:'+mc+';font-weight:700;">'+link.margin.toFixed(1)+' dB margin</span> · FSPL '+link.fspl.toFixed(1)+' dB · '+(link.terrainDone?'Diffr '+link.diffLoss.toFixed(1)+' dB · LOS '+(link.hasLOS?'<span style=color:#4ade80>clear</span>':'<span style=color:#f87171>blocked</span>')+' · '+link.elevSource:'FSPL only');
+        // Sight line on map
+        if(meshProfileSightLine&&meshMap){meshMap.removeLayer(meshProfileSightLine);meshProfileSightLine=null;}
+        var L=window.L;
+        if(L&&meshMap){
+            meshProfileSightLine=L.polyline([[link.fromNode.lat,link.fromNode.lon],[link.toNode.lat,link.toNode.lon]],{color:'#ffffff',weight:2,dashArray:'4,6',opacity:0.6}).addTo(meshMap);
+            meshMap.fitBounds([[link.fromNode.lat,link.fromNode.lon],[link.toNode.lat,link.toNode.lon]],{padding:[40,40]});
+        }
         panel.style.display='block';
         panel.scrollIntoView({behavior:'smooth',block:'nearest'});
+        // Build trace slider for this link
+        meshBuildLinkTrace(link);
     }
+    var meshProfileSightLine=null;
+    var meshTraceMarker=null;
+    var meshTraceData=null;
+
+    // Build trace for mesh link when profile is shown
+    function meshBuildLinkTrace(link){
+        var proto=meshGetProto();
+        var STEPS=50;
+        var pts=[];
+        for(var s=0;s<=STEPS;s++){
+            var t=s/STEPS;
+            var lat=link.fromNode.lat+(link.toNode.lat-link.fromNode.lat)*t;
+            var lon=link.fromNode.lon+(link.toNode.lon-link.fromNode.lon)*t;
+            var d=hav(link.fromNode.lat,link.fromNode.lon,lat,lon)/1000;
+            var fspl=d>0.001?(20*Math.log10(d)+20*Math.log10(proto.freq)+32.44):0;
+            var pwr=Math.min(link.fromNode.power||30,link.toNode.power||30);
+            var margin=pwr+2+2-fspl-proto.rxSens;
+            pts.push({lat:lat,lon:lon,d:d,margin:margin});
+        }
+        meshTraceData=pts;
+        document.getElementById('mesh-link-trace').style.display='block';
+        document.getElementById('mesh-trace-slider').value=0;
+        meshTraceUpdate();
+    }
+
+    window.meshTraceUpdate=function(){
+        if(!meshTraceData||!meshTraceData.length)return;
+        var pct=parseInt(document.getElementById('mesh-trace-slider').value);
+        var idx=Math.min(Math.floor(pct/100*meshTraceData.length),meshTraceData.length-1);
+        var pt=meshTraceData[idx];
+        var L=window.L;
+        if(!meshTraceMarker&&L&&meshMap){
+            meshTraceMarker=L.circleMarker([pt.lat,pt.lon],{radius:5,color:'#fff',fillColor:'#22d3ee',fillOpacity:1,weight:2}).addTo(meshMap);
+        } else if(meshTraceMarker){
+            meshTraceMarker.setLatLng([pt.lat,pt.lon]);
+        }
+        var mc=pt.margin>15?'#4ade80':pt.margin>6?'#eab308':pt.margin>0?'#f59e0b':'#ef4444';
+        var status=pt.margin>15?'STRONG':pt.margin>6?'OK':pt.margin>0?'WEAK':'LOST';
+        document.getElementById('mesh-trace-info').innerHTML='<span style="color:'+mc+';">'+status+'</span> '+pt.margin.toFixed(1)+' dB \u00B7 '+pt.d.toFixed(2)+' km';
+    };
 
     window.meshExport=function(){
         var h=document.getElementById('mesh-health');
