@@ -837,29 +837,56 @@
                 <p class="tool-desc">Real-terrain link analysis using elevation data. Drag TX/RX markers on the map. Computes path profile, Fresnel zone clearance, knife-edge diffraction, and full link budget. Uses USGS 3DEP (1m, US) with SRTM (30m, global) fallback.</p>
             </div>
 
-            <!-- Map container (first, prominent) -->
-            <div id="rf-map" style="width:100%; height:300px; border-radius:var(--radius-md); border:1px solid var(--border-color); margin-bottom:8px; background:var(--bg-dark); cursor:crosshair;"></div>
-            <div style="display:flex; justify-content:space-between; align-items:center; font-size:11px; color:var(--text-muted); margin-bottom:8px; flex-wrap:wrap; gap:4px;">
+            <!-- Map container with layer controls -->
+            <div style="position:relative;">
+                <div id="rf-map" style="width:100%; height:300px; border-radius:var(--radius-md); border:1px solid var(--border-color); background:var(--bg-dark); cursor:crosshair;"></div>
+                <!-- Map layer switcher -->
+                <div style="position:absolute; top:8px; right:8px; z-index:999; display:flex; gap:2px; background:rgba(11,15,20,0.85); border-radius:var(--radius-sm); padding:3px; border:1px solid var(--border-color);">
+                    <button class="rf-layer-btn active" data-layer="dark" onclick="rfSetLayer('dark')" title="Dark" style="padding:3px 7px; border:none; border-radius:3px; background:rgba(34,211,238,0.12); color:var(--accent-red); font-size:9px; cursor:pointer; font-family:var(--font-family);">Dark</button>
+                    <button class="rf-layer-btn" data-layer="light" onclick="rfSetLayer('light')" title="Light" style="padding:3px 7px; border:none; border-radius:3px; background:none; color:var(--text-faint); font-size:9px; cursor:pointer; font-family:var(--font-family);">Light</button>
+                    <button class="rf-layer-btn" data-layer="sat" onclick="rfSetLayer('sat')" title="Satellite" style="padding:3px 7px; border:none; border-radius:3px; background:none; color:var(--text-faint); font-size:9px; cursor:pointer; font-family:var(--font-family);">Sat</button>
+                    <button class="rf-layer-btn" data-layer="topo" onclick="rfSetLayer('topo')" title="Terrain" style="padding:3px 7px; border:none; border-radius:3px; background:none; color:var(--text-faint); font-size:9px; cursor:pointer; font-family:var(--font-family);">Topo</button>
+                </div>
+            </div>
+            <div style="display:flex; justify-content:space-between; align-items:center; font-size:10px; color:var(--text-muted); margin:6px 0; flex-wrap:wrap; gap:4px;">
                 <span><span style="color:var(--accent-red);">●</span> TX: <span id="rf-tx-coords">click to place</span> &nbsp; <span style="color:#2a9d8f;">●</span> RX: <span id="rf-rx-coords">—</span></span>
                 <span id="rf-status"></span>
             </div>
 
             <!-- Location search below map -->
-            <div style="position:relative; margin-bottom:12px;">
-                <div style="display:flex; gap:8px;">
+            <div style="position:relative; margin-bottom:10px;">
+                <div style="display:flex; gap:6px;">
                     <div style="flex:1; position:relative;">
-                        <input type="text" id="rf-coord-input" class="tool-input" placeholder="Jump to: address, city, or coordinates (DD, DMS, MGRS)"
-                            style="width:100%; font-size:12px; padding:7px 12px;" autocomplete="off">
+                        <input type="text" id="rf-coord-input" class="tool-input" placeholder="Jump to: address, city, or coords (DD, DMS, MGRS)"
+                            style="width:100%; font-size:11px; padding:6px 10px;" autocomplete="off">
                         <div id="rf-autocomplete" style="display:none; position:absolute; top:100%; left:0; right:0; z-index:999; background:var(--bg-panel); border:1px solid var(--border-color); border-top:none; border-radius:0 0 var(--radius-sm) var(--radius-sm); max-height:200px; overflow-y:auto;"></div>
                     </div>
                 </div>
-                <div id="rf-coord-display" style="font-size:10px; color:var(--text-faint); margin-top:4px; font-family:var(--font-mono);"></div>
+                <div id="rf-coord-display" style="font-size:9px; color:var(--text-faint); margin-top:3px; font-family:var(--font-mono);"></div>
             </div>
 
-            <!-- Calculate button -->
-            <button id="rf-calc-btn" onclick="rfCompute()" style="width:100%; padding:10px; background:var(--accent-red); color:#fff; border:none; border-radius:var(--radius-sm); font-size:14px; font-weight:600; font-family:var(--font-family); cursor:pointer; margin-bottom:12px; letter-spacing:0.05em;">
-                CALCULATE LINK
-            </button>
+            <!-- Action buttons row -->
+            <div style="display:flex; gap:6px; margin-bottom:10px;">
+                <button id="rf-calc-btn" onclick="rfCompute()" style="flex:1; padding:7px; background:var(--accent-red); color:#fff; border:none; border-radius:var(--radius-sm); font-size:12px; font-weight:600; font-family:var(--font-family); cursor:pointer; letter-spacing:0.05em;">
+                    CALCULATE
+                </button>
+                <button onclick="rfUndoLastPoint()" style="padding:7px 10px; border:1px solid var(--border-color); border-radius:var(--radius-sm); background:none; color:var(--text-muted); font-size:10px; font-family:var(--font-family); cursor:pointer;" title="Remove last placed point">
+                    ← Undo
+                </button>
+                <button onclick="rfClearAllPoints()" style="padding:7px 10px; border:1px solid var(--border-color); border-radius:var(--radius-sm); background:none; color:var(--text-muted); font-size:10px; font-family:var(--font-family); cursor:pointer;" title="Clear all points and reset">
+                    ✕ Clear
+                </button>
+            </div>
+
+            <!-- Route trace slider (shown after waypoint calc) -->
+            <div id="rf-route-trace" style="display:none; margin-bottom:10px; padding:8px 10px; background:var(--bg-panel); border:1px solid var(--border-color); border-radius:var(--radius-sm);">
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:4px;">
+                    <span style="font-size:9px; font-weight:600; color:var(--text-main); text-transform:uppercase; letter-spacing:0.08em;">Route Trace — drag to fly the path</span>
+                    <span id="rf-trace-info" style="font-size:10px; color:var(--accent-red); font-family:var(--font-mono); font-weight:600;"></span>
+                </div>
+                <input type="range" id="rf-trace-slider" min="0" max="100" value="0" style="width:100%; accent-color:var(--accent-red);">
+                <div id="rf-trace-detail" style="font-size:10px; color:var(--text-muted); margin-top:4px; font-family:var(--font-mono);"></div>
+            </div>
 
             <!-- Advanced mode toggle -->
             <div style="margin-bottom:16px;">
@@ -2137,19 +2164,154 @@ renderVtxTable();
     }
 
     let mapInited=false;
+    // ── Map tile layers ──
+    const RF_LAYERS={
+        dark:  'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',
+        light: 'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png',
+        sat:   'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
+        topo:  'https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png',
+    };
+    let rfTileLayer=null;
+
     function initRFMap(){
         if(mapInited)return;
         mapInited=true;
         const L=window.L;
         if(!L||!document.getElementById('rf-map'))return;
-        // Center on US by default, or user's last search
         rfMap=L.map('rf-map',{center:[39.0,-98.0],zoom:4,zoomControl:true});
-        L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',{attribution:'&copy; OSM &copy; CARTO',maxZoom:19}).addTo(rfMap);
-        // Click-to-place handler
+        rfTileLayer=L.tileLayer(RF_LAYERS.dark,{attribution:'&copy; OSM',maxZoom:19}).addTo(rfMap);
         rfMap.on('click',rfMapClick);
-        // Setup address autocomplete
         rfSetupAutocomplete();
+        // Route trace slider
+        var slider=document.getElementById('rf-trace-slider');
+        if(slider)slider.addEventListener('input',rfTraceUpdate);
         setTimeout(function(){rfMap.invalidateSize();},200);
+    }
+
+    window.rfSetLayer=function(key){
+        if(!rfMap||!rfTileLayer)return;
+        rfTileLayer.setUrl(RF_LAYERS[key]||RF_LAYERS.dark);
+        document.querySelectorAll('.rf-layer-btn').forEach(b=>{
+            const active=b.dataset.layer===key;
+            b.style.background=active?'rgba(34,211,238,0.12)':'none';
+            b.style.color=active?'var(--accent-red)':'var(--text-faint)';
+        });
+    };
+
+    // ── Universal point management ──
+    window.rfClearAllPoints=function(){
+        // Clear simple mode
+        if(txMarker){rfMap.removeLayer(txMarker);txMarker=null;}
+        if(rxMarker){rfMap.removeLayer(rxMarker);rxMarker=null;}
+        if(pathLine){rfMap.removeLayer(pathLine);pathLine=null;}
+        txPos=null;rxPos=null;rfClickState=0;
+        document.getElementById('rf-tx-coords').textContent='click to place';
+        document.getElementById('rf-rx-coords').textContent='—';
+        document.getElementById('rf-status').textContent='';
+        // Clear waypoints
+        if(typeof rfClearWaypoints==='function')rfClearWaypoints();
+        // Clear repeater
+        if(typeof rfClearRepeater==='function')rfClearRepeater();
+        // Clear route trace
+        rfClearTrace();
+        // Clear results
+        document.getElementById('rf-results').innerHTML='';
+        document.getElementById('rf-advanced-results').style.display='none';
+        var svg=document.getElementById('rf-profile-svg');
+        if(svg)svg.innerHTML='';
+    };
+
+    window.rfUndoLastPoint=function(){
+        if(rfAdvanced&&rfAdvMode==='waypoint'&&rfWaypoints.length>0){
+            rfUndoWaypoint();
+            return;
+        }
+        if(rfAdvanced&&rfAdvMode==='repeater'&&rfRepeaterPts.length>0){
+            var last=rfRepeaterPts.pop();
+            var lastM=rfRepeaterMarkers.pop();
+            if(lastM&&rfMap)rfMap.removeLayer(lastM);
+            rfDrawRepeaterLines();
+            rfUpdateRepeaterStatus();
+            return;
+        }
+        // Simple mode: undo RX first, then TX
+        if(rxMarker){rfMap.removeLayer(rxMarker);rxMarker=null;rxPos=null;rfClickState=1;
+            if(pathLine){rfMap.removeLayer(pathLine);pathLine=null;}
+            document.getElementById('rf-rx-coords').textContent='click to place RX...';
+        } else if(txMarker){rfMap.removeLayer(txMarker);txMarker=null;txPos=null;rfClickState=0;
+            document.getElementById('rf-tx-coords').textContent='click to place';
+        }
+    };
+
+    // ── Route trace (fly the path) ──
+    let rfTraceMarker=null;
+    let rfTraceSegments=[];  // [{latlngs:[[lat,lon],...], margins:[...]}]
+
+    function rfClearTrace(){
+        if(rfTraceMarker&&rfMap){rfMap.removeLayer(rfTraceMarker);rfTraceMarker=null;}
+        rfTraceSegments.forEach(s=>{if(s.polyline&&rfMap)rfMap.removeLayer(s.polyline);});
+        rfTraceSegments=[];
+        document.getElementById('rf-route-trace').style.display='none';
+    }
+
+    function rfBuildTrace(){
+        if(!rfAdvanced||rfAdvMode!=='waypoint'||rfWaypoints.length<2)return;
+        rfClearTrace();
+        const L=window.L;
+        const proto=getProto();
+        const txP=getVal('rf-tx-power'),txG=getVal('rf-tx-gain'),rxG=getVal('rf-rx-gain');
+        const fade=getVal('rf-fade-margin');
+        const pilot=rfWaypoints[0];
+        const STEPS=100;
+        let allPts=[];
+        // Build full route path interpolated
+        for(let i=0;i<rfWaypoints.length-1;i++){
+            const a=rfWaypoints[i],b=rfWaypoints[i+1];
+            for(let s=0;s<=STEPS/(rfWaypoints.length-1);s++){
+                const t=s/(STEPS/(rfWaypoints.length-1));
+                const lat=a.lat+(b.lat-a.lat)*t;
+                const lon=a.lon+(b.lon-a.lon)*t;
+                const d=haversine(pilot.lat,pilot.lon,lat,lon)/1000;
+                const fsplDb=d>0?(20*Math.log10(d)+20*Math.log10(proto.freq)+32.44):0;
+                const rxPower=txP+txG+rxG-fsplDb;
+                const margin=rxPower-proto.rxSens-fade;
+                allPts.push({lat,lon,d,margin,rxPower});
+            }
+        }
+        // Draw colored polyline segments
+        for(let i=0;i<allPts.length-1;i++){
+            const m=allPts[i].margin;
+            const color=m>15?'#4ade80':m>6?'#eab308':m>0?'#f59e0b':'#ef4444';
+            const seg=L.polyline([[allPts[i].lat,allPts[i].lon],[allPts[i+1].lat,allPts[i+1].lon]],
+                {color:color,weight:4,opacity:0.8}).addTo(rfMap);
+            rfTraceSegments.push({polyline:seg});
+        }
+        // Store points for slider
+        rfTraceSegments._allPts=allPts;
+        // Show slider
+        document.getElementById('rf-route-trace').style.display='block';
+        document.getElementById('rf-trace-slider').value=0;
+        rfTraceUpdate();
+    }
+
+    function rfTraceUpdate(){
+        const pts=rfTraceSegments._allPts;
+        if(!pts||!pts.length)return;
+        const pct=parseInt(document.getElementById('rf-trace-slider').value);
+        const idx=Math.min(Math.floor(pct/100*pts.length),pts.length-1);
+        const pt=pts[idx];
+        const L=window.L;
+        // Move or create drone marker
+        if(!rfTraceMarker){
+            rfTraceMarker=L.circleMarker([pt.lat,pt.lon],{radius:6,color:'#fff',fillColor:'#22d3ee',fillOpacity:1,weight:2}).addTo(rfMap);
+        } else {
+            rfTraceMarker.setLatLng([pt.lat,pt.lon]);
+        }
+        const mColor=pt.margin>15?'#4ade80':pt.margin>6?'#eab308':pt.margin>0?'#f59e0b':'#ef4444';
+        const status=pt.margin>15?'STRONG':pt.margin>6?'OK':pt.margin>0?'WEAK':'LOST';
+        document.getElementById('rf-trace-info').innerHTML='<span style="color:'+mColor+'">'+status+'</span> '+pt.margin.toFixed(1)+' dB';
+        document.getElementById('rf-trace-detail').textContent=
+            pt.d.toFixed(2)+' km from pilot · '+pt.rxPower.toFixed(1)+' dBm · '+pt.lat.toFixed(5)+', '+pt.lon.toFixed(5);
     }
 
     function updateMapMarkers(){
@@ -2590,6 +2752,8 @@ renderVtxTable();
         el.innerHTML=html;
         el.style.display='block';
         document.getElementById('rf-status').innerHTML='<span style="color:#4ade80;">● '+links.length+' waypoints from pilot</span>';
+        // Build route trace with colored path
+        rfBuildTrace();
     }
 
     // ── Repeater relay compute — repeater is RF origin ──
