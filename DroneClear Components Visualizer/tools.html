@@ -2058,6 +2058,12 @@ renderVtxTable();
         return{fLoss,diffLoss:analysis.diffLoss,total,rxPow,margin,ok:margin>0,quality:q};
     }
 
+    // Expose terrain pipeline for other tools (mesh planner)
+    window._rfInterpolatePoints=interpolatePoints;
+    window._rfGetElevations=getElevations;
+    window._rfAnalyzePath=analyzePath;
+    window._rfLinkBudget=linkBudget;
+
     // ── Shared: compute full terrain link between two points ──
     async function computeFullLink(fromLat,fromLon,fromH,toLat,toLon,toH,proto,txP,txG,rxG,fade,samples,label){
         var pts=interpolatePoints(fromLat,fromLon,toLat,toLon,samples||25);
@@ -3405,7 +3411,7 @@ renderVtxTable();
     }
 
     // ── Compute mesh ──
-    window.meshCompute=function(){
+    window.meshCompute=async function(){
         var active=meshNodes.filter(function(n){return n.active;});
         if(active.length<2){document.getElementById('mesh-health').innerHTML='<div style="color:#f87171;padding:8px;font-size:11px;">Need at least 2 active nodes</div>';document.getElementById('mesh-health').style.display='block';return;}
         meshClearLinks();
@@ -3413,11 +3419,13 @@ renderVtxTable();
         var txP=parseFloat(document.getElementById('mesh-tx-power').value)||30;
         var nodeH=parseFloat(document.getElementById('mesh-node-height').value)||50;
         var minMargin=parseFloat(document.getElementById('mesh-min-margin').value)||6;
-        var txG=2,rxG=2; // Default antenna gains for mesh radios
+        var txG=2,rxG=2;
         var L=window.L;
         var links=[];
         var n=active.length;
-        // Compute every pair
+        var totalPairs=n*(n-1)/2;
+        document.getElementById('mesh-link-count').textContent='computing '+totalPairs+' pairs...';
+        // Pass 1: FSPL for all pairs (instant)
         for(var i=0;i<n;i++){
             for(var j=i+1;j<n;j++){
                 var a=active[i],b=active[j];
@@ -3425,21 +3433,51 @@ renderVtxTable();
                 var fspl=20*Math.log10(d)+20*Math.log10(proto.freq)+32.44;
                 var rxPow=txP+txG+rxG-fspl;
                 var margin=rxPow-proto.rxSens;
-                var quality=margin>20?'excellent':margin>minMargin?'good':margin>0?'weak':'fail';
-                var connected=margin>=minMargin;
-                var color=margin>20?'#4ade80':margin>minMargin?'#eab308':margin>0?'#f59e0b':'#ef4444';
-                var polyline=null;
-                if(connected){
-                    polyline=L.polyline([[a.lat,a.lon],[b.lat,b.lon]],{color:color,weight:2,opacity:0.7}).addTo(meshMap);
-                    polyline.bindTooltip(a.id+' ↔ '+b.id+': '+margin.toFixed(1)+' dB',{sticky:true});
-                } else {
-                    polyline=L.polyline([[a.lat,a.lon],[b.lat,b.lon]],{color:'#333',weight:1,opacity:0.3,dashArray:'4,8'}).addTo(meshMap);
-                }
-                links.push({from:a.id,to:b.id,dist:d,margin:margin,quality:quality,connected:connected,polyline:polyline,rxPow:rxPow,fspl:fspl});
+                links.push({from:a.id,to:b.id,fromNode:a,toNode:b,dist:d,margin:margin,fspl:fspl,rxPow:rxPow,
+                    diffLoss:0,hasLOS:true,terrainDone:false,quality:'',connected:false,polyline:null});
             }
         }
+        // Pass 2: terrain for borderline links (margin between -10 and +30 dB)
+        // Skip pairs that are clearly connected (>30 dB) or clearly dead (<-10 dB)
+        var terrainLinks=links.filter(function(l){return l.margin>-10&&l.margin<30;});
+        if(terrainLinks.length>0&&terrainLinks.length<=60){
+            document.getElementById('mesh-link-count').textContent='terrain for '+terrainLinks.length+'/'+totalPairs+' links...';
+            for(var k=0;k<terrainLinks.length;k++){
+                var tl=terrainLinks[k];
+                try{
+                    var pts=window._rfInterpolatePoints(tl.fromNode.lat,tl.fromNode.lon,tl.toNode.lat,tl.toNode.lon,15);
+                    var elev;
+                    try{elev=await window._rfGetElevations(pts);}catch(e){elev={elevations:pts.map(function(){return 0;}),source:'flat'};}
+                    var dists=pts.map(function(p){return hav(tl.fromNode.lat,tl.fromNode.lon,p.lat,p.lon);});
+                    var analysis=window._rfAnalyzePath(elev.elevations,dists,nodeH,nodeH,proto.freq);
+                    var budget=window._rfLinkBudget(analysis,txP,proto.rxSens,txG,rxG,proto.freq,0);
+                    tl.margin=budget.margin;
+                    tl.diffLoss=analysis.diffLoss;
+                    tl.hasLOS=analysis.hasLOS;
+                    tl.fspl=budget.fLoss;
+                    tl.rxPow=budget.rxPow;
+                    tl.terrainDone=true;
+                }catch(e){/* keep FSPL values */}
+            }
+        }
+        // Classify and draw
+        links.forEach(function(l){
+            l.quality=l.margin>20?'excellent':l.margin>minMargin?'good':l.margin>0?'weak':'fail';
+            l.connected=l.margin>=minMargin;
+            var color=l.margin>20?'#4ade80':l.margin>minMargin?'#eab308':l.margin>0?'#f59e0b':'#ef4444';
+            var tip=l.from+' \u2194 '+l.to+': '+l.margin.toFixed(1)+' dB';
+            if(l.terrainDone)tip+=' (terrain'+(l.hasLOS?'':' \u2014 LOS blocked')+')';
+            if(l.connected){
+                l.polyline=L.polyline([[l.fromNode.lat,l.fromNode.lon],[l.toNode.lat,l.toNode.lon]],{color:color,weight:2,opacity:0.7}).addTo(meshMap);
+                l.polyline.bindTooltip(tip,{sticky:true});
+            } else {
+                l.polyline=L.polyline([[l.fromNode.lat,l.fromNode.lon],[l.toNode.lat,l.toNode.lon]],{color:'#333',weight:1,opacity:0.3,dashArray:'4,8'}).addTo(meshMap);
+            }
+        });
         meshLinks=links;
-        document.getElementById('mesh-link-count').textContent=links.filter(function(l){return l.connected;}).length+'/'+links.length+' connected';
+        var connCount=links.filter(function(l){return l.connected;}).length;
+        var terrainCount=links.filter(function(l){return l.terrainDone;}).length;
+        document.getElementById('mesh-link-count').textContent=connCount+'/'+links.length+' connected'+(terrainCount>0?' ('+terrainCount+' terrain-verified)':'');
         meshAnalyze(active,links,minMargin,proto);
         if(meshHeatEnabled)meshBuildHeatmap();
     };
