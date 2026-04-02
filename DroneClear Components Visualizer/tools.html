@@ -3375,26 +3375,39 @@ renderVtxTable();
 
     // ── Clickable waypoint profile viewer ──
     var rfWpSightLine=null;
-    window.rfShowWpProfile=function(idx){
+    window.rfShowWpProfile=async function(idx){
         var links=window._rfWpLinks;
-        if(!links||!links[idx]||!links[idx].result)return;
+        if(!links||!links[idx])return;
         var link=links[idx];
-        var analysis=link.result.analysis;
         var proto=getProto();
-        // Draw profile into the main profile SVG
+        var pilot=rfWaypoints[0];
+        var wp=rfWaypoints[idx+1];
+        // Compute terrain on-demand if not already done
+        if(!link.result||!link.result.analysis){
+            document.getElementById('rf-status').innerHTML='<span style="color:#eab308;">Computing terrain for '+link.to+'...</span>';
+            try{
+                var txH=getVal('rf-tx-height'),rxH=getVal('rf-rx-height');
+                var txP=getVal('rf-tx-power'),txG=getVal('rf-tx-gain'),rxG=getVal('rf-rx-gain');
+                var fade=getVal('rf-fade-margin'),samples=getVal('rf-samples');
+                var result=await computeFullLink(pilot.lat,pilot.lon,txH,wp.lat,wp.lon,rxH,proto,txP,txG,rxG,fade,samples);
+                link.result=result;
+                link.margin=result.budget.margin;link.hasLOS=result.analysis.hasLOS;
+                link.diffLoss=result.analysis.diffLoss;link.fsplDb=result.budget.fLoss;
+                link.rxPower=result.budget.rxPow;link.quality=result.budget.quality;
+            }catch(e){
+                document.getElementById('rf-status').innerHTML='<span style="color:#f87171;">Terrain failed for '+link.to+'</span>';
+                return;
+            }
+        }
+        var analysis=link.result.analysis;
         drawProfile(analysis,proto.freq);
         // Show sight line from pilot to this waypoint on the map
         if(rfWpSightLine&&rfMap){rfMap.removeLayer(rfWpSightLine);rfWpSightLine=null;}
         var L=window.L;
-        if(L&&rfMap&&rfWaypoints.length>0){
-            var pilot=rfWaypoints[0];
-            var wp=rfWaypoints[idx+1]; // +1 because links[0] = pilot→WP1
-            if(wp){
-                rfWpSightLine=L.polyline([[pilot.lat,pilot.lon],[wp.lat,wp.lon]],{color:'#ffffff',weight:2,dashArray:'4,6',opacity:0.6}).addTo(rfMap);
-                rfMap.fitBounds([[pilot.lat,pilot.lon],[wp.lat,wp.lon]],{padding:[30,30]});
-            }
+        if(L&&rfMap&&pilot&&wp){
+            rfWpSightLine=L.polyline([[pilot.lat,pilot.lon],[wp.lat,wp.lon]],{color:'#ffffff',weight:2,dashArray:'4,6',opacity:0.6}).addTo(rfMap);
+            rfMap.fitBounds([[pilot.lat,pilot.lon],[wp.lat,wp.lon]],{padding:[30,30]});
         }
-        // Update status
         var mc=link.margin>10?'#4ade80':link.margin>0?'#eab308':'#f87171';
         document.getElementById('rf-status').innerHTML='Profile: Pilot \u2192 '+link.to+' \u2014 <span style="color:'+mc+';">'+link.margin.toFixed(1)+' dB</span> \u2014 '+(link.hasLOS?'LOS clear':'LOS blocked');
     };
