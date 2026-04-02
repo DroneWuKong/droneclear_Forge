@@ -837,27 +837,23 @@
                 <p class="tool-desc">Real-terrain link analysis using elevation data. Drag TX/RX markers on the map. Computes path profile, Fresnel zone clearance, knife-edge diffraction, and full link budget. Uses USGS 3DEP (1m, US) with SRTM (30m, global) fallback.</p>
             </div>
 
-            <!-- Smart location search with autocomplete -->
-            <div style="position:relative; margin-bottom:8px;">
+            <!-- Map container (first, prominent) -->
+            <div id="rf-map" style="width:100%; height:300px; border-radius:var(--radius-md); border:1px solid var(--border-color); margin-bottom:8px; background:var(--bg-dark); cursor:crosshair;"></div>
+            <div style="display:flex; justify-content:space-between; align-items:center; font-size:11px; color:var(--text-muted); margin-bottom:8px; flex-wrap:wrap; gap:4px;">
+                <span><span style="color:var(--accent-red);">●</span> TX: <span id="rf-tx-coords">click to place</span> &nbsp; <span style="color:#2a9d8f;">●</span> RX: <span id="rf-rx-coords">—</span></span>
+                <span id="rf-status"></span>
+            </div>
+
+            <!-- Location search below map -->
+            <div style="position:relative; margin-bottom:12px;">
                 <div style="display:flex; gap:8px;">
                     <div style="flex:1; position:relative;">
-                        <input type="text" id="rf-coord-input" class="tool-input" placeholder="Address, city, or coordinates (DD, DMS, MGRS)"
-                            style="width:100%; font-size:13px; padding:8px 12px;" autocomplete="off">
+                        <input type="text" id="rf-coord-input" class="tool-input" placeholder="Jump to: address, city, or coordinates (DD, DMS, MGRS)"
+                            style="width:100%; font-size:12px; padding:7px 12px;" autocomplete="off">
                         <div id="rf-autocomplete" style="display:none; position:absolute; top:100%; left:0; right:0; z-index:999; background:var(--bg-panel); border:1px solid var(--border-color); border-top:none; border-radius:0 0 var(--radius-sm) var(--radius-sm); max-height:200px; overflow-y:auto;"></div>
                     </div>
                 </div>
                 <div id="rf-coord-display" style="font-size:10px; color:var(--text-faint); margin-top:4px; font-family:var(--font-mono);"></div>
-            </div>
-
-            <div style="font-size:11px; color:var(--text-muted); margin-bottom:8px; padding:6px 10px; background:var(--bg-dark); border-radius:var(--radius-sm);">
-                <strong style="color:var(--text-main);">Click map</strong> to place TX (1st click) and RX (2nd click). Or search above.
-            </div>
-
-            <!-- Map container -->
-            <div id="rf-map" style="width:100%; height:300px; border-radius:var(--radius-md); border:1px solid var(--border-color); margin-bottom:8px; background:var(--bg-dark); cursor:crosshair;"></div>
-            <div style="display:flex; justify-content:space-between; align-items:center; font-size:11px; color:var(--text-muted); margin-bottom:12px; flex-wrap:wrap; gap:4px;">
-                <span><span style="color:var(--accent-red);">●</span> TX: <span id="rf-tx-coords">—</span> &nbsp; <span style="color:#2a9d8f;">●</span> RX: <span id="rf-rx-coords">—</span></span>
-                <span id="rf-status"></span>
             </div>
 
             <!-- Calculate button -->
@@ -906,29 +902,94 @@
                 <!-- Repeater mode -->
                 <div id="rf-repeater-panel" style="display:none;">
                     <div style="font-size:11px; color:var(--text-muted); margin-bottom:8px; padding:6px 10px; background:var(--bg-dark); border-radius:var(--radius-sm);">
-                        Click map: 1st = Pilot (GCS), 2nd = Repeater drone, 3rd = Target drone. Calculates both relay legs.
+                        Click map: 1st = Pilot (GCS), 2nd = Repeater drone, 3rd = Target drone. Each leg has independent RF config.
                     </div>
-                    <div class="input-grid" style="margin-bottom:8px;">
-                        <div class="input-group">
-                            <label class="input-label">Repeater height (AGL)</label>
-                            <div class="input-row">
-                                <input type="number" class="tool-input" id="rf-repeater-height" value="80" min="5" max="500" step="5">
-                                <span class="input-unit">m</span>
+
+                    <!-- Leg 1: Pilot → Repeater -->
+                    <div style="margin-bottom:10px; padding:10px; border:1px solid var(--border-color); border-radius:var(--radius-sm); border-left:3px solid #22d3ee;">
+                        <div style="font-size:10px; font-weight:600; color:#22d3ee; text-transform:uppercase; letter-spacing:0.08em; margin-bottom:6px;">Leg 1 — Pilot → Repeater</div>
+                        <div class="input-grid">
+                            <div class="input-group">
+                                <label class="input-label">Protocol</label>
+                                <select class="tool-select" id="rf-leg1-proto">
+                                    <option value="ELRS_900" selected>ExpressLRS 900M</option>
+                                    <option value="ELRS_2G4">ExpressLRS 2.4G</option>
+                                    <option value="CRSF">Crossfire (TBS)</option>
+                                    <option value="GHST">GHST (ImmersionRC)</option>
+                                    <option value="DJI_O3">DJI O3/O4</option>
+                                    <option value="DOODLE_MESH">Doodle Labs Mesh</option>
+                                    <option value="SILVUS">Silvus StreamCaster</option>
+                                    <option value="RFD900X">RFD900x</option>
+                                    <option value="PERSISTENT">Persistent MPU5</option>
+                                </select>
+                            </div>
+                            <div class="input-group">
+                                <label class="input-label">TX power</label>
+                                <div class="input-row">
+                                    <input type="number" class="tool-input" id="rf-leg1-power" value="27" min="0" max="50">
+                                    <span class="input-unit">dBm</span>
+                                </div>
+                            </div>
+                            <div class="input-group">
+                                <label class="input-label">Pilot height (AGL)</label>
+                                <div class="input-row">
+                                    <input type="number" class="tool-input" id="rf-pilot-height" value="2" min="0" max="100" step="0.5">
+                                    <span class="input-unit">m</span>
+                                </div>
+                            </div>
+                            <div class="input-group">
+                                <label class="input-label">Repeater height (AGL)</label>
+                                <div class="input-row">
+                                    <input type="number" class="tool-input" id="rf-repeater-height" value="80" min="5" max="500" step="5">
+                                    <span class="input-unit">m</span>
+                                </div>
                             </div>
                         </div>
-                        <div class="input-group">
-                            <label class="input-label">Repeater→Target protocol</label>
-                            <select class="tool-select" id="rf-repeater-proto">
-                                <option value="same">Same as primary</option>
-                                <option value="ELRS_2G4">ExpressLRS 2.4G</option>
-                                <option value="ELRS_900">ExpressLRS 900M</option>
-                                <option value="CRSF">Crossfire (TBS)</option>
-                                <option value="DJI_O3">DJI O3/O4</option>
-                                <option value="DOODLE_MESH">Doodle Labs Mesh</option>
-                                <option value="SILVUS">Silvus StreamCaster</option>
-                            </select>
+                    </div>
+
+                    <!-- Leg 2: Repeater → Target -->
+                    <div style="margin-bottom:10px; padding:10px; border:1px solid var(--border-color); border-radius:var(--radius-sm); border-left:3px solid #f59e0b;">
+                        <div style="font-size:10px; font-weight:600; color:#f59e0b; text-transform:uppercase; letter-spacing:0.08em; margin-bottom:6px;">Leg 2 — Repeater → Target</div>
+                        <div class="input-grid">
+                            <div class="input-group">
+                                <label class="input-label">Protocol</label>
+                                <select class="tool-select" id="rf-leg2-proto">
+                                    <option value="same">Same as Leg 1</option>
+                                    <option value="ELRS_900">ExpressLRS 900M</option>
+                                    <option value="ELRS_2G4">ExpressLRS 2.4G</option>
+                                    <option value="CRSF">Crossfire (TBS)</option>
+                                    <option value="GHST">GHST (ImmersionRC)</option>
+                                    <option value="DJI_O3">DJI O3/O4</option>
+                                    <option value="DOODLE_MESH">Doodle Labs Mesh</option>
+                                    <option value="SILVUS">Silvus StreamCaster</option>
+                                    <option value="RFD900X">RFD900x</option>
+                                    <option value="PERSISTENT">Persistent MPU5</option>
+                                </select>
+                            </div>
+                            <div class="input-group">
+                                <label class="input-label">TX power</label>
+                                <div class="input-row">
+                                    <input type="number" class="tool-input" id="rf-leg2-power" value="27" min="0" max="50">
+                                    <span class="input-unit">dBm</span>
+                                </div>
+                            </div>
+                            <div class="input-group">
+                                <label class="input-label">Target height (AGL)</label>
+                                <div class="input-row">
+                                    <input type="number" class="tool-input" id="rf-target-height" value="50" min="0" max="500" step="5">
+                                    <span class="input-unit">m</span>
+                                </div>
+                            </div>
+                            <div class="input-group">
+                                <label class="input-label">Fade margin</label>
+                                <div class="input-row">
+                                    <input type="number" class="tool-input" id="rf-relay-fade" value="6" min="0" max="20">
+                                    <span class="input-unit">dB</span>
+                                </div>
+                            </div>
                         </div>
                     </div>
+
                     <div id="rf-repeater-status" style="font-size:11px; color:var(--text-muted);"></div>
                 </div>
             </div>
@@ -2548,31 +2609,37 @@ renderVtxTable();
     // ── Repeater relay compute ──
     async function rfComputeRepeater(){
         if(rfRepeaterPts.length<3)return;
-        const proto1=getProto();
-        const rProtoKey=document.getElementById('rf-repeater-proto').value;
-        const proto2=rProtoKey==='same'?proto1:RF_PROTOCOLS[rProtoKey]||proto1;
-        const txP=getVal('rf-tx-power'),txG=getVal('rf-tx-gain'),rxG=getVal('rf-rx-gain');
-        const pilotH=getVal('rf-tx-height'),targetH=getVal('rf-rx-height');
+        // Leg 1 config from dedicated inputs
+        const p1Key=document.getElementById('rf-leg1-proto').value;
+        const proto1=RF_PROTOCOLS[p1Key]||RF_PROTOCOLS.ELRS_900;
+        const txP1=parseFloat(document.getElementById('rf-leg1-power').value)||27;
+        const pilotH=parseFloat(document.getElementById('rf-pilot-height').value)||2;
         const repeaterH=parseFloat(document.getElementById('rf-repeater-height').value)||80;
-        const fade=getVal('rf-fade-margin');
+        // Leg 2 config from dedicated inputs
+        const p2Key=document.getElementById('rf-leg2-proto').value;
+        const proto2=p2Key==='same'?proto1:(RF_PROTOCOLS[p2Key]||proto1);
+        const txP2=parseFloat(document.getElementById('rf-leg2-power').value)||27;
+        const targetH=parseFloat(document.getElementById('rf-target-height').value)||50;
+        const fade=parseFloat(document.getElementById('rf-relay-fade').value)||6;
+        const txG=getVal('rf-tx-gain'),rxG=getVal('rf-rx-gain');
         document.getElementById('rf-status').innerHTML='<span style="color:#eab308;">● computing relay...</span>';
 
         // Leg 1: Pilot → Repeater
         const d1=haversine(rfRepeaterPts[0].lat,rfRepeaterPts[0].lon,rfRepeaterPts[1].lat,rfRepeaterPts[1].lon)/1000;
         const fspl1=20*Math.log10(d1)+20*Math.log10(proto1.freq)+32.44;
-        const rx1=txP+txG+rxG-fspl1;
+        const rx1=txP1+txG+rxG-fspl1;
         const m1=rx1-proto1.sens-fade;
 
         // Leg 2: Repeater → Target
         const d2=haversine(rfRepeaterPts[1].lat,rfRepeaterPts[1].lon,rfRepeaterPts[2].lat,rfRepeaterPts[2].lon)/1000;
         const fspl2=20*Math.log10(d2)+20*Math.log10(proto2.freq)+32.44;
-        const rx2=txP+txG+rxG-fspl2;
+        const rx2=txP2+txG+rxG-fspl2;
         const m2=rx2-proto2.sens-fade;
 
-        // Total distance (direct vs relay)
+        // Total distance (direct vs relay — uses leg 1 power/proto)
         const dDirect=haversine(rfRepeaterPts[0].lat,rfRepeaterPts[0].lon,rfRepeaterPts[2].lat,rfRepeaterPts[2].lon)/1000;
         const fsplDirect=20*Math.log10(dDirect)+20*Math.log10(proto1.freq)+32.44;
-        const rxDirect=txP+txG+rxG-fsplDirect;
+        const rxDirect=txP1+txG+rxG-fsplDirect;
         const mDirect=rxDirect-proto1.sens-fade;
 
         const worstRelay=Math.min(m1,m2);
