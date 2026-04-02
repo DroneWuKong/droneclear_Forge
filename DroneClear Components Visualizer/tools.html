@@ -2519,50 +2519,77 @@ renderVtxTable();
         const proto=getProto();
         const txP=getVal('rf-tx-power'),txG=getVal('rf-tx-gain'),rxG=getVal('rf-rx-gain');
         const txH=getVal('rf-tx-height'),rxH=getVal('rf-rx-height');
-        const fade=getVal('rf-fade-margin'),samples=getVal('rf-samples');
-        document.getElementById('rf-status').innerHTML='<span style="color:#eab308;">● computing multi-leg...</span>';
+        const fade=getVal('rf-fade-margin');
+        document.getElementById('rf-status').innerHTML='<span style="color:#eab308;">● computing waypoints...</span>';
 
-        let legs=[];
+        // Pilot = first waypoint (TX, the RF origin)
+        const pilot=rfWaypoints[0];
+        let links=[];
         let worstMargin=999;
-        let totalDist=0;
 
-        for(let i=0;i<rfWaypoints.length-1;i++){
-            const a=rfWaypoints[i],b=rfWaypoints[i+1];
-            const dist=haversine(a.lat,a.lon,b.lat,b.lon);
-            totalDist+=dist;
+        // Calculate propagation from pilot to EACH waypoint independently
+        for(let i=1;i<rfWaypoints.length;i++){
+            const wp=rfWaypoints[i];
+            const dist=haversine(pilot.lat,pilot.lon,wp.lat,wp.lon);
             const distKm=dist/1000;
             const fsplDb=20*Math.log10(distKm)+20*Math.log10(proto.freq)+32.44;
             const rxPower=txP+txG+rxG-fsplDb;
             const margin=rxPower-proto.sens-fade;
             const quality=margin>20?'excellent':margin>10?'good':margin>3?'marginal':margin>0?'weak':'fail';
             if(margin<worstMargin) worstMargin=margin;
-            legs.push({from:a.label||('WP'+i),to:b.label||('WP'+(i+1)),distKm,fsplDb,rxPower,margin,quality});
+            const label=wp.label||('WP'+i);
+            links.push({to:label,distKm,fsplDb,rxPower,margin,quality,lat:wp.lat,lon:wp.lon});
         }
+
+        // Also calc sequential legs for total route distance
+        let totalRouteDist=0;
+        for(let i=0;i<rfWaypoints.length-1;i++){
+            totalRouteDist+=haversine(rfWaypoints[i].lat,rfWaypoints[i].lon,rfWaypoints[i+1].lat,rfWaypoints[i+1].lon);
+        }
+        const farthest=Math.max(...links.map(l=>l.distKm));
 
         const overallQuality=worstMargin>20?'excellent':worstMargin>10?'good':worstMargin>3?'marginal':worstMargin>0?'weak':'fail';
         const qColor=overallQuality==='excellent'||overallQuality==='good'?'#4ade80':overallQuality==='marginal'?'#eab308':'#f87171';
 
-        let html='<div style="margin-bottom:12px; font-size:13px; font-weight:700; color:var(--text-main);">MULTI-LEG ANALYSIS — '+rfWaypoints.length+' points, '+(totalDist/1000).toFixed(2)+' km total</div>';
-        html+='<div style="margin-bottom:12px; padding:8px 12px; border-radius:var(--radius-sm); background:'+qColor+'15; border:1px solid '+qColor+'40; color:'+qColor+'; font-size:12px; font-weight:600;">Overall: '+overallQuality.toUpperCase()+' — weakest leg margin: '+worstMargin.toFixed(1)+' dB</div>';
+        let html='<div style="margin-bottom:12px; font-size:13px; font-weight:700; color:var(--text-main);">PROPAGATION FROM PILOT — '+rfWaypoints.length+' points</div>';
+        html+='<div style="font-size:11px; color:var(--text-muted); margin-bottom:8px;">RF origin: <span style="color:#22d3ee;">Pilot @ '+pilot.lat.toFixed(5)+', '+pilot.lon.toFixed(5)+'</span> · Route: '+(totalRouteDist/1000).toFixed(2)+' km · Farthest waypoint: '+farthest.toFixed(2)+' km</div>';
+
+        html+='<div style="margin-bottom:12px; padding:8px 12px; border-radius:var(--radius-sm); background:'+qColor+'15; border:1px solid '+qColor+'40; color:'+qColor+'; font-size:12px; font-weight:600;">Weakest link: '+overallQuality.toUpperCase()+' — '+worstMargin.toFixed(1)+' dB margin</div>';
+
+        // Table: pilot → each waypoint
         html+='<table style="width:100%; font-size:11px; border-collapse:collapse;">';
-        html+='<tr style="color:var(--text-faint); text-transform:uppercase; letter-spacing:0.05em;"><th style="text-align:left; padding:4px;">Leg</th><th>Distance</th><th>FSPL</th><th>RX Power</th><th>Margin</th><th>Status</th></tr>';
-        legs.forEach((leg,i)=>{
-            const lc=leg.quality==='excellent'||leg.quality==='good'?'#4ade80':leg.quality==='marginal'?'#eab308':'#f87171';
+        html+='<tr style="color:var(--text-faint); text-transform:uppercase; letter-spacing:0.05em;"><th style="text-align:left; padding:4px;">Pilot →</th><th>Distance</th><th>FSPL</th><th>RX Power</th><th>Margin</th><th>Link</th></tr>';
+        links.forEach((link)=>{
+            const lc=link.quality==='excellent'||link.quality==='good'?'#4ade80':link.quality==='marginal'?'#eab308':'#f87171';
             html+='<tr style="border-top:1px solid var(--border-color);">';
-            html+='<td style="padding:4px; color:var(--text-muted);">'+leg.from+' → '+leg.to+'</td>';
-            html+='<td style="text-align:center; color:var(--text-muted);">'+leg.distKm.toFixed(2)+' km</td>';
-            html+='<td style="text-align:center; color:var(--text-muted);">'+leg.fsplDb.toFixed(1)+' dB</td>';
-            html+='<td style="text-align:center; color:var(--accent-red);">'+leg.rxPower.toFixed(1)+' dBm</td>';
-            html+='<td style="text-align:center; color:'+lc+'; font-weight:600;">'+leg.margin.toFixed(1)+' dB</td>';
-            html+='<td style="text-align:center; color:'+lc+'; font-weight:600; text-transform:uppercase;">'+leg.quality+'</td>';
+            html+='<td style="padding:4px; color:var(--text-muted);">'+link.to+'</td>';
+            html+='<td style="text-align:center; color:var(--text-muted);">'+link.distKm.toFixed(2)+' km</td>';
+            html+='<td style="text-align:center; color:var(--text-muted);">'+link.fsplDb.toFixed(1)+' dB</td>';
+            html+='<td style="text-align:center; color:var(--accent-red);">'+link.rxPower.toFixed(1)+' dBm</td>';
+            html+='<td style="text-align:center; color:'+lc+'; font-weight:600;">'+link.margin.toFixed(1)+' dB</td>';
+            html+='<td style="text-align:center; color:'+lc+'; font-weight:600; text-transform:uppercase;">'+link.quality+'</td>';
             html+='</tr>';
         });
         html+='</table>';
 
+        // Visual: margin bars sorted by distance
+        html+='<div style="margin-top:12px;">';
+        const maxDist=Math.max(...links.map(l=>l.distKm));
+        links.sort((a,b)=>a.distKm-b.distKm).forEach(link=>{
+            const pct=maxDist>0?(link.distKm/maxDist*100):100;
+            const lc=link.quality==='excellent'||link.quality==='good'?'#4ade80':link.quality==='marginal'?'#eab308':'#f87171';
+            html+='<div style="display:flex; align-items:center; gap:8px; margin-bottom:4px;">';
+            html+='<span style="min-width:40px; font-size:10px; color:var(--text-muted); font-family:var(--font-mono);">'+link.to+'</span>';
+            html+='<div style="flex:1; height:8px; background:var(--bg-dark); border-radius:4px; overflow:hidden;"><div style="width:'+pct+'%; height:100%; background:'+lc+'; border-radius:4px;"></div></div>';
+            html+='<span style="min-width:55px; font-size:10px; color:'+lc+'; font-weight:600; text-align:right;">'+link.margin.toFixed(1)+' dB</span>';
+            html+='</div>';
+        });
+        html+='</div>';
+
         const el=document.getElementById('rf-advanced-results');
         el.innerHTML=html;
         el.style.display='block';
-        document.getElementById('rf-status').innerHTML='<span style="color:#4ade80;">● '+legs.length+' legs computed</span>';
+        document.getElementById('rf-status').innerHTML='<span style="color:#4ade80;">● '+links.length+' waypoints from pilot</span>';
     }
 
     // ── Repeater relay compute — repeater is RF origin ──
