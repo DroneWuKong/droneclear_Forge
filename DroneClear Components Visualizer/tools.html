@@ -1167,6 +1167,20 @@
                 <button onclick="cacheClear('mesh')" style="margin-left:auto;padding:2px 6px;border:1px solid var(--border-color);border-radius:3px;background:none;color:var(--text-faint);font-size:8px;cursor:pointer;font-family:var(--font-family);">Clear</button>
             </div>
 
+            <!-- DEM upload -->
+            <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px;padding:5px 8px;background:var(--bg-dark);border-radius:var(--radius-sm);font-size:9px;color:var(--text-faint);">
+                <span>DEM:</span>
+                <label style="padding:2px 8px;border:1px solid var(--border-color);border-radius:3px;background:none;color:var(--text-muted);font-size:9px;cursor:pointer;font-family:var(--font-family);">
+                    ↑ Load .hgt
+                    <input type="file" accept=".hgt" multiple onchange="rfLoadDEM(this.files)" style="display:none;">
+                </label>
+                <span id="mesh-dem-status" style="flex:1;color:var(--text-faint);font-size:8px;">No local DEM — using API</span>
+                <button onclick="rfClearDEM()" style="padding:2px 6px;border:1px solid var(--border-color);border-radius:3px;background:none;color:var(--text-faint);font-size:8px;cursor:pointer;font-family:var(--font-family);">Clear</button>
+            </div>
+            <div style="font-size:8px;color:var(--text-faint);margin-bottom:8px;padding:2px 8px;">
+                Load SRTM .hgt for instant terrain. <a href="https://dwtkns.com/srtm30m/" target="_blank" style="color:var(--accent-red);text-decoration:none;">Download tiles here</a>. Shared with RF Terrain tool.
+            </div>
+
             <!-- Mesh config -->
             <div class="input-grid" style="margin-bottom:10px;">
                 <div class="input-group">
@@ -2193,7 +2207,6 @@ renderVtxTable();
 
     // ── DEM file upload handler ──
     window.rfLoadDEM=function(files){
-        var statusEl=document.getElementById('rf-dem-status');
         if(!files||!files.length)return;
         var loaded=0,failed=0;
         Array.from(files).forEach(function(file){
@@ -2201,17 +2214,17 @@ renderVtxTable();
             reader.onload=function(e){
                 var dem=parseHGT(e.target.result,file.name);
                 if(dem){
-                    // Check for duplicate
                     var exists=loadedDEMs.some(function(d){return d.lat===dem.lat&&d.lon===dem.lon;});
                     if(!exists)loadedDEMs.push(dem);
                     loaded++;
                 } else {failed++;}
                 if(loaded+failed===files.length){
-                    elevCache.clear(); // Invalidate cache so new DEM is used
-                    if(statusEl)statusEl.innerHTML='<span style="color:#4ade80;">'+loaded+' DEM tile'+(loaded>1?'s':'')+' loaded</span>'+(failed?' <span style="color:#f87171;">'+failed+' failed</span>':'')+' — '+loadedDEMs.length+' total covering '+loadedDEMs.map(function(d){
+                    elevCache.clear();
+                    var msg='<span style="color:#4ade80;">'+loaded+' tile'+(loaded>1?'s':'')+' loaded</span>'+(failed?' <span style="color:#f87171;">'+failed+' failed</span>':'')+' — '+loadedDEMs.map(function(d){
                         var ns=d.lat>=0?'N':'S',ew=d.lon>=0?'E':'W';
                         return ns+Math.abs(d.lat)+ew+Math.abs(d.lon);
                     }).join(', ');
+                    ['rf-dem-status','mesh-dem-status'].forEach(function(id){var el=document.getElementById(id);if(el)el.innerHTML=msg;});
                 }
             };
             reader.readAsArrayBuffer(file);
@@ -2221,8 +2234,7 @@ renderVtxTable();
     window.rfClearDEM=function(){
         loadedDEMs=[];
         elevCache.clear();
-        var el=document.getElementById('rf-dem-status');
-        if(el)el.textContent='Cleared — using API fallback';
+        ['rf-dem-status','mesh-dem-status'].forEach(function(id){var el=document.getElementById(id);if(el)el.textContent='Cleared — using API';});
     };
 
     function analyzePath(elevs,dists,txH,rxH,fMHz){
