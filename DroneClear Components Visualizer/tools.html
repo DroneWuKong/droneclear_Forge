@@ -2556,7 +2556,52 @@ renderVtxTable();
             var budget=linkBudget(analysis,txP,proto.rxSens,txG,rxG,proto.freq,fade);
             updateMapMarkers();
             drawProfile(analysis,proto.freq);
-            renderResults(analysis,budget,proto,elev.source);
+            // Inline results — write directly to cards
+            var distKm=analysis.totalDkm;
+            var qKey=budget.quality||'fail';
+            var qColors={excellent:'#4ade80',good:'#4ade80',marginal:'#eab308',weak:'#f87171',fail:'#f87171'};
+            var qLabels={excellent:'EXCELLENT',good:'GOOD',marginal:'MARGINAL',weak:'WEAK',fail:'NO LINK'};
+            var qc=qColors[qKey]||'#f87171';
+            // Quality badge
+            var badge=document.getElementById('rf-quality-badge');
+            if(badge){badge.innerHTML='<span style="color:'+qc+';font-weight:700;">'+qLabels[qKey]+'</span>';badge.style.background=qc+'12';badge.style.border='1px solid '+qc+'40';}
+            // Status
+            if(txPos)document.getElementById('rf-tx-coords').textContent=txPos.lat.toFixed(5)+', '+txPos.lon.toFixed(5);
+            if(rxPos)document.getElementById('rf-rx-coords').textContent=rxPos.lat.toFixed(5)+', '+rxPos.lon.toFixed(5);
+            document.getElementById('rf-status').innerHTML='Distance: <span style="color:var(--accent-red)">'+distKm.toFixed(2)+' km</span>';
+            document.getElementById('rf-freq-label').textContent=proto.freq+' MHz';
+            document.getElementById('rf-sens-label').textContent=proto.rxSens+' dBm';
+            document.getElementById('rf-mod-label').textContent=proto.mod;
+            // Results card
+            document.getElementById('rf-results').innerHTML='<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;font-size:10px;">'+
+                '<div><div style="font-size:20px;font-weight:700;color:var(--accent-red);">'+distKm.toFixed(2)+'</div><div style="color:var(--text-muted);text-transform:uppercase;">Distance km</div></div>'+
+                '<div><div style="font-size:20px;font-weight:700;color:var(--accent-red);">'+budget.fLoss.toFixed(1)+'</div><div style="color:var(--text-muted);text-transform:uppercase;">FSPL dB</div></div>'+
+                '<div><div style="font-size:20px;font-weight:700;color:'+qc+';">'+budget.margin.toFixed(1)+'</div><div style="color:var(--text-muted);text-transform:uppercase;">Margin dB</div></div>'+
+                '<div><div style="font-size:20px;font-weight:700;color:'+(budget.ok?'#4ade80':'#f87171')+';">'+budget.rxPow.toFixed(1)+'</div><div style="color:var(--text-muted);text-transform:uppercase;">RX Power dBm</div></div>'+
+                '<div><div style="font-size:20px;font-weight:700;color:'+(analysis.diffLoss>3?'#f87171':'#4ade80')+';">'+analysis.diffLoss.toFixed(1)+'</div><div style="color:var(--text-muted);text-transform:uppercase;">Diffraction dB</div></div>'+
+                '<div><div style="font-size:20px;font-weight:700;color:'+(analysis.hasLOS?'#4ade80':'#f87171')+';">'+analysis.minCl.toFixed(1)+'</div><div style="color:var(--text-muted);text-transform:uppercase;">Min Clear m</div></div>'+
+                '</div>';
+            // Budget card
+            document.getElementById('rf-budget').innerHTML='<div style="font-size:10px;text-transform:uppercase;color:var(--text-faint);margin-bottom:6px;">Link Budget</div>'+
+                '<div style="font-size:10px;line-height:1.8;">'+
+                '<div style="display:flex;justify-content:space-between;"><span style="color:var(--text-muted);">TX Power</span><span style="color:#4ade80;">+'+txP+' dBm</span></div>'+
+                '<div style="display:flex;justify-content:space-between;"><span style="color:var(--text-muted);">TX+RX Gain</span><span style="color:#4ade80;">+'+(txG+rxG)+' dBi</span></div>'+
+                '<div style="display:flex;justify-content:space-between;"><span style="color:var(--text-muted);">FSPL</span><span style="color:#f87171;">-'+budget.fLoss.toFixed(1)+' dB</span></div>'+
+                '<div style="display:flex;justify-content:space-between;"><span style="color:var(--text-muted);">Diffraction</span><span style="color:'+(analysis.diffLoss>0?'#f87171':'#4a5f75')+';">-'+analysis.diffLoss.toFixed(1)+' dB</span></div>'+
+                '<div style="display:flex;justify-content:space-between;"><span style="color:var(--text-muted);">Fade Margin</span><span style="color:#eab308;">-'+fade+' dB</span></div>'+
+                '<div style="border-top:1px solid var(--border-color);margin:4px 0;"></div>'+
+                '<div style="display:flex;justify-content:space-between;"><span style="color:var(--text-main);">RX Power</span><span style="color:#22d3ee;">'+budget.rxPow.toFixed(1)+' dBm</span></div>'+
+                '<div style="display:flex;justify-content:space-between;"><span style="color:var(--text-main);">Sensitivity</span><span style="color:#4a5f75;">'+proto.rxSens+' dBm</span></div>'+
+                '<div style="display:flex;justify-content:space-between;font-weight:700;"><span style="color:var(--text-main);">Link Margin</span><span style="color:'+qc+';">'+budget.margin.toFixed(1)+' dB</span></div>'+
+                '</div>';
+            // Path details card
+            document.getElementById('rf-path-details').innerHTML='<div style="font-size:10px;text-transform:uppercase;color:var(--text-faint);margin-bottom:6px;">Path Details</div>'+
+                '<div style="display:grid;grid-template-columns:1fr 1fr;gap:3px;font-size:10px;">'+
+                '<span style="color:var(--text-muted);">LOS Clear</span><span style="color:'+(analysis.hasLOS?'#4ade80':'#f87171')+';">'+(analysis.hasLOS?'Yes':'No')+'</span>'+
+                '<span style="color:var(--text-muted);">60% Fresnel</span><span style="color:'+(analysis.hasF60?'#4ade80':'#f87171')+';">'+(analysis.hasF60?'Yes':'No')+'</span>'+
+                '<span style="color:var(--text-muted);">Obstructions</span><span>'+analysis.losObs+' LOS / '+analysis.fObs+' Fresnel</span>'+
+                '<span style="color:var(--text-muted);">Elev Source</span><span>'+elev.source+'</span>'+
+                '</div>';
             try{
                 rfBuildTraceFromOrigin(txPos.lat,txPos.lon,[{lat:rxPos.lat,lon:rxPos.lon}],proto,txP,txG,rxG,fade);
             }catch(traceErr){console.error('Trace error:',traceErr);}
