@@ -888,6 +888,9 @@
                 <div id="rf-trace-detail" style="font-size:10px; color:var(--text-muted); margin-top:4px; font-family:var(--font-mono);"></div>
             </div>
 
+            <!-- Issue spots list (populated after route analysis) -->
+            <div id="rf-issue-spots" style="display:none; margin-bottom:10px;"></div>
+
             <!-- Advanced mode toggle -->
             <div style="margin-bottom:16px;">
                 <label style="display:flex; align-items:center; gap:8px; cursor:pointer; font-size:12px; color:var(--text-muted); font-family:var(--font-family);">
@@ -1987,7 +1990,85 @@ renderVtxTable();
         document.getElementById('rf-route-trace').style.display='block';
         document.getElementById('rf-trace-slider').value=0;
         rfTraceUpdate();
+        // Analyze route for issue spots
+        rfAnalyzeIssues(allPts);
     }
+
+    // ── Issue spot detection + clickable list ──
+    let rfIssueMarkers=[];
+    function rfAnalyzeIssues(allPts){
+        // Clear old issue markers
+        rfIssueMarkers.forEach(function(m){if(rfMap)rfMap.removeLayer(m);});
+        rfIssueMarkers=[];
+        var el=document.getElementById('rf-issue-spots');
+        if(!el||!allPts||allPts.length<2){if(el)el.style.display='none';return;}
+        // Find issue zones: contiguous segments where margin < threshold
+        var issues=[];
+        var inIssue=false;
+        var issueStart=null;
+        var worstPt=null;
+        for(var i=0;i<allPts.length;i++){
+            var p=allPts[i];
+            if(p.margin<10){
+                if(!inIssue){inIssue=true;issueStart=i;worstPt=p;}
+                if(p.margin<worstPt.margin)worstPt=p;
+            } else {
+                if(inIssue){
+                    issues.push({startIdx:issueStart,endIdx:i-1,worst:worstPt,
+                        startPt:allPts[issueStart],endPt:allPts[i-1]});
+                    inIssue=false;worstPt=null;
+                }
+            }
+        }
+        if(inIssue){issues.push({startIdx:issueStart,endIdx:allPts.length-1,worst:worstPt,
+            startPt:allPts[issueStart],endPt:allPts[allPts.length-1]});}
+        if(issues.length===0){
+            el.innerHTML='<div style="padding:6px 10px;font-size:10px;color:#4ade80;background:rgba(74,222,128,0.06);border:1px solid rgba(74,222,128,0.2);border-radius:var(--radius-sm);">\u2713 No issue spots — signal stays above 10 dB margin along entire route</div>';
+            el.style.display='block';
+            return;
+        }
+        // Classify issues
+        var html='<div style="padding:8px 10px;background:var(--bg-panel);border:1px solid var(--border-color);border-radius:var(--radius-sm);">';
+        html+='<div style="font-size:9px;font-weight:600;color:var(--text-main);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:6px;">\u26A0 '+issues.length+' Issue Spot'+(issues.length>1?'s':'')+' Detected</div>';
+        var L=window.L;
+        issues.forEach(function(issue,idx){
+            var severity=issue.worst.margin<0?'LOST':issue.worst.margin<3?'CRITICAL':'WEAK';
+            var sColor=issue.worst.margin<0?'#ef4444':issue.worst.margin<3?'#f87171':'#eab308';
+            var spanKm=issue.endPt.d-issue.startPt.d;
+            var pctOfRoute=Math.round((issue.endIdx-issue.startIdx)/allPts.length*100);
+            // Add warning marker on map at worst point
+            if(L&&rfMap){
+                var icon=L.divIcon({className:'',html:'<div style="width:12px;height:12px;border-radius:50%;background:'+sColor+';border:2px solid #0b0f14;box-shadow:0 0 6px '+sColor+'88;"></div>',iconSize:[12,12],iconAnchor:[6,6]});
+                var marker=L.marker([issue.worst.lat,issue.worst.lon],{icon:icon,interactive:false}).addTo(rfMap);
+                rfIssueMarkers.push(marker);
+            }
+            html+='<div onclick="rfJumpToIssue('+idx+')" style="display:flex;align-items:center;gap:8px;padding:5px 8px;margin-bottom:3px;border-radius:var(--radius-sm);cursor:pointer;border-left:3px solid '+sColor+';background:'+sColor+'08;transition:background 0.15s;" onmouseover="this.style.background=\''+sColor+'15\'" onmouseout="this.style.background=\''+sColor+'08\'">';
+            html+='<span style="font-size:10px;font-weight:700;color:'+sColor+';min-width:55px;">'+severity+'</span>';
+            html+='<span style="font-size:10px;color:var(--text-muted);flex:1;">'+issue.worst.margin.toFixed(1)+' dB @ '+issue.worst.d.toFixed(2)+' km</span>';
+            html+='<span style="font-size:9px;color:var(--text-faint);">'+spanKm.toFixed(2)+' km ('+pctOfRoute+'%)</span>';
+            html+='<span style="font-size:10px;color:var(--text-faint);">\u203A</span>';
+            html+='</div>';
+        });
+        html+='<div style="font-size:9px;color:var(--text-faint);margin-top:6px;">Click an issue to jump to it on the map. Drag waypoints to reroute around problems.</div>';
+        html+='</div>';
+        el.innerHTML=html;
+        el.style.display='block';
+        // Store issues for jump function
+        rfTraceSegments._issues=issues;
+    }
+
+    window.rfJumpToIssue=function(idx){
+        var issues=rfTraceSegments._issues;
+        if(!issues||!issues[idx])return;
+        var issue=issues[idx];
+        var pts=rfTraceSegments._allPts;
+        // Pan map to the worst point
+        if(rfMap)rfMap.setView([issue.worst.lat,issue.worst.lon],15);
+        // Move slider to issue position
+        var pct=Math.round(issue.startIdx/pts.length*100);
+        document.getElementById('rf-trace-slider').value=pct;
+        rfTraceUpdate();
+    };
     let txPos=null,rxPos=null;
     let rfTimer=null;
     let rfClickState=0; // 0=place TX, 1=place RX, 2=both placed
@@ -2307,7 +2388,11 @@ renderVtxTable();
         if(rfTraceSightLine&&rfMap){rfMap.removeLayer(rfTraceSightLine);rfTraceSightLine=null;}
         rfTraceSegments.forEach(s=>{if(s.polyline&&rfMap)rfMap.removeLayer(s.polyline);});
         rfTraceSegments=[];
+        if(typeof rfIssueMarkers!=='undefined')rfIssueMarkers.forEach(function(m){if(rfMap)rfMap.removeLayer(m);});
+        rfIssueMarkers=[];
         document.getElementById('rf-route-trace').style.display='none';
+        var issueEl=document.getElementById('rf-issue-spots');
+        if(issueEl)issueEl.style.display='none';
     }
 
     function rfBuildTrace(){
@@ -2991,7 +3076,25 @@ renderVtxTable();
             traceHtml+='<tr><td>Max margin</td><td style="color:#4ade80">'+maxM.toFixed(1)+' dB</td></tr>';
             traceHtml+='<tr><td>Avg margin</td><td>'+avgM.toFixed(1)+' dB</td></tr>';
             traceHtml+='<tr><td>Signal lost</td><td style="color:'+(lostPct>0?'#ef4444':'#4ade80')+'">'+lostPct+'% of route</td></tr>';
-            traceHtml+='</table></div>';
+            traceHtml+='</table>';
+            // Add issue spots to report
+            var issues=rfTraceSegments._issues;
+            if(issues&&issues.length>0){
+                traceHtml+='<h3 style="margin-top:12px;">Issue Spots ('+issues.length+')</h3>';
+                traceHtml+='<table><tr><th>Severity</th><th>Margin</th><th>Distance</th><th>Span</th><th>Coordinates</th></tr>';
+                issues.forEach(function(issue){
+                    var sev=issue.worst.margin<0?'LOST':issue.worst.margin<3?'CRITICAL':'WEAK';
+                    var sc=issue.worst.margin<0?'#ef4444':issue.worst.margin<3?'#f87171':'#eab308';
+                    var span=(issue.endPt.d-issue.startPt.d).toFixed(2);
+                    traceHtml+='<tr><td style="color:'+sc+';font-weight:700;">'+sev+'</td>';
+                    traceHtml+='<td style="color:'+sc+';">'+issue.worst.margin.toFixed(1)+' dB</td>';
+                    traceHtml+='<td>'+issue.worst.d.toFixed(2)+' km</td>';
+                    traceHtml+='<td>'+span+' km</td>';
+                    traceHtml+='<td style="font-family:monospace;font-size:9px;">'+issue.worst.lat.toFixed(6)+', '+issue.worst.lon.toFixed(6)+'</td></tr>';
+                });
+                traceHtml+='</table>';
+            }
+            traceHtml+='</div>';
         }
 
         // Build report HTML
