@@ -1166,10 +1166,18 @@
             </div>
 
             <!-- Kill mode toggle -->
-            <div style="margin-bottom:10px;">
+            <div style="margin-bottom:6px;">
                 <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:11px;color:var(--text-muted);font-family:var(--font-family);">
                     <input type="checkbox" id="mesh-kill-mode" onchange="meshToggleKill()" style="accent-color:#f87171;">
                     Failure simulation — click nodes to take them offline
+                </label>
+            </div>
+
+            <!-- Heatmap toggle -->
+            <div style="margin-bottom:10px;">
+                <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:11px;color:var(--text-muted);font-family:var(--font-family);">
+                    <input type="checkbox" id="mesh-heatmap-toggle" onchange="meshToggleHeatmap()" style="accent-color:var(--accent-red);">
+                    RF coverage heatmap — shows signal strength across the area
                 </label>
             </div>
 
@@ -3297,6 +3305,7 @@ renderVtxTable();
         meshNodes.forEach(function(n){if(n.marker&&meshMap)meshMap.removeLayer(n.marker);});
         meshNodes=[];meshIdCounter=0;
         meshClearLinks();
+        meshClearHeatmap();
         meshUpdateNodeList();
         document.getElementById('mesh-health').style.display='none';
         document.getElementById('mesh-matrix').style.display='none';
@@ -3358,6 +3367,7 @@ renderVtxTable();
         meshLinks=links;
         document.getElementById('mesh-link-count').textContent=links.filter(function(l){return l.connected;}).length+'/'+links.length+' connected';
         meshAnalyze(active,links,minMargin,proto);
+        if(meshHeatEnabled)meshBuildHeatmap();
     };
 
     function meshAnalyze(nodes,links,minMargin,proto){
@@ -3473,6 +3483,67 @@ renderVtxTable();
     }
 
     // Export
+    // ── RF Coverage Heatmap ──
+    var meshHeatLayer=null;
+    var meshHeatEnabled=false;
+
+    window.meshToggleHeatmap=function(){
+        meshHeatEnabled=document.getElementById('mesh-heatmap-toggle').checked;
+        if(!meshHeatEnabled){meshClearHeatmap();return;}
+        if(meshNodes.filter(function(n){return n.active;}).length>=1)meshBuildHeatmap();
+    };
+
+    function meshClearHeatmap(){
+        if(meshHeatLayer&&meshMap){meshMap.removeLayer(meshHeatLayer);meshHeatLayer=null;}
+    }
+
+    function meshBuildHeatmap(){
+        meshClearHeatmap();
+        if(!meshMap)return;
+        var L=window.L;
+        var active=meshNodes.filter(function(n){return n.active;});
+        if(active.length<1)return;
+        var proto=meshGetProto();
+        var txP=parseFloat(document.getElementById('mesh-tx-power').value)||30;
+        var nodeH=parseFloat(document.getElementById('mesh-node-height').value)||50;
+        var txG=2,rxG=2;
+        var bounds=meshMap.getBounds();
+        var sw=bounds.getSouthWest(),ne=bounds.getNorthEast();
+        // Expand bounds slightly beyond visible area
+        var latRange=ne.lat-sw.lat,lonRange=ne.lng-sw.lng;
+        var GRID=40; // 40x40 grid = 1600 sample points
+        var latStep=latRange/GRID,lonStep=lonRange/GRID;
+        // Build rectangles
+        var rects=[];
+        for(var r=0;r<GRID;r++){
+            for(var c=0;c<GRID;c++){
+                var lat=sw.lat+r*latStep+latStep/2;
+                var lon=sw.lng+c*lonStep+lonStep/2;
+                // Find best margin from any active node
+                var bestMargin=-999;
+                for(var i=0;i<active.length;i++){
+                    var d=hav(active[i].lat,active[i].lon,lat,lon)/1000;
+                    if(d<0.001)d=0.001;
+                    var fspl=20*Math.log10(d)+20*Math.log10(proto.freq)+32.44;
+                    var margin=txP+txG+rxG-fspl-proto.rxSens;
+                    if(margin>bestMargin)bestMargin=margin;
+                }
+                // Color by margin
+                var color,opacity;
+                if(bestMargin>20){color='#4ade80';opacity=0.15;}
+                else if(bestMargin>10){color='#22d3ee';opacity=0.18;}
+                else if(bestMargin>6){color='#eab308';opacity=0.22;}
+                else if(bestMargin>0){color='#f59e0b';opacity=0.28;}
+                else{color='#ef4444';opacity=0.3;}
+                var cellBounds=[[sw.lat+r*latStep,sw.lng+c*lonStep],[sw.lat+(r+1)*latStep,sw.lng+(c+1)*lonStep]];
+                rects.push(L.rectangle(cellBounds,{color:'none',fillColor:color,fillOpacity:opacity,weight:0}));
+            }
+        }
+        meshHeatLayer=L.layerGroup(rects).addTo(meshMap);
+        // Move heatmap below markers
+        if(meshHeatLayer._map)meshHeatLayer.eachLayer(function(l){l.bringToBack();});
+    }
+
     window.meshExport=function(){
         var h=document.getElementById('mesh-health');
         var m=document.getElementById('mesh-matrix');
