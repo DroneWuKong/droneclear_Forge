@@ -376,6 +376,7 @@
       <div class="stat-card"><div class="icon"><i class="ph ph-cpu"></i></div><div class="num" id="stat-components">—</div><div class="lbl">Components</div></div>
       <div class="stat-card"><div class="icon"><i class="ph ph-book-open"></i></div><div class="num" id="stat-handbook">—</div><div class="lbl">Handbook Pages</div></div>
       <div class="stat-card"><div class="icon"><i class="ph ph-broadcast"></i></div><div class="num" id="stat-categories">—</div><div class="lbl">Categories</div></div>
+      <div class="stat-card"><div class="icon"><i class="ph ph-microchip"></i></div><div class="num" id="stat-firmware">—</div><div class="lbl">FW Targets</div></div>
     </div>
     <div class="starters-label">
       <span class="slash">//</span>
@@ -542,7 +543,7 @@ var STARTERS = [
 // Each entry: {cat, name, text, src, data}
 var ragIndex = [];
 var handbookChunks = []; // {title, text, src}
-var ragStats = { platforms: 0, components: 0, handbook: 0, categories: new Set() };
+var ragStats = { platforms: 0, components: 0, handbook: 0, firmware: 0, categories: new Set() };
 
 async function loadRAG() {
   const t0 = Date.now();
@@ -596,6 +597,26 @@ async function loadRAG() {
       }
     }
   } catch(e) {}
+
+  // Load firmware target configs (Betaflight, iNav, ArduPilot, PX4)
+  try {
+    const res = await fetch('forge_firmware_configs.json');
+    if (res.ok) {
+      const fw = await res.json();
+      for (const target of (fw.targets || [])) {
+        const textParts = [target.target_name, target.firmware, target.mcu, target.mcu_family,
+          target.board_name, target.bf_target, target.manufacturer_id, target.usb_manufacturer,
+          target.frame_type, target.frame_class,
+          ...(target.gyros||[]), ...(target.features||[])].filter(Boolean);
+        ragIndex.push({
+          cat: 'firmware', name: target.target_name, text: textParts.join(' ').toLowerCase(),
+          src: 'firmware-' + target.firmware, data: target,
+        });
+        ragStats.firmware++;
+      }
+      ragStats.categories.add('firmware');
+    }
+  } catch(e) { console.warn('Firmware configs load skipped:', e); }
 
   // Still load handbook MDs from GitHub (small text files, optional enrichment)
   try {
@@ -657,6 +678,7 @@ function updateStats() {
   el('stat-components', ragStats.components || '—');
   el('stat-handbook', ragStats.handbook || '—');
   el('stat-categories', ragStats.categories.size || '—');
+  el('stat-firmware', ragStats.firmware || '—');
 }
 
 // ─── RAG RETRIEVAL ───────────────────────────────────────────
@@ -692,14 +714,39 @@ function ragSearch(query, maxComponents = 25, maxHandbook = 5) {
   let ctx = '';
 
   if (scored.length > 0) {
-    ctx += '\n\n## MATCHING COMPONENTS FROM DATABASE\n';
-    for (const s of scored) {
-      const d = s.data;
-      const fields = Object.entries(d)
-        .filter(([k,v]) => v && typeof v !== 'object' && !['pid','image_file','pdf_file','link','description'].includes(k))
-        .map(([k,v]) => `${k}: ${v}`).join(' | ');
-      ctx += `- [${s.cat}] ${s.name}: ${fields}\n`;
-      if (d.description) ctx += `  ${d.description.slice(0, 200)}\n`;
+    // Separate firmware results from component results
+    var fwResults = scored.filter(s => s.cat === 'firmware');
+    var compResults = scored.filter(s => s.cat !== 'firmware');
+
+    if (compResults.length > 0) {
+      ctx += '\n\n## MATCHING COMPONENTS FROM DATABASE\n';
+      for (const s of compResults) {
+        const d = s.data;
+        const fields = Object.entries(d)
+          .filter(([k,v]) => v && typeof v !== 'object' && !['pid','image_file','pdf_file','link','description'].includes(k))
+          .map(([k,v]) => `${k}: ${v}`).join(' | ');
+        ctx += `- [${s.cat}] ${s.name}: ${fields}\n`;
+        if (d.description) ctx += `  ${d.description.slice(0, 200)}\n`;
+      }
+    }
+
+    if (fwResults.length > 0) {
+      ctx += '\n\n## FIRMWARE TARGET CONFIGS\n';
+      ctx += 'These are actual firmware target definitions from the source repos.\n';
+      for (const s of fwResults.slice(0, 10)) {
+        const d = s.data;
+        ctx += `\n### ${d.target_name} [${d.firmware}]\n`;
+        if (d.mcu) ctx += `MCU: ${d.mcu} (${d.mcu_family || ''})\n`;
+        if (d.uart_count) ctx += `UARTs: ${d.uart_count}\n`;
+        if (d.gyros && d.gyros.length) ctx += `Gyros: ${d.gyros.join(', ')}\n`;
+        if (d.osd) ctx += `OSD: ${d.osd}\n`;
+        if (d.serial_order) ctx += `Serial order: ${d.serial_order}\n`;
+        if (d.features && d.features.length) ctx += `Features: ${d.features.join(', ')}\n`;
+        if (d.frame_type) ctx += `Frame type: ${d.frame_type} (${d.frame_class || ''})\n`;
+        if (d.bf_target) ctx += `BF target: ${d.bf_target}\n`;
+        // Include raw config snippet for deep troubleshooting
+        if (d.raw_snippet) ctx += `Config excerpt:\n${d.raw_snippet.slice(0, 600)}\n`;
+      }
     }
   }
 
