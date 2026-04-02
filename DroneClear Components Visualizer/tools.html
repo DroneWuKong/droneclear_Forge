@@ -902,92 +902,51 @@
                 <!-- Repeater mode -->
                 <div id="rf-repeater-panel" style="display:none;">
                     <div style="font-size:11px; color:var(--text-muted); margin-bottom:8px; padding:6px 10px; background:var(--bg-dark); border-radius:var(--radius-sm);">
-                        Click map: 1st = Pilot (GCS), 2nd = Repeater drone, 3rd = Target drone. Each leg has independent RF config.
+                        Click map: 1st = <span style="color:#22d3ee;">Pilot</span>, 2nd = <span style="color:#f59e0b;">Repeater</span> (RF origin), 3rd = <span style="color:#2a9d8f;">Target</span>.
+                    </div>
+                    <div style="font-size:11px; color:var(--text-muted); margin-bottom:10px; padding:6px 10px; background:var(--bg-dark); border-radius:var(--radius-sm); line-height:1.5;">
+                        The <strong style="color:#f59e0b;">repeater drone</strong> is the RF origin — a flying radio tower. Propagation profile is drawn from the repeater's perspective.
                     </div>
 
-                    <!-- Leg 1: Pilot → Repeater -->
-                    <div style="margin-bottom:10px; padding:10px; border:1px solid var(--border-color); border-radius:var(--radius-sm); border-left:3px solid #22d3ee;">
-                        <div style="font-size:10px; font-weight:600; color:#22d3ee; text-transform:uppercase; letter-spacing:0.08em; margin-bottom:6px;">Leg 1 — Pilot → Repeater</div>
-                        <div class="input-grid">
-                            <div class="input-group">
-                                <label class="input-label">Protocol</label>
-                                <select class="tool-select" id="rf-leg1-proto">
-                                    <option value="ELRS_900" selected>ExpressLRS 900M</option>
-                                    <option value="ELRS_2G4">ExpressLRS 2.4G</option>
-                                    <option value="CRSF">Crossfire (TBS)</option>
-                                    <option value="GHST">GHST (ImmersionRC)</option>
-                                    <option value="DJI_O3">DJI O3/O4</option>
-                                    <option value="DOODLE_MESH">Doodle Labs Mesh</option>
-                                    <option value="SILVUS">Silvus StreamCaster</option>
-                                    <option value="RFD900X">RFD900x</option>
-                                    <option value="PERSISTENT">Persistent MPU5</option>
-                                </select>
+                    <div class="input-grid" style="margin-bottom:10px;">
+                        <div class="input-group">
+                            <label class="input-label">Repeater height (AGL)</label>
+                            <div class="input-row">
+                                <input type="number" class="tool-input" id="rf-repeater-height" value="80" min="5" max="500" step="5">
+                                <span class="input-unit">m</span>
                             </div>
-                            <div class="input-group">
-                                <label class="input-label">TX power</label>
-                                <div class="input-row">
-                                    <input type="number" class="tool-input" id="rf-leg1-power" value="27" min="0" max="50">
-                                    <span class="input-unit">dBm</span>
-                                </div>
+                        </div>
+                        <div class="input-group">
+                            <label class="input-label">Repeater TX power</label>
+                            <div class="input-row">
+                                <input type="number" class="tool-input" id="rf-repeater-power" value="27" min="0" max="50">
+                                <span class="input-unit">dBm</span>
                             </div>
-                            <div class="input-group">
-                                <label class="input-label">Pilot height (AGL)</label>
-                                <div class="input-row">
-                                    <input type="number" class="tool-input" id="rf-pilot-height" value="2" min="0" max="100" step="0.5">
-                                    <span class="input-unit">m</span>
-                                </div>
-                            </div>
-                            <div class="input-group">
-                                <label class="input-label">Repeater height (AGL)</label>
-                                <div class="input-row">
-                                    <input type="number" class="tool-input" id="rf-repeater-height" value="80" min="5" max="500" step="5">
-                                    <span class="input-unit">m</span>
-                                </div>
+                        </div>
+                        <div class="input-group">
+                            <label class="input-label">Repeater→Target protocol</label>
+                            <select class="tool-select" id="rf-repeater-fwd-proto">
+                                <option value="same">Same as C2 uplink</option>
+                                <option value="ELRS_900">ExpressLRS 900M</option>
+                                <option value="ELRS_2G4">ExpressLRS 2.4G</option>
+                                <option value="CRSF">Crossfire (TBS)</option>
+                                <option value="DJI_O3">DJI O3/O4</option>
+                                <option value="DOODLE_MESH">Doodle Labs Mesh</option>
+                                <option value="SILVUS">Silvus StreamCaster</option>
+                                <option value="RFD900X">RFD900x</option>
+                                <option value="PERSISTENT">Persistent MPU5</option>
+                            </select>
+                        </div>
+                        <div class="input-group">
+                            <label class="input-label">Target height (AGL)</label>
+                            <div class="input-row">
+                                <input type="number" class="tool-input" id="rf-target-height" value="50" min="0" max="500" step="5">
+                                <span class="input-unit">m</span>
                             </div>
                         </div>
                     </div>
-
-                    <!-- Leg 2: Repeater → Target -->
-                    <div style="margin-bottom:10px; padding:10px; border:1px solid var(--border-color); border-radius:var(--radius-sm); border-left:3px solid #f59e0b;">
-                        <div style="font-size:10px; font-weight:600; color:#f59e0b; text-transform:uppercase; letter-spacing:0.08em; margin-bottom:6px;">Leg 2 — Repeater → Target</div>
-                        <div class="input-grid">
-                            <div class="input-group">
-                                <label class="input-label">Protocol</label>
-                                <select class="tool-select" id="rf-leg2-proto">
-                                    <option value="same">Same as Leg 1</option>
-                                    <option value="ELRS_900">ExpressLRS 900M</option>
-                                    <option value="ELRS_2G4">ExpressLRS 2.4G</option>
-                                    <option value="CRSF">Crossfire (TBS)</option>
-                                    <option value="GHST">GHST (ImmersionRC)</option>
-                                    <option value="DJI_O3">DJI O3/O4</option>
-                                    <option value="DOODLE_MESH">Doodle Labs Mesh</option>
-                                    <option value="SILVUS">Silvus StreamCaster</option>
-                                    <option value="RFD900X">RFD900x</option>
-                                    <option value="PERSISTENT">Persistent MPU5</option>
-                                </select>
-                            </div>
-                            <div class="input-group">
-                                <label class="input-label">TX power</label>
-                                <div class="input-row">
-                                    <input type="number" class="tool-input" id="rf-leg2-power" value="27" min="0" max="50">
-                                    <span class="input-unit">dBm</span>
-                                </div>
-                            </div>
-                            <div class="input-group">
-                                <label class="input-label">Target height (AGL)</label>
-                                <div class="input-row">
-                                    <input type="number" class="tool-input" id="rf-target-height" value="50" min="0" max="500" step="5">
-                                    <span class="input-unit">m</span>
-                                </div>
-                            </div>
-                            <div class="input-group">
-                                <label class="input-label">Fade margin</label>
-                                <div class="input-row">
-                                    <input type="number" class="tool-input" id="rf-relay-fade" value="6" min="0" max="20">
-                                    <span class="input-unit">dB</span>
-                                </div>
-                            </div>
-                        </div>
+                    <div style="font-size:10px; color:var(--text-faint); margin-bottom:8px;">
+                        C2 uplink (Pilot→Repeater) uses protocol &amp; power from the main config. Repeater→Target uses the settings above.
                     </div>
 
                     <div id="rf-repeater-status" style="font-size:11px; color:var(--text-muted);"></div>
@@ -2606,95 +2565,84 @@ renderVtxTable();
         document.getElementById('rf-status').innerHTML='<span style="color:#4ade80;">● '+legs.length+' legs computed</span>';
     }
 
-    // ── Repeater relay compute ──
+    // ── Repeater relay compute — repeater is RF origin ──
     async function rfComputeRepeater(){
         if(rfRepeaterPts.length<3)return;
-        // Leg 1 config from dedicated inputs
-        const p1Key=document.getElementById('rf-leg1-proto').value;
-        const proto1=RF_PROTOCOLS[p1Key]||RF_PROTOCOLS.ELRS_900;
-        const txP1=parseFloat(document.getElementById('rf-leg1-power').value)||27;
-        const pilotH=parseFloat(document.getElementById('rf-pilot-height').value)||2;
+        // C2 uplink: Pilot→Repeater uses main config
+        const c2Proto=getProto();
+        const c2Power=getVal('rf-tx-power');
+        const pilotH=getVal('rf-tx-height');
         const repeaterH=parseFloat(document.getElementById('rf-repeater-height').value)||80;
-        // Leg 2 config from dedicated inputs
-        const p2Key=document.getElementById('rf-leg2-proto').value;
-        const proto2=p2Key==='same'?proto1:(RF_PROTOCOLS[p2Key]||proto1);
-        const txP2=parseFloat(document.getElementById('rf-leg2-power').value)||27;
+        // Repeater→Target: uses repeater-specific config
+        const rPower=parseFloat(document.getElementById('rf-repeater-power').value)||27;
+        const fwdProtoKey=document.getElementById('rf-repeater-fwd-proto').value;
+        const fwdProto=fwdProtoKey==='same'?c2Proto:(RF_PROTOCOLS[fwdProtoKey]||c2Proto);
         const targetH=parseFloat(document.getElementById('rf-target-height').value)||50;
-        const fade=parseFloat(document.getElementById('rf-relay-fade').value)||6;
+        const fade=getVal('rf-fade-margin');
         const txG=getVal('rf-tx-gain'),rxG=getVal('rf-rx-gain');
         document.getElementById('rf-status').innerHTML='<span style="color:#eab308;">● computing relay...</span>';
 
-        // Leg 1: Pilot → Repeater
+        // C2 uplink: Pilot → Repeater
         const d1=haversine(rfRepeaterPts[0].lat,rfRepeaterPts[0].lon,rfRepeaterPts[1].lat,rfRepeaterPts[1].lon)/1000;
-        const fspl1=20*Math.log10(d1)+20*Math.log10(proto1.freq)+32.44;
-        const rx1=txP1+txG+rxG-fspl1;
-        const m1=rx1-proto1.sens-fade;
+        const fspl1=20*Math.log10(d1)+20*Math.log10(c2Proto.freq)+32.44;
+        const rx1=c2Power+txG+rxG-fspl1;
+        const m1=rx1-c2Proto.sens-fade;
 
-        // Leg 2: Repeater → Target
+        // Operational link: Repeater → Target (repeater is RF origin)
         const d2=haversine(rfRepeaterPts[1].lat,rfRepeaterPts[1].lon,rfRepeaterPts[2].lat,rfRepeaterPts[2].lon)/1000;
-        const fspl2=20*Math.log10(d2)+20*Math.log10(proto2.freq)+32.44;
-        const rx2=txP2+txG+rxG-fspl2;
-        const m2=rx2-proto2.sens-fade;
+        const fspl2=20*Math.log10(d2)+20*Math.log10(fwdProto.freq)+32.44;
+        const rx2=rPower+txG+rxG-fspl2;
+        const m2=rx2-fwdProto.sens-fade;
 
-        // Total distance (direct vs relay — uses leg 1 power/proto)
+        // Direct comparison: Pilot → Target (no repeater)
         const dDirect=haversine(rfRepeaterPts[0].lat,rfRepeaterPts[0].lon,rfRepeaterPts[2].lat,rfRepeaterPts[2].lon)/1000;
-        const fsplDirect=20*Math.log10(dDirect)+20*Math.log10(proto1.freq)+32.44;
-        const rxDirect=txP1+txG+rxG-fsplDirect;
-        const mDirect=rxDirect-proto1.sens-fade;
+        const fsplDirect=20*Math.log10(dDirect)+20*Math.log10(c2Proto.freq)+32.44;
+        const rxDirect=c2Power+txG+rxG-fsplDirect;
+        const mDirect=rxDirect-c2Proto.sens-fade;
 
         const worstRelay=Math.min(m1,m2);
         const qRelay=worstRelay>20?'excellent':worstRelay>10?'good':worstRelay>3?'marginal':worstRelay>0?'weak':'fail';
         const qDirect=mDirect>20?'excellent':mDirect>10?'good':mDirect>3?'marginal':mDirect>0?'weak':'fail';
         const relayColor=qRelay==='excellent'||qRelay==='good'?'#4ade80':qRelay==='marginal'?'#eab308':'#f87171';
         const directColor=qDirect==='excellent'||qDirect==='good'?'#4ade80':qDirect==='marginal'?'#eab308':'#f87171';
+        const opColor=m2>10?'#4ade80':m2>0?'#eab308':'#f87171';
+        const uplinkColor=m1>10?'#4ade80':m1>0?'#eab308':'#f87171';
 
-        let html='<div style="margin-bottom:12px; font-size:13px; font-weight:700; color:var(--text-main);">REPEATER RELAY ANALYSIS</div>';
+        let html='<div style="margin-bottom:12px; font-size:13px; font-weight:700; color:var(--text-main);">REPEATER RELAY — RF Origin: <span style="color:#f59e0b;">Repeater @ '+repeaterH+'m AGL</span></div>';
 
-        // Relay vs Direct comparison
-        html+='<div style="display:flex; gap:8px; margin-bottom:12px;">';
-        html+='<div style="flex:1; padding:10px; border-radius:var(--radius-sm); background:'+relayColor+'12; border:1px solid '+relayColor+'40; text-align:center;">';
-        html+='<div style="font-size:10px; color:var(--text-muted); text-transform:uppercase;">Via Repeater</div>';
-        html+='<div style="font-size:18px; font-weight:700; color:'+relayColor+';">'+worstRelay.toFixed(1)+' dB</div>';
-        html+='<div style="font-size:10px; color:'+relayColor+'; text-transform:uppercase;">'+qRelay+'</div>';
+        // Primary result: Repeater→Target (the operational link)
+        html+='<div style="margin-bottom:12px; padding:12px; border-radius:var(--radius-sm); background:'+opColor+'10; border:1px solid '+opColor+'40;">';
+        html+='<div style="font-size:10px; color:var(--text-muted); text-transform:uppercase; margin-bottom:4px;">Operational Link (Repeater → Target)</div>';
+        html+='<div style="display:flex; justify-content:space-between; align-items:center;">';
+        html+='<span style="font-size:11px; color:var(--text-muted);">'+fwdProto.freq+' MHz · '+rPower+' dBm · '+d2.toFixed(2)+' km · '+repeaterH+'→'+targetH+'m</span>';
+        html+='<span style="font-size:20px; font-weight:700; color:'+opColor+';">'+m2.toFixed(1)+' dB</span>';
+        html+='</div></div>';
+
+        // C2 uplink check
+        html+='<div style="margin-bottom:12px; padding:10px; border-radius:var(--radius-sm); background:var(--bg-dark); border:1px solid var(--border-color);">';
+        html+='<div style="font-size:10px; color:var(--text-muted); text-transform:uppercase; margin-bottom:4px;">C2 Uplink (Pilot → Repeater)</div>';
+        html+='<div style="display:flex; justify-content:space-between; align-items:center;">';
+        html+='<span style="font-size:11px; color:var(--text-muted);">'+c2Proto.freq+' MHz · '+c2Power+' dBm · '+d1.toFixed(2)+' km · '+pilotH+'→'+repeaterH+'m</span>';
+        html+='<span style="font-size:16px; font-weight:700; color:'+uplinkColor+';">'+m1.toFixed(1)+' dB</span>';
+        html+='</div></div>';
+
+        // Comparison cards
+        html+='<div style="display:flex; gap:8px; margin-bottom:8px;">';
+        html+='<div style="flex:1; padding:8px; border-radius:var(--radius-sm); background:'+relayColor+'10; border:1px solid '+relayColor+'30; text-align:center;">';
+        html+='<div style="font-size:9px; color:var(--text-faint); text-transform:uppercase;">Via Repeater</div>';
+        html+='<div style="font-size:16px; font-weight:700; color:'+relayColor+';">'+worstRelay.toFixed(1)+' dB</div>';
         html+='</div>';
-        html+='<div style="flex:1; padding:10px; border-radius:var(--radius-sm); background:'+directColor+'12; border:1px solid '+directColor+'40; text-align:center;">';
-        html+='<div style="font-size:10px; color:var(--text-muted); text-transform:uppercase;">Direct (no relay)</div>';
-        html+='<div style="font-size:18px; font-weight:700; color:'+directColor+';">'+mDirect.toFixed(1)+' dB</div>';
-        html+='<div style="font-size:10px; color:'+directColor+'; text-transform:uppercase;">'+qDirect+'</div>';
+        html+='<div style="flex:1; padding:8px; border-radius:var(--radius-sm); background:'+directColor+'10; border:1px solid '+directColor+'30; text-align:center;">';
+        html+='<div style="font-size:9px; color:var(--text-faint); text-transform:uppercase;">Direct (no relay)</div>';
+        html+='<div style="font-size:16px; font-weight:700; color:'+directColor+';">'+mDirect.toFixed(1)+' dB</div>';
         html+='</div>';
         html+='</div>';
 
-        // Per-leg table
-        html+='<table style="width:100%; font-size:11px; border-collapse:collapse;">';
-        html+='<tr style="color:var(--text-faint); text-transform:uppercase; letter-spacing:0.05em;"><th style="text-align:left; padding:4px;">Leg</th><th>Protocol</th><th>Distance</th><th>Height</th><th>FSPL</th><th>Margin</th></tr>';
-        // Leg 1
-        const c1=m1>10?'#4ade80':m1>0?'#eab308':'#f87171';
-        html+='<tr style="border-top:1px solid var(--border-color);">';
-        html+='<td style="padding:4px; color:var(--text-muted);">Pilot → Repeater</td>';
-        html+='<td style="text-align:center; color:var(--accent-red);">'+proto1.freq+' MHz</td>';
-        html+='<td style="text-align:center; color:var(--text-muted);">'+d1.toFixed(2)+' km</td>';
-        html+='<td style="text-align:center; color:var(--text-muted);">'+pilotH+'→'+repeaterH+'m</td>';
-        html+='<td style="text-align:center; color:var(--text-muted);">'+fspl1.toFixed(1)+' dB</td>';
-        html+='<td style="text-align:center; color:'+c1+'; font-weight:600;">'+m1.toFixed(1)+' dB</td>';
-        html+='</tr>';
-        // Leg 2
-        const c2=m2>10?'#4ade80':m2>0?'#eab308':'#f87171';
-        html+='<tr style="border-top:1px solid var(--border-color);">';
-        html+='<td style="padding:4px; color:var(--text-muted);">Repeater → Target</td>';
-        html+='<td style="text-align:center; color:var(--accent-red);">'+proto2.freq+' MHz</td>';
-        html+='<td style="text-align:center; color:var(--text-muted);">'+d2.toFixed(2)+' km</td>';
-        html+='<td style="text-align:center; color:var(--text-muted);">'+repeaterH+'→'+targetH+'m</td>';
-        html+='<td style="text-align:center; color:var(--text-muted);">'+fspl2.toFixed(1)+' dB</td>';
-        html+='<td style="text-align:center; color:'+c2+'; font-weight:600;">'+m2.toFixed(1)+' dB</td>';
-        html+='</tr>';
-        html+='</table>';
-
-        // Advantage note
         const advantage=worstRelay-mDirect;
         if(advantage>0){
-            html+='<div style="margin-top:8px; padding:6px 10px; font-size:11px; color:#4ade80; background:rgba(74,222,128,0.08); border-radius:var(--radius-sm);">↑ Repeater improves worst-case margin by '+advantage.toFixed(1)+' dB over direct link</div>';
-        } else {
-            html+='<div style="margin-top:8px; padding:6px 10px; font-size:11px; color:#eab308; background:rgba(234,179,8,0.08); border-radius:var(--radius-sm);">Direct link is stronger — repeater adds '+Math.abs(advantage).toFixed(1)+' dB overhead</div>';
+            html+='<div style="padding:6px 10px; font-size:11px; color:#4ade80; background:rgba(74,222,128,0.06); border-radius:var(--radius-sm);">Repeater gains '+advantage.toFixed(1)+' dB over direct</div>';
+        } else if(advantage<-3){
+            html+='<div style="padding:6px 10px; font-size:11px; color:#eab308; background:rgba(234,179,8,0.06); border-radius:var(--radius-sm);">Direct link is stronger by '+Math.abs(advantage).toFixed(1)+' dB — repeater may not be needed</div>';
         }
 
         const el=document.getElementById('rf-advanced-results');
