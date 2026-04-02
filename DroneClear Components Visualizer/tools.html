@@ -3426,7 +3426,9 @@ renderVtxTable();
         var icon=L.divIcon({className:'',html:'<div style="width:18px;height:18px;border-radius:50%;background:'+c+';border:3px solid #0b0f14;box-shadow:0 0 8px '+c+'88;display:flex;align-items:center;justify-content:center;font-size:7px;font-weight:700;color:#0b0f14;">'+meshIdCounter+'</div>',iconSize:[18,18],iconAnchor:[9,9]});
         var marker=L.marker([lat,lon],{draggable:true,icon:icon}).addTo(meshMap);
         marker.bindTooltip(id,{permanent:false,direction:'top',offset:[0,-12]});
-        var node={id:id,lat:lat,lon:lon,marker:marker,active:true,label:id,color:c,num:meshIdCounter};
+        var node={id:id,lat:lat,lon:lon,marker:marker,active:true,label:id,color:c,num:meshIdCounter,
+            height:parseFloat(document.getElementById('mesh-node-height').value)||50,
+            power:parseFloat(document.getElementById('mesh-tx-power').value)||30};
         marker.on('dragend',function(){var p=marker.getLatLng();node.lat=p.lat;node.lon=p.lng;meshUpdateNodeList();});
         marker.on('click',function(){
             if(meshKillMode){node.active=!node.active;marker.setOpacity(node.active?1:0.3);meshUpdateNodeList();}
@@ -3440,17 +3442,22 @@ renderVtxTable();
         if(!el)return;
         document.getElementById('mesh-node-count').textContent=meshNodes.length+' nodes';
         if(meshNodes.length===0){el.innerHTML='';return;}
-        var html='';
-        meshNodes.forEach(function(n){
-            html+='<div style="display:inline-flex;align-items:center;gap:4px;padding:2px 8px;margin:2px;border-radius:var(--radius-sm);background:'+(n.active?'var(--bg-dark)':'rgba(248,113,113,0.15)')+';border:1px solid '+(n.active?'var(--border-color)':'#f87171')+';font-size:10px;">';
-            html+='<span style="width:8px;height:8px;border-radius:50%;background:'+(n.active?n.color:'#666')+';"></span>';
-            html+='<span style="color:'+(n.active?'var(--text-main)':'#f87171')+';">'+n.id+'</span>';
-            html+='<span style="color:var(--text-faint);">'+n.lat.toFixed(4)+','+n.lon.toFixed(4)+'</span>';
-            if(!n.active)html+='<span style="color:#f87171;font-weight:700;">OFFLINE</span>';
-            html+='</div>';
+        var html='<div style="display:grid;grid-template-columns:auto 1fr auto auto auto;gap:2px 6px;font-size:9px;align-items:center;">';
+        html+='<span style="color:var(--text-faint);font-weight:600;"></span><span style="color:var(--text-faint);">Coords</span><span style="color:var(--text-faint);">Alt m</span><span style="color:var(--text-faint);">dBm</span><span></span>';
+        meshNodes.forEach(function(n,i){
+            var offline=!n.active;
+            html+='<span style="display:flex;align-items:center;gap:3px;"><span style="width:8px;height:8px;border-radius:50%;background:'+(offline?'#666':n.color)+';"></span><span style="color:'+(offline?'#f87171':'var(--text-main)')+';font-weight:600;">'+n.id+'</span></span>';
+            html+='<span style="color:var(--text-faint);font-family:var(--font-mono);">'+n.lat.toFixed(4)+', '+n.lon.toFixed(4)+'</span>';
+            html+='<input type="number" value="'+n.height+'" min="1" max="500" step="5" style="width:45px;padding:1px 3px;font-size:9px;background:var(--bg-dark);border:1px solid var(--border-color);border-radius:2px;color:var(--text-main);font-family:var(--font-family);" onchange="meshNodeHeight('+i+',this.value)">';
+            html+='<input type="number" value="'+n.power+'" min="0" max="50" step="1" style="width:40px;padding:1px 3px;font-size:9px;background:var(--bg-dark);border:1px solid var(--border-color);border-radius:2px;color:var(--text-main);font-family:var(--font-family);" onchange="meshNodePower('+i+',this.value)">';
+            html+='<span style="color:'+(offline?'#f87171':'var(--text-faint)')+';">'+(offline?'OFF':'')+'</span>';
         });
+        html+='</div>';
         el.innerHTML=html;
     }
+
+    window.meshNodeHeight=function(i,v){if(meshNodes[i])meshNodes[i].height=parseFloat(v)||50;};
+    window.meshNodePower=function(i,v){if(meshNodes[i])meshNodes[i].power=parseFloat(v)||30;};
 
     window.meshUndo=function(){
         if(meshNodes.length===0)return;
@@ -3494,8 +3501,8 @@ renderVtxTable();
         if(active.length<2){document.getElementById('mesh-health').innerHTML='<div style="color:#f87171;padding:8px;font-size:11px;">Need at least 2 active nodes</div>';document.getElementById('mesh-health').style.display='block';return;}
         meshClearLinks();
         var proto=meshGetProto();
-        var txP=parseFloat(document.getElementById('mesh-tx-power').value)||30;
-        var nodeH=parseFloat(document.getElementById('mesh-node-height').value)||50;
+        var defaultTxP=parseFloat(document.getElementById('mesh-tx-power').value)||30;
+        var defaultH=parseFloat(document.getElementById('mesh-node-height').value)||50;
         var minMargin=parseFloat(document.getElementById('mesh-min-margin').value)||6;
         var txG=2,rxG=2;
         var L=window.L;
@@ -3503,11 +3510,13 @@ renderVtxTable();
         var n=active.length;
         var totalPairs=n*(n-1)/2;
         document.getElementById('mesh-link-count').textContent='computing '+totalPairs+' pairs...';
-        // Pass 1: FSPL for all pairs (instant)
+        // Pass 1: FSPL for all pairs (instant) — uses per-node power (higher of pair for bidirectional)
         for(var i=0;i<n;i++){
             for(var j=i+1;j<n;j++){
                 var a=active[i],b=active[j];
                 var d=hav(a.lat,a.lon,b.lat,b.lon)/1000;
+                var pA=a.power||defaultTxP,pB=b.power||defaultTxP;
+                var txP=Math.min(pA,pB); // Weakest direction determines link quality
                 var fspl=20*Math.log10(d)+20*Math.log10(proto.freq)+32.44;
                 var rxPow=txP+txG+rxG-fspl;
                 var margin=rxPow-proto.rxSens;
@@ -3527,8 +3536,10 @@ renderVtxTable();
                     var elev;
                     try{elev=await window._rfGetElevations(pts);}catch(e){elev={elevations:pts.map(function(){return 0;}),source:'flat'};}
                     var dists=pts.map(function(p){return hav(tl.fromNode.lat,tl.fromNode.lon,p.lat,p.lon);});
-                    var analysis=window._rfAnalyzePath(elev.elevations,dists,nodeH,nodeH,proto.freq);
-                    var budget=window._rfLinkBudget(analysis,txP,proto.rxSens,txG,rxG,proto.freq,0);
+                    var hFrom=tl.fromNode.height||defaultH,hTo=tl.toNode.height||defaultH;
+                    var pwr=Math.min(tl.fromNode.power||defaultTxP,tl.toNode.power||defaultTxP);
+                    var analysis=window._rfAnalyzePath(elev.elevations,dists,hFrom,hTo,proto.freq);
+                    var budget=window._rfLinkBudget(analysis,pwr,proto.rxSens,txG,rxG,proto.freq,0);
                     tl.margin=budget.margin;
                     tl.diffLoss=analysis.diffLoss;
                     tl.hasLOS=analysis.hasLOS;
