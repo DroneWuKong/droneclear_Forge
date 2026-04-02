@@ -2524,10 +2524,11 @@ renderVtxTable();
 
     var computing=false;
     async function computeRFTerrain(){
-        if(computing)return;
+        computing=false; // Reset in case stuck from previous run
         if(!txPos||!rxPos){document.getElementById('rf-status').textContent='Place TX and RX first';return;}
         computing=true;
         document.getElementById('rf-status').innerHTML='<span style="color:#eab308;">\u25CF computing...</span>';
+        document.getElementById('rf-results').innerHTML='<div style="color:#eab308;font-size:10px;padding:4px;">Computing...</div>';
         try{
             var proto=getProto(),txH=getVal('rf-tx-height'),rxH=getVal('rf-rx-height');
             var txP=getVal('rf-tx-power'),txG=getVal('rf-tx-gain'),rxG=getVal('rf-rx-gain');
@@ -2537,7 +2538,6 @@ renderVtxTable();
             try{
                 elev=await getElevations(pts);
             }catch(elevErr){
-                // Fallback: flat terrain at 0m
                 elev={elevations:pts.map(function(){return 0;}),source:'Flat (API unavailable)'};
             }
             var dists=pts.map(function(p){return haversine(txPos.lat,txPos.lon,p.lat,p.lon);});
@@ -2546,11 +2546,13 @@ renderVtxTable();
             updateMapMarkers();
             drawProfile(analysis,proto.freq);
             renderResults(analysis,budget,proto,elev.source);
-            // Route trace for basic 2-point mode
-            rfBuildTraceFromOrigin(txPos.lat,txPos.lon,[{lat:rxPos.lat,lon:rxPos.lon}],proto,txP,txG,rxG,fade);
+            try{
+                rfBuildTraceFromOrigin(txPos.lat,txPos.lon,[{lat:rxPos.lat,lon:rxPos.lon}],proto,txP,txG,rxG,fade);
+            }catch(traceErr){console.error('Trace error:',traceErr);}
         }catch(e){
-            document.getElementById('rf-status').innerHTML='<span style="color:#f87171;">\u26A0 Error: '+e.message+'</span>';
-            console.error('RF Terrain compute error:',e);
+            document.getElementById('rf-status').innerHTML='<span style="color:#f87171;">\u26A0 '+e.message+'</span>';
+            document.getElementById('rf-results').innerHTML='<div style="color:#f87171;font-size:10px;padding:8px;">Error: '+e.message+'<br>Stack: '+String(e.stack).substring(0,200)+'</div>';
+            console.error('RF compute error:',e);
         }
         computing=false;
     }
