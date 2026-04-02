@@ -1086,6 +1086,14 @@
             <!-- Path details -->
             <div class="result-card" id="rf-path-details" style="font-size:12px;"></div>
 
+            <!-- Heatmap toggle -->
+            <div style="margin-bottom:10px;">
+                <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:11px;color:var(--text-muted);font-family:var(--font-family);">
+                    <input type="checkbox" id="rf-heatmap-toggle" onchange="rfToggleHeatmap()" style="accent-color:var(--accent-red);">
+                    RF coverage heatmap — signal strength from TX across the area
+                </label>
+            </div>
+
             <!-- Export button -->
             <div style="text-align:center; margin:16px 0;">
                 <button onclick="rfExportReport()" style="padding:8px 20px; background:none; border:1px solid var(--accent-red); border-radius:var(--radius-sm); color:var(--accent-red); font-size:11px; font-weight:600; font-family:var(--font-family); cursor:pointer; letter-spacing:0.05em; transition:all 0.15s;" onmouseover="this.style.background='rgba(34,211,238,0.08)'" onmouseout="this.style.background='none'">
@@ -2455,6 +2463,7 @@ renderVtxTable();
         if(typeof rfClearRepeater==='function')rfClearRepeater();
         // Clear route trace
         rfClearTrace();
+        rfClearHeatmap();
         // Clear results
         document.getElementById('rf-results').innerHTML='';
         document.getElementById('rf-advanced-results').style.display='none';
@@ -2754,6 +2763,7 @@ renderVtxTable();
             try{
                 rfBuildTraceFromOrigin(txPos.lat,txPos.lon,[{lat:rxPos.lat,lon:rxPos.lon}],proto,txP,txG,rxG,fade);
             }catch(traceErr){console.error('Trace error:',traceErr);}
+            if(rfHeatEnabled)rfBuildHeatmap();
         }catch(e){
             document.getElementById('rf-status').innerHTML='<span style="color:#f87171;">\u26A0 '+e.message+'</span>';
             document.getElementById('rf-results').innerHTML='<div style="color:#f87171;font-size:10px;padding:8px;">Error: '+e.message+'<br>Stack: '+String(e.stack).substring(0,200)+'</div>';
@@ -3020,6 +3030,7 @@ renderVtxTable();
         document.getElementById('rf-status').innerHTML='<span style="color:#4ade80;">\u25CF '+links.length+' waypoints with terrain</span>';
         var wpCoords=rfWaypoints.slice(1).map(function(w){return{lat:w.lat,lon:w.lon};});
         rfBuildTraceFromOrigin(pilot.lat,pilot.lon,wpCoords,proto,txP,txG,rxG,fade);
+        if(rfHeatEnabled)rfBuildHeatmap();
     }
 
 
@@ -3062,6 +3073,7 @@ renderVtxTable();
         document.getElementById('rf-advanced-results').style.display='block';
         document.getElementById('rf-status').innerHTML='<span style="color:#4ade80;">\u25cf relay computed with terrain</span>';
         rfBuildTraceFromOrigin(rfRepeaterPts[1].lat,rfRepeaterPts[1].lon,[{lat:rfRepeaterPts[2].lat,lon:rfRepeaterPts[2].lon}],fwdProto,rPower,txG,rxG,fade);
+        if(rfHeatEnabled)rfBuildHeatmap();
     }
     // No auto-compute on input changes — user clicks Calculate
     // ['rf-protocol','rf-tx-power',...].forEach — removed
@@ -3075,6 +3087,67 @@ renderVtxTable();
         }
     };
     // ── Export Report ──
+    // ── RF Coverage Heatmap for terrain tool ──
+    var rfHeatLayer=null;
+    var rfHeatEnabled=false;
+
+    window.rfToggleHeatmap=function(){
+        rfHeatEnabled=document.getElementById('rf-heatmap-toggle').checked;
+        if(!rfHeatEnabled){rfClearHeatmap();return;}
+        rfBuildHeatmap();
+    };
+
+    function rfClearHeatmap(){
+        if(rfHeatLayer&&rfMap){rfMap.removeLayer(rfHeatLayer);rfHeatLayer=null;}
+    }
+
+    function rfBuildHeatmap(){
+        rfClearHeatmap();
+        if(!rfMap)return;
+        var L=window.L;
+        // Determine RF origin(s)
+        var origins=[];
+        if(rfAdvanced&&rfAdvMode==='repeater'&&rfRepeaterPts.length>=2){
+            origins.push({lat:rfRepeaterPts[1].lat,lon:rfRepeaterPts[1].lon}); // repeater is origin
+        } else if(rfAdvanced&&rfAdvMode==='waypoint'&&rfWaypoints.length>=1){
+            origins.push({lat:rfWaypoints[0].lat,lon:rfWaypoints[0].lon}); // pilot is origin
+        } else if(txPos){
+            origins.push({lat:txPos.lat,lon:txPos.lon}); // TX is origin
+        }
+        if(origins.length===0)return;
+        var proto=getProto();
+        var txP=getVal('rf-tx-power'),txG=getVal('rf-tx-gain'),rxG=getVal('rf-rx-gain');
+        var fade=getVal('rf-fade-margin');
+        var bounds=rfMap.getBounds();
+        var sw=bounds.getSouthWest(),ne=bounds.getNorthEast();
+        var GRID=40;
+        var latStep=(ne.lat-sw.lat)/GRID,lonStep=(ne.lng-sw.lng)/GRID;
+        var rects=[];
+        for(var r=0;r<GRID;r++){
+            for(var c=0;c<GRID;c++){
+                var lat=sw.lat+r*latStep+latStep/2;
+                var lon=sw.lng+c*lonStep+lonStep/2;
+                var bestMargin=-999;
+                for(var i=0;i<origins.length;i++){
+                    var d=haversine(origins[i].lat,origins[i].lon,lat,lon)/1000;
+                    if(d<0.001)d=0.001;
+                    var fspl=20*Math.log10(d)+20*Math.log10(proto.freq)+32.44;
+                    var margin=txP+txG+rxG-fspl-proto.rxSens-fade;
+                    if(margin>bestMargin)bestMargin=margin;
+                }
+                var color,opacity;
+                if(bestMargin>20){color='#4ade80';opacity=0.12;}
+                else if(bestMargin>10){color='#22d3ee';opacity=0.15;}
+                else if(bestMargin>6){color='#eab308';opacity=0.2;}
+                else if(bestMargin>0){color='#f59e0b';opacity=0.25;}
+                else{color='#ef4444';opacity=0.28;}
+                rects.push(L.rectangle([[sw.lat+r*latStep,sw.lng+c*lonStep],[sw.lat+(r+1)*latStep,sw.lng+(c+1)*lonStep]],{color:'none',fillColor:color,fillOpacity:opacity,weight:0}));
+            }
+        }
+        rfHeatLayer=L.layerGroup(rects).addTo(rfMap);
+        rfHeatLayer.eachLayer(function(l){l.bringToBack();});
+    }
+
     window.rfExportReport=function(){
         // Capture map as image via Leaflet
         var mapCanvas=null;
