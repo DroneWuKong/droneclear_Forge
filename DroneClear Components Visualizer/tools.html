@@ -2441,6 +2441,7 @@ renderVtxTable();
     }
 
     function renderResults(analysis,budget,proto,elevSrc){
+        try{
         var distKm=analysis.totalDkm;
         var qMap={
             excellent:{c:'#4ade80',l:'EXCELLENT',i:'\u25C6\u25C6\u25C6\u25C6'},
@@ -2451,12 +2452,14 @@ renderVtxTable();
         };
         var q=qMap[budget.quality]||qMap.fail;
         var badge=document.getElementById('rf-quality-badge');
-        badge.innerHTML='<span style="color:'+q.c+';letter-spacing:2px;">'+q.i+'</span> <span style="color:'+q.c+';">'+q.l+'</span>';
-        badge.style.background=q.c+'12';
-        badge.style.border='1px solid '+q.c+'40';
+        if(badge){
+            badge.innerHTML='<span style="color:'+q.c+';letter-spacing:2px;">'+q.i+'</span> <span style="color:'+q.c+';">'+q.l+'</span>';
+            badge.style.background=q.c+'12';
+            badge.style.border='1px solid '+q.c+'40';
+        }
 
-        document.getElementById('rf-tx-coords').textContent=txPos.lat.toFixed(5)+', '+txPos.lon.toFixed(5);
-        document.getElementById('rf-rx-coords').textContent=rxPos.lat.toFixed(5)+', '+rxPos.lon.toFixed(5);
+        if(txPos)document.getElementById('rf-tx-coords').textContent=txPos.lat.toFixed(5)+', '+txPos.lon.toFixed(5);
+        if(rxPos)document.getElementById('rf-rx-coords').textContent=rxPos.lat.toFixed(5)+', '+rxPos.lon.toFixed(5);
         var srcColor=elevSrc==='3DEP'?'#4ade80':elevSrc==='SRTM'?'#22d3ee':'#eab308';
         document.getElementById('rf-status').innerHTML='Distance: <span style="color:var(--accent-red)">'+distKm.toFixed(2)+' km</span> \u00B7 Elev: <span style="color:'+srcColor+'">'+elevSrc+'</span>';
 
@@ -2513,6 +2516,10 @@ renderVtxTable();
         detRows.forEach(function(r){dHtml+='<span style="color:var(--text-muted);">'+r[0]+'</span><span style="color:'+r[2]+';">'+r[1]+'</span>';});
         dHtml+='</div>';
         document.getElementById('rf-path-details').innerHTML=dHtml;
+        }catch(renderErr){
+            console.error('renderResults error:',renderErr);
+            document.getElementById('rf-results').innerHTML='<div style="color:#f87171;font-size:11px;padding:8px;">Render error: '+renderErr.message+'</div>';
+        }
     }
 
     var computing=false;
