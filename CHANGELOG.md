@@ -1,5 +1,28 @@
 # Changelog
 
+## [Firmware Miner + Bulk Data Enrichment] - 2026-04-02
+
+### Added
+- Firmware config miner (`miners/firmware/mine_firmware_configs.py`) — mines 1,717 target definitions from Betaflight (1,027), iNav (214), ArduPilot (419), PX4 (57) source repos
+- Wingman RAG now indexes firmware target configs with dedicated context formatting
+- FW Targets stat card on Wingman dashboard
+- Platform image scraper (`miners/enrichment/fetch_platform_images.py`) for OG image extraction
+- 23 verified Wikimedia Commons platform images (DJI, Baykar, Skydio, Parrot, Shield AI, etc.)
+- Appendix B: UART Maps for 416 common FCs (handbook)
+
+### Changed
+- Receiver `frequency_ghz`: 30% → 100% (277 filled via protocol pattern matching)
+- ESC `continuous_current_a`: 0% → 89% (148 filled from name)
+- Motor `kv`: 0% → 93% (282 filled from name)
+- Motor `stator_diameter_mm`: 95% → 99% (14 filled)
+- GPS `constellations` + `gnss_chipset`: 0% → 71% (53 filled)
+- Propeller `diameter_inches` / `pitch_inches`: 0% → 82% (399 filled)
+- FC `is_aio`: 38% → 100% (197 classified)
+- Receiver `size_class`: 32% → 56% (94 classified)
+- FC `mcu_family`: 9 cross-referenced from firmware miner
+- ESC `cell_count`: 6 filled from voltage range
+- `build_static.py`: added fetch rewrite for `forge_firmware_configs.json`
+
 ## [Wingman UI — Forge Layout Redesign] - 2026-03-25
 
 ### Added
