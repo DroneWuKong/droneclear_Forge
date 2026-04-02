@@ -140,6 +140,7 @@ a{color:var(--blue);text-decoration:none}a:hover{text-decoration:underline}
 
   <!-- FLAGS PANEL -->
   <div class="panel active" id="panel-flags">
+    <input class="search-bar" id="flag-search" placeholder="Search flags... (e.g. TrellisWare, Jetson, DRAM, SOF, mesh)" oninput="renderFlags()">
     <div class="filter-row" id="severity-filters"></div>
     <div id="flag-detail-container" style="display:none"></div>
     <div class="flag-list" id="flag-list"></div>
@@ -225,15 +226,29 @@ let selectedFlag = null;
 
 // ── Data loading ──
 async function loadData() {
+  const flagList = document.getElementById("flag-list");
+  flagList.innerHTML = '<div style="color:var(--text-d);font-size:12px;padding:20px;text-align:center">Loading pipeline data...</div>';
+
   try {
     const [fRes, pRes] = await Promise.all([
-      fetch("../static/pie_flags.json").then(r => r.ok ? r.json() : []),
-      fetch("../static/pie_predictions.json").then(r => r.ok ? r.json() : []),
+      fetch("../static/pie_flags.json").then(r => {
+        if (!r.ok) throw new Error(`flags.json: HTTP ${r.status}`);
+        return r.json();
+      }),
+      fetch("../static/pie_predictions.json").then(r => {
+        if (!r.ok) throw new Error(`predictions.json: HTTP ${r.status}`);
+        return r.json();
+      }),
     ]);
     FLAGS = fRes; PREDICTIONS = pRes;
   } catch(e) {
-    console.warn("Could not load pipeline data, using empty state:", e);
+    console.error("Pipeline data load failed:", e);
     FLAGS = []; PREDICTIONS = [];
+    flagList.innerHTML = `<div style="color:var(--red);font-size:12px;padding:20px;text-align:center">
+      Failed to load pipeline data: ${e.message}<br>
+      <span style="color:var(--text-d)">Check browser console. Data should be at ../static/pie_flags.json</span>
+    </div>`;
+    return;
   }
   document.getElementById("flag-count").textContent = FLAGS.length;
   renderAll();
@@ -273,6 +288,21 @@ function renderFlags() {
   const list = document.getElementById("flag-list");
   let flags = FLAGS;
   if (activeSeverity !== "all") flags = flags.filter(f => (FLAG_META[f.flag_type]||{}).sev === activeSeverity);
+
+  // Search filter
+  const searchQ = (document.getElementById("flag-search")?.value || "").toLowerCase().trim();
+  if (searchQ) {
+    flags = flags.filter(f =>
+      (f.title||"").toLowerCase().includes(searchQ) ||
+      (f.detail||"").toLowerCase().includes(searchQ) ||
+      (f.prediction||"").toLowerCase().includes(searchQ)
+    );
+  }
+
+  if (flags.length === 0 && FLAGS.length > 0) {
+    list.innerHTML = `<div style="color:var(--text-d);font-size:12px;padding:20px;text-align:center">No flags match your filter. ${FLAGS.length} flags total.</div>`;
+    return;
+  }
 
   list.innerHTML = flags.map(f => {
     const m = FLAG_META[f.flag_type] || {label:"Unknown",badge:"badge-amber",sev:"info",icon:"?"};
