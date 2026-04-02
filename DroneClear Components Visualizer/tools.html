@@ -1983,6 +1983,7 @@ renderVtxTable();
             rfTraceSegments.push({polyline:seg});
         }
         rfTraceSegments._allPts=allPts;
+        rfTraceSegments._origin={lat:originLat,lon:originLon};
         document.getElementById('rf-route-trace').style.display='block';
         document.getElementById('rf-trace-slider').value=0;
         rfTraceUpdate();
@@ -2298,10 +2299,12 @@ renderVtxTable();
 
     // ── Route trace (fly the path) ──
     let rfTraceMarker=null;
+    let rfTraceSightLine=null;
     let rfTraceSegments=[];  // [{latlngs:[[lat,lon],...], margins:[...]}]
 
     function rfClearTrace(){
         if(rfTraceMarker&&rfMap){rfMap.removeLayer(rfTraceMarker);rfTraceMarker=null;}
+        if(rfTraceSightLine&&rfMap){rfMap.removeLayer(rfTraceSightLine);rfTraceSightLine=null;}
         rfTraceSegments.forEach(s=>{if(s.polyline&&rfMap)rfMap.removeLayer(s.polyline);});
         rfTraceSegments=[];
         document.getElementById('rf-route-trace').style.display='none';
@@ -2341,6 +2344,7 @@ renderVtxTable();
         }
         // Store points for slider
         rfTraceSegments._allPts=allPts;
+        rfTraceSegments._origin={lat:pilot.lat,lon:pilot.lon};
         // Show slider
         document.getElementById('rf-route-trace').style.display='block';
         document.getElementById('rf-trace-slider').value=0;
@@ -2350,21 +2354,28 @@ renderVtxTable();
     function rfTraceUpdate(){
         const pts=rfTraceSegments._allPts;
         if(!pts||!pts.length)return;
+        const origin=rfTraceSegments._origin;
         const pct=parseInt(document.getElementById('rf-trace-slider').value);
         const idx=Math.min(Math.floor(pct/100*pts.length),pts.length-1);
         const pt=pts[idx];
         const L=window.L;
-        // Move or create drone marker
         if(!rfTraceMarker){
             rfTraceMarker=L.circleMarker([pt.lat,pt.lon],{radius:6,color:'#fff',fillColor:'#22d3ee',fillOpacity:1,weight:2}).addTo(rfMap);
         } else {
             rfTraceMarker.setLatLng([pt.lat,pt.lon]);
         }
+        if(origin){
+            if(!rfTraceSightLine){
+                rfTraceSightLine=L.polyline([[origin.lat,origin.lon],[pt.lat,pt.lon]],{color:'#ffffff',weight:1,dashArray:'4,6',opacity:0.5}).addTo(rfMap);
+            } else {
+                rfTraceSightLine.setLatLngs([[origin.lat,origin.lon],[pt.lat,pt.lon]]);
+            }
+        }
         const mColor=pt.margin>15?'#4ade80':pt.margin>6?'#eab308':pt.margin>0?'#f59e0b':'#ef4444';
         const status=pt.margin>15?'STRONG':pt.margin>6?'OK':pt.margin>0?'WEAK':'LOST';
         document.getElementById('rf-trace-info').innerHTML='<span style="color:'+mColor+'">'+status+'</span> '+pt.margin.toFixed(1)+' dB';
         document.getElementById('rf-trace-detail').textContent=
-            pt.d.toFixed(2)+' km from pilot · '+pt.rxPower.toFixed(1)+' dBm · '+pt.lat.toFixed(5)+', '+pt.lon.toFixed(5);
+            pt.d.toFixed(2)+' km from origin · '+pt.rxPower.toFixed(1)+' dBm · '+pt.lat.toFixed(5)+', '+pt.lon.toFixed(5);
     }
 
     function updateMapMarkers(){
