@@ -222,6 +222,10 @@
             <button class="tools-nav-item" data-tool="dipole">
                 <i class="ph ph-antenna"></i> Dipole length
             </button>
+            <button class="tools-nav-item" data-tool="mesh-planner">
+                <i class="ph ph-graph"></i> Mesh planner
+                <span class="tools-nav-badge badge-new">NEW</span>
+            </button>
         </div>
 
         <div class="tools-nav-section">
@@ -280,6 +284,7 @@
             <button class="mobile-tool-btn" data-mtool="fresnel">◎ Fresnel</button>
             <button class="mobile-tool-btn" data-mtool="harmonics">∿ Harmonics</button>
             <button class="mobile-tool-btn" data-mtool="dipole">⊤ Dipole</button>
+            <button class="mobile-tool-btn" data-mtool="mesh-planner">◇ Mesh</button>
             <span class="mobile-tool-section">FPV</span>
             <button class="mobile-tool-btn" data-mtool="channel-planner">≋ Channels</button>
             <button class="mobile-tool-btn" data-mtool="closest-channel">⊕ Closest</button>
@@ -1090,6 +1095,99 @@
 
             <div style="font-size:10px; color:var(--text-muted); margin-top:8px; line-height:1.5; text-align:center;">
                 ⚠ Elevation data approximated from SRTM (30m) or 3DEP (1–10m). Does not model vegetation, structures, atmospheric absorption, rain fade, multipath, or antenna radiation patterns.
+            </div>
+        </div>
+
+        <!-- ═══════════════════════════════════════════════
+             TOOL: Mesh / Swarm RF Planner
+        ═══════════════════════════════════════════════ -->
+        <div class="tool-panel" id="tool-mesh-planner" style="max-width:960px;">
+            <div class="tool-header">
+                <div class="tool-title"><i class="ph ph-graph" style="color:var(--accent-red)"></i> Mesh / Swarm RF Planner</div>
+                <p class="tool-desc">Place drone nodes on the map to model MANET mesh connectivity. Computes RF propagation between every node pair, identifies weak links, single points of failure, and network partitions.</p>
+            </div>
+
+            <!-- Mesh map -->
+            <div style="position:relative;">
+                <div id="mesh-map" style="width:100%;height:350px;border-radius:var(--radius-md);border:1px solid var(--border-color);background:var(--bg-dark);cursor:crosshair;"></div>
+                <div style="position:absolute;top:8px;right:8px;z-index:999;display:flex;gap:2px;background:rgba(11,15,20,0.85);border-radius:var(--radius-sm);padding:3px;border:1px solid var(--border-color);">
+                    <button onclick="meshSetLayer('dark')" style="padding:3px 7px;border:none;border-radius:3px;background:rgba(34,211,238,0.12);color:var(--accent-red);font-size:9px;cursor:pointer;font-family:var(--font-family);">Dark</button>
+                    <button onclick="meshSetLayer('light')" style="padding:3px 7px;border:none;border-radius:3px;background:none;color:var(--text-faint);font-size:9px;cursor:pointer;font-family:var(--font-family);">Light</button>
+                    <button onclick="meshSetLayer('sat')" style="padding:3px 7px;border:none;border-radius:3px;background:none;color:var(--text-faint);font-size:9px;cursor:pointer;font-family:var(--font-family);">Sat</button>
+                </div>
+            </div>
+            <div style="font-size:10px;color:var(--text-muted);margin:6px 0;">
+                <span id="mesh-node-count">0 nodes</span> · <span id="mesh-link-count">0 links</span> · Click map to place nodes
+            </div>
+
+            <!-- Mesh config -->
+            <div class="input-grid" style="margin-bottom:10px;">
+                <div class="input-group">
+                    <label class="input-label">Mesh protocol</label>
+                    <select class="tool-select" id="mesh-protocol">
+                        <option value="DOODLE_24">Doodle Labs 2.4G</option>
+                        <option value="DOODLE_16">Doodle Labs 1.6G</option>
+                        <option value="SILVUS">Silvus SC4200</option>
+                        <option value="PERSISTENT">Persistent MPU5</option>
+                        <option value="RFD900X">RFD900x (P2MP)</option>
+                        <option value="RAJANT">Rajant Peregrine</option>
+                        <option value="ELRS_900">ELRS 900M (not mesh)</option>
+                        <option value="CUSTOM">Custom</option>
+                    </select>
+                </div>
+                <div class="input-group">
+                    <label class="input-label">TX power</label>
+                    <div class="input-row">
+                        <input type="number" class="tool-input" id="mesh-tx-power" value="30" min="0" max="50">
+                        <span class="input-unit">dBm</span>
+                    </div>
+                </div>
+                <div class="input-group">
+                    <label class="input-label">Node height (AGL)</label>
+                    <div class="input-row">
+                        <input type="number" class="tool-input" id="mesh-node-height" value="50" min="1" max="500" step="5">
+                        <span class="input-unit">m</span>
+                    </div>
+                </div>
+                <div class="input-group">
+                    <label class="input-label">Min margin (connected)</label>
+                    <div class="input-row">
+                        <input type="number" class="tool-input" id="mesh-min-margin" value="6" min="0" max="30">
+                        <span class="input-unit">dB</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Action buttons -->
+            <div style="display:flex;gap:6px;margin-bottom:10px;">
+                <button onclick="meshCompute()" style="flex:1;padding:7px;background:var(--accent-red);color:#fff;border:none;border-radius:var(--radius-sm);font-size:12px;font-weight:600;font-family:var(--font-family);cursor:pointer;">ANALYZE MESH</button>
+                <button onclick="meshUndo()" style="padding:7px 10px;border:1px solid var(--border-color);border-radius:var(--radius-sm);background:none;color:var(--text-muted);font-size:10px;font-family:var(--font-family);cursor:pointer;">← Undo</button>
+                <button onclick="meshClear()" style="padding:7px 10px;border:1px solid var(--border-color);border-radius:var(--radius-sm);background:none;color:var(--text-muted);font-size:10px;font-family:var(--font-family);cursor:pointer;">✕ Clear</button>
+            </div>
+
+            <!-- Kill mode toggle -->
+            <div style="margin-bottom:10px;">
+                <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:11px;color:var(--text-muted);font-family:var(--font-family);">
+                    <input type="checkbox" id="mesh-kill-mode" onchange="meshToggleKill()" style="accent-color:#f87171;">
+                    Failure simulation — click nodes to take them offline
+                </label>
+            </div>
+
+            <!-- Node list -->
+            <div id="mesh-node-list" style="margin-bottom:10px;"></div>
+
+            <!-- Network health -->
+            <div id="mesh-health" style="display:none;margin-bottom:10px;"></div>
+
+            <!-- Connectivity matrix -->
+            <div id="mesh-matrix" style="display:none;margin-bottom:10px;overflow-x:auto;"></div>
+
+            <!-- Issue list -->
+            <div id="mesh-issues" style="display:none;margin-bottom:10px;"></div>
+
+            <!-- Export -->
+            <div style="text-align:center;margin:12px 0;">
+                <button onclick="meshExport()" style="padding:8px 20px;background:none;border:1px solid var(--accent-red);border-radius:var(--radius-sm);color:var(--accent-red);font-size:11px;font-weight:600;font-family:var(--font-family);cursor:pointer;">↓ EXPORT MESH REPORT</button>
             </div>
         </div>
 
@@ -3109,5 +3207,296 @@ renderVtxTable();
     };
 
     if(location.hash==='#rf-terrain'){setTimeout(function(){showTool('rf-terrain');},300);}
+    if(location.hash==='#mesh-planner'){setTimeout(function(){showTool('mesh-planner');},300);}
+})();
+
+// ═══════════════════════════════════════════════════════════════════
+// MESH / SWARM RF PLANNER
+// ═══════════════════════════════════════════════════════════════════
+(function(){
+    var MESH_PROTOCOLS={
+        DOODLE_24:{name:'Doodle Labs 2.4G',freq:2400,rxSens:-96,mod:'OFDM',mesh:true,meshType:'batman-adv'},
+        DOODLE_16:{name:'Doodle Labs 1.6G',freq:1625,rxSens:-96,mod:'OFDM',mesh:true,meshType:'batman-adv'},
+        SILVUS:{name:'Silvus SC4200',freq:1625,rxSens:-100,mod:'MIMO-OFDM',mesh:true,meshType:'Proprietary MANET'},
+        PERSISTENT:{name:'Persistent MPU5',freq:2400,rxSens:-98,mod:'MIMO-OFDM',mesh:true,meshType:'Wave Relay'},
+        RFD900X:{name:'RFD900x',freq:915,rxSens:-121,mod:'FHSS',mesh:false,meshType:'Point-to-multipoint'},
+        RAJANT:{name:'Rajant Peregrine',freq:2400,rxSens:-95,mod:'OFDM',mesh:true,meshType:'Kinetic Mesh'},
+        ELRS_900:{name:'ELRS 900M',freq:915,rxSens:-123,mod:'LoRa',mesh:false,meshType:'None (C2 only)'},
+        CUSTOM:{name:'Custom',freq:2400,rxSens:-96,mod:'Custom',mesh:true,meshType:'Custom'},
+    };
+
+    var meshMap=null,meshTile=null,meshInited=false;
+    var meshNodes=[]; // [{id,lat,lon,marker,active,label}]
+    var meshLinks=[]; // [{from,to,polyline,margin,quality,dist}]
+    var meshKillMode=false;
+    var meshIdCounter=0;
+
+    function meshGetProto(){return MESH_PROTOCOLS[document.getElementById('mesh-protocol').value]||MESH_PROTOCOLS.DOODLE_24;}
+
+    function initMeshMap(){
+        if(meshInited)return;
+        meshInited=true;
+        var L=window.L;
+        if(!L)return;
+        meshMap=L.map('mesh-map',{center:[39.0,-98.0],zoom:4,zoomControl:true});
+        meshTile=L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',{attribution:'OSM',maxZoom:19}).addTo(meshMap);
+        meshMap.on('click',function(e){meshMapClick(e.latlng.lat,e.latlng.lng);});
+        setTimeout(function(){meshMap.invalidateSize();},200);
+    }
+
+    window.meshSetLayer=function(key){
+        if(!meshMap||!meshTile)return;
+        var urls={dark:'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',light:'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png',sat:'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}'};
+        meshTile.setUrl(urls[key]||urls.dark);
+    };
+
+    function meshMapClick(lat,lon){
+        if(meshKillMode){return;} // In kill mode, clicks toggle nodes not place
+        var L=window.L;
+        meshIdCounter++;
+        var id='N'+meshIdCounter;
+        var colors=['#22d3ee','#4ade80','#f59e0b','#a78bfa','#f87171','#fb923c','#38bdf8','#e879f9','#fbbf24','#6ee7b7'];
+        var c=colors[(meshIdCounter-1)%colors.length];
+        var icon=L.divIcon({className:'',html:'<div style="width:18px;height:18px;border-radius:50%;background:'+c+';border:3px solid #0b0f14;box-shadow:0 0 8px '+c+'88;display:flex;align-items:center;justify-content:center;font-size:7px;font-weight:700;color:#0b0f14;">'+meshIdCounter+'</div>',iconSize:[18,18],iconAnchor:[9,9]});
+        var marker=L.marker([lat,lon],{draggable:true,icon:icon}).addTo(meshMap);
+        marker.bindTooltip(id,{permanent:false,direction:'top',offset:[0,-12]});
+        var node={id:id,lat:lat,lon:lon,marker:marker,active:true,label:id,color:c,num:meshIdCounter};
+        marker.on('dragend',function(){var p=marker.getLatLng();node.lat=p.lat;node.lon=p.lng;meshUpdateNodeList();});
+        marker.on('click',function(){
+            if(meshKillMode){node.active=!node.active;marker.setOpacity(node.active?1:0.3);meshUpdateNodeList();}
+        });
+        meshNodes.push(node);
+        meshUpdateNodeList();
+    }
+
+    function meshUpdateNodeList(){
+        var el=document.getElementById('mesh-node-list');
+        if(!el)return;
+        document.getElementById('mesh-node-count').textContent=meshNodes.length+' nodes';
+        if(meshNodes.length===0){el.innerHTML='';return;}
+        var html='';
+        meshNodes.forEach(function(n){
+            html+='<div style="display:inline-flex;align-items:center;gap:4px;padding:2px 8px;margin:2px;border-radius:var(--radius-sm);background:'+(n.active?'var(--bg-dark)':'rgba(248,113,113,0.15)')+';border:1px solid '+(n.active?'var(--border-color)':'#f87171')+';font-size:10px;">';
+            html+='<span style="width:8px;height:8px;border-radius:50%;background:'+(n.active?n.color:'#666')+';"></span>';
+            html+='<span style="color:'+(n.active?'var(--text-main)':'#f87171')+';">'+n.id+'</span>';
+            html+='<span style="color:var(--text-faint);">'+n.lat.toFixed(4)+','+n.lon.toFixed(4)+'</span>';
+            if(!n.active)html+='<span style="color:#f87171;font-weight:700;">OFFLINE</span>';
+            html+='</div>';
+        });
+        el.innerHTML=html;
+    }
+
+    window.meshUndo=function(){
+        if(meshNodes.length===0)return;
+        var last=meshNodes.pop();
+        if(last.marker&&meshMap)meshMap.removeLayer(last.marker);
+        meshUpdateNodeList();
+    };
+
+    window.meshClear=function(){
+        meshNodes.forEach(function(n){if(n.marker&&meshMap)meshMap.removeLayer(n.marker);});
+        meshNodes=[];meshIdCounter=0;
+        meshClearLinks();
+        meshUpdateNodeList();
+        document.getElementById('mesh-health').style.display='none';
+        document.getElementById('mesh-matrix').style.display='none';
+        document.getElementById('mesh-issues').style.display='none';
+    };
+
+    window.meshToggleKill=function(){
+        meshKillMode=document.getElementById('mesh-kill-mode').checked;
+        meshNodes.forEach(function(n){n.marker.dragging[meshKillMode?'disable':'enable']();});
+    };
+
+    function meshClearLinks(){
+        meshLinks.forEach(function(l){if(l.polyline&&meshMap)meshMap.removeLayer(l.polyline);});
+        meshLinks=[];
+        document.getElementById('mesh-link-count').textContent='0 links';
+    }
+
+    // ── Haversine (local copy) ──
+    function hav(lat1,lon1,lat2,lon2){
+        var R=6371000,dLat=(lat2-lat1)*Math.PI/180,dLon=(lon2-lon1)*Math.PI/180;
+        var a=Math.sin(dLat/2)*Math.sin(dLat/2)+Math.cos(lat1*Math.PI/180)*Math.cos(lat2*Math.PI/180)*Math.sin(dLon/2)*Math.sin(dLon/2);
+        return R*2*Math.atan2(Math.sqrt(a),Math.sqrt(1-a));
+    }
+
+    // ── Compute mesh ──
+    window.meshCompute=function(){
+        var active=meshNodes.filter(function(n){return n.active;});
+        if(active.length<2){document.getElementById('mesh-health').innerHTML='<div style="color:#f87171;padding:8px;font-size:11px;">Need at least 2 active nodes</div>';document.getElementById('mesh-health').style.display='block';return;}
+        meshClearLinks();
+        var proto=meshGetProto();
+        var txP=parseFloat(document.getElementById('mesh-tx-power').value)||30;
+        var nodeH=parseFloat(document.getElementById('mesh-node-height').value)||50;
+        var minMargin=parseFloat(document.getElementById('mesh-min-margin').value)||6;
+        var txG=2,rxG=2; // Default antenna gains for mesh radios
+        var L=window.L;
+        var links=[];
+        var n=active.length;
+        // Compute every pair
+        for(var i=0;i<n;i++){
+            for(var j=i+1;j<n;j++){
+                var a=active[i],b=active[j];
+                var d=hav(a.lat,a.lon,b.lat,b.lon)/1000;
+                var fspl=20*Math.log10(d)+20*Math.log10(proto.freq)+32.44;
+                var rxPow=txP+txG+rxG-fspl;
+                var margin=rxPow-proto.rxSens;
+                var quality=margin>20?'excellent':margin>minMargin?'good':margin>0?'weak':'fail';
+                var connected=margin>=minMargin;
+                var color=margin>20?'#4ade80':margin>minMargin?'#eab308':margin>0?'#f59e0b':'#ef4444';
+                var polyline=null;
+                if(connected){
+                    polyline=L.polyline([[a.lat,a.lon],[b.lat,b.lon]],{color:color,weight:2,opacity:0.7}).addTo(meshMap);
+                    polyline.bindTooltip(a.id+' ↔ '+b.id+': '+margin.toFixed(1)+' dB',{sticky:true});
+                } else {
+                    polyline=L.polyline([[a.lat,a.lon],[b.lat,b.lon]],{color:'#333',weight:1,opacity:0.3,dashArray:'4,8'}).addTo(meshMap);
+                }
+                links.push({from:a.id,to:b.id,dist:d,margin:margin,quality:quality,connected:connected,polyline:polyline,rxPow:rxPow,fspl:fspl});
+            }
+        }
+        meshLinks=links;
+        document.getElementById('mesh-link-count').textContent=links.filter(function(l){return l.connected;}).length+'/'+links.length+' connected';
+        meshAnalyze(active,links,minMargin,proto);
+    };
+
+    function meshAnalyze(nodes,links,minMargin,proto){
+        var n=nodes.length;
+        var idMap={};nodes.forEach(function(nd,i){idMap[nd.id]=i;});
+        // Build adjacency
+        var adj=[];for(var i=0;i<n;i++)adj.push([]);
+        links.forEach(function(l){
+            if(!l.connected)return;
+            var a=idMap[l.from],b=idMap[l.to];
+            if(a!==undefined&&b!==undefined){adj[a].push(b);adj[b].push(a);}
+        });
+        // BFS connectivity
+        function bfsReachable(start,skip){
+            var visited=new Set();var q=[start];visited.add(start);
+            while(q.length>0){var c=q.shift();adj[c].forEach(function(nb){if(!visited.has(nb)&&nb!==skip){visited.add(nb);q.push(nb);}});}
+            return visited;
+        }
+        var reachable=bfsReachable(0,-1);
+        var connected=reachable.size===n;
+        var components=[];
+        var assigned=new Set();
+        for(var i=0;i<n;i++){
+            if(!assigned.has(i)){
+                var comp=bfsReachable(i,-1);
+                comp.forEach(function(c){assigned.add(c);});
+                components.push(Array.from(comp).map(function(c){return nodes[c].id;}));
+            }
+        }
+        // SPOF detection
+        var spofNodes=[];
+        for(var i=0;i<n;i++){
+            if(n<=2)continue;
+            // Check if removing node i disconnects the graph
+            var startNode=i===0?1:0;
+            var reach=new Set();var q=[startNode];reach.add(startNode);reach.add(i); // skip i
+            while(q.length>0){var c=q.shift();adj[c].forEach(function(nb){if(!reach.has(nb)){reach.add(nb);q.push(nb);}});}
+            if(reach.size<n){spofNodes.push(nodes[i].id);}
+        }
+        // Weakest connected link
+        var connectedLinks=links.filter(function(l){return l.connected;});
+        var weakest=connectedLinks.length>0?connectedLinks.reduce(function(a,b){return a.margin<b.margin?a:b;}):null;
+        // Isolated nodes
+        var isolated=[];
+        for(var i=0;i<n;i++){if(adj[i].length===0)isolated.push(nodes[i].id);}
+        // Average degree
+        var avgDeg=adj.reduce(function(s,a){return s+a.length;},0)/n;
+        // Render health
+        var hEl=document.getElementById('mesh-health');
+        var html='<div style="padding:10px;background:var(--bg-panel);border:1px solid var(--border-color);border-radius:var(--radius-sm);">';
+        html+='<div style="font-size:10px;font-weight:600;color:var(--text-main);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:8px;">Network Health</div>';
+        if(!proto.mesh)html+='<div style="padding:6px 8px;margin-bottom:8px;background:rgba(234,179,8,0.1);border:1px solid rgba(234,179,8,0.3);border-radius:var(--radius-sm);font-size:10px;color:#eab308;">⚠ '+proto.name+' is '+proto.meshType+' — not a true mesh. Nodes cannot relay for each other.</div>';
+        var statusColor=connected?'#4ade80':(isolated.length>0?'#f87171':'#eab308');
+        html+='<div style="margin-bottom:8px;padding:8px 10px;border-radius:var(--radius-sm);background:'+statusColor+'10;border:1px solid '+statusColor+'40;color:'+statusColor+';font-size:12px;font-weight:700;">'+(connected?'✓ FULLY CONNECTED':'⚠ NETWORK PARTITIONED — '+components.length+' fragments')+'</div>';
+        html+='<div style="display:grid;grid-template-columns:1fr 1fr;gap:4px;font-size:10px;">';
+        html+='<span style="color:var(--text-muted);">Nodes</span><span style="color:var(--text-main);">'+n+' active</span>';
+        html+='<span style="color:var(--text-muted);">Links</span><span style="color:var(--text-main);">'+connectedLinks.length+' / '+links.length+' pairs</span>';
+        html+='<span style="color:var(--text-muted);">Avg degree</span><span style="color:var(--text-main);">'+avgDeg.toFixed(1)+' connections/node</span>';
+        html+='<span style="color:var(--text-muted);">Protocol</span><span style="color:var(--text-main);">'+proto.name+' ('+proto.meshType+')</span>';
+        if(weakest)html+='<span style="color:var(--text-muted);">Weakest link</span><span style="color:#eab308;">'+weakest.from+' ↔ '+weakest.to+': '+weakest.margin.toFixed(1)+' dB</span>';
+        if(isolated.length>0)html+='<span style="color:var(--text-muted);">Isolated</span><span style="color:#f87171;">'+isolated.join(', ')+'</span>';
+        if(spofNodes.length>0)html+='<span style="color:var(--text-muted);">SPOF nodes</span><span style="color:#f59e0b;">'+spofNodes.join(', ')+' — removing breaks mesh</span>';
+        html+='</div></div>';
+        hEl.innerHTML=html;hEl.style.display='block';
+        // Mark SPOF nodes on map
+        spofNodes.forEach(function(sid){
+            var nd=meshNodes.find(function(nn){return nn.id===sid;});
+            if(nd&&nd.marker){nd.marker.setZIndexOffset(1000);}
+        });
+        // Connectivity matrix
+        var mEl=document.getElementById('mesh-matrix');
+        var mHtml='<div style="padding:10px;background:var(--bg-panel);border:1px solid var(--border-color);border-radius:var(--radius-sm);">';
+        mHtml+='<div style="font-size:10px;font-weight:600;color:var(--text-main);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:8px;">Connectivity Matrix (dB margin)</div>';
+        mHtml+='<table style="width:100%;font-size:9px;border-collapse:collapse;font-family:var(--font-mono);">';
+        mHtml+='<tr><th style="padding:3px;"></th>';
+        nodes.forEach(function(nd){mHtml+='<th style="padding:3px;color:'+nd.color+';text-align:center;">'+nd.id+'</th>';});
+        mHtml+='</tr>';
+        nodes.forEach(function(row,ri){
+            mHtml+='<tr><td style="padding:3px;color:'+row.color+';font-weight:600;">'+row.id+'</td>';
+            nodes.forEach(function(col,ci){
+                if(ri===ci){mHtml+='<td style="padding:3px;text-align:center;color:var(--text-faint);">—</td>';return;}
+                var link=links.find(function(l){return(l.from===row.id&&l.to===col.id)||(l.from===col.id&&l.to===row.id);});
+                var m=link?link.margin:null;
+                var mc=m===null?'var(--text-faint)':m>20?'#4ade80':m>minMargin?'#eab308':m>0?'#f59e0b':'#ef4444';
+                mHtml+='<td style="padding:3px;text-align:center;color:'+mc+';font-weight:'+(link&&link.connected?'700':'400')+';">'+(m!==null?m.toFixed(0):'—')+'</td>';
+            });
+            mHtml+='</tr>';
+        });
+        mHtml+='</table></div>';
+        mEl.innerHTML=mHtml;mEl.style.display='block';
+        // Issues
+        var iEl=document.getElementById('mesh-issues');
+        var issues=[];
+        if(!connected)issues.push({sev:'CRITICAL',color:'#ef4444',msg:'Network partitioned into '+components.length+' fragments'});
+        isolated.forEach(function(nid){issues.push({sev:'CRITICAL',color:'#ef4444',msg:'Node '+nid+' is isolated — no connections'});});
+        spofNodes.forEach(function(nid){issues.push({sev:'WARNING',color:'#f59e0b',msg:'Node '+nid+' is a single point of failure'});});
+        if(weakest&&weakest.margin<10)issues.push({sev:'WEAK',color:'#eab308',msg:'Weakest link '+weakest.from+'↔'+weakest.to+' only '+weakest.margin.toFixed(1)+' dB'});
+        links.filter(function(l){return!l.connected&&l.margin>0;}).forEach(function(l){
+            issues.push({sev:'INFO',color:'var(--text-faint)',msg:l.from+'↔'+l.to+' has '+l.margin.toFixed(1)+' dB — below '+minMargin+' dB threshold'});
+        });
+        if(issues.length===0){
+            iEl.innerHTML='<div style="padding:6px 10px;font-size:10px;color:#4ade80;background:rgba(74,222,128,0.06);border:1px solid rgba(74,222,128,0.2);border-radius:var(--radius-sm);">✓ No issues — mesh is healthy</div>';
+        } else {
+            var iHtml='<div style="padding:8px 10px;background:var(--bg-panel);border:1px solid var(--border-color);border-radius:var(--radius-sm);">';
+            iHtml+='<div style="font-size:10px;font-weight:600;color:var(--text-main);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:6px;">⚠ '+issues.length+' Issue'+(issues.length>1?'s':'')+'</div>';
+            issues.forEach(function(iss){
+                iHtml+='<div style="padding:4px 8px;margin-bottom:3px;border-left:3px solid '+iss.color+';font-size:10px;color:var(--text-muted);"><span style="color:'+iss.color+';font-weight:700;">'+iss.sev+'</span> '+iss.msg+'</div>';
+            });
+            iHtml+='</div>';
+            iEl.innerHTML=iHtml;
+        }
+        iEl.style.display='block';
+    }
+
+    // Export
+    window.meshExport=function(){
+        var h=document.getElementById('mesh-health');
+        var m=document.getElementById('mesh-matrix');
+        var i=document.getElementById('mesh-issues');
+        var now=new Date().toISOString().split('T')[0];
+        var proto=meshGetProto();
+        var html='<!DOCTYPE html><html><head><meta charset="utf-8"><title>Mesh RF Report</title>';
+        html+='<style>*{margin:0;padding:0;box-sizing:border-box;}body{font-family:sans-serif;background:#0b0f14;color:#c9d1d9;padding:32px;font-size:11px;}h1{font-size:18px;color:#22d3ee;margin-bottom:4px;}h2{font-size:11px;color:#8b949e;margin-bottom:20px;}table{width:100%;border-collapse:collapse;font-size:10px;margin:8px 0;}td,th{padding:4px;border-bottom:1px solid #21262d;}@media print{body{background:#fff;color:#1a1a1a;}td,th{border-color:#ddd;}}</style>';
+        html+='</head><body><h1>Mesh / Swarm RF Report</h1><h2>'+proto.name+' | '+meshNodes.filter(function(n){return n.active;}).length+' nodes | '+now+'</h2>';
+        if(h)html+=h.innerHTML;
+        if(m)html+=m.innerHTML;
+        if(i)html+=i.innerHTML;
+        html+='<div style="margin-top:24px;font-size:9px;color:#4a5f75;text-align:center;border-top:1px solid #21262d;padding-top:12px;">Forge Mesh Planner · forgeprole.netlify.app/tools/ · AI Wingman by Midwest Nice Advisory LLC</'+'div>';
+        html+='</'+'body></'+'html>';
+        var w=window.open('','_blank');
+        if(w){w.document.write(html);w.document.close();}
+    };
+
+    // Init map when tool is shown
+    var origShow=window.showTool;
+    window.showTool=function(id){
+        origShow(id);
+        if(id==='mesh-planner')initMeshMap();
+    };
+    if(location.hash==='#mesh-planner'){setTimeout(function(){showTool('mesh-planner');},300);}
 })();
 </script>
