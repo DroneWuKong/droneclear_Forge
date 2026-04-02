@@ -3943,14 +3943,32 @@ renderVtxTable();
     }
 
     // ── Link profile viewer ──
-    function meshShowLinkProfile(link){
+    async function meshShowLinkProfile(link){
         var panel=document.getElementById('mesh-link-profile');
         var title=document.getElementById('mesh-profile-title');
         var detail=document.getElementById('mesh-profile-detail');
         var svg=document.getElementById('mesh-profile-svg');
         if(!panel||!svg)return;
-        title.textContent=link.from+' \u2194 '+link.to+' — '+link.dist.toFixed(2)+' km';
-        if(link.analysis&&window._rfDrawProfile){
+        title.textContent=link.from+' \u2194 '+link.to+' \u2014 '+link.dist.toFixed(2)+' km';
+        panel.style.display='block';
+        if(!link.analysis){
+            svg.innerHTML='<text x="350" y="90" fill="#eab308" font-size="11" text-anchor="middle">Computing terrain...</text>';
+            try{
+                var proto=meshGetProto();
+                var dH=parseFloat(document.getElementById('mesh-node-height').value)||50;
+                var dP=parseFloat(document.getElementById('mesh-tx-power').value)||30;
+                var pts=window._rfInterpolatePoints(link.fromNode.lat,link.fromNode.lon,link.toNode.lat,link.toNode.lon,20);
+                var elev;try{elev=await window._rfGetElevations(pts);}catch(e){elev={elevations:pts.map(function(){return 0;}),source:'flat'};}
+                var dists=pts.map(function(p){return hav(link.fromNode.lat,link.fromNode.lon,p.lat,p.lon);});
+                var hF=link.fromNode.height||dH,hT=link.toNode.height||dH;
+                var pwr=Math.min(link.fromNode.power||dP,link.toNode.power||dP);
+                var analysis=window._rfAnalyzePath(elev.elevations,dists,hF,hT,proto.freq);
+                var budget=window._rfLinkBudget(analysis,pwr,proto.rxSens,2,2,proto.freq,0);
+                link.analysis=analysis;link.terrainDone=true;link.elevSource=elev.source;
+                link.margin=budget.margin;link.diffLoss=analysis.diffLoss;link.hasLOS=analysis.hasLOS;
+            }catch(e){svg.innerHTML='<text x="350" y="90" fill="#f87171" font-size="11" text-anchor="middle">Terrain error</text>';}
+        }
+        if(link.analysis){
             // Draw the profile using the RF terrain draw function but targeting our SVG
             var analysis=link.analysis;
             var proto=meshGetProto();
