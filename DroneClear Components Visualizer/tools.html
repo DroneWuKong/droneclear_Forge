@@ -872,11 +872,25 @@
             </div>
 
             <!-- Map tile cache controls -->
-            <div id="rf-cache-bar" style="display:flex;align-items:center;gap:8px;margin-bottom:8px;padding:5px 8px;background:var(--bg-dark);border-radius:var(--radius-sm);font-size:9px;color:var(--text-faint);">
+            <div id="rf-cache-bar" style="display:flex;align-items:center;gap:8px;margin-bottom:4px;padding:5px 8px;background:var(--bg-dark);border-radius:var(--radius-sm);font-size:9px;color:var(--text-faint);">
                 <span>Tiles cached: <span id="rf-cache-count">—</span></span>
                 <button onclick="cacheDownloadArea('rf')" style="padding:2px 8px;border:1px solid var(--border-color);border-radius:3px;background:none;color:var(--text-muted);font-size:9px;cursor:pointer;font-family:var(--font-family);" title="Download visible map tiles for offline use">↓ Cache Area</button>
                 <span id="rf-cache-status" style="color:var(--text-faint);"></span>
                 <button onclick="cacheClear('rf')" style="margin-left:auto;padding:2px 6px;border:1px solid var(--border-color);border-radius:3px;background:none;color:var(--text-faint);font-size:8px;cursor:pointer;font-family:var(--font-family);" title="Clear all cached tiles">Clear</button>
+            </div>
+
+            <!-- DEM upload -->
+            <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;padding:5px 8px;background:var(--bg-dark);border-radius:var(--radius-sm);font-size:9px;color:var(--text-faint);">
+                <span>DEM:</span>
+                <label style="padding:2px 8px;border:1px solid var(--border-color);border-radius:3px;background:none;color:var(--text-muted);font-size:9px;cursor:pointer;font-family:var(--font-family);">
+                    ↑ Load .hgt
+                    <input type="file" accept=".hgt" multiple onchange="rfLoadDEM(this.files)" style="display:none;">
+                </label>
+                <span id="rf-dem-status" style="flex:1;color:var(--text-faint);font-size:8px;">No local DEM — using API</span>
+                <button onclick="rfClearDEM()" style="padding:2px 6px;border:1px solid var(--border-color);border-radius:3px;background:none;color:var(--text-faint);font-size:8px;cursor:pointer;font-family:var(--font-family);">Clear</button>
+            </div>
+            <div style="font-size:8px;color:var(--text-faint);margin-bottom:8px;padding:0 8px;">
+                SRTM .hgt files (WGS84, 1″ or 3″). Download from <a href="https://dwtkns.com/srtm30m/" target="_blank" style="color:var(--accent-red);text-decoration:none;">dwtkns.com/srtm30m</a> or <a href="https://search.earthdata.nasa.gov" target="_blank" style="color:var(--accent-red);text-decoration:none;">NASA Earthdata</a>. Filename = tile coords (e.g., N39W105.hgt).
             </div>
 
             <!-- Action buttons row -->
@@ -2082,39 +2096,127 @@ renderVtxTable();
         return pts;
     }
 
-    const elevCache=new Map();
+    // ── Local DEM (SRTM HGT) Storage ──
+    var loadedDEMs=[]; // [{name,lat,lon,resolution,data,rows,cols}]
+    var elevCache=new Map();
+
+    // Parse SRTM HGT file (raw binary, 1201x1201 or 3601x3601 Int16BE)
+    function parseHGT(arrayBuffer,filename){
+        var bytes=arrayBuffer.byteLength;
+        var res=1; // arc-seconds
+        var size;
+        if(bytes===2884802){size=1201;res=3;} // SRTM3 (3 arc-second, ~90m)
+        else if(bytes===25934402){size=3601;res=1;} // SRTM1 (1 arc-second, ~30m)
+        else{return null;} // Unknown format
+        // Extract lat/lon from filename: N39W105.hgt
+        var m=filename.match(/([NS])(\d+)([EW])(\d+)/i);
+        if(!m)return null;
+        var lat=parseInt(m[2])*(m[1].toUpperCase()==='S'?-1:1);
+        var lon=parseInt(m[4])*(m[3].toUpperCase()==='W'?-1:1);
+        var data=new Int16Array(bytes/2);
+        var view=new DataView(arrayBuffer);
+        for(var i=0;i<data.length;i++){data[i]=view.getInt16(i*2,false);} // Big-endian
+        return{name:filename,lat:lat,lon:lon,resolution:res,data:data,rows:size,cols:size};
+    }
+
+    // Sample elevation from loaded DEMs
+    function sampleDEM(lat,lon){
+        for(var i=0;i<loadedDEMs.length;i++){
+            var dem=loadedDEMs[i];
+            if(lat>=dem.lat&&lat<dem.lat+1&&lon>=dem.lon&&lon<dem.lon+1){
+                var row=Math.round((dem.lat+1-lat)*(dem.rows-1));
+                var col=Math.round((lon-dem.lon)*(dem.cols-1));
+                row=Math.max(0,Math.min(dem.rows-1,row));
+                col=Math.max(0,Math.min(dem.cols-1,col));
+                var val=dem.data[row*dem.cols+col];
+                if(val===-32768)return null; // void
+                return val;
+            }
+        }
+        return null; // No DEM covers this point
+    }
+
+    // Try local DEM first, then APIs
+    function fetchLocalDEM(pts){
+        var results=pts.map(function(p){return sampleDEM(p.lat,p.lon);});
+        if(results.every(function(r){return r!==null;}))return results;
+        return null; // Not all points covered
+    }
+
     async function fetchSRTM(pts){
-        const locs=pts.map(p=>p.lat+','+p.lon).join('|');
+        var locs=pts.map(function(p){return p.lat+','+p.lon;}).join('|');
         try{
-            const r=await fetch('https://api.open-elevation.com/api/v1/lookup?locations='+locs);
+            var r=await fetch('https://api.open-elevation.com/api/v1/lookup?locations='+locs);
             if(!r.ok)throw new Error(r.status);
-            const d=await r.json();
-            return d.results.map(x=>x.elevation);
-        }catch{return null;}
+            var d=await r.json();
+            return d.results.map(function(x){return x.elevation;});
+        }catch(e){return null;}
     }
     async function fetch3DEP(pts){
         try{
-            const results=await Promise.all(pts.map(async p=>{
-                const r=await fetch('https://epqs.nationalmap.gov/v1/json?x='+p.lon+'&y='+p.lat+'&wkid=4326&units=Meters&includeDate=false');
+            var results=await Promise.all(pts.map(async function(p){
+                var r=await fetch('https://epqs.nationalmap.gov/v1/json?x='+p.lon+'&y='+p.lat+'&wkid=4326&units=Meters&includeDate=false');
                 if(!r.ok)return null;
-                const d=await r.json();
+                var d=await r.json();
                 return d.value!==undefined?parseFloat(d.value):null;
             }));
-            return results.some(r=>r===null||r===-1000000)?null:results;
-        }catch{return null;}
+            return results.some(function(r){return r===null||r===-1000000;})?null:results;
+        }catch(e){return null;}
     }
     async function getElevations(pts){
-        const key=pts.map(p=>p.lat.toFixed(5)+','+p.lon.toFixed(5)).join('|');
+        var key=pts.map(function(p){return p.lat.toFixed(5)+','+p.lon.toFixed(5);}).join('|');
         if(elevCache.has(key))return elevCache.get(key);
-        const isUS=pts.every(p=>p.lat>=24&&p.lat<=50&&p.lon>=-125&&p.lon<=-66);
-        let result=null,source='none';
-        if(isUS&&pts.length<=30){result=await fetch3DEP(pts);if(result)source='3DEP';}
-        if(!result){result=await fetchSRTM(pts);if(result)source='SRTM';}
-        if(!result){result=pts.map(()=>0);source='flat';}
-        const out={elevations:result,source};
+        var result=null,source='none';
+        // Priority 1: Local DEM (instant, no API calls)
+        result=fetchLocalDEM(pts);
+        if(result){source='Local DEM ('+loadedDEMs.length+' tiles)';}
+        // Priority 2: 3DEP API (US only, high-res)
+        if(!result){
+            var isUS=pts.every(function(p){return p.lat>=24&&p.lat<=50&&p.lon>=-125&&p.lon<=-66;});
+            if(isUS&&pts.length<=30){result=await fetch3DEP(pts);if(result)source='3DEP';}
+        }
+        // Priority 3: Open-Elevation SRTM API
+        if(!result){result=await fetchSRTM(pts);if(result)source='SRTM API';}
+        // Fallback: flat
+        if(!result){result=pts.map(function(){return 0;});source='Flat (no data)';}
+        var out={elevations:result,source:source};
         elevCache.set(key,out);
         return out;
     }
+
+    // ── DEM file upload handler ──
+    window.rfLoadDEM=function(files){
+        var statusEl=document.getElementById('rf-dem-status');
+        if(!files||!files.length)return;
+        var loaded=0,failed=0;
+        Array.from(files).forEach(function(file){
+            var reader=new FileReader();
+            reader.onload=function(e){
+                var dem=parseHGT(e.target.result,file.name);
+                if(dem){
+                    // Check for duplicate
+                    var exists=loadedDEMs.some(function(d){return d.lat===dem.lat&&d.lon===dem.lon;});
+                    if(!exists)loadedDEMs.push(dem);
+                    loaded++;
+                } else {failed++;}
+                if(loaded+failed===files.length){
+                    elevCache.clear(); // Invalidate cache so new DEM is used
+                    if(statusEl)statusEl.innerHTML='<span style="color:#4ade80;">'+loaded+' DEM tile'+(loaded>1?'s':'')+' loaded</span>'+(failed?' <span style="color:#f87171;">'+failed+' failed</span>':'')+' — '+loadedDEMs.length+' total covering '+loadedDEMs.map(function(d){
+                        var ns=d.lat>=0?'N':'S',ew=d.lon>=0?'E':'W';
+                        return ns+Math.abs(d.lat)+ew+Math.abs(d.lon);
+                    }).join(', ');
+                }
+            };
+            reader.readAsArrayBuffer(file);
+        });
+    };
+
+    window.rfClearDEM=function(){
+        loadedDEMs=[];
+        elevCache.clear();
+        var el=document.getElementById('rf-dem-status');
+        if(el)el.textContent='Cleared — using API fallback';
+    };
 
     function analyzePath(elevs,dists,txH,rxH,fMHz){
         const totalD=dists[dists.length-1];
