@@ -1078,8 +1078,15 @@
             <!-- Path details -->
             <div class="result-card" id="rf-path-details" style="font-size:12px;"></div>
 
-            <div style="font-size:11px; color:var(--text-muted); margin-top:12px; line-height:1.6; text-align:center;">
-                ⚠ Elevation data approximated from SRTM (30m) or 3DEP (1–10m). Does not model vegetation, structures, atmospheric absorption, rain fade, multipath, or antenna radiation patterns. Link quality predictions help you plan — they don't promise "safe" or "reliable" operation.
+            <!-- Export button -->
+            <div style="text-align:center; margin:16px 0;">
+                <button onclick="rfExportReport()" style="padding:8px 20px; background:none; border:1px solid var(--accent-red); border-radius:var(--radius-sm); color:var(--accent-red); font-size:11px; font-weight:600; font-family:var(--font-family); cursor:pointer; letter-spacing:0.05em; transition:all 0.15s;" onmouseover="this.style.background='rgba(34,211,238,0.08)'" onmouseout="this.style.background='none'">
+                    ↓ EXPORT REPORT
+                </button>
+            </div>
+
+            <div style="font-size:10px; color:var(--text-muted); margin-top:8px; line-height:1.5; text-align:center;">
+                ⚠ Elevation data approximated from SRTM (30m) or 3DEP (1–10m). Does not model vegetation, structures, atmospheric absorption, rain fade, multipath, or antenna radiation patterns.
             </div>
         </div>
 
@@ -2859,6 +2866,128 @@ renderVtxTable();
             // Don't auto-compute — wait for user
         }
     };
+    // ── Export Report ──
+    window.rfExportReport=function(){
+        // Capture map as image via Leaflet
+        var mapCanvas=null;
+        try{
+            var mapEl=document.getElementById('rf-map');
+            // Use html2canvas-like approach: just grab the tile container
+            // For simplicity, we'll serialize the map state as coordinates
+        }catch(e){}
+
+        // Gather all data
+        var proto=getProto();
+        var now=new Date().toISOString().split('T')[0]+' '+new Date().toTimeString().split(' ')[0];
+        var svgEl=document.getElementById('rf-profile-svg');
+        var svgHtml=svgEl?svgEl.outerHTML:'';
+        var resultsHtml=document.getElementById('rf-results').innerHTML||'';
+        var budgetHtml=document.getElementById('rf-budget').innerHTML||'';
+        var pathHtml=document.getElementById('rf-path-details').innerHTML||'';
+        var advancedHtml=document.getElementById('rf-advanced-results').innerHTML||'';
+        var traceEl=document.getElementById('rf-route-trace');
+        var traceVisible=traceEl&&traceEl.style.display!=='none';
+
+        // Build positions text
+        var posText='';
+        if(txPos)posText+='TX: '+txPos.lat.toFixed(6)+', '+txPos.lon.toFixed(6)+'\n';
+        if(rxPos)posText+='RX: '+rxPos.lat.toFixed(6)+', '+rxPos.lon.toFixed(6)+'\n';
+        if(rfWaypoints.length>0){
+            rfWaypoints.forEach(function(wp,i){
+                posText+=(i===0?'Pilot':'WP'+i)+': '+wp.lat.toFixed(6)+', '+wp.lon.toFixed(6)+'\n';
+            });
+        }
+        if(rfRepeaterPts.length>0){
+            var labels=['Pilot','Repeater','Target'];
+            rfRepeaterPts.forEach(function(p,i){
+                posText+=labels[i]+': '+p.lat.toFixed(6)+', '+p.lon.toFixed(6)+'\n';
+            });
+        }
+
+        // Config
+        var config='Protocol: '+proto.name+' ('+proto.freq+' MHz)\n';
+        config+='TX Power: '+getVal('rf-tx-power')+' dBm\n';
+        config+='TX Height: '+getVal('rf-tx-height')+' m AGL\n';
+        config+='RX Height: '+getVal('rf-rx-height')+' m AGL\n';
+        config+='TX Gain: '+getVal('rf-tx-gain')+' dBi · RX Gain: '+getVal('rf-rx-gain')+' dBi\n';
+        config+='Fade Margin: '+getVal('rf-fade-margin')+' dB\n';
+
+        // Route trace summary
+        var traceHtml='';
+        if(traceVisible&&rfTraceSegments._allPts){
+            var pts=rfTraceSegments._allPts;
+            var minM=999,maxM=-999,avgM=0;
+            var lostPts=0;
+            pts.forEach(function(p){
+                if(p.margin<minM)minM=p.margin;
+                if(p.margin>maxM)maxM=p.margin;
+                avgM+=p.margin;
+                if(p.margin<0)lostPts++;
+            });
+            avgM/=pts.length;
+            var lostPct=Math.round(lostPts/pts.length*100);
+            traceHtml='<div class="section"><h3>Route Trace Analysis</h3>';
+            traceHtml+='<table><tr><td>Points sampled</td><td>'+pts.length+'</td></tr>';
+            traceHtml+='<tr><td>Min margin</td><td style="color:'+(minM<0?'#ef4444':'#eab308')+'">'+minM.toFixed(1)+' dB</td></tr>';
+            traceHtml+='<tr><td>Max margin</td><td style="color:#4ade80">'+maxM.toFixed(1)+' dB</td></tr>';
+            traceHtml+='<tr><td>Avg margin</td><td>'+avgM.toFixed(1)+' dB</td></tr>';
+            traceHtml+='<tr><td>Signal lost</td><td style="color:'+(lostPct>0?'#ef4444':'#4ade80')+'">'+lostPct+'% of route</td></tr>';
+            traceHtml+='</table></div>';
+        }
+
+        // Build report HTML
+        var html='<!DOCTYPE html><html><head><meta charset="utf-8"><title>RF Propagation Report — Forge</title>';
+        html+='<style>';
+        html+='*{margin:0;padding:0;box-sizing:border-box;}';
+        html+='body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;background:#0b0f14;color:#c9d1d9;padding:32px;font-size:11px;line-height:1.5;}';
+        html+='h1{font-size:18px;color:#22d3ee;margin-bottom:4px;}';
+        html+='h2{font-size:11px;color:#8b949e;margin-bottom:20px;text-transform:uppercase;letter-spacing:0.1em;font-weight:400;}';
+        html+='h3{font-size:12px;color:#c9d1d9;margin-bottom:8px;text-transform:uppercase;letter-spacing:0.06em;border-bottom:1px solid #21262d;padding-bottom:4px;}';
+        html+='.section{margin-bottom:20px;}';
+        html+='pre{font-family:"JetBrains Mono",monospace;font-size:10px;color:#8b949e;line-height:1.6;background:#111820;padding:10px;border-radius:6px;border:1px solid #21262d;white-space:pre-wrap;}';
+        html+='table{width:100%;border-collapse:collapse;font-size:10px;margin-bottom:8px;}';
+        html+='td,th{padding:4px 8px;border-bottom:1px solid #21262d;text-align:left;color:#8b949e;}';
+        html+='th{color:#4a5f75;text-transform:uppercase;font-size:9px;letter-spacing:0.06em;}';
+        html+='svg{max-width:100%;height:auto;margin:8px 0;border:1px solid #21262d;border-radius:6px;background:#0b0f14;}';
+        html+='.results{background:#111820;padding:12px;border-radius:6px;border:1px solid #21262d;margin-bottom:12px;}';
+        html+='.footer{margin-top:24px;padding-top:12px;border-top:1px solid #21262d;font-size:9px;color:#4a5f75;text-align:center;}';
+        html+='@media print{body{background:#fff;color:#1a1a1a;}h1{color:#0d6d8a;}h3{color:#333;border-color:#ddd;}pre{background:#f5f5f5;border-color:#ddd;color:#333;}td,th{color:#333;border-color:#ddd;}.results{background:#f5f5f5;border-color:#ddd;}svg{border-color:#ddd;background:#fff;}.footer{color:#999;border-color:#ddd;}}';
+        html+='</style></head><body>';
+
+        html+='<h1>RF Propagation Report</h1>';
+        html+='<h2>Generated by Forge · '+now+'</h2>';
+
+        html+='<div class="section"><h3>Configuration</h3><pre>'+config+'</pre></div>';
+        html+='<div class="section"><h3>Positions</h3><pre>'+posText+'</pre></div>';
+
+        if(svgHtml){
+            html+='<div class="section"><h3>Elevation Profile</h3>'+svgHtml+'</div>';
+        }
+        if(resultsHtml){
+            html+='<div class="section"><h3>Link Analysis</h3><div class="results">'+resultsHtml+'</div></div>';
+        }
+        if(budgetHtml){
+            html+='<div class="section"><h3>Link Budget</h3><div class="results">'+budgetHtml+'</div></div>';
+        }
+        if(pathHtml){
+            html+='<div class="section"><h3>Path Details</h3><div class="results">'+pathHtml+'</div></div>';
+        }
+        if(advancedHtml){
+            html+='<div class="section"><h3>Advanced Analysis</h3><div class="results">'+advancedHtml+'</div></div>';
+        }
+        if(traceHtml){
+            html+=traceHtml;
+        }
+
+        html+='<div class="footer">Forge RF Propagation Tool · forgeprole.netlify.app/tools/ · AI Wingman by Midwest Nice Advisory LLC<br>';
+        html+='Elevation data: SRTM 30m / USGS 3DEP. Does not model vegetation, structures, atmospheric absorption, rain fade, multipath, or antenna patterns.</div>';
+        html+='</body></html>';
+
+        // Open in new tab — user can print to PDF
+        var w=window.open('','_blank');
+        if(w){w.document.write(html);w.document.close();}
+    };
+
     if(location.hash==='#rf-terrain'){setTimeout(function(){showTool('rf-terrain');},300);}
 })();
 </script>
