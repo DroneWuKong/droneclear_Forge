@@ -622,6 +622,12 @@ def build():
         f.write(generate_robots_txt())
     print(f"  Generated robots.txt")
     
+    # Copy service worker to build root (must be at root for scope)
+    sw_src = os.path.join(SRC_DIR, 'sw.js')
+    if os.path.exists(sw_src):
+        shutil.copy2(sw_src, os.path.join(BUILD_DIR, 'sw.js'))
+        print(f"  Copied sw.js to build root")
+    
     # netlify.toml lives in the repo root — do not overwrite it from the build script.
     # All redirect rules are maintained in the root netlify.toml.
     

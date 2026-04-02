@@ -871,6 +871,14 @@
                 <div id="rf-coord-display" style="font-size:9px; color:var(--text-faint); margin-top:3px; font-family:var(--font-mono);"></div>
             </div>
 
+            <!-- Map tile cache controls -->
+            <div id="rf-cache-bar" style="display:flex;align-items:center;gap:8px;margin-bottom:8px;padding:5px 8px;background:var(--bg-dark);border-radius:var(--radius-sm);font-size:9px;color:var(--text-faint);">
+                <span>Tiles cached: <span id="rf-cache-count">—</span></span>
+                <button onclick="cacheDownloadArea('rf')" style="padding:2px 8px;border:1px solid var(--border-color);border-radius:3px;background:none;color:var(--text-muted);font-size:9px;cursor:pointer;font-family:var(--font-family);" title="Download visible map tiles for offline use">↓ Cache Area</button>
+                <span id="rf-cache-status" style="color:var(--text-faint);"></span>
+                <button onclick="cacheClear('rf')" style="margin-left:auto;padding:2px 6px;border:1px solid var(--border-color);border-radius:3px;background:none;color:var(--text-faint);font-size:8px;cursor:pointer;font-family:var(--font-family);" title="Clear all cached tiles">Clear</button>
+            </div>
+
             <!-- Action buttons row -->
             <div style="display:flex; gap:6px; margin-bottom:10px;">
                 <button id="rf-calc-btn" onclick="rfCompute()" style="flex:1; padding:7px; background:var(--accent-red); color:#fff; border:none; border-radius:var(--radius-sm); font-size:12px; font-weight:600; font-family:var(--font-family); cursor:pointer; letter-spacing:0.05em;">
@@ -1130,6 +1138,14 @@
                 <span id="mesh-node-count">0 nodes</span> · <span id="mesh-link-count">0 links</span> · Click map to place nodes
             </div>
 
+            <!-- Map tile cache controls -->
+            <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;padding:5px 8px;background:var(--bg-dark);border-radius:var(--radius-sm);font-size:9px;color:var(--text-faint);">
+                <span>Tiles: <span id="mesh-cache-count">—</span></span>
+                <button onclick="cacheDownloadArea('mesh')" style="padding:2px 8px;border:1px solid var(--border-color);border-radius:3px;background:none;color:var(--text-muted);font-size:9px;cursor:pointer;font-family:var(--font-family);">↓ Cache Area</button>
+                <span id="mesh-cache-status" style="color:var(--text-faint);"></span>
+                <button onclick="cacheClear('mesh')" style="margin-left:auto;padding:2px 6px;border:1px solid var(--border-color);border-radius:3px;background:none;color:var(--text-faint);font-size:8px;cursor:pointer;font-family:var(--font-family);">Clear</button>
+            </div>
+
             <!-- Mesh config -->
             <div class="input-grid" style="margin-bottom:10px;">
                 <div class="input-group">
@@ -1213,6 +1229,65 @@
 </div>
 
 <script>
+// ── Service Worker for tile caching ──
+if('serviceWorker' in navigator){navigator.serviceWorker.register('/sw.js').catch(function(){});}
+function swMessage(msg){return new Promise(function(resolve){if(!navigator.serviceWorker||!navigator.serviceWorker.controller){resolve(null);return;}var ch=new MessageChannel();ch.port1.onmessage=function(e){resolve(e.data);};navigator.serviceWorker.controller.postMessage(msg,[ch.port2]);});}
+
+// ── Tile cache controls ──
+function cacheUpdateStats(){
+    swMessage({type:'CACHE_STATS'}).then(function(data){
+        if(!data)return;
+        var els=document.querySelectorAll('[id$="-cache-count"]');
+        els.forEach(function(el){el.textContent=data.count+' tiles';});
+    });
+}
+// Update stats on load and periodically
+setTimeout(cacheUpdateStats,2000);
+
+function cacheDownloadArea(prefix){
+    var map=prefix==='rf'?window._rfMapRef:window._meshMapRef;
+    if(!map){var st=document.getElementById(prefix+'-cache-status');if(st)st.textContent='No map';return;}
+    var bounds=map.getBounds();
+    var zoom=map.getZoom();
+    var minZ=Math.max(1,zoom-1),maxZ=Math.min(19,zoom+2);
+    var urls=[];
+    // Get current tile URL template
+    var tileUrl='https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png';
+    map.eachLayer(function(l){if(l._url)tileUrl=l._url;});
+    var subs=['a','b','c'];
+    for(var z=minZ;z<=maxZ;z++){
+        var minTile=latLonToTile(bounds.getSouthWest().lat,bounds.getSouthWest().lng,z);
+        var maxTile=latLonToTile(bounds.getNorthEast().lat,bounds.getNorthEast().lng,z);
+        for(var x=minTile.x;x<=maxTile.x;x++){
+            for(var y=maxTile.y;y<=minTile.y;y++){
+                var url=tileUrl.replace('{z}',z).replace('{x}',x).replace('{y}',y).replace('{r}','');
+                url=url.replace('{s}',subs[Math.abs(x+y)%3]);
+                urls.push(url);
+            }
+        }
+        if(urls.length>2000)break; // Safety cap
+    }
+    var st=document.getElementById(prefix+'-cache-status');
+    if(st)st.textContent='Caching '+urls.length+' tiles (z'+minZ+'-'+maxZ+')...';
+    swMessage({type:'CACHE_TILES',urls:urls}).then(function(data){
+        if(st)st.textContent=data?(data.done+' cached, '+data.fail+' failed'):'SW not ready';
+        cacheUpdateStats();
+    });
+}
+
+function cacheClear(prefix){
+    swMessage({type:'CACHE_CLEAR'}).then(function(){
+        var st=document.getElementById(prefix+'-cache-status');
+        if(st)st.textContent='Cleared';
+        cacheUpdateStats();
+    });
+}
+
+function latLonToTile(lat,lon,z){
+    var x=Math.floor((lon+180)/360*Math.pow(2,z));
+    var y=Math.floor((1-Math.log(Math.tan(lat*Math.PI/180)+1/Math.cos(lat*Math.PI/180))/Math.PI)/2*Math.pow(2,z));
+    return{x:x,y:y};
+}
 // ── Theme toggle ──────────────────────────────────────────────────────────
 const dmBtn = document.getElementById('dark-mode-toggle');
 const dmIcon = document.getElementById('dark-mode-icon');
@@ -2436,6 +2511,7 @@ renderVtxTable();
         const L=window.L;
         if(!L||!document.getElementById('rf-map'))return;
         rfMap=L.map('rf-map',{center:[39.0,-98.0],zoom:4,zoomControl:true});
+        window._rfMapRef=rfMap;
         rfTileLayer=L.tileLayer(RF_LAYERS.dark,{attribution:'&copy; OSM',maxZoom:19}).addTo(rfMap);
         rfMap.on('click',rfMapClick);
         rfSetupAutocomplete();
@@ -3328,6 +3404,7 @@ renderVtxTable();
         var L=window.L;
         if(!L)return;
         meshMap=L.map('mesh-map',{center:[39.0,-98.0],zoom:4,zoomControl:true});
+        window._meshMapRef=meshMap;
         meshTile=L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',{attribution:'OSM',maxZoom:19}).addTo(meshMap);
         meshMap.on('click',function(e){meshMapClick(e.latlng.lat,e.latlng.lng);});
         setTimeout(function(){meshMap.invalidateSize();},200);
