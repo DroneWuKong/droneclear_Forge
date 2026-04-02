@@ -1186,13 +1186,32 @@
                 <div class="input-group">
                     <label class="input-label">Mesh protocol</label>
                     <select class="tool-select" id="mesh-protocol">
-                        <option value="DOODLE_24">Doodle Labs 2.4G</option>
-                        <option value="DOODLE_16">Doodle Labs 1.6G</option>
-                        <option value="SILVUS">Silvus SC4200</option>
-                        <option value="PERSISTENT">Persistent MPU5</option>
-                        <option value="RFD900X">RFD900x (P2MP)</option>
-                        <option value="RAJANT">Rajant Peregrine</option>
-                        <option value="ELRS_900">ELRS 900M (not mesh)</option>
+                        <optgroup label="Doodle Labs (batman-adv)">
+                            <option value="DL_2450" selected>Doodle Labs RM-2450 (2.4G)</option>
+                            <option value="DL_1675">Doodle Labs RM-1675 (1.6G)</option>
+                            <option value="DL_2458">Doodle Labs DM-2458 (Dual 2.4/5.8G)</option>
+                        </optgroup>
+                        <optgroup label="TrellisWare (TSM)">
+                            <option value="TW950">TW-950 Shadow (UHF/L/S)</option>
+                            <option value="TW135">TW-135 Shadow HPR (20W)</option>
+                            <option value="TW650">TW-650 Shadow Module</option>
+                            <option value="TW870">TW-870 Ghost</option>
+                            <option value="TW880">TW-880 Ghost Module</option>
+                        </optgroup>
+                        <optgroup label="Silvus (StreamCaster)">
+                            <option value="SC4200">Silvus SC4200</option>
+                            <option value="SC4400">Silvus SC4400 (wideband)</option>
+                        </optgroup>
+                        <optgroup label="Other MANET">
+                            <option value="MPU5">Persistent MPU5 (Wave Relay)</option>
+                            <option value="RAJANT_ES1">Rajant ES1 (2.4G)</option>
+                            <option value="RAJANT_PG">Rajant Peregrine (Dual)</option>
+                        </optgroup>
+                        <optgroup label="Non-mesh (warnings)">
+                            <option value="RFD900X">RFD900x (P2MP)</option>
+                            <option value="ELRS_900">ELRS 900M (C2 only)</option>
+                            <option value="ELRS_24">ELRS 2.4G (C2 only)</option>
+                        </optgroup>
                         <option value="CUSTOM">Custom</option>
                     </select>
                 </div>
@@ -3562,24 +3581,89 @@ renderVtxTable();
 // MESH / SWARM RF PLANNER
 // ═══════════════════════════════════════════════════════════════════
 (function(){
-    var MESH_PROTOCOLS={
-        DOODLE_24:{name:'Doodle Labs 2.4G',freq:2400,rxSens:-96,mod:'OFDM',mesh:true,meshType:'batman-adv'},
-        DOODLE_16:{name:'Doodle Labs 1.6G',freq:1625,rxSens:-96,mod:'OFDM',mesh:true,meshType:'batman-adv'},
-        SILVUS:{name:'Silvus SC4200',freq:1625,rxSens:-100,mod:'MIMO-OFDM',mesh:true,meshType:'Proprietary MANET'},
-        PERSISTENT:{name:'Persistent MPU5',freq:2400,rxSens:-98,mod:'MIMO-OFDM',mesh:true,meshType:'Wave Relay'},
-        RFD900X:{name:'RFD900x',freq:915,rxSens:-121,mod:'FHSS',mesh:false,meshType:'Point-to-multipoint'},
-        RAJANT:{name:'Rajant Peregrine',freq:2400,rxSens:-95,mod:'OFDM',mesh:true,meshType:'Kinetic Mesh'},
-        ELRS_900:{name:'ELRS 900M',freq:915,rxSens:-123,mod:'LoRa',mesh:false,meshType:'None (C2 only)'},
-        CUSTOM:{name:'Custom',freq:2400,rxSens:-96,mod:'Custom',mesh:true,meshType:'Custom'},
+    // ── Radio Hardware Database ──
+    var MESH_RADIOS={
+        DL_2450:{name:'Doodle Labs RM-2450',freq:[2400],txPow:30,rxSens:-96,maxRate:20,mesh:true,meshType:'batman-adv',waveform:'802.11',weight:45},
+        DL_1675:{name:'Doodle Labs RM-1675',freq:[1625],txPow:30,rxSens:-96,maxRate:20,mesh:true,meshType:'batman-adv',waveform:'802.11',weight:45},
+        DL_2458:{name:'Doodle Labs DM-2458',freq:[2400,5800],txPow:30,rxSens:-93,maxRate:40,mesh:true,meshType:'batman-adv (dual)',waveform:'802.11',weight:55},
+        SC4200:{name:'Silvus SC4200',freq:[1350,1850],txPow:33,rxSens:-100,maxRate:100,mesh:true,meshType:'StreamCaster',waveform:'streamcaster',weight:310},
+        SC4400:{name:'Silvus SC4400',freq:[1350,6200],txPow:33,rxSens:-100,maxRate:100,mesh:true,meshType:'StreamCaster',waveform:'streamcaster',weight:340},
+        MPU5:{name:'Persistent MPU5',freq:[1350,6200],txPow:33,rxSens:-98,maxRate:100,mesh:true,meshType:'Wave Relay',waveform:'waverelay',weight:510},
+        TW950:{name:'TW-950 Shadow',freq:[225,2500],txPow:30,rxSens:-100,maxRate:16,mesh:true,meshType:'TSM Barrage Relay',waveform:'tsm',weight:280},
+        TW135:{name:'TW-135 Shadow HPR',freq:[225,2500],txPow:43,rxSens:-100,maxRate:16,mesh:true,meshType:'TSM Barrage Relay',waveform:'tsm',weight:1800},
+        TW650:{name:'TW-650 Shadow Module',freq:[225,2500],txPow:27,rxSens:-100,maxRate:16,mesh:true,meshType:'TSM Barrage Relay',waveform:'tsm',weight:85},
+        TW870:{name:'TW-870 Ghost',freq:[225,2500],txPow:24,rxSens:-100,maxRate:8,mesh:true,meshType:'TSM Barrage Relay',waveform:'tsm',weight:130},
+        TW880:{name:'TW-880 Ghost Module',freq:[225,2500],txPow:24,rxSens:-100,maxRate:8,mesh:true,meshType:'TSM Barrage Relay',waveform:'tsm',weight:42},
+        RFD900X:{name:'RFD900x',freq:[915],txPow:30,rxSens:-121,maxRate:0.25,mesh:false,meshType:'Point-to-multipoint',waveform:'fhss',weight:29},
+        RAJANT_ES1:{name:'Rajant ES1',freq:[2400],txPow:27,rxSens:-95,maxRate:40,mesh:true,meshType:'Kinetic Mesh',waveform:'instamesh',weight:120},
+        RAJANT_PG:{name:'Rajant Peregrine',freq:[2400,5800],txPow:27,rxSens:-93,maxRate:80,mesh:true,meshType:'Kinetic Mesh',waveform:'instamesh',weight:140},
+        ELRS_900:{name:'ELRS 900M',freq:[915],txPow:27,rxSens:-123,maxRate:0.01,mesh:false,meshType:'None (C2 only)',waveform:'lora',weight:5},
+        ELRS_24:{name:'ELRS 2.4G',freq:[2400],txPow:13,rxSens:-118,maxRate:0.01,mesh:false,meshType:'None (C2 only)',waveform:'lora',weight:3},
+        CUSTOM:{name:'Custom',freq:[2400],txPow:30,rxSens:-96,maxRate:20,mesh:true,meshType:'Custom',waveform:'custom',weight:0},
     };
 
-    var meshMap=null,meshTile=null,meshInited=false;
-    var meshNodes=[]; // [{id,lat,lon,marker,active,label}]
-    var meshLinks=[]; // [{from,to,polyline,margin,quality,dist}]
-    var meshKillMode=false;
-    var meshIdCounter=0;
+    // Waveform families — radios in the same family can interoperate
+    var WAVEFORM_COMPAT={
+        '802.11':['802.11'],
+        'streamcaster':['streamcaster'],
+        'waverelay':['waverelay'],
+        'tsm':['tsm'],
+        'instamesh':['instamesh'],
+        'fhss':['fhss'],
+        'lora':['lora'],
+        'custom':['custom','802.11','streamcaster','waverelay','tsm','instamesh','fhss','lora'],
+    };
 
-    function meshGetProto(){return MESH_PROTOCOLS[document.getElementById('mesh-protocol').value]||MESH_PROTOCOLS.DOODLE_24;}
+    // Check if two radios can interoperate
+    function radiosCompatible(radioA,radioB){
+        if(!radioA||!radioB)return false;
+        var wfA=radioA.waveform,wfB=radioB.waveform;
+        var compatA=WAVEFORM_COMPAT[wfA]||[wfA];
+        if(compatA.indexOf(wfB)===-1)return false;
+        // Check frequency overlap
+        return freqOverlap(radioA.freq,radioB.freq);
+    }
+
+    function freqOverlap(freqsA,freqsB){
+        // freq arrays: [single] or [low,high] for range, or [band1,band2] for dual
+        // Simplified: check if any freq value is within ±200MHz of another
+        for(var i=0;i<freqsA.length;i++){
+            for(var j=0;j<freqsB.length;j++){
+                if(Math.abs(freqsA[i]-freqsB[j])<500)return true;
+                // Range check: if freqsA is [low,high], check if freqsB[j] is within
+                if(freqsA.length===2&&freqsB[j]>=freqsA[0]&&freqsB[j]<=freqsA[1])return true;
+                if(freqsB.length===2&&freqsA[i]>=freqsB[0]&&freqsA[i]<=freqsB[1])return true;
+            }
+        }
+        return false;
+    }
+
+    // Best common frequency between two radios (for FSPL calc)
+    function bestCommonFreq(radioA,radioB){
+        // Use the lowest common frequency for best propagation
+        var best=2400;
+        var found=false;
+        for(var i=0;i<radioA.freq.length;i++){
+            for(var j=0;j<radioB.freq.length;j++){
+                var fa=radioA.freq[i],fb=radioB.freq[j];
+                if(Math.abs(fa-fb)<500){var f=Math.min(fa,fb);if(!found||f<best){best=f;found=true;}}
+            }
+        }
+        return best;
+    }
+
+    // Throughput estimate from margin
+    function estimateThroughput(margin,maxRate){
+        if(margin>20)return maxRate;
+        if(margin>15)return maxRate*0.8;
+        if(margin>10)return maxRate*0.6;
+        if(margin>6)return maxRate*0.4;
+        if(margin>3)return maxRate*0.2;
+        if(margin>0)return maxRate*0.05;
+        return 0;
+    }
+
+    function meshGetDefaultRadio(){return MESH_RADIOS[document.getElementById('mesh-protocol').value]||MESH_RADIOS.DL_2450;}
 
     function initMeshMap(){
         if(meshInited)return;
@@ -3609,9 +3693,11 @@ renderVtxTable();
         var icon=L.divIcon({className:'',html:'<div style="width:18px;height:18px;border-radius:50%;background:'+c+';border:3px solid #0b0f14;box-shadow:0 0 8px '+c+'88;display:flex;align-items:center;justify-content:center;font-size:7px;font-weight:700;color:#0b0f14;">'+meshIdCounter+'</div>',iconSize:[18,18],iconAnchor:[9,9]});
         var marker=L.marker([lat,lon],{draggable:true,icon:icon}).addTo(meshMap);
         marker.bindTooltip(id,{permanent:false,direction:'top',offset:[0,-12]});
+        var defaultRadioKey=document.getElementById('mesh-protocol').value||'DL_2450';
         var node={id:id,lat:lat,lon:lon,marker:marker,active:true,label:id,color:c,num:meshIdCounter,
             height:parseFloat(document.getElementById('mesh-node-height').value)||50,
-            power:parseFloat(document.getElementById('mesh-tx-power').value)||30};
+            power:parseFloat(document.getElementById('mesh-tx-power').value)||30,
+            radioKey:defaultRadioKey,radio:MESH_RADIOS[defaultRadioKey]||MESH_RADIOS.DL_2450};
         marker.on('dragend',function(){var p=marker.getLatLng();node.lat=p.lat;node.lon=p.lng;meshUpdateNodeList();});
         marker.on('click',function(){
             if(meshKillMode){node.active=!node.active;marker.setOpacity(node.active?1:0.3);meshUpdateNodeList();}
@@ -3625,20 +3711,28 @@ renderVtxTable();
         if(!el)return;
         document.getElementById('mesh-node-count').textContent=meshNodes.length+' nodes';
         if(meshNodes.length===0){el.innerHTML='';return;}
-        var html='<div style="display:grid;grid-template-columns:auto 1fr auto auto auto;gap:2px 6px;font-size:9px;align-items:center;">';
-        html+='<span style="color:var(--text-faint);font-weight:600;"></span><span style="color:var(--text-faint);">Coords</span><span style="color:var(--text-faint);">Alt m</span><span style="color:var(--text-faint);">dBm</span><span></span>';
+        var radioKeys=Object.keys(MESH_RADIOS);
+        var html='<div style="font-size:9px;">';
         meshNodes.forEach(function(n,i){
             var offline=!n.active;
-            html+='<span style="display:flex;align-items:center;gap:3px;"><span style="width:8px;height:8px;border-radius:50%;background:'+(offline?'#666':n.color)+';"></span><span style="color:'+(offline?'#f87171':'var(--text-main)')+';font-weight:600;">'+n.id+'</span></span>';
-            html+='<span style="color:var(--text-faint);font-family:var(--font-mono);">'+n.lat.toFixed(4)+', '+n.lon.toFixed(4)+'</span>';
-            html+='<input type="number" value="'+n.height+'" min="1" max="500" step="5" style="width:45px;padding:1px 3px;font-size:9px;background:var(--bg-dark);border:1px solid var(--border-color);border-radius:2px;color:var(--text-main);font-family:var(--font-family);" onchange="meshNodeHeight('+i+',this.value)">';
-            html+='<input type="number" value="'+n.power+'" min="0" max="50" step="1" style="width:40px;padding:1px 3px;font-size:9px;background:var(--bg-dark);border:1px solid var(--border-color);border-radius:2px;color:var(--text-main);font-family:var(--font-family);" onchange="meshNodePower('+i+',this.value)">';
-            html+='<span style="color:'+(offline?'#f87171':'var(--text-faint)')+';">'+(offline?'OFF':'')+'</span>';
+            html+='<div style="display:flex;align-items:center;gap:4px;padding:3px 0;border-bottom:1px solid var(--border-color);">';
+            html+='<span style="width:8px;height:8px;border-radius:50%;background:'+(offline?'#666':n.color)+';flex-shrink:0;"></span>';
+            html+='<span style="color:'+(offline?'#f87171':'var(--text-main)')+';font-weight:600;min-width:22px;">'+n.id+'</span>';
+            html+='<select onchange="meshNodeRadio('+i+',this.value)" style="flex:1;min-width:0;padding:1px 2px;font-size:8px;background:var(--bg-dark);border:1px solid var(--border-color);border-radius:2px;color:var(--text-main);font-family:var(--font-family);">';
+            radioKeys.forEach(function(k){html+='<option value="'+k+'"'+(n.radioKey===k?' selected':'')+'>'+MESH_RADIOS[k].name+'</option>';});
+            html+='</select>';
+            html+='<input type="number" value="'+n.height+'" min="1" max="500" step="5" style="width:36px;padding:1px 2px;font-size:8px;background:var(--bg-dark);border:1px solid var(--border-color);border-radius:2px;color:var(--text-main);" onchange="meshNodeHeight('+i+',this.value)" title="Height AGL (m)">';
+            html+='<span style="font-size:7px;color:var(--text-faint);">m</span>';
+            if(offline)html+='<span style="color:#f87171;font-size:7px;font-weight:700;">OFF</span>';
+            html+='</div>';
         });
         html+='</div>';
         el.innerHTML=html;
     }
 
+    window.meshNodeRadio=function(i,key){
+        if(meshNodes[i]){meshNodes[i].radioKey=key;meshNodes[i].radio=MESH_RADIOS[key]||MESH_RADIOS.DL_2450;meshNodes[i].power=MESH_RADIOS[key].txPow;}
+    };
     window.meshNodeHeight=function(i,v){if(meshNodes[i])meshNodes[i].height=parseFloat(v)||50;};
     window.meshNodePower=function(i,v){if(meshNodes[i])meshNodes[i].power=parseFloat(v)||30;};
 
@@ -3687,8 +3781,6 @@ renderVtxTable();
         var active=meshNodes.filter(function(n){return n.active;});
         if(active.length<2){document.getElementById('mesh-health').innerHTML='<div style="color:#f87171;padding:8px;font-size:11px;">Need at least 2 active nodes</div>';document.getElementById('mesh-health').style.display='block';return;}
         meshClearLinks();
-        var proto=meshGetProto();
-        var defaultTxP=parseFloat(document.getElementById('mesh-tx-power').value)||30;
         var defaultH=parseFloat(document.getElementById('mesh-node-height').value)||50;
         var minMargin=parseFloat(document.getElementById('mesh-min-margin').value)||6;
         var txG=2,rxG=2;
@@ -3697,22 +3789,31 @@ renderVtxTable();
         var n=active.length;
         var totalPairs=n*(n-1)/2;
         document.getElementById('mesh-link-count').textContent='computing '+totalPairs+' pairs...';
-        // Pass 1: FSPL for all pairs (instant) — uses per-node power (higher of pair for bidirectional)
+        // Pass 1: FSPL with per-node radio + compatibility check
         for(var i=0;i<n;i++){
             for(var j=i+1;j<n;j++){
                 var a=active[i],b=active[j];
+                var rA=a.radio||meshGetDefaultRadio(),rB=b.radio||meshGetDefaultRadio();
+                var compatible=radiosCompatible(rA,rB);
                 var d=hav(a.lat,a.lon,b.lat,b.lon)/1000;
-                var pA=a.power||defaultTxP,pB=b.power||defaultTxP;
-                var txP=Math.min(pA,pB); // Weakest direction determines link quality
-                var fspl=20*Math.log10(d)+20*Math.log10(proto.freq)+32.44;
-                var rxPow=txP+txG+rxG-fspl;
-                var margin=rxPow-proto.rxSens;
+                var margin=-999,fspl=0,rxPow=-999,throughput=0,linkFreq=2400;
+                if(compatible){
+                    linkFreq=bestCommonFreq(rA,rB);
+                    var txP=Math.min(rA.txPow,rB.txPow);
+                    var sens=Math.max(rA.rxSens,rB.rxSens); // worst sensitivity
+                    fspl=20*Math.log10(d>0.001?d:0.001)+20*Math.log10(linkFreq)+32.44;
+                    rxPow=txP+txG+rxG-fspl;
+                    margin=rxPow-sens;
+                    throughput=estimateThroughput(margin,Math.min(rA.maxRate,rB.maxRate));
+                }
                 links.push({from:a.id,to:b.id,fromNode:a,toNode:b,dist:d,margin:margin,fspl:fspl,rxPow:rxPow,
-                    diffLoss:0,hasLOS:true,terrainDone:false,quality:'',connected:false,polyline:null});
+                    diffLoss:0,hasLOS:true,terrainDone:false,quality:'',connected:false,polyline:null,
+                    compatible:compatible,throughput:throughput,linkFreq:linkFreq,
+                    radioA:rA.name,radioB:rB.name,waveformA:rA.waveform,waveformB:rB.waveform});
             }
         }
-        // Pass 2: terrain for borderline links (margin between -10 and +30 dB)
-        var terrainLinks=links.filter(function(l){return l.margin>-10&&l.margin<30;});
+        // Pass 2: terrain for compatible borderline links
+        var terrainLinks=links.filter(function(l){return l.compatible&&l.margin>-10&&l.margin<30;});
         var terrainOK=0,terrainFail=0;
         if(terrainLinks.length>0&&terrainLinks.length<=60){
             document.getElementById('mesh-link-count').textContent='terrain for '+terrainLinks.length+'/'+totalPairs+' links...';
@@ -3721,28 +3822,25 @@ renderVtxTable();
                 try{
                     var pts=window._rfInterpolatePoints(tl.fromNode.lat,tl.fromNode.lon,tl.toNode.lat,tl.toNode.lon,15);
                     var elev=null;
-                    // Try elevation with retry
                     for(var attempt=0;attempt<2&&!elev;attempt++){
-                        try{
-                            var result=await window._rfGetElevations(pts);
-                            if(result&&result.elevations)elev=result;
-                        }catch(e){}
+                        try{var result=await window._rfGetElevations(pts);if(result&&result.elevations)elev=result;}catch(e){}
                     }
                     if(!elev)elev={elevations:pts.map(function(){return 0;}),source:'flat'};
                     var dists=pts.map(function(p){return hav(tl.fromNode.lat,tl.fromNode.lon,p.lat,p.lon);});
                     var hFrom=tl.fromNode.height||defaultH,hTo=tl.toNode.height||defaultH;
-                    var pwr=Math.min(tl.fromNode.power||defaultTxP,tl.toNode.power||defaultTxP);
-                    var analysis=window._rfAnalyzePath(elev.elevations,dists,hFrom,hTo,proto.freq);
-                    var budget=window._rfLinkBudget(analysis,pwr,proto.rxSens,txG,rxG,proto.freq,0);
-                    tl.margin=budget.margin;tl.diffLoss=analysis.diffLoss;
-                    tl.hasLOS=analysis.hasLOS;tl.fspl=budget.fLoss;tl.rxPow=budget.rxPow;
+                    var pwr=Math.min(tl.fromNode.radio.txPow,tl.toNode.radio.txPow);
+                    var sens=Math.max(tl.fromNode.radio.rxSens,tl.toNode.radio.rxSens);
+                    var analysis=window._rfAnalyzePath(elev.elevations,dists,hFrom,hTo,tl.linkFreq);
+                    var budget=window._rfLinkBudget(analysis,pwr,sens,txG,rxG,tl.linkFreq,0);
+                    tl.margin=budget.margin;tl.diffLoss=analysis.diffLoss;tl.hasLOS=analysis.hasLOS;
                     tl.terrainDone=true;tl.analysis=analysis;tl.elevSource=elev.source;
+                    tl.throughput=estimateThroughput(budget.margin,Math.min(tl.fromNode.radio.maxRate,tl.toNode.radio.maxRate));
                     terrainOK++;
                 }catch(e){terrainFail++;}
             }
         }
-        // Also compute terrain for ALL connected links (even strong ones) for profile viewing
-        var nonTerrainConnected=links.filter(function(l){return !l.terrainDone&&l.margin>=minMargin;});
+        // Also terrain for strong compatible connected links
+        var nonTerrainConnected=links.filter(function(l){return l.compatible&&!l.terrainDone&&l.margin>=minMargin;});
         for(var k=0;k<nonTerrainConnected.length&&k<30;k++){
             var tl=nonTerrainConnected[k];
             try{
@@ -3752,47 +3850,65 @@ renderVtxTable();
                 if(!elev)elev={elevations:pts.map(function(){return 0;}),source:'flat'};
                 var dists=pts.map(function(p){return hav(tl.fromNode.lat,tl.fromNode.lon,p.lat,p.lon);});
                 var hFrom=tl.fromNode.height||defaultH,hTo=tl.toNode.height||defaultH;
-                var pwr=Math.min(tl.fromNode.power||defaultTxP,tl.toNode.power||defaultTxP);
-                var analysis=window._rfAnalyzePath(elev.elevations,dists,hFrom,hTo,proto.freq);
-                var budget=window._rfLinkBudget(analysis,pwr,proto.rxSens,txG,rxG,proto.freq,0);
+                var pwr=Math.min(tl.fromNode.radio.txPow,tl.toNode.radio.txPow);
+                var sens=Math.max(tl.fromNode.radio.rxSens,tl.toNode.radio.rxSens);
+                var analysis=window._rfAnalyzePath(elev.elevations,dists,hFrom,hTo,tl.linkFreq);
+                var budget=window._rfLinkBudget(analysis,pwr,sens,txG,rxG,tl.linkFreq,0);
                 tl.margin=budget.margin;tl.diffLoss=analysis.diffLoss;tl.hasLOS=analysis.hasLOS;
                 tl.terrainDone=true;tl.analysis=analysis;tl.elevSource=elev.source;
+                tl.throughput=estimateThroughput(budget.margin,Math.min(tl.fromNode.radio.maxRate,tl.toNode.radio.maxRate));
                 terrainOK++;
             }catch(e){terrainFail++;}
         }
         // Classify and draw
         links.forEach(function(l){
+            if(!l.compatible){
+                l.quality='incompatible';l.connected=false;
+                l.polyline=L.polyline([[l.fromNode.lat,l.fromNode.lon],[l.toNode.lat,l.toNode.lon]],{color:'#9333ea',weight:1.5,opacity:0.4,dashArray:'2,6'}).addTo(meshMap);
+                l.polyline.bindTooltip(l.from+' \u2194 '+l.to+': INCOMPATIBLE ('+l.waveformA+' \u2260 '+l.waveformB+')',{sticky:true});
+                (function(link){l.polyline.on('click',function(){meshShowLinkProfile(link);});})(l);
+                return;
+            }
             l.quality=l.margin>20?'excellent':l.margin>minMargin?'good':l.margin>0?'weak':'fail';
             l.connected=l.margin>=minMargin;
             var color=l.margin>20?'#4ade80':l.margin>minMargin?'#eab308':l.margin>0?'#f59e0b':'#ef4444';
             var tip=l.from+' \u2194 '+l.to+': '+l.margin.toFixed(1)+' dB';
+            if(l.throughput>0)tip+=' \u00B7 ~'+(l.throughput>=1?l.throughput.toFixed(0):l.throughput.toFixed(2))+' Mbps';
             if(l.terrainDone)tip+=' (terrain'+(l.hasLOS?'':' \u2014 LOS blocked')+')';
+            tip+=' \u2014 click for profile';
             if(l.connected){
                 l.polyline=L.polyline([[l.fromNode.lat,l.fromNode.lon],[l.toNode.lat,l.toNode.lon]],{color:color,weight:3,opacity:0.7}).addTo(meshMap);
-                l.polyline.bindTooltip(tip+' — click for profile',{sticky:true});
-                (function(link){l.polyline.on('click',function(){meshShowLinkProfile(link);});})(l);
+                l.polyline.bindTooltip(tip,{sticky:true});
             } else {
                 l.polyline=L.polyline([[l.fromNode.lat,l.fromNode.lon],[l.toNode.lat,l.toNode.lon]],{color:'#333',weight:1,opacity:0.3,dashArray:'4,8'}).addTo(meshMap);
-                (function(link){l.polyline.on('click',function(){meshShowLinkProfile(link);});})(l);
             }
+            (function(link){l.polyline.on('click',function(){meshShowLinkProfile(link);});})(l);
         });
         meshLinks=links;
         var connCount=links.filter(function(l){return l.connected;}).length;
+        var incompatCount=links.filter(function(l){return !l.compatible;}).length;
         var terrainCount=links.filter(function(l){return l.terrainDone;}).length;
-        document.getElementById('mesh-link-count').textContent=connCount+'/'+links.length+' connected'+(terrainCount>0?' ('+terrainCount+' terrain-verified)':'');
-        meshAnalyze(active,links,minMargin,proto);
+        var statusParts=[connCount+'/'+links.length+' connected'];
+        if(incompatCount>0)statusParts.push(incompatCount+' incompatible');
+        if(terrainCount>0)statusParts.push(terrainCount+' terrain');
+        document.getElementById('mesh-link-count').textContent=statusParts.join(' \u00B7 ');
+        meshAnalyze(active,links,minMargin);
         if(meshHeatEnabled)meshBuildHeatmap();
     };
 
-    function meshAnalyze(nodes,links,minMargin,proto){
+    function meshAnalyze(nodes,links,minMargin){
         var n=nodes.length;
         var idMap={};nodes.forEach(function(nd,i){idMap[nd.id]=i;});
-        // Build adjacency
-        var adj=[];for(var i=0;i<n;i++)adj.push([]);
+        // Build adjacency with weights
+        var adj=[];var adjWeights=[];for(var i=0;i<n;i++){adj.push([]);adjWeights.push([]);}
         links.forEach(function(l){
             if(!l.connected)return;
             var a=idMap[l.from],b=idMap[l.to];
-            if(a!==undefined&&b!==undefined){adj[a].push(b);adj[b].push(a);}
+            if(a!==undefined&&b!==undefined){
+                adj[a].push(b);adj[b].push(a);
+                var w=l.margin>0?1/l.margin:999;
+                adjWeights[a].push(w);adjWeights[b].push(w);
+            }
         });
         // BFS connectivity
         function bfsReachable(start,skip){
@@ -3815,36 +3931,81 @@ renderVtxTable();
         var spofNodes=[];
         for(var i=0;i<n;i++){
             if(n<=2)continue;
-            // Check if removing node i disconnects the graph
             var startNode=i===0?1:0;
-            var reach=new Set();var q=[startNode];reach.add(startNode);reach.add(i); // skip i
+            var reach=new Set();var q=[startNode];reach.add(startNode);reach.add(i);
             while(q.length>0){var c=q.shift();adj[c].forEach(function(nb){if(!reach.has(nb)){reach.add(nb);q.push(nb);}});}
             if(reach.size<n){spofNodes.push(nodes[i].id);}
         }
-        // Weakest connected link
+        // Dijkstra from GCS (node 0) for hop count + path
+        var gcs=0;
+        var dist=[];var prev=[];var hops=[];
+        for(var i=0;i<n;i++){dist.push(Infinity);prev.push(-1);hops.push(Infinity);}
+        dist[gcs]=0;hops[gcs]=0;
+        var visited=new Set();
+        for(var iter=0;iter<n;iter++){
+            var u=-1,bestD=Infinity;
+            for(var i=0;i<n;i++){if(!visited.has(i)&&dist[i]<bestD){bestD=dist[i];u=i;}}
+            if(u===-1)break;
+            visited.add(u);
+            for(var k=0;k<adj[u].length;k++){
+                var v=adj[u][k],w=adjWeights[u][k];
+                if(dist[u]+w<dist[v]){dist[v]=dist[u]+w;prev[v]=u;hops[v]=hops[u]+1;}
+            }
+        }
+        function getPath(target){
+            var path=[];var c=target;
+            while(c!==-1){path.unshift(nodes[c].id);c=prev[c];}
+            return path;
+        }
+        // Weakest link, isolated, avg degree
         var connectedLinks=links.filter(function(l){return l.connected;});
+        var incompatLinks=links.filter(function(l){return !l.compatible;});
         var weakest=connectedLinks.length>0?connectedLinks.reduce(function(a,b){return a.margin<b.margin?a:b;}):null;
-        // Isolated nodes
         var isolated=[];
         for(var i=0;i<n;i++){if(adj[i].length===0)isolated.push(nodes[i].id);}
-        // Average degree
         var avgDeg=adj.reduce(function(s,a){return s+a.length;},0)/n;
+        // Radio mix summary
+        var radioMix={};nodes.forEach(function(nd){var rn=nd.radio?nd.radio.name:'Unknown';radioMix[rn]=(radioMix[rn]||0)+1;});
+        var waveformMix={};nodes.forEach(function(nd){var wf=nd.radio?nd.radio.waveform:'?';waveformMix[wf]=(waveformMix[wf]||0)+1;});
+        var multiWaveform=Object.keys(waveformMix).length>1;
+        // Non-mesh radio warnings
+        var nonMeshNodes=nodes.filter(function(nd){return nd.radio&&!nd.radio.mesh;});
         // Render health
         var hEl=document.getElementById('mesh-health');
         var html='<div style="padding:10px;background:var(--bg-panel);border:1px solid var(--border-color);border-radius:var(--radius-sm);">';
         html+='<div style="font-size:10px;font-weight:600;color:var(--text-main);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:8px;">Network Health</div>';
-        if(!proto.mesh)html+='<div style="padding:6px 8px;margin-bottom:8px;background:rgba(234,179,8,0.1);border:1px solid rgba(234,179,8,0.3);border-radius:var(--radius-sm);font-size:10px;color:#eab308;">⚠ '+proto.name+' is '+proto.meshType+' — not a true mesh. Nodes cannot relay for each other.</div>';
+        if(multiWaveform)html+='<div style="padding:6px 8px;margin-bottom:8px;background:rgba(147,51,234,0.1);border:1px solid rgba(147,51,234,0.3);border-radius:var(--radius-sm);font-size:10px;color:#a78bfa;">\u26A0 Mixed waveforms: '+Object.keys(waveformMix).join(', ')+' \u2014 cross-waveform nodes cannot communicate even on same frequency.</div>';
+        nonMeshNodes.forEach(function(nd){
+            html+='<div style="padding:4px 8px;margin-bottom:4px;background:rgba(234,179,8,0.1);border:1px solid rgba(234,179,8,0.3);border-radius:var(--radius-sm);font-size:9px;color:#eab308;">\u26A0 '+nd.id+': '+nd.radio.name+' is '+nd.radio.meshType+' \u2014 cannot relay for other nodes.</div>';
+        });
         var statusColor=connected?'#4ade80':(isolated.length>0?'#f87171':'#eab308');
-        html+='<div style="margin-bottom:8px;padding:8px 10px;border-radius:var(--radius-sm);background:'+statusColor+'10;border:1px solid '+statusColor+'40;color:'+statusColor+';font-size:12px;font-weight:700;">'+(connected?'✓ FULLY CONNECTED':'⚠ NETWORK PARTITIONED — '+components.length+' fragments')+'</div>';
+        html+='<div style="margin-bottom:8px;padding:8px 10px;border-radius:var(--radius-sm);background:'+statusColor+'10;border:1px solid '+statusColor+'40;color:'+statusColor+';font-size:12px;font-weight:700;">'+(connected?'\u2713 FULLY CONNECTED':'\u26A0 NETWORK PARTITIONED \u2014 '+components.length+' fragments')+'</div>';
         html+='<div style="display:grid;grid-template-columns:1fr 1fr;gap:4px;font-size:10px;">';
         html+='<span style="color:var(--text-muted);">Nodes</span><span style="color:var(--text-main);">'+n+' active</span>';
-        html+='<span style="color:var(--text-muted);">Links</span><span style="color:var(--text-main);">'+connectedLinks.length+' / '+links.length+' pairs</span>';
+        html+='<span style="color:var(--text-muted);">Links</span><span style="color:var(--text-main);">'+connectedLinks.length+' / '+links.length+' pairs'+(incompatLinks.length>0?' ('+incompatLinks.length+' incompatible)':'')+'</span>';
         html+='<span style="color:var(--text-muted);">Avg degree</span><span style="color:var(--text-main);">'+avgDeg.toFixed(1)+' connections/node</span>';
-        html+='<span style="color:var(--text-muted);">Protocol</span><span style="color:var(--text-main);">'+proto.name+' ('+proto.meshType+')</span>';
-        if(weakest)html+='<span style="color:var(--text-muted);">Weakest link</span><span style="color:#eab308;">'+weakest.from+' ↔ '+weakest.to+': '+weakest.margin.toFixed(1)+' dB</span>';
+        html+='<span style="color:var(--text-muted);">Radios</span><span style="color:var(--text-main);">'+Object.keys(radioMix).map(function(k){return k+' \u00D7'+radioMix[k];}).join(', ')+'</span>';
+        if(weakest)html+='<span style="color:var(--text-muted);">Weakest link</span><span style="color:#eab308;">'+weakest.from+' \u2194 '+weakest.to+': '+weakest.margin.toFixed(1)+' dB</span>';
         if(isolated.length>0)html+='<span style="color:var(--text-muted);">Isolated</span><span style="color:#f87171;">'+isolated.join(', ')+'</span>';
-        if(spofNodes.length>0)html+='<span style="color:var(--text-muted);">SPOF nodes</span><span style="color:#f59e0b;">'+spofNodes.join(', ')+' — removing breaks mesh</span>';
-        html+='</div></div>';
+        if(spofNodes.length>0)html+='<span style="color:var(--text-muted);">SPOF nodes</span><span style="color:#f59e0b;">'+spofNodes.join(', ')+' \u2014 removing breaks mesh</span>';
+        html+='</div>';
+        // Hop count from GCS
+        if(connected||connectedLinks.length>0){
+            html+='<div style="margin-top:8px;border-top:1px solid var(--border-color);padding-top:8px;">';
+            html+='<div style="font-size:9px;font-weight:600;color:var(--text-main);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:4px;">Hop Count from GCS ('+nodes[0].id+')</div>';
+            html+='<div style="display:grid;grid-template-columns:1fr 1fr;gap:2px;font-size:9px;">';
+            for(var i=1;i<n;i++){
+                var hopC=hops[i]===Infinity?'\u221E':hops[i];
+                var hopColor=hops[i]<=1?'#4ade80':hops[i]<=2?'#eab308':hops[i]<=3?'#f59e0b':'#f87171';
+                if(hops[i]===Infinity)hopColor='#f87171';
+                var path=hops[i]!==Infinity?getPath(i).join('\u2192'):'unreachable';
+                var latencyMs=hops[i]!==Infinity?(hops[i]*5).toFixed(0):'--';
+                html+='<span style="color:var(--text-muted);">'+nodes[i].id+'</span>';
+                html+='<span style="color:'+hopColor+';">'+hopC+' hop'+(hops[i]>1?'s':'')+' \u00B7 ~'+latencyMs+'ms \u00B7 '+path+'</span>';
+            }
+            html+='</div></div>';
+        }
+        html+='</div>';
         hEl.innerHTML=html;hEl.style.display='block';
         // Mark SPOF nodes on map
         spofNodes.forEach(function(sid){
@@ -3917,7 +4078,7 @@ renderVtxTable();
         var L=window.L;
         var active=meshNodes.filter(function(n){return n.active;});
         if(active.length<1)return;
-        var proto=meshGetProto();
+        var proto=meshGetDefaultRadio();
         var txP=parseFloat(document.getElementById('mesh-tx-power').value)||30;
         var nodeH=parseFloat(document.getElementById('mesh-node-height').value)||50;
         var txG=2,rxG=2;
@@ -3938,7 +4099,7 @@ renderVtxTable();
                 for(var i=0;i<active.length;i++){
                     var d=hav(active[i].lat,active[i].lon,lat,lon)/1000;
                     if(d<0.001)d=0.001;
-                    var fspl=20*Math.log10(d)+20*Math.log10(proto.freq)+32.44;
+                    var fspl=20*Math.log10(d)+20*Math.log10(proto.freq[0])+32.44;
                     var margin=txP+txG+rxG-fspl-proto.rxSens;
                     if(margin>bestMargin)bestMargin=margin;
                 }
@@ -3970,7 +4131,7 @@ renderVtxTable();
         if(!link.analysis){
             svg.innerHTML='<text x="350" y="90" fill="#eab308" font-size="11" text-anchor="middle">Computing terrain...</text>';
             try{
-                var proto=meshGetProto();
+                var proto=meshGetDefaultRadio();
                 var dH=parseFloat(document.getElementById('mesh-node-height').value)||50;
                 var dP=parseFloat(document.getElementById('mesh-tx-power').value)||30;
                 var pts=window._rfInterpolatePoints(link.fromNode.lat,link.fromNode.lon,link.toNode.lat,link.toNode.lon,20);
@@ -3978,8 +4139,8 @@ renderVtxTable();
                 var dists=pts.map(function(p){return hav(link.fromNode.lat,link.fromNode.lon,p.lat,p.lon);});
                 var hF=link.fromNode.height||dH,hT=link.toNode.height||dH;
                 var pwr=Math.min(link.fromNode.power||dP,link.toNode.power||dP);
-                var analysis=window._rfAnalyzePath(elev.elevations,dists,hF,hT,proto.freq);
-                var budget=window._rfLinkBudget(analysis,pwr,proto.rxSens,2,2,proto.freq,0);
+                var analysis=window._rfAnalyzePath(elev.elevations,dists,hF,hT,proto.freq[0]);
+                var budget=window._rfLinkBudget(analysis,pwr,proto.rxSens,2,2,proto.freq[0],0);
                 link.analysis=analysis;link.terrainDone=true;link.elevSource=elev.source;
                 link.margin=budget.margin;link.diffLoss=analysis.diffLoss;link.hasLOS=analysis.hasLOS;
             }catch(e){svg.innerHTML='<text x="350" y="90" fill="#f87171" font-size="11" text-anchor="middle">Terrain error</text>';}
@@ -3987,7 +4148,7 @@ renderVtxTable();
         if(link.analysis){
             // Draw the profile using the RF terrain draw function but targeting our SVG
             var analysis=link.analysis;
-            var proto=meshGetProto();
+            var proto=meshGetDefaultRadio();
             // Build profile HTML manually (same as drawProfile but for mesh SVG)
             var pts=analysis.points,totalD=analysis.totalD;
             var W=700,H=180,PX=50,PY=14,PB=22;
@@ -4051,7 +4212,7 @@ renderVtxTable();
 
     // Build trace for mesh link when profile is shown
     function meshBuildLinkTrace(link){
-        var proto=meshGetProto();
+        var proto=meshGetDefaultRadio();
         var STEPS=50;
         var pts=[];
         for(var s=0;s<=STEPS;s++){
@@ -4059,7 +4220,7 @@ renderVtxTable();
             var lat=link.fromNode.lat+(link.toNode.lat-link.fromNode.lat)*t;
             var lon=link.fromNode.lon+(link.toNode.lon-link.fromNode.lon)*t;
             var d=hav(link.fromNode.lat,link.fromNode.lon,lat,lon)/1000;
-            var fspl=d>0.001?(20*Math.log10(d)+20*Math.log10(proto.freq)+32.44):0;
+            var fspl=d>0.001?(20*Math.log10(d)+20*Math.log10(proto.freq[0])+32.44):0;
             var pwr=Math.min(link.fromNode.power||30,link.toNode.power||30);
             var margin=pwr+2+2-fspl-proto.rxSens;
             pts.push({lat:lat,lon:lon,d:d,margin:margin});
@@ -4091,7 +4252,7 @@ renderVtxTable();
         var m=document.getElementById('mesh-matrix');
         var i=document.getElementById('mesh-issues');
         var now=new Date().toISOString().split('T')[0];
-        var proto=meshGetProto();
+        var proto=meshGetDefaultRadio();
         var html='<!DOCTYPE html><html><head><meta charset="utf-8"><title>Mesh RF Report</title>';
         html+='<style>*{margin:0;padding:0;box-sizing:border-box;}body{font-family:sans-serif;background:#0b0f14;color:#c9d1d9;padding:32px;font-size:11px;}h1{font-size:18px;color:#22d3ee;margin-bottom:4px;}h2{font-size:11px;color:#8b949e;margin-bottom:20px;}table{width:100%;border-collapse:collapse;font-size:10px;margin:8px 0;}td,th{padding:4px;border-bottom:1px solid #21262d;}@media print{body{background:#fff;color:#1a1a1a;}td,th{border-color:#ddd;}}</style>';
         html+='</head><body><h1>Mesh / Swarm RF Report</h1><h2>'+proto.name+' | '+meshNodes.filter(function(n){return n.active;}).length+' nodes | '+now+'</h2>';
