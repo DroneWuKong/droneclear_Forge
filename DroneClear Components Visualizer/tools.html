@@ -166,7 +166,7 @@
             .tools-page { display: block; min-height: unset; }
             .tools-main { overflow-y: unset; height: auto; }
             .tool-panel { padding: 20px 16px; }
-            .tools-topbar { padding: 12px 16px; }
+            .tools-topbar { padding: 12px 16px; display: none; }
             .mobile-tool-nav { display: block !important; }
         }
         .mobile-tool-nav {
@@ -837,26 +837,33 @@
                 <p class="tool-desc">Real-terrain link analysis using elevation data. Drag TX/RX markers on the map. Computes path profile, Fresnel zone clearance, knife-edge diffraction, and full link budget. Uses USGS 3DEP (1m, US) with SRTM (30m, global) fallback.</p>
             </div>
 
-            <!-- Coordinate search -->
-            <div style="display:flex; gap:8px; margin-bottom:8px;">
-                <input type="text" id="rf-coord-input" class="tool-input" placeholder="Search address, city, or enter coords (DD, DMS, MGRS)"
-                    style="flex:1; font-size:13px; padding:8px 12px;">
-                <select id="rf-coord-format" class="tool-select" style="width:80px; font-size:11px;">
-                    <option value="DD">DD</option>
-                    <option value="DMS">DMS</option>
-                    <option value="MGRS">MGRS</option>
-                    <option value="UTM">UTM</option>
-                </select>
-                <button onclick="rfSearchCoord()" style="background:var(--accent-red); color:#fff; border:none; border-radius:var(--radius-sm); padding:6px 14px; font-size:12px; font-family:var(--font-family); cursor:pointer;">Go</button>
+            <!-- Smart location search with autocomplete -->
+            <div style="position:relative; margin-bottom:8px;">
+                <div style="display:flex; gap:8px;">
+                    <div style="flex:1; position:relative;">
+                        <input type="text" id="rf-coord-input" class="tool-input" placeholder="Address, city, or coordinates (DD, DMS, MGRS)"
+                            style="width:100%; font-size:13px; padding:8px 12px;" autocomplete="off">
+                        <div id="rf-autocomplete" style="display:none; position:absolute; top:100%; left:0; right:0; z-index:999; background:var(--bg-panel); border:1px solid var(--border-color); border-top:none; border-radius:0 0 var(--radius-sm) var(--radius-sm); max-height:200px; overflow-y:auto;"></div>
+                    </div>
+                </div>
+                <div id="rf-coord-display" style="font-size:10px; color:var(--text-faint); margin-top:4px; font-family:var(--font-mono);"></div>
             </div>
-            <div id="rf-coord-display" style="font-size:10px; color:var(--text-faint); margin-bottom:8px; font-family:var(--font-mono);"></div>
+
+            <div style="font-size:11px; color:var(--text-muted); margin-bottom:8px; padding:6px 10px; background:var(--bg-dark); border-radius:var(--radius-sm);">
+                <strong style="color:var(--text-main);">Click map</strong> to place TX (1st click) and RX (2nd click). Or search above.
+            </div>
 
             <!-- Map container -->
-            <div id="rf-map" style="width:100%; height:300px; border-radius:var(--radius-md); border:1px solid var(--border-color); margin-bottom:12px; background:var(--bg-dark);"></div>
-            <div style="display:flex; justify-content:space-between; font-size:11px; color:var(--text-muted); margin-bottom:16px; flex-wrap:wrap; gap:4px;">
-                <span><span style="color:var(--accent-red);">●</span> TX: <span id="rf-tx-coords">39.73920, -104.99030</span> &nbsp; <span style="color:#2a9d8f;">●</span> RX: <span id="rf-rx-coords">39.76000, -104.95000</span></span>
-                <span id="rf-status">Distance: — · Elev: —</span>
+            <div id="rf-map" style="width:100%; height:300px; border-radius:var(--radius-md); border:1px solid var(--border-color); margin-bottom:8px; background:var(--bg-dark); cursor:crosshair;"></div>
+            <div style="display:flex; justify-content:space-between; align-items:center; font-size:11px; color:var(--text-muted); margin-bottom:12px; flex-wrap:wrap; gap:4px;">
+                <span><span style="color:var(--accent-red);">●</span> TX: <span id="rf-tx-coords">—</span> &nbsp; <span style="color:#2a9d8f;">●</span> RX: <span id="rf-rx-coords">—</span></span>
+                <span id="rf-status"></span>
             </div>
+
+            <!-- Calculate button -->
+            <button id="rf-calc-btn" onclick="rfCompute()" style="width:100%; padding:10px; background:var(--accent-red); color:#fff; border:none; border-radius:var(--radius-sm); font-size:14px; font-weight:600; font-family:var(--font-family); cursor:pointer; margin-bottom:16px; letter-spacing:0.05em;">
+                CALCULATE LINK
+            </button>
 
             <!-- RF Config -->
             <div class="input-grid" style="margin-bottom:16px;">
@@ -1809,13 +1816,73 @@ renderVtxTable();
     }
 
     let rfMap=null,txMarker=null,rxMarker=null,pathLine=null;
-    let txPos={lat:39.7392,lon:-104.9903},rxPos={lat:39.7600,lon:-104.9500};
+    let txPos=null,rxPos=null;
     let rfTimer=null;
+    let rfClickState=0; // 0=place TX, 1=place RX, 2=both placed
 
     function getVal(id){return parseFloat(document.getElementById(id).value)||0;}
     function getProto(){return RF_PROTOCOLS[document.getElementById('rf-protocol').value]||RF_PROTOCOLS.ELRS_900;}
 
-    // ── Coordinate search + MGRS/DMS/UTM parsing ──
+    // ── Address autocomplete with debounce ──
+    let acTimer=null;
+    function rfSetupAutocomplete(){
+        const input=document.getElementById('rf-coord-input');
+        const dropdown=document.getElementById('rf-autocomplete');
+        if(!input||!dropdown)return;
+
+        input.addEventListener('input',function(){
+            clearTimeout(acTimer);
+            const val=input.value.trim();
+            if(val.length<3){dropdown.style.display='none';return;}
+
+            // Check if it's coordinates first
+            const parsed=parseCoordInput(val);
+            if(parsed){
+                dropdown.style.display='none';
+                rfShowCoordFormats(parsed.lat,parsed.lon);
+                return;
+            }
+
+            // Debounce address search
+            acTimer=setTimeout(function(){
+                fetch('https://nominatim.openstreetmap.org/search?q='+encodeURIComponent(val)+'&format=json&limit=5&addressdetails=1',
+                    {headers:{'User-Agent':'Forge-RF-Tool/1.0'}})
+                .then(r=>r.json()).then(data=>{
+                    if(!data.length){dropdown.style.display='none';return;}
+                    dropdown.innerHTML='';
+                    data.forEach(function(item){
+                        const opt=document.createElement('div');
+                        opt.style.cssText='padding:8px 12px; cursor:pointer; font-size:12px; color:var(--text-muted); border-bottom:1px solid var(--border-color); font-family:var(--font-family);';
+                        opt.textContent=item.display_name.substring(0,80);
+                        opt.onmouseover=function(){opt.style.background='var(--bg-panel-hover)';opt.style.color='var(--text-main)';};
+                        opt.onmouseout=function(){opt.style.background='none';opt.style.color='var(--text-muted)';};
+                        opt.onclick=function(){
+                            const lat=parseFloat(item.lat),lon=parseFloat(item.lon);
+                            input.value=item.display_name.substring(0,60);
+                            dropdown.style.display='none';
+                            rfMoveMapTo(lat,lon);
+                            rfShowCoordFormats(lat,lon);
+                        };
+                        dropdown.appendChild(opt);
+                    });
+                    dropdown.style.display='block';
+                }).catch(function(){dropdown.style.display='none';});
+            },400);
+        });
+
+        input.addEventListener('keydown',function(e){
+            if(e.key==='Enter'){
+                dropdown.style.display='none';
+                rfSearchCoord();
+            }
+        });
+
+        // Close dropdown on outside click
+        document.addEventListener('click',function(e){
+            if(!input.contains(e.target)&&!dropdown.contains(e.target))dropdown.style.display='none';
+        });
+    }
+
     function rfSearchCoord(){
         const input=document.getElementById('rf-coord-input').value.trim();
         if(!input)return;
@@ -1824,7 +1891,6 @@ renderVtxTable();
             rfMoveMapTo(parsed.lat,parsed.lon);
             rfShowCoordFormats(parsed.lat,parsed.lon);
         } else {
-            // Try geocoding via Nominatim (address search)
             fetch('https://nominatim.openstreetmap.org/search?q='+encodeURIComponent(input)+'&format=json&limit=1',
                 {headers:{'User-Agent':'Forge-RF-Tool/1.0'}})
             .then(r=>r.json()).then(data=>{
@@ -1833,27 +1899,14 @@ renderVtxTable();
                     rfMoveMapTo(lat,lon);
                     rfShowCoordFormats(lat,lon);
                     document.getElementById('rf-coord-input').value=data[0].display_name.substring(0,60);
-                } else {
-                    document.getElementById('rf-coord-display').textContent='Location not found';
                 }
-            }).catch(()=>{document.getElementById('rf-coord-display').textContent='Search failed (offline?)';});
+            }).catch(function(){});
         }
     }
-    // Enter key triggers search
-    document.addEventListener('DOMContentLoaded',function(){
-        const ci=document.getElementById('rf-coord-input');
-        if(ci)ci.addEventListener('keydown',function(e){if(e.key==='Enter')rfSearchCoord();});
-    });
 
     function rfMoveMapTo(lat,lon){
-        txPos={lat:lat,lon:lon};
-        rxPos={lat:lat+0.02,lon:lon+0.02};
-        if(rfMap&&txMarker&&rxMarker){
-            txMarker.setLatLng([txPos.lat,txPos.lon]);
-            rxMarker.setLatLng([rxPos.lat,rxPos.lon]);
-            rfMap.setView([lat,lon],13);
-            rfUpdateCoords();
-        }
+        if(rfMap) rfMap.setView([lat,lon],13);
+        // Don't auto-place markers — user clicks to place
     }
 
     function rfShowCoordFormats(lat,lon){
@@ -1862,8 +1915,46 @@ renderVtxTable();
         const dd=lat.toFixed(6)+', '+lon.toFixed(6);
         const dms=toDMS(lat,'NS')+' '+toDMS(lon,'EW');
         const mgrs=toMGRS(lat,lon);
-        const fmt=document.getElementById('rf-coord-format').value;
-        el.innerHTML='DD: '+dd+' &nbsp;·&nbsp; DMS: '+dms+' &nbsp;·&nbsp; MGRS: '+mgrs;
+        el.innerHTML='DD: '+dd+' · DMS: '+dms+' · MGRS: '+mgrs;
+    }
+
+    // ── Click-to-place markers ──
+    function rfMapClick(e){
+        const lat=e.latlng.lat,lon=e.latlng.lng;
+        const L=window.L;
+        function makeIcon(c){return L.divIcon({className:'',html:'<div style="width:16px;height:16px;border-radius:50%;background:'+c+';border:3px solid #0b0f14;box-shadow:0 0 8px '+c+'88;"></div>',iconSize:[16,16],iconAnchor:[8,8]});}
+
+        if(rfClickState===0||rfClickState===2){
+            // Place TX (or restart)
+            if(rfClickState===2){
+                // Clear previous markers
+                if(txMarker){rfMap.removeLayer(txMarker);txMarker=null;}
+                if(rxMarker){rfMap.removeLayer(rxMarker);rxMarker=null;}
+                if(pathLine){rfMap.removeLayer(pathLine);pathLine=null;}
+                rxPos=null;
+            }
+            txPos={lat:lat,lon:lon};
+            txMarker=L.marker([lat,lon],{draggable:true,icon:makeIcon('#22d3ee')}).addTo(rfMap);
+            txMarker.on('dragend',function(){txPos={lat:txMarker.getLatLng().lat,lon:txMarker.getLatLng().lng};rfUpdateCoordDisplay();});
+            rfClickState=1;
+            document.getElementById('rf-tx-coords').textContent=lat.toFixed(5)+', '+lon.toFixed(5);
+            document.getElementById('rf-rx-coords').textContent='click map to place RX...';
+            document.getElementById('rf-status').textContent='';
+        } else if(rfClickState===1){
+            // Place RX
+            rxPos={lat:lat,lon:lon};
+            rxMarker=L.marker([lat,lon],{draggable:true,icon:makeIcon('#2a9d8f')}).addTo(rfMap);
+            rxMarker.on('dragend',function(){rxPos={lat:rxMarker.getLatLng().lat,lon:rxMarker.getLatLng().lng};rfUpdateCoordDisplay();});
+            pathLine=L.polyline([[txPos.lat,txPos.lon],[lat,lon]],{color:'#22d3ee',weight:2,dashArray:'8,8',opacity:0.7}).addTo(rfMap);
+            rfClickState=2;
+            rfUpdateCoordDisplay();
+        }
+    }
+
+    function rfUpdateCoordDisplay(){
+        if(txPos) document.getElementById('rf-tx-coords').textContent=txPos.lat.toFixed(5)+', '+txPos.lon.toFixed(5);
+        if(rxPos) document.getElementById('rf-rx-coords').textContent=rxPos.lat.toFixed(5)+', '+rxPos.lon.toFixed(5);
+        if(txPos&&rxPos&&pathLine) pathLine.setLatLngs([[txPos.lat,txPos.lon],[rxPos.lat,rxPos.lon]]);
     }
 
     function parseCoordInput(input){
@@ -1948,22 +2039,21 @@ renderVtxTable();
         mapInited=true;
         const L=window.L;
         if(!L||!document.getElementById('rf-map'))return;
-        rfMap=L.map('rf-map',{center:[(txPos.lat+rxPos.lat)/2,(txPos.lon+rxPos.lon)/2],zoom:13,zoomControl:true});
+        // Center on US by default, or user's last search
+        rfMap=L.map('rf-map',{center:[39.0,-98.0],zoom:4,zoomControl:true});
         L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',{attribution:'&copy; OSM &copy; CARTO',maxZoom:19}).addTo(rfMap);
-        function makeIcon(c){return L.divIcon({className:'',html:'<div style="width:16px;height:16px;border-radius:50%;background:'+c+';border:3px solid #0b0f14;box-shadow:0 0 8px '+c+'88;"></div>',iconSize:[16,16],iconAnchor:[8,8]});}
-        txMarker=L.marker([txPos.lat,txPos.lon],{draggable:true,icon:makeIcon('#22d3ee')}).addTo(rfMap);
-        rxMarker=L.marker([rxPos.lat,rxPos.lon],{draggable:true,icon:makeIcon('#2a9d8f')}).addTo(rfMap);
-        pathLine=L.polyline([[txPos.lat,txPos.lon],[rxPos.lat,rxPos.lon]],{color:'#22d3ee',weight:2,opacity:0.6,dashArray:'6,4'}).addTo(rfMap);
-        txMarker.on('dragend',function(){var p=txMarker.getLatLng();txPos={lat:p.lat,lon:p.lng};scheduleCompute();});
-        rxMarker.on('dragend',function(){var p=rxMarker.getLatLng();rxPos={lat:p.lat,lon:p.lng};scheduleCompute();});
+        // Click-to-place handler
+        rfMap.on('click',rfMapClick);
+        // Setup address autocomplete
+        rfSetupAutocomplete();
         setTimeout(function(){rfMap.invalidateSize();},200);
     }
 
     function updateMapMarkers(){
         if(!rfMap)return;
-        txMarker.setLatLng([txPos.lat,txPos.lon]);
-        rxMarker.setLatLng([rxPos.lat,rxPos.lon]);
-        pathLine.setLatLngs([[txPos.lat,txPos.lon],[rxPos.lat,rxPos.lon]]);
+        if(txMarker&&txPos)txMarker.setLatLng([txPos.lat,txPos.lon]);
+        if(rxMarker&&rxPos)rxMarker.setLatLng([rxPos.lat,rxPos.lon]);
+        if(pathLine&&txPos&&rxPos)pathLine.setLatLngs([[txPos.lat,txPos.lon],[rxPos.lat,rxPos.lon]]);
     }
 
     function drawProfile(analysis,fMHz){
@@ -2131,21 +2221,29 @@ renderVtxTable();
     }
 
     function scheduleCompute(){
+        // Manual only — triggered by Calculate button
         clearTimeout(rfTimer);
-        rfTimer=setTimeout(computeRFTerrain,600);
+        rfTimer=setTimeout(computeRFTerrain,100);
     }
 
-    ['rf-protocol','rf-tx-power','rf-tx-height','rf-rx-height','rf-tx-gain','rf-rx-gain','rf-fade-margin','rf-samples'].forEach(function(id){
-        var el=document.getElementById(id);
-        if(el){el.addEventListener('change',scheduleCompute);el.addEventListener('input',scheduleCompute);}
-    });
+    // rfCompute is the public function called by the Calculate button
+    window.rfCompute=function(){
+        if(!txPos||!rxPos){
+            document.getElementById('rf-status').textContent='Place TX and RX markers first';
+            return;
+        }
+        scheduleCompute();
+    };
+
+    // No auto-compute on input changes — user clicks Calculate
+    // ['rf-protocol','rf-tx-power',...].forEach — removed
 
     var _origShowTool=window.showTool;
     window.showTool=function(id){
         _origShowTool(id);
         if(id==='rf-terrain'){
             initRFMap();
-            if(!computing)scheduleCompute();
+            // Don't auto-compute — wait for user
         }
     };
     if(location.hash==='#rf-terrain'){setTimeout(function(){showTool('rf-terrain');},300);}
