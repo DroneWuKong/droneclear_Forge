@@ -843,6 +843,82 @@
                 <p class="tool-desc">Real-terrain link analysis using elevation data. Drag TX/RX markers on the map. Computes path profile, Fresnel zone clearance, knife-edge diffraction, and full link budget. Uses USGS 3DEP (1m, US) with SRTM (30m, global) fallback.</p>
             </div>
 
+            <!-- RF Config -->
+            <div class="input-grid" style="margin-bottom:16px;">
+                <div class="input-group">
+                    <label class="input-label">Protocol</label>
+                    <select class="tool-select" id="rf-protocol">
+                        <option value="GHST">GHST (ImmersionRC)</option>
+                        <option value="ELRS_2G4">ExpressLRS 2.4G</option>
+                        <option value="ELRS_900" selected>ExpressLRS 900M</option>
+                        <option value="CRSF">Crossfire (TBS)</option>
+                        <option value="DJI_O3">DJI O3/O4</option>
+                        <option value="HDZERO">HDZero</option>
+                        <option value="WALKSNAIL">Walksnail Avatar</option>
+                        <option value="ANALOG_FPV">Analog FPV</option>
+                        <option value="DOODLE_MESH">Doodle Labs Mesh</option>
+                        <option value="SILVUS">Silvus StreamCaster</option>
+                        <option value="RFD900X">RFD900x</option>
+                        <option value="PERSISTENT">Persistent MPU5</option>
+                    </select>
+                </div>
+                <div class="input-group">
+                    <label class="input-label">TX power</label>
+                    <div class="input-row">
+                        <input type="number" class="tool-input" id="rf-tx-power" value="27" min="0" max="40">
+                        <span class="input-unit">dBm</span>
+                    </div>
+                </div>
+                <div class="input-group">
+                    <label class="input-label">TX height (AGL)</label>
+                    <div class="input-row">
+                        <input type="number" class="tool-input" id="rf-tx-height" value="2" min="0" max="500" step="0.5">
+                        <span class="input-unit">m</span>
+                    </div>
+                </div>
+                <div class="input-group">
+                    <label class="input-label">RX height (AGL)</label>
+                    <div class="input-row">
+                        <input type="number" class="tool-input" id="rf-rx-height" value="50" min="0" max="500" step="0.5">
+                        <span class="input-unit">m</span>
+                    </div>
+                </div>
+                <div class="input-group">
+                    <label class="input-label">TX antenna gain</label>
+                    <div class="input-row">
+                        <input type="number" class="tool-input" id="rf-tx-gain" value="2" min="-5" max="20" step="0.5">
+                        <span class="input-unit">dBi</span>
+                    </div>
+                </div>
+                <div class="input-group">
+                    <label class="input-label">RX antenna gain</label>
+                    <div class="input-row">
+                        <input type="number" class="tool-input" id="rf-rx-gain" value="2" min="-5" max="20" step="0.5">
+                        <span class="input-unit">dBi</span>
+                    </div>
+                </div>
+                <div class="input-group">
+                    <label class="input-label">Fade margin</label>
+                    <div class="input-row">
+                        <input type="number" class="tool-input" id="rf-fade-margin" value="6" min="0" max="20">
+                        <span class="input-unit">dB</span>
+                    </div>
+                </div>
+                <div class="input-group">
+                    <label class="input-label">Path samples</label>
+                    <div class="input-row">
+                        <input type="number" class="tool-input" id="rf-samples" value="25" min="10" max="50" step="5">
+                        <span class="input-unit">pts</span>
+                    </div>
+                </div>
+            </div>
+
+            <div style="display:flex; gap:8px; flex-wrap:wrap; margin-bottom:16px; font-size:11px; color:var(--text-muted);">
+                Freq: <span id="rf-freq-label" style="color:var(--accent-red);">915 MHz</span> &nbsp;
+                Sens: <span id="rf-sens-label" style="color:var(--accent-red);">-123 dBm</span> &nbsp;
+                Mod: <span id="rf-mod-label" style="color:var(--accent-red);">LoRa</span>
+            </div>
+
             <!-- Map container with layer controls -->
             <div style="position:relative;">
                 <div id="rf-map" style="width:100%; height:300px; border-radius:var(--radius-md); border:1px solid var(--border-color); background:var(--bg-dark); cursor:crosshair;"></div>
@@ -889,16 +965,15 @@
                 <span id="rf-dem-status" style="flex:1;color:var(--text-faint);font-size:8px;">No local DEM — using API</span>
                 <button onclick="rfClearDEM()" style="padding:2px 6px;border:1px solid var(--border-color);border-radius:3px;background:none;color:var(--text-faint);font-size:8px;cursor:pointer;font-family:var(--font-family);">Clear</button>
             </div>
-            <div style="font-size:9px;color:var(--text-faint);margin-bottom:8px;padding:6px 8px;background:var(--bg-panel);border:1px solid var(--border-color);border-radius:var(--radius-sm);line-height:1.6;">
-                <strong style="color:var(--text-main);">Load local elevation data for instant, free terrain analysis:</strong><br>
-                1. Find your area on one of these free SRTM sources:<br>
-                &nbsp;&nbsp;• <a href="https://dwtkns.com/srtm30m/" target="_blank" style="color:var(--accent-red);text-decoration:none;">dwtkns.com/srtm30m</a> — click the map, download .hgt (easiest)<br>
-                &nbsp;&nbsp;• <a href="https://search.earthdata.nasa.gov/search?q=SRTM" target="_blank" style="color:var(--accent-red);text-decoration:none;">NASA Earthdata</a> — search SRTM, free account required<br>
-                &nbsp;&nbsp;• <a href="https://portal.opentopography.org/raster?opentopoID=OTSRTM.082015.4326.1" target="_blank" style="color:var(--accent-red);text-decoration:none;">OpenTopography</a> — bulk download, free account<br>
-                2. Click <strong>↑ Load .hgt</strong> above and select your file(s)<br>
-                3. Each tile covers 1°×1° (~111 km). Load multiple tiles for larger areas.<br>
-                <span style="color:var(--text-muted);">Format: SRTM .hgt (WGS84, 30m or 90m). Filename = tile coords (N39W105.hgt). Files stay in your browser — nothing uploaded.</span>
-            </div>
+            <details style="font-size:9px;color:var(--text-faint);margin-bottom:8px;">
+                <summary style="cursor:pointer;color:var(--text-muted);font-size:9px;">How to get free SRTM elevation data</summary>
+                <div style="padding:6px 8px;margin-top:4px;background:var(--bg-panel);border:1px solid var(--border-color);border-radius:var(--radius-sm);line-height:1.6;">
+                    1. <a href="https://dwtkns.com/srtm30m/" target="_blank" style="color:var(--accent-red);text-decoration:none;">dwtkns.com/srtm30m</a> — click the map, download .hgt (easiest)<br>
+                    2. <a href="https://search.earthdata.nasa.gov/search?q=SRTM" target="_blank" style="color:var(--accent-red);text-decoration:none;">NASA Earthdata</a> — search SRTM, free account<br>
+                    3. <a href="https://portal.opentopography.org/raster?opentopoID=OTSRTM.082015.4326.1" target="_blank" style="color:var(--accent-red);text-decoration:none;">OpenTopography</a> — bulk download<br>
+                    Each tile = 1°×1° (~111 km). WGS84 .hgt format. Files stay in browser.
+                </div>
+            </details>
 
             <!-- Action buttons row -->
             <div style="display:flex; gap:6px; margin-bottom:10px;">
@@ -1021,81 +1096,6 @@
             <!-- Multi-leg / repeater results (shown below main results when in advanced mode) -->
             <div id="rf-advanced-results" style="display:none;"></div>
 
-            <!-- RF Config -->
-            <div class="input-grid" style="margin-bottom:16px;">
-                <div class="input-group">
-                    <label class="input-label">Protocol</label>
-                    <select class="tool-select" id="rf-protocol">
-                        <option value="GHST">GHST (ImmersionRC)</option>
-                        <option value="ELRS_2G4">ExpressLRS 2.4G</option>
-                        <option value="ELRS_900" selected>ExpressLRS 900M</option>
-                        <option value="CRSF">Crossfire (TBS)</option>
-                        <option value="DJI_O3">DJI O3/O4</option>
-                        <option value="HDZERO">HDZero</option>
-                        <option value="WALKSNAIL">Walksnail Avatar</option>
-                        <option value="ANALOG_FPV">Analog FPV</option>
-                        <option value="DOODLE_MESH">Doodle Labs Mesh</option>
-                        <option value="SILVUS">Silvus StreamCaster</option>
-                        <option value="RFD900X">RFD900x</option>
-                        <option value="PERSISTENT">Persistent MPU5</option>
-                    </select>
-                </div>
-                <div class="input-group">
-                    <label class="input-label">TX power</label>
-                    <div class="input-row">
-                        <input type="number" class="tool-input" id="rf-tx-power" value="27" min="0" max="40">
-                        <span class="input-unit">dBm</span>
-                    </div>
-                </div>
-                <div class="input-group">
-                    <label class="input-label">TX height (AGL)</label>
-                    <div class="input-row">
-                        <input type="number" class="tool-input" id="rf-tx-height" value="2" min="0" max="500" step="0.5">
-                        <span class="input-unit">m</span>
-                    </div>
-                </div>
-                <div class="input-group">
-                    <label class="input-label">RX height (AGL)</label>
-                    <div class="input-row">
-                        <input type="number" class="tool-input" id="rf-rx-height" value="50" min="0" max="500" step="0.5">
-                        <span class="input-unit">m</span>
-                    </div>
-                </div>
-                <div class="input-group">
-                    <label class="input-label">TX antenna gain</label>
-                    <div class="input-row">
-                        <input type="number" class="tool-input" id="rf-tx-gain" value="2" min="-5" max="20" step="0.5">
-                        <span class="input-unit">dBi</span>
-                    </div>
-                </div>
-                <div class="input-group">
-                    <label class="input-label">RX antenna gain</label>
-                    <div class="input-row">
-                        <input type="number" class="tool-input" id="rf-rx-gain" value="2" min="-5" max="20" step="0.5">
-                        <span class="input-unit">dBi</span>
-                    </div>
-                </div>
-                <div class="input-group">
-                    <label class="input-label">Fade margin</label>
-                    <div class="input-row">
-                        <input type="number" class="tool-input" id="rf-fade-margin" value="6" min="0" max="20">
-                        <span class="input-unit">dB</span>
-                    </div>
-                </div>
-                <div class="input-group">
-                    <label class="input-label">Path samples</label>
-                    <div class="input-row">
-                        <input type="number" class="tool-input" id="rf-samples" value="25" min="10" max="50" step="5">
-                        <span class="input-unit">pts</span>
-                    </div>
-                </div>
-            </div>
-
-            <div style="display:flex; gap:8px; flex-wrap:wrap; margin-bottom:16px; font-size:11px; color:var(--text-muted);">
-                Freq: <span id="rf-freq-label" style="color:var(--accent-red);">915 MHz</span> &nbsp;
-                Sens: <span id="rf-sens-label" style="color:var(--accent-red);">-123 dBm</span> &nbsp;
-                Mod: <span id="rf-mod-label" style="color:var(--accent-red);">LoRa</span>
-            </div>
 
             <!-- Link quality badge -->
             <div style="text-align:center; margin-bottom:16px;">
@@ -2652,7 +2652,7 @@ renderVtxTable();
         if(!L||!document.getElementById('rf-map'))return;
         rfMap=L.map('rf-map',{center:[39.0,-98.0],zoom:4,zoomControl:true});
         window._rfMapRef=rfMap;
-        rfTileLayer=L.tileLayer(RF_LAYERS.dark,{attribution:'&copy; OSM',maxZoom:19}).addTo(rfMap);
+        rfTileLayer=L.tileLayer(RF_LAYERS.topo,{attribution:'&copy; USGS',maxZoom:19}).addTo(rfMap);
         rfMap.on('click',rfMapClick);
         rfSetupAutocomplete();
         // Route trace slider
@@ -3588,7 +3588,7 @@ renderVtxTable();
         if(!L)return;
         meshMap=L.map('mesh-map',{center:[39.0,-98.0],zoom:4,zoomControl:true});
         window._meshMapRef=meshMap;
-        meshTile=L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',{attribution:'OSM',maxZoom:19}).addTo(meshMap);
+        meshTile=L.tileLayer('https://basemap.nationalmap.gov/arcgis/rest/services/USGSTopo/MapServer/tile/{z}/{y}/{x}',{attribution:'USGS',maxZoom:19}).addTo(meshMap);
         meshMap.on('click',function(e){meshMapClick(e.latlng.lat,e.latlng.lng);});
         setTimeout(function(){meshMap.invalidateSize();},200);
     }
