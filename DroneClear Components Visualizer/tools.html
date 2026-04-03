@@ -921,7 +921,7 @@
 
             <!-- Map container with layer controls -->
             <div style="position:relative;">
-                <div id="rf-map" style="width:100%; height:300px; border-radius:var(--radius-md); border:1px solid var(--border-color); background:var(--bg-dark); cursor:crosshair;"></div>
+                <div id="rf-map" style="width:100%; height:clamp(250px, 40vh, 500px); border-radius:var(--radius-md); border:1px solid var(--border-color); background:var(--bg-dark); cursor:crosshair;"></div>
                 <!-- Map layer switcher -->
                 <div style="position:absolute; top:8px; right:8px; z-index:999; display:flex; gap:2px; background:rgba(11,15,20,0.85); border-radius:var(--radius-sm); padding:3px; border:1px solid var(--border-color);">
                     <button class="rf-layer-btn active" data-layer="dark" onclick="rfSetLayer('dark')" title="Dark" style="padding:3px 7px; border:none; border-radius:3px; background:rgba(34,211,238,0.12); color:var(--accent-red); font-size:9px; cursor:pointer; font-family:var(--font-family);">Dark</button>
@@ -1205,7 +1205,7 @@
 
             <!-- Mesh map -->
             <div style="position:relative;">
-                <div id="mesh-map" style="width:100%;height:350px;border-radius:var(--radius-md);border:1px solid var(--border-color);background:var(--bg-dark);cursor:crosshair;"></div>
+                <div id="mesh-map" style="width:100%;height:clamp(250px, 40vh, 500px);border-radius:var(--radius-md);border:1px solid var(--border-color);background:var(--bg-dark);cursor:crosshair;"></div>
                 <div style="position:absolute;top:8px;right:8px;z-index:999;display:flex;gap:2px;background:rgba(11,15,20,0.85);border-radius:var(--radius-sm);padding:3px;border:1px solid var(--border-color);">
                     <button onclick="meshSetLayer('dark')" style="padding:3px 7px;border:none;border-radius:3px;background:rgba(34,211,238,0.12);color:var(--accent-red);font-size:9px;cursor:pointer;font-family:var(--font-family);">Dark</button>
                     <button onclick="meshSetLayer('light')" style="padding:3px 7px;border:none;border-radius:3px;background:none;color:var(--text-faint);font-size:9px;cursor:pointer;font-family:var(--font-family);">Light</button>
@@ -1362,6 +1362,19 @@ function latLonToTile(lat,lon,z){
     var y=Math.floor((1-Math.log(Math.tan(lat*Math.PI/180)+1/Math.cos(lat*Math.PI/180))/Math.PI)/2*Math.pow(2,z));
     return{x:x,y:y};
 }
+
+// ── Global resize — invalidate all Leaflet maps when window resizes ──
+(function(){
+    var resizeTimer;
+    window.addEventListener('resize',function(){
+        clearTimeout(resizeTimer);
+        resizeTimer=setTimeout(function(){
+            if(window._rfMapRef)window._rfMapRef.invalidateSize();
+            if(window._meshMapRef)window._meshMapRef.invalidateSize();
+        },150);
+    });
+})();
+
 // ── Theme toggle ──────────────────────────────────────────────────────────
 const dmBtn = document.getElementById('dark-mode-toggle');
 const dmIcon = document.getElementById('dark-mode-icon');
