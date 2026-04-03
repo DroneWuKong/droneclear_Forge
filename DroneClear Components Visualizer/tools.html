@@ -1149,8 +1149,8 @@
             <!-- Mesh config -->
             <div class="input-grid" style="margin-bottom:10px;">
                 <div class="input-group">
-                    <label class="input-label">Mesh protocol</label>
-                    <select class="tool-select" id="mesh-protocol">
+                    <label class="input-label">Default radio (new nodes)</label>
+                    <select class="tool-select" id="mesh-protocol" onchange="meshFilterNodeRadios()">
                         <optgroup label="Doodle Labs (batman-adv)">
                             <option value="DL_2450" selected>Doodle Labs RM-2450 (2.4G)</option>
                             <option value="DL_1675">Doodle Labs RM-1675 (1.6G)</option>
@@ -3748,15 +3748,19 @@ renderVtxTable();
         if(!el)return;
         document.getElementById('mesh-node-count').textContent=meshNodes.length+' nodes';
         if(meshNodes.length===0){el.innerHTML='';return;}
-        var radioKeys=Object.keys(MESH_RADIOS);
+        // Get compatible radios based on top selector
+        var topSel=document.getElementById('mesh-protocol').value||'DL_2450';
+        var topRadio=MESH_RADIOS[topSel];
+        var topWf=topRadio?topRadio.waveform:'802.11';
+        var compatKeys=getCompatibleRadioKeys(topWf);
         var html='<div style="font-size:9px;">';
         meshNodes.forEach(function(n,i){
             var offline=!n.active;
             html+='<div style="display:flex;align-items:center;gap:4px;padding:3px 0;border-bottom:1px solid var(--border-color);">';
-            html+='<span style="width:8px;height:8px;border-radius:50%;background:'+(offline?'#666':n.color)+';flex-shrink:0;"></span>';
+            html+='<span style="width:8px;height:8px;border-radius:'+(n.isGCS?'2px':'50%')+';background:'+(offline?'#666':n.color)+';flex-shrink:0;"></span>';
             html+='<span style="color:'+(offline?'#f87171':'var(--text-main)')+';font-weight:600;min-width:22px;">'+n.id+'</span>';
             html+='<select onchange="meshNodeRadio('+i+',this.value)" style="flex:1;min-width:0;padding:1px 2px;font-size:8px;background:var(--bg-dark);border:1px solid var(--border-color);border-radius:2px;color:var(--text-main);font-family:var(--font-family);">';
-            radioKeys.forEach(function(k){html+='<option value="'+k+'"'+(n.radioKey===k?' selected':'')+'>'+MESH_RADIOS[k].name+'</option>';});
+            compatKeys.forEach(function(k){html+='<option value="'+k+'"'+(n.radioKey===k?' selected':'')+'>'+MESH_RADIOS[k].name+'</option>';});
             html+='</select>';
             html+='<input type="number" value="'+n.height+'" min="1" max="500" step="5" style="width:36px;padding:1px 2px;font-size:8px;background:var(--bg-dark);border:1px solid var(--border-color);border-radius:2px;color:var(--text-main);" onchange="meshNodeHeight('+i+',this.value)" title="Height AGL (m)">';
             html+='<span style="font-size:7px;color:var(--text-faint);">m</span>';
@@ -3769,6 +3773,34 @@ renderVtxTable();
 
     window.meshNodeRadio=function(i,key){
         if(meshNodes[i]){meshNodes[i].radioKey=key;meshNodes[i].radio=MESH_RADIOS[key]||MESH_RADIOS.DL_2450;meshNodes[i].power=MESH_RADIOS[key].txPow;}
+    };
+
+    // Get compatible radio keys for a given waveform
+    function getCompatibleRadioKeys(waveform){
+        var keys=[];
+        var radioKeys=Object.keys(MESH_RADIOS);
+        for(var i=0;i<radioKeys.length;i++){
+            var r=MESH_RADIOS[radioKeys[i]];
+            if(r.waveform===waveform||r.waveform==='custom'||waveform==='custom')keys.push(radioKeys[i]);
+        }
+        return keys;
+    }
+
+    // When top selector changes, update all existing nodes to match + rebuild list
+    window.meshFilterNodeRadios=function(){
+        var sel=document.getElementById('mesh-protocol').value;
+        var radio=MESH_RADIOS[sel];
+        if(!radio)return;
+        // Update TX power display to match selected radio
+        document.getElementById('mesh-tx-power').value=radio.txPow;
+        // Update all existing nodes to compatible radio if they're incompatible
+        var wf=radio.waveform;
+        meshNodes.forEach(function(n){
+            if(n.radio&&n.radio.waveform!==wf&&wf!=='custom'&&n.radio.waveform!=='custom'){
+                n.radioKey=sel;n.radio=radio;n.power=radio.txPow;
+            }
+        });
+        meshUpdateNodeList();
     };
     window.meshNodeHeight=function(i,v){if(meshNodes[i])meshNodes[i].height=parseFloat(v)||50;};
     window.meshNodePower=function(i,v){if(meshNodes[i])meshNodes[i].power=parseFloat(v)||30;};
