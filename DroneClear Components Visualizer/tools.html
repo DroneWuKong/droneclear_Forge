@@ -844,83 +844,196 @@
             </div>
 
             <!-- RF Config -->
-            <div style="font-size:9px;font-weight:600;color:var(--text-faint);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:4px;">GCS (Ground)</div>
-            <div class="input-grid" style="margin-bottom:8px;">
-                <div class="input-group">
-                    <label class="input-label">GCS radio</label>
-                    <select class="tool-select" id="rf-protocol">
-                        <optgroup label="C2 / Telemetry">
-                            <option value="GHST">GHST (ImmersionRC)</option>
-                            <option value="ELRS_2G4">ExpressLRS 2.4G</option>
-                            <option value="ELRS_900" selected>ExpressLRS 900M</option>
-                            <option value="CRSF">Crossfire (TBS)</option>
-                        </optgroup>
-                        <optgroup label="Digital Video + C2">
-                            <option value="DJI_O3">DJI O3/O4</option>
-                            <option value="HDZERO">HDZero</option>
-                            <option value="WALKSNAIL">Walksnail Avatar</option>
-                            <option value="ANALOG_FPV">Analog FPV</option>
-                        </optgroup>
-                        <optgroup label="Mesh / Tactical (ground unit)">
-                            <option value="DOODLE_MESH">Doodle Labs (ground)</option>
-                            <option value="SILVUS">Silvus StreamCaster</option>
-                            <option value="RFD900X">RFD900x</option>
-                            <option value="PERSISTENT">Persistent MPU5</option>
-                        </optgroup>
-                    </select>
-                </div>
-                <div class="input-group">
-                    <label class="input-label">GCS TX power</label>
-                    <div class="input-row">
-                        <input type="number" class="tool-input" id="rf-tx-power" value="27" min="0" max="50">
-                        <span class="input-unit">dBm</span>
+            <div style="margin-bottom:8px;">
+                <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:11px;color:var(--text-muted);font-family:var(--font-family);">
+                    <input type="checkbox" id="rf-hw-advanced" onchange="rfToggleHwAdvanced()" style="accent-color:var(--accent-red);">
+                    Advanced hardware — select specific GCS + airframe radios
+                </label>
+            </div>
+            <!-- Simple mode (default) -->
+            <div id="rf-hw-simple">
+                <div style="font-size:9px;font-weight:600;color:var(--text-faint);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:4px;">Link Protocol</div>
+                <div class="input-grid" style="margin-bottom:8px;">
+                    <div class="input-group">
+                        <label class="input-label">Protocol</label>
+                        <select class="tool-select" id="rf-protocol">
+                            <optgroup label="C2 / Telemetry">
+                                <option value="GHST">GHST (ImmersionRC)</option>
+                                <option value="ELRS_2G4">ExpressLRS 2.4G</option>
+                                <option value="ELRS_900" selected>ExpressLRS 900M</option>
+                                <option value="CRSF">Crossfire (TBS)</option>
+                            </optgroup>
+                            <optgroup label="Digital Video + C2">
+                                <option value="DJI_O3">DJI O3/O4</option>
+                                <option value="HDZERO">HDZero</option>
+                                <option value="WALKSNAIL">Walksnail Avatar</option>
+                                <option value="ANALOG_FPV">Analog FPV</option>
+                            </optgroup>
+                            <optgroup label="Mesh / Tactical">
+                                <option value="DOODLE_MESH">Doodle Labs Mesh</option>
+                                <option value="SILVUS">Silvus StreamCaster</option>
+                                <option value="RFD900X">RFD900x</option>
+                                <option value="PERSISTENT">Persistent MPU5</option>
+                            </optgroup>
+                        </select>
                     </div>
-                </div>
-                <div class="input-group">
-                    <label class="input-label">GCS height (AGL)</label>
-                    <div class="input-row">
-                        <input type="number" class="tool-input" id="rf-tx-height" value="2" min="0" max="50" step="0.5">
-                        <span class="input-unit">m</span>
+                    <div class="input-group">
+                        <label class="input-label">TX power</label>
+                        <div class="input-row">
+                            <input type="number" class="tool-input" id="rf-tx-power" value="27" min="0" max="50">
+                            <span class="input-unit">dBm</span>
+                        </div>
                     </div>
-                </div>
-                <div class="input-group">
-                    <label class="input-label">GCS antenna gain</label>
-                    <div class="input-row">
-                        <input type="number" class="tool-input" id="rf-tx-gain" value="2" min="-5" max="20" step="0.5">
-                        <span class="input-unit">dBi</span>
+                    <div class="input-group">
+                        <label class="input-label">GCS height (AGL)</label>
+                        <div class="input-row">
+                            <input type="number" class="tool-input" id="rf-tx-height" value="2" min="0" max="50" step="0.5">
+                            <span class="input-unit">m</span>
+                        </div>
+                    </div>
+                    <div class="input-group">
+                        <label class="input-label">Airframe height (AGL)</label>
+                        <div class="input-row">
+                            <input type="number" class="tool-input" id="rf-rx-height" value="50" min="0" max="500" step="5">
+                            <span class="input-unit">m</span>
+                        </div>
+                    </div>
+                    <div class="input-group">
+                        <label class="input-label">TX antenna gain</label>
+                        <div class="input-row">
+                            <input type="number" class="tool-input" id="rf-tx-gain" value="2" min="-5" max="20" step="0.5">
+                            <span class="input-unit">dBi</span>
+                        </div>
+                    </div>
+                    <div class="input-group">
+                        <label class="input-label">RX antenna gain</label>
+                        <div class="input-row">
+                            <input type="number" class="tool-input" id="rf-rx-gain" value="2" min="-5" max="20" step="0.5">
+                            <span class="input-unit">dBi</span>
+                        </div>
+                    </div>
+                    <div class="input-group">
+                        <label class="input-label">Fade margin</label>
+                        <div class="input-row">
+                            <input type="number" class="tool-input" id="rf-fade-margin" value="6" min="0" max="20">
+                            <span class="input-unit">dB</span>
+                        </div>
+                    </div>
+                    <div class="input-group">
+                        <label class="input-label">Path samples</label>
+                        <div class="input-row">
+                            <input type="number" class="tool-input" id="rf-samples" value="25" min="10" max="50" step="5">
+                            <span class="input-unit">pts</span>
+                        </div>
                     </div>
                 </div>
             </div>
-            <div style="font-size:9px;font-weight:600;color:var(--text-faint);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:4px;">Airframe (RX)</div>
-            <div class="input-grid" style="margin-bottom:8px;">
-                <div class="input-group">
-                    <label class="input-label">Airframe height (AGL)</label>
-                    <div class="input-row">
-                        <input type="number" class="tool-input" id="rf-rx-height" value="50" min="0" max="500" step="5">
-                        <span class="input-unit">m</span>
+            <!-- Advanced hardware mode (hidden by default) -->
+            <div id="rf-hw-advanced-panel" style="display:none;">
+                <div style="font-size:9px;font-weight:600;color:var(--text-faint);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:4px;">GCS (Ground Station)</div>
+                <div class="input-grid" style="margin-bottom:8px;">
+                    <div class="input-group">
+                        <label class="input-label">GCS radio</label>
+                        <select class="tool-select" id="rf-gcs-radio" onchange="rfGcsRadioChange()">
+                            <optgroup label="Doodle Labs">
+                                <option value="DL_2450">Doodle Labs RM-2450 (2.4G)</option>
+                                <option value="DL_1675">Doodle Labs RM-1675 (1.6G)</option>
+                                <option value="DL_2458">Doodle Labs DM-2458 (Dual)</option>
+                            </optgroup>
+                            <optgroup label="TrellisWare TSM">
+                                <option value="TW950">TW-950 Shadow</option>
+                                <option value="TW135">TW-135 Shadow HPR (20W)</option>
+                                <option value="TW750">TW-750 Shadow</option>
+                                <option value="TW870">TW-870 Ghost</option>
+                            </optgroup>
+                            <optgroup label="Silvus">
+                                <option value="SC4200">Silvus SC4200</option>
+                                <option value="SC4400">Silvus SC4400</option>
+                            </optgroup>
+                            <optgroup label="Other">
+                                <option value="MPU5">Persistent MPU5</option>
+                                <option value="RAJANT_PG">Rajant Peregrine</option>
+                                <option value="RFD900X">RFD900x</option>
+                            </optgroup>
+                            <optgroup label="FPV / C2">
+                                <option value="ELRS_900" selected>ELRS 900M TX</option>
+                                <option value="ELRS_24">ELRS 2.4G TX</option>
+                                <option value="CRSF_TX">Crossfire TX</option>
+                                <option value="GHST_TX">GHST TX</option>
+                            </optgroup>
+                        </select>
+                    </div>
+                    <div class="input-group">
+                        <label class="input-label">GCS height (AGL)</label>
+                        <div class="input-row">
+                            <input type="number" class="tool-input" id="rf-adv-tx-height" value="2" min="0" max="50" step="0.5">
+                            <span class="input-unit">m</span>
+                        </div>
+                    </div>
+                    <div class="input-group">
+                        <label class="input-label">GCS antenna gain</label>
+                        <div class="input-row">
+                            <input type="number" class="tool-input" id="rf-adv-tx-gain" value="2" min="-5" max="20" step="0.5">
+                            <span class="input-unit">dBi</span>
+                        </div>
                     </div>
                 </div>
-                <div class="input-group">
-                    <label class="input-label">Airframe antenna gain</label>
-                    <div class="input-row">
-                        <input type="number" class="tool-input" id="rf-rx-gain" value="2" min="-5" max="20" step="0.5">
-                        <span class="input-unit">dBi</span>
+                <div style="font-size:9px;font-weight:600;color:var(--text-faint);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:4px;">Airframe</div>
+                <div class="input-grid" style="margin-bottom:8px;">
+                    <div class="input-group">
+                        <label class="input-label">Airframe radio</label>
+                        <select class="tool-select" id="rf-air-radio" onchange="rfAirRadioChange()">
+                            <optgroup label="Doodle Labs">
+                                <option value="DL_2450">Doodle Labs RM-2450</option>
+                            </optgroup>
+                            <optgroup label="TrellisWare TSM">
+                                <option value="TW650">TW-650 Shadow Module</option>
+                                <option value="TW870">TW-870 Ghost</option>
+                                <option value="TW880">TW-880 Ghost Module</option>
+                            </optgroup>
+                            <optgroup label="Other">
+                                <option value="SC4200">Silvus SC4200</option>
+                                <option value="RFD900X">RFD900x</option>
+                                <option value="RAJANT_ES1">Rajant ES1</option>
+                            </optgroup>
+                            <optgroup label="FPV / C2">
+                                <option value="ELRS_900_RX" selected>ELRS 900M RX</option>
+                                <option value="ELRS_24_RX">ELRS 2.4G RX</option>
+                                <option value="CRSF_RX">Crossfire RX</option>
+                                <option value="GHST_RX">GHST RX</option>
+                            </optgroup>
+                        </select>
+                    </div>
+                    <div class="input-group">
+                        <label class="input-label">Airframe height (AGL)</label>
+                        <div class="input-row">
+                            <input type="number" class="tool-input" id="rf-adv-rx-height" value="50" min="0" max="500" step="5">
+                            <span class="input-unit">m</span>
+                        </div>
+                    </div>
+                    <div class="input-group">
+                        <label class="input-label">Airframe antenna gain</label>
+                        <div class="input-row">
+                            <input type="number" class="tool-input" id="rf-adv-rx-gain" value="2" min="-5" max="20" step="0.5">
+                            <span class="input-unit">dBi</span>
+                        </div>
+                    </div>
+                    <div class="input-group">
+                        <label class="input-label">Fade margin</label>
+                        <div class="input-row">
+                            <input type="number" class="tool-input" id="rf-adv-fade" value="6" min="0" max="20">
+                            <span class="input-unit">dB</span>
+                        </div>
+                    </div>
+                    <div class="input-group">
+                        <label class="input-label">Path samples</label>
+                        <div class="input-row">
+                            <input type="number" class="tool-input" id="rf-adv-samples" value="25" min="10" max="50" step="5">
+                            <span class="input-unit">pts</span>
+                        </div>
                     </div>
                 </div>
-                <div class="input-group">
-                    <label class="input-label">Fade margin</label>
-                    <div class="input-row">
-                        <input type="number" class="tool-input" id="rf-fade-margin" value="6" min="0" max="20">
-                        <span class="input-unit">dB</span>
-                    </div>
-                </div>
-                <div class="input-group">
-                    <label class="input-label">Path samples</label>
-                    <div class="input-row">
-                        <input type="number" class="tool-input" id="rf-samples" value="25" min="10" max="50" step="5">
-                        <span class="input-unit">pts</span>
-                    </div>
-                </div>
+                <div id="rf-adv-hw-info" style="font-size:9px;color:var(--text-faint);margin-bottom:8px;padding:4px 8px;background:var(--bg-dark);border-radius:var(--radius-sm);"></div>
             </div>
 
             <div style="display:flex; gap:8px; flex-wrap:wrap; margin-bottom:16px; font-size:11px; color:var(--text-muted);">
@@ -2451,8 +2564,73 @@ renderVtxTable();
     let rfClickState=0; // 0=place TX, 1=place RX, 2=both placed
     let txMarker=null,rxMarker=null,pathLine=null;
 
-    function getVal(id){return parseFloat(document.getElementById(id).value)||0;}
-    function getProto(){return RF_PROTOCOLS[document.getElementById('rf-protocol').value]||RF_PROTOCOLS.ELRS_900;}
+    // Advanced hardware radio specs (used when checkbox is checked)
+    var RF_ADV_RADIOS={
+        DL_2450:{freq:2400,txPow:30,rxSens:-96,name:'Doodle Labs RM-2450'},
+        DL_1675:{freq:1625,txPow:30,rxSens:-96,name:'Doodle Labs RM-1675'},
+        DL_2458:{freq:2400,txPow:30,rxSens:-93,name:'Doodle Labs DM-2458'},
+        SC4200:{freq:1625,txPow:33,rxSens:-100,name:'Silvus SC4200'},
+        SC4400:{freq:1625,txPow:33,rxSens:-100,name:'Silvus SC4400'},
+        MPU5:{freq:2400,txPow:33,rxSens:-98,name:'Persistent MPU5'},
+        TW950:{freq:1350,txPow:30,rxSens:-100,name:'TW-950 Shadow'},
+        TW135:{freq:1350,txPow:43,rxSens:-100,name:'TW-135 Shadow HPR'},
+        TW750:{freq:1350,txPow:30,rxSens:-100,name:'TW-750 Shadow'},
+        TW650:{freq:1350,txPow:27,rxSens:-100,name:'TW-650 Module'},
+        TW870:{freq:1350,txPow:24,rxSens:-100,name:'TW-870 Ghost'},
+        TW880:{freq:1350,txPow:24,rxSens:-100,name:'TW-880 Ghost Module'},
+        RFD900X:{freq:915,txPow:30,rxSens:-121,name:'RFD900x'},
+        RAJANT_ES1:{freq:2400,txPow:27,rxSens:-95,name:'Rajant ES1'},
+        RAJANT_PG:{freq:2400,txPow:27,rxSens:-93,name:'Rajant Peregrine'},
+        ELRS_900:{freq:915,txPow:27,rxSens:-123,name:'ELRS 900M TX'},ELRS_900_RX:{freq:915,txPow:20,rxSens:-123,name:'ELRS 900M RX'},
+        ELRS_24:{freq:2400,txPow:13,rxSens:-118,name:'ELRS 2.4G TX'},ELRS_24_RX:{freq:2400,txPow:13,rxSens:-118,name:'ELRS 2.4G RX'},
+        CRSF_TX:{freq:915,txPow:30,rxSens:-130,name:'Crossfire TX'},CRSF_RX:{freq:915,txPow:20,rxSens:-130,name:'Crossfire RX'},
+        GHST_TX:{freq:2400,txPow:27,rxSens:-108,name:'GHST TX'},GHST_RX:{freq:2400,txPow:24,rxSens:-108,name:'GHST RX'},
+    };
+
+    var rfHwAdvanced=false;
+    window.rfToggleHwAdvanced=function(){
+        rfHwAdvanced=document.getElementById('rf-hw-advanced').checked;
+        document.getElementById('rf-hw-simple').style.display=rfHwAdvanced?'none':'block';
+        document.getElementById('rf-hw-advanced-panel').style.display=rfHwAdvanced?'block':'none';
+        if(rfHwAdvanced)rfUpdateAdvHwInfo();
+    };
+
+    window.rfGcsRadioChange=function(){rfUpdateAdvHwInfo();};
+    window.rfAirRadioChange=function(){rfUpdateAdvHwInfo();};
+
+    function rfUpdateAdvHwInfo(){
+        var gcs=RF_ADV_RADIOS[document.getElementById('rf-gcs-radio').value];
+        var air=RF_ADV_RADIOS[document.getElementById('rf-air-radio').value];
+        if(!gcs||!air)return;
+        var info='GCS: '+gcs.name+' ('+gcs.freq+' MHz, '+gcs.txPow+' dBm, '+gcs.rxSens+' dBm) · Air: '+air.name+' ('+air.freq+' MHz, '+air.txPow+' dBm)';
+        if(Math.abs(gcs.freq-air.freq)>500)info+=' <span style="color:#f87171;font-weight:700;">⚠ FREQUENCY MISMATCH</span>';
+        document.getElementById('rf-adv-hw-info').innerHTML=info;
+    }
+
+    function getVal(id){
+        if(rfHwAdvanced){
+            // Map simple IDs to advanced IDs
+            var advMap={'rf-tx-power':null,'rf-tx-height':'rf-adv-tx-height','rf-rx-height':'rf-adv-rx-height',
+                'rf-tx-gain':'rf-adv-tx-gain','rf-rx-gain':'rf-adv-rx-gain',
+                'rf-fade-margin':'rf-adv-fade','rf-samples':'rf-adv-samples'};
+            if(id==='rf-tx-power'){
+                // In advanced mode, TX power comes from the GCS radio spec
+                var gcs=RF_ADV_RADIOS[document.getElementById('rf-gcs-radio').value];
+                return gcs?gcs.txPow:27;
+            }
+            var mapped=advMap[id];
+            if(mapped){var el=document.getElementById(mapped);if(el)return parseFloat(el.value)||0;}
+        }
+        return parseFloat(document.getElementById(id).value)||0;
+    }
+    function getProto(){
+        if(rfHwAdvanced){
+            var gcs=RF_ADV_RADIOS[document.getElementById('rf-gcs-radio').value]||RF_ADV_RADIOS.ELRS_900;
+            var air=RF_ADV_RADIOS[document.getElementById('rf-air-radio').value]||RF_ADV_RADIOS.ELRS_900_RX;
+            return{freq:Math.min(gcs.freq,air.freq),rxSens:Math.max(gcs.rxSens,air.rxSens),mod:gcs.name+' + '+air.name};
+        }
+        return RF_PROTOCOLS[document.getElementById('rf-protocol').value]||RF_PROTOCOLS.ELRS_900;
+    }
 
     // ── Address autocomplete with debounce ──
     let acTimer=null;
