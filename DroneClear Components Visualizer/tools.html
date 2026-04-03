@@ -931,7 +931,7 @@
                 </div>
             </div>
             <div style="display:flex; justify-content:space-between; align-items:center; font-size:10px; color:var(--text-muted); margin:6px 0; flex-wrap:wrap; gap:4px;">
-                <span><span style="color:var(--accent-red);">●</span> TX: <span id="rf-tx-coords">click to place</span> &nbsp; <span style="color:#2a9d8f;">●</span> RX: <span id="rf-rx-coords">—</span></span>
+                <span><span style="color:var(--accent-red);">●</span> GCS: <span id="rf-tx-coords">click to place</span> &nbsp; <span style="color:#2a9d8f;">●</span> RX: <span id="rf-rx-coords">—</span></span>
                 <span id="rf-status"></span>
             </div>
 
@@ -3718,18 +3718,21 @@ renderVtxTable();
     };
 
     function meshMapClick(lat,lon){
-        if(meshKillMode){return;} // In kill mode, clicks toggle nodes not place
+        if(meshKillMode){return;}
         var L=window.L;
         meshIdCounter++;
-        var id='N'+meshIdCounter;
+        var isGCS=meshIdCounter===1;
+        var id=isGCS?'GCS':'N'+(meshIdCounter-1);
         var colors=['#22d3ee','#4ade80','#f59e0b','#a78bfa','#f87171','#fb923c','#38bdf8','#e879f9','#fbbf24','#6ee7b7'];
-        var c=colors[(meshIdCounter-1)%colors.length];
-        var icon=L.divIcon({className:'',html:'<div style="width:18px;height:18px;border-radius:50%;background:'+c+';border:3px solid #0b0f14;box-shadow:0 0 8px '+c+'88;display:flex;align-items:center;justify-content:center;font-size:7px;font-weight:700;color:#0b0f14;">'+meshIdCounter+'</div>',iconSize:[18,18],iconAnchor:[9,9]});
+        var c=isGCS?'#22d3ee':colors[(meshIdCounter-2)%colors.length];
+        var label=isGCS?'GCS':String(meshIdCounter-1);
+        var size=isGCS?22:18;
+        var icon=L.divIcon({className:'',html:'<div style="width:'+size+'px;height:'+size+'px;border-radius:'+(isGCS?'4px':'50%')+';background:'+c+';border:3px solid #0b0f14;box-shadow:0 0 '+(isGCS?'12':'8')+'px '+c+'88;display:flex;align-items:center;justify-content:center;font-size:'+(isGCS?'8':'7')+'px;font-weight:700;color:#0b0f14;">'+label+'</div>',iconSize:[size,size],iconAnchor:[size/2,size/2]});
         var marker=L.marker([lat,lon],{draggable:true,icon:icon}).addTo(meshMap);
-        marker.bindTooltip(id,{permanent:false,direction:'top',offset:[0,-12]});
+        marker.bindTooltip(id+(isGCS?' (Ground Control)':''),{permanent:false,direction:'top',offset:[0,-12]});
         var defaultRadioKey=document.getElementById('mesh-protocol').value||'DL_2450';
-        var node={id:id,lat:lat,lon:lon,marker:marker,active:true,label:id,color:c,num:meshIdCounter,
-            height:parseFloat(document.getElementById('mesh-node-height').value)||50,
+        var node={id:id,lat:lat,lon:lon,marker:marker,active:true,label:id,color:c,num:meshIdCounter,isGCS:isGCS,
+            height:isGCS?2:parseFloat(document.getElementById('mesh-node-height').value)||50,
             power:parseFloat(document.getElementById('mesh-tx-power').value)||30,
             radioKey:defaultRadioKey,radio:MESH_RADIOS[defaultRadioKey]||MESH_RADIOS.DL_2450};
         marker.on('dragend',function(){var p=marker.getLatLng();node.lat=p.lat;node.lon=p.lng;meshUpdateNodeList();});
