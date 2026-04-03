@@ -3677,8 +3677,19 @@ renderVtxTable();
         window._meshMapRef=meshMap;
         meshTile=L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',{attribution:'OSM',maxZoom:19}).addTo(meshMap);
         meshMap.on('click',function(e){meshMapClick(e.latlng.lat,e.latlng.lng);});
-        setTimeout(function(){meshMap.invalidateSize();},300);
-        setTimeout(function(){meshMap.invalidateSize();},800);
+        // Retry invalidateSize until map has real dimensions
+        var retries=0;
+        function tryResize(){
+            meshMap.invalidateSize();
+            var el=document.getElementById('mesh-map');
+            if(el&&el.offsetWidth>0&&el.offsetHeight>0&&retries<20){
+                meshMap.invalidateSize();
+            } else if(retries<20){
+                retries++;
+                setTimeout(tryResize,150);
+            }
+        }
+        setTimeout(tryResize,50);
     }
 
     window.meshSetLayer=function(key){
@@ -4273,7 +4284,12 @@ renderVtxTable();
     var origShow=window.showTool;
     window.showTool=function(id){
         origShow(id);
-        if(id==='mesh-planner')initMeshMap();
+        if(id==='mesh-planner'){
+            setTimeout(function(){
+                initMeshMap();
+                if(meshMap)meshMap.invalidateSize();
+            },100);
+        }
     };
     if(location.hash==='#mesh-planner'){setTimeout(function(){showTool('mesh-planner');},300);}
 })();
