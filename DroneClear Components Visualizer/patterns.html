@@ -186,21 +186,38 @@ a{color:var(--blue);text-decoration:none}a:hover{text-decoration:underline}
     </div>
 
     <!-- Custom scenario builder -->
-    <div style="background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:14px;margin-bottom:16px">
-      <div style="font:600 10px var(--mono);color:var(--text-d);text-transform:uppercase;letter-spacing:.06em;margin-bottom:10px">— or — Build Custom Scenario</div>
-      <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:end">
-        <div style="flex:1;min-width:140px">
-          <label style="font-size:10px;color:var(--text-d);display:block;margin-bottom:4px">Component</label>
-          <select id="whatif-component" style="background:var(--card);border:1px solid var(--border);border-radius:6px;padding:6px 10px;font:11px var(--font);color:var(--text);width:100%;outline:none">
-            <option value="">Choose a component...</option>
-          </select>
-        </div>
-        <div style="min-width:100px">
-          <label style="font-size:10px;color:var(--text-d);display:block;margin-bottom:4px">Lead Time (weeks)</label>
-          <input type="number" id="whatif-leadtime" value="30" min="1" max="104" style="background:var(--card);border:1px solid var(--border);border-radius:6px;padding:6px 10px;font:11px var(--mono);color:var(--text);width:100%;outline:none">
-        </div>
-        <button onclick="runCustomScenario()" style="background:var(--amber);color:#000;border:none;border-radius:6px;padding:6px 14px;font:600 11px var(--font);cursor:pointer;white-space:nowrap">Run Simulation ⚡</button>
+    <div style="background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:16px;margin-bottom:16px">
+      <div style="font:600 11px var(--font);color:var(--text);margin-bottom:4px">Build Your Own Scenario</div>
+      <div style="font-size:11px;color:var(--text-d);margin-bottom:14px;line-height:1.5">
+        Pick a component and ask "what happens if this takes <em>X weeks</em> to get?" — the simulator traces every platform and government program that would be affected.
       </div>
+
+      <div style="margin-bottom:12px">
+        <label style="font:500 10px var(--mono);color:var(--text-d);text-transform:uppercase;letter-spacing:.04em;display:block;margin-bottom:6px">1. What component gets disrupted?</label>
+        <select id="whatif-component" onchange="updateCustomPreview()" style="background:var(--card);border:1px solid var(--border);border-radius:6px;padding:8px 12px;font:12px var(--font);color:var(--text);width:100%;outline:none">
+          <option value="">Pick a component...</option>
+        </select>
+      </div>
+
+      <!-- Live preview of what depends on this component -->
+      <div id="whatif-preview" style="display:none;background:var(--card);border-radius:8px;padding:10px 12px;margin-bottom:12px;border-left:3px solid var(--cyan)">
+      </div>
+
+      <div style="margin-bottom:14px">
+        <label style="font:500 10px var(--mono);color:var(--text-d);text-transform:uppercase;letter-spacing:.04em;display:block;margin-bottom:6px">2. How bad does it get? (lead time in weeks)</label>
+        <div style="display:flex;gap:8px;align-items:center">
+          <input type="range" id="whatif-slider" min="4" max="52" value="30" oninput="updateSliderLabel()" style="flex:1;accent-color:var(--amber)">
+          <span id="whatif-slider-label" style="font:700 14px var(--mono);color:var(--amber);min-width:55px;text-align:right">30 wk</span>
+        </div>
+        <div style="display:flex;justify-content:space-between;font-size:9px;color:var(--text-xd);margin-top:2px">
+          <span>Tight (4 wk)</span>
+          <span>Constrained</span>
+          <span>Allocation-only</span>
+          <span>Crisis (52 wk)</span>
+        </div>
+      </div>
+
+      <button onclick="runCustomScenario()" style="background:var(--amber);color:#000;border:none;border-radius:8px;padding:10px 20px;font:600 12px var(--font);cursor:pointer;width:100%">Run Simulation ⚡</button>
     </div>
 
     <!-- Simulation results -->
@@ -212,7 +229,7 @@ a{color:var(--blue);text-decoration:none}a:hover{text-decoration:underline}
 
   <div class="footer">
     <span>Pipeline: GitHub Actions · Data: Forge DB + GUR OSINT + distributor APIs</span>
-    <span style="font-family:var(--mono)">PIE v0.2 · Forge Module</span>
+    <span style="font-family:var(--mono)">PIE v0.7 · Forge Module</span>
   </div>
 </div>
 
@@ -774,8 +791,8 @@ function runScenario(scenarioId) {
 
 function runCustomScenario() {
   const comp = document.getElementById("whatif-component").value;
-  const leadWk = parseInt(document.getElementById("whatif-leadtime").value) || 30;
-  if (!comp || !DEP_GRAPH[comp]) return alert("Select a component first");
+  const leadWk = parseInt(document.getElementById("whatif-slider").value) || 30;
+  if (!comp || !DEP_GRAPH[comp]) return alert("Pick a component first");
 
   const dep = DEP_GRAPH[comp];
   const results = document.getElementById("whatif-results");
@@ -838,6 +855,37 @@ function runCustomScenario() {
   `;
 
   results.scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+function updateCustomPreview() {
+  const comp = document.getElementById("whatif-component").value;
+  const preview = document.getElementById("whatif-preview");
+  if (!comp || !DEP_GRAPH[comp]) { preview.style.display = "none"; return; }
+  const dep = DEP_GRAPH[comp];
+  preview.style.display = "block";
+  preview.innerHTML = `
+    <div style="font-size:11px;color:var(--text-s);line-height:1.6">
+      <strong style="color:var(--text)">${comp}</strong> — currently at <strong>${dep.lead_wk} weeks</strong> lead time · $${dep.cost.toLocaleString()}/unit · ${dep.single_source ? '<span style="color:var(--red)">Single source</span>' : '<span style="color:var(--green)">Multi-source</span>'}
+    </div>
+    <div style="display:flex;gap:4px;flex-wrap:wrap;margin-top:6px">
+      <span style="font-size:9px;color:var(--text-d)">Depends on it:</span>
+      ${dep.platforms.map(p => `<span class="badge badge-amber" style="font-size:9px">${p}</span>`).join("")}
+    </div>
+    <div style="display:flex;gap:4px;flex-wrap:wrap;margin-top:4px">
+      <span style="font-size:9px;color:var(--text-d)">Programs at risk:</span>
+      ${dep.programs.map(p => `<span class="badge badge-red" style="font-size:9px">${p}</span>`).join("")}
+    </div>
+  `;
+  // Set slider to just above current lead time as default
+  document.getElementById("whatif-slider").value = Math.min(52, dep.lead_wk * 2);
+  updateSliderLabel();
+}
+
+function updateSliderLabel() {
+  const val = document.getElementById("whatif-slider").value;
+  const label = document.getElementById("whatif-slider-label");
+  label.textContent = val + " wk";
+  label.style.color = val > 26 ? "var(--red)" : val > 16 ? "var(--amber)" : "var(--green)";
 }
 
 loadData();
