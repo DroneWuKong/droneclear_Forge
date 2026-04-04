@@ -148,6 +148,20 @@ a{color:var(--blue);text-decoration:none}a:hover{text-decoration:underline}
   <div class="panel active" id="panel-flags">
     <input class="search-bar" id="flag-search" placeholder="Search flags... (e.g. TrellisWare, Jetson, DRAM, SOF, mesh)" oninput="renderFlags()">
     <div class="filter-row" id="severity-filters"></div>
+    <div class="filter-row" id="type-filters"></div>
+    <div class="filter-row" id="region-filters"></div>
+    <div style="display:flex;gap:8px;align-items:center;margin-bottom:14px">
+      <span style="font:10px var(--mono);color:var(--text-d)">Sort:</span>
+      <select id="flag-sort" onchange="renderFlags()" style="background:var(--surface);border:1px solid var(--border);border-radius:6px;padding:4px 8px;font:10px var(--mono);color:var(--text);outline:none">
+        <option value="confidence-desc">Confidence (high → low)</option>
+        <option value="confidence-asc">Confidence (low → high)</option>
+        <option value="date-desc" selected>Newest first</option>
+        <option value="date-asc">Oldest first</option>
+        <option value="severity">Severity (critical first)</option>
+        <option value="type">Flag type (A→Z)</option>
+      </select>
+      <span id="flag-count" style="font:10px var(--mono);color:var(--text-d);margin-left:auto"></span>
+    </div>
     <div id="flag-detail-container" style="display:none"></div>
     <div class="flag-list" id="flag-list"></div>
   </div>
@@ -473,26 +487,79 @@ document.querySelectorAll(".tab").forEach(t => {
   });
 });
 
+// ── Region extraction from flag detail text ──
+const REGIONS = ["China","Russia","Iran","Ukraine","Turkey","Israel","US","EU","NATO","Taiwan","North Korea","Japan","India","Australia","UK","France","Germany"];
+function extractRegions(f) {
+  const text = (f.title||"") + " " + (f.detail||"") + " " + (f.prediction||"");
+  return REGIONS.filter(r => text.includes(r));
+}
+
+// ── Active filters ──
+let activeType = "all";
+let activeRegion = "all";
+
 // ── Severity filters ──
 function renderFilters() {
+  // Severity row
   const c = document.getElementById("severity-filters");
   const sevs = ["all","critical","warning","info","prediction"];
   c.innerHTML = sevs.map(s => {
     const count = s === "all" ? FLAGS.length : FLAGS.filter(f => (FLAG_META[f.flag_type]||{}).sev === s).length;
-    return `<button class="filter-btn ${activeSeverity===s?"active":""}" data-sev="${s}">${s==="all"?"All ("+count+")":s}</button>`;
+    return `<button class="filter-btn ${activeSeverity===s?"active":""}" data-sev="${s}">${s==="all"?"All ("+count+")":s+" ("+count+")"}</button>`;
   }).join("");
   c.querySelectorAll(".filter-btn").forEach(b => b.addEventListener("click", () => {
     activeSeverity = b.dataset.sev;
     renderFilters();
     renderFlags();
   }));
+
+  // Type row
+  const tc = document.getElementById("type-filters");
+  const types = ["all",...Object.keys(FLAG_META)];
+  tc.innerHTML = types.map(t => {
+    const count = t === "all" ? FLAGS.length : FLAGS.filter(f => f.flag_type === t).length;
+    if (t !== "all" && count === 0) return "";
+    const label = t === "all" ? "All types" : (FLAG_META[t]||{}).label || t;
+    return `<button class="filter-btn ${activeType===t?"active":""}" data-type="${t}">${label} (${count})</button>`;
+  }).filter(Boolean).join("");
+  tc.querySelectorAll(".filter-btn").forEach(b => b.addEventListener("click", () => {
+    activeType = b.dataset.type;
+    renderFilters();
+    renderFlags();
+  }));
+
+  // Region row
+  const rc = document.getElementById("region-filters");
+  const regionCounts = {};
+  FLAGS.forEach(f => extractRegions(f).forEach(r => { regionCounts[r] = (regionCounts[r]||0)+1; }));
+  const sortedRegions = Object.entries(regionCounts).sort((a,b) => b[1]-a[1]);
+  rc.innerHTML = `<button class="filter-btn ${activeRegion==="all"?"active":""}" data-region="all">All regions</button>` +
+    sortedRegions.map(([r,count]) =>
+      `<button class="filter-btn ${activeRegion===r?"active":""}" data-region="${r}">${r} (${count})</button>`
+    ).join("");
+  rc.querySelectorAll(".filter-btn").forEach(b => b.addEventListener("click", () => {
+    activeRegion = b.dataset.region;
+    renderFilters();
+    renderFlags();
+  }));
 }
+
+// ── Severity sort weight ──
+const SEV_WEIGHT = {critical:0, warning:1, info:2, prediction:3};
 
 // ── Flag list ──
 function renderFlags() {
   const list = document.getElementById("flag-list");
   let flags = FLAGS;
+
+  // Severity filter
   if (activeSeverity !== "all") flags = flags.filter(f => (FLAG_META[f.flag_type]||{}).sev === activeSeverity);
+
+  // Type filter
+  if (activeType !== "all") flags = flags.filter(f => f.flag_type === activeType);
+
+  // Region filter
+  if (activeRegion !== "all") flags = flags.filter(f => extractRegions(f).includes(activeRegion));
 
   // Search filter
   const searchQ = (document.getElementById("flag-search")?.value || "").toLowerCase().trim();
@@ -504,6 +571,19 @@ function renderFlags() {
     );
   }
 
+  // Sort
+  const sortVal = document.getElementById("flag-sort")?.value || "date-desc";
+  if (sortVal === "confidence-desc") flags.sort((a,b) => (b.confidence||0) - (a.confidence||0));
+  else if (sortVal === "confidence-asc") flags.sort((a,b) => (a.confidence||0) - (b.confidence||0));
+  else if (sortVal === "date-desc") flags.sort((a,b) => (b.timestamp||"").localeCompare(a.timestamp||""));
+  else if (sortVal === "date-asc") flags.sort((a,b) => (a.timestamp||"").localeCompare(b.timestamp||""));
+  else if (sortVal === "severity") flags.sort((a,b) => (SEV_WEIGHT[(FLAG_META[a.flag_type]||{}).sev]||9) - (SEV_WEIGHT[(FLAG_META[b.flag_type]||{}).sev]||9));
+  else if (sortVal === "type") flags.sort((a,b) => (a.flag_type||"").localeCompare(b.flag_type||""));
+
+  // Count display
+  const countEl = document.getElementById("flag-count");
+  if (countEl) countEl.textContent = `${flags.length} of ${FLAGS.length} flags`;
+
   if (flags.length === 0 && FLAGS.length > 0) {
     list.innerHTML = `<div style="color:var(--text-d);font-size:12px;padding:20px;text-align:center">No flags match your filter. ${FLAGS.length} flags total.</div>`;
     return;
@@ -514,6 +594,8 @@ function renderFlags() {
     const conf = Math.round((f.confidence||0)*100);
     const confBadge = conf > 85 ? "badge-green" : "badge-amber";
     const date = new Date(f.timestamp).toLocaleDateString();
+    const regions = extractRegions(f);
+    const regionTags = regions.length ? regions.map(r => `<span class="badge badge-blue" style="font-size:9px;padding:1px 5px">${r}</span>`).join(" ") : "";
     return `<div class="flag-card" data-id="${f.id}">
       <span class="sev sev-${m.sev}"></span>
       <div style="flex:1;min-width:0">
@@ -521,6 +603,7 @@ function renderFlags() {
           <span class="badge ${m.badge}">${m.icon} ${m.label}</span>
           <span style="font:10px var(--mono);color:var(--text-d)">${date}</span>
           <span class="badge ${confBadge}">${conf}%</span>
+          ${regionTags}
         </div>
         <div class="title">${f.title}</div>
       </div>
