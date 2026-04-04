@@ -129,7 +129,7 @@
     </div>
 
     <script>
-    const API_BASE = 'https://nvmilldoitmyself.com/.netlify/functions/analytics-dashboard';
+    const API_BASE = '/.netlify/functions/analytics';
     let currentSurface = 'handbook';
 
     function switchSurface(surface, btn) {
@@ -145,7 +145,7 @@
         container.innerHTML = '<div class="empty-state"><i class="ph ph-circle-notch"></i><div>Loading...</div></div>';
 
         try {
-            const res = await fetch(`${API_BASE}?surface=${currentSurface}&days=${days}`);
+            const res = await fetch(`${API_BASE}?key=forge-admin-2026&surface=${currentSurface}&range=${days}`);
             if (!res.ok) throw new Error(`HTTP ${res.status}`);
             const data = await res.json();
             
@@ -190,70 +190,80 @@
     }
 
     function renderHandbook(el, data, days) {
-        const o = data.overview || {};
-        const maxViews = Math.max(...(data.top_pages || []).map(p => p.views), 1);
-        const maxSearches = Math.max(...(data.top_searches || []).map(s => s.searches), 1);
+        const t = data.totals || {};
+        const daily = data.daily || {};
+        const daysWithData = Object.keys(daily).length;
+        const totalViews = Object.values(daily).reduce((a, d) => a + (d.count || 0), 0);
+        const recent = data.recentQueries || [];
+        const cats = t.cats || {};
+        const catEntries = Object.entries(cats).sort((a,b) => b[1]-a[1]).slice(0,10);
+        const maxCat = Math.max(...catEntries.map(e => e[1]), 1);
 
         el.innerHTML = `
             <div class="analytics-grid">
-                ${statCard('Total Views', (o.total_views || 0).toLocaleString(), `${days} day period`)}
-                ${statCard('Unique Sessions', (o.unique_sessions || 0).toLocaleString())}
-                ${statCard('Searches', (o.total_searches || 0).toLocaleString())}
-                ${statCard('Days with Data', o.days_with_data || 0, `of ${days} requested`)}
+                ${statCard('Total Queries', (t.queries || 0).toLocaleString(), 'all time')}
+                ${statCard('Image Queries', (t.imageQueries || 0).toLocaleString())}
+                ${statCard('Sessions', (data.thisMonth?.sessions || 0).toLocaleString(), 'this month')}
+                ${statCard('Days with Data', daysWithData, `of ${days} requested`)}
             </div>
             <div class="two-col">
                 <div class="section-card">
-                    <h3 class="section-title"><i class="ph ph-file-text"></i> Top Pages</h3>
-                    ${(data.top_pages || []).length > 0
-                        ? (data.top_pages || []).map(p => barRow(p.path, p.views, maxViews)).join('')
-                        : '<div style="color: var(--text-muted); font-size: 13px;">No page view data yet</div>'}
+                    <h3 class="section-title"><i class="ph ph-tag"></i> Top Categories</h3>
+                    ${catEntries.length > 0
+                        ? catEntries.map(([cat, n]) => barRow(cat, n, maxCat)).join('')
+                        : '<div style="color: var(--text-muted); font-size: 13px;">No category data yet</div>'}
                 </div>
                 <div class="section-card">
-                    <h3 class="section-title"><i class="ph ph-magnifying-glass"></i> Top Searches</h3>
-                    ${(data.top_searches || []).length > 0
-                        ? (data.top_searches || []).map(s => barRow(s.query, s.searches, maxSearches)).join('')
-                        : '<div style="color: var(--text-muted); font-size: 13px;">No search data yet</div>'}
+                    <h3 class="section-title"><i class="ph ph-chat-text"></i> Recent Queries</h3>
+                    ${recent.length > 0
+                        ? recent.slice(0,15).map(q => `<div style="padding:4px 0;border-bottom:1px solid var(--border);font-size:12px;">
+                            <span style="opacity:0.5;">${q.cat || '?'}</span> ${(q.q||'').substring(0,80)}
+                          </div>`).join('')
+                        : '<div style="color: var(--text-muted); font-size: 13px;">No queries yet</div>'}
                 </div>
             </div>
             <div class="analytics-footer">
-                AI Wingman Analytics v1.0 — Self-hosted on Netlify · No cookies · No PII · GDPR compliant
+                AI Wingman Analytics v1.0 — Self-hosted on Netlify · No cookies · No PII
                 <br><span style="color: var(--accent);">Buddy up.</span>
             </div>`;
     }
 
     function renderForge(el, data, days) {
-        const o = data.overview || {};
-        const maxViews = Math.max(...(data.top_components || []).map(c => c.views), 1);
-        const maxGaps = Math.max(...(data.database_gaps || []).map(g => g.occurrences), 1);
+        const t = data.totals || {};
+        const daily = data.daily || {};
+        const daysWithData = Object.keys(daily).length;
+        const recent = data.recentQueries || [];
+        const cats = t.cats || {};
+        const catEntries = Object.entries(cats).sort((a,b) => b[1]-a[1]).slice(0,10);
+        const maxCat = Math.max(...catEntries.map(e => e[1]), 1);
+        const avgTurns = data.thisMonth?.avgTurns || 0;
 
         el.innerHTML = `
             <div class="analytics-grid">
-                ${statCard('Component Views', (o.total_views || 0).toLocaleString(), `${days} day period`)}
-                ${statCard('Searches', (o.total_searches || 0).toLocaleString())}
-                ${statCard('Filters Applied', (o.total_filters || 0).toLocaleString())}
-                ${statCard('Comparisons', (o.total_comparisons || 0).toLocaleString())}
-                ${statCard('Saves', (o.total_saves || 0).toLocaleString())}
-                ${statCard('Sessions', (o.unique_sessions || 0).toLocaleString())}
+                ${statCard('Total Queries', (t.queries || 0).toLocaleString(), 'all time')}
+                ${statCard('Image Queries', (t.imageQueries || 0).toLocaleString())}
+                ${statCard('Sessions', (data.thisMonth?.sessions || 0).toLocaleString(), 'this month')}
+                ${statCard('Avg Turns/Session', avgTurns)}
+                ${statCard('Days with Data', daysWithData, `of ${days} requested`)}
             </div>
             <div class="two-col">
                 <div class="section-card">
-                    <h3 class="section-title"><i class="ph ph-lightning"></i> Most Viewed Components</h3>
-                    ${(data.top_components || []).length > 0
-                        ? (data.top_components || []).map(c => barRow(c.pid, c.views, maxViews)).join('')
-                        : '<div style="color: var(--text-muted); font-size: 13px;">No component views yet</div>'}
+                    <h3 class="section-title"><i class="ph ph-tag"></i> Query Categories</h3>
+                    ${catEntries.length > 0
+                        ? catEntries.map(([cat, n]) => barRow(cat, n, maxCat)).join('')
+                        : '<div style="color: var(--text-muted); font-size: 13px;">No category data yet</div>'}
                 </div>
                 <div class="section-card">
-                    <h3 class="section-title"><i class="ph ph-warning-circle" style="color: #ff6b6b;"></i> Database Gaps — What Users Can't Find</h3>
-                    <div style="font-size: 11px; color: var(--text-muted); margin-bottom: 12px; font-style: italic;">
-                        Searches that returned zero results. Add these to the parts database.
-                    </div>
-                    ${(data.database_gaps || []).length > 0
-                        ? (data.database_gaps || []).map(g => barRow(g.query, g.occurrences, maxGaps, null, true)).join('')
-                        : '<div style="color: var(--text-muted); font-size: 13px;">No gaps detected yet — good coverage!</div>'}
+                    <h3 class="section-title"><i class="ph ph-chat-text"></i> Recent Queries</h3>
+                    ${recent.length > 0
+                        ? recent.slice(0,15).map(q => `<div style="padding:4px 0;border-bottom:1px solid var(--border);font-size:12px;">
+                            <span style="opacity:0.5;">${q.cat || '?'}</span> ${q.img ? '🖼 ' : ''}${(q.q||'').substring(0,80)}
+                          </div>`).join('')
+                        : '<div style="color: var(--text-muted); font-size: 13px;">No queries yet</div>'}
                 </div>
             </div>
             <div class="analytics-footer">
-                AI Wingman Analytics v1.0 — Self-hosted on Netlify · No cookies · No PII · GDPR compliant
+                AI Wingman Analytics v1.0 — Self-hosted on Netlify · No cookies · No PII
                 <br><span style="color: var(--accent);">Buddy up.</span>
             </div>`;
     }
