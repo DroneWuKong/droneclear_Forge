@@ -72,6 +72,9 @@ a{color:var(--blue);text-decoration:none}a:hover{text-decoration:underline}
 .flag-card:hover{background:var(--card-hi);border-color:var(--border-hi)}
 .card-body.expanded{max-height:500px !important}
 .card-chevron.open{transform:rotate(90deg)}
+.g-chevron.open{transform:rotate(90deg)}
+.flag-group.open .flag-group-body{max-height:2000px}
+.flag-group-header:hover{background:var(--card-hi)}
 .flag-card .meta{display:flex;gap:6px;align-items:center;margin-bottom:4px;flex-wrap:wrap}
 .flag-card .title{font-size:12px;font-weight:500;color:var(--text);line-height:1.4}
 
@@ -152,7 +155,7 @@ a{color:var(--blue);text-decoration:none}a:hover{text-decoration:underline}
     <div class="filter-row" id="severity-filters"></div>
     <div class="filter-row" id="type-filters"></div>
     <div class="filter-row" id="region-filters"></div>
-    <div style="display:flex;gap:8px;align-items:center;margin-bottom:14px">
+    <div style="display:flex;gap:8px;align-items:center;margin-bottom:14px;flex-wrap:wrap">
       <span style="font:10px var(--mono);color:var(--text-d)">Sort:</span>
       <select id="flag-sort" onchange="renderFlags()" style="background:var(--surface);border:1px solid var(--border);border-radius:6px;padding:4px 8px;font:10px var(--mono);color:var(--text);outline:none">
         <option value="confidence-desc">Confidence (high → low)</option>
@@ -161,6 +164,11 @@ a{color:var(--blue);text-decoration:none}a:hover{text-decoration:underline}
         <option value="date-asc">Oldest first</option>
         <option value="severity">Severity (critical first)</option>
         <option value="type">Flag type (A→Z)</option>
+      </select>
+      <span style="font:10px var(--mono);color:var(--text-d)">View:</span>
+      <select id="flag-view" onchange="renderFlags()" style="background:var(--surface);border:1px solid var(--border);border-radius:6px;padding:4px 8px;font:10px var(--mono);color:var(--text);outline:none">
+        <option value="grouped" selected>Grouped</option>
+        <option value="flat">All flags</option>
       </select>
       <span id="flag-count" style="font:10px var(--mono);color:var(--text-d);margin-left:auto"></span>
     </div>
@@ -551,16 +559,78 @@ function renderFilters() {
 // ── Severity sort weight ──
 const SEV_WEIGHT = {critical:0, warning:1, info:2, prediction:3};
 
+// ── Smart grouping logic ──
+function getGroupKey(f) {
+  const title = f.title || '';
+  const type = f.flag_type || f.category || '';
+  
+  // Gray zone entities
+  if (title.startsWith('[GRAY ZONE]')) {
+    const m = title.match(/\[GRAY ZONE\]\s*([^:—–-]+)/);
+    if (m) return 'gz:' + m[1].trim();
+    return 'gz:General';
+  }
+  
+  // By component for supply/cascade
+  const comps = ['NVIDIA Jetson', 'Qualcomm QRB5165', 'FLIR Boson', 'STM32', 'Raspberry Pi', 'RPi', 'ELRS', 'u-blox', 'DRAM', 'Hailo', 'OcuSync'];
+  for (const c of comps) {
+    if (title.toLowerCase().includes(c.toLowerCase())) return 'comp:' + c.replace('NVIDIA ','').replace('Qualcomm ','');
+  }
+  
+  // By manufacturer in parens
+  const paren = title.match(/\(([^)]+)\)/);
+  if (paren && type === 'contract_signal') return 'mfg:' + paren[1];
+  if (paren && type === 'correlation') return 'corr:' + paren[1];
+  
+  // By region for geographic
+  if (title.startsWith('Geographic risk:')) return 'geo:Geographic Risk';
+  if (title.startsWith('Cascade risk:')) return 'cascade:Single-Source Risk';
+  
+  // By program for policy/contract
+  const programs = ['Drone Dominance','Replicator','DAWG','SRR','CCA','USMC FPV','SOCOM','USAI','Blue UAS','JIATF','FEMA','NDAA','ASDA'];
+  for (const p of programs) {
+    if (title.toLowerCase().includes(p.toLowerCase())) return 'prog:' + p;
+  }
+  
+  // By country for geopolitical
+  const countries = ['China','Iran','Russia','Taiwan','Israel','Ukraine','South Korea','North Korea'];
+  for (const c of countries) {
+    if (title.startsWith(c + ':') || title.startsWith(c + ' ')) return 'geo:' + c;
+  }
+  
+  // Fallback: by flag_type
+  return 'type:' + type;
+}
+
+function getGroupMeta(key, flags) {
+  const [prefix, name] = key.split(':', 2);
+  const icons = {gz:'🔍', comp:'⚡', mfg:'🏭', corr:'📊', geo:'🌍', cascade:'⚠️', prog:'🏛️', type:'📋'};
+  const labels = {gz:'Gray Zone', comp:'Component', mfg:'Manufacturer', corr:'Correlation', geo:'Region/Country', cascade:'Supply Chain', prog:'Program', type:'Category'};
+  
+  const sevCounts = {critical:0, warning:0, info:0, high:0};
+  let maxConf = 0;
+  flags.forEach(f => {
+    const sev = f.severity || (FLAG_META[f.flag_type]||{}).sev || 'info';
+    if (sevCounts[sev] !== undefined) sevCounts[sev]++;
+    maxConf = Math.max(maxConf, f.confidence || 0);
+  });
+  
+  const topSev = sevCounts.critical > 0 ? 'critical' : sevCounts.high > 0 ? 'high' : sevCounts.warning > 0 ? 'warning' : 'info';
+  const sevColor = topSev === 'critical' ? 'var(--red)' : topSev === 'high' ? 'var(--orange)' : topSev === 'warning' ? 'var(--amber)' : 'var(--cyan)';
+  
+  return { icon: icons[prefix] || '📋', label: labels[prefix] || 'Other', name, sevCounts, topSev, sevColor, maxConf };
+}
+
 // ── Flag list ──
 function renderFlags() {
   const list = document.getElementById("flag-list");
   let flags = FLAGS;
 
   // Severity filter
-  if (activeSeverity !== "all") flags = flags.filter(f => (FLAG_META[f.flag_type]||{}).sev === activeSeverity);
+  if (activeSeverity !== "all") flags = flags.filter(f => (FLAG_META[f.flag_type]||{}).sev === activeSeverity || f.severity === activeSeverity);
 
   // Type filter
-  if (activeType !== "all") flags = flags.filter(f => f.flag_type === activeType);
+  if (activeType !== "all") flags = flags.filter(f => f.flag_type === activeType || f.category === activeType);
 
   // Region filter
   if (activeRegion !== "all") flags = flags.filter(f => extractRegions(f).includes(activeRegion));
@@ -586,13 +656,89 @@ function renderFlags() {
 
   // Count display
   const countEl = document.getElementById("flag-count");
-  if (countEl) countEl.textContent = `${flags.length} of ${FLAGS.length} flags`;
+  
+  const viewMode = document.getElementById("flag-view")?.value || "grouped";
 
   if (flags.length === 0 && FLAGS.length > 0) {
     list.innerHTML = `<div style="color:var(--text-d);font-size:12px;padding:20px;text-align:center">No flags match your filter. ${FLAGS.length} flags total.</div>`;
+    if (countEl) countEl.textContent = `0 of ${FLAGS.length} flags`;
     return;
   }
 
+  // ── GROUPED VIEW ──
+  if (viewMode === "grouped" && !searchQ) {
+    const groups = {};
+    const groupOrder = [];
+    flags.forEach(f => {
+      const key = getGroupKey(f);
+      if (!groups[key]) { groups[key] = []; groupOrder.push(key); }
+      groups[key].push(f);
+    });
+    
+    // Sort groups: most flags first, critical groups first
+    groupOrder.sort((a, b) => {
+      const ga = groups[a], gb = groups[b];
+      const aCrit = ga.filter(f => (f.severity || (FLAG_META[f.flag_type]||{}).sev) === 'critical').length;
+      const bCrit = gb.filter(f => (f.severity || (FLAG_META[f.flag_type]||{}).sev) === 'critical').length;
+      if (aCrit !== bCrit) return bCrit - aCrit;
+      return gb.length - ga.length;
+    });
+
+    if (countEl) countEl.textContent = `${flags.length} flags · ${groupOrder.length} groups`;
+
+    list.innerHTML = groupOrder.map(key => {
+      const gFlags = groups[key];
+      const meta = getGroupMeta(key, gFlags);
+      const topFlag = gFlags[0];
+      const topTitle = topFlag.title.replace(/^\[GRAY ZONE\]\s*/, '').substring(0, 70);
+      
+      return `<div class="flag-group" data-key="${key}" style="background:var(--card);border:1px solid var(--border);border-radius:10px;margin-bottom:6px;overflow:hidden;border-left:3px solid ${meta.sevColor}">
+        <div class="flag-group-header" style="padding:10px 14px;cursor:pointer;display:flex;align-items:center;gap:10px" onclick="this.parentElement.classList.toggle('open');this.querySelector('.g-chevron').classList.toggle('open')">
+          <span style="font-size:16px">${meta.icon}</span>
+          <div style="flex:1;min-width:0">
+            <div style="display:flex;gap:5px;align-items:center;flex-wrap:wrap;margin-bottom:2px">
+              <span style="font:600 12px var(--font);color:var(--text)">${meta.name}</span>
+              <span style="font:10px var(--mono);color:var(--text-d);background:var(--surface);padding:1px 6px;border-radius:4px">${gFlags.length}</span>
+              ${meta.sevCounts.critical ? `<span class="badge badge-red" style="font-size:8px">${meta.sevCounts.critical} critical</span>` : ''}
+              ${meta.sevCounts.warning ? `<span class="badge badge-amber" style="font-size:8px">${meta.sevCounts.warning} warning</span>` : ''}
+            </div>
+            <div style="font-size:10px;color:var(--text-d);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${topTitle}${gFlags.length > 1 ? ` (+${gFlags.length-1} more)` : ''}</div>
+          </div>
+          <span class="g-chevron" style="color:var(--text-d);font-size:14px;transition:transform .2s">▸</span>
+        </div>
+        <div class="flag-group-body" style="max-height:0;overflow:hidden;transition:max-height .3s ease">
+          <div style="padding:0 10px 10px;display:flex;flex-direction:column;gap:3px">
+            ${gFlags.map(f => {
+              const m = FLAG_META[f.flag_type] || {label:"Intel",badge:"badge-amber",sev:f.severity||"info",icon:"?"};
+              const sev = f.severity || m.sev;
+              const sc = sev === 'critical' ? 'var(--red)' : sev === 'high' ? 'var(--orange)' : sev === 'warning' ? 'var(--amber)' : 'var(--cyan)';
+              return `<div class="flag-card" data-id="${f.id}" style="border-left:2px solid ${sc}">
+                <span class="sev sev-${sev}"></span>
+                <div style="flex:1;min-width:0">
+                  <div class="title">${f.title}</div>
+                  <div style="font-size:8px;color:var(--text-d);margin-top:1px">${sev} · ${Math.round((f.confidence||0)*100)}%</div>
+                </div>
+              </div>`;
+            }).join("")}
+          </div>
+        </div>
+      </div>`;
+    }).join("");
+
+    // Click handlers for individual flags inside groups
+    list.querySelectorAll(".flag-card[data-id]").forEach(card => {
+      card.addEventListener("click", (e) => {
+        e.stopPropagation();
+        selectedFlag = FLAGS.find(f => f.id === card.dataset.id);
+        renderFlagDetail();
+      });
+    });
+    return;
+  }
+
+  // ── FLAT VIEW (original) ──
+  if (countEl) countEl.textContent = `${flags.length} of ${FLAGS.length} flags`;
+  
   list.innerHTML = flags.map(f => {
     const m = FLAG_META[f.flag_type] || {label:"Unknown",badge:"badge-amber",sev:"info",icon:"?"};
     const conf = Math.round((f.confidence||0)*100);
