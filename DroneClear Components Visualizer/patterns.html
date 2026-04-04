@@ -348,7 +348,7 @@ a{color:var(--blue);text-decoration:none}a:hover{text-decoration:underline}
   <!-- COMPONENTS PANEL -->
   <div class="panel" id="panel-components">
     <p style="font-size:11px;color:var(--text-d);margin-bottom:12px">
-      20 critical components tracked · Risk-scored by supply chain vulnerability, diversion risk &amp; geographic concentration ·
+      46 critical components tracked · Risk-scored by supply chain vulnerability, diversion risk &amp; geographic concentration ·
       <a href="https://nvmillbuilditmyself.com/">Full DB: 3,800+ components</a>
     </p>
     <div id="component-table-wrap"></div>
@@ -454,34 +454,68 @@ const PLATFORMS = [
 ];
 
 const COMPONENTS = [
-  // ── SBC / Compute ──
+  // ── SBC / Compute (3) ──
   {id:"jetson-orin-nx",name:"NVIDIA Jetson Orin NX 16GB",cat:"SBC/SoM",price:649,avg:599,lead:16,status:"constrained",users:["Skydio","Shield AI","Anduril"],risk:"single_source",note:"TSMC fab — all Blue UAS compute depends on Taiwan"},
   {id:"jetson-orin-nano",name:"NVIDIA Jetson Orin Nano 8GB",cat:"SBC/SoM",price:249,avg:199,lead:14,status:"constrained",users:["Teal","Inspired Flight"],risk:"single_source",note:"Same TSMC dependency as Orin NX"},
   {id:"qrb5165",name:"Qualcomm QRB5165 (VOXL 2)",cat:"SBC/SoM",price:479,avg:449,lead:10,status:"available",users:["Teal","ModalAI"],risk:"single_source",note:"TSMC fab — alternative to Jetson but same foundry risk"},
+  // ── SBC (3) ──
   {id:"rpi-cm4",name:"RPi Compute Module 4 (8GB)",cat:"SBC",price:105,avg:90,lead:8,status:"constrained",users:["Freefly","Inspired Flight"],risk:"diversion",note:"40K+ units diverted to Russian weapons (GUR confirmed)"},
   {id:"rpi5",name:"Raspberry Pi 5",cat:"SBC",price:80,avg:60,lead:6,status:"available",users:["Freefly"],risk:"diversion",note:"Confirmed in Molniya-2R reconnaissance drone"},
+  {id:"orange-pi-5",name:"Orange Pi 5 (RK3588S)",cat:"SBC",price:89,avg:79,lead:5,status:"available",users:["DIY builds","ArduPilot companion"],risk:"china_source",note:"Rockchip SoC — Chinese alternative to RPi. Lower diversion risk but NDAA non-compliant"},
+  // ── AI Accelerator (3) ──
   {id:"hailo8",name:"Hailo-8 AI Accelerator",cat:"AI Accel",price:89,avg:89,lead:12,status:"available",users:["Percepto"],risk:"geographic",note:"Israel-manufactured — geopolitical supply risk"},
-  // ── MCU / Flight Controllers ──
+  {id:"google-coral",name:"Google Coral Edge TPU",cat:"AI Accel",price:60,avg:50,lead:6,status:"available",users:["DIY detection","AgriDrone"],risk:"none",note:"US-designed, TSMC fab. 4 TOPS edge inference. Widely available."},
+  {id:"intel-ncs2",name:"Intel Neural Compute Stick 2",cat:"AI Accel",price:99,avg:85,lead:8,status:"constrained",users:["OpenVINO builds"],risk:"supply",note:"Intel Movidius VPU — being phased out. Stock declining."},
+  // ── MCU / Flight Controllers (3) ──
   {id:"stm32h743",name:"STM32H743VIT6",cat:"MCU/FC",price:14.50,avg:12,lead:6,status:"available",users:["Neros","Pixhawk builds"],risk:"diversion",note:"Found in Russian weapons via gray market. STMicro EU fabs building sovereign supply"},
-  {id:"stm32f405",name:"STM32F405RGT6",cat:"MCU/FC",price:8.20,avg:7,lead:5,status:"available",users:["Betaflight builds","ArduPilot"],risk:"diversion",note:"Legacy FC chip — still high volume in FPV"},
-  // ── Thermal / ISR ──
+  {id:"stm32f405",name:"STM32F405RGT6",cat:"MCU/FC",price:8.20,avg:7,lead:5,status:"available",users:["Betaflight builds","ArduPilot"],risk:"diversion",note:"Legacy FC chip — still highest volume in FPV"},
+  {id:"rp2350",name:"Raspberry Pi RP2350",cat:"MCU/FC",price:0.80,avg:0.70,lead:3,status:"available",users:["Next-gen FCs"],risk:"none",note:"UK-designed, dual Arm/RISC-V cores. Potential STM32 alternative for simple FCs."},
+  // ── Thermal / ISR (3) ──
   {id:"flir-boson",name:"FLIR Boson 640",cat:"Thermal",price:3400,avg:3200,lead:18,status:"allocated",users:["AeroVironment","Anduril","Skydio","Teal"],risk:"allocated",note:"19 platforms, 7 programs — SINGLE SOURCE for US thermal ISR"},
   {id:"flir-lepton",name:"FLIR Lepton 3.5",cat:"Thermal",price:250,avg:210,lead:10,status:"constrained",users:["DIY thermal","BRINC"],risk:"demand",note:"Lower-cost thermal alternative seeing FPV demand surge"},
-  // ── Mesh / Comms ──
+  {id:"lynred-pico",name:"Lynred Pico640 (via Safran)",cat:"Thermal",price:2800,avg:2600,lead:14,status:"available",users:["European ISR platforms"],risk:"none",note:"French-made — ITAR-free alternative to FLIR Boson. Emerging Blue UAS option."},
+  // ── Mesh / Comms (3) ──
   {id:"doodlelabs-rm915",name:"Doodle Labs RM-915-2J",cat:"Mesh Radio",price:2100,avg:1800,lead:20,status:"constrained",users:["Anduril"],risk:"supply",note:"Limited NDAA-compliant mesh options — only 29 in Forge DB"},
   {id:"silvus-mn-micro",name:"Silvus MN Micro",cat:"Mesh Radio",price:5200,avg:4500,lead:22,status:"allocated",users:["Teal"],risk:"allocated",note:"Premium mesh radio — allocated to DoD programs"},
   {id:"persistent-mpu5",name:"Persistent Systems MPU5",cat:"Mesh Radio",price:6800,avg:6200,lead:24,status:"allocated",users:["Shield AI","SOF programs"],risk:"allocated",note:"SOF-standard MANET radio — long lead times"},
+  // ── Waveform (1 — specialized) ──
   {id:"trellisware-tsm",name:"TrellisWare TSM Waveform",cat:"Waveform",price:0,avg:0,lead:0,status:"allocated",users:["L3Harris PRC-163","Collins"],risk:"ecosystem",note:"Software waveform — licensed to radio OEMs. SOF backbone."},
-  // ── RC / Data Links ──
+  // ── RC / Data Links (3) ──
   {id:"elrs-900",name:"ELRS 900MHz Module",cat:"RC Link",price:32,avg:28,lead:3,status:"available",users:["Neros","FPV builders"],risk:"none",note:"Open-source — multiple manufacturers, no single-source risk"},
   {id:"elrs-24g",name:"ELRS 2.4GHz Module",cat:"RC Link",price:25,avg:22,lead:3,status:"available",users:["FPV builders"],risk:"none",note:"Open-source 2.4GHz variant"},
-  // ── Navigation ──
+  {id:"herelink-blue",name:"CubePilot Herelink Blue",cat:"RC Link",price:899,avg:799,lead:10,status:"available",users:["Blue UAS platforms","Enterprise"],risk:"none",note:"Australian-made. Integrated HD video + telemetry + RC. Blue UAS compliant."},
+  // ── Navigation (3) ──
   {id:"ublox-f9p",name:"u-blox ZED-F9P (RTK GNSS)",cat:"GNSS",price:189,avg:165,lead:8,status:"available",users:["Freefly","survey platforms"],risk:"geographic",note:"Swiss-made — neutral supply chain, NATO-friendly"},
   {id:"ublox-m10",name:"u-blox MAX-M10S",cat:"GNSS",price:12,avg:10,lead:4,status:"available",users:["FPV builds","consumer"],risk:"none",note:"Consumer GNSS — abundant supply"},
-  // ── Propulsion ──
-  {id:"t-motor-u8ii",name:"T-Motor U8 II KV100",cat:"Motor",price:289,avg:260,lead:8,status:"available",users:["Heavy lift builds"],risk:"china_source",note:"Chinese manufacturer — NDAA non-compliant"},
-  // ── Memory ──
+  {id:"here4-rtk",name:"CubePilot Here4 RTK GNSS",cat:"GNSS",price:299,avg:279,lead:8,status:"available",users:["CubePilot ecosystem","Blue UAS"],risk:"none",note:"Australian-made. Multi-band RTK. Blue UAS ecosystem standard."},
+  // ── Motors (3) ──
+  {id:"t-motor-u8ii",name:"T-Motor U8 II KV100",cat:"Motor",price:289,avg:260,lead:8,status:"available",users:["Heavy lift builds"],risk:"china_source",note:"Chinese manufacturer — NDAA non-compliant. Dominant in heavy lift."},
+  {id:"lumenier-2307",name:"Lumenier 2307 JohnnyFPV V3 Pro",cat:"Motor",price:24,avg:22,lead:4,status:"available",users:["Neros-class FPV"],risk:"none",note:"US brand (Lumenier/GetFPV). Popular in 5\" FPV builds. NDAA-aligned."},
+  {id:"kde-uas75",name:"KDE Direct UAS75XLD",cat:"Motor",price:445,avg:420,lead:10,status:"available",users:["Heavy lift Blue UAS"],risk:"none",note:"US-manufactured (AZ). NDAA compliant. Used in enterprise/defense heavy lift."},
+  // ── Batteries (3) ──
+  {id:"lumenier-nav6s",name:"Lumenier NAV 4000mAh 6S Li-Ion",cat:"Battery",price:75,avg:65,lead:4,status:"available",users:["Long-range FPV"],risk:"none",note:"US brand, Amprius 18650 cells. Li-Ion for endurance. NDAA-aligned."},
+  {id:"tattu-6s",name:"Tattu R-Line 1400mAh 6S LiPo",cat:"Battery",price:38,avg:32,lead:3,status:"available",users:["FPV racing","FPV strike"],risk:"china_source",note:"Tattu/Gens Ace (Chinese). Industry standard FPV LiPo. High C-rate."},
+  {id:"epc-mil",name:"EaglePicher LiPo Mil-Spec",cat:"Battery",price:850,avg:780,lead:16,status:"constrained",users:["Switchblade","ALTIUS"],risk:"allocated",note:"US-manufactured military cells. Critical for defense UAS. Limited production."},
+  // ── Frames (3) ──
+  {id:"lumenier-qavs2",name:"Lumenier QAV-S 2 (5\" frame)",cat:"Frame",price:40,avg:35,lead:3,status:"available",users:["FPV builders","training"],risk:"none",note:"US brand. Carbon fiber 5\". The standard FPV freestyle/cinema frame."},
+  {id:"custom-3dp",name:"3D-Printed FPV Frame (TPU/PETG)",cat:"Frame",price:8,avg:5,lead:0,status:"available",users:["Ukraine FPV","attritable"],risk:"none",note:"Printed locally. Zero supply chain risk. Ukraine produces thousands/day."},
+  {id:"skydio-x10-airframe",name:"Skydio X10D Airframe",cat:"Frame",price:0,avg:0,lead:0,status:"allocated",users:["Skydio"],risk:"single_source",note:"Proprietary. Not available for purchase. US-manufactured in San Mateo, CA."},
+  // ── FPV Cameras (3) ──
+  {id:"dji-o4",name:"DJI O4 Air Unit",cat:"FPV Camera",price:219,avg:179,lead:0,status:"constrained",users:["Consumer FPV"],risk:"china_source",note:"DJI proprietary. Best HD FPV system but Chinese — subject to FCC Covered List."},
+  {id:"walksnail-avatar",name:"Walksnail Avatar HD Pro",cat:"FPV Camera",price:119,avg:99,lead:4,status:"available",users:["FPV builders"],risk:"china_source",note:"Caddx/Walksnail (Chinese). HD FPV alternative to DJI. Growing market share."},
+  {id:"hdzero-whoop",name:"HDZero Whoop Lite Bundle",cat:"FPV Camera",price:99,avg:85,lead:5,status:"available",users:["FPV builders","Tiny Whoop"],risk:"china_source",note:"HDZero (Chinese). Ultra-low latency digital. Preferred by racing pilots."},
+  // ── Video Transmitters (3) ──
+  {id:"hdzero-freestyle",name:"HDZero Freestyle V2",cat:"VTX",price:60,avg:52,lead:4,status:"available",users:["FPV builders"],risk:"china_source",note:"Digital VTX. Low latency. Growing as DJI alternative."},
+  {id:"rushfpv-tank",name:"Rush FPV Tank Ultimate",cat:"VTX",price:35,avg:30,lead:3,status:"available",users:["FPV analog"],risk:"china_source",note:"Analog VTX. Still dominant in military/attritable FPV due to simplicity."},
+  {id:"tbs-unify",name:"TBS Unify Pro32 HV",cat:"VTX",price:40,avg:35,lead:4,status:"available",users:["Long-range FPV"],risk:"none",note:"European brand (Team BlackSheep). SmartAudio protocol. Widely used."},
+  // ── ESCs (3) ──
+  {id:"blheli32-45a",name:"BLHeli_32 45A ESC (generic)",cat:"ESC",price:22,avg:18,lead:3,status:"available",users:["FPV builders"],risk:"china_source",note:"Chinese-manufactured. Industry standard. Multiple OEMs."},
+  {id:"aikon-ak32",name:"Aikon AK32 35A 4-in-1",cat:"ESC",price:55,avg:48,lead:4,status:"available",users:["FPV builders","Neros-class"],risk:"china_source",note:"Premium ESC stack. Chinese. Popular in high-performance builds."},
+  {id:"kde-uas55",name:"KDE Direct UAS55HVC",cat:"ESC",price:185,avg:170,lead:10,status:"available",users:["Heavy lift Blue UAS"],risk:"none",note:"US-manufactured (AZ). NDAA compliant. Paired with KDE motors for defense."},
+  // ── Memory (3) ──
   {id:"dram-ddr4",name:"DDR4 DRAM (8GB module)",cat:"Memory",price:28,avg:23,lead:4,status:"constrained",users:["All SBC platforms"],risk:"geographic",note:"Samsung/SK Hynix — South Korea concentration. +22% YoY pricing"},
+  {id:"emmc-64",name:"eMMC 5.1 64GB (Industrial)",cat:"Memory",price:18,avg:15,lead:5,status:"available",users:["Companion computers"],risk:"china_source",note:"Mostly Chinese/Korean fab. Used for OS storage on SBCs."},
+  {id:"sd-industrial",name:"Industrial microSD 32GB (SLC)",cat:"Memory",price:45,avg:38,lead:4,status:"available",users:["Flight logging","ISR storage"],risk:"none",note:"Multi-source (Samsung, Western Digital). SLC for reliability in vibration."},
 ];
 
 let FLAGS = [];
