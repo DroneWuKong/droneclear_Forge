@@ -157,16 +157,16 @@ a{color:var(--blue);text-decoration:none}a:hover{text-decoration:underline}
     <div class="filter-row" id="region-filters"></div>
     <div style="display:flex;gap:8px;align-items:center;margin-bottom:14px;flex-wrap:wrap">
       <span style="font:10px var(--mono);color:var(--text-d)">Sort:</span>
-      <select id="flag-sort" onchange="renderFlags()" style="background:var(--surface);border:1px solid var(--border);border-radius:6px;padding:4px 8px;font:10px var(--mono);color:var(--text);outline:none">
-        <option value="confidence-desc">Confidence (high → low)</option>
-        <option value="confidence-asc">Confidence (low → high)</option>
+      <select id="flag-sort" onchange="renderFlags()" style="background:var(--surface);border:1px solid var(--border);border-radius:6px;padding:6px 10px;font:11px var(--mono);color:var(--text);outline:none;-webkit-appearance:menulist;appearance:menulist;min-height:32px">
+        <option value="confidence-desc">Confidence ↓</option>
+        <option value="confidence-asc">Confidence ↑</option>
         <option value="date-desc" selected>Newest first</option>
         <option value="date-asc">Oldest first</option>
-        <option value="severity">Severity (critical first)</option>
-        <option value="type">Flag type (A→Z)</option>
+        <option value="severity">Severity</option>
+        <option value="type">Type A→Z</option>
       </select>
       <span style="font:10px var(--mono);color:var(--text-d)">View:</span>
-      <select id="flag-view" onchange="renderFlags()" style="background:var(--surface);border:1px solid var(--border);border-radius:6px;padding:4px 8px;font:10px var(--mono);color:var(--text);outline:none">
+      <select id="flag-view" onchange="renderFlags()" style="background:var(--surface);border:1px solid var(--border);border-radius:6px;padding:6px 10px;font:11px var(--mono);color:var(--text);outline:none;-webkit-appearance:menulist;appearance:menulist;min-height:32px">
         <option value="grouped" selected>Grouped</option>
         <option value="flat">All flags</option>
       </select>
@@ -693,7 +693,7 @@ function renderFlags() {
       const topTitle = topFlag.title.replace(/^\[GRAY ZONE\]\s*/, '').substring(0, 70);
       
       return `<div class="flag-group" data-key="${key}" style="background:var(--card);border:1px solid var(--border);border-radius:10px;margin-bottom:6px;overflow:hidden;border-left:3px solid ${meta.sevColor}">
-        <div class="flag-group-header" style="padding:10px 14px;cursor:pointer;display:flex;align-items:center;gap:10px" onclick="this.parentElement.classList.toggle('open');this.querySelector('.g-chevron').classList.toggle('open')">
+        <div class="flag-group-header" data-toggle="group" style="padding:10px 14px;cursor:pointer;display:flex;align-items:center;gap:10px">
           <span style="font-size:16px">${meta.icon}</span>
           <div style="flex:1;min-width:0">
             <div style="display:flex;gap:5px;align-items:center;flex-wrap:wrap;margin-bottom:2px">
@@ -724,6 +724,16 @@ function renderFlags() {
         </div>
       </div>`;
     }).join("");
+
+    // Click handlers for group headers (expand/collapse)
+    list.querySelectorAll("[data-toggle='group']").forEach(header => {
+      header.addEventListener("click", (e) => {
+        const group = header.closest(".flag-group");
+        group.classList.toggle("open");
+        const chev = header.querySelector(".g-chevron");
+        if (chev) chev.classList.toggle("open");
+      });
+    });
 
     // Click handlers for individual flags inside groups
     list.querySelectorAll(".flag-card[data-id]").forEach(card => {
