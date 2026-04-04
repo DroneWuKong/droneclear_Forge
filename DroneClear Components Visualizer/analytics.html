@@ -191,7 +191,7 @@
 
 <script>
 (function(){'use strict';
-var DB,INTEL=[],COS=[],PROGS=[],PLATS=[],LIVE,GAPS;
+var DB,INTEL=[],COS=[],PROGS=[],PLATS=[],LIVE,GAPS,TOPICMAP;
 var FN='/.netlify/functions/analytics';
 var KEY=new URLSearchParams(location.search).get('key')||'forge-admin-2026';
 var $=function(id){return document.getElementById(id)};
@@ -220,8 +220,9 @@ async function loadAll(){
         loadJSON('/static/intel_companies.json').then(function(d){return d||loadJSON('/intel_companies.json')}),
         loadJSON('/static/intel_programs.json').then(function(d){return d||loadJSON('/intel_programs.json')}),
         loadJSON('/static/intel_platforms.json').then(function(d){return d||loadJSON('/intel_platforms.json')}),
+        loadJSON('/static/topic_component_map.json').then(function(d){return d||loadJSON('/topic_component_map.json')}).catch(function(){return null}),
     ]);
-    DB=results[0];INTEL=results[1]||[];COS=results[2]||[];PROGS=results[3]||[];PLATS=results[4]||[];
+    DB=results[0];INTEL=results[1]||[];COS=results[2]||[];PROGS=results[3]||[];PLATS=results[4]||[];TOPICMAP=results[5];
     try{var r=await fetch(FN+'?key='+KEY+'&range=30');if(r.ok)LIVE=await r.json()}catch(e){}
     try{var g=await fetch('/static/gap_analysis_latest.json');if(g.ok)GAPS=await g.json()}catch(e){}
     $('an-btn').classList.remove('loading');
@@ -337,35 +338,47 @@ function renderUsers(){
 
 function renderLandscape(m){
     $('ls-stats').innerHTML=[sc(Object.keys(m.eCos).length,'Intel Companies','','accent-purple'),sc(Object.keys(m.eProgs).length,'Programs','','accent-red'),sc(Object.keys(m.tags).length,'Topic Tags','','accent-amber'),sc(Object.keys(m.countries).length,'Mfg Countries','','accent-blue')].join('');
-    // Themes — with expanded tag mapping
-    var st=sortObj(m.tags,12);
+    // Themes — powered by topic_component_map.json
+    var st=sortObj(m.tags,18);
     var comps=DB.components||{};
-    var tagMap={
-      'acquisition':'frames','counter-UAS':'counter_uas','autonomy':'swarm_software','AI':'companion_computers',
-      'C2':'control_link_tx','electronic warfare':'video_scramblers','one-way attack':'frames','swarming':'swarm_software',
-      'ISR':'fpv_cameras','FPV':'fpv_cameras','SLAM':'lidar','thermal':'thermal_cameras','ELRS':'receivers',
-      'mesh':'mesh_radios','lidar':'lidar','ESC':'escs','attritable':'frames','EW':'video_scramblers',
-      'NDAA':'flight_controllers','payload':'payload_droppers','GPS':'gps_modules','navigation':'gps_modules',
-      'battery':'batteries','motor':'motors','propulsion':'propulsion','antenna':'antennas','sensor':'sensors',
-      'camera':'fpv_cameras','video':'video_transmitters','stack':'stacks','receiver':'receivers',
-      'frame':'frames','propeller':'propellers'
-    };
+    var topics=TOPICMAP&&TOPICMAP.topics?TOPICMAP.topics:{};
     $('ls-themes').innerHTML=st.map(function(e){
         var tag=e[0],n=e[1];
-        // Try explicit map first, then fuzzy match
-        var mapped=tagMap[tag]||tagMap[tag.toLowerCase()];
-        var rel=mapped?[mapped]:Object.keys(comps).filter(function(c){return c.toLowerCase().includes(tag.toLowerCase())||tag.toLowerCase().includes(c.replace(/_/g,' ').toLowerCase())});
-        var hasMap=rel.length&&rel[0]!==null;
-        var count=hasMap?rel.reduce(function(a,c){return a+(Array.isArray(comps[c])?comps[c].length:0)},0):0;
-        var txt=hasMap?'Maps to: '+rel.map(function(c){return c.replace(/_/g,' ')}).join(', ')+' ('+count+' parts in DB)':'Cross-referenced from intel + user searches + parts';
-        return'<div class="an-signal-card" style="border-left-color:var(--an-'+(hasMap?'teal':'amber')+')"><h5>'+tag+' <span style="font-family:var(--an-mono);font-size:11px;color:var(--an-text-muted);margin-left:8px">'+n+'</span></h5><p>'+txt+'</p></div>'
+        var tm=topics[tag];
+        if(tm){
+            var compCats=tm.components||[];
+            var totalParts=compCats.reduce(function(a,c){return a+(Array.isArray(comps[c])?comps[c].length:0)},0);
+            var catList=compCats.map(function(c){var cnt=Array.isArray(comps[c])?comps[c].length:0;return'<span style="display:inline-block;background:var(--an-teal-bg,rgba(0,200,180,.1));color:var(--an-teal);padding:1px 6px;border-radius:3px;font-size:10px;margin:1px">'+c.replace(/_/g,' ')+' ('+cnt+')</span>'}).join(' ');
+            return'<div class="an-signal-card" style="border-left-color:var(--an-teal)">'+
+                '<h5>'+tm.icon+' '+tm.label+' <span style="font-family:var(--an-mono);font-size:11px;color:var(--an-text-muted);margin-left:8px">'+n+' mentions</span></h5>'+
+                '<p style="margin-bottom:6px;font-size:12px">'+tm.demand_signal+'</p>'+
+                '<div style="margin-top:4px"><span style="font-size:9px;color:var(--an-text-muted);text-transform:uppercase;letter-spacing:.05em">Drives demand for</span> <span style="font-family:var(--an-mono);font-size:11px;color:var(--an-teal)">'+totalParts+' parts</span> across '+compCats.length+' categories:</div>'+
+                '<div style="margin-top:4px;display:flex;flex-wrap:wrap;gap:2px">'+catList+'</div>'+
+                '</div>';
+        }else{
+            // Fallback fuzzy match
+            var rel=Object.keys(comps).filter(function(c){return c.toLowerCase().includes(tag.toLowerCase())||tag.toLowerCase().includes(c.replace(/_/g,' ').toLowerCase())});
+            var hasMap=rel.length>0;
+            var count=hasMap?rel.reduce(function(a,c){return a+(Array.isArray(comps[c])?comps[c].length:0)},0):0;
+            return'<div class="an-signal-card" style="border-left-color:var(--an-amber)">'+
+                '<h5>'+tag+' <span style="font-family:var(--an-mono);font-size:11px;color:var(--an-text-muted);margin-left:8px">'+n+' mentions</span></h5>'+
+                '<p>'+(hasMap?'Fuzzy match → '+rel.map(function(c){return c.replace(/_/g,' ')}).join(', ')+' ('+count+' parts)':'Emerging topic — not yet mapped to component categories')+'</p></div>';
+        }
     }).join('');
     // Demand vs supply
-    var map={'counter-UAS':'counter_uas','thermal':'thermal_cameras','ELRS':'receivers','autonomy':'swarm_software','mesh':'mesh_radios','lidar':'lidar','FPV':'fpv_cameras','ESC':'escs','swarming':'swarm_software','attritable':'frames','acquisition':'frames','AI':'companion_computers','C2':'control_link_tx','electronic warfare':'video_scramblers','one-way attack':'frames','ISR':'fpv_cameras','SLAM':'lidar','EW':'video_scramblers','NDAA':'flight_controllers','GPS':'gps_modules','battery':'batteries','motor':'motors','antenna':'antennas','sensor':'sensors','payload':'payload_droppers','propulsion':'propulsion','video':'video_transmitters','stack':'stacks'};
-    var rows=Object.entries(map).map(function(e){var tag=e[0],cat=e[1],mn=m.tags[tag]||0,sup=cat&&Array.isArray(comps[cat])?comps[cat].length:0;
-        return{tag:tag,mn:mn,cat:cat||'—',sup:sup,gap:mn>0&&sup===0?'high':mn>sup?'medium':'low'}}).filter(function(r){return r.mn>0}).sort(function(a,b){return b.mn-a.mn});
-    var h='<table class="an-table"><thead><tr><th>Topic</th><th>Intel</th><th>DB Category</th><th>Supply</th><th>Gap</th></tr></thead><tbody>';
-    rows.forEach(function(r){h+='<tr><td>'+r.tag+'</td><td class="mono amber">'+r.mn+'</td><td>'+(r.cat==='—'?'<span class="red">unmapped</span>':r.cat.replace(/_/g,' '))+'</td><td class="mono teal">'+(r.sup||'—')+'</td><td><span class="an-signal '+r.gap+'">'+r.gap.toUpperCase()+'</span></td></tr>'});
+    // Demand vs supply — powered by topic map
+    var rows=st.map(function(e){
+        var tag=e[0],mn=e[1];
+        var tm=topics[tag];
+        if(!tm)return null;
+        var compCats=tm.components||[];
+        var sup=compCats.reduce(function(a,c){return a+(Array.isArray(comps[c])?comps[c].length:0)},0);
+        var ratio=sup>0?mn/sup:mn;
+        var gap=sup===0?'high':ratio>3?'high':ratio>1?'medium':'low';
+        return{tag:tag,label:tm.label,icon:tm.icon,mn:mn,cats:compCats.length,sup:sup,gap:gap};
+    }).filter(Boolean).sort(function(a,b){return b.mn-a.mn});
+    var h='<table class="an-table"><thead><tr><th>Topic</th><th>Intel</th><th>Categories</th><th>Parts in DB</th><th>Demand Gap</th></tr></thead><tbody>';
+    rows.forEach(function(r){h+='<tr><td>'+r.icon+' '+r.label+'</td><td class="mono amber">'+r.mn+'</td><td class="mono teal">'+r.cats+'</td><td class="mono teal">'+r.sup+'</td><td><span class="an-signal '+r.gap+'">'+r.gap.toUpperCase()+'</span></td></tr>'});
     h+='</tbody></table>';$('ls-demand').innerHTML=h;
     // Market summary
     var cn=m.countries['China']||0,us=(m.countries['USA']||0)+(m.countries['United States']||0),ua=m.countries['Ukraine']||0;
