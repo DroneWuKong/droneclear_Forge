@@ -119,7 +119,7 @@ def fix_paths(html, depth=0):
         html = html.replace("fetch('intel_companies.json')", f"fetch('{prefix}static/intel_companies.json')")
         html = html.replace("fetch('intel_platforms.json')", f"fetch('{prefix}static/intel_platforms.json')")
         html = html.replace("fetch('intel_programs.json')", f"fetch('{prefix}static/intel_programs.json')")
-        html = html.replace("fetch('drone_parts_schema_v3.json')", f"fetch('{prefix}static/drone_parts_schema_v3.json')")
+        html = html.replace("fetch('drone_parts_schema_v3.json')", f"fetch('{prefix}static/forge_database.json')")
         html = html.replace("fetch('forge_firmware_configs.json')", f"fetch('{prefix}static/forge_firmware_configs.json')")
     
     # Fix nav links to use clean URLs
@@ -463,16 +463,24 @@ def sync_handbook_data():
             with open(json_path, 'r', encoding='utf-8') as f:
                 data = json.load(f)
             if isinstance(data, list):
-                forge_db['components'][cat] = data
-                print(f"  {cat}: {len(data)} parts")
+                # MERGE: handbook data wins for existing entries, but keep local-only entries
+                handbook_names = {e.get('name', '').lower() for e in data}
+                local_only = [e for e in forge_db['components'].get(cat, [])
+                              if e.get('name', '').lower() not in handbook_names]
+                forge_db['components'][cat] = data + local_only
+                print(f"  {cat}: {len(data)} from handbook + {len(local_only)} local-only = {len(forge_db['components'][cat])}")
 
-    # Replace drone_models from handbook
+    # MERGE drone_models from handbook (don't overwrite local-only entries)
     models_path = os.path.join(parts_dir, 'drone_models.json')
     if os.path.exists(models_path):
         with open(models_path, 'r', encoding='utf-8') as f:
             models = json.load(f)
         if isinstance(models, list):
-            forge_db['drone_models'] = models
+            handbook_names = {m.get('name', '').lower() for m in models}
+            local_only = [m for m in forge_db.get('drone_models', [])
+                          if m.get('name', '').lower() not in handbook_names]
+            forge_db['drone_models'] = models + local_only
+            print(f"  drone_models: {len(models)} from handbook + {len(local_only)} local-only = {len(forge_db['drone_models'])}")
             print(f"  drone_models: {len(models)} models")
 
     # Replace build_guides from handbook
@@ -645,6 +653,35 @@ def build():
     print(f"  {total_files} files, {total_size / 1024 / 1024:.1f} MB")
     print(f"  Ready for: netlify deploy --dir=build")
     print(f"{'═' * 50}")
+
+    # ── Post-build count validation ──
+    print(f"\n  Validating data consistency...")
+    src_db_path = os.path.join(SRC_DIR, 'forge_database.json')
+    build_db_path = os.path.join(BUILD_DIR, 'static', 'forge_database.json')
+    if os.path.exists(src_db_path) and os.path.exists(build_db_path):
+        with open(src_db_path) as f:
+            src_db = json.load(f)
+        with open(build_db_path) as f:
+            build_db = json.load(f)
+        src_parts = sum(len(v) for v in src_db.get('components', {}).values())
+        build_parts = sum(len(v) for v in build_db.get('components', {}).values())
+        src_models = len(src_db.get('drone_models', []))
+        build_models = len(build_db.get('drone_models', []))
+        src_cats = len(src_db.get('components', {}))
+        build_cats = len(build_db.get('components', {}))
+
+        ok = True
+        if src_parts != build_parts:
+            print(f"  ⚠ MISMATCH: components {src_parts} (source) vs {build_parts} (build)")
+            ok = False
+        if src_models != build_models:
+            print(f"  ⚠ MISMATCH: drone_models {src_models} (source) vs {build_models} (build)")
+            ok = False
+        if src_cats != build_cats:
+            print(f"  ⚠ MISMATCH: categories {src_cats} (source) vs {build_cats} (build)")
+            ok = False
+        if ok:
+            print(f"  ✓ Counts match: {src_parts} parts, {src_models} models, {src_cats} categories")
 
 
 if __name__ == '__main__':
