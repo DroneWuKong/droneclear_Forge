@@ -329,6 +329,19 @@ a{color:var(--blue);text-decoration:none}a:hover{text-decoration:underline}
       Blue UAS & tracked platforms from <a href="https://nvmillbuilditmyself.com/platforms/">Forge DB (219 platforms)</a> ·
       Compliance from <a href="https://nvmillbuilditmyself.com/compliance/">Compliance Dashboard</a>
     </p>
+
+    <!-- Gray Zone Alert Banner -->
+    <div style="background:var(--red)08;border:1px solid var(--red)30;border-radius:8px;padding:10px 12px;margin-bottom:14px">
+      <div style="font:600 9px var(--mono);color:var(--red);text-transform:uppercase;letter-spacing:.04em;margin-bottom:4px">⚠ Gray Zone Warning</div>
+      <div style="font-size:11px;color:var(--text-s);line-height:1.5">4 entities detected operating between Blue UAS (trusted) and banned adversary platforms. Marketing to government buyers while carrying adversary supply chain dependencies. <span style="color:var(--amber)">See Flags tab → filter "Gray Zone" for full intel.</span></div>
+    </div>
+
+    <!-- Gray Zone Entities Summary -->
+    <div style="font:600 9px var(--mono);color:var(--text-d);text-transform:uppercase;letter-spacing:.04em;margin-bottom:6px">Gray Zone Entities (4 tracked)</div>
+    <div id="grayzone-entities" style="display:flex;flex-direction:column;gap:4px;margin-bottom:16px"></div>
+
+    <!-- Blue UAS Platforms -->
+    <div style="font:600 9px var(--mono);color:var(--text-d);text-transform:uppercase;letter-spacing:.04em;margin-bottom:6px">Blue UAS Cleared Platforms (8 tracked in PIE)</div>
     <div id="platform-list"></div>
   </div>
 
@@ -874,6 +887,46 @@ function renderFlagDetail() {
 
 // ── Platforms ──
 function renderPlatforms() {
+  // Gray Zone Entities
+  const gzEntities = [
+    {name:"SkyRover / Knowact",score:0.850,tier:"CRITICAL",hq:"Shenzhen (Nanshan District — DJI's district)",status:"Active — selling at retailers",
+     finding:"DJI Mini 4 Pro clone. Direct DJI cloud. 9+ shell companies. OcuSync frequency fingerprint confirmed. App = DJI Fly fork.",
+     flags:FLAGS.filter(f=>(f.title||'').includes('SkyRover')).length},
+    {name:"Anzu Robotics",score:0.782,tier:"CRITICAL",hq:"Austin, TX → XTI Aerospace (NASDAQ: XTIA)",status:"Product discontinued. Active TX AG litigation.",
+     finding:"DJI Mavic 3 licensed derivative. DJI retains crypto signing keys. ~50% Chinese components. 3 PDs holding dead hardware.",
+     flags:FLAGS.filter(f=>(f.title||'').includes('Anzu')).length},
+    {name:"Cogito Tech / SPECTA",score:0.537,tier:"HIGH",hq:"Hong Kong (Google Sites website, no support infrastructure)",status:"Products on Amazon. Subject to FCC Covered List.",
+     finding:"DJI Air 3 clone — identical PCBs within 2 grams. Denies DJI connection. OcuSync + patented DJI chipsets prove otherwise.",
+     flags:FLAGS.filter(f=>(f.title||'').includes('Cogito')).length},
+    {name:"Autel Robotics",score:0.525,tier:"HIGH",hq:"Shenzhen → US operations",status:"Named in FY2025 NDAA Section 1709. FCC authorizations revoked.",
+     finding:"Chinese-owned. Entity List. CITIC/Ministry of Finance investor. Cannot bypass ban even via US manufacturing.",
+     flags:FLAGS.filter(f=>(f.title||'').includes('Autel')).length},
+  ];
+
+  const gzContainer = document.getElementById("grayzone-entities");
+  gzContainer.innerHTML = gzEntities.map(gz => {
+    const tierColor = gz.tier === 'CRITICAL' ? 'var(--red)' : 'var(--orange)';
+    return `<div style="background:var(--card);border:1px solid var(--border);border-radius:8px;padding:10px 12px;border-left:3px solid ${tierColor}">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px">
+        <div style="flex:1;min-width:0">
+          <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;margin-bottom:3px">
+            <span style="font-size:12px;font-weight:700;color:var(--text)">🔍 ${gz.name}</span>
+            <span style="font-size:8px;padding:1px 5px;border-radius:3px;background:${tierColor}20;color:${tierColor}">${gz.tier}</span>
+            <span style="font-size:8px;padding:1px 5px;border-radius:3px;background:var(--surface);color:var(--text-d)">${gz.flags} flags</span>
+          </div>
+          <div style="font-size:9px;color:var(--text-d);margin-bottom:3px">${gz.hq}</div>
+          <div style="font-size:10px;color:var(--text-s);line-height:1.4">${gz.finding}</div>
+          <div style="font-size:9px;color:var(--amber);margin-top:3px">${gz.status}</div>
+        </div>
+        <div style="text-align:center;min-width:50px">
+          <div style="font:700 18px var(--mono);color:${tierColor}">${gz.score.toFixed(2)}</div>
+          <div style="font-size:8px;color:var(--text-d)">risk score</div>
+        </div>
+      </div>
+    </div>`;
+  }).join("");
+
+  // Blue UAS Platforms
   const c = document.getElementById("platform-list");
   const tierBadge = {blue:"badge-blue",ndaa:"badge-green",commercial:"badge-amber",adversary:"badge-red"};
   const tierLabel = {blue:"◆ Blue UAS",ndaa:"◇ NDAA §848",commercial:"○ Commercial",adversary:"✕ Adversary"};
