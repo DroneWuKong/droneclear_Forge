@@ -335,10 +335,10 @@ a{color:var(--blue);text-decoration:none}a:hover{text-decoration:underline}
   <!-- COMPONENTS PANEL -->
   <div class="panel" id="panel-components">
     <p style="font-size:11px;color:var(--text-d);margin-bottom:12px">
-      Tracked from <a href="https://nvmillbuilditmyself.com/">Forge (3,800+ components)</a> ·
-      Cross-referenced with distributor APIs &amp; <a href="https://nvmilldoitmyself.com">Handbook Ch.13</a>
+      20 critical components tracked · Risk-scored by supply chain vulnerability, diversion risk &amp; geographic concentration ·
+      <a href="https://nvmillbuilditmyself.com/">Full DB: 3,800+ components</a>
     </p>
-    <div style="overflow-x:auto" id="component-table-wrap"></div>
+    <div id="component-table-wrap"></div>
   </div>
 
   <!-- PREDICTIONS PANEL -->
@@ -441,14 +441,34 @@ const PLATFORMS = [
 ];
 
 const COMPONENTS = [
-  {id:"jetson-orin-nx",name:"NVIDIA Jetson Orin NX 16GB",cat:"SBC/SoM",price:649,avg:599,lead:16,status:"constrained",users:["Skydio","Shield AI","Anduril"]},
-  {id:"qrb5165",name:"Qualcomm QRB5165 (VOXL 2)",cat:"SBC/SoM",price:479,avg:449,lead:10,status:"available",users:["Teal","ModalAI"]},
-  {id:"rpi-cm4",name:"RPi Compute Module 4 (8GB)",cat:"SBC",price:105,avg:90,lead:8,status:"constrained",users:["Freefly","Inspired Flight"]},
-  {id:"stm32h743",name:"STM32H743VIT6",cat:"MCU/FC",price:14.50,avg:12,lead:6,status:"available",users:["Neros","Pixhawk builds"]},
-  {id:"flir-boson",name:"FLIR Boson 640",cat:"Thermal",price:3400,avg:3200,lead:18,status:"allocated",users:["AeroVironment","Anduril"]},
-  {id:"doodlelabs-rm915",name:"Doodle Labs RM-915-2J",cat:"Mesh Radio",price:2100,avg:1800,lead:20,status:"constrained",users:["Anduril"]},
-  {id:"elrs-900",name:"ELRS 900MHz Module",cat:"RC Link",price:32,avg:28,lead:3,status:"available",users:["Neros","FPV builders"]},
-  {id:"silvus-mn-micro",name:"Silvus MN Micro",cat:"Mesh Radio",price:5200,avg:4500,lead:22,status:"allocated",users:["Teal"]},
+  // ── SBC / Compute ──
+  {id:"jetson-orin-nx",name:"NVIDIA Jetson Orin NX 16GB",cat:"SBC/SoM",price:649,avg:599,lead:16,status:"constrained",users:["Skydio","Shield AI","Anduril"],risk:"single_source",note:"TSMC fab — all Blue UAS compute depends on Taiwan"},
+  {id:"jetson-orin-nano",name:"NVIDIA Jetson Orin Nano 8GB",cat:"SBC/SoM",price:249,avg:199,lead:14,status:"constrained",users:["Teal","Inspired Flight"],risk:"single_source",note:"Same TSMC dependency as Orin NX"},
+  {id:"qrb5165",name:"Qualcomm QRB5165 (VOXL 2)",cat:"SBC/SoM",price:479,avg:449,lead:10,status:"available",users:["Teal","ModalAI"],risk:"single_source",note:"TSMC fab — alternative to Jetson but same foundry risk"},
+  {id:"rpi-cm4",name:"RPi Compute Module 4 (8GB)",cat:"SBC",price:105,avg:90,lead:8,status:"constrained",users:["Freefly","Inspired Flight"],risk:"diversion",note:"40K+ units diverted to Russian weapons (GUR confirmed)"},
+  {id:"rpi5",name:"Raspberry Pi 5",cat:"SBC",price:80,avg:60,lead:6,status:"available",users:["Freefly"],risk:"diversion",note:"Confirmed in Molniya-2R reconnaissance drone"},
+  {id:"hailo8",name:"Hailo-8 AI Accelerator",cat:"AI Accel",price:89,avg:89,lead:12,status:"available",users:["Percepto"],risk:"geographic",note:"Israel-manufactured — geopolitical supply risk"},
+  // ── MCU / Flight Controllers ──
+  {id:"stm32h743",name:"STM32H743VIT6",cat:"MCU/FC",price:14.50,avg:12,lead:6,status:"available",users:["Neros","Pixhawk builds"],risk:"diversion",note:"Found in Russian weapons via gray market. STMicro EU fabs building sovereign supply"},
+  {id:"stm32f405",name:"STM32F405RGT6",cat:"MCU/FC",price:8.20,avg:7,lead:5,status:"available",users:["Betaflight builds","ArduPilot"],risk:"diversion",note:"Legacy FC chip — still high volume in FPV"},
+  // ── Thermal / ISR ──
+  {id:"flir-boson",name:"FLIR Boson 640",cat:"Thermal",price:3400,avg:3200,lead:18,status:"allocated",users:["AeroVironment","Anduril","Skydio","Teal"],risk:"allocated",note:"19 platforms, 7 programs — SINGLE SOURCE for US thermal ISR"},
+  {id:"flir-lepton",name:"FLIR Lepton 3.5",cat:"Thermal",price:250,avg:210,lead:10,status:"constrained",users:["DIY thermal","BRINC"],risk:"demand",note:"Lower-cost thermal alternative seeing FPV demand surge"},
+  // ── Mesh / Comms ──
+  {id:"doodlelabs-rm915",name:"Doodle Labs RM-915-2J",cat:"Mesh Radio",price:2100,avg:1800,lead:20,status:"constrained",users:["Anduril"],risk:"supply",note:"Limited NDAA-compliant mesh options — only 29 in Forge DB"},
+  {id:"silvus-mn-micro",name:"Silvus MN Micro",cat:"Mesh Radio",price:5200,avg:4500,lead:22,status:"allocated",users:["Teal"],risk:"allocated",note:"Premium mesh radio — allocated to DoD programs"},
+  {id:"persistent-mpu5",name:"Persistent Systems MPU5",cat:"Mesh Radio",price:6800,avg:6200,lead:24,status:"allocated",users:["Shield AI","SOF programs"],risk:"allocated",note:"SOF-standard MANET radio — long lead times"},
+  {id:"trellisware-tsm",name:"TrellisWare TSM Waveform",cat:"Waveform",price:0,avg:0,lead:0,status:"allocated",users:["L3Harris PRC-163","Collins"],risk:"ecosystem",note:"Software waveform — licensed to radio OEMs. SOF backbone."},
+  // ── RC / Data Links ──
+  {id:"elrs-900",name:"ELRS 900MHz Module",cat:"RC Link",price:32,avg:28,lead:3,status:"available",users:["Neros","FPV builders"],risk:"none",note:"Open-source — multiple manufacturers, no single-source risk"},
+  {id:"elrs-24g",name:"ELRS 2.4GHz Module",cat:"RC Link",price:25,avg:22,lead:3,status:"available",users:["FPV builders"],risk:"none",note:"Open-source 2.4GHz variant"},
+  // ── Navigation ──
+  {id:"ublox-f9p",name:"u-blox ZED-F9P (RTK GNSS)",cat:"GNSS",price:189,avg:165,lead:8,status:"available",users:["Freefly","survey platforms"],risk:"geographic",note:"Swiss-made — neutral supply chain, NATO-friendly"},
+  {id:"ublox-m10",name:"u-blox MAX-M10S",cat:"GNSS",price:12,avg:10,lead:4,status:"available",users:["FPV builds","consumer"],risk:"none",note:"Consumer GNSS — abundant supply"},
+  // ── Propulsion ──
+  {id:"t-motor-u8ii",name:"T-Motor U8 II KV100",cat:"Motor",price:289,avg:260,lead:8,status:"available",users:["Heavy lift builds"],risk:"china_source",note:"Chinese manufacturer — NDAA non-compliant"},
+  // ── Memory ──
+  {id:"dram-ddr4",name:"DDR4 DRAM (8GB module)",cat:"Memory",price:28,avg:23,lead:4,status:"constrained",users:["All SBC platforms"],risk:"geographic",note:"Samsung/SK Hynix — South Korea concentration. +22% YoY pricing"},
 ];
 
 let FLAGS = [];
@@ -884,26 +904,54 @@ function renderPlatforms() {
 // ── Components ──
 function renderComponents() {
   const w = document.getElementById("component-table-wrap");
-  const statusColor = {available:"badge-green",constrained:"badge-amber",allocated:"badge-red"};
+  const riskColors = {single_source:"var(--red)",diversion:"var(--red)",allocated:"var(--orange)",geographic:"var(--amber)",supply:"var(--amber)",demand:"var(--amber)",china_source:"var(--orange)",ecosystem:"var(--cyan)",none:"var(--green)"};
+  const riskLabels = {single_source:"SINGLE SOURCE",diversion:"DIVERSION RISK",allocated:"ALLOCATED",geographic:"GEO RISK",supply:"SUPPLY CONSTRAINED",demand:"DEMAND SURGE",china_source:"CHINA SOURCE",ecosystem:"ECOSYSTEM",none:"LOW RISK"};
+  const statusColor = {available:"var(--green)",constrained:"var(--amber)",allocated:"var(--red)"};
 
-  let html = `<table class="comp-table"><thead><tr>
-    <th>Component</th><th>Category</th><th>Price</th><th>Δ Avg</th><th>Lead</th><th>Status</th><th>Blue UAS Users</th>
-  </tr></thead><tbody>`;
-
+  // Group by category
+  const cats = {};
   COMPONENTS.forEach(c => {
-    const delta = Math.round(((c.price - c.avg) / c.avg) * 100);
-    html += `<tr>
-      <td><div style="font-size:12px;font-weight:600">${c.name}</div></td>
-      <td><span class="badge badge-cyan">${c.cat}</span></td>
-      <td style="font:12px var(--mono)">$${c.price}</td>
-      <td><span class="badge ${delta>0?"badge-red":"badge-green"}">${delta>0?"+":""}${delta}%</span></td>
-      <td style="font:11px var(--mono);color:var(--text-s)">${c.lead}wk</td>
-      <td><span class="badge ${statusColor[c.status]}">${c.status}</span></td>
-      <td><div style="display:flex;gap:4px;flex-wrap:wrap">${c.users.map(u=>`<span style="font-size:9px;color:var(--blue);background:var(--blue-d);padding:1px 5px;border-radius:3px">${u}</span>`).join("")}</div></td>
-    </tr>`;
+    if (!cats[c.cat]) cats[c.cat] = [];
+    cats[c.cat].push(c);
   });
 
-  html += `</tbody></table>`;
+  let html = '';
+  Object.entries(cats).forEach(([cat, items]) => {
+    const worstStatus = items.some(i=>i.status==='allocated') ? 'allocated' : items.some(i=>i.status==='constrained') ? 'constrained' : 'available';
+    html += `<div style="margin-bottom:16px">
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">
+        <div style="font:600 11px var(--mono);color:var(--text)">${cat}</div>
+        <span style="font:10px var(--mono);color:var(--text-d)">${items.length} tracked</span>
+        <span style="width:8px;height:8px;border-radius:50%;background:${statusColor[worstStatus]}"></span>
+      </div>
+      ${items.map(c => {
+        const delta = Math.round(((c.price - c.avg) / (c.avg||1)) * 100);
+        const rc = riskColors[c.risk] || 'var(--text-d)';
+        const rl = riskLabels[c.risk] || c.risk;
+        return `<div style="background:var(--card);border:1px solid var(--border);border-radius:8px;padding:10px 12px;margin-bottom:4px;border-left:3px solid ${rc}">
+          <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px">
+            <div style="flex:1;min-width:0">
+              <div style="font-size:12px;font-weight:600;color:var(--text)">${c.name}</div>
+              <div style="display:flex;gap:4px;flex-wrap:wrap;margin-top:3px">
+                <span style="font-size:8px;padding:1px 5px;border-radius:3px;background:${rc}20;color:${rc}">${rl}</span>
+                <span style="font-size:8px;padding:1px 5px;border-radius:3px;background:${statusColor[c.status]}20;color:${statusColor[c.status]}">${c.status.toUpperCase()}</span>
+                ${c.lead ? `<span style="font-size:8px;padding:1px 5px;border-radius:3px;background:var(--surface);color:var(--text-d)">${c.lead}wk lead</span>` : ''}
+              </div>
+            </div>
+            <div style="text-align:right;min-width:65px">
+              ${c.price ? `<div style="font:700 13px var(--mono);color:var(--text)">$${c.price.toLocaleString()}</div>` : ''}
+              ${delta && c.price ? `<div style="font:10px var(--mono);color:${delta>0?'var(--red)':'var(--green)'}">${delta>0?'+':''}${delta}% vs avg</div>` : ''}
+            </div>
+          </div>
+          <div style="font-size:9px;color:var(--text-d);margin-top:4px;line-height:1.4">${c.note || ''}</div>
+          <div style="display:flex;gap:3px;flex-wrap:wrap;margin-top:4px">
+            ${c.users.map(u=>`<span style="font-size:8px;color:var(--blue);background:var(--blue-d);padding:1px 5px;border-radius:3px">${u}</span>`).join("")}
+          </div>
+        </div>`;
+      }).join("")}
+    </div>`;
+  });
+
   w.innerHTML = html;
 }
 
@@ -1515,6 +1563,21 @@ const DEP_GRAPH = {
 
 // Pre-built scenarios
 const SCENARIOS = [
+  { id: "fcc-cliff", name: "🔒 FCC Firmware Cliff — Jan 1, 2027", probability: 70,
+    description: "Three deadlines converge: firmware waiver, Blue UAS exemption, Buy American exemption all expire. No DJI/Autel updates, no new foreign drone approvals.",
+    disrupted: ["All DJI fleet drones", "All Autel fleet drones", "Blue UAS exempted platforms"],
+    lead_override: 0, recovery: "Requires FCC extension or new rulemaking — 3–6 months minimum",
+    mitigation: "Agencies: inventory fleet now, begin replacement procurement. Operators: freeze firmware on stable version. Manufacturers: apply for Conditional Approval before deadline." },
+  { id: "passthrough", name: "⚖️ TX AG Passthrough Theory Succeeds", probability: 45,
+    description: "Texas court rules that licensing/rebranding from banned manufacturer = deceptive practices. Creates precedent for other state AGs against all gray zone entities.",
+    disrupted: ["Anzu Robotics", "Cogito/SPECTA", "SkyRover/Knowact", "Future shell companies"],
+    lead_override: 0, recovery: "Permanent — precedent-setting. Gray zone entities must fully decouple from adversary technology.",
+    mitigation: "Government buyers: audit all non-Blue UAS procurement. Gray zone entities: independent security audit + full supply chain transparency." },
+  { id: "ninth-circuit", name: "🏛️ DJI Wins Ninth Circuit — FCC Ban Modified", probability: 30,
+    description: "Court finds FCC exceeded authority or violated due process. Ban modified to require security audits instead of blanket prohibition.",
+    disrupted: ["Blue UAS manufacturers (market advantage reduced)", "Domestic manufacturers (investment thesis weakened)"],
+    lead_override: 0, recovery: "6–12 months for new framework to stabilize",
+    mitigation: "Domestic manufacturers: differentiate on capability, not just compliance. Blue UAS: focus on mission-critical features DJI can't match." },
   { id: "tsmc", name: "🏭 Taiwan Crisis — TSMC Disruption", probability: 12,
     description: "Cross-strait tensions or natural disaster halt TSMC production. All advanced node chips affected.",
     disrupted: ["NVIDIA Jetson Orin NX", "Qualcomm QRB5165", "u-blox ZED-F9P"],
@@ -1546,6 +1609,11 @@ const SCENARIOS = [
     disrupted: ["Doodle Labs Helix", "Silvus MN Micro"],
     lead_override: 30, recovery: "9–12 months",
     mitigation: "Dual-source Doodle + Silvus. Evaluate Rajant for lower-priority links. Persistent Systems for premium tier." },
+  { id: "domestic-scale", name: "🇺🇸 Domestic Manufacturing Reaches Scale (2027)", probability: 60,
+    description: "UMAC, Performance Drone Works, and allied manufacturers reach volume production. Blue UAS BOM cost drops 30%.",
+    disrupted: ["Chinese component importers", "Gray market distributors"],
+    lead_override: 0, recovery: "N/A — positive disruption",
+    mitigation: "Component manufacturers: invest in NDAA-compliant production lines now. Lock Blue UAS supply agreements." },
 ];
 
 function renderWhatIf() {
