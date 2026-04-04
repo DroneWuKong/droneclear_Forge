@@ -14,6 +14,7 @@
     <link rel="stylesheet" href="{% static 'utilities.css' %}">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/geotiff@2.1.3/dist-browser/geotiff.bundle.min.js"></script>
     <script src="https://unpkg.com/@phosphor-icons/web"></script>
     <script>(function(){ document.documentElement.setAttribute('data-theme', localStorage.getItem('dc-theme') || 'dark'); })();</script>
     <style>
@@ -1083,8 +1084,8 @@
             <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;padding:5px 8px;background:var(--bg-dark);border-radius:var(--radius-sm);font-size:9px;color:var(--text-faint);">
                 <span>DEM:</span>
                 <label style="padding:2px 8px;border:1px solid var(--border-color);border-radius:3px;background:none;color:var(--text-muted);font-size:9px;cursor:pointer;font-family:var(--font-family);">
-                    ↑ Load .hgt
-                    <input type="file" accept=".hgt" multiple onchange="rfLoadDEM(this.files)" style="display:none;">
+                    ↑ Load DEM
+                    <input type="file" accept=".hgt,.tif,.tiff" multiple onchange="rfLoadDEM(this.files)" style="display:none;">
                 </label>
                 <span id="rf-dem-status" style="flex:1;color:var(--text-faint);font-size:8px;">No local DEM — using API</span>
                 <button onclick="rfClearDEM()" style="padding:2px 6px;border:1px solid var(--border-color);border-radius:3px;background:none;color:var(--text-faint);font-size:8px;cursor:pointer;font-family:var(--font-family);">Clear</button>
@@ -1093,9 +1094,10 @@
                 <summary style="cursor:pointer;color:var(--text-muted);font-size:9px;">How to get free SRTM elevation data</summary>
                 <div style="padding:6px 8px;margin-top:4px;background:var(--bg-panel);border:1px solid var(--border-color);border-radius:var(--radius-sm);line-height:1.6;">
                     1. <a href="https://dwtkns.com/srtm30m/" target="_blank" style="color:var(--accent-red);text-decoration:none;">dwtkns.com/srtm30m</a> — click the map, download .hgt (easiest)<br>
+                    1b. GeoTIFF (.tif) also supported — USGS, Copernicus, or any single-band elevation raster<br>
                     2. <a href="https://search.earthdata.nasa.gov/search?q=SRTM" target="_blank" style="color:var(--accent-red);text-decoration:none;">NASA Earthdata</a> — search SRTM, free account<br>
                     3. <a href="https://portal.opentopography.org/raster?opentopoID=OTSRTM.082015.4326.1" target="_blank" style="color:var(--accent-red);text-decoration:none;">OpenTopography</a> — bulk download<br>
-                    Each tile = 1°×1° (~111 km). WGS84 .hgt format. Files stay in browser.
+                    SRTM .hgt: 1°×1° (~111 km) tiles. GeoTIFF: any bounds/resolution. WGS84 only. Files stay in browser.
                 </div>
             </details>
 
@@ -1349,14 +1351,14 @@
             <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px;padding:5px 8px;background:var(--bg-dark);border-radius:var(--radius-sm);font-size:9px;color:var(--text-faint);">
                 <span>DEM:</span>
                 <label style="padding:2px 8px;border:1px solid var(--border-color);border-radius:3px;background:none;color:var(--text-muted);font-size:9px;cursor:pointer;font-family:var(--font-family);">
-                    ↑ Load .hgt
-                    <input type="file" accept=".hgt" multiple onchange="rfLoadDEM(this.files)" style="display:none;">
+                    ↑ Load DEM
+                    <input type="file" accept=".hgt,.tif,.tiff" multiple onchange="rfLoadDEM(this.files)" style="display:none;">
                 </label>
                 <span id="mesh-dem-status" style="flex:1;color:var(--text-faint);font-size:8px;">No local DEM — using API</span>
                 <button onclick="rfClearDEM()" style="padding:2px 6px;border:1px solid var(--border-color);border-radius:3px;background:none;color:var(--text-faint);font-size:8px;cursor:pointer;font-family:var(--font-family);">Clear</button>
             </div>
             <div style="font-size:8px;color:var(--text-faint);margin-bottom:8px;padding:2px 8px;">
-                Load SRTM .hgt for instant terrain. <a href="https://dwtkns.com/srtm30m/" target="_blank" style="color:var(--accent-red);text-decoration:none;">Download tiles here</a>. Shared with RF Terrain tool.
+                Load SRTM .hgt or GeoTIFF .tif for instant terrain. <a href="https://dwtkns.com/srtm30m/" target="_blank" style="color:var(--accent-red);text-decoration:none;">Download tiles here</a>. Shared with RF Terrain tool.
             </div>
 
             <!-- Mesh config -->
@@ -2302,21 +2304,63 @@ renderVtxTable();
         return{name:filename,lat:lat,lon:lon,resolution:res,data:data,rows:size,cols:size};
     }
 
-    // Sample elevation from loaded DEMs
+    // Parse GeoTIFF DEM file using geotiff.js
+    async function parseGeoTIFF(arrayBuffer,filename){
+        try{
+            var tiff=await GeoTIFF.fromArrayBuffer(arrayBuffer);
+            var image=await tiff.getImage();
+            var bbox=image.getBoundingBox(); // [minX,minY,maxX,maxY] = [west,south,east,north]
+            var w=image.getWidth(),h=image.getHeight();
+            var rasters=await image.readRasters();
+            var data=rasters[0]; // First band = elevation
+            // Convert to Float32 for uniform handling
+            var f32=new Float32Array(data.length);
+            for(var i=0;i<data.length;i++){f32[i]=data[i];}
+            return{
+                name:filename,type:'geotiff',
+                west:bbox[0],south:bbox[1],east:bbox[2],north:bbox[3],
+                data:f32,rows:h,cols:w,
+                // For sampleDEM compatibility
+                lat:Math.floor(bbox[1]),lon:Math.floor(bbox[0]),
+                pixelW:(bbox[2]-bbox[0])/w,pixelH:(bbox[3]-bbox[1])/h,
+                resolution:null // variable
+            };
+        }catch(e){console.error('GeoTIFF parse error:',e);return null;}
+    }
+
+    // Sample elevation from a GeoTIFF DEM
+    function sampleGeoTIFF(dem,lat,lon){
+        if(lat<dem.south||lat>dem.north||lon<dem.west||lon>dem.east)return null;
+        var col=Math.round((lon-dem.west)/dem.pixelW);
+        var row=Math.round((dem.north-lat)/dem.pixelH);
+        col=Math.max(0,Math.min(dem.cols-1,col));
+        row=Math.max(0,Math.min(dem.rows-1,row));
+        var val=dem.data[row*dem.cols+col];
+        if(val<-500||val>9000)return null; // nodata
+        return val;
+    }
+
+    // Sample elevation from loaded DEMs (HGT or GeoTIFF)
     function sampleDEM(lat,lon){
         for(var i=0;i<loadedDEMs.length;i++){
             var dem=loadedDEMs[i];
-            if(lat>=dem.lat&&lat<dem.lat+1&&lon>=dem.lon&&lon<dem.lon+1){
-                var row=Math.round((dem.lat+1-lat)*(dem.rows-1));
-                var col=Math.round((lon-dem.lon)*(dem.cols-1));
-                row=Math.max(0,Math.min(dem.rows-1,row));
-                col=Math.max(0,Math.min(dem.cols-1,col));
-                var val=dem.data[row*dem.cols+col];
-                if(val===-32768)return null; // void
-                return val;
+            if(dem.type==='geotiff'){
+                var v=sampleGeoTIFF(dem,lat,lon);
+                if(v!==null)return v;
+            } else {
+                // Original HGT sampling
+                if(lat>=dem.lat&&lat<dem.lat+1&&lon>=dem.lon&&lon<dem.lon+1){
+                    var row=Math.round((dem.lat+1-lat)*(dem.rows-1));
+                    var col=Math.round((lon-dem.lon)*(dem.cols-1));
+                    row=Math.max(0,Math.min(dem.rows-1,row));
+                    col=Math.max(0,Math.min(dem.cols-1,col));
+                    var val=dem.data[row*dem.cols+col];
+                    if(val===-32768)return null;
+                    return val;
+                }
             }
         }
-        return null; // No DEM covers this point
+        return null;
     }
 
     // Try local DEM first, then APIs
@@ -2370,23 +2414,33 @@ renderVtxTable();
     // ── DEM file upload handler ──
     window.rfLoadDEM=function(files){
         if(!files||!files.length)return;
-        var loaded=0,failed=0;
+        var loaded=0,failed=0,total=files.length;
+        function updateStatus(){
+            if(loaded+failed<total)return;
+            elevCache.clear();
+            var msg='<span style="color:#4ade80;">'+loaded+' file'+(loaded>1?'s':'')+' loaded</span>'+(failed?' <span style="color:#f87171;">'+failed+' failed</span>':'')+' — '+loadedDEMs.map(function(d){
+                if(d.type==='geotiff')return d.name.replace(/\.[^.]+$/,'');
+                var ns=d.lat>=0?'N':'S',ew=d.lon>=0?'E':'W';
+                return ns+Math.abs(d.lat)+ew+Math.abs(d.lon);
+            }).join(', ');
+            ['rf-dem-status','mesh-dem-status'].forEach(function(id){var el=document.getElementById(id);if(el)el.innerHTML=msg;});
+        }
         Array.from(files).forEach(function(file){
             var reader=new FileReader();
-            reader.onload=function(e){
-                var dem=parseHGT(e.target.result,file.name);
-                if(dem){
-                    var exists=loadedDEMs.some(function(d){return d.lat===dem.lat&&d.lon===dem.lon;});
-                    if(!exists)loadedDEMs.push(dem);
-                    loaded++;
-                } else {failed++;}
-                if(loaded+failed===files.length){
-                    elevCache.clear();
-                    var msg='<span style="color:#4ade80;">'+loaded+' tile'+(loaded>1?'s':'')+' loaded</span>'+(failed?' <span style="color:#f87171;">'+failed+' failed</span>':'')+' — '+loadedDEMs.map(function(d){
-                        var ns=d.lat>=0?'N':'S',ew=d.lon>=0?'E':'W';
-                        return ns+Math.abs(d.lat)+ew+Math.abs(d.lon);
-                    }).join(', ');
-                    ['rf-dem-status','mesh-dem-status'].forEach(function(id){var el=document.getElementById(id);if(el)el.innerHTML=msg;});
+            reader.onload=async function(e){
+                var ext=file.name.toLowerCase().split('.').pop();
+                if(ext==='tif'||ext==='tiff'){
+                    var dem=await parseGeoTIFF(e.target.result,file.name);
+                    if(dem){loadedDEMs.push(dem);loaded++;}else{failed++;}
+                    updateStatus();
+                } else {
+                    var dem=parseHGT(e.target.result,file.name);
+                    if(dem){
+                        var exists=loadedDEMs.some(function(d){return d.lat===dem.lat&&d.lon===dem.lon&&d.type!=='geotiff';});
+                        if(!exists)loadedDEMs.push(dem);
+                        loaded++;
+                    } else {failed++;}
+                    updateStatus();
                 }
             };
             reader.readAsArrayBuffer(file);
