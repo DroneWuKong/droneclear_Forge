@@ -72,6 +72,7 @@ a{color:var(--blue);text-decoration:none}a:hover{text-decoration:underline}
 .flag-card:hover{background:var(--card-hi);border-color:var(--border-hi)}
 .card-body.expanded{max-height:500px !important}
 .card-chevron.open{transform:rotate(90deg)}
+.flag-chevron.open{transform:rotate(90deg)}
 .g-chevron.open{transform:rotate(90deg)}
 .flag-group .flag-group-body{display:none}
 .flag-group.open .flag-group-body{display:block}
@@ -1305,12 +1306,27 @@ function selectRegion(slug) {
       <div id="region-flags-list" style="display:flex;flex-direction:column;gap:3px">
         ${regionFlags.map(f => {
           const sevColor = f.severity === 'critical' ? 'var(--red)' : f.severity === 'warning' ? 'var(--amber)' : 'var(--cyan)';
-          return `<div class="flag-card" data-id="${f.id}" style="background:var(--surface);border-radius:6px;padding:7px 9px;border-left:2px solid ${sevColor};cursor:pointer;transition:background .12s">
-            <div style="flex:1;min-width:0">
-              <div style="font-size:11px;font-weight:600;color:var(--text);line-height:1.3">${f.title.substring(0,80)}${f.title.length>80?'…':''}</div>
-              <div style="font-size:8px;color:var(--text-d);margin-top:2px">${f.severity} · ${Math.round((f.confidence||0)*100)}% confidence</div>
+          const conf = Math.round((f.confidence||0)*100);
+          const detail_text = (f.detail||'').replace(/"/g,'&quot;').replace(/</g,'&lt;');
+          const sources = (f.sources||[]).map(s => 
+            typeof s === 'string' ? s : (s.url || s.name || '')
+          ).filter(Boolean);
+          const sourceHtml = sources.length ? sources.map(s => 
+            `<a href="${s}" target="_blank" rel="noopener" style="color:var(--cyan);font-size:9px;word-break:break-all;text-decoration:none">${s.replace(/https?:\\/\\//,'').substring(0,50)}…</a>`
+          ).join('<br>') : '';
+          return `<div class="region-flag-wrap" data-flag-id="${f.id}" style="background:var(--surface);border-radius:6px;border-left:2px solid ${sevColor};cursor:pointer">
+            <div class="region-flag-header" style="padding:7px 9px;display:flex;align-items:center">
+              <div style="flex:1;min-width:0">
+                <div style="font-size:11px;font-weight:600;color:var(--text);line-height:1.3">${f.title.substring(0,80)}${f.title.length>80?'…':''}</div>
+                <div style="font-size:8px;color:var(--text-d);margin-top:2px">${f.severity} · ${conf}% confidence</div>
+              </div>
+              <span class="flag-chevron" style="color:var(--text-d);font-size:14px;margin-left:6px;transition:transform .2s">▸</span>
             </div>
-            <span style="color:var(--text-d);font-size:14px;margin-left:6px">›</span>
+            <div class="region-flag-body" style="display:none;padding:0 9px 9px">
+              <div style="font-size:10px;color:var(--text-s);line-height:1.5;margin-bottom:6px">${f.detail||'No additional detail.'}</div>
+              ${f.prediction ? `<div style="background:var(--purple-d);border:1px solid #a78bfa22;border-radius:4px;padding:5px 8px;margin-bottom:6px"><div style="font:600 8px var(--font);color:var(--purple);text-transform:uppercase;margin-bottom:2px">Prediction</div><div style="font-size:10px;color:var(--text-s);line-height:1.4">${f.prediction}</div></div>` : ''}
+              ${sourceHtml ? `<div style="margin-top:4px"><div style="font:600 8px var(--mono);color:var(--text-d);margin-bottom:3px">SOURCES</div>${sourceHtml}</div>` : ''}
+            </div>
           </div>`;
         }).join("")}
       </div>
@@ -1322,18 +1338,16 @@ function selectRegion(slug) {
   `;
   window.scrollTo({top: 0, behavior: 'smooth'});
 
-  // Event delegation for region flags — bulletproof on mobile
+  // Event delegation for region detail page
   detail.onclick = function(e) {
-    const card = e.target.closest(".flag-card[data-id]");
-    if (card) {
-      selectedFlag = FLAGS.find(f => f.id === card.dataset.id);
-      if (selectedFlag) {
-        document.querySelectorAll(".tab-btn").forEach(b => b.classList.remove("active"));
-        document.querySelectorAll(".tab-panel").forEach(p => p.classList.remove("active"));
-        document.querySelector('[data-tab="flags"]').classList.add("active");
-        document.getElementById("panel-flags").classList.add("active");
-        renderFlagDetail();
-      }
+    // Flag card expand/collapse inline
+    const flagWrap = e.target.closest(".region-flag-wrap");
+    if (flagWrap) {
+      const body = flagWrap.querySelector(".region-flag-body");
+      const chev = flagWrap.querySelector(".flag-chevron");
+      if (body) body.style.display = body.style.display === 'none' ? 'block' : 'none';
+      if (chev) chev.classList.toggle("open");
+      return;
     }
     // Info card expand/collapse
     const cardBody = e.target.closest("[data-toggle='info']");
