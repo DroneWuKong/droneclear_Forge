@@ -132,8 +132,9 @@ a{color:var(--blue);text-decoration:none}a:hover{text-decoration:underline}
 <div class="tabs" id="tabs">
   <button class="tab active" data-tab="flags">Flagged Patterns <span class="count" id="flag-count">—</span></button>
   <button class="tab" data-tab="dashboard">Dashboard 📊</button>
-  <button class="tab" data-tab="platforms">Blue UAS Tracking</button>
-  <button class="tab" data-tab="components">Component Watch</button>
+  <button class="tab" data-tab="regions">Regions 🌍</button>
+  <button class="tab" data-tab="platforms">Blue UAS</button>
+  <button class="tab" data-tab="components">Components</button>
   <button class="tab" data-tab="predictions">Predictions</button>
   <button class="tab" data-tab="whatif">What-If ⚡</button>
 </div>
@@ -202,18 +203,86 @@ a{color:var(--blue);text-decoration:none}a:hover{text-decoration:underline}
       <p style="font-size:10px;color:var(--text-xd);margin-bottom:10px">How confident is each flag? Higher confidence = stronger evidence chain.</p>
       <div id="dash-confidence"></div>
     </div>
-
-    <!-- Row 7: Regional Intelligence Map -->
-    <div style="background:var(--surface);border-radius:10px;padding:14px;margin-bottom:16px">
-      <div style="font:600 10px var(--mono);color:var(--text-d);text-transform:uppercase;letter-spacing:.06em;margin-bottom:10px">🌍 Regional Intelligence — 42 Countries Tracked</div>
-      <p style="font-size:10px;color:var(--text-xd);margin-bottom:12px">Tap a region to see platforms, key players, and supply chain signals. Data from Forge DB + PIE flags.</p>
-      <div id="dash-regions"></div>
-      <div id="dash-region-detail" style="display:none;margin-top:12px"></div>
-    </div>
   </div>
 
   <!-- PLATFORMS PANEL -->
   <div class="panel" id="panel-platforms">
+
+  <!-- REGIONS PANEL -->
+  <div class="panel" id="panel-regions">
+    <!-- Global overview (shown when no region selected) -->
+    <div id="region-global">
+      <p style="font-size:11px;color:var(--text-d);margin-bottom:14px">
+        Global UAS supply chain intelligence across 42 countries. Tap a region to drill in. Bookmark any region: <span style="font:10px var(--mono);color:var(--text-xd)">/patterns/#region-europe</span>
+      </p>
+
+      <!-- SVG World Map -->
+      <div style="background:var(--surface);border-radius:10px;padding:16px;margin-bottom:16px;overflow:hidden">
+        <svg viewBox="0 0 800 400" style="width:100%;height:auto" id="region-map">
+          <!-- Simplified world regions as interactive shapes -->
+          <!-- North America -->
+          <g onclick="selectRegion('north-america')" style="cursor:pointer">
+            <path d="M80,60 L230,60 L250,120 L220,180 L180,200 L140,190 L100,160 L60,120 Z" fill="var(--blue)" fill-opacity="0.2" stroke="var(--blue)" stroke-width="1.5"/>
+            <text x="155" y="135" fill="var(--blue)" font-size="11" font-weight="600" text-anchor="middle">N. America</text>
+            <text x="155" y="150" fill="var(--text-d)" font-size="8" text-anchor="middle" id="map-count-north-america"></text>
+          </g>
+          <!-- South America -->
+          <g onclick="selectRegion('south-america')" style="cursor:pointer">
+            <path d="M170,210 L210,200 L230,240 L240,300 L220,350 L190,370 L160,340 L150,280 Z" fill="var(--green)" fill-opacity="0.15" stroke="var(--green)" stroke-width="1"/>
+            <text x="195" y="280" fill="var(--green)" font-size="10" font-weight="600" text-anchor="middle">S. America</text>
+            <text x="195" y="293" fill="var(--text-d)" font-size="8" text-anchor="middle" id="map-count-south-america"></text>
+          </g>
+          <!-- Europe -->
+          <g onclick="selectRegion('europe')" style="cursor:pointer">
+            <path d="M340,55 L420,50 L440,80 L430,120 L400,140 L360,130 L340,100 Z" fill="var(--cyan)" fill-opacity="0.2" stroke="var(--cyan)" stroke-width="1.5"/>
+            <text x="385" y="95" fill="var(--cyan)" font-size="11" font-weight="600" text-anchor="middle">Europe</text>
+            <text x="385" y="108" fill="var(--text-d)" font-size="8" text-anchor="middle" id="map-count-europe"></text>
+          </g>
+          <!-- Ukraine / E. Europe -->
+          <g onclick="selectRegion('ukraine')" style="cursor:pointer">
+            <path d="M430,70 L480,65 L490,90 L470,110 L440,105 L430,85 Z" fill="var(--amber)" fill-opacity="0.25" stroke="var(--amber)" stroke-width="1.5"/>
+            <text x="460" y="90" fill="var(--amber)" font-size="9" font-weight="600" text-anchor="middle">UA</text>
+          </g>
+          <!-- Middle East -->
+          <g onclick="selectRegion('middle-east')" style="cursor:pointer">
+            <path d="M440,130 L510,120 L530,160 L520,200 L480,210 L450,190 L430,160 Z" fill="var(--orange)" fill-opacity="0.2" stroke="var(--orange)" stroke-width="1.5"/>
+            <text x="480" y="165" fill="var(--orange)" font-size="10" font-weight="600" text-anchor="middle">Middle East</text>
+            <text x="480" y="178" fill="var(--text-d)" font-size="8" text-anchor="middle" id="map-count-middle-east"></text>
+          </g>
+          <!-- Africa -->
+          <g onclick="selectRegion('africa')" style="cursor:pointer">
+            <path d="M360,160 L430,150 L450,200 L440,280 L400,320 L360,300 L340,240 L345,190 Z" fill="var(--purple)" fill-opacity="0.12" stroke="var(--purple)" stroke-width="1"/>
+            <text x="395" y="240" fill="var(--purple)" font-size="10" font-weight="600" text-anchor="middle">Africa</text>
+            <text x="395" y="253" fill="var(--text-d)" font-size="8" text-anchor="middle" id="map-count-africa"></text>
+          </g>
+          <!-- Russia -->
+          <g onclick="selectRegion('russia')" style="cursor:pointer">
+            <path d="M440,30 L680,25 L700,60 L690,90 L500,80 L460,60 Z" fill="var(--red)" fill-opacity="0.15" stroke="var(--red)" stroke-width="1.5"/>
+            <text x="570" y="55" fill="var(--red)" font-size="11" font-weight="600" text-anchor="middle">Russia</text>
+            <text x="570" y="68" fill="var(--text-d)" font-size="8" text-anchor="middle" id="map-count-russia"></text>
+          </g>
+          <!-- Asia-Pacific -->
+          <g onclick="selectRegion('asia-pacific')" style="cursor:pointer">
+            <path d="M540,100 L700,90 L740,150 L730,220 L680,250 L600,240 L550,200 L530,150 Z" fill="var(--red)" fill-opacity="0.15" stroke="var(--red)" stroke-width="1.5"/>
+            <text x="635" y="165" fill="var(--red)" font-size="11" font-weight="600" text-anchor="middle">Asia-Pacific</text>
+            <text x="635" y="180" fill="var(--text-d)" font-size="8" text-anchor="middle" id="map-count-asia-pacific"></text>
+          </g>
+          <!-- Oceania -->
+          <g onclick="selectRegion('oceania')" style="cursor:pointer">
+            <path d="M680,270 L750,260 L760,310 L730,340 L690,330 L675,300 Z" fill="var(--green)" fill-opacity="0.15" stroke="var(--green)" stroke-width="1"/>
+            <text x="720" y="300" fill="var(--green)" font-size="9" font-weight="600" text-anchor="middle">Oceania</text>
+            <text x="720" y="313" fill="var(--text-d)" font-size="8" text-anchor="middle" id="map-count-oceania"></text>
+          </g>
+        </svg>
+      </div>
+
+      <!-- Region list below map -->
+      <div id="region-list"></div>
+    </div>
+
+    <!-- Region detail (shown when a region is selected) -->
+    <div id="region-detail" style="display:none"></div>
+  </div>
     <p style="font-size:11px;color:var(--text-d);margin-bottom:12px">
       Blue UAS & tracked platforms from <a href="https://nvmillbuilditmyself.com/platforms/">Forge DB (219 platforms)</a> ·
       Compliance from <a href="https://nvmillbuilditmyself.com/compliance/">Compliance Dashboard</a>
@@ -813,195 +882,222 @@ function renderDashboard() {
       <span style="font-size:9px;color:var(--text-xd);width:30px">${c ? Math.round(c/FLAGS.length*100)+'%' : ''}</span>
     </div>
   `).join("");
-
-  // ── Regional Intelligence ──
-  renderRegions();
 }
 
 const REGION_DATA = {
-  "North America": {
-    emoji: "🇺🇸", color: "var(--blue)",
-    countries: ["usa", "united states", "canada"],
-    keyPlayers: "Skydio, Shield AI, Anduril, AeroVironment, ModalAI, Neros, L3Harris, Raytheon",
-    programs: "Drone Dominance (200K drones), SRR, CCA ($5.8B), Replicator/DAWG, USMC FPV",
-    supplyNote: "Primary demand driver. Blue UAS ecosystem centered here. Industrial base scaling.",
+  "north-america": {
+    name: "North America", emoji: "🇺🇸", color: "var(--blue)",
+    countries: ["usa", "united states", "canada", "north america"],
+    keyPlayers: "Skydio, Shield AI, Anduril, AeroVironment, ModalAI, Neros, L3Harris, Raytheon, Freefly, Red Cat/Teal",
+    programs: "Drone Dominance (200K drones/$1.4B), Army SRR (5,880 systems), CCA ($5.8B), Replicator/DAWG, USMC FPV ($47M), Blue UAS list (50+ platforms)",
+    supplyNote: "Primary demand driver. Blue UAS ecosystem centered here. Industrial base scaling under Drone Dominance EO.",
   },
-  "Europe (NATO)": {
-    emoji: "🇪🇺", color: "var(--cyan)",
-    countries: ["france", "germany", "uk", "united kingdom", "netherlands", "poland", "croatia", "estonia", "belgium", "spain", "italy", "sweden", "czech", "latvia", "lithuania", "slovenia", "austria", "slovakia", "bulgaria", "switzerland", "eu", "nato"],
-    keyPlayers: "Parrot (France), Quantum Systems (Germany), Orqa (Croatia), WB Group (Poland), Helsing (Germany), Safran, Thales",
-    programs: "FCAS (€100B+), EuroDrone, NATO interop standards, Polish €2B anti-drone barrier",
-    supplyNote: "STMicroelectronics fabs (STM32), u-blox GNSS (Swiss), NanoXplore FPGAs. Building sovereign supply chain.",
+  "europe": {
+    name: "Europe (NATO)", emoji: "🇪🇺", color: "var(--cyan)",
+    countries: ["france", "germany", "uk", "united kingdom", "netherlands", "poland", "croatia", "estonia", "belgium", "spain", "italy", "sweden", "czech", "latvia", "lithuania", "slovenia", "austria", "slovakia", "bulgaria", "switzerland", "eu", "nato", "europe"],
+    keyPlayers: "Parrot (France), Quantum Systems (Germany), Orqa (Croatia), WB Group (Poland), Helsing (Germany), Safran, Thales, STMicroelectronics",
+    programs: "FCAS (€100B+), EuroDrone (MALE RPAS), NATO interop standards, Polish €2B anti-drone barrier, NanoXplore FPGAs",
+    supplyNote: "STMicroelectronics fabs (STM32), u-blox GNSS (Swiss), NanoXplore FPGAs. Building sovereign supply chain to reduce US/Chinese dependency.",
   },
-  "Ukraine": {
-    emoji: "🇺🇦", color: "var(--amber)",
+  "ukraine": {
+    name: "Ukraine", emoji: "🇺🇦", color: "var(--amber)",
     countries: ["ukraine"],
-    keyPlayers: "TAF Industries, Vyriy, Wild Hornets, Brave1 accelerator, Iron Belly + Shield AI",
-    programs: "Fastest FPV iteration in the world. 10K+ FPV/month. Integrating Hivemind autonomy.",
-    supplyNote: "Competes with US Drone Dominance for same FPV components (STM32, ELRS, Caddx). Combat drives global doctrine.",
+    keyPlayers: "TAF Industries, Vyriy Drone, Wild Hornets, Brave1 accelerator, Iron Belly + Shield AI Hivemind, Swarmer",
+    programs: "10K+ FPV/month production. Hivemind autonomy integration. Fastest-iterating drone ecosystem in the world.",
+    supplyNote: "Competes with US Drone Dominance for same FPV components (STM32, ELRS, Caddx). Combat experience drives global doctrine. 23 platforms in Forge DB.",
   },
-  "Middle East": {
-    emoji: "🇹🇷", color: "var(--orange)",
+  "middle-east": {
+    name: "Middle East", emoji: "🇹🇷", color: "var(--orange)",
     countries: ["turkey", "israel", "uae", "iran", "saudi"],
-    keyPlayers: "Baykar (Turkey), Elbit/IAI (Israel), D-Fend (Israel), EDGE Group (UAE), HESA (Iran)",
-    programs: "Bayraktar TB2/TB3/Akıncı (35+ export customers), Shahed mass production (Iran→Russia)",
-    supplyNote: "Turkey building indigenous supply chain after Canada sensor embargo. Iran drives gray market diversion.",
+    keyPlayers: "Baykar (Turkey — TB2/TB3/Akıncı/Kızılelma), Elbit Systems (Israel), IAI (Israel), D-Fend (Israel), EDGE Group (UAE), HESA/Iran",
+    programs: "Baykar: 35+ export customers. Shahed mass production (Iran→Russia). Elbit Skylark/Lanius. D-Fend EnforceAir (C-UAS).",
+    supplyNote: "Turkey building indigenous supply chain after Canada sensor embargo. Iran drives gray market component diversion for Russian drones.",
   },
-  "Asia-Pacific": {
-    emoji: "🇨🇳", color: "var(--red)",
-    countries: ["china", "india", "south korea", "taiwan", "japan", "singapore", "australia"],
-    keyPlayers: "DJI (80% global share), CATL/BYD (batteries), TSMC (chip fab), Samsung/SK Hynix (DRAM), ideaForge (India)",
-    programs: "PLA drone swarms, SYPAQ Corvo (Australia), KAI stealth UCAV (S.Korea), Taiwan NCSIST + Hivemind",
-    supplyNote: "TSMC is upstream of ALL Blue UAS compute. China manufactures majority of drone motors, ESCs, LiPo cells. DRAM from S.Korea.",
+  "asia-pacific": {
+    name: "Asia-Pacific", emoji: "🌏", color: "var(--red)",
+    countries: ["china", "india", "south korea", "taiwan", "japan", "singapore"],
+    keyPlayers: "DJI (80% global share), CATL/BYD (batteries), TSMC (chip fab), Samsung/SK Hynix (DRAM), ideaForge (India), ST Engineering (Singapore)",
+    programs: "PLA drone swarms (China), KAI stealth UCAV (S.Korea), Taiwan NCSIST + Hivemind, ideaForge SWITCH (India), Shield AI + ST Engineering (Singapore)",
+    supplyNote: "TSMC is upstream of ALL Blue UAS compute (Jetson + QRB5165). China manufactures majority of drone motors, ESCs, LiPo cells. Samsung/SK Hynix: global DRAM.",
   },
-  "Russia": {
-    emoji: "🇷🇺", color: "var(--red)",
+  "russia": {
+    name: "Russia", emoji: "🇷🇺", color: "var(--red)",
     countries: ["russia"],
-    keyPlayers: "Alabuga factory, ZALA (Lancet), Orlan, diverted Western components",
-    programs: "Mass drone production using gray market parts. GUR tracks 5,534 foreign components in 190 weapon systems.",
-    supplyNote: "Primary driver of component diversion. RPi 40K+ units, STM32, Western MCUs flowing through China/UAE.",
+    keyPlayers: "Alabuga factory (Yelabuga), ZALA Aero (Lancet), Orlan (ISR), diverted Western components, Iranian airframe technology",
+    programs: "Mass drone production using gray market parts. GUR tracks 5,534 foreign components in 190 weapon systems. Geran/Shahed production at scale.",
+    supplyNote: "Primary driver of component diversion. 40K+ RPi units diverted. STM32, Western MCUs flowing through China/UAE gray market channels.",
   },
-  "Other Regions": {
-    emoji: "🌍", color: "var(--text-d)",
-    countries: ["brazil", "south africa", "mexico"],
-    keyPlayers: "Emerging drone ecosystems",
-    programs: "Growing adoption of commercial and defense UAS",
-    supplyNote: "Expanding markets creating additional global component demand.",
+  "oceania": {
+    name: "Oceania", emoji: "🇦🇺", color: "var(--green)",
+    countries: ["australia", "new zealand"],
+    keyPlayers: "SYPAQ (Corvo cardboard drone), DroneShield (C-UAS), Boeing Australia (MQ-28 Ghost Bat)",
+    programs: "SYPAQ Corvo used in Ukraine. MQ-28 Ghost Bat is Australia's CCA testbed. DroneShield: A$1.2B European pipeline.",
+    supplyNote: "Five Eyes ally. MQ-28 feeds CCA concepts into US/UK programs. DroneShield is largest C-UAS customer base globally.",
+  },
+  "south-america": {
+    name: "South America", emoji: "🌎", color: "var(--green)",
+    countries: ["brazil", "argentina", "colombia", "chile", "mexico"],
+    keyPlayers: "Emerging military drone programs, commercial agriculture UAS adoption",
+    programs: "Growing adoption of ISR and agricultural UAS. Brazil military drone procurement expanding.",
+    supplyNote: "Expanding market creating additional global component demand. Mostly importing platforms, not manufacturing.",
+  },
+  "africa": {
+    name: "Africa", emoji: "🌍", color: "var(--purple)",
+    countries: ["south africa", "nigeria", "ethiopia", "morocco", "egypt", "kenya", "libya"],
+    keyPlayers: "Baykar exports (multiple African nations), Chinese drone exports, emerging local manufacturers",
+    programs: "Turkey/Baykar expanding across North/Sub-Saharan Africa. Chinese drone exports growing. Counter-terrorism ISR.",
+    supplyNote: "Import-driven market. Turkish and Chinese drones dominating. Limited indigenous manufacturing capability.",
   },
 };
 
-let activeRegion = null;
-
-function renderRegions() {
-  const container = document.getElementById("dash-regions");
-
-  // Count platforms and flags per region
-  const regionStats = {};
-  for (const [region, data] of Object.entries(REGION_DATA)) {
-    let platCount = 0;
-    let flagCount = 0;
-
-    // Count flags mentioning this region's countries
-    FLAGS.forEach(f => {
-      const text = ((f.title||'') + ' ' + (f.detail||'')).toLowerCase();
-      if (data.countries.some(c => text.includes(c))) flagCount++;
-    });
-
-    // Estimate platform count from keywords
-    const allText = FLAGS.map(f => (f.detail||'')).join(' ').toLowerCase();
-    data.countries.forEach(c => {
-      const matches = allText.split(c).length - 1;
-      platCount += Math.min(matches, 30);
-    });
-
-    regionStats[region] = {flagCount, platCount: Math.min(platCount, 99)};
+function renderRegionMap() {
+  // Update map labels with flag counts
+  for (const [slug, data] of Object.entries(REGION_DATA)) {
+    const count = FLAGS.filter(f => {
+      const text = ((f.title||'')+(f.detail||'')).toLowerCase();
+      return data.countries.some(c => text.includes(c));
+    }).length;
+    const el = document.getElementById(`map-count-${slug}`);
+    if (el) el.textContent = count ? `${count} flags` : '';
   }
 
-  const maxFlags = Math.max(...Object.values(regionStats).map(r => r.flagCount), 1);
+  // Render region list below map
+  const list = document.getElementById("region-list");
+  const regionStats = Object.entries(REGION_DATA).map(([slug, data]) => {
+    const flagCount = FLAGS.filter(f => {
+      const text = ((f.title||'')+(f.detail||'')).toLowerCase();
+      return data.countries.some(c => text.includes(c));
+    }).length;
+    return {slug, ...data, flagCount};
+  }).sort((a,b) => b.flagCount - a.flagCount);
 
-  container.innerHTML = Object.entries(REGION_DATA).map(([region, data]) => {
-    const stats = regionStats[region];
-    const barWidth = Math.max(15, (stats.flagCount / maxFlags) * 100);
-    const isActive = activeRegion === region;
-    return `
-    <div onclick="toggleRegion('${region}')" style="cursor:pointer;margin-bottom:6px;border-radius:8px;border:1px solid ${isActive ? data.color : 'transparent'};transition:all .15s">
-      <div style="display:flex;align-items:center;gap:8px;padding:6px 10px">
-        <span style="font-size:16px;width:24px;text-align:center">${data.emoji}</span>
-        <span style="font-size:11px;font-weight:600;color:var(--text);flex:1">${region}</span>
-        <span style="font:10px var(--mono);color:${data.color}">${stats.flagCount} flags</span>
+  const maxFlags = Math.max(...regionStats.map(r => r.flagCount), 1);
+
+  list.innerHTML = regionStats.map(r => `
+    <a href="#region-${r.slug}" onclick="selectRegion('${r.slug}');return false;" style="display:flex;align-items:center;gap:8px;padding:8px 10px;background:var(--surface);border-radius:8px;margin-bottom:4px;text-decoration:none;border:1px solid var(--border);transition:border-color .15s" onmouseover="this.style.borderColor='${r.color}'" onmouseout="this.style.borderColor='var(--border)'">
+      <span style="font-size:16px;width:22px;text-align:center">${r.emoji}</span>
+      <span style="font-size:11px;font-weight:600;color:var(--text);flex:1">${r.name}</span>
+      <span style="font:600 10px var(--mono);color:${r.color};min-width:45px;text-align:right">${r.flagCount}</span>
+      <div style="width:60px;background:var(--card);border-radius:3px;height:6px;overflow:hidden">
+        <div style="width:${(r.flagCount/maxFlags)*100}%;height:100%;background:${r.color};border-radius:3px"></div>
       </div>
-      <div style="padding:0 10px 6px 42px">
-        <div style="background:var(--card);border-radius:3px;height:6px;overflow:hidden">
-          <div style="width:${barWidth}%;height:100%;background:${data.color};border-radius:3px;transition:width .3s"></div>
-        </div>
-      </div>
-    </div>`;
-  }).join("");
+    </a>
+  `).join("");
 }
 
-function toggleRegion(region) {
-  const detail = document.getElementById("dash-region-detail");
-  if (activeRegion === region) {
-    activeRegion = null;
-    detail.style.display = "none";
-    renderRegions();
-    return;
-  }
-  activeRegion = region;
-  renderRegions();
-
-  const data = REGION_DATA[region];
+function selectRegion(slug) {
+  const data = REGION_DATA[slug];
   if (!data) return;
 
-  // Find flags for this region
+  // Update hash without reload
+  history.replaceState(null, '', `#region-${slug}`);
+
+  // Switch to regions tab if not already there
+  document.querySelectorAll(".tab").forEach(t => t.classList.remove("active"));
+  document.querySelectorAll(".panel").forEach(p => p.classList.remove("active"));
+  const regTab = [...document.querySelectorAll(".tab")].find(t => t.dataset.tab === "regions");
+  if (regTab) regTab.classList.add("active");
+  document.getElementById("panel-regions").classList.add("active");
+
+  // Hide global, show detail
+  document.getElementById("region-global").style.display = "none";
+  const detail = document.getElementById("region-detail");
+  detail.style.display = "block";
+
+  // Get flags for this region
   const regionFlags = FLAGS.filter(f => {
-    const text = ((f.title||'') + ' ' + (f.detail||'')).toLowerCase();
+    const text = ((f.title||'')+(f.detail||'')).toLowerCase();
     return data.countries.some(c => text.includes(c));
   });
-
   const sevCounts = {critical:0, warning:0, info:0};
   regionFlags.forEach(f => { if (sevCounts[f.severity] !== undefined) sevCounts[f.severity]++; });
 
-  detail.style.display = "block";
   detail.innerHTML = `
-    <div style="background:var(--card);border-radius:10px;padding:12px;border-left:4px solid ${data.color}">
-      <div style="margin-bottom:8px">
-        <div style="display:flex;align-items:center;gap:6px;margin-bottom:4px">
-          <span style="font-size:16px">${data.emoji}</span>
-          <span style="font:700 13px var(--font);color:var(--text)">${region}</span>
-        </div>
-        <div style="display:flex;gap:4px;flex-wrap:wrap">
+    <div style="margin-bottom:12px">
+      <a href="#" onclick="backToGlobal();return false;" style="font-size:10px;color:var(--text-d);text-decoration:none">← Back to Global Map</a>
+    </div>
+
+    <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px">
+      <span style="font-size:24px">${data.emoji}</span>
+      <div>
+        <div style="font:700 16px var(--font);color:var(--text)">${data.name}</div>
+        <div style="display:flex;gap:4px;flex-wrap:wrap;margin-top:3px">
           <span style="font-size:9px;color:var(--text-d)">${regionFlags.length} flags</span>
           ${sevCounts.critical ? `<span class="badge badge-red" style="font-size:8px">${sevCounts.critical} critical</span>` : ''}
           ${sevCounts.warning ? `<span class="badge badge-amber" style="font-size:8px">${sevCounts.warning} warning</span>` : ''}
           ${sevCounts.info ? `<span class="badge badge-cyan" style="font-size:8px">${sevCounts.info} info</span>` : ''}
         </div>
       </div>
+    </div>
 
-      <div style="display:flex;flex-direction:column;gap:8px">
-        <div>
-          <div style="font:600 8px var(--mono);color:${data.color};text-transform:uppercase;letter-spacing:.04em;margin-bottom:3px">Key Players</div>
-          <div style="font-size:10px;color:var(--text-s);line-height:1.4">${data.keyPlayers}</div>
-        </div>
-        <div>
-          <div style="font:600 8px var(--mono);color:${data.color};text-transform:uppercase;letter-spacing:.04em;margin-bottom:3px">Programs</div>
-          <div style="font-size:10px;color:var(--text-s);line-height:1.4">${data.programs}</div>
-        </div>
-        <div>
-          <div style="font:600 8px var(--mono);color:${data.color};text-transform:uppercase;letter-spacing:.04em;margin-bottom:3px">Supply Chain</div>
-          <div style="font-size:10px;color:var(--text-s);line-height:1.4">${data.supplyNote}</div>
-        </div>
+    <div style="display:flex;flex-direction:column;gap:10px;margin-bottom:14px">
+      <div style="background:var(--surface);border-radius:8px;padding:10px;border-left:3px solid ${data.color}">
+        <div style="font:600 8px var(--mono);color:${data.color};text-transform:uppercase;letter-spacing:.04em;margin-bottom:3px">Key Players</div>
+        <div style="font-size:11px;color:var(--text-s);line-height:1.5">${data.keyPlayers}</div>
       </div>
+      <div style="background:var(--surface);border-radius:8px;padding:10px;border-left:3px solid ${data.color}">
+        <div style="font:600 8px var(--mono);color:${data.color};text-transform:uppercase;letter-spacing:.04em;margin-bottom:3px">Programs & Activity</div>
+        <div style="font-size:11px;color:var(--text-s);line-height:1.5">${data.programs}</div>
+      </div>
+      <div style="background:var(--surface);border-radius:8px;padding:10px;border-left:3px solid ${data.color}">
+        <div style="font:600 8px var(--mono);color:${data.color};text-transform:uppercase;letter-spacing:.04em;margin-bottom:3px">Supply Chain Significance</div>
+        <div style="font-size:11px;color:var(--text-s);line-height:1.5">${data.supplyNote}</div>
+      </div>
+    </div>
 
-      ${regionFlags.length ? `
-        <div style="margin-top:10px">
-          <div style="font:600 8px var(--mono);color:var(--text-d);text-transform:uppercase;letter-spacing:.04em;margin-bottom:5px">Related Flags (${regionFlags.length})</div>
-          <div style="display:flex;flex-direction:column;gap:3px;max-height:250px;overflow-y:auto">
-            ${regionFlags.slice(0, 10).map(f => {
-              const sevColor = f.severity === 'critical' ? 'var(--red)' : f.severity === 'warning' ? 'var(--amber)' : 'var(--cyan)';
-              return `<div style="background:var(--surface);border-radius:5px;padding:6px 8px;border-left:2px solid ${sevColor}">
-                <div style="font-size:10px;font-weight:600;color:var(--text);line-height:1.3">${f.title.substring(0, 75)}${f.title.length > 75 ? '…' : ''}</div>
-                <div style="font-size:8px;color:var(--text-d);margin-top:1px">${f.severity} · ${Math.round((f.confidence||0)*100)}%</div>
-              </div>`;
-            }).join("")}
-            ${regionFlags.length > 10 ? `<div style="font-size:9px;color:var(--text-d);text-align:center;padding:3px">+ ${regionFlags.length - 10} more</div>` : ''}
-          </div>
-        </div>
-      ` : ''}
+    ${regionFlags.length ? `
+      <div style="font:600 9px var(--mono);color:var(--text-d);text-transform:uppercase;letter-spacing:.04em;margin-bottom:6px">Intelligence Flags (${regionFlags.length})</div>
+      <div style="display:flex;flex-direction:column;gap:3px">
+        ${regionFlags.map(f => {
+          const sevColor = f.severity === 'critical' ? 'var(--red)' : f.severity === 'warning' ? 'var(--amber)' : 'var(--cyan)';
+          return `<div style="background:var(--surface);border-radius:6px;padding:7px 9px;border-left:2px solid ${sevColor}">
+            <div style="font-size:11px;font-weight:600;color:var(--text);line-height:1.3">${f.title.substring(0,80)}${f.title.length>80?'…':''}</div>
+            <div style="font-size:8px;color:var(--text-d);margin-top:2px">${f.severity} · ${Math.round((f.confidence||0)*100)}% confidence</div>
+          </div>`;
+        }).join("")}
+      </div>
+    ` : '<div style="font-size:11px;color:var(--text-d);padding:20px;text-align:center">No flags for this region yet. Add sources to expand coverage.</div>'}
+
+    <div style="margin-top:16px;text-align:center">
+      <span style="font:9px var(--mono);color:var(--text-xd)">Bookmark: /patterns/#region-${slug}</span>
     </div>
   `;
-  detail.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  window.scrollTo({top: 0, behavior: 'smooth'});
+}
+
+function backToGlobal() {
+  history.replaceState(null, '', '#');
+  document.getElementById("region-global").style.display = "";
+  document.getElementById("region-detail").style.display = "none";
 }
 
 function renderAll() {
   renderFilters();
   renderFlags();
   renderDashboard();
+  renderRegionMap();
   renderPlatforms();
   renderComponents();
   renderPredictions();
   renderWhatIf();
+
+  // Handle hash routing for bookmarked regions
+  const hash = window.location.hash;
+  if (hash.startsWith('#region-')) {
+    const slug = hash.replace('#region-', '');
+    if (REGION_DATA[slug]) selectRegion(slug);
+  }
 }
+
+// Listen for hash changes (back/forward)
+window.addEventListener('hashchange', () => {
+  const hash = window.location.hash;
+  if (hash.startsWith('#region-')) {
+    selectRegion(hash.replace('#region-', ''));
+  } else if (hash === '' || hash === '#') {
+    backToGlobal();
+  }
+});
 
 // ══════════════════════════════════════════
 // WHAT-IF SIMULATOR
