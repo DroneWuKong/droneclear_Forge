@@ -5,7 +5,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Analytics — Forge</title>
+    <title>Analytics — Forge Mission Control</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&family=Source+Serif+4:opsz,wght@8..60,400;8..60,600;8..60,700&display=swap"
@@ -14,267 +14,371 @@
     <link rel="stylesheet" href="{% static 'layout.css' %}?v=4">
     <link rel="stylesheet" href="{% static 'components.css' %}?v=2">
     <link rel="stylesheet" href="{% static 'utilities.css' %}?v=2">
-
     <script src="https://unpkg.com/@phosphor-icons/web"></script>
-    <script>
-        (function () {
-            const saved = localStorage.getItem('dc-theme');
-            document.documentElement.setAttribute('data-theme', saved ? saved : 'dark');
-        })();
-    </script>
+    <script>(function(){var s=localStorage.getItem('dc-theme');document.documentElement.setAttribute('data-theme',s||'dark');})();</script>
     <style>
-        .analytics-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 12px; margin-bottom: 24px; }
-        .stat-card { background: var(--surface-secondary, #1e1e3a); border-radius: 12px; padding: 20px 24px; border-left: 3px solid var(--accent, #4ECDC4); }
-        .stat-value { font-size: 28px; font-weight: 700; color: var(--accent, #4ECDC4); font-family: 'JetBrains Mono', monospace; }
-        .stat-label { font-size: 13px; color: var(--text-secondary, #aaa); margin-top: 4px; }
-        .stat-sub { font-size: 11px; color: var(--text-muted, #666); margin-top: 2px; }
-        .section-card { background: var(--surface-secondary, #1e1e3a); border-radius: 12px; padding: 24px; margin-bottom: 16px; }
-        .section-title { font-size: 15px; font-weight: 600; margin: 0 0 16px; display: flex; align-items: center; gap: 8px; }
-        .bar-row { margin-bottom: 10px; }
-        .bar-header { display: flex; justify-content: space-between; font-size: 13px; margin-bottom: 3px; }
-        .bar-label { max-width: 70%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-        .bar-value { color: var(--accent, #4ECDC4); font-family: 'JetBrains Mono', monospace; font-weight: 600; }
-        .bar-track { height: 6px; background: var(--surface-primary, #111); border-radius: 3px; overflow: hidden; }
-        .bar-fill { height: 100%; background: var(--accent, #4ECDC4); border-radius: 3px; transition: width 0.6s ease; }
-        .bar-fill.warn { background: #ff6b6b; }
-        .bar-sub { font-size: 10px; color: var(--text-muted, #666); margin-top: 2px; }
-        .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
-        .surface-tabs { display: flex; gap: 8px; margin-bottom: 20px; }
-        .surface-tab { padding: 8px 20px; border-radius: 8px; border: none; cursor: pointer; font-weight: 600; font-size: 13px; font-family: inherit; transition: all 0.2s; background: var(--surface-secondary, #1e1e3a); color: var(--text-secondary, #aaa); }
-        .surface-tab.active { background: var(--accent, #4ECDC4); color: #111; }
-        .period-select { padding: 8px 12px; border-radius: 8px; border: 1px solid var(--border-color, #333); background: var(--surface-primary, #111); color: var(--text-primary, #eee); font-size: 13px; font-family: inherit; }
-        .empty-state { text-align: center; padding: 60px 20px; color: var(--text-muted, #666); }
-        .empty-state i { font-size: 48px; margin-bottom: 16px; display: block; color: var(--accent, #4ECDC4); opacity: 0.5; }
-        .analytics-footer { margin-top: 32px; padding: 16px 0; border-top: 1px solid var(--border-color, #333); text-align: center; font-size: 11px; color: var(--text-muted, #666); }
-        @media (max-width: 768px) { .two-col { grid-template-columns: 1fr; } }
+:root{--an-teal:#4ECDC4;--an-red:#ef4444;--an-amber:#f59e0b;--an-green:#22c55e;--an-blue:#3b82f6;--an-purple:#a855f7;--an-pink:#ec4899;--an-surface:var(--surface-secondary,#1a1a2e);--an-surface-alt:var(--surface-primary,#111122);--an-border:var(--border-color,#2a2a4a);--an-text:var(--text-primary,#e8e8f0);--an-text-dim:var(--text-secondary,#888899);--an-text-muted:var(--text-muted,#555566);--an-mono:'JetBrains Mono',monospace;--an-serif:'Source Serif 4',Georgia,serif}
+.an-page{max-width:1400px;margin:0 auto;padding:24px 20px 60px}
+.an-header{margin-bottom:32px}.an-title{font-family:var(--an-mono);font-size:24px;font-weight:700;color:var(--an-teal);margin:0;letter-spacing:-0.5px;display:flex;align-items:center;gap:10px}.an-subtitle{font-size:13px;color:var(--an-text-dim);margin-top:4px}
+.an-header-row{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px}
+.an-refresh{display:flex;align-items:center;gap:6px;padding:6px 14px;border-radius:8px;border:1px solid var(--an-border);background:var(--an-surface);color:var(--an-text-dim);font-size:12px;font-family:var(--an-mono);cursor:pointer;transition:all .2s}.an-refresh:hover{border-color:var(--an-teal);color:var(--an-teal)}.an-refresh.loading i{animation:spin 1s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+.an-tabs{display:flex;gap:4px;margin-bottom:24px;border-bottom:1px solid var(--an-border);overflow-x:auto}.an-tab{padding:10px 18px;border:none;background:none;color:var(--an-text-dim);font-family:var(--an-mono);font-size:12px;font-weight:500;cursor:pointer;border-bottom:2px solid transparent;transition:all .2s;margin-bottom:-1px;white-space:nowrap}.an-tab:hover{color:var(--an-text)}.an-tab.active{color:var(--an-teal);border-bottom-color:var(--an-teal)}
+.an-tab-badge{display:inline-block;padding:1px 6px;border-radius:10px;font-size:10px;margin-left:6px;background:rgba(78,205,196,.15);color:var(--an-teal)}
+.an-panel{display:none}.an-panel.active{display:block}
+.an-stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(155px,1fr));gap:12px;margin-bottom:24px}
+.an-stat{background:var(--an-surface);border-radius:12px;padding:18px 20px;border-left:3px solid var(--an-teal);position:relative;overflow:hidden}
+.an-stat::after{content:'';position:absolute;top:0;right:0;width:60px;height:60px;background:radial-gradient(circle at top right,rgba(78,205,196,.06),transparent 70%);pointer-events:none}
+.an-stat-value{font-family:var(--an-mono);font-size:28px;font-weight:700;color:var(--an-teal);line-height:1}
+.an-stat-label{font-size:12px;color:var(--an-text-dim);margin-top:4px}.an-stat-sub{font-size:10px;color:var(--an-text-muted);margin-top:2px;font-family:var(--an-mono)}
+.an-stat.accent-red{border-left-color:var(--an-red)}.an-stat.accent-red .an-stat-value{color:var(--an-red)}
+.an-stat.accent-amber{border-left-color:var(--an-amber)}.an-stat.accent-amber .an-stat-value{color:var(--an-amber)}
+.an-stat.accent-green{border-left-color:var(--an-green)}.an-stat.accent-green .an-stat-value{color:var(--an-green)}
+.an-stat.accent-blue{border-left-color:var(--an-blue)}.an-stat.accent-blue .an-stat-value{color:var(--an-blue)}
+.an-stat.accent-purple{border-left-color:var(--an-purple)}.an-stat.accent-purple .an-stat-value{color:var(--an-purple)}
+.an-section{background:var(--an-surface);border-radius:12px;padding:20px 24px;margin-bottom:16px}
+.an-section-title{font-family:var(--an-mono);font-size:14px;font-weight:600;color:var(--an-text);margin:0 0 16px;display:flex;align-items:center;gap:8px}.an-section-title i{color:var(--an-teal);font-size:18px}
+.an-grid-2{display:grid;grid-template-columns:1fr 1fr;gap:16px}.an-grid-3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px}
+@media(max-width:900px){.an-grid-2,.an-grid-3{grid-template-columns:1fr}}
+.an-bar{margin-bottom:10px}.an-bar-header{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:3px}
+.an-bar-label{font-size:12px;color:var(--an-text);max-width:65%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.an-bar-value{font-family:var(--an-mono);font-size:12px;font-weight:600;color:var(--an-teal)}
+.an-bar-track{height:5px;background:var(--an-surface-alt);border-radius:3px;overflow:hidden}
+.an-bar-fill{height:100%;border-radius:3px;transition:width .8s cubic-bezier(.4,0,.2,1)}
+.an-bar-fill.teal{background:var(--an-teal)}.an-bar-fill.red{background:var(--an-red)}.an-bar-fill.amber{background:var(--an-amber)}
+.an-bar-fill.green{background:var(--an-green)}.an-bar-fill.blue{background:var(--an-blue)}.an-bar-fill.purple{background:var(--an-purple)}
+.an-spark{height:50px;display:flex;align-items:flex-end;gap:2px;padding:4px 0}
+.an-spark-bar{flex:1;border-radius:2px 2px 0 0;min-width:4px;transition:height .6s ease;background:var(--an-teal);opacity:.7}.an-spark-bar:hover{opacity:1}.an-spark-bar.empty{background:var(--an-border);opacity:.3}
+.an-spark-label{display:flex;justify-content:space-between;font-size:9px;color:var(--an-text-muted);font-family:var(--an-mono);margin-top:2px}
+.an-table{width:100%;border-collapse:collapse;font-size:12px}
+.an-table th{text-align:left;padding:8px 10px;color:var(--an-text-muted);font-family:var(--an-mono);font-weight:500;font-size:10px;text-transform:uppercase;letter-spacing:.5px;border-bottom:1px solid var(--an-border)}
+.an-table td{padding:7px 10px;color:var(--an-text-dim);border-bottom:1px solid rgba(255,255,255,.03)}
+.an-table tr:hover td{color:var(--an-text);background:rgba(78,205,196,.03)}
+.an-table .mono{font-family:var(--an-mono)}.an-table .teal{color:var(--an-teal)}.an-table .red{color:var(--an-red)}.an-table .amber{color:var(--an-amber)}.an-table .green{color:var(--an-green)}
+.an-signal{display:inline-flex;align-items:center;gap:4px;padding:2px 8px;border-radius:6px;font-size:10px;font-family:var(--an-mono);font-weight:600}
+.an-signal.high{background:rgba(239,68,68,.15);color:var(--an-red)}.an-signal.medium{background:rgba(245,158,11,.15);color:var(--an-amber)}.an-signal.low{background:rgba(78,205,196,.15);color:var(--an-teal)}
+.an-signal-card{background:var(--an-surface-alt);border-radius:8px;padding:12px 16px;margin-bottom:8px;border-left:3px solid var(--an-teal)}
+.an-signal-card h5{font-family:var(--an-mono);font-size:12px;font-weight:600;margin:0 0 4px;color:var(--an-text)}
+.an-signal-card p{font-size:11px;color:var(--an-text-dim);margin:0;line-height:1.5}
+.an-footer{margin-top:40px;padding:16px 0;border-top:1px solid var(--an-border);text-align:center;font-size:11px;color:var(--an-text-muted)}.an-footer .teal{color:var(--an-teal)}
+.an-empty{text-align:center;padding:30px;color:var(--an-text-muted);font-size:13px}
+.an-pulse{width:8px;height:8px;border-radius:50%;background:var(--an-green);display:inline-block;animation:pulse 2s ease-in-out infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}
     </style>
 </head>
-
 <body>
     <div class="app-container">
-
         <div class="sidebar-overlay hidden" id="sidebar-overlay"></div>
-
-        <!-- Sidebar -->
         <aside class="sidebar">
-            <div class="sidebar-header">
-                <div class="logo">
-                    <span class="logo-text">Forge</span><span class="logo-sub">Powered by DroneClear</span>
-                </div>
-            </div>
-            <nav class="sidebar-menu"
-                style="border-top: 1px solid var(--border-color); display: flex; flex-direction: column; gap: 8px; padding-top: 16px;">
-                <a href="/" class="btn btn-menu">
-                    <i class="ph ph-wrench"></i> The Bench
-                </a>
-                <a href="/builder/" class="btn btn-menu">
-                    <i class="ph ph-magic-wand"></i> Model Builder
-                </a>
-                <a href="/guide/" class="btn btn-menu">
-                    <i class="ph ph-list-checks"></i> Build Guide
-                </a>
-                <a href="/audit/" class="btn btn-menu">
-                    <i class="ph ph-clipboard-text"></i> Build Audit
-                </a>
-                <a href="/academy/" class="btn btn-menu">
-                    <i class="ph ph-graduation-cap"></i> FPV Academy
-                </a>
-                <a href="/platforms/" class="btn btn-menu">
-                    <i class="ph ph-shield-check"></i> Platforms
-                </a>
-                <a href="/analytics/" class="btn btn-menu active">
-                    <i class="ph ph-chart-line-up"></i> Analytics
-                </a>
-                <a href="https://nvmilldoitmyself.com" target="_blank" class="btn btn-menu">
-                    <i class="ph ph-book-open-text"></i> Handbook
-                </a>
+            <div class="sidebar-header"><div class="logo"><span class="logo-text">Forge</span><span class="logo-sub">Powered by DroneClear</span></div></div>
+            <nav class="sidebar-menu" style="border-top:1px solid var(--border-color);display:flex;flex-direction:column;gap:8px;padding-top:16px;">
+                <a href="/" class="btn btn-menu"><i class="ph ph-wrench"></i> The Bench</a>
+                <a href="/builder/" class="btn btn-menu"><i class="ph ph-magic-wand"></i> Model Builder</a>
+                <a href="/guide/" class="btn btn-menu"><i class="ph ph-list-checks"></i> Build Guide</a>
+                <a href="/audit/" class="btn btn-menu"><i class="ph ph-clipboard-text"></i> Build Audit</a>
+                <a href="/academy/" class="btn btn-menu"><i class="ph ph-graduation-cap"></i> FPV Academy</a>
+                <a href="/platforms/" class="btn btn-menu"><i class="ph ph-airplane-tilt"></i> Platforms</a>
+                <a href="/intel/" class="btn btn-menu"><i class="ph ph-broadcast"></i> Intel</a>
+                <a href="/browse/" class="btn btn-menu"><i class="ph ph-squares-four"></i> Browse Parts</a>
+                <a href="/contribute/" class="btn btn-menu"><i class="ph ph-git-pull-request"></i> Contribute</a>
+                <a href="/analytics/" class="btn btn-menu active"><i class="ph ph-chart-line-up"></i> Analytics</a>
             </nav>
         </aside>
-
-        <!-- Main -->
-        <main class="main-content">
-
-            <header class="topbar">
-                <div style="display: flex; justify-content: space-between; width: 100%; align-items: center;">
-                    <div style="display: flex; align-items: center; gap: 12px;">
-                        <button class="btn btn-icon mobile-menu-btn" onclick="document.querySelector('.sidebar').classList.toggle('open'); document.getElementById('sidebar-overlay').classList.toggle('hidden');">
-                            <i class="ph ph-list"></i>
-                        </button>
-                        <h2 style="margin: 0; font-size: 18px;"><i class="ph ph-chart-line-up" style="color: var(--accent);"></i> Usage Analytics</h2>
-                    </div>
-                    <div style="display: flex; gap: 8px; align-items: center;">
-                        <div class="surface-tabs">
-                            <button class="surface-tab active" onclick="switchSurface('handbook', this)">Handbook</button>
-                            <button class="surface-tab" onclick="switchSurface('forge', this)">Forge</button>
+        <main class="main-content" style="padding:0;">
+            <div class="an-page">
+                <div class="an-header">
+                    <div class="an-header-row">
+                        <div>
+                            <h1 class="an-title"><i class="ph ph-chart-line-up"></i> Mission Control</h1>
+                            <p class="an-subtitle">Unified intelligence across the AI Wingman ecosystem — <span id="an-ts" style="font-family:var(--an-mono)">loading...</span></p>
                         </div>
-                        <select class="period-select" id="periodSelect" onchange="loadDashboard()">
-                            <option value="7">7 days</option>
-                            <option value="14">14 days</option>
-                            <option value="30">30 days</option>
-                            <option value="90">90 days</option>
-                        </select>
+                        <button class="an-refresh" onclick="refreshAll()" id="an-btn"><i class="ph ph-arrows-clockwise"></i> Refresh</button>
                     </div>
                 </div>
-            </header>
-
-            <div style="padding: 24px;" id="dashboardContent">
-                <div class="empty-state" id="loadingState">
-                    <i class="ph ph-circle-notch ph-spin"></i>
-                    <div style="font-size: 16px; margin-bottom: 8px;">Loading analytics...</div>
-                    <div>Fetching data from Netlify Functions</div>
+                <div class="an-tabs">
+                    <button class="an-tab active" data-tab="overview">Overview</button>
+                    <button class="an-tab" data-tab="parts">Parts DB <span class="an-tab-badge" id="badge-parts">—</span></button>
+                    <button class="an-tab" data-tab="intel">Intel <span class="an-tab-badge" id="badge-intel">—</span></button>
+                    <button class="an-tab" data-tab="users">User Signals <span class="an-tab-badge" id="badge-users"><span class="an-pulse"></span></span></button>
+                    <button class="an-tab" data-tab="landscape">UAS Landscape</button>
                 </div>
-            </div>
 
+                <!-- OVERVIEW -->
+                <div class="an-panel active" id="panel-overview">
+                    <div class="an-stats" id="ov-stats"></div>
+                    <div class="an-grid-2">
+                        <div class="an-section"><h3 class="an-section-title"><i class="ph ph-database"></i> Database Health</h3><div id="ov-db"></div></div>
+                        <div class="an-section"><h3 class="an-section-title"><i class="ph ph-broadcast"></i> Intel Sources</h3><div id="ov-intel"></div></div>
+                    </div>
+                    <div class="an-grid-2">
+                        <div class="an-section"><h3 class="an-section-title"><i class="ph ph-magnifying-glass"></i> What Users Search For</h3><div id="ov-search"></div></div>
+                        <div class="an-section"><h3 class="an-section-title"><i class="ph ph-warning-circle"></i> Database Gaps</h3><div id="ov-gaps"></div></div>
+                    </div>
+                    <div class="an-section"><h3 class="an-section-title"><i class="ph ph-pulse"></i> Landscape Signals</h3><div id="ov-signals"></div></div>
+                </div>
+
+                <!-- PARTS DB -->
+                <div class="an-panel" id="panel-parts">
+                    <div class="an-stats" id="pt-stats"></div>
+                    <div class="an-grid-2">
+                        <div class="an-section"><h3 class="an-section-title"><i class="ph ph-chart-bar-horizontal"></i> Components by Category</h3><div id="pt-cats"></div></div>
+                        <div class="an-section"><h3 class="an-section-title"><i class="ph ph-globe-hemisphere-west"></i> Country Distribution</h3><div id="pt-countries"></div></div>
+                    </div>
+                    <div class="an-grid-2">
+                        <div class="an-section"><h3 class="an-section-title"><i class="ph ph-factory"></i> Top Manufacturers</h3><div id="pt-mfrs"></div></div>
+                        <div class="an-section"><h3 class="an-section-title"><i class="ph ph-check-circle"></i> Field Completeness</h3><div id="pt-fields"></div></div>
+                    </div>
+                    <div class="an-section"><h3 class="an-section-title"><i class="ph ph-shield-check"></i> NDAA / Compliance by Category</h3><div id="pt-ndaa"></div></div>
+                </div>
+
+                <!-- INTEL -->
+                <div class="an-panel" id="panel-intel">
+                    <div class="an-stats" id="in-stats"></div>
+                    <div class="an-section"><h3 class="an-section-title"><i class="ph ph-calendar-blank"></i> Article Volume (6 months)</h3><div id="in-timeline"></div></div>
+                    <div class="an-grid-2">
+                        <div class="an-section"><h3 class="an-section-title"><i class="ph ph-newspaper"></i> Sources</h3><div id="in-sources"></div></div>
+                        <div class="an-section"><h3 class="an-section-title"><i class="ph ph-buildings"></i> Most Mentioned Companies</h3><div id="in-cos"></div></div>
+                    </div>
+                    <div class="an-grid-2">
+                        <div class="an-section"><h3 class="an-section-title"><i class="ph ph-flag-banner"></i> DoD Programs</h3><div id="in-progs"></div></div>
+                        <div class="an-section"><h3 class="an-section-title"><i class="ph ph-tag"></i> Trending Tags</h3><div id="in-tags"></div></div>
+                    </div>
+                </div>
+
+                <!-- USER SIGNALS -->
+                <div class="an-panel" id="panel-users">
+                    <div class="an-stats" id="us-stats"></div>
+                    <div class="an-grid-2">
+                        <div class="an-section">
+                            <h3 class="an-section-title"><i class="ph ph-magnifying-glass"></i> Search Queries</h3>
+                            <p style="font-size:11px;color:var(--an-text-muted);margin:-8px 0 12px">Direct demand signals — what people are looking for</p>
+                            <div id="us-queries"></div>
+                        </div>
+                        <div class="an-section">
+                            <h3 class="an-section-title"><i class="ph ph-x-circle"></i> Zero-Result Searches</h3>
+                            <p style="font-size:11px;color:var(--an-text-muted);margin:-8px 0 12px">Unmet demand — what to add next</p>
+                            <div id="us-zeros"></div>
+                        </div>
+                    </div>
+                    <div class="an-grid-2">
+                        <div class="an-section"><h3 class="an-section-title"><i class="ph ph-funnel"></i> Category Interest</h3><div id="us-cats"></div></div>
+                        <div class="an-section"><h3 class="an-section-title"><i class="ph ph-path"></i> Daily Activity</h3><div id="us-daily"></div></div>
+                    </div>
+                </div>
+
+                <!-- UAS LANDSCAPE -->
+                <div class="an-panel" id="panel-landscape">
+                    <div class="an-stats" id="ls-stats"></div>
+                    <div class="an-grid-2">
+                        <div class="an-section">
+                            <h3 class="an-section-title"><i class="ph ph-trend-up"></i> Emerging Themes</h3>
+                            <p style="font-size:11px;color:var(--an-text-muted);margin:-8px 0 12px">Cross-referenced from intel + user searches + component trends</p>
+                            <div id="ls-themes"></div>
+                        </div>
+                        <div class="an-section">
+                            <h3 class="an-section-title"><i class="ph ph-crosshair"></i> Demand vs Supply</h3>
+                            <p style="font-size:11px;color:var(--an-text-muted);margin:-8px 0 12px">Where interest outpaces coverage</p>
+                            <div id="ls-demand"></div>
+                        </div>
+                    </div>
+                    <div class="an-section"><h3 class="an-section-title"><i class="ph ph-map-trifold"></i> Market Intelligence</h3><div id="ls-market"></div></div>
+                </div>
+
+                <div class="an-footer">AI Wingman Analytics · No cookies · No PII · No fingerprinting · Self-hosted<br><span class="teal">Buddy up.</span></div>
+            </div>
         </main>
     </div>
 
-    <script>
-    const API_BASE = '/.netlify/functions/analytics';
-    let currentSurface = 'handbook';
-
-    function switchSurface(surface, btn) {
-        currentSurface = surface;
-        document.querySelectorAll('.surface-tab').forEach(t => t.classList.remove('active'));
-        btn.classList.add('active');
-        loadDashboard();
-    }
-
-    async function loadDashboard() {
-        const days = document.getElementById('periodSelect').value;
-        const container = document.getElementById('dashboardContent');
-        container.innerHTML = '<div class="empty-state"><i class="ph ph-circle-notch"></i><div>Loading...</div></div>';
-
-        try {
-            const res = await fetch(`${API_BASE}?key=forge-admin-2026&surface=${currentSurface}&range=${days}`);
-            if (!res.ok) throw new Error(`HTTP ${res.status}`);
-            const data = await res.json();
-            
-            if (currentSurface === 'handbook') {
-                renderHandbook(container, data, days);
-            } else {
-                renderForge(container, data, days);
-            }
-        } catch (err) {
-            container.innerHTML = `
-                <div class="empty-state">
-                    <i class="ph ph-cloud-slash"></i>
-                    <div style="font-size: 16px; margin-bottom: 8px;">No data yet</div>
-                    <div style="max-width: 400px; margin: 0 auto;">
-                        Analytics just went live. Visit <a href="https://nvmilldoitmyself.com" target="_blank" style="color: var(--accent);">the Handbook</a> 
-                        or <a href="/builder/" style="color: var(--accent);">the Builder</a> to generate your first events.
-                        <br><br>
-                        <span style="font-family: 'JetBrains Mono'; font-size: 11px; opacity: 0.5;">${err.message}</span>
-                    </div>
-                </div>`;
-        }
-    }
-
-    function statCard(label, value, sub, warn) {
-        return `<div class="stat-card" ${warn ? 'style="border-left-color: #ff6b6b;"' : ''}>
-            <div class="stat-value" ${warn ? 'style="color: #ff6b6b;"' : ''}>${value}</div>
-            <div class="stat-label">${label}</div>
-            ${sub ? `<div class="stat-sub">${sub}</div>` : ''}
-        </div>`;
-    }
-
-    function barRow(label, value, max, sub, warn) {
-        const pct = max > 0 ? (value / max) * 100 : 0;
-        return `<div class="bar-row">
-            <div class="bar-header">
-                <span class="bar-label">${label}</span>
-                <span class="bar-value" ${warn ? 'style="color: #ff6b6b;"' : ''}>${value.toLocaleString()}</span>
-            </div>
-            <div class="bar-track"><div class="bar-fill ${warn ? 'warn' : ''}" style="width: ${pct}%"></div></div>
-            ${sub ? `<div class="bar-sub">${sub}</div>` : ''}
-        </div>`;
-    }
-
-    function renderHandbook(el, data, days) {
-        const t = data.totals || {};
-        const daily = data.daily || {};
-        const daysWithData = Object.keys(daily).length;
-        const totalViews = Object.values(daily).reduce((a, d) => a + (d.count || 0), 0);
-        const recent = data.recentQueries || [];
-        const cats = t.cats || {};
-        const catEntries = Object.entries(cats).sort((a,b) => b[1]-a[1]).slice(0,10);
-        const maxCat = Math.max(...catEntries.map(e => e[1]), 1);
-
-        el.innerHTML = `
-            <div class="analytics-grid">
-                ${statCard('Total Queries', (t.queries || 0).toLocaleString(), 'all time')}
-                ${statCard('Image Queries', (t.imageQueries || 0).toLocaleString())}
-                ${statCard('Sessions', (data.thisMonth?.sessions || 0).toLocaleString(), 'this month')}
-                ${statCard('Days with Data', daysWithData, `of ${days} requested`)}
-            </div>
-            <div class="two-col">
-                <div class="section-card">
-                    <h3 class="section-title"><i class="ph ph-tag"></i> Top Categories</h3>
-                    ${catEntries.length > 0
-                        ? catEntries.map(([cat, n]) => barRow(cat, n, maxCat)).join('')
-                        : '<div style="color: var(--text-muted); font-size: 13px;">No category data yet</div>'}
-                </div>
-                <div class="section-card">
-                    <h3 class="section-title"><i class="ph ph-chat-text"></i> Recent Queries</h3>
-                    ${recent.length > 0
-                        ? recent.slice(0,15).map(q => `<div style="padding:4px 0;border-bottom:1px solid var(--border);font-size:12px;">
-                            <span style="opacity:0.5;">${q.cat || '?'}</span> ${(q.q||'').substring(0,80)}
-                          </div>`).join('')
-                        : '<div style="color: var(--text-muted); font-size: 13px;">No queries yet</div>'}
-                </div>
-            </div>
-            <div class="analytics-footer">
-                AI Wingman Analytics v1.0 — Self-hosted on Netlify · No cookies · No PII
-                <br><span style="color: var(--accent);">Buddy up.</span>
-            </div>`;
-    }
-
-    function renderForge(el, data, days) {
-        const t = data.totals || {};
-        const daily = data.daily || {};
-        const daysWithData = Object.keys(daily).length;
-        const recent = data.recentQueries || [];
-        const cats = t.cats || {};
-        const catEntries = Object.entries(cats).sort((a,b) => b[1]-a[1]).slice(0,10);
-        const maxCat = Math.max(...catEntries.map(e => e[1]), 1);
-        const avgTurns = data.thisMonth?.avgTurns || 0;
-
-        el.innerHTML = `
-            <div class="analytics-grid">
-                ${statCard('Total Queries', (t.queries || 0).toLocaleString(), 'all time')}
-                ${statCard('Image Queries', (t.imageQueries || 0).toLocaleString())}
-                ${statCard('Sessions', (data.thisMonth?.sessions || 0).toLocaleString(), 'this month')}
-                ${statCard('Avg Turns/Session', avgTurns)}
-                ${statCard('Days with Data', daysWithData, `of ${days} requested`)}
-            </div>
-            <div class="two-col">
-                <div class="section-card">
-                    <h3 class="section-title"><i class="ph ph-tag"></i> Query Categories</h3>
-                    ${catEntries.length > 0
-                        ? catEntries.map(([cat, n]) => barRow(cat, n, maxCat)).join('')
-                        : '<div style="color: var(--text-muted); font-size: 13px;">No category data yet</div>'}
-                </div>
-                <div class="section-card">
-                    <h3 class="section-title"><i class="ph ph-chat-text"></i> Recent Queries</h3>
-                    ${recent.length > 0
-                        ? recent.slice(0,15).map(q => `<div style="padding:4px 0;border-bottom:1px solid var(--border);font-size:12px;">
-                            <span style="opacity:0.5;">${q.cat || '?'}</span> ${q.img ? '🖼 ' : ''}${(q.q||'').substring(0,80)}
-                          </div>`).join('')
-                        : '<div style="color: var(--text-muted); font-size: 13px;">No queries yet</div>'}
-                </div>
-            </div>
-            <div class="analytics-footer">
-                AI Wingman Analytics v1.0 — Self-hosted on Netlify · No cookies · No PII
-                <br><span style="color: var(--accent);">Buddy up.</span>
-            </div>`;
-    }
-
-    // Load on page ready
-    loadDashboard();
-    </script>
-
-<!-- AI Wingman Analytics v1.0 — Forge — No cookies, no PII -->
 <script>
-(function(){var E='https://nvmilldoitmyself.com/.netlify/functions/analytics-ingest',S='sess_'+crypto.randomUUID().replace(/-/g,'').slice(0,16),q=[],t=null,aid=null,ff=true;function r(){try{var z=Intl.DateTimeFormat().resolvedOptions().timeZone;if(z.includes('America'))return'Americas';if(z.includes('Europe'))return'Europe';if(z.includes('Asia')||z.includes('Australia')||z.includes('Pacific'))return'Asia-Pacific';if(z.includes('Africa'))return'Africa'}catch(e){}return'Unknown'}function ev(tp,ac,p,tier){q.push({event_id:crypto.randomUUID(),timestamp:new Date().toISOString(),surface:'forge',event_type:tp,event_action:ac,context:{session_id:S,account_id:aid,geo_region:r(),platform:/Android|iPhone|iPad/i.test(navigator.userAgent)?'mobile':'web',viewport:innerWidth+'x'+innerHeight},payload:p,data_policy:{collection_tier:tier||'anonymous',consent_version:'none',retention_days:tier==='account'?365:90,anonymized:tier!=='account'}});if(q.length>=20)fl();else if(!t)t=setTimeout(fl,5e3)}function fl(){if(t){clearTimeout(t);t=null}if(!q.length)return;var b=q.splice(0);fetch(E,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({events:b}),keepalive:true}).catch(function(){})}addEventListener('visibilitychange',function(){if(document.visibilityState==='hidden')fl()});addEventListener('pagehide',fl);ev('page_view','view',{path:location.pathname,title:document.title});window.__forgeAnalytics={search:function(query,cat,n){ev('search','component_search',{query:query.slice(0,200),category:cat,result_count:n,had_results:n>0});if(n===0)ev('search','no_results',{query:query.slice(0,200),category:cat})},filter:function(cat,f,n){ev('filter','apply_filter',{category:cat,filters:f,filter_names:Object.keys(f),first_filter:ff,result_count:n,zero_results:n===0});ff=false;if(n===0)ev('search','no_results',{query:'',category:cat,filters:f})},view:function(pid,cat,mfr,co,ndaa){ev('page_view','component_detail',{component_pid:pid,category:cat,manufacturer:mfr,country:co,ndaa_compliant:ndaa})},compare:function(a,b,cat){ev('compare','side_by_side',{component_a:a,component_b:b,category:cat})},save:function(pid,cat,ctx){ev('save','bookmark_component',{component_pid:pid,category:cat,save_context:ctx||'bookmark'},aid?'account':'pseudonymous')},setUser:function(id){aid=id},flush:fl}})();
+(function(){'use strict';
+var DB,INTEL=[],COS=[],PROGS=[],PLATS=[],LIVE,GAPS;
+var FN='/.netlify/functions/analytics';
+var KEY=new URLSearchParams(location.search).get('key')||'forge-admin-2026';
+var $=function(id){return document.getElementById(id)};
+var fmt=function(n){return n>=1e6?(n/1e6).toFixed(1)+'M':n>=1e3?(n/1e3).toFixed(1).replace(/\.0$/,'')+'k':String(n)};
+
+function bar(l,v,mx,c,sub){var p=mx>0?Math.round(100*v/mx):0;return'<div class="an-bar"><div class="an-bar-header"><span class="an-bar-label">'+l+'</span><span class="an-bar-value">'+fmt(v)+'</span></div><div class="an-bar-track"><div class="an-bar-fill '+c+'" style="width:'+p+'%"></div></div>'+(sub?'<div style="font-size:10px;color:var(--an-text-muted);margin-top:1px">'+sub+'</div>':'')+'</div>';}
+function sc(v,l,sub,a){return'<div class="an-stat '+(a||'')+'"><div class="an-stat-value">'+v+'</div><div class="an-stat-label">'+l+'</div>'+(sub?'<div class="an-stat-sub">'+sub+'</div>':'')+'</div>';}
+function spark(d,lb){var mx=Math.max.apply(null,d.concat([1]));var h=d.map(function(v,i){return'<div class="an-spark-bar'+(v===0?' empty':'')+'" style="height:'+Math.max(v/mx*100,2)+'%" title="'+(lb?lb[i]:'')+': '+v+'"></div>'}).join('');return'<div class="an-spark">'+h+'</div>'+(lb?'<div class="an-spark-label"><span>'+lb[0]+'</span><span>'+lb[lb.length-1]+'</span></div>':'');}
+function sortObj(o,n){return Object.entries(o).sort(function(a,b){return b[1]-a[1]}).slice(0,n||999);}
+function daysSince(s){try{return Math.floor((new Date()-new Date(s))/864e5)}catch(e){return 999}}
+
+// Tabs
+document.querySelectorAll('.an-tab').forEach(function(tab){tab.addEventListener('click',function(){
+    document.querySelectorAll('.an-tab').forEach(function(t){t.classList.remove('active')});
+    document.querySelectorAll('.an-panel').forEach(function(p){p.classList.remove('active')});
+    tab.classList.add('active');$('panel-'+tab.dataset.tab).classList.add('active');
+});});
+
+async function loadJSON(u){try{var r=await fetch(u);if(!r.ok)throw r.status;return await r.json()}catch(e){return null}}
+
+async function loadAll(){
+    $('an-btn').classList.add('loading');
+    var results=await Promise.all([
+        loadJSON('/static/forge_database.json').then(function(d){return d||loadJSON('/forge_database.json')}),
+        loadJSON('/static/intel_articles.json').then(function(d){return d||loadJSON('/intel_articles.json')}),
+        loadJSON('/static/intel_companies.json').then(function(d){return d||loadJSON('/intel_companies.json')}),
+        loadJSON('/static/intel_programs.json').then(function(d){return d||loadJSON('/intel_programs.json')}),
+        loadJSON('/static/intel_platforms.json').then(function(d){return d||loadJSON('/intel_platforms.json')}),
+    ]);
+    DB=results[0];INTEL=results[1]||[];COS=results[2]||[];PROGS=results[3]||[];PLATS=results[4]||[];
+    try{var r=await fetch(FN+'?key='+KEY+'&range=30');if(r.ok)LIVE=await r.json()}catch(e){}
+    try{var g=await fetch('/static/gap_analysis_latest.json');if(g.ok)GAPS=await g.json()}catch(e){}
+    $('an-btn').classList.remove('loading');
+    $('an-ts').textContent=new Date().toLocaleString();
+    renderAll();
+}
+
+function metrics(){
+    var c=DB?DB.components||{}:{};
+    var tp=0,cats={},countries={},mfrs={},hLink=0,hImg=0,hDesc=0,ndaa=0;
+    Object.entries(c).forEach(function(e){if(!Array.isArray(e[1]))return;cats[e[0]]=e[1].length;tp+=e[1].length;
+        e[1].forEach(function(i){var co=i.country||'';if(co)countries[co]=(countries[co]||0)+1;
+            var m=i.manufacturer||'';if(m)mfrs[m]=(mfrs[m]||0)+1;
+            if(i.link)hLink++;if(i.image_file)hImg++;if(i.description)hDesc++;
+            if(i.ndaa_compliant||i.ndaa||co.toUpperCase()==='USA'||co.toUpperCase()==='US'||co==='United States')ndaa++;
+        });
+    });
+    var sites={},months={},tags={},eCos={},eProgs={};
+    INTEL.forEach(function(a){var s=a.site||'unknown';sites[s]=(sites[s]||0)+1;
+        var d=a.pub_date||a.scraped_date||'';if(d.length>=7)months[d.substring(0,7)]=(months[d.substring(0,7)]||0)+1;
+        var ent=a.entities||{};(ent.tags||[]).forEach(function(t){tags[t]=(tags[t]||0)+1});
+        (ent.companies||[]).forEach(function(c){eCos[c]=(eCos[c]||0)+1});
+        (ent.programs||[]).forEach(function(p){eProgs[p]=(eProgs[p]||0)+1});
+    });
+    return{tp:tp,cats:cats,countries:countries,mfrs:mfrs,hLink:hLink,hImg:hImg,hDesc:hDesc,ndaa:ndaa,sites:sites,months:months,tags:tags,eCos:eCos,eProgs:eProgs,models:(DB?DB.drone_models||[]:[]).length};
+}
+
+function renderAll(){if(!DB){$('panel-overview').innerHTML='<div class="an-empty">Failed to load database</div>';return}
+    var m=metrics();renderOverview(m);renderParts(m);renderIntel(m);renderUsers(m);renderLandscape(m);
+    $('badge-parts').textContent=fmt(m.tp);$('badge-intel').textContent=fmt(INTEL.length);
+}
+
+function renderOverview(m){
+    $('ov-stats').innerHTML=[sc(fmt(m.tp),'Components',Object.keys(m.cats).length+' categories'),sc(fmt(m.models),'Drone Models','','accent-blue'),sc(fmt(INTEL.length),'Intel Articles',Object.keys(m.sites).length+' sources','accent-amber'),sc(fmt(COS.length),'Companies Tracked','','accent-purple'),sc(fmt(PROGS.length),'DoD Programs','','accent-red'),sc(Math.round(100*m.ndaa/m.tp)+'%','NDAA-Aligned',fmt(m.ndaa)+' parts','accent-green')].join('');
+    var sc2=sortObj(m.cats,10),mx=sc2[0]?sc2[0][1]:1;
+    $('ov-db').innerHTML=sc2.map(function(e){return bar(e[0].replace(/_/g,' '),e[1],mx,'teal')}).join('')+(Object.keys(m.cats).length>10?'<div style="font-size:11px;color:var(--an-text-muted);margin-top:8px">+ '+(Object.keys(m.cats).length-10)+' more</div>':'');
+    var ss=sortObj(m.sites),ms=ss[0]?ss[0][1]:1;
+    $('ov-intel').innerHTML=ss.map(function(e){return bar(e[0],e[1],ms,'amber')}).join('');
+    // Searches
+    if(LIVE&&LIVE.recentQueries&&LIVE.recentQueries.length){var qm={};LIVE.recentQueries.forEach(function(q){var k=(q.q||'').toLowerCase().trim();if(!k)return;if(!qm[k])qm[k]={q:q.q,n:0,c:q.cat};qm[k].n++});
+        var sq=Object.values(qm).sort(function(a,b){return b.n-a.n}).slice(0,12),mq=sq[0]?sq[0].n:1;
+        $('ov-search').innerHTML=sq.map(function(q){return bar(q.q,q.n,mq,'blue',q.c?'in '+q.c:'')}).join('');
+    }else{$('ov-search').innerHTML='<div class="an-empty">Search data appears as users query the site</div>'}
+    // Gaps
+    if(GAPS&&GAPS.gaps&&GAPS.gaps.length){var sg=GAPS.gaps.sort(function(a,b){return(b.gap_score||0)-(a.gap_score||0)}).slice(0,8),mg=sg[0]?sg[0].gap_score||sg[0].queries:1;
+        $('ov-gaps').innerHTML=sg.map(function(g){return bar(g.category||g.query||'?',g.queries||g.gap_score||0,mg,'red',(g.priority||'')+' · '+((g.ts_entries||0))+' existing')}).join('');
+    }else{$('ov-gaps').innerHTML='<div class="an-empty">Run gap analyzer to populate</div>'}
+    // Signals
+    var sigs=[];
+    var cr=(m.countries['China']||0)/m.tp,ur=((m.countries['USA']||0)+(m.countries['United States']||0))/m.tp;
+    sigs.push({t:'Supply Chain: '+Math.round(cr*100)+'% China / '+Math.round(ur*100)+'% US',p:fmt(m.countries['China']||0)+' Chinese components of '+fmt(m.tp)+' total. '+fmt(m.ndaa)+' NDAA-aligned. The gap between compliant demand and supply is a key market signal.',l:cr>.5?'high':'medium'});
+    var rm=Object.entries(m.months).sort(function(a,b){return b[0].localeCompare(a[0])}).slice(0,3),rv=rm.reduce(function(s,e){return s+e[1]},0);
+    sigs.push({t:'Intel Velocity: '+rv+' articles (3 months)',p:'Mining '+Object.keys(m.sites).length+' sources. Top tags: '+sortObj(m.tags,5).map(function(e){return e[0]+' ('+e[1]+')'}).join(', ')+'.',l:rv>200?'high':rv>50?'medium':'low'});
+    var tp2=sortObj(m.eProgs,5);if(tp2.length)sigs.push({t:'Active Programs: '+tp2.map(function(e){return e[0]}).join(', '),p:PROGS.length+' tracked. Top: '+tp2.map(function(e){return e[0]+' ('+e[1]+')'}).join(', ')+'.',l:'medium'});
+    $('ov-signals').innerHTML=sigs.map(function(s){return'<div class="an-signal-card" style="border-left-color:var(--an-'+(s.l==='high'?'red':s.l==='medium'?'amber':'teal')+')"><h5>'+s.t+' <span class="an-signal '+s.l+'">'+s.l.toUpperCase()+'</span></h5><p>'+s.p+'</p></div>'}).join('');
+}
+
+function renderParts(m){
+    $('pt-stats').innerHTML=[sc(fmt(m.tp),'Total Components'),sc(Object.keys(m.cats).length,'Categories','','accent-blue'),sc(Object.keys(m.mfrs).length,'Manufacturers','','accent-purple'),sc(Object.keys(m.countries).length,'Countries','','accent-green'),sc(Math.round(100*m.hLink/m.tp)+'%','Has Source Link',fmt(m.hLink),'accent-amber'),sc(Math.round(100*m.hImg/m.tp)+'%','Has Image',fmt(m.hImg),'')].join('');
+    var sc2=sortObj(m.cats),mx=sc2[0]?sc2[0][1]:1;
+    $('pt-cats').innerHTML=sc2.map(function(e){return bar(e[0].replace(/_/g,' '),e[1],mx,'teal')}).join('');
+    var cc=sortObj(m.countries,15),mc=cc[0]?cc[0][1]:1;
+    $('pt-countries').innerHTML=cc.map(function(e){var c=e[0]==='China'?'red':(e[0]==='USA'||e[0]==='United States')?'blue':e[0]==='Ukraine'?'amber':'teal';return bar(e[0],e[1],mc,c)}).join('');
+    var mm=sortObj(m.mfrs,15),mxm=mm[0]?mm[0][1]:1;
+    $('pt-mfrs').innerHTML=mm.map(function(e){return bar(e[0],e[1],mxm,'purple')}).join('');
+    // Field completeness
+    var fields=['description','link','image_file','tags','schema_data','country','compliance','approx_price'];
+    var comps=DB.components||{};
+    var fills=fields.map(function(f){var filled=0,total=0;Object.values(comps).forEach(function(items){if(!Array.isArray(items))return;items.forEach(function(i){total++;if(i[f]&&String(i[f])!=='')filled++})});var p=total?Math.round(100*filled/total):0;return{f:f.replace(/_/g,' '),filled:filled,total:total,p:p}}).sort(function(a,b){return b.p-a.p});
+    $('pt-fields').innerHTML=fills.map(function(f){return bar(f.f,f.p,100,f.p>90?'green':f.p>60?'amber':'red',fmt(f.filled)+' / '+fmt(f.total))}).join('');
+    // NDAA table
+    var rows=sortObj(m.cats,16);
+    var h='<table class="an-table"><thead><tr><th>Category</th><th>Total</th><th>US/Ally</th><th>China</th><th>NDAA %</th></tr></thead><tbody>';
+    rows.forEach(function(e){var cat=e[0],items=comps[cat]||[];var us=0,cn=0,nd=0;
+        items.forEach(function(i){var c=(i.country||'').toLowerCase();if(c.includes('china')||c.includes('hong kong'))cn++;else if(c.includes('us')||c==='united states'||c.includes('ukraine')||c.includes('australia')||c.includes('israel')||c.includes('germany'))us++;if(i.ndaa_compliant||i.ndaa||c.includes('us')||c==='united states')nd++});
+        var p=items.length?Math.round(100*nd/items.length):0;
+        h+='<tr><td>'+cat.replace(/_/g,' ')+'</td><td class="mono">'+items.length+'</td><td class="mono green">'+us+'</td><td class="mono red">'+cn+'</td><td class="mono '+(p>30?'green':p>10?'amber':'red')+'">'+p+'%</td></tr>'});
+    h+='</tbody></table>';$('pt-ndaa').innerHTML=h;
+}
+
+function renderIntel(m){
+    var dated=INTEL.filter(function(a){return a.pub_date&&a.pub_date.length>=7});
+    var newest=dated.sort(function(a,b){return b.pub_date.localeCompare(a.pub_date)})[0];
+    var fresh=newest?daysSince(newest.pub_date):'—';
+    $('in-stats').innerHTML=[sc(fmt(INTEL.length),'Articles'),sc(Object.keys(m.sites).length,'Sources','','accent-blue'),sc(fmt(COS.length),'Companies','','accent-purple'),sc(fmt(PROGS.length),'Programs','','accent-red'),sc(fresh==='—'?'—':fresh+'d','Data Freshness',newest?'Latest: '+newest.pub_date:'',fresh<=3?'accent-green':'accent-amber'),sc(Object.keys(m.tags).length,'Tags','','')].join('');
+    // Timeline
+    var mos={};var now=new Date();for(var i=5;i>=0;i--){var d=new Date(now.getFullYear(),now.getMonth()-i,1);mos[d.toISOString().substring(0,7)]=0}
+    dated.forEach(function(a){var k=a.pub_date.substring(0,7);if(k in mos)mos[k]++});
+    var mk=Object.keys(mos).sort(),mv=mk.map(function(k){return mos[k]});
+    var ml=mk.map(function(k){var p=k.split('-');return['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'][parseInt(p[1])-1]+' '+p[0].slice(2)});
+    $('in-timeline').innerHTML=spark(mv,ml);
+    var ss=sortObj(m.sites),ms=ss[0]?ss[0][1]:1;$('in-sources').innerHTML=ss.map(function(e){return bar(e[0],e[1],ms,'amber')}).join('');
+    var ec=sortObj(m.eCos,12),me=ec[0]?ec[0][1]:1;$('in-cos').innerHTML=ec.map(function(e){return bar(e[0],e[1],me,'purple')}).join('');
+    var ep=sortObj(m.eProgs),mp=ep[0]?ep[0][1]:1;$('in-progs').innerHTML=ep.map(function(e){return bar(e[0],e[1],mp,'red')}).join('');
+    var et=sortObj(m.tags,15),mt=et[0]?et[0][1]:1;$('in-tags').innerHTML=et.map(function(e){return bar(e[0],e[1],mt,'teal')}).join('');
+}
+
+function renderUsers(){
+    if(!LIVE){$('us-stats').innerHTML='';['us-queries','us-zeros','us-cats','us-daily'].forEach(function(id){$(id).innerHTML='<div class="an-empty">Live analytics unavailable — connect the analytics function to see user behavior</div>'});return}
+    var tot=LIVE.totals||{},daily=LIVE.daily||{},queries=LIVE.recentQueries||[],sess=LIVE.thisMonth||{};
+    $('us-stats').innerHTML=[sc(fmt(tot.queries||0),'Total Queries'),sc(fmt(tot.sessions||0),'Sessions','','accent-blue'),sc(fmt(tot.imageQueries||0),'Image Queries','','accent-purple'),sc(sess.avgTurns||'—','Avg Turns','','accent-green'),sc(Object.keys(daily).length,'Active Days','','accent-amber'),sc(queries.length,'Recent','last 50','')].join('');
+    $('badge-users').innerHTML='<span class="an-pulse"></span> '+fmt(tot.queries||0);
+    // Queries
+    var qm={};queries.forEach(function(q){var k=(q.q||'').toLowerCase().trim();if(!k)return;if(!qm[k])qm[k]={q:q.q,n:0,c:q.cat};qm[k].n++});
+    var sq=Object.values(qm).sort(function(a,b){return b.n-a.n}).slice(0,15),mq=sq[0]?sq[0].n:1;
+    $('us-queries').innerHTML=sq.length?sq.map(function(q){return bar(q.q,q.n,mq,'blue',q.c||'general')}).join(''):'<div class="an-empty">No queries yet</div>';
+    $('us-zeros').innerHTML='<div class="an-empty">Zero-result signals populate as users search — each is a cue to add missing data</div>';
+    var cats=tot.cats||{},sc2=sortObj(cats,10),mc=sc2[0]?sc2[0][1]:1;
+    $('us-cats').innerHTML=sc2.length?sc2.map(function(e){return bar(e[0],e[1],mc,'teal')}).join(''):'<div class="an-empty">Category data builds as users interact</div>';
+    var dk=Object.keys(daily).sort(),dv=dk.map(function(k){return daily[k]?daily[k].count||0:0}),dl=dk.map(function(k){return k.substring(5)});
+    $('us-daily').innerHTML=dk.length?spark(dv,dl):'<div class="an-empty">Daily activity appears after sessions</div>';
+}
+
+function renderLandscape(m){
+    $('ls-stats').innerHTML=[sc(Object.keys(m.eCos).length,'Intel Companies','','accent-purple'),sc(Object.keys(m.eProgs).length,'Programs','','accent-red'),sc(Object.keys(m.tags).length,'Topic Tags','','accent-amber'),sc(Object.keys(m.countries).length,'Mfg Countries','','accent-blue')].join('');
+    // Themes
+    var st=sortObj(m.tags,12);
+    var comps=DB.components||{};
+    $('ls-themes').innerHTML=st.map(function(e){
+        var tag=e[0],n=e[1];
+        var rel=Object.keys(comps).filter(function(c){return c.toLowerCase().includes(tag.toLowerCase())||tag.toLowerCase().includes(c.replace(/_/g,' ').toLowerCase())});
+        var txt=rel.length?'Maps to: '+rel.map(function(c){return c.replace(/_/g,' ')}).join(', '):'No direct DB mapping — potential new category';
+        return'<div class="an-signal-card" style="border-left-color:var(--an-'+(rel.length?'teal':'amber')+')"><h5>'+tag+' <span style="font-family:var(--an-mono);font-size:11px;color:var(--an-text-muted);margin-left:8px">'+n+' mentions</span></h5><p>'+txt+'</p></div>'
+    }).join('');
+    // Demand vs supply
+    var map={'counter-UAS':'counter_uas','thermal':'thermal_cameras','ELRS':'receivers','autonomy':'swarm_software','mesh':'mesh_radios','lidar':'lidar','FPV':'fpv_cameras','ESC':'escs','swarming':'swarm_software','attritable':'frames','SLAM':null,'EW':null,'AI':null,'NDAA':null,'one-way attack':null};
+    var rows=Object.entries(map).map(function(e){var tag=e[0],cat=e[1],mn=m.tags[tag]||0,sup=cat&&Array.isArray(comps[cat])?comps[cat].length:0;
+        return{tag:tag,mn:mn,cat:cat||'—',sup:sup,gap:mn>0&&sup===0?'high':mn>sup?'medium':'low'}}).filter(function(r){return r.mn>0}).sort(function(a,b){return b.mn-a.mn});
+    var h='<table class="an-table"><thead><tr><th>Topic</th><th>Intel</th><th>DB Category</th><th>Supply</th><th>Gap</th></tr></thead><tbody>';
+    rows.forEach(function(r){h+='<tr><td>'+r.tag+'</td><td class="mono amber">'+r.mn+'</td><td>'+(r.cat==='—'?'<span class="red">unmapped</span>':r.cat.replace(/_/g,' '))+'</td><td class="mono teal">'+(r.sup||'—')+'</td><td><span class="an-signal '+r.gap+'">'+r.gap.toUpperCase()+'</span></td></tr>'});
+    h+='</tbody></table>';$('ls-demand').innerHTML=h;
+    // Market summary
+    var cn=m.countries['China']||0,us=(m.countries['USA']||0)+(m.countries['United States']||0),ua=m.countries['Ukraine']||0;
+    var tc=sortObj(m.eCos,5),tpr=sortObj(m.eProgs,3),tt=sortObj(m.tags,5);
+    $('ls-market').innerHTML='<div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">'+
+        '<div class="an-signal-card" style="border-left-color:var(--an-blue)"><h5>Supply Chain</h5><p>'+fmt(cn)+' Chinese ('+Math.round(100*cn/m.tp)+'%), '+fmt(us)+' US ('+Math.round(100*us/m.tp)+'%), '+fmt(ua)+' Ukrainian ('+Math.round(100*ua/m.tp)+'%). '+Object.keys(m.countries).length+' countries across '+fmt(m.tp)+' parts.</p></div>'+
+        '<div class="an-signal-card" style="border-left-color:var(--an-purple)"><h5>Industry Movers</h5><p>'+tc.map(function(e){return'<strong>'+e[0]+'</strong> ('+e[1]+')'}).join(', ')+'. Across '+INTEL.length+' articles.</p></div>'+
+        '<div class="an-signal-card" style="border-left-color:var(--an-red)"><h5>Defense Programs</h5><p>'+tpr.map(function(e){return'<strong>'+e[0]+'</strong> ('+e[1]+' mentions)'}).join(', ')+'. '+PROGS.length+' total tracked.</p></div>'+
+        '<div class="an-signal-card" style="border-left-color:var(--an-amber)"><h5>Topic Heat</h5><p>'+tt.map(function(e){return'<strong>'+e[0]+'</strong> ('+e[1]+')'}).join(', ')+'. Dominant threads across all sources.</p></div></div>';
+}
+
+window.refreshAll=loadAll;loadAll();
+})();
+</script>
+
+<!-- Enhanced Event Tracking — Full User Journey Collector -->
+<script>
+(function(){var E='/.netlify/functions/analytics',S='sess_'+crypto.randomUUID().replace(/-/g,'').slice(0,16),q=[],t=null,aid=null,ff=true,ps=Date.now(),ms=0,ix=0;
+function rg(){try{var z=Intl.DateTimeFormat().resolvedOptions().timeZone;if(z.includes('America'))return'Americas';if(z.includes('Europe'))return'Europe';if(z.includes('Asia')||z.includes('Australia')||z.includes('Pacific'))return'Asia-Pacific';if(z.includes('Africa'))return'Africa'}catch(e){}return'Unknown'}
+function ev(tp,ac,p,tier){q.push({event_id:crypto.randomUUID(),timestamp:new Date().toISOString(),surface:'forge',event_type:tp,event_action:ac,context:{session_id:S,account_id:aid,geo_region:rg(),platform:/Android|iPhone|iPad/i.test(navigator.userAgent)?'mobile':'web',viewport:innerWidth+'x'+innerHeight,referrer:document.referrer||'direct',page:location.pathname},payload:p,data_policy:{collection_tier:tier||'anonymous',consent_version:'none',retention_days:tier==='account'?365:90,anonymized:tier!=='account'}});if(q.length>=20)fl();else if(!t)t=setTimeout(fl,5e3)}
+function fl(){if(t){clearTimeout(t);t=null}if(!q.length)return;var b=q.splice(0);navigator.sendBeacon?navigator.sendBeacon(E,JSON.stringify({type:'batch',events:b})):fetch(E,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({type:'batch',events:b}),keepalive:true}).catch(function(){})}
+ev('page_view','view',{path:location.pathname,title:document.title});
+var st=null;addEventListener('scroll',function(){var h=document.documentElement.scrollHeight-innerHeight;if(h>0){var p=Math.round(100*scrollY/h);if(p>ms)ms=p}if(st)clearTimeout(st);st=setTimeout(function(){ev('engagement','scroll_depth',{depth_pct:ms,path:location.pathname})},2e3)},{passive:true});
+addEventListener('click',function(e){ix++;var el=e.target.closest('a,button,[data-track]');if(!el)return;ev('interaction','click',{label:(el.dataset.track||el.textContent.trim()).substring(0,50),href:(el.href||'').substring(0,200),element:el.tagName.toLowerCase(),is_navigation:!!el.closest('.sidebar-menu,.an-tabs'),path:location.pathname});if(el.hostname&&el.hostname!==location.hostname)ev('interaction','outbound_link',{url:el.href.substring(0,200),text:el.textContent.trim().substring(0,80)})},{passive:true});
+function end(){ev('engagement','page_exit',{duration_sec:Math.round((Date.now()-ps)/1e3),max_scroll_pct:ms,interactions:ix,path:location.pathname});fl()}
+addEventListener('visibilitychange',function(){if(document.visibilityState==='hidden')end()});addEventListener('pagehide',end);
+window.__forgeAnalytics={search:function(query,cat,n){ev('search','component_search',{query:query.slice(0,200),category:cat,result_count:n,had_results:n>0});if(n===0)ev('search','no_results',{query:query.slice(0,200),category:cat})},filter:function(cat,f,n,isFirst){ev('filter','apply_filter',{category:cat,filters:f,filter_names:Object.keys(f),first_filter:isFirst!==undefined?isFirst:ff,result_count:n,zero_results:n===0});ff=false;if(n===0)ev('search','no_results',{query:'',category:cat,filters:f})},view:function(pid,cat,mfr,co,ndaa){ev('page_view','component_detail',{component_pid:pid,category:cat,manufacturer:mfr,country:co,ndaa_compliant:ndaa})},compare:function(a,b,cat){ev('compare','side_by_side',{component_a:a,component_b:b,category:cat})},save:function(pid,cat,ctx){ev('save','bookmark_component',{component_pid:pid,category:cat,save_context:ctx||'bookmark'},aid?'account':'pseudonymous')},buildConfig:function(parts,cost,sz){ev('engagement','build_configured',{part_count:parts.length,categories:parts.map(function(p){return p.category}),total_cost:cost,size_class:sz})},intelView:function(id,src,tags){ev('page_view','intel_article',{article_id:id,source:src,tags:tags})},platformView:function(name,type,co){ev('page_view','platform_detail',{platform:name,type:type,country:co})},aiQuery:function(query,cat,mode,img){ev('query','ai_wingman',{q:query.slice(0,200),cat:cat,mode:mode,img:img})},setUser:function(id){aid=id},flush:fl}})();
 </script>
 </body>
 </html>
