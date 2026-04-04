@@ -73,7 +73,8 @@ a{color:var(--blue);text-decoration:none}a:hover{text-decoration:underline}
 .card-body.expanded{max-height:500px !important}
 .card-chevron.open{transform:rotate(90deg)}
 .g-chevron.open{transform:rotate(90deg)}
-.flag-group.open .flag-group-body{max-height:2000px}
+.flag-group .flag-group-body{display:none}
+.flag-group.open .flag-group-body{display:block}
 .flag-group-header:hover{background:var(--card-hi)}
 .flag-card .meta{display:flex;gap:6px;align-items:center;margin-bottom:4px;flex-wrap:wrap}
 .flag-card .title{font-size:12px;font-weight:500;color:var(--text);line-height:1.4}
@@ -706,7 +707,7 @@ function renderFlags() {
           </div>
           <span class="g-chevron" style="color:var(--text-d);font-size:14px;transition:transform .2s">▸</span>
         </div>
-        <div class="flag-group-body" style="max-height:0;overflow:hidden;transition:max-height .3s ease">
+        <div class="flag-group-body">
           <div style="padding:0 10px 10px;display:flex;flex-direction:column;gap:3px">
             ${gFlags.map(f => {
               const m = FLAG_META[f.flag_type] || {label:"Intel",badge:"badge-amber",sev:f.severity||"info",icon:"?"};
@@ -725,24 +726,26 @@ function renderFlags() {
       </div>`;
     }).join("");
 
-    // Click handlers for group headers (expand/collapse)
-    list.querySelectorAll("[data-toggle='group']").forEach(header => {
-      header.addEventListener("click", (e) => {
+    // Single event delegation — bulletproof on mobile
+    list.onclick = function(e) {
+      // Check if tapped a group header
+      const header = e.target.closest("[data-toggle='group']");
+      if (header) {
+        e.preventDefault();
         const group = header.closest(".flag-group");
-        group.classList.toggle("open");
+        if (group) group.classList.toggle("open");
         const chev = header.querySelector(".g-chevron");
         if (chev) chev.classList.toggle("open");
-      });
-    });
-
-    // Click handlers for individual flags inside groups
-    list.querySelectorAll(".flag-card[data-id]").forEach(card => {
-      card.addEventListener("click", (e) => {
+        return;
+      }
+      // Check if tapped a flag card
+      const card = e.target.closest(".flag-card[data-id]");
+      if (card) {
         e.stopPropagation();
         selectedFlag = FLAGS.find(f => f.id === card.dataset.id);
-        renderFlagDetail();
-      });
-    });
+        if (selectedFlag) renderFlagDetail();
+      }
+    };
     return;
   }
 
