@@ -1,5 +1,19 @@
 # Changelog
 
+## [5 New Component Categories] - 2026-04-04
+
+### Added
+- **c2_datalinks** (13 entries) — uAvionix microLink/muLTElink, Silvus SC4200EP/SL5200, CubePilot Herelink, Ultra ADSI gateway, DTC BluSDR/SOL8SDR, L3Harris AMORPHOUS swarm C2, XTEND XOS, Shield AI Hivemind, PDW Blackwave, Kutta KGS
+- **ew_systems** (14 entries) — DroneShield DroneGun Tactical/Mk4/DroneSentry/RfPatrol, Flex Force Dronebuster, D-Fend EnforceAir2, NT Service EDM4S SkyWiper, infiniDome GPSdome, Aselsan KORAL, Raytheon NGJ-MB, Krasukha-4, Murmansk-BN, Pole-21, GIDS Spider-AD
+- **navigation_pnt** (12 entries) — SBG Pulse-40, Inertial Labs VINS/M-AJ-QUATRO, Advanced Nav Boreas D90/Certus Evo, Honeywell HGuide o480, Infleqtion Tiqker/quantum IMU, Q-CTRL Ironstone Opal, ModalAI VIO, Teledyne DVL+INS, Anello photonic INS
+- **ai_accelerators** (13 entries) — Hailo-8/10H, Ambarella CV5/CV7, Google Coral, Kneron KL720, DeepX DX-M1, NVIDIA Jetson Orin Nano, Qualcomm RB5, Intel Movidius, Kinara Ara-2, Axelera Metis (214 TOPS), Syntiant NDP250
+- **ground_control_stations** (13 entries) — Inspired Flight GS-ONE, QGroundControl, Mission Planner, MAVProxy, MotioNew M10, UgCS, Winmate rugged, GA-ASI Advanced Cockpit, ARK Just a Jetson, UAV Nav VECTOR, Veronte, Auterion Mission Control, VOTIX DroneOS
+- 5 new categories added to `build_static.py` COMPONENT_CATEGORIES for data sync persistence
+
+### Changed
+- Total components: 3510 → 3575 (65 new entries across 5 categories)
+- Total categories: 26 → 31
+
 ## [Data Quality Gate] - 2026-04-02
 
 ### Added

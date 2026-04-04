@@ -453,6 +453,8 @@ def sync_handbook_data():
         'stacks', 'video_transmitters', 'mesh_radios',
         'companion_computers', 'integrated_stacks', 'counter_uas',
         'esad', 'lidar', 'sensors', 'thermal_cameras',
+        'c2_datalinks', 'ew_systems', 'navigation_pnt',
+        'ai_accelerators', 'ground_control_stations',
     ]
 
     for cat in COMPONENT_CATEGORIES:
