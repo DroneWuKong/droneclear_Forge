@@ -1277,21 +1277,21 @@ function selectRegion(slug) {
     </div>
 
     <div style="display:flex;flex-direction:column;gap:10px;margin-bottom:14px">
-      <div onclick="this.querySelector('.card-body').classList.toggle('expanded');this.querySelector('.card-chevron').classList.toggle('open')" style="background:var(--surface);border-radius:8px;padding:10px;border-left:3px solid ${data.color};cursor:pointer;transition:background .12s">
+      <div data-toggle="info" style="background:var(--surface);border-radius:8px;padding:10px;border-left:3px solid ${data.color};cursor:pointer">
         <div style="display:flex;justify-content:space-between;align-items:center">
           <div style="font:600 8px var(--mono);color:${data.color};text-transform:uppercase;letter-spacing:.04em">Key Players</div>
           <span class="card-chevron" style="color:var(--text-d);font-size:12px;transition:transform .2s">▸</span>
         </div>
         <div class="card-body" style="font-size:11px;color:var(--text-s);line-height:1.5;margin-top:3px;max-height:2.8em;overflow:hidden;transition:max-height .25s ease">${data.keyPlayers}</div>
       </div>
-      <div onclick="this.querySelector('.card-body').classList.toggle('expanded');this.querySelector('.card-chevron').classList.toggle('open')" style="background:var(--surface);border-radius:8px;padding:10px;border-left:3px solid ${data.color};cursor:pointer;transition:background .12s">
+      <div data-toggle="info" style="background:var(--surface);border-radius:8px;padding:10px;border-left:3px solid ${data.color};cursor:pointer">
         <div style="display:flex;justify-content:space-between;align-items:center">
           <div style="font:600 8px var(--mono);color:${data.color};text-transform:uppercase;letter-spacing:.04em">Programs & Activity</div>
           <span class="card-chevron" style="color:var(--text-d);font-size:12px;transition:transform .2s">▸</span>
         </div>
         <div class="card-body" style="font-size:11px;color:var(--text-s);line-height:1.5;margin-top:3px;max-height:2.8em;overflow:hidden;transition:max-height .25s ease">${data.programs}</div>
       </div>
-      <div onclick="this.querySelector('.card-body').classList.toggle('expanded');this.querySelector('.card-chevron').classList.toggle('open')" style="background:var(--surface);border-radius:8px;padding:10px;border-left:3px solid ${data.color};cursor:pointer;transition:background .12s">
+      <div data-toggle="info" style="background:var(--surface);border-radius:8px;padding:10px;border-left:3px solid ${data.color};cursor:pointer">
         <div style="display:flex;justify-content:space-between;align-items:center">
           <div style="font:600 8px var(--mono);color:${data.color};text-transform:uppercase;letter-spacing:.04em">Supply Chain Significance</div>
           <span class="card-chevron" style="color:var(--text-d);font-size:12px;transition:transform .2s">▸</span>
@@ -1322,20 +1322,28 @@ function selectRegion(slug) {
   `;
   window.scrollTo({top: 0, behavior: 'smooth'});
 
-  // Make region flags clickable → opens flag detail panel
-  detail.querySelectorAll(".flag-card[data-id]").forEach(card => {
-    card.addEventListener("click", () => {
+  // Event delegation for region flags — bulletproof on mobile
+  detail.onclick = function(e) {
+    const card = e.target.closest(".flag-card[data-id]");
+    if (card) {
       selectedFlag = FLAGS.find(f => f.id === card.dataset.id);
       if (selectedFlag) {
-        // Switch to flags tab and show detail
         document.querySelectorAll(".tab-btn").forEach(b => b.classList.remove("active"));
         document.querySelectorAll(".tab-panel").forEach(p => p.classList.remove("active"));
         document.querySelector('[data-tab="flags"]').classList.add("active");
         document.getElementById("panel-flags").classList.add("active");
         renderFlagDetail();
       }
-    });
-  });
+    }
+    // Info card expand/collapse
+    const cardBody = e.target.closest("[data-toggle='info']");
+    if (cardBody) {
+      const body = cardBody.querySelector(".card-body");
+      const chev = cardBody.querySelector(".card-chevron");
+      if (body) body.classList.toggle("expanded");
+      if (chev) chev.classList.toggle("open");
+    }
+  };
 }
 
 function backToGlobal() {
