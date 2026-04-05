@@ -666,6 +666,7 @@ async function loadRAG() {
     await Promise.all(hbPromises);
   } catch(e) { console.warn('Handbook load skipped:', e.message); }
 
+  buildIDF(); // compute TF-IDF weights now that corpus is loaded
   updateStats();
   updateSourcePills();
   console.log(`RAG loaded: ${ragIndex.length} items, ${handbookChunks.length} handbook chunks in ${Date.now()-t0}ms`);
@@ -714,42 +715,262 @@ function updateStats() {
   el('stat-firmware', ragStats.firmware || '—');
 }
 
-// ─── RAG RETRIEVAL ───────────────────────────────────────────
-function ragSearch(query, maxComponents = 25, maxHandbook = 5) {
+// ─── 1. QUERY EXPANSION — synonym/alias map ───────────────────
+// Maps natural language phrases → canonical search terms
+var QUERY_EXPANSIONS = {
+  // Motor/ESC
+  'won\'t spin': 'motor esc dshot signal',
+  'not spinning': 'motor esc dshot signal',
+  'dead motor': 'motor burnt esc signal dshot',
+  'motor twitching': 'motor esc calibration dshot signal',
+  'motor stutter': 'motor esc dshot rpm filter',
+  'desync': 'esc desync dshot rpm filter betaflight',
+  'esc beeping': 'esc calibration signal arming dshot',
+  // Binding / receiver
+  'won\'t bind': 'receiver bind elrs crossfire sbus protocol',
+  'can\'t bind': 'receiver bind elrs crossfire sbus protocol',
+  'binding': 'receiver elrs crossfire sbus bind protocol',
+  'failsafe': 'receiver failsafe elrs sbus rssi signal lost',
+  'no signal': 'receiver signal rssi elrs crossfire range',
+  'range problems': 'receiver antenna elrs crossfire rssi range',
+  // GPS
+  'toilet bowl': 'gps compass mag calibration declination heading',
+  'no gps fix': 'gps fix satellite m8n m10 antenna',
+  'gps drift': 'gps compass declination heading accuracy',
+  'bad gps': 'gps satellite fix m8n m10 accuracy',
+  // Video
+  'no video': 'vtx camera osd analog digital fpv signal',
+  'static': 'vtx antenna power video signal interference',
+  'osd missing': 'osd msp uart vtx smartaudio configuration',
+  'black screen': 'vtx camera power signal cmos fpv',
+  // Arming
+  'won\'t arm': 'arming flags betaflight inav accelerometer throttle',
+  'can\'t arm': 'arming flags betaflight accelerometer cli status',
+  'arming issue': 'arming flags betaflight msp cli status',
+  // PID / tuning
+  'oscillation': 'pid filter dterm pterm oscillation tune rates',
+  'wobble': 'pid filter oscillation tune rates betaflight',
+  'propwash': 'propwash pid dterm filter rpm betaflight tune',
+  'slow response': 'pid pterm rates expo tune betaflight iterm',
+  'too sensitive': 'pid rates expo betaflight tune sensitivity',
+  // Power
+  'brownout': 'power capacitor brownout voltage battery sag bec',
+  'rebooting': 'brownout capacitor power battery sag reboot',
+  'won\'t power on': 'power short circuit fuse esc battery connection',
+  'voltage sag': 'battery sag internal resistance c-rating lipo',
+  'puffy battery': 'lipo swollen puffy overcharge damage fire hazard',
+  // NDAA / compliance
+  'ndaa': 'ndaa blue uas compliant dji autel section 848',
+  'ndaa compliant': 'ndaa blue uas compliant section 848 chinese',
+  'blue uas': 'blue uas ndaa compliant skydio parrot censys approved',
+  'dod approved': 'ndaa blue uas dod approved section 848 compliant',
+  // Firmware
+  'flashing': 'flash firmware betaflight configurator dfu bootloader',
+  'won\'t flash': 'dfu bootloader driver stm32 zadig flash firmware',
+  'bricked': 'dfu bootloader recovery flash betaflight stm32',
+  'betaflight update': 'betaflight firmware flash update configurator',
+  // Blackbox
+  'blackbox': 'blackbox log betaflight debug flight data recorder',
+  'log analysis': 'blackbox pid analysis rpm filter betaflight log',
+  // Misc
+  'flip on takeoff': 'motor order direction props betaflight motor tab',
+  'drifting': 'accelerometer calibration level trim pid hover',
+  'altitude hold': 'baro barometer altitude hold inav ardupilot',
+  'return to home': 'rth failsafe inav ardupilot gps navigation',
+};
+
+function expandQuery(q) {
+  let expanded = q;
+  const ql = q.toLowerCase();
+  for (const [phrase, expansion] of Object.entries(QUERY_EXPANSIONS)) {
+    if (ql.includes(phrase)) {
+      expanded += ' ' + expansion;
+    }
+  }
+  return expanded;
+}
+
+// ─── 2. TF-IDF SCORING ───────────────────────────────────────
+// IDF is computed once after RAG loads; scores terms by rarity across corpus
+var idfCache = {};
+
+function buildIDF() {
+  if (ragIndex.length === 0) return;
+  const N = ragIndex.length + handbookChunks.length;
+  const df = {};
+  for (const entry of ragIndex) {
+    const seen = new Set(entry.text.split(/\s+/).filter(t => t.length > 2));
+    for (const t of seen) df[t] = (df[t] || 0) + 1;
+  }
+  for (const ch of handbookChunks) {
+    const seen = new Set(ch.text.split(/\s+/).filter(t => t.length > 2));
+    for (const t of seen) df[t] = (df[t] || 0) + 1;
+  }
+  for (const [term, count] of Object.entries(df)) {
+    idfCache[term] = Math.log((N + 1) / (count + 1)) + 1; // smoothed IDF
+  }
+  console.log(`IDF built: ${Object.keys(idfCache).length} terms`);
+}
+
+function tfidfScore(terms, text, name) {
+  let score = 0;
+  const nameLower = (name || '').toLowerCase();
+  for (const t of terms) {
+    const idf = idfCache[t] || 1.5; // default IDF for unseen terms
+    // TF: count occurrences, capped to avoid stuffing
+    const tf = Math.min((text.match(new RegExp(t.replace(/[.*+?^${}()|[\]\\]/g,'\\$&'), 'g')) || []).length, 8);
+    if (tf > 0) score += tf * idf;
+    // Name field bonus — weighted heavily by IDF (rare term in name = very strong signal)
+    if (nameLower.includes(t)) score += 6 * idf;
+  }
+  return score;
+}
+
+// ─── 3. MMR — Maximal Marginal Relevance ─────────────────────
+// Picks results that are relevant but NOT redundant with already-selected results
+// lambda=0.6 balances relevance vs diversity
+function mmrSelect(candidates, k, lambda = 0.6) {
+  if (candidates.length <= k) return candidates;
+  const selected = [];
+  const remaining = [...candidates];
+
+  // Always take the top-scored first
+  selected.push(remaining.shift());
+
+  while (selected.length < k && remaining.length > 0) {
+    let bestIdx = 0;
+    let bestVal = -Infinity;
+
+    for (let i = 0; i < remaining.length; i++) {
+      const relevance = remaining[i].score;
+      // Similarity to already-selected: same cat + similar name = penalized
+      let maxSim = 0;
+      for (const s of selected) {
+        let sim = 0;
+        if (remaining[i].cat === s.cat) sim += 0.4;
+        // Jaccard-ish overlap on text tokens
+        const aTokens = new Set(remaining[i].text.split(/\s+/).slice(0, 30));
+        const bTokens = new Set(s.text.split(/\s+/).slice(0, 30));
+        const inter = [...aTokens].filter(t => bTokens.has(t)).length;
+        const union = new Set([...aTokens, ...bTokens]).size;
+        sim += union > 0 ? inter / union : 0;
+        maxSim = Math.max(maxSim, sim);
+      }
+      const mmrVal = lambda * relevance - (1 - lambda) * maxSim * relevance;
+      if (mmrVal > bestVal) { bestVal = mmrVal; bestIdx = i; }
+    }
+    selected.push(remaining.splice(bestIdx, 1)[0]);
+  }
+  return selected;
+}
+
+// ─── 4. INTENT CLASSIFIER → retrieval routing ────────────────
+var INTENT_PATTERNS = {
+  triage:      /crash|dead|broken|burnt|not work|won'?t|can'?t|fail|smoke|fire|damage|twitching|stutter|beep|reboot|brownout|oscillat|wobble|propwash|flip|drift/i,
+  firmware:    /betaflight|inav|ardupilot|px4|flash|target|cli|configurator|dfu|bootloader|rpm filter|dshot|update|version|bf |esc tool/i,
+  hardware_lookup: /recommend|suggest|which .*(fc|esc|motor|vtx|rx|gps|frame|battery)|best .*(for|under|\$)|compare|vs\.|versus|difference between|alternatives|ndaa|blue uas|compliant/i,
+  tuning:      /pid|rate|expo|tune|filter|setpoint|iterm|pterm|dterm|throttle curve|master|profile|blackbox/i,
+  wiring:      /wire|solder|pad|uart|tx|rx|connect|pinout|diagram|port|plug|connector|short|ground|bec|5v|9v/i,
+  compliance:  /ndaa|blue uas|section 848|chinese|dji|autel|dod|military|procurement|approved|compliant/i,
+  intel:       /news|latest|recent|procurement|contract|defense|military|announcement|2024|2025|2026/i,
+};
+
+function classifyIntent(query) {
   const q = query.toLowerCase();
-  const terms = q.split(/\s+/).filter(t => t.length > 2);
+  const scores = {};
+  for (const [intent, pattern] of Object.entries(INTENT_PATTERNS)) {
+    const matches = (q.match(pattern) || []).length;
+    if (matches > 0) scores[intent] = matches;
+  }
+  // Return sorted intents by match count
+  return Object.entries(scores).sort((a,b) => b[1]-a[1]).map(e => e[0]);
+}
+
+// Route retrieval params by intent
+function intentToParams(intents) {
+  const primary = intents[0] || 'triage';
+  const params = { maxComp: 20, maxHb: 5, lambdaMMR: 0.6 };
+  if (primary === 'triage')          { params.maxComp = 15; params.maxHb = 8;  params.lambdaMMR = 0.5; }
+  if (primary === 'firmware')        { params.maxComp = 25; params.maxHb = 6;  params.lambdaMMR = 0.7; }
+  if (primary === 'hardware_lookup') { params.maxComp = 30; params.maxHb = 4;  params.lambdaMMR = 0.55; }
+  if (primary === 'tuning')          { params.maxComp = 10; params.maxHb = 10; params.lambdaMMR = 0.5; }
+  if (primary === 'wiring')          { params.maxComp = 15; params.maxHb = 8;  params.lambdaMMR = 0.5; }
+  if (primary === 'compliance')      { params.maxComp = 20; params.maxHb = 5;  params.lambdaMMR = 0.6; }
+  if (primary === 'intel')           { params.maxComp = 5;  params.maxHb = 3;  params.lambdaMMR = 0.7; }
+  return params;
+}
+
+// ─── RAG RETRIEVAL — upgraded ────────────────────────────────
+// query: current message
+// contextHistory: last N user messages for conversation-aware retrieval
+function ragSearch(query, maxComponents, maxHandbook, contextHistory) {
+  // ── 4. Conversation-aware: blend current query with recent context
+  var historyTerms = '';
+  if (contextHistory && contextHistory.length > 0) {
+    // Weight recent messages more — last message 100%, previous 50%, before that 25%
+    historyTerms = contextHistory.slice(-3).map((m, i, arr) => {
+      const weight = i === arr.length - 1 ? '' : i === arr.length - 2 ? m + ' ' : '';
+      return weight + m;
+    }).join(' ');
+  }
+  const blendedQuery = query + (historyTerms ? ' ' + historyTerms : '');
+
+  // ── 1. Expand query with synonyms
+  const expandedQuery = expandQuery(blendedQuery);
+
+  // ── 4. Classify intent → routing params
+  const intents = classifyIntent(query); // classify on RAW query only
+  const p = intentToParams(intents);
+  const maxComp = maxComponents !== undefined ? maxComponents : p.maxComp;
+  const maxHb   = maxHandbook  !== undefined ? maxHandbook  : p.maxHb;
+
+  const q = expandedQuery.toLowerCase();
+  const allTerms = q.split(/\s+/).filter(t => t.length > 2);
+  // Deduplicate terms, prioritize rarer ones
+  const terms = [...new Set(allTerms)].sort((a, b) => (idfCache[b] || 1) - (idfCache[a] || 1)).slice(0, 40);
+
   if (terms.length === 0) return '';
 
-  // Score components
-  const scored = ragIndex.map(entry => {
-    let score = 0;
-    for (const t of terms) {
-      if (entry.name && entry.name.toLowerCase().includes(t)) score += 5;
-      if (entry.text.includes(t)) score += 1;
+  // ── 2. TF-IDF scoring on ragIndex
+  const rawScored = ragIndex.map(entry => {
+    const score = tfidfScore(terms, entry.text, entry.name);
+    // Exact full-name match is still a strong bonus
+    if (entry.name && q.includes(entry.name.toLowerCase()) && entry.name.length > 3) {
+      return { ...entry, score: score + 20 };
     }
-    // Exact name match bonus
-    if (entry.name && q.includes(entry.name.toLowerCase())) score += 10;
     return { ...entry, score };
-  }).filter(e => e.score > 0).sort((a, b) => b.score - a.score).slice(0, maxComponents);
+  }).filter(e => e.score > 0).sort((a, b) => b.score - a.score);
 
-  // Score handbook chunks
-  const hScored = handbookChunks.map(ch => {
+  // Take top 3× budget before MMR (need candidates to diversify from)
+  const candidates = rawScored.slice(0, maxComp * 3);
+
+  // ── 3. MMR: pick diverse-yet-relevant subset
+  const scored = mmrSelect(candidates, maxComp, p.lambdaMMR);
+
+  // ── 2. TF-IDF scoring on handbook chunks
+  const rawHScored = handbookChunks.map(ch => {
     let score = 0;
     for (const t of terms) {
-      if (ch.title.toLowerCase().includes(t)) score += 5;
-      const count = (ch.text.match(new RegExp(t, 'g')) || []).length;
-      score += Math.min(count, 5);
+      const idf = idfCache[t] || 1.5;
+      const tf = Math.min((ch.text.match(new RegExp(t.replace(/[.*+?^${}()|[\]\\]/g,'\\$&'), 'g')) || []).length, 10);
+      if (tf > 0) score += tf * idf;
+      if (ch.title.toLowerCase().includes(t)) score += 4 * idf;
     }
     return { ...ch, score };
-  }).filter(e => e.score > 0).sort((a, b) => b.score - a.score).slice(0, maxHandbook);
+  }).filter(e => e.score > 0).sort((a, b) => b.score - a.score);
 
-  // Build context string
+  // MMR on handbook chunks too
+  const hScored = mmrSelect(rawHScored.slice(0, maxHb * 3), maxHb, 0.55);
+
+  // ── Build context string
   let ctx = '';
+  if (intents.length > 0) {
+    ctx += `\n\n[INTENT: ${intents.slice(0,2).join(', ')} | expanded query used]`;
+  }
 
   if (scored.length > 0) {
-    // Separate firmware results from component results
-    var fwResults = scored.filter(s => s.cat === 'firmware');
-    var compResults = scored.filter(s => s.cat !== 'firmware');
+    const fwResults   = scored.filter(s => s.cat === 'firmware');
+    const compResults = scored.filter(s => s.cat !== 'firmware');
 
     if (compResults.length > 0) {
       ctx += '\n\n## MATCHING COMPONENTS FROM DATABASE\n';
@@ -777,7 +998,6 @@ function ragSearch(query, maxComponents = 25, maxHandbook = 5) {
         if (d.features && d.features.length) ctx += `Features: ${d.features.join(', ')}\n`;
         if (d.frame_type) ctx += `Frame type: ${d.frame_type} (${d.frame_class || ''})\n`;
         if (d.bf_target) ctx += `BF target: ${d.bf_target}\n`;
-        // Include raw config snippet for deep troubleshooting
         if (d.raw_snippet) ctx += `Config excerpt:\n${d.raw_snippet.slice(0, 600)}\n`;
       }
     }
@@ -786,7 +1006,6 @@ function ragSearch(query, maxComponents = 25, maxHandbook = 5) {
   if (hScored.length > 0) {
     ctx += '\n\n## RELEVANT HANDBOOK SECTIONS\n';
     for (const h of hScored) {
-      // Limit each chunk to ~800 chars to stay within budget
       ctx += `\n### ${h.title} (${h.src})\n${h.full.slice(0, 800)}\n`;
     }
   }
@@ -980,11 +1199,17 @@ FrSky R-XSR: 5V, GND, SBUS out, SmartPort (S.Port)
 
 // ─── SYSTEM PROMPT ────────────────────────────────────────────
 function buildPrompt(query, hasImages) {
-  var ragCtx = query ? ragSearch(query) : '';
+  // ── 4. Conversation-aware: extract last 3 user messages as context
+  const recentUserMsgs = messages
+    .filter(m => m.role === 'user' && m.text)
+    .slice(-4, -1)  // last 3 before current
+    .map(m => m.text);
+
+  var ragCtx = query ? ragSearch(query, undefined, undefined, recentUserMsgs) : '';
 
   // If images attached, also search for wiring/FC/VTX specific context
   if (hasImages && query) {
-    var wiringCtx = ragSearch(query + ' wiring pinout UART solder pad connection FC VTX receiver ESC', 15, 3);
+    var wiringCtx = ragSearch(query + ' wiring pinout UART solder pad connection FC VTX receiver ESC', 15, 3, []);
     if (wiringCtx) ragCtx += wiringCtx;
   }
 
