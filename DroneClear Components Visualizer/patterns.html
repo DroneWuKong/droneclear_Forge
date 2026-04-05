@@ -456,13 +456,17 @@ a{color:var(--blue);text-decoration:none}a:hover{text-decoration:underline}
 const FLAG_META = {
   procurement_spike: {label:"Procurement Spike",badge:"badge-red",sev:"critical",icon:"▲"},
   supply_constraint: {label:"Supply Constraint",badge:"badge-amber",sev:"warning",icon:"⬡"},
+  supply_chain_risk: {label:"Supply Chain Risk",badge:"badge-amber",sev:"warning",icon:"⬡"},
   price_anomaly:     {label:"Price Anomaly",badge:"badge-orange",sev:"warning",icon:"◈"},
+  cost_analysis:     {label:"Cost Analysis",badge:"badge-orange",sev:"warning",icon:"◈"},
   diversion_risk:    {label:"Diversion Risk",badge:"badge-red",sev:"critical",icon:"⚠"},
   contract_signal:   {label:"Contract Signal",badge:"badge-blue",sev:"info",icon:"★"},
   prediction:        {label:"Prediction",badge:"badge-purple",sev:"prediction",icon:"◎"},
   correlation:       {label:"Correlation",badge:"badge-cyan",sev:"info",icon:"⟐"},
   grayzone:          {label:"Gray Zone",badge:"badge-red",sev:"critical",icon:"🔒"},
   grayzone_xref:     {label:"Gray Zone Cross-Ref",badge:"badge-amber",sev:"warning",icon:"🔗"},
+  compliance:        {label:"Compliance",badge:"badge-red",sev:"critical",icon:"⚖"},
+  component_analysis:{label:"Component Analysis",badge:"badge-blue",sev:"info",icon:"🔬"},
 };
 
 // ── Simulated platform + component data (in production: fetched from Forge API) ──
@@ -880,7 +884,8 @@ function renderFlags() {
     const m = FLAG_META[f.flag_type] || {label:"Unknown",badge:"badge-amber",sev:"info",icon:"?"};
     const conf = Math.round((f.confidence||0)*100);
     const confBadge = conf > 85 ? "badge-green" : "badge-amber";
-    const date = new Date(f.timestamp).toLocaleDateString();
+    const d = f.timestamp ? new Date(f.timestamp) : null;
+    const date = (d && !isNaN(d)) ? d.toLocaleDateString() : '';
     const regions = extractRegions(f);
     const regionTags = regions.length ? regions.map(r => `<span class="badge badge-blue" style="font-size:9px;padding:1px 5px">${r}</span>`).join(" ") : "";
     return `<div class="flag-card" data-id="${f.id}">
@@ -911,7 +916,8 @@ function renderFlagDetail() {
   const f = selectedFlag;
   const m = FLAG_META[f.flag_type] || {};
   const conf = Math.round((f.confidence||0)*100);
-  const date = new Date(f.timestamp).toLocaleDateString();
+  const _d = f.timestamp ? new Date(f.timestamp) : null;
+  const date = (_d && !isNaN(_d)) ? _d.toLocaleDateString() : '';
 
   const dc = document.getElementById("flag-detail-container");
   const fl = document.getElementById("flag-list");
