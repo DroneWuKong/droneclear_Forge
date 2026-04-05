@@ -49,6 +49,7 @@ a{color:var(--blue);text-decoration:none}a:hover{text-decoration:underline}
 .filter-row{display:flex;gap:6px;margin-bottom:14px;flex-wrap:wrap}
 .filter-btn{background:none;border:1px solid var(--border);color:var(--text-d);border-radius:6px;padding:4px 10px;font:10px var(--font);cursor:pointer;text-transform:capitalize;transition:all .15s}
 .filter-btn.active{border-color:var(--amber);color:var(--text);background:var(--amber-d)}
+.filter-btn.hidden-filter{border-color:var(--border);color:var(--text-d);background:none;opacity:.5;text-decoration:line-through}
 .map-region path{transition:fill-opacity .2s,stroke-width .2s}
 .map-region:hover path{fill-opacity:0.35;stroke-width:2.5}
 
@@ -521,7 +522,11 @@ const COMPONENTS = [
 let FLAGS = [];
 let PREDICTIONS = [];
 let activeTab = "flags";
-let activeSeverity = "all";
+let activeSeverity = "all"; // kept for compat but unused in new logic
+// ── Hide-based filter sets (empty = show all, add items to hide them) ──
+let hiddenSeverities = new Set();
+let hiddenTypes = new Set();
+let hiddenRegions = new Set();
 let selectedFlag = null;
 
 // ── Data loading ──
@@ -579,32 +584,38 @@ function extractRegions(f) {
 let activeType = "all";
 let activeRegion = "all";
 
-// ── Severity filters ──
+// ── Severity filters (hide-toggle: all start ON, click to hide) ──
 function renderFilters() {
   // Severity row
   const c = document.getElementById("severity-filters");
-  const sevs = ["all","critical","warning","info","prediction"];
+  const sevs = ["critical","warning","info","prediction","high"];
+  const sevLabels = {critical:"Critical",warning:"Warning",info:"Info",prediction:"Prediction",high:"High"};
   c.innerHTML = sevs.map(s => {
-    const count = s === "all" ? FLAGS.length : FLAGS.filter(f => (FLAG_META[f.flag_type]||{}).sev === s).length;
-    return `<button class="filter-btn ${activeSeverity===s?"active":""}" data-sev="${s}">${s==="all"?"All ("+count+")":s+" ("+count+")"}</button>`;
-  }).join("");
+    const count = FLAGS.filter(f => f.severity === s || (FLAG_META[f.flag_type]||{}).sev === s).length;
+    if (count === 0) return "";
+    const hidden = hiddenSeverities.has(s);
+    return `<button class="filter-btn ${hidden?"hidden-filter":"active"}" data-sev="${s}" title="${hidden?'Show':'Hide'} ${s}">${hidden?"⊘ ":""}${sevLabels[s]||s} (${count})</button>`;
+  }).filter(Boolean).join("");
   c.querySelectorAll(".filter-btn").forEach(b => b.addEventListener("click", () => {
-    activeSeverity = b.dataset.sev;
+    const s = b.dataset.sev;
+    if (hiddenSeverities.has(s)) hiddenSeverities.delete(s); else hiddenSeverities.add(s);
     renderFilters();
     renderFlags();
   }));
 
   // Type row
   const tc = document.getElementById("type-filters");
-  const types = ["all",...Object.keys(FLAG_META)];
+  const types = Object.keys(FLAG_META);
   tc.innerHTML = types.map(t => {
-    const count = t === "all" ? FLAGS.length : FLAGS.filter(f => f.flag_type === t).length;
-    if (t !== "all" && count === 0) return "";
-    const label = t === "all" ? "All types" : (FLAG_META[t]||{}).label || t;
-    return `<button class="filter-btn ${activeType===t?"active":""}" data-type="${t}">${label} (${count})</button>`;
+    const count = FLAGS.filter(f => f.flag_type === t).length;
+    if (count === 0) return "";
+    const label = (FLAG_META[t]||{}).label || t;
+    const hidden = hiddenTypes.has(t);
+    return `<button class="filter-btn ${hidden?"hidden-filter":"active"}" data-type="${t}" title="${hidden?'Show':'Hide'} ${label}">${hidden?"⊘ ":""}${label} (${count})</button>`;
   }).filter(Boolean).join("");
   tc.querySelectorAll(".filter-btn").forEach(b => b.addEventListener("click", () => {
-    activeType = b.dataset.type;
+    const t = b.dataset.type;
+    if (hiddenTypes.has(t)) hiddenTypes.delete(t); else hiddenTypes.add(t);
     renderFilters();
     renderFlags();
   }));
@@ -614,12 +625,13 @@ function renderFilters() {
   const regionCounts = {};
   FLAGS.forEach(f => extractRegions(f).forEach(r => { regionCounts[r] = (regionCounts[r]||0)+1; }));
   const sortedRegions = Object.entries(regionCounts).sort((a,b) => b[1]-a[1]);
-  rc.innerHTML = `<button class="filter-btn ${activeRegion==="all"?"active":""}" data-region="all">All regions</button>` +
-    sortedRegions.map(([r,count]) =>
-      `<button class="filter-btn ${activeRegion===r?"active":""}" data-region="${r}">${r} (${count})</button>`
-    ).join("");
+  rc.innerHTML = sortedRegions.map(([r,count]) => {
+    const hidden = hiddenRegions.has(r);
+    return `<button class="filter-btn ${hidden?"hidden-filter":"active"}" data-region="${r}" title="${hidden?'Show':'Hide'} ${r}">${hidden?"⊘ ":""}${r} (${count})</button>`;
+  }).join("");
   rc.querySelectorAll(".filter-btn").forEach(b => b.addEventListener("click", () => {
-    activeRegion = b.dataset.region;
+    const r = b.dataset.region;
+    if (hiddenRegions.has(r)) hiddenRegions.delete(r); else hiddenRegions.add(r);
     renderFilters();
     renderFlags();
   }));
@@ -695,14 +707,20 @@ function renderFlags() {
   const list = document.getElementById("flag-list");
   let flags = FLAGS;
 
-  // Severity filter
-  if (activeSeverity !== "all") flags = flags.filter(f => (FLAG_META[f.flag_type]||{}).sev === activeSeverity || f.severity === activeSeverity);
+  // Severity filter (hide-based)
+  if (hiddenSeverities.size > 0) flags = flags.filter(f => {
+    const sev = f.severity || (FLAG_META[f.flag_type]||{}).sev || '';
+    return !hiddenSeverities.has(sev);
+  });
 
-  // Type filter
-  if (activeType !== "all") flags = flags.filter(f => f.flag_type === activeType || f.category === activeType);
+  // Type filter (hide-based)
+  if (hiddenTypes.size > 0) flags = flags.filter(f => !hiddenTypes.has(f.flag_type) && !hiddenTypes.has(f.category));
 
-  // Region filter
-  if (activeRegion !== "all") flags = flags.filter(f => extractRegions(f).includes(activeRegion));
+  // Region filter (hide-based)
+  if (hiddenRegions.size > 0) flags = flags.filter(f => {
+    const regs = extractRegions(f);
+    return regs.length === 0 || regs.some(r => !hiddenRegions.has(r));
+  });
 
   // Search filter
   const searchQ = (document.getElementById("flag-search")?.value || "").toLowerCase().trim();
