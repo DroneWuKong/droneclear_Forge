@@ -937,8 +937,8 @@ function renderFlagDetail() {
   const fl = document.getElementById("flag-list");
   dc.style.display = "block";
   fl.style.visibility = "hidden";
-  fl.style.position = "absolute";
   fl.style.pointerEvents = "none";
+  // position stays unchanged — keeps page height so scroll position is preserved
 
   let html = `<div class="flag-detail" style="border-left:3px solid var(${m.sev==="critical"?"--red":m.sev==="warning"?"--amber":m.sev==="prediction"?"--purple":"--blue"})">
     <div class="header">
@@ -993,7 +993,6 @@ function renderFlagDetail() {
   document.getElementById("close-detail").addEventListener("click", () => {
     dc.style.display = "none";
     fl.style.visibility = "";
-    fl.style.position = "";
     fl.style.pointerEvents = "";
     selectedFlag = null;
     requestAnimationFrame(() => window.scrollTo(0, _flagScrollY));
@@ -1584,14 +1583,25 @@ function backToGlobal() {
 }
 
 function renderAll() {
-  renderFilters();
-  renderFlags();
-  renderDashboard();
-  renderRegionMap();
-  renderPlatforms();
-  renderComponents();
-  renderPredictions();
-  renderWhatIf();
+  // Each render step wrapped individually — one crash won't blank the whole page
+  const _safe = (name, fn) => { try { fn(); } catch(e) {
+    console.error(name + " crash:", e);
+    const errEl = document.getElementById("flag-list");
+    if (errEl && name === "renderFlags") {
+      errEl.innerHTML = `<div style="color:#f87171;font-size:12px;padding:20px;font-family:monospace;white-space:pre-wrap;background:#1a0a0a;border-radius:8px;margin:8px 0">
+⚠ ${name} error — screenshot this:
+
+${e.stack||e.message||e}</div>`;
+    }
+  }};
+  _safe("renderFilters",    renderFilters);
+  _safe("renderFlags",      renderFlags);
+  _safe("renderDashboard",  renderDashboard);
+  _safe("renderRegionMap",  renderRegionMap);
+  _safe("renderPlatforms",  renderPlatforms);
+  _safe("renderComponents", renderComponents);
+  _safe("renderPredictions",renderPredictions);
+  _safe("renderWhatIf",     renderWhatIf);
 
   // Handle hash routing for bookmarked regions
   const hash = window.location.hash;
