@@ -186,7 +186,8 @@ a{color:var(--blue);text-decoration:none}a:hover{text-decoration:underline}
       <select id="flag-sort" onchange="renderFlags()" style="background:var(--surface);border:1px solid var(--border);border-radius:6px;padding:6px 10px;font:11px var(--mono);color:var(--text);outline:none;-webkit-appearance:menulist;appearance:menulist;min-height:32px">
         <option value="confidence-desc">Confidence ↓</option>
         <option value="confidence-asc">Confidence ↑</option>
-        <option value="date-desc" selected>Newest first</option>
+        <option value="severity" selected>Most critical first</option>
+        <option value="date-desc">Newest first</option>
         <option value="date-asc">Oldest first</option>
         <option value="severity">Severity</option>
         <option value="type">Type A→Z</option>
@@ -563,10 +564,11 @@ let PREDICTIONS = [];
 let activeTab = "flags";
 let activeSeverity = "all"; // kept for compat but unused in new logic
 // ── Hide-based filter sets (empty = show all, add items to hide them) ──
-let hiddenSeverities = new Set();
+let hiddenSeverities = new Set(['info']); // default: hide low-priority info flags
 let hiddenTypes = new Set();
 let hiddenRegions = new Set();
 let selectedFlag = null;
+let _flagScrollY = 0;
 
 // ── Data loading ──
 async function loadData() {
@@ -883,7 +885,7 @@ function renderFlags() {
       if (card) {
         e.stopPropagation();
         selectedFlag = FLAGS.find(f => f.id === card.dataset.id);
-        if (selectedFlag) renderFlagDetail();
+        if (selectedFlag) { _flagScrollY = window.scrollY; renderFlagDetail(); }
       }
     };
     return;
@@ -917,7 +919,7 @@ function renderFlags() {
   list.querySelectorAll(".flag-card").forEach(card => {
     card.addEventListener("click", () => {
       selectedFlag = FLAGS.find(f => f.id === card.dataset.id);
-      renderFlagDetail();
+      _flagScrollY = window.scrollY; renderFlagDetail();
     });
   });
 }
@@ -934,7 +936,9 @@ function renderFlagDetail() {
   const dc = document.getElementById("flag-detail-container");
   const fl = document.getElementById("flag-list");
   dc.style.display = "block";
-  fl.style.display = "none";
+  fl.style.visibility = "hidden";
+  fl.style.position = "absolute";
+  fl.style.pointerEvents = "none";
 
   let html = `<div class="flag-detail" style="border-left:3px solid var(${m.sev==="critical"?"--red":m.sev==="warning"?"--amber":m.sev==="prediction"?"--purple":"--blue"})">
     <div class="header">
@@ -987,11 +991,12 @@ function renderFlagDetail() {
   html += `</div>`;
   dc.innerHTML = html;
   document.getElementById("close-detail").addEventListener("click", () => {
-    const scrollY = window.scrollY;
     dc.style.display = "none";
-    fl.style.display = "";
+    fl.style.visibility = "";
+    fl.style.position = "";
+    fl.style.pointerEvents = "";
     selectedFlag = null;
-    requestAnimationFrame(() => window.scrollTo(0, scrollY));
+    requestAnimationFrame(() => window.scrollTo(0, _flagScrollY));
   });
 }
 
