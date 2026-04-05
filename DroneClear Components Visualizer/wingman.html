@@ -667,6 +667,68 @@ async function loadRAG() {
     await Promise.all(hbPromises);
   } catch(e) { console.warn('Handbook load skipped:', e.message); }
 
+  // Load firmware version matrix
+  try {
+    const res = await fetch('forge_firmware_versions.json');
+    if (res.ok) {
+      const fwv = await res.json();
+      // Index each firmware family's versions
+      for (const [fwName, fwData] of Object.entries(fwv)) {
+        if (!fwData || typeof fwData !== 'object' || !fwData.versions) continue;
+        // Index family-level info
+        const familyText = [
+          fwName, fwData.current_stable, fwData.release_cadence,
+          fwData.configurator, fwData.orqa_support || '',
+        ].filter(Boolean).join(' ');
+        // Index each version
+        for (const v of fwData.versions) {
+          const featureText = Object.entries(v.key_features || {}).map(([feat, info]) => {
+            const sup = info.supported === true ? 'supported' : info.supported === false ? 'not supported unsupported' : '';
+            return `${feat} ${sup} ${info.notes || ''}`;
+          }).join(' ');
+          const textParts = [
+            fwName, v.version, v.also_known_as || '', v.status,
+            featureText,
+            ...(v.breaking_changes || []),
+            v.upgrade_path || '',
+            ...(v.known_issues || []),
+            'firmware version feature',
+          ].filter(Boolean);
+          ragIndex.push({
+            cat: 'firmware_versions',
+            name: `${fwName} ${v.version}`,
+            text: textParts.join(' ').toLowerCase(),
+            src: 'firmware_versions',
+            data: { fw: fwName, ...v, family_info: { current: fwData.current_stable, configurator: fwData.configurator } },
+          });
+        }
+        // Index common Q&A if present
+        for (const qa of (fwv.common_version_questions || [])) {
+          ragIndex.push({
+            cat: 'firmware_versions',
+            name: `Q: ${qa.q.slice(0, 60)}`,
+            text: (qa.q + ' ' + qa.a).toLowerCase(),
+            src: 'firmware_versions_qa',
+            data: qa,
+          });
+        }
+        // Index MCU capability matrix if present
+        for (const [mcu, caps] of Object.entries(fwData.mcu_capability_matrix || {})) {
+          const textParts = [mcu, caps.max_dshot, caps.bidir_dshot, caps.notes || '', 'mcu capability dshot'].filter(Boolean);
+          ragIndex.push({
+            cat: 'firmware_versions',
+            name: `${fwName} ${mcu} capabilities`,
+            text: textParts.join(' ').toLowerCase(),
+            src: 'firmware_versions',
+            data: { fw: fwName, mcu, ...caps },
+          });
+        }
+        ragStats.categories.add('firmware_versions');
+      }
+      console.log(`Firmware version matrix loaded`);
+    }
+  } catch(e) { console.warn('Firmware versions load skipped:', e.message); }
+
   // Load incompatibilities registry
   try {
     const res = await fetch('forge_incompatibilities.json');
@@ -925,7 +987,7 @@ var INTENT_PATTERNS = {
   wiring:      /wire|solder|pad|uart|tx|rx|connect|pinout|diagram|port|plug|connector|short|ground|bec|5v|9v/i,
   compliance:  /ndaa|blue uas|section 848|chinese|dji|autel|dod|military|procurement|approved|compliant/i,
   intel:       /news|latest|recent|procurement|contract|defense|military|announcement|2024|2025|2026/i,
-  incompat:    /will.*work|compatible|work together|work with|can i use|mix|combine|vs\.|versus|difference|does.*support|won'?t bind|won'?t connect|not compatible/i,
+  firmware_version: /version|4\.5|4\.6|2025\.12|1\.15|1\.16|inav 8|inav 9|ardupilot 4\.|what version|which version|latest version|update|upgrade|current version|configurator|breaking change|migrate|diff all/i,
 };
 
 function classifyIntent(query) {
@@ -951,6 +1013,7 @@ function intentToParams(intents) {
   if (primary === 'compliance')      { params.maxComp = 20; params.maxHb = 5;  params.lambdaMMR = 0.6; }
   if (primary === 'incompat')        { params.maxComp = 25; params.maxHb = 3;  params.lambdaMMR = 0.7; }
   if (primary === 'intel')           { params.maxComp = 5;  params.maxHb = 3;  params.lambdaMMR = 0.7; }
+  if (primary === 'firmware_version'){ params.maxComp = 10; params.maxHb = 6;  params.lambdaMMR = 0.8; }
   return params;
 }
 
@@ -1026,6 +1089,43 @@ function ragSearch(query, maxComponents, maxHandbook, contextHistory) {
     const fwResults    = scored.filter(s => s.cat === 'firmware');
     const orqaResults  = scored.filter(s => s.cat === 'orqa_boards');
     const compResults  = scored.filter(s => s.cat !== 'firmware' && s.cat !== 'orqa_boards');
+
+    // ── Firmware version matrix entries
+    const fwvResults = scored.filter(s => s.cat === 'firmware_versions');
+    if (fwvResults.length > 0) {
+      ctx += '\n\n## FIRMWARE VERSION INFORMATION\n';
+      for (const s of fwvResults.slice(0, 5)) {
+        const d = s.data;
+        // Q&A entries
+        if (d.q && d.a) {
+          ctx += `\nQ: ${d.q}\nA: ${d.a}\n`;
+          continue;
+        }
+        // MCU capability entries
+        if (d.mcu && d.max_dshot) {
+          ctx += `\n${d.fw} on ${d.mcu}: max DSHOT=${d.max_dshot} | bidir=${d.bidir_dshot}`;
+          if (d.notes) ctx += ` | ${d.notes}`;
+          ctx += '\n';
+          continue;
+        }
+        // Version entries
+        ctx += `\n### ${d.fw} ${d.version}${d.also_known_as ? ' (aka '+d.also_known_as+')' : ''} [${d.status}]\n`;
+        if (d.family_info?.current) ctx += `Current stable: ${d.family_info.current} | Configurator: ${d.family_info.configurator}\n`;
+        // Key features relevant to query
+        if (d.key_features) {
+          const featLines = Object.entries(d.key_features).map(([feat, info]) => {
+            const sup = info.supported === true ? '✓' : info.supported === false ? '✗ NOT SUPPORTED' : '?';
+            const note = info.notes ? ` — ${info.notes}` : '';
+            return `  ${feat}: ${sup}${note}`;
+          });
+          if (featLines.length) ctx += featLines.slice(0, 12).join('\n') + '\n';
+        }
+        if (d.breaking_changes?.length) {
+          ctx += `⚠ BREAKING CHANGES:\n${d.breaking_changes.map(b => '  - '+b).join('\n')}\n`;
+        }
+        if (d.upgrade_path) ctx += `UPGRADE PATH: ${d.upgrade_path}\n`;
+      }
+    }
 
     // ── Hard incompatibilities first — most critical information
     const incompatResults = scored.filter(s => s.cat === 'incompatibilities');

@@ -1,0 +1,396 @@
+{
+  "schema": "firmware-version-matrix-v1",
+  "updated": "2026-04-05",
+  "description": "Firmware version × feature matrix. Answers version-specific questions: does X support Y on MCU Z? Breaking changes, upgrade paths, configurator version requirements.",
+  "betaflight": {
+    "current_stable": "2025.12.2",
+    "release_cadence": "Every 6 months (June and December). New calendar-based versioning: YYYY.M.PATCH replaces 4.x series.",
+    "configurator": "Progressive Web App at app.betaflight.com — matches firmware version. BF 2025.12 requires Configurator 2025.12.",
+    "versions": [
+      {
+        "version": "2025.12.2",
+        "also_known_as": "4.6",
+        "release_date": "2026-02",
+        "status": "stable",
+        "mcu_support": ["F4","F7","H7","G4","RP2350"],
+        "key_features": {
+          "rpm_filter": {
+            "supported": true,
+            "notes": "Requires bidirectional DSHOT + BLHeli_32 v32.7+ or AM32 v2.0+. F4: use DSHOT300, not DSHOT600."
+          },
+          "dshot_bidir": {
+            "f4": true,
+            "f7": true,
+            "h7": true,
+            "notes": "F4 reliable only at DSHOT300. F7/H7 support DSHOT600 bidirectional."
+          },
+          "position_hold": {
+            "supported": true,
+            "notes": "NEW in 2025.12. GPS-assisted position hold. Requires GPS fix and compass. Previously iNav-only feature."
+          },
+          "altitude_hold": {
+            "supported": true,
+            "notes": "NEW in 2025.12. Barometer-based altitude hold mode added."
+          },
+          "auto_land": {
+            "supported": true,
+            "notes": "NEW in 2025.12. Auto-disarm on landing impact detection."
+          },
+          "collision_detection": {
+            "supported": true,
+            "notes": "NEW in 2025.12. Experimental."
+          },
+          "gps_rescue": {
+            "supported": true,
+            "notes": "Improved in 2025.12. Still requires compass for reliable direction."
+          },
+          "msp_displayport": {
+            "supported": true,
+            "notes": "Required for DJI O3/O4, Walksnail, HDZero OSD. Configure MSP on VTX UART at 115200 baud."
+          },
+          "turtle_mode": {
+            "supported": true,
+            "notes": "Improved in 2025.12. Assign FLIP OVER AFTER CRASH to AUX switch in Modes tab."
+          },
+          "fixed_wing_s_term": {
+            "supported": true,
+            "notes": "NEW in 2025.12. S-term for smoother fixed-wing flight."
+          },
+          "led_strip": {"supported": true, "notes": "WS2812/WS2811 addressable RGB."},
+          "vtx_smartaudio": {"supported": true, "notes": "Wire VTX control to FC UART TX. One-wire."},
+          "vtx_irc_tramp": {"supported": true, "notes": "Wire both TX and RX. Two-wire."},
+          "telemetry_crsf": {"supported": true, "notes": "Bidirectional. Enable Telemetry feature."},
+          "mav_link": {"supported": true, "notes": "MAVLink telemetry available. Enable in Ports tab."},
+          "blackbox": {"supported": true, "notes": "Flash or SD card. Use Betaflight Blackbox Explorer at blackbox.betaflight.com."},
+          "chirp_tuning": {"supported": true, "notes": "NEW in 2025.12. Automated frequency-sweep PID tuning."}
+        },
+        "breaking_changes": [
+          "Gyro alignment changed: board-specific non-user-serviceable gyro alignment removed in favor of user board alignment. After upgrade, verify board alignment in Configuration tab — if arrow on PCB faces forward, alignment should be 0.",
+          "Do NOT restore 4.5 configuration backup — incompatible settings. Reconfigure from scratch.",
+          "Configurator must match firmware version: use app.betaflight.com (PWA, auto-updates). Old 10.10.0 desktop app does NOT work with 2025.12.",
+          "GPS features (PosHold, AltHold) require initial setup — not plug-and-play. Compass calibration required."
+        ],
+        "upgrade_path": "Backup with CLI 'diff all' first. Flash 2025.12.2 with FULL CHIP ERASE. Reconfigure from scratch — do not restore old config.",
+        "known_issues": [
+          "Position Hold and Altitude Hold are new — expect some roughness compared to iNav's mature implementation",
+          "F4 boards: some USB issues reported on certain chips after flash — use DFU recovery if needed"
+        ]
+      },
+      {
+        "version": "4.5.3",
+        "release_date": "2025-11",
+        "status": "stable_legacy",
+        "mcu_support": ["F4","F7","H7","G4"],
+        "key_features": {
+          "rpm_filter": {"supported": true, "notes": "Mature implementation. Requires bidir DSHOT + BLHeli_32 v32.7+ or AM32 v2.0+."},
+          "dshot_bidir": {"f4": true, "f7": true, "h7": true, "notes": "F4 use DSHOT300."},
+          "position_hold": {"supported": false, "notes": "Not available in 4.5. Use iNav for GPS nav modes."},
+          "altitude_hold": {"supported": false, "notes": "Not available in 4.5."},
+          "gps_rescue": {"supported": true, "notes": "GPS rescue available but more limited than 2025.12."},
+          "msp_displayport": {"supported": true},
+          "turtle_mode": {"supported": true},
+          "led_strip": {"supported": true},
+          "blackbox": {"supported": true}
+        },
+        "breaking_changes": [
+          "4.5 configurator (10.10.0) required — old 10.9.x won't connect to 4.5 firmware",
+          "RPM filter parameter naming changed from 4.4 — re-tune after upgrade"
+        ],
+        "upgrade_path": "Backup CLI 'diff all'. Flash with full chip erase. Re-apply config manually."
+      },
+      {
+        "version": "4.4.x",
+        "release_date": "2023-2024",
+        "status": "legacy",
+        "mcu_support": ["F4","F7","H7"],
+        "key_features": {
+          "rpm_filter": {"supported": true, "notes": "Mature. First version with stable bidir DSHOT on H7."},
+          "dshot_bidir": {"f4": true, "f7": true, "h7": true},
+          "position_hold": {"supported": false},
+          "msp_displayport": {"supported": true},
+          "turtle_mode": {"supported": true},
+          "blackbox": {"supported": true}
+        },
+        "breaking_changes": [
+          "Many parameters renamed between 4.4 and 4.5/2025.12 — do not restore config across versions"
+        ],
+        "upgrade_path": "Upgrade to 2025.12.2 directly. Full chip erase. Reconfigure from scratch."
+      }
+    ],
+    "mcu_capability_matrix": {
+      "F4": {
+        "max_dshot": "DSHOT300 (DSHOT600 unreliable for bidirectional)",
+        "bidir_dshot": "DSHOT300 only",
+        "rpm_filter": "Supported but limit to 3 harmonics",
+        "loop_rate_max_hz": 8000,
+        "notes": "No hardware floating-point pipeline for filters. Heavy filter configs risk CPU overload."
+      },
+      "F7": {
+        "max_dshot": "DSHOT600",
+        "bidir_dshot": "DSHOT600 (verify per board)",
+        "rpm_filter": "Full support",
+        "loop_rate_max_hz": 8000
+      },
+      "H7": {
+        "max_dshot": "DSHOT600",
+        "bidir_dshot": "DSHOT600 fully supported",
+        "rpm_filter": "Full support, up to 5 harmonics",
+        "loop_rate_max_hz": 8000,
+        "notes": "Best performance. Dual IMU boards (Orqa QuadCore H7) add redundancy."
+      },
+      "G4": {
+        "max_dshot": "DSHOT600",
+        "bidir_dshot": "DSHOT600",
+        "rpm_filter": "Supported",
+        "loop_rate_max_hz": 8000,
+        "notes": "Newer MCU family. Similar capability to H7 in most applications."
+      }
+    }
+  },
+  "inav": {
+    "current_stable": "8.0.1",
+    "upcoming": "9.0 (RC available as of late 2025)",
+    "release_cadence": "Major releases approximately every 6 months.",
+    "configurator": "Version must match firmware major version exactly. iNav 8.x requires iNav Configurator 8.x. iNav 9.x requires Configurator 9.x. Mismatched versions will NOT connect.",
+    "versions": [
+      {
+        "version": "9.0",
+        "release_date": "2026-Q1",
+        "status": "release_candidate",
+        "key_features": {
+          "geozones": {"supported": true, "notes": "Not available on F722 (insufficient flash)."},
+          "gps_dead_reckoning": {"supported": true, "notes": "Returns home using IMU/baro/wind if GPS lost."},
+          "flexible_motor_servo_allocation": {"supported": true, "notes": "NEW: flexible motor and servo output allocation. Check outputs before first battery power-up after upgrade."},
+          "dji_o4_native": {"supported": true, "notes": "DJI_NATIVE OSD type added in 8.0.1, improved in 9.0."},
+          "programming_framework_wind": {"supported": true, "notes": "Dynamic minimum ground speed adjustment based on wind."},
+          "ads_b": {"supported": true, "notes": "ADSB receiver support for OSD warnings of nearby aircraft."},
+          "ez_tune": {"supported": true, "notes": "Default tuning method for multirotors."},
+          "sbus2": {"supported": true, "notes": "34 RC channels via SBUS2."},
+          "rth": {"supported": true, "notes": "RTH requires compass. Dead reckoning fallback if GPS lost."},
+          "waypoint_missions": {"supported": true},
+          "position_hold": {"supported": true},
+          "altitude_hold": {"supported": true},
+          "fixed_wing_launch": {"supported": true},
+          "vtol": {"supported": true}
+        },
+        "breaking_changes": [
+          "FULL CHIP ERASE required when flashing 9.0 — settings cannot be migrated via restore",
+          "Use CLI 'diff all' in Configurator 8.x BEFORE flashing 9.0",
+          "Flexible motor/servo allocation may change default output mapping — remove props and verify before battery power-up",
+          "PID Profile renamed to Control Profile throughout",
+          "Load diff in two stages if using multiple profiles (see release notes)",
+          "Configurator 9.x required — will not connect to 8.x firmware"
+        ],
+        "upgrade_path": "1) CLI diff all in Configurator 8.x and save to file. 2) Flash 9.0 with FULL CHIP ERASE. 3) Load diff in Configurator 9.x CLI. 4) Review red-highlighted incompatible settings. 5) Remove props, verify motor/servo outputs."
+      },
+      {
+        "version": "8.0.1",
+        "release_date": "2025-03",
+        "status": "stable",
+        "key_features": {
+          "geozones": {"supported": true, "notes": "Not available on F722 boards."},
+          "gps_dead_reckoning": {"supported": true},
+          "dji_o4_native": {"supported": true, "notes": "Added in 8.0.1. Select DJI_NATIVE as video system in Configurator."},
+          "dji_o3_walksnail": {"supported": true, "notes": "Use AVATAR OSD type if not using 8.0.1."},
+          "ads_b": {"supported": true},
+          "setup_wizard": {"supported": true, "notes": "Configures RX and GPS serial ports automatically on first flash."},
+          "ez_tune": {"supported": true, "notes": "Default PID method for multirotors."},
+          "sbus2": {"supported": true},
+          "assistnow_gps": {"supported": true, "notes": "Dramatically reduces GPS cold-start time. Requires AssistNow token in Configurator."},
+          "rth": {"supported": true},
+          "waypoint_missions": {"supported": true},
+          "position_hold": {"supported": true},
+          "altitude_hold": {"supported": true},
+          "iterm_lock_fixed_wing": {"supported": true, "notes": "Eliminates fixed-wing bounce-back on maneuvers."},
+          "msp_v2": {"supported": true}
+        },
+        "breaking_changes": [
+          "FULL CHIP ERASE required when upgrading to 8.0 from 7.x — settings not compatible",
+          "Configurator 8.x required — will not connect to 7.x firmware",
+          "Use Configurator 7 CLI diff all before upgrading — then load in Configurator 8",
+          "Use the diff migration tool at iNav configurator to handle parameter renames automatically"
+        ],
+        "upgrade_path": "1) CLI diff all in Configurator 7.x. 2) Flash 8.0.1 with FULL CHIP ERASE. 3) Load diff in Configurator 8.x CLI. 4) Check for red-highlighted incompatible settings."
+      },
+      {
+        "version": "7.1.x",
+        "release_date": "2024",
+        "status": "legacy",
+        "key_features": {
+          "geozones": {"supported": false},
+          "gps_dead_reckoning": {"supported": false},
+          "rth": {"supported": true},
+          "waypoint_missions": {"supported": true},
+          "position_hold": {"supported": true}
+        },
+        "upgrade_path": "Upgrade to 8.0.1. Full chip erase required. Use diff migration tool."
+      }
+    ]
+  },
+  "ardupilot": {
+    "current_stable": "4.6.3",
+    "release_cadence": "Major releases every 6-12 months. Point releases more frequent.",
+    "configurator": "Mission Planner (Windows) or QGroundControl (cross-platform). Both work with any ArduPilot version.",
+    "orqa_support": "Orqa FC 3030 H7 QuadCore support added in ArduCopter 4.6.3 (Nov 2025).",
+    "versions": [
+      {
+        "version": "4.6.3",
+        "release_date": "2025-11",
+        "status": "stable",
+        "key_features": {
+          "ekf3": {"supported": true, "notes": "EKF3 is default and recommended. EKF2 still available. Dual EKF recommended for reliability."},
+          "dronecan": {"supported": true, "notes": "DroneCAN (formerly UAVCAN) for GPS, ESC, sensors on CAN bus."},
+          "bidir_dshot": {"supported": true, "notes": "Bidirectional DShot for RPM telemetry. Configure via SERVO_BLH_BDMASK parameter."},
+          "rpm_notch_filter": {"supported": true, "notes": "INS_HNTCx_REF must be non-zero for ESC/RPM/FFT notch to work — arming check added in 4.6."},
+          "terrain_following": {"supported": true},
+          "precision_landing": {"supported": true},
+          "guided_mode": {"supported": true},
+          "auto_mode_missions": {"supported": true},
+          "scripting_lua": {"supported": true, "notes": "Lua scripting for custom flight behaviors."},
+          "dronecan_gps": {"supported": true, "notes": "Here4 and other DroneCAN GPS modules supported."},
+          "mavlink_signing": {"supported": true},
+          "orqa_quadcore_h7": {"supported": true, "notes": "Orqa FC 3030 H7 QuadCore target added in 4.6.3."},
+          "zigzag_mode": {"supported": true},
+          "follow_mode": {"supported": true}
+        },
+        "breaking_changes": [
+          "INS_HNTCx_REF must be non-zero for notch filters — new arming check enforces this",
+          "SERVO_BLH_RVMASK mapping for motor reversal requires trial and error — no direct parameter",
+          "NeoPixel LED strips broken in some 4.6.x versions on certain boards — check board-specific release notes"
+        ],
+        "upgrade_path": "Mission Planner or QGC: Install firmware → select ArduCopter → select stable → select your board. Parameters auto-migrate but review MAVLink Inspector for any warnings.",
+        "known_issues": [
+          "T-Motor DroneCAN ESCs show low ESC status rate and thus low RPM rate in 4.6.3",
+          "NeoPixel LED strips broken on some boards since 4.6.x"
+        ]
+      },
+      {
+        "version": "4.5.x",
+        "release_date": "2024",
+        "status": "stable_legacy",
+        "key_features": {
+          "ekf3": {"supported": true},
+          "dronecan": {"supported": true},
+          "bidir_dshot": {"supported": true},
+          "rpm_notch_filter": {"supported": true, "notes": "INS_HNTCx_REF not enforced by arming check in 4.5 — easy to misconfigure."},
+          "terrain_following": {"supported": true},
+          "scripting_lua": {"supported": true},
+          "orqa_quadcore_h7": {"supported": false, "notes": "Orqa QuadCore H7 target added in 4.6.3 only."}
+        }
+      }
+    ],
+    "parameter_quick_reference": {
+      "FRAME_CLASS": "1=Quad, 2=Hexa, 3=Octa, 7=Tri, 12=DodecaHexa",
+      "FRAME_TYPE": "1=X, 0=Plus, 3=H, 16=V",
+      "COMPASS_AUTODEC": "1=Auto magnetic declination from GPS location (recommended)",
+      "ARMING_CHECK": "1=All checks enabled (use for first flights)",
+      "MOT_THST_HOVER": "Auto-calibrated after first hover — leave at default 0.35 initially",
+      "EKF2_ENABLE": "1=Enable EKF2 (legacy, still available)",
+      "EKF3_ENABLE": "1=Enable EKF3 (default and recommended)",
+      "INS_HNTCx_REF": "Must be non-zero (set to 1.0) for ESC/RPM/FFT notch filters to work"
+    }
+  },
+  "px4": {
+    "current_stable": "v1.16.0",
+    "release_cadence": "Approximately every 6 months.",
+    "configurator": "QGroundControl (primary). Mission Planner limited support. QGC version should be recent — update if sensor calibration pages look wrong.",
+    "versions": [
+      {
+        "version": "1.16.0",
+        "release_date": "2025",
+        "status": "stable",
+        "key_features": {
+          "bidir_dshot": {"supported": true, "notes": "NEW in v1.16, sponsored by ARK. Configure via DSHOT_CONFIG parameter."},
+          "ekf2": {"supported": true, "notes": "Default estimator. SYS_MC_EST_GROUP parameter removed — dedicated estimator params now used."},
+          "ekf3": {"supported": false, "notes": "PX4 uses EKF2 (their own implementation, different from ArduPilot EKF3)."},
+          "dronecan": {"supported": true, "notes": "DroneCAN fully supported. 120-ohm termination required at bus ends."},
+          "ros2_interface": {"supported": true, "notes": "PX4 ROS 2 Interface Library for writing flight modes as ROS 2 nodes."},
+          "uxrce_dds": {"supported": true, "notes": "uXRCE-DDS middleware for ROS 2 integration. Replaces FastRTPS."},
+          "throw_mode": {"supported": true, "notes": "Throw the drone to launch — hands-free takeoff mode."},
+          "optical_flow": {"supported": true},
+          "vtol": {"supported": true},
+          "fixed_wing": {"supported": true},
+          "terrain_following": {"supported": true},
+          "mission_mode": {"supported": true},
+          "rtl": {"supported": true},
+          "offboard_mode": {"supported": true, "notes": "For companion computer / MAVSDK control."},
+          "companion_computer": {"supported": true, "notes": "MAVLink or uXRCE-DDS to companion. DTK APB uses internal bridge."},
+          "gazebo_harmonic": {"supported": true, "notes": "Gazebo Harmonic LTS replaces Garden as default simulator."},
+          "log_encryption": {"supported": true, "notes": "Public-key encrypted logs with embedded decryption key."}
+        },
+        "breaking_changes": [
+          "SYS_MC_EST_GROUP removed — dedicated estimator selection parameters now used",
+          "COM_POS_FS_DELAY (position loss failsafe delay) removed — now fixed at 1 second",
+          "Ethernet static IP changed from 192.168.0.3 to 10.41.10.2",
+          "SF45 lidar no longer auto-starts on TELEM2 — must configure explicitly",
+          "Gazebo Garden deprecated — use Gazebo Harmonic for simulation"
+        ],
+        "upgrade_path": "QGC: Vehicle Setup → Firmware → PX4 Pro Stable Release. Full parameter reset recommended after major version upgrade.",
+        "parameter_quick_reference": {
+          "COM_PREARM_MODE": "0=disabled (no safety switch), 1=safety switch required",
+          "SYS_HAS_NUM_ASPD": "0=arm without airspeed sensor (fixed wing)",
+          "FW_USE_AIRSPD": "0=don't use airspeed in controller even if present",
+          "DSHOT_CONFIG": "Set to bidirectional DShot value for RPM telemetry (v1.16+)",
+          "MAV_SYS_ID": "System ID for MAVLink — must be unique per vehicle on shared network",
+          "SER_TEL1_BAUD": "57600 default for SiK radios on TELEM1"
+        }
+      },
+      {
+        "version": "1.15.x",
+        "release_date": "2024",
+        "status": "stable_legacy",
+        "key_features": {
+          "bidir_dshot": {"supported": false, "notes": "Bidirectional DShot added in v1.16."},
+          "ekf2": {"supported": true},
+          "ros2_interface": {"supported": true, "notes": "Introduced in 1.15."},
+          "throw_mode": {"supported": true, "notes": "Introduced in 1.15."},
+          "optical_flow": {"supported": true},
+          "vtol": {"supported": true},
+          "dronecan": {"supported": true}
+        },
+        "notes": "Still widely used. Bidir DShot not available — use standard DShot without RPM telemetry."
+      }
+    ]
+  },
+  "configurator_version_requirements": {
+    "note": "Using the wrong configurator version is one of the most common setup errors.",
+    "betaflight": "app.betaflight.com (PWA) auto-updates. Firmware 2025.12.x requires Configurator 2025.12. Old desktop app 10.10.0 does NOT work with 2025.12.",
+    "inav": "iNav Configurator version MUST match firmware major version. iNav 8.x = Configurator 8.x only. iNav 9.x = Configurator 9.x only. Mismatch = will not connect.",
+    "ardupilot": "Mission Planner or QGroundControl. Both are firmware-version agnostic — any recent version works with any ArduPilot firmware.",
+    "px4": "QGroundControl is primary. Keep QGC updated — older versions may have broken sensor calibration UI for newer PX4 versions."
+  },
+  "common_version_questions": [
+    {
+      "q": "Does Betaflight support position hold?",
+      "a": "Yes, from 2025.12 (4.6) onward. Not available in 4.5 or earlier. Requires GPS + compass."
+    },
+    {
+      "q": "Does BF 4.5 support RPM filter?",
+      "a": "Yes. Requires bidirectional DSHOT enabled + BLHeli_32 v32.7+ or AM32 v2.0+. F4: use DSHOT300."
+    },
+    {
+      "q": "Can I use BLHeli_S with RPM filter in any Betaflight version?",
+      "a": "No. BLHeli_S has no ESC telemetry in any version. RPM filter requires BLHeli_32 or AM32."
+    },
+    {
+      "q": "Does iNav 8 support DJI O4?",
+      "a": "Yes, from iNav 8.0.1. Select DJI_NATIVE as video system in Configurator 8.0.1+."
+    },
+    {
+      "q": "Does ArduPilot support Orqa QuadCore H7?",
+      "a": "Yes, added in ArduCopter 4.6.3 (November 2025)."
+    },
+    {
+      "q": "Does PX4 v1.15 support bidirectional DShot?",
+      "a": "No. Bidirectional DShot was added in PX4 v1.16."
+    },
+    {
+      "q": "What configurator do I need for iNav 9?",
+      "a": "iNav Configurator 9.x exactly. iNav 9.x firmware will NOT connect to Configurator 8.x or earlier."
+    },
+    {
+      "q": "Can I restore my Betaflight 4.5 config backup on 2025.12?",
+      "a": "No. 2025.12 has incompatible parameter changes. Reconfigure from scratch after flashing."
+    }
+  ]
+}
