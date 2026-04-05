@@ -5,9 +5,24 @@
 async function fetchAllCategories() {
     showLoader();
     try {
-        const response = await fetch('/api/categories/');
-        if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
-        const categories = await response.json();
+        // Try the build-time static path first, fall back to local relative path
+        const urls = ['/static/forge_database.json', 'forge_database.json'];
+        let db = null;
+        for (const url of urls) {
+            const res = await fetch(url);
+            if (res.ok) { db = await res.json(); break; }
+        }
+        if (!db) throw new Error('forge_database.json not found');
+
+        // Populate schemaData from components key so renderComponents() works offline
+        const components = db.components || {};
+        Object.assign(schemaData, components);
+
+        const categories = Object.keys(components).map(cat => ({
+            slug: cat,
+            name: formatTitle(cat),
+            component_count: Array.isArray(components[cat]) ? components[cat].length : 0,
+        }));
 
         if (categories.length === 0) {
             showError('No component categories found in the database.');
@@ -25,8 +40,7 @@ async function fetchAllCategories() {
             selectCategory(categories[0].slug);
         }
     } catch (error) {
-        console.warn('Failed to fetch from Django API.', error);
-        if (typeof showToast === "function") showToast("Fetch from Django API.", "error");
+        console.warn('[Forge] Failed to load forge_database.json:', error);
         showError(i18n[currentLang].errLoadDesc);
     } finally {
         hideLoader();
@@ -114,18 +128,8 @@ async function renderComponents(searchTerm = '') {
     hideError();
 
     if (!schemaData[currentCategory]) {
-        showLoader();
-        elements.componentsGrid.classList.add('hidden');
-        try {
-            const response = await fetch(`/api/components/?category=${currentCategory}`);
-            if (!response.ok) throw new Error('Failed to fetch components');
-            schemaData[currentCategory] = await response.json();
-        } catch (error) {
-            console.error(error);
-            if (typeof showToast === "function") showToast("Operation failed", "error");
-            showError('Could not load components for this category.');
-            return;
-        }
+        showError('No components found for this category.');
+        return;
     }
 
     hideLoader();
