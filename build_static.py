@@ -57,6 +57,7 @@ PAGES = {
     'wingman.html': 'wingman/index.html',
     'pid-tuning.html': 'pid-tuning/index.html',
     'patterns.html': 'patterns/index.html',
+    'brief.html': 'brief/index.html',
 }
 
 # Static assets to copy (JS, CSS, JSON, images)

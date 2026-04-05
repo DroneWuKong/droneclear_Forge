@@ -1,0 +1,231 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>PIE Intelligence Brief — DroneClear</title>
+<style>
+  :root {
+    --bg:#0a0c10;--surface:#111318;--card:#161b22;--border:#21262d;
+    --text:#e6edf3;--text-s:#8b949e;--text-d:#484f58;
+    --red:#f85149;--amber:#e3b341;--green:#3fb950;--blue:#58a6ff;
+    --purple:#bc8cff;--cyan:#39d353;--orange:#fb8500;
+    --font:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;
+    --mono:'SF Mono','Fira Code',monospace;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{background:var(--bg);color:var(--text);font-family:var(--font);min-height:100vh;padding:0 0 60px}
+
+  .header{background:var(--surface);border-bottom:1px solid var(--border);padding:12px 16px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:10}
+  .header-title{font:700 14px var(--mono);color:var(--amber)}
+  .header-meta{font:11px var(--mono);color:var(--text-d)}
+
+  .container{max-width:680px;margin:0 auto;padding:16px}
+
+  .signal-bar{background:var(--card);border:1px solid var(--border);border-radius:8px;padding:12px 16px;margin-bottom:16px;display:flex;gap:20px;flex-wrap:wrap}
+  .signal-stat{text-align:center}
+  .signal-stat .num{font:700 20px var(--mono);display:block}
+  .signal-stat .lbl{font-size:9px;color:var(--text-d);text-transform:uppercase;letter-spacing:.06em}
+  .signal-stat.critical .num{color:var(--red)}
+  .signal-stat.warning .num{color:var(--amber)}
+  .signal-stat.new .num{color:var(--green)}
+  .top-concern{flex:1;min-width:160px;display:flex;align-items:center;gap:8px;font-size:11px;color:var(--text-s);border-left:1px solid var(--border);padding-left:16px}
+
+  .headline{font-size:16px;font-weight:700;line-height:1.4;color:var(--text);margin-bottom:16px;padding:12px 16px;background:var(--card);border-radius:8px;border-left:3px solid var(--amber)}
+
+  .section-title{font:700 10px var(--mono);color:var(--text-d);text-transform:uppercase;letter-spacing:.08em;margin:20px 0 10px;display:flex;align-items:center;gap:6px}
+
+  .lead-card{background:var(--card);border:1px solid var(--border);border-left:3px solid var(--red);border-radius:8px;padding:14px;margin-bottom:12px}
+  .card-title{font:600 13px var(--font);color:var(--text);margin-bottom:8px}
+  .card-body{font-size:12px;color:var(--text-s);line-height:1.6;margin-bottom:10px}
+  .action-box{background:#1a2332;border:1px solid #1d6fa533;border-radius:6px;padding:8px 10px;font-size:11px;color:var(--blue);line-height:1.4}
+  .action-box::before{content:"→ ";font-weight:700}
+
+  .entity-card{background:var(--card);border:1px solid var(--border);border-radius:8px;padding:12px;margin-bottom:10px}
+  .entity-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px}
+  .entity-name{font:600 13px var(--font);color:var(--text)}
+  .badge{display:inline-flex;align-items:center;padding:2px 7px;border-radius:10px;font:600 9px var(--mono);text-transform:uppercase;letter-spacing:.04em}
+  .badge-red{background:#f8514922;color:var(--red)}
+  .badge-amber{background:#e3b34122;color:var(--amber)}
+  .badge-blue{background:#58a6ff22;color:var(--blue)}
+  .entity-status{font-size:11px;color:var(--amber);margin-bottom:6px;font-weight:500}
+  .entity-dev{font-size:11px;color:var(--text-s);line-height:1.5;margin-bottom:8px}
+  .entity-exposure{font-size:10px;color:var(--text-d);margin-bottom:8px}
+  .entity-exposure strong{color:var(--text-s)}
+
+  .supply-row{background:var(--card);border:1px solid var(--border);border-radius:8px;padding:10px 12px;margin-bottom:8px}
+  .supply-component{font:600 12px var(--font);color:var(--text);margin-bottom:4px}
+  .supply-signal{font-size:11px;color:var(--text-s);margin-bottom:4px}
+  .supply-window{font-size:10px;color:var(--text-d);margin-bottom:6px}
+
+  .watch-item{display:flex;gap:10px;padding:8px 0;border-bottom:1px solid var(--border)}
+  .watch-item:last-child{border-bottom:none}
+  .watch-dot{width:6px;height:6px;border-radius:50%;background:var(--amber);margin-top:5px;flex-shrink:0}
+  .watch-why{font-size:11px;color:var(--text-s);line-height:1.4}
+  .watch-trigger{font-size:10px;color:var(--text-d);margin-top:3px}
+  .watch-label{font:600 11px var(--font);color:var(--text)}
+
+  .pred-card{background:var(--card);border:1px solid var(--border);border-radius:8px;padding:12px;margin-bottom:8px;display:flex;gap:12px}
+  .pred-prob{min-width:48px;text-align:center}
+  .pred-prob .pct{font:700 20px var(--mono);display:block}
+  .pred-prob .pct-lbl{font-size:9px;color:var(--text-d)}
+  .pred-event{font:600 12px var(--font);color:var(--text);margin-bottom:4px;line-height:1.4}
+  .pred-timeframe{font-size:10px;color:var(--text-d);margin-bottom:6px}
+  .pred-hedge{font-size:11px;color:var(--purple);line-height:1.4}
+  .pred-hedge::before{content:"Hedge: ";font-weight:700}
+
+  .loading{text-align:center;padding:40px 20px;color:var(--text-d);font-size:12px}
+  .error{background:#1a0a0a;border:1px solid #f8514944;border-radius:8px;padding:16px;color:var(--red);font-size:12px;line-height:1.6}
+
+  .date-nav{display:flex;gap:8px;margin-bottom:16px;align-items:center}
+  .date-nav select{background:var(--surface);border:1px solid var(--border);border-radius:6px;padding:6px 10px;font:11px var(--mono);color:var(--text);outline:none}
+  .date-label{font:11px var(--mono);color:var(--text-d);flex:1}
+
+  .no-brief{background:var(--card);border:1px solid var(--border);border-radius:8px;padding:24px;text-align:center;color:var(--text-d);font-size:12px;line-height:1.6}
+  .no-brief strong{display:block;font-size:14px;color:var(--text-s);margin-bottom:8px}
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div class="header-title">📋 PIE Intelligence Brief</div>
+  <div class="header-meta" id="brief-date-header">Loading...</div>
+</div>
+
+<div class="container">
+  <div id="brief-content">
+    <div class="loading">Loading brief...</div>
+  </div>
+</div>
+
+<script>
+async function loadBrief() {
+  const el = document.getElementById("brief-content");
+  try {
+    const r = await fetch("../static/pie_brief.json");
+    if (!r.ok) throw new Error(`HTTP ${r.status}`);
+    const b = await r.json();
+    renderBrief(b);
+  } catch(e) {
+    el.innerHTML = `<div class="no-brief">
+      <strong>No brief available yet</strong>
+      The PIE pipeline generates a daily brief at 14:30 UTC. Check back after the next pipeline run.<br><br>
+      <span style="color:var(--text-d);font-size:10px">${e.message}</span>
+    </div>`;
+    document.getElementById("brief-date-header").textContent = "No brief";
+  }
+}
+
+function pctColor(p) {
+  if (p >= 0.8) return "var(--red)";
+  if (p >= 0.6) return "var(--amber)";
+  return "var(--text-s)";
+}
+
+function riskBadge(score) {
+  if (score >= 0.8) return '<span class="badge badge-red">CRITICAL</span>';
+  if (score >= 0.6) return '<span class="badge badge-amber">HIGH</span>';
+  return '<span class="badge badge-blue">MEDIUM</span>';
+}
+
+function renderBrief(b) {
+  document.getElementById("brief-date-header").textContent = b.date || "Today";
+
+  const sig = b.signal_summary || {};
+  const lead = b.lead_story || {};
+  const grayzone = b.gray_zone || [];
+  const supply = b.supply_chain || [];
+  const watchlist = b.watch_list || [];
+  const predictions = b.predictions || [];
+
+  let html = "";
+
+  // Signal bar
+  html += `<div class="signal-bar">
+    <div class="signal-stat critical"><span class="num">${sig.critical||0}</span><span class="lbl">Critical</span></div>
+    <div class="signal-stat warning"><span class="num">${sig.warning||0}</span><span class="lbl">Warning</span></div>
+    <div class="signal-stat new"><span class="num">${sig.new_today||0}</span><span class="lbl">New today</span></div>
+    <div class="signal-stat"><span class="num">${sig.total_flags||0}</span><span class="lbl">Total flags</span></div>
+    <div class="top-concern">⚡ ${sig.top_concern||""}</div>
+  </div>`;
+
+  // Headline
+  html += `<div class="headline">${b.headline||""}</div>`;
+
+  // Lead story
+  html += `<div class="section-title">🔴 Lead Story</div>`;
+  html += `<div class="lead-card">
+    <div class="card-title">${lead.title||""}</div>
+    <div class="card-body">${lead.body||""}</div>
+    <div class="action-box">${lead.action||""}</div>
+  </div>`;
+
+  // Gray zone
+  html += `<div class="section-title">⚠ Gray Zone Entities</div>`;
+  for (const e of grayzone) {
+    html += `<div class="entity-card">
+      <div class="entity-header">
+        <div class="entity-name">${e.entity||""}</div>
+      </div>
+      <div class="entity-status">${e.status||""}</div>
+      <div class="entity-dev">${e.development||""}</div>
+      <div class="entity-exposure"><strong>Buyer exposure:</strong> ${e.buyer_exposure||""}</div>
+      <div class="action-box">${e.action||""}</div>
+    </div>`;
+  }
+
+  // Supply chain
+  html += `<div class="section-title">🔩 Supply Chain Signals</div>`;
+  for (const s of supply) {
+    html += `<div class="supply-row">
+      <div class="supply-component">${s.component||""}</div>
+      <div class="supply-signal">${s.signal||""}</div>
+      <div class="supply-window">Window: ${s.window||""}</div>
+      <div class="action-box">${s.action||""}</div>
+    </div>`;
+  }
+
+  // Watch list
+  html += `<div class="section-title">👁 Watch List</div>`;
+  html += `<div style="background:var(--card);border:1px solid var(--border);border-radius:8px;padding:12px;margin-bottom:16px">`;
+  for (const w of watchlist) {
+    html += `<div class="watch-item">
+      <div class="watch-dot"></div>
+      <div>
+        <div class="watch-label">${w.item||""}</div>
+        <div class="watch-why">${w.why||""}</div>
+        <div class="watch-trigger">Trigger: ${w.trigger||""}</div>
+      </div>
+    </div>`;
+  }
+  html += `</div>`;
+
+  // Predictions
+  html += `<div class="section-title">🔮 Predictions & Hedges</div>`;
+  for (const p of predictions) {
+    const pct = Math.round((p.probability||0)*100);
+    html += `<div class="pred-card">
+      <div class="pred-prob">
+        <span class="pct" style="color:${pctColor(p.probability)}">${pct}%</span>
+        <span class="pct-lbl">prob</span>
+      </div>
+      <div style="flex:1">
+        <div class="pred-event">${p.event||""}</div>
+        <div class="pred-timeframe">${p.timeframe||""}</div>
+        <div class="pred-hedge">${p.hedge||""}</div>
+      </div>
+    </div>`;
+  }
+
+  // Footer
+  html += `<div style="margin-top:24px;padding:12px;text-align:center;font-size:10px;color:var(--text-d)">
+    Generated by PIE v0.9 · ${b.pipeline_version||""} · ${b.generated_at ? new Date(b.generated_at).toLocaleString() : ""}
+  </div>`;
+
+  document.getElementById("brief-content").innerHTML = html;
+}
+
+loadBrief();
+</script>
+</body>
+</html>
