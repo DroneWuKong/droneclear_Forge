@@ -2055,6 +2055,30 @@ function updateSliderLabel() {
 }
 
 loadData();
+
+
+function fmtUpdated(iso) {
+  try {
+    var d = new Date(iso);
+    var now = new Date();
+    var diffMs = now - d;
+    var diffMins = Math.round(diffMs / 60000);
+    var diffHrs = Math.round(diffMs / 3600000);
+    var diffDays = Math.round(diffMs / 86400000);
+    var timeStr;
+    if (diffMins < 2) timeStr = 'just now';
+    else if (diffMins < 60) timeStr = diffMins + 'm ago';
+    else if (diffHrs < 24) timeStr = diffHrs + 'h ago';
+    else timeStr = diffDays + 'd ago';
+    var dt = d.toISOString().replace('T',' ').slice(0,16) + ' UTC';
+    var el = document.getElementById('last-updated');
+    if (el) el.textContent = 'Pipeline: ' + dt + ' · ' + timeStr;
+  } catch(e) {}
+}
+fetch('../static/pie_flags.json').then(r=>r.json()).then(flags=>{
+    var ts = flags.map(f=>f.timestamp||'').filter(Boolean).sort().pop();
+    if(ts) fmtUpdated(ts);
+  }).catch(()=>{});
 </script>
 </body>
 </html>

@@ -155,7 +155,9 @@ a{color:var(--blue);text-decoration:none}a:hover{text-decoration:underline}
     <a href="/wingman/" class="topbar-pill">Wingman</a>
   </div>
 </div>
-
+<div style="padding:5px 16px;font:500 10px var(--mono);color:var(--text-xd);border-bottom:1px solid var(--border);background:var(--bg);display:flex;align-items:center;gap:8px">
+  <span id="last-updated">Loading...</span>
+</div>
 <div class="tabs" id="tabs">
   <button class="tab active" data-tab="overview">Overview</button>
   <button class="tab" data-tab="parts">Parts DB <span class="count" id="badge-parts">—</span></button>
@@ -482,6 +484,30 @@ addEventListener('click',function(e){ix++;var el=e.target.closest('a,button,[dat
 function end(){ev('engagement','page_exit',{duration_sec:Math.round((Date.now()-ps)/1e3),max_scroll_pct:ms,interactions:ix,path:location.pathname});fl()}
 addEventListener('visibilitychange',function(){if(document.visibilityState==='hidden')end()});addEventListener('pagehide',end);
 window.__forgeAnalytics={search:function(query,cat,n){ev('search','component_search',{query:query.slice(0,200),category:cat,result_count:n,had_results:n>0});if(n===0)ev('search','no_results',{query:query.slice(0,200),category:cat})},filter:function(cat,f,n,isFirst){ev('filter','apply_filter',{category:cat,filters:f,filter_names:Object.keys(f),first_filter:isFirst!==undefined?isFirst:ff,result_count:n,zero_results:n===0});ff=false;if(n===0)ev('search','no_results',{query:'',category:cat,filters:f})},view:function(pid,cat,mfr,co,ndaa){ev('page_view','component_detail',{component_pid:pid,category:cat,manufacturer:mfr,country:co,ndaa_compliant:ndaa})},compare:function(a,b,cat){ev('compare','side_by_side',{component_a:a,component_b:b,category:cat})},save:function(pid,cat,ctx){ev('save','bookmark_component',{component_pid:pid,category:cat,save_context:ctx||'bookmark'},aid?'account':'pseudonymous')},buildConfig:function(parts,cost,sz){ev('engagement','build_configured',{part_count:parts.length,categories:parts.map(function(p){return p.category}),total_cost:cost,size_class:sz})},intelView:function(id,src,tags){ev('page_view','intel_article',{article_id:id,source:src,tags:tags})},platformView:function(name,type,co){ev('page_view','platform_detail',{platform:name,type:type,country:co})},aiQuery:function(query,cat,mode,img){ev('query','ai_wingman',{q:query.slice(0,200),cat:cat,mode:mode,img:img})},setUser:function(id){aid=id},flush:fl}})();
+
+
+function fmtUpdated(iso) {
+  try {
+    var d = new Date(iso);
+    var now = new Date();
+    var diffMs = now - d;
+    var diffMins = Math.round(diffMs / 60000);
+    var diffHrs = Math.round(diffMs / 3600000);
+    var diffDays = Math.round(diffMs / 86400000);
+    var timeStr;
+    if (diffMins < 2) timeStr = 'just now';
+    else if (diffMins < 60) timeStr = diffMins + 'm ago';
+    else if (diffHrs < 24) timeStr = diffHrs + 'h ago';
+    else timeStr = diffDays + 'd ago';
+    var dt = d.toISOString().replace('T',' ').slice(0,16) + ' UTC';
+    var el = document.getElementById('last-updated');
+    if (el) el.textContent = 'Pipeline: ' + dt + ' · ' + timeStr;
+  } catch(e) {}
+}
+fetch('/static/pie_flags.json').then(r=>r.json()).then(flags=>{
+    var ts = flags.map(f=>f.timestamp||'').filter(Boolean).sort().pop();
+    if(ts) fmtUpdated(ts);
+  }).catch(()=>{});
 </script>
 </body>
 </html>

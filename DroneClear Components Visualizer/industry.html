@@ -82,7 +82,9 @@
     <a href="/wingman/" class="topbar-pill">Wingman</a>
   </div>
 </div>
-
+<div style="padding:5px 16px;font:500 10px var(--mono);color:var(--text-xd);border-bottom:1px solid var(--border);background:var(--bg);display:flex;align-items:center;gap:8px">
+  <span id="last-updated">Loading...</span>
+</div>
 <div class="tabs">
   <button class="tab active" data-tab="commercial">Commercial</button>
   <button class="tab" data-tab="defense">Defense</button>
@@ -391,6 +393,30 @@
         }
         init();
     })();
-    </script>
+    
+
+function fmtUpdated(iso) {
+  try {
+    var d = new Date(iso);
+    var now = new Date();
+    var diffMs = now - d;
+    var diffMins = Math.round(diffMs / 60000);
+    var diffHrs = Math.round(diffMs / 3600000);
+    var diffDays = Math.round(diffMs / 86400000);
+    var timeStr;
+    if (diffMins < 2) timeStr = 'just now';
+    else if (diffMins < 60) timeStr = diffMins + 'm ago';
+    else if (diffHrs < 24) timeStr = diffHrs + 'h ago';
+    else timeStr = diffDays + 'd ago';
+    var dt = d.toISOString().replace('T',' ').slice(0,16) + ' UTC';
+    var el = document.getElementById('last-updated');
+    if (el) el.textContent = 'Pipeline: ' + dt + ' · ' + timeStr;
+  } catch(e) {}
+}
+fetch('../static/forge_intel.json').then(r=>r.json()).then(intel=>{
+    var el=document.getElementById('last-updated');
+    if(el && intel && intel.contracts) el.textContent='Intel DB: '+intel.contracts.length+' contracts tracked';
+  }).catch(()=>{});
+</script>
 </body>
 </html>

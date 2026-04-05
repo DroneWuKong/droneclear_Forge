@@ -171,6 +171,31 @@ function cr(){document.getElementById('ro').classList.remove('open');document.ge
 function oe(){if(ru)window.open(ru,'_blank');}
 document.addEventListener('keydown',e=>{if(e.key==='Escape'&&document.getElementById('ro').classList.contains('open'))cr();});
 fetch('intel_articles.json').then(r=>r.ok?r.json():[]).catch(()=>[]).then(d=>{ALL=d;rFi();renderFeed();rP();rC();rR();}).catch(e=>{document.getElementById('feed-list').innerHTML=`<div style="text-align:center;padding:40px;color:var(--red)">Error: ${e.message}</div>`;});
+
+
+function fmtUpdated(iso) {
+  try {
+    var d = new Date(iso);
+    var now = new Date();
+    var diffMs = now - d;
+    var diffMins = Math.round(diffMs / 60000);
+    var diffHrs = Math.round(diffMs / 3600000);
+    var diffDays = Math.round(diffMs / 86400000);
+    var timeStr;
+    if (diffMins < 2) timeStr = 'just now';
+    else if (diffMins < 60) timeStr = diffMins + 'm ago';
+    else if (diffHrs < 24) timeStr = diffHrs + 'h ago';
+    else timeStr = diffDays + 'd ago';
+    var dt = d.toISOString().replace('T',' ').slice(0,16) + ' UTC';
+    var el = document.getElementById('last-updated');
+    if (el) el.textContent = 'Pipeline: ' + dt + ' · ' + timeStr;
+  } catch(e) {}
+}
+fetch('../static/intel_articles.json').then(r=>r.json()).then(arts=>{
+    var dates = arts.map(a=>a.pub_date||a.scraped_date||'').filter(Boolean).sort();
+    var latest = dates[dates.length-1];
+    if(latest) { var el=document.getElementById('last-updated'); if(el) el.textContent='Latest article: '+latest; }
+  }).catch(()=>{});
 </script>
 </body>
 </html>
