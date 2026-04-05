@@ -1,0 +1,194 @@
+{
+  "schema": "orqa-board-configs-v1",
+  "updated": "2026-04-05",
+  "description": "Structured UART maps, BEC outputs, gotchas, and configuration references for all Orqa flight controller hardware. Authoritative source for Orqa Mode in Wingman AI.",
+  "boards": [
+    {
+      "name": "Orqa QuadCore H7",
+      "pid": "ORQA-QC-H7",
+      "bf_target": "ORQA_QUADCORE_H7",
+      "mcu": "STM32H743",
+      "firmware": ["betaflight"],
+      "ndaa_compliant": true,
+      "manufacturer_hq": "Croatia",
+      "mounting_mm": 30.5,
+      "imu": ["ICM-42688-P", "ICM-42688-P"],
+      "baro": "DPS310",
+      "osd_chip": "AT7456E",
+      "bec_outputs": [
+        { "voltage": "5V", "current_a": 2, "note": "General peripherals — receiver, GPS, accessories" },
+        { "voltage": "9V", "current_a": 2, "note": "VTX only — 5V-only devices will be permanently damaged" }
+      ],
+      "uarts": [
+        { "uart": 1, "type": "VCP/USB", "usable_for_peripherals": false, "note": "Debug/USB only — never assign RX, GPS, VTX, or any peripheral here" },
+        { "uart": 2, "connector": "DJI JST-GH (physical connector on board)", "recommended_use": "DJI O3/O4, Walksnail Avatar, HDZero MSP OSD", "protocol": "MSP", "baud": 115200, "note": "Physical JST-GH connector on top of board — standard DJI pinout" },
+        { "uart": 3, "pads": "TX3/RX3", "recommended_use": "GPS (UBX or NMEA)", "baud": 115200 },
+        { "uart": 4, "pads": "TX4/RX4", "recommended_use": "Receiver — CRSF/ELRS preferred", "protocol": "CRSF", "baud": 420000 },
+        { "uart": 5, "pads": "TX5 only", "type": "TX only", "recommended_use": "SmartAudio VTX control or ESC telemetry RX", "note": "TX-only pad — use for SmartAudio or as ESC telemetry input (wire ESC TELE to FC TX5)" },
+        { "uart": 6, "pads": "TX6/RX6", "recommended_use": "Available — telemetry, companion computer, or additional peripheral" },
+        { "uart": 7, "pads": "TX7/RX7", "recommended_use": "Available" }
+      ],
+      "motor_outputs": ["M1","M2","M3","M4"],
+      "compatible_esc": ["Orqa 3030 70A 4-in-1 ESC"],
+      "gotchas": [
+        "UART1 is VCP/USB — assigning any peripheral here will silently fail",
+        "9V BEC is for VTX only — GPS modules, receivers, LED strips, and most accessories are 5V-only; 9V will destroy them",
+        "DJI connector on UART2 requires MSP enabled at exactly 115200 baud in Betaflight Ports tab",
+        "Dual ICM-42688-P IMUs — enable second IMU in Betaflight gyro config for redundancy; not automatic",
+        "H7 generates significant heat — ensure thermal pad between FC and stack frame plate",
+        "Betaflight target ORQA_QUADCORE_H7 — do not use a generic STM32H743 target; pinout will be wrong",
+        "DSHOT600 bidirectional fully supported on H7 — set motor poles correctly for RPM filter to work",
+        "USB-C on top face — disconnect USB before arming; USB connected is an arming prevention flag"
+      ],
+      "betaflight_cli_quickstart": [
+        "set serialrx_provider = CRSF",
+        "resource SERIAL_TX 4 <UART4 TX pin for ELRS>",
+        "set motor_pwm_protocol = DSHOT600",
+        "set dshot_bidir = ON",
+        "set motor_poles = 14",
+        "feature TELEMETRY",
+        "save"
+      ]
+    },
+    {
+      "name": "Orqa 3030 Lite F405",
+      "pid": "ORQA-3030-F405",
+      "bf_target": "ORQA_3030LITE_F405",
+      "mcu": "STM32F405",
+      "firmware": ["betaflight"],
+      "ndaa_compliant": true,
+      "manufacturer_hq": "Croatia",
+      "mounting_mm": 30.5,
+      "imu": ["ICM-42688-P"],
+      "baro": "DPS310",
+      "osd_chip": "AT7456E",
+      "bec_outputs": [
+        { "voltage": "5V", "current_a": 2, "note": "All outputs are 5V — no 9V BEC on this board" }
+      ],
+      "uarts": [
+        { "uart": 1, "type": "VCP/USB", "usable_for_peripherals": false, "note": "Debug/USB only" },
+        { "uart": 2, "pads": "TX2/RX2", "recommended_use": "Receiver — CRSF/ELRS", "protocol": "CRSF", "baud": 420000 },
+        { "uart": 3, "pads": "TX3/RX3", "recommended_use": "GPS (UBX/NMEA)", "baud": 115200 },
+        { "uart": 4, "pads": "TX4/RX4", "recommended_use": "Available — telemetry or second peripheral" },
+        { "uart": 5, "pads": "TX5 only", "type": "TX only", "recommended_use": "SmartAudio VTX control" },
+        { "uart": 6, "pads": "TX6/RX6", "recommended_use": "Available" }
+      ],
+      "motor_outputs": ["M1","M2","M3","M4"],
+      "compatible_esc": ["Orqa 3030 70A 4-in-1 ESC"],
+      "gotchas": [
+        "F405 MCU — DSHOT600 bidirectional unreliable; use DSHOT300 for RPM filter; limit to 3 RPM harmonics",
+        "No 9V BEC — VTX must accept 5V; using a 5.8GHz VTX requiring 9-12V will damage it",
+        "UART1 is VCP only — never assign peripherals here",
+        "Betaflight target is ORQA_3030LITE_F405 — generic F405 target will have wrong pinout",
+        "Pairs mechanically with Orqa 3030 70A ESC on 30.5mm standoffs — M3 hardware",
+        "Single IMU — no redundancy; gyro failure = immediate loss of stabilization"
+      ],
+      "betaflight_cli_quickstart": [
+        "set serialrx_provider = CRSF",
+        "set motor_pwm_protocol = DSHOT300",
+        "set dshot_bidir = ON",
+        "set motor_poles = 14",
+        "save"
+      ]
+    },
+    {
+      "name": "Orqa WingCore H7",
+      "pid": "ORQA-WINGCORE-H7",
+      "px4_target": "orqa_wingcore_h7",
+      "ardupilot_target": "OrqaWingCoreH7",
+      "mcu": "STM32H743",
+      "firmware": ["px4", "ardupilot"],
+      "ndaa_compliant": true,
+      "manufacturer_hq": "Croatia",
+      "mounting_mm": null,
+      "imu": ["ICM-42688-P (x2, orthogonal mount)"],
+      "baro": "DPS310",
+      "current_sensor_a": 160,
+      "connectors": "All JST-GH Pixhawk standard — NO solder pads",
+      "bec_outputs": [
+        { "voltage": "5V", "note": "Powered from servo rail or external BEC" }
+      ],
+      "jst_gh_ports": [
+        { "port": "TELEM1", "recommended_use": "Primary telemetry — SiK radio, companion computer MAVLink", "protocol": "MAVLink", "baud": 57600 },
+        { "port": "TELEM2", "recommended_use": "Secondary telemetry or companion computer", "protocol": "MAVLink" },
+        { "port": "GPS1",   "recommended_use": "Primary GPS + I2C compass", "protocol": "UART+I2C" },
+        { "port": "GPS2",   "recommended_use": "Secondary GPS for redundancy", "protocol": "UART+I2C" },
+        { "port": "RC",     "recommended_use": "Receiver input — SBUS, CRSF, or ELRS", "note": "Use RC connector, not TELEM, for receiver" },
+        { "port": "VTX",    "recommended_use": "Direct connection to Orqa FPV.Connect VTX module" },
+        { "port": "DEBUG",  "recommended_use": "USB-C console access and firmware flash" },
+        { "port": "CAN1",   "recommended_use": "DroneCAN bus — GPS, ESC, or sensor nodes" },
+        { "port": "CAN2",   "recommended_use": "Secondary DroneCAN bus" },
+        { "port": "I2C",    "recommended_use": "Compass, rangefinder, airspeed sensor" },
+        { "port": "SPI",    "recommended_use": "Internal — do not use" },
+        { "port": "POWER1", "recommended_use": "Primary power input with voltage/current sensing" },
+        { "port": "POWER2", "recommended_use": "Redundant power input" }
+      ],
+      "pwm_outputs": 14,
+      "gotchas": [
+        "All connections are JST-GH Pixhawk standard — requires correct JST-GH cable assemblies; no solder fallback",
+        "Fixed-wing and VTOL controller — not intended for multirotors; use QuadCore H7 for quads",
+        "Orthogonal dual IMU for vibration rejection in fixed-wing flight — verify IMU orientation in QGC/MP",
+        "160A current sensor — calibrate in GCS before flight; default calibration may be off",
+        "PX4 target: orqa_wingcore_h7 | ArduPilot target: OrqaWingCoreH7 — must select exact target in flasher",
+        "VTOL transitions require careful parameter tuning — use PX4 VTOL framework documentation",
+        "Designed for Orqa MRM2-10 platform — motor/servo output mapping may differ on other airframes",
+        "DroneCAN requires 120-ohm termination at both ends of bus — check topology before enabling"
+      ]
+    },
+    {
+      "name": "Orqa DTK APB",
+      "pid": "ORQA-DTK-APB",
+      "mcu_fc": "STM32H7",
+      "mcu_companion": "NXP i.MX8M Plus",
+      "companion_npu_tops": 2.3,
+      "companion_cores": "4x Cortex-A53 + Cortex-M7",
+      "firmware_fc": ["px4"],
+      "firmware_companion": "Linux (Yocto/Ubuntu)",
+      "ndaa_compliant": true,
+      "manufacturer_hq": "Croatia",
+      "description": "All-in-one flight controller + companion computer. STM32H7 runs PX4; NXP i.MX8M Plus runs Linux with 2.3 TOPS NPU for onboard AI inference. MAVLink bridge between FC and companion is internal.",
+      "connectors": "All JST-GH",
+      "expansion": "PCIe — for cellular modems, additional AI accelerators, custom payloads",
+      "gotchas": [
+        "FC and companion are on the same board — a firmware flash of the FC does NOT affect the Linux companion and vice versa",
+        "MAVLink bridge between H7 and i.MX8M is internal — no external UART wiring needed for companion-to-FC communication",
+        "Linux companion boots in ~20-30s — PX4 on the H7 boots faster; arming before Linux is fully up means no AI features",
+        "NPU (2.3 TOPS) runs NXP eIQ framework — models must be converted to NPU-compatible format (TFLite/ONNX via NXP tools)",
+        "PCIe expansion port allows adding cellular modem or additional compute — requires custom carrier design",
+        "Power architecture is critical — companion and FC share power rail; undervoltage affects both",
+        "Requires PX4 build configured for orqa_dtk_apb target — standard Pixhawk builds will not work",
+        "AI inference on NPU does not block FC control loop — runs asynchronously via MAVLink commands"
+      ],
+      "use_cases": [
+        "Autonomous navigation with onboard AI",
+        "BVLOS with cellular connectivity via PCIe modem",
+        "Computer vision payload processing",
+        "AI Wingman edge deployment reference platform"
+      ]
+    },
+    {
+      "name": "Orqa 3030 70A 4-in-1 ESC",
+      "pid": "ORQA-3030-ESC",
+      "firmware": "BLHeli_32",
+      "ndaa_compliant": true,
+      "manufacturer_hq": "Croatia",
+      "mounting_mm": 30.5,
+      "continuous_current_a": 70,
+      "burst_current_a": 80,
+      "cell_count_min": 3,
+      "cell_count_max": 6,
+      "protocols": ["DSHOT150","DSHOT300","DSHOT600","OneShot125","Multishot","PWM"],
+      "telemetry": true,
+      "stack_connector_pins": 8,
+      "gotchas": [
+        "BLHeli_32 — bidirectional DSHOT supported from v32.7+; verify firmware version before enabling RPM filter",
+        "8-pin stack connector includes current sensor signal — connect CURR pin to FC CURR pad for battery current in OSD",
+        "70A continuous per motor — total 4-motor draw can reach 280A peak; ensure XT60 and wiring can handle this",
+        "NDAA compliant (Croatian manufacture) — verified for DOD procurement pathway alongside QuadCore H7",
+        "Motor direction set via BLHeli32 Suite or Betaflight motor direction override — not automatic on first flash",
+        "Temperature sensor outputs to telemetry — monitor ESC temp in Betaflight OSD to catch thermal issues",
+        "Pairs with Orqa QuadCore H7 and 3030 Lite F405 — 30.5mm standoffs, M3 hardware"
+      ]
+    }
+  ]
+}

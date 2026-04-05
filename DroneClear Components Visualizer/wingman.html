@@ -594,7 +594,8 @@ async function loadRAG() {
           if (!item || typeof item !== 'object') continue;
           ragStats.components++;
           const textParts = [item.name, item.manufacturer, item.description, item.category,
-            item.pid, item.protocol, item.firmware, ...(item.tags || [])].filter(Boolean);
+            item.pid, item.protocol, item.firmware, ...(item.tags || []),
+            ...(item.gotchas || [])].filter(Boolean);
           ragIndex.push({
             cat, name: item.name || '?', text: textParts.join(' ').toLowerCase(),
             src: cat, data: item,
@@ -666,6 +667,34 @@ async function loadRAG() {
     await Promise.all(hbPromises);
   } catch(e) { console.warn('Handbook load skipped:', e.message); }
 
+  // Load Orqa board configs (UART maps, gotchas, CLI quickstart)
+  try {
+    const res = await fetch('forge_orqa_configs.json');
+    if (res.ok) {
+      const orqa = await res.json();
+      for (const board of (orqa.boards || [])) {
+        // Build rich searchable text from all board fields
+        const uartText = (board.uarts || board.jst_gh_ports || []).map(u =>
+          `uart${u.uart || u.port} ${u.recommended_use || ''} ${u.protocol || ''} ${u.note || ''}`
+        ).join(' ');
+        const textParts = [
+          board.name, board.pid, board.bf_target, board.px4_target, board.ardupilot_target,
+          board.mcu, board.mcu_fc, board.mcu_companion, board.description,
+          ...(board.gotchas || []), uartText,
+          ...(board.betaflight_cli_quickstart || []),
+          'orqa', 'uart map', 'ndaa', 'croatian',
+        ].filter(Boolean);
+        ragIndex.push({
+          cat: 'orqa_boards', name: board.name,
+          text: textParts.join(' ').toLowerCase(),
+          src: 'orqa_configs', data: board,
+        });
+        ragStats.categories.add('orqa_boards');
+      }
+      console.log(`Orqa configs loaded: ${orqa.boards?.length || 0} boards`);
+    }
+  } catch(e) { console.warn('Orqa configs load skipped:', e.message); }
+
   buildIDF(); // compute TF-IDF weights now that corpus is loaded
   updateStats();
   updateSourcePills();
@@ -683,7 +712,8 @@ function indexPartsDB(file, data) {
     // Build searchable text blob from all string fields
     const textParts = [item.name, item.manufacturer, item.description, item.category,
       item.mcu_family, item.protocol, item.video_system, item.mesh_protocol,
-      item.processor, item.firmware, ...(item.tags || [])].filter(Boolean);
+      item.processor, item.firmware, ...(item.tags || []),
+      ...(item.gotchas || [])].filter(Boolean);
     ragIndex.push({
       cat, name: item.name || '?', text: textParts.join(' ').toLowerCase(),
       src: file, data: item,
@@ -969,21 +999,65 @@ function ragSearch(query, maxComponents, maxHandbook, contextHistory) {
   }
 
   if (scored.length > 0) {
-    const fwResults   = scored.filter(s => s.cat === 'firmware');
-    const compResults = scored.filter(s => s.cat !== 'firmware');
+    const fwResults    = scored.filter(s => s.cat === 'firmware');
+    const orqaResults  = scored.filter(s => s.cat === 'orqa_boards');
+    const compResults  = scored.filter(s => s.cat !== 'firmware' && s.cat !== 'orqa_boards');
 
+    // ── Orqa board configs: UART maps + gotchas (highest priority for Orqa queries)
+    if (orqaResults.length > 0) {
+      ctx += '\n\n## ORQA BOARD CONFIGURATION\n';
+      for (const s of orqaResults) {
+        const d = s.data;
+        ctx += `\n### ${d.name}`;
+        if (d.bf_target) ctx += ` | BF: ${d.bf_target}`;
+        if (d.px4_target) ctx += ` | PX4: ${d.px4_target}`;
+        ctx += `\nMCU: ${d.mcu || d.mcu_fc || '?'} | NDAA: ${d.ndaa_compliant ? 'YES (Croatian)' : 'No'}\n`;
+
+        if (d.bec_outputs?.length) {
+          ctx += `BEC outputs: ${d.bec_outputs.map(b => `${b.voltage}/${b.current_a}A (${b.note})`).join(' | ')}\n`;
+        }
+
+        const ports = d.uarts || d.jst_gh_ports || [];
+        if (ports.length) {
+          ctx += `UART/PORT MAP:\n`;
+          for (const u of ports) {
+            const id = u.uart !== undefined ? `UART${u.uart}` : u.port;
+            const usable = u.usable_for_peripherals === false ? ' [VCP/USB ONLY — no peripherals]' : '';
+            const rec = u.recommended_use ? ` → ${u.recommended_use}` : '';
+            const baud = u.baud ? ` @ ${u.baud} baud` : '';
+            const note = u.note ? ` (${u.note})` : '';
+            ctx += `  ${id}${usable}${rec}${baud}${note}\n`;
+          }
+        }
+
+        if (d.gotchas?.length) {
+          ctx += `⚠ GOTCHAS:\n`;
+          for (const g of d.gotchas) ctx += `  - ${g}\n`;
+        }
+
+        if (d.betaflight_cli_quickstart?.length) {
+          ctx += `CLI QUICKSTART:\n${d.betaflight_cli_quickstart.join('\n')}\n`;
+        }
+      }
+    }
+
+    // ── Component results with gotchas prominently shown
     if (compResults.length > 0) {
       ctx += '\n\n## MATCHING COMPONENTS FROM DATABASE\n';
       for (const s of compResults) {
         const d = s.data;
         const fields = Object.entries(d)
-          .filter(([k,v]) => v && typeof v !== 'object' && !['pid','image_file','pdf_file','link','description'].includes(k))
+          .filter(([k,v]) => v && typeof v !== 'object' && !['pid','image_file','pdf_file','link','description','gotchas'].includes(k))
           .map(([k,v]) => `${k}: ${v}`).join(' | ');
         ctx += `- [${s.cat}] ${s.name}: ${fields}\n`;
-        if (d.description) ctx += `  ${d.description.slice(0, 200)}\n`;
+        if (d.description) ctx += `  ${d.description.slice(0, 180)}\n`;
+        if (d.gotchas?.length) {
+          ctx += `  ⚠ GOTCHAS: ${d.gotchas.join(' | ')}\n`;
+        }
       }
     }
 
+    // ── Firmware targets
     if (fwResults.length > 0) {
       ctx += '\n\n## FIRMWARE TARGET CONFIGS\n';
       ctx += 'These are actual firmware target definitions from the source repos.\n';
@@ -992,10 +1066,10 @@ function ragSearch(query, maxComponents, maxHandbook, contextHistory) {
         ctx += `\n### ${d.target_name} [${d.firmware}]\n`;
         if (d.mcu) ctx += `MCU: ${d.mcu} (${d.mcu_family || ''})\n`;
         if (d.uart_count) ctx += `UARTs: ${d.uart_count}\n`;
-        if (d.gyros && d.gyros.length) ctx += `Gyros: ${d.gyros.join(', ')}\n`;
+        if (d.gyros?.length) ctx += `Gyros: ${d.gyros.join(', ')}\n`;
         if (d.osd) ctx += `OSD: ${d.osd}\n`;
         if (d.serial_order) ctx += `Serial order: ${d.serial_order}\n`;
-        if (d.features && d.features.length) ctx += `Features: ${d.features.join(', ')}\n`;
+        if (d.features?.length) ctx += `Features: ${d.features.join(', ')}\n`;
         if (d.frame_type) ctx += `Frame type: ${d.frame_type} (${d.frame_class || ''})\n`;
         if (d.bf_target) ctx += `BF target: ${d.bf_target}\n`;
         if (d.raw_snippet) ctx += `Config excerpt:\n${d.raw_snippet.slice(0, 600)}\n`;
