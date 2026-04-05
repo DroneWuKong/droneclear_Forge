@@ -192,15 +192,15 @@ def run_commercial(dry_run=False):
         print(f"  SKIP GetFPV: {e}", file=sys.stderr)
 
     try:
-        from mine_rdq import fetch_collection, merge_into_db as rdq_merge, COLLECTIONS
-        added = updated = 0
-        for coll in COLLECTIONS:
-            parts = _run(f'RDQ/{coll}', fetch_collection, coll)
-            if parts:
-                res = _run(f'RDQ merge/{coll}', rdq_merge, parts, DB_PATH, dry_run) or (0, 0, 0)
-                added += res[0] or 0; updated += res[1] or 0
-        print(f"  RDQ           -> +{added} new, {updated} updated")
-    except ImportError as e:
+        import subprocess as _sp
+        rdq_script = os.path.join(COMMERCIAL_DIR, 'mine_rdq.py')
+        flags = ['--dry-run'] if dry_run else []
+        r = _sp.run([sys.executable, rdq_script] + flags, cwd=REPO_ROOT)
+        if r.returncode != 0:
+            print(f"  WARNING  RDQ subprocess exited {r.returncode}", file=sys.stderr)
+        else:
+            print("  RDQ           -> forge_database.json updated")
+    except Exception as e:
         print(f"  SKIP RDQ: {e}", file=sys.stderr)
 
     try:
@@ -253,8 +253,12 @@ def run_firmware(dry_run=False):
     _banner("FIRMWARE  (betaflight · inav · ardupilot · px4)")
     import subprocess
     fw_script = os.path.join(FIRMWARE_DIR, 'mine_firmware_configs.py')
-    flags = ['--dry-run'] if dry_run else []
-    r = subprocess.run([sys.executable, fw_script] + flags, cwd=REPO_ROOT)
+    # mine_firmware_configs.py does not support --dry-run; it clones repos
+    # and writes output regardless. Skip entirely on dry runs.
+    if dry_run:
+        print("  Firmware      -> skipped in dry-run (requires git clone)")
+        return
+    r = subprocess.run([sys.executable, fw_script], cwd=REPO_ROOT)
     if r.returncode != 0:
         print(f"  WARNING  Firmware subprocess exited {r.returncode}", file=sys.stderr)
     else:
@@ -266,10 +270,15 @@ def run_firmware(dry_run=False):
 def run_troubleshooting(dry_run=False):
     _banner("TROUBLESHOOTING  (community sources)")
     try:
-        from mine_troubleshooting import mine_troubleshooting
-        _run('Community TS', mine_troubleshooting)
-        print("  Community TS  -> forge_troubleshooting.json updated")
-    except ImportError as e:
+        import subprocess as _sp
+        ts_script = os.path.join(TROUBLESHOOT_DIR, 'mine_troubleshooting.py')
+        flags = ['--dry-run'] if dry_run else []
+        r = _sp.run([sys.executable, ts_script] + flags, cwd=REPO_ROOT)
+        if r.returncode != 0:
+            print(f"  WARNING  Troubleshooting subprocess exited {r.returncode}", file=sys.stderr)
+        else:
+            print("  Community TS  -> forge_troubleshooting.json updated")
+    except Exception as e:
         print(f"  SKIP Troubleshooting: {e}", file=sys.stderr)
 
 
