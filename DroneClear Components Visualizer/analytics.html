@@ -1,110 +1,191 @@
-{% load static %}
 <!DOCTYPE html>
-<html lang="en" data-theme="dark">
-
+<html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Analytics — Forge Mission Control</title>
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&family=Source+Serif+4:opsz,wght@8..60,400;8..60,600;8..60,700&display=swap"
-        rel="stylesheet">
-    <link rel="stylesheet" href="{% static 'base.css' %}?v=2">
-    <link rel="stylesheet" href="{% static 'layout.css' %}?v=4">
-    <link rel="stylesheet" href="{% static 'components.css' %}?v=2">
-    <link rel="stylesheet" href="{% static 'utilities.css' %}?v=2">
-    <script src="https://unpkg.com/@phosphor-icons/web"></script>
-    <script>(function(){var s=localStorage.getItem('dc-theme');document.documentElement.setAttribute('data-theme',s||'dark');})();</script>
-    <style>
-:root{--an-teal:#f5c518;--an-red:#e63946;--an-amber:#f5c518;--an-green:#16a34a;--an-blue:#2563eb;--an-purple:#7c3aed;--an-pink:#e63946;--an-surface:#16141c;--an-surface-alt:#100f14;--an-border:#2a2535;--an-text:#f0eef5;--an-text-dim:#a89ec0;--an-text-muted:#6b6280;--an-mono:'JetBrains Mono',monospace;--an-serif:'Source Serif 4',Georgia,serif}
-.an-page{max-width:1400px;margin:0 auto;padding:24px 20px 60px}
-.an-header{margin-bottom:32px}.an-title{font-family:var(--an-mono);font-size:24px;font-weight:700;color:var(--an-teal);margin:0;letter-spacing:-0.5px;display:flex;align-items:center;gap:10px}.an-subtitle{font-size:13px;color:var(--an-text-dim);margin-top:4px}
-.an-header-row{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px}
-.an-refresh{display:flex;align-items:center;gap:6px;padding:6px 14px;border-radius:8px;border:1px solid var(--an-border);background:var(--an-surface);color:var(--an-text-dim);font-size:12px;font-family:var(--an-mono);cursor:pointer;transition:all .2s}.an-refresh:hover{border-color:var(--an-teal);color:var(--an-teal)}.an-refresh.loading i{animation:spin 1s linear infinite}
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Analytics — Forge Mission Control</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://unpkg.com/@phosphor-icons/web"></script>
+<style>
+:root {
+  --bg:#0a0a0c;--surface:#100f14;--card:#16141c;--card-hi:#1e1b26;
+  --border:#2a2535;--border-hi:#3d3650;
+  --amber:#f5c518;--amber-d:#f5c51820;
+  --blue:#2563eb;--blue-d:#2563eb18;
+  --green:#16a34a;--green-d:#16a34a18;
+  --red:#e63946;--red-d:#e6394618;
+  --purple:#7c3aed;--purple-d:#7c3aed18;
+  --cyan:#0891b2;--cyan-d:#0891b218;
+  --orange:#ea580c;--orange-d:#ea580c18;
+  --text:#f0eef5;--text-s:#a89ec0;--text-d:#6b6280;--text-xd:#4a4360;
+  --font:'DM Sans',system-ui,sans-serif;
+  --mono:'JetBrains Mono',monospace;
+
+  /* analytics alias tokens — map an- vars to PIE vars */
+  --an-teal:var(--amber);
+  --an-red:var(--red);
+  --an-amber:var(--amber);
+  --an-green:var(--green);
+  --an-blue:var(--blue);
+  --an-purple:var(--purple);
+  --an-pink:var(--red);
+  --an-surface:var(--card);
+  --an-surface-alt:var(--surface);
+  --an-border:var(--border);
+  --an-text:var(--text);
+  --an-text-dim:var(--text-s);
+  --an-text-muted:var(--text-d);
+  --an-mono:var(--mono);
+}
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:var(--bg);color:var(--text);font-family:var(--font);line-height:1.5;-webkit-font-smoothing:antialiased}
+a{color:var(--blue);text-decoration:none}a:hover{text-decoration:underline}
+
+/* ── Forge nav — exact PIE match ── */
+.forge-nav{display:flex;align-items:center;gap:12px;padding:12px 20px;border-bottom:1px solid var(--border);font-size:13px}
+.forge-nav .logo{font-weight:700;color:var(--amber);letter-spacing:-0.02em}
+.forge-nav .sep{color:var(--text-xd)}
+.forge-nav .current{color:var(--text);font-weight:600}
+.forge-nav .links{margin-left:auto;display:flex;gap:12px;font-size:11px}
+.forge-nav .links a{color:var(--text-d);padding:4px 8px;border:1px solid transparent;border-radius:5px;transition:all .15s}
+.forge-nav .links a:hover{color:var(--text-s);border-color:var(--border);text-decoration:none}
+
+/* ── Tabs — exact PIE match ── */
+.tabs{display:flex;gap:0;border-bottom:1px solid var(--border);padding:0 20px;overflow-x:auto;-webkit-overflow-scrolling:touch;scrollbar-width:none}
+.tabs::-webkit-scrollbar{display:none}
+.tab{background:none;border:none;border-bottom:2px solid transparent;color:var(--text-d);padding:10px 16px;font:500 11px var(--font);cursor:pointer;transition:all .15s;white-space:nowrap;flex-shrink:0}
+.tab.active{color:var(--amber);border-bottom-color:var(--amber);font-weight:600}
+.tab .count{background:var(--red);color:#fff;border-radius:8px;padding:1px 5px;font-size:9px;margin-left:4px;font-weight:700}
+
+/* ── Content ── */
+.content{padding:16px 20px;max-width:960px;margin:0 auto}
+.panel{display:none}.panel.active{display:block}
+
+/* ── Analytics-specific styles mapped to PIE design system ── */
+.an-page{} /* no-op, content wrapper handles it */
+.an-header{margin-bottom:20px}
+.an-title{font:700 18px var(--mono);color:var(--amber);letter-spacing:-0.02em;display:flex;align-items:center;gap:8px;margin-bottom:4px}
+.an-subtitle{font-size:11px;color:var(--text-d)}
+.an-header-row{display:flex;align-items:flex-start;justify-content:space-between;flex-wrap:wrap;gap:12px}
+.an-refresh{display:flex;align-items:center;gap:6px;padding:5px 12px;border-radius:6px;border:1px solid var(--border);background:var(--card);color:var(--text-d);font:500 11px var(--mono);cursor:pointer;transition:all .15s}
+.an-refresh:hover{border-color:var(--amber);color:var(--amber)}
+.an-refresh.loading i{animation:spin 1s linear infinite}
 @keyframes spin{to{transform:rotate(360deg)}}
-.an-tabs{display:flex;gap:4px;margin-bottom:24px;border-bottom:1px solid var(--an-border);overflow-x:auto}.an-tab{padding:10px 18px;border:none;background:none;color:var(--an-text-dim);font-family:var(--an-mono);font-size:12px;font-weight:500;cursor:pointer;border-bottom:2px solid transparent;transition:all .2s;margin-bottom:-1px;white-space:nowrap}.an-tab:hover{color:var(--an-text)}.an-tab.active{color:var(--an-teal);border-bottom-color:var(--an-teal)}
-.an-tab-badge{display:inline-block;padding:1px 6px;border-radius:10px;font-size:10px;margin-left:6px;background:rgba(78,205,196,.15);color:var(--an-teal)}
+
+/* Inner tab strip (analytics sub-tabs) — matches PIE filter style */
+.an-tabs{display:none} /* hidden — we use outer PIE tabs instead */
+
 .an-panel{display:none}.an-panel.active{display:block}
-.an-stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(155px,1fr));gap:12px;margin-bottom:24px}
-.an-stat{background:var(--an-surface);border-radius:12px;padding:18px 20px;border-left:3px solid var(--an-teal);position:relative;overflow:hidden}
-.an-stat::after{content:'';position:absolute;top:0;right:0;width:60px;height:60px;background:radial-gradient(circle at top right,rgba(78,205,196,.06),transparent 70%);pointer-events:none}
-.an-stat-value{font-family:var(--an-mono);font-size:28px;font-weight:700;color:var(--an-teal);line-height:1}
-.an-stat-label{font-size:12px;color:var(--an-text-dim);margin-top:4px}.an-stat-sub{font-size:10px;color:var(--an-text-muted);margin-top:2px;font-family:var(--an-mono)}
-.an-stat.accent-red{border-left-color:var(--an-red)}.an-stat.accent-red .an-stat-value{color:var(--an-red)}
-.an-stat.accent-amber{border-left-color:var(--an-amber)}.an-stat.accent-amber .an-stat-value{color:var(--an-amber)}
-.an-stat.accent-green{border-left-color:var(--an-green)}.an-stat.accent-green .an-stat-value{color:var(--an-green)}
-.an-stat.accent-blue{border-left-color:var(--an-blue)}.an-stat.accent-blue .an-stat-value{color:var(--an-blue)}
-.an-stat.accent-purple{border-left-color:var(--an-purple)}.an-stat.accent-purple .an-stat-value{color:var(--an-purple)}
-.an-section{background:var(--an-surface);border-radius:12px;padding:20px 24px;margin-bottom:16px}
-.an-section-title{font-family:var(--an-mono);font-size:14px;font-weight:600;color:var(--an-text);margin:0 0 16px;display:flex;align-items:center;gap:8px}.an-section-title i{color:var(--an-teal);font-size:18px}
-.an-grid-2{display:grid;grid-template-columns:1fr 1fr;gap:16px}.an-grid-3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px}
-@media(max-width:900px){.an-grid-2,.an-grid-3{grid-template-columns:1fr}}
-.an-bar{margin-bottom:10px}.an-bar-header{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:3px}
-.an-bar-label{font-size:12px;color:var(--an-text);max-width:65%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.an-bar-value{font-family:var(--an-mono);font-size:12px;font-weight:600;color:var(--an-teal)}
-.an-bar-track{height:5px;background:var(--an-surface-alt);border-radius:3px;overflow:hidden}
-.an-bar-fill{height:100%;border-radius:3px;transition:width .8s cubic-bezier(.4,0,.2,1)}
-.an-bar-fill.teal{background:var(--an-teal)}.an-bar-fill.red{background:var(--an-red)}.an-bar-fill.amber{background:var(--an-amber)}
-.an-bar-fill.green{background:var(--an-green)}.an-bar-fill.blue{background:var(--an-blue)}.an-bar-fill.purple{background:var(--an-purple)}
-.an-spark{height:50px;display:flex;align-items:flex-end;gap:2px;padding:4px 0}
-.an-spark-bar{flex:1;border-radius:2px 2px 0 0;min-width:4px;transition:height .6s ease;background:var(--an-teal);opacity:.7}.an-spark-bar:hover{opacity:1}.an-spark-bar.empty{background:var(--an-border);opacity:.3}
-.an-spark-label{display:flex;justify-content:space-between;font-size:9px;color:var(--an-text-muted);font-family:var(--an-mono);margin-top:2px}
-.an-table{width:100%;border-collapse:collapse;font-size:12px}
-.an-table th{text-align:left;padding:8px 10px;color:var(--an-text-muted);font-family:var(--an-mono);font-weight:500;font-size:10px;text-transform:uppercase;letter-spacing:.5px;border-bottom:1px solid var(--an-border)}
-.an-table td{padding:7px 10px;color:var(--an-text-dim);border-bottom:1px solid rgba(255,255,255,.03)}
-.an-table tr:hover td{color:var(--an-text);background:rgba(78,205,196,.03)}
-.an-table .mono{font-family:var(--an-mono)}.an-table .teal{color:var(--an-teal)}.an-table .red{color:var(--an-red)}.an-table .amber{color:var(--an-amber)}.an-table .green{color:var(--an-green)}
-.an-signal{display:inline-flex;align-items:center;gap:4px;padding:2px 8px;border-radius:6px;font-size:10px;font-family:var(--an-mono);font-weight:600}
-.an-signal.high{background:rgba(239,68,68,.15);color:var(--an-red)}.an-signal.medium{background:rgba(245,158,11,.15);color:var(--an-amber)}.an-signal.low{background:rgba(78,205,196,.15);color:var(--an-teal)}
-.an-signal-card{background:var(--an-surface-alt);border-radius:8px;padding:12px 16px;margin-bottom:8px;border-left:3px solid var(--an-teal)}
-.an-signal-card h5{font-family:var(--an-mono);font-size:12px;font-weight:600;margin:0 0 4px;color:var(--an-text)}
-.an-signal-card p{font-size:11px;color:var(--an-text-dim);margin:0;line-height:1.5}
-.an-footer{margin-top:40px;padding:16px 0;border-top:1px solid var(--an-border);text-align:center;font-size:11px;color:var(--an-text-muted)}.an-footer .teal{color:var(--an-teal)}
-.an-empty{text-align:center;padding:30px;color:var(--an-text-muted);font-size:13px}
-.an-pulse{width:8px;height:8px;border-radius:50%;background:var(--an-green);display:inline-block;animation:pulse 2s ease-in-out infinite}
+.an-stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:8px;margin-bottom:16px}
+.an-stat{background:var(--card);border-radius:10px;padding:14px 16px;border:1px solid var(--border);border-left:3px solid var(--amber);position:relative;overflow:hidden;transition:border-color .15s}
+.an-stat:hover{border-color:var(--border-hi)}
+.an-stat::after{content:'';position:absolute;top:0;right:0;width:50px;height:50px;background:radial-gradient(circle at top right,var(--amber-d),transparent 70%);pointer-events:none}
+.an-stat-value{font:700 24px var(--mono);color:var(--amber);line-height:1}
+.an-stat-label{font-size:11px;color:var(--text-s);margin-top:4px}
+.an-stat-sub{font-size:10px;color:var(--text-d);margin-top:2px;font-family:var(--mono)}
+.an-stat.accent-red{border-left-color:var(--red)}.an-stat.accent-red .an-stat-value,.an-stat.accent-red::after{color:var(--red);background:radial-gradient(circle at top right,var(--red-d),transparent 70%)}
+.an-stat.accent-amber{border-left-color:var(--amber)}
+.an-stat.accent-green{border-left-color:var(--green)}.an-stat.accent-green .an-stat-value{color:var(--green)}.an-stat.accent-green::after{background:radial-gradient(circle at top right,var(--green-d),transparent 70%)}
+.an-stat.accent-blue{border-left-color:var(--blue)}.an-stat.accent-blue .an-stat-value{color:var(--blue)}.an-stat.accent-blue::after{background:radial-gradient(circle at top right,var(--blue-d),transparent 70%)}
+.an-stat.accent-purple{border-left-color:var(--purple)}.an-stat.accent-purple .an-stat-value{color:var(--purple)}.an-stat.accent-purple::after{background:radial-gradient(circle at top right,var(--purple-d),transparent 70%)}
+
+.an-section{background:var(--card);border-radius:10px;padding:14px 16px;margin-bottom:10px;border:1px solid var(--border)}
+.an-section-title{font:600 12px var(--font);color:var(--text);margin:0 0 12px;display:flex;align-items:center;gap:6px}
+.an-section-title i{color:var(--amber);font-size:15px}
+
+.an-grid-2{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px}
+.an-grid-3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:10px}
+@media(max-width:640px){.an-grid-2,.an-grid-3{grid-template-columns:1fr}.forge-nav .links{display:none}}
+
+.an-bar{margin-bottom:8px}
+.an-bar-header{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:3px}
+.an-bar-label{font-size:11px;color:var(--text);max-width:65%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.an-bar-value{font:600 11px var(--mono);color:var(--amber)}
+.an-bar-track{height:4px;background:var(--surface);border-radius:2px;overflow:hidden}
+.an-bar-fill{height:100%;border-radius:2px;transition:width .6s ease}
+.an-bar-fill.teal{background:var(--amber)}
+.an-bar-fill.red{background:var(--red)}
+.an-bar-fill.amber{background:var(--amber)}
+.an-bar-fill.green{background:var(--green)}
+.an-bar-fill.blue{background:var(--blue)}
+.an-bar-fill.purple{background:var(--purple)}
+
+.an-spark{height:44px;display:flex;align-items:flex-end;gap:2px;padding:4px 0}
+.an-spark-bar{flex:1;border-radius:2px 2px 0 0;min-width:4px;transition:height .5s ease;background:var(--amber);opacity:.7}
+.an-spark-bar:hover{opacity:1}
+.an-spark-bar.empty{background:var(--border);opacity:.4}
+.an-spark-label{display:flex;justify-content:space-between;font:500 9px var(--mono);color:var(--text-d);margin-top:2px}
+
+.an-table{width:100%;border-collapse:collapse;font-size:11px}
+.an-table th{text-align:left;padding:6px 10px;color:var(--text-d);font:500 9px var(--mono);text-transform:uppercase;letter-spacing:.06em;border-bottom:1px solid var(--border)}
+.an-table td{padding:6px 10px;color:var(--text-s);border-bottom:1px solid var(--border)}
+.an-table td:first-child{color:var(--text)}
+.an-table tr:last-child td{border-bottom:none}
+.an-table tr:hover td{background:var(--card-hi)}
+.an-table .mono{font-family:var(--mono)}
+.an-table .teal{color:var(--amber)}
+.an-table .red{color:var(--red)}
+.an-table .amber{color:var(--amber)}
+.an-table .green{color:var(--green)}
+
+.an-signal{display:inline-flex;align-items:center;padding:2px 8px;border-radius:5px;font:600 9px var(--mono);text-transform:uppercase;letter-spacing:.04em}
+.an-signal.high{background:var(--red-d);color:var(--red)}
+.an-signal.medium{background:var(--amber-d);color:var(--amber)}
+.an-signal.low{background:var(--green-d);color:var(--green)}
+
+/* Signal cards — match PIE pred-card/flag-card style */
+.an-signal-card{background:var(--surface);border-radius:8px;padding:10px 14px;margin-bottom:8px;border:1px solid var(--border);border-left:3px solid var(--amber);transition:border-color .15s}
+.an-signal-card:hover{border-color:var(--border-hi)}
+.an-signal-card h5{font:600 12px var(--font);margin:0 0 4px;color:var(--text);display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+.an-signal-card p{font-size:11px;color:var(--text-s);margin:0;line-height:1.5}
+
+.an-tab-badge{font:600 9px var(--mono);background:var(--red);color:#fff;border-radius:8px;padding:1px 5px;margin-left:4px}
+.an-pulse{width:6px;height:6px;border-radius:50%;background:var(--green);display:inline-block;animation:pulse 2s ease-in-out infinite}
 @keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}
-    </style>
+
+.an-empty{text-align:center;padding:24px;color:var(--text-d);font-size:12px}
+.an-footer{margin-top:24px;padding:14px 0;border-top:1px solid var(--border);text-align:center;font-size:10px;color:var(--text-d);font-family:var(--mono)}
+.an-footer .teal{color:var(--amber)}
+</style>
 </head>
 <body>
-    <div class="app-container">
-        <div class="sidebar-overlay hidden" id="sidebar-overlay"></div>
-        <aside class="sidebar">
-            <div class="sidebar-header"><div class="logo"><span class="logo-text">Forge</span><span class="logo-sub">Powered by DroneClear</span></div></div>
-            <nav class="sidebar-menu" style="border-top:1px solid var(--border-color);display:flex;flex-direction:column;gap:8px;padding-top:16px;">
-                <a href="/" class="btn btn-menu"><i class="ph ph-wrench"></i> The Bench</a>
-                <a href="/builder/" class="btn btn-menu"><i class="ph ph-magic-wand"></i> Model Builder</a>
-                <a href="/guide/" class="btn btn-menu"><i class="ph ph-list-checks"></i> Build Guide</a>
-                <a href="/audit/" class="btn btn-menu"><i class="ph ph-clipboard-text"></i> Build Audit</a>
-                <a href="/academy/" class="btn btn-menu"><i class="ph ph-graduation-cap"></i> FPV Academy</a>
-                <a href="/platforms/" class="btn btn-menu"><i class="ph ph-airplane-tilt"></i> Platforms</a>
-                <a href="/intel/" class="btn btn-menu"><i class="ph ph-broadcast"></i> Intel</a>
-                <a href="/browse/" class="btn btn-menu"><i class="ph ph-squares-four"></i> Browse Parts</a>
-                <a href="/contribute/" class="btn btn-menu"><i class="ph ph-git-pull-request"></i> Contribute</a>
-                <a href="/analytics/" class="btn btn-menu active"><i class="ph ph-chart-line-up"></i> Analytics</a>
-            </nav>
-        </aside>
-        <main class="main-content" style="padding:0;">
-            <div class="an-page">
-                <div class="an-header">
-                    <div class="an-header-row">
-                        <div>
-                            <h1 class="an-title"><i class="ph ph-chart-line-up"></i> Mission Control</h1>
-                            <p class="an-subtitle">Unified intelligence across the AI Wingman ecosystem — <span id="an-ts" style="font-family:var(--an-mono)">loading...</span></p>
-                        </div>
-                        <button class="an-refresh" onclick="refreshAll()" id="an-btn"><i class="ph ph-arrows-clockwise"></i> Refresh</button>
-                    </div>
-                </div>
-                <div class="an-tabs">
-                    <button class="an-tab active" data-tab="overview">Overview</button>
-                    <button class="an-tab" data-tab="parts">Parts DB <span class="an-tab-badge" id="badge-parts">—</span></button>
-                    <button class="an-tab" data-tab="intel">Intel <span class="an-tab-badge" id="badge-intel">—</span></button>
-                    <button class="an-tab" data-tab="users">User Signals <span class="an-tab-badge" id="badge-users"><span class="an-pulse"></span></span></button>
-                    <button class="an-tab" data-tab="landscape">UAS Landscape</button>
-                </div>
 
-                <!-- OVERVIEW -->
-                <div class="an-panel active" id="panel-overview">
+<nav class="forge-nav">
+  <a href="https://nvmillbuilditmyself.com/" class="logo">Forge</a>
+  <span class="sep">/</span>
+  <span class="current">Mission Control</span>
+  <div class="links">
+    <a href="https://nvmillbuilditmyself.com/">Bench</a>
+    <a href="https://nvmillbuilditmyself.com/platforms/">Platforms</a>
+    <a href="/patterns/">PIE Flags</a>
+    <a href="/brief/">Brief</a>
+    <a href="https://nvmillbuilditmyself.com/intel/">Intel Feed</a>
+    <a href="https://nvmilldoitmyself.com">Handbook</a>
+  </div>
+</nav>
+
+<div class="tabs" id="tabs">
+  <button class="tab active" data-tab="overview">Overview</button>
+  <button class="tab" data-tab="parts">Parts DB <span class="count" id="badge-parts">—</span></button>
+  <button class="tab" data-tab="intel">Intel <span class="count" id="badge-intel">—</span></button>
+  <button class="tab" data-tab="users">User Signals <span class="count" id="badge-users"><span class="an-pulse"></span></span></button>
+  <button class="tab" data-tab="landscape">UAS Landscape</button>
+</div>
+
+<div class="content">
+  <div class="an-header">
+    <div class="an-header-row">
+      <div>
+        <div class="an-title"><i class="ph ph-chart-line-up"></i> Mission Control</div>
+        <div class="an-subtitle">Unified intelligence across the Forge ecosystem — <span id="an-ts" style="font-family:var(--mono)">loading...</span></div>
+      </div>
+      <button class="an-refresh" onclick="refreshAll()" id="an-btn"><i class="ph ph-arrows-clockwise"></i> Refresh</button>
+    </div>
+  </div>
+
+  <div class="panel active" id="panel-overview">
+
                     <div class="an-stats" id="ov-stats"></div>
                     <div class="an-grid-2">
                         <div class="an-section"><h3 class="an-section-title"><i class="ph ph-database"></i> Database Health</h3><div id="ov-db"></div></div>
@@ -115,10 +196,11 @@
                         <div class="an-section"><h3 class="an-section-title"><i class="ph ph-warning-circle"></i> Database Gaps</h3><div id="ov-gaps"></div></div>
                     </div>
                     <div class="an-section"><h3 class="an-section-title"><i class="ph ph-pulse"></i> Landscape Signals</h3><div id="ov-signals"></div></div>
-                </div>
+                
+  </div>
 
-                <!-- PARTS DB -->
-                <div class="an-panel" id="panel-parts">
+  <div class="panel" id="panel-parts">
+                
                     <div class="an-stats" id="pt-stats"></div>
                     <div class="an-grid-2">
                         <div class="an-section"><h3 class="an-section-title"><i class="ph ph-chart-bar-horizontal"></i> Components by Category</h3><div id="pt-cats"></div></div>
@@ -129,10 +211,11 @@
                         <div class="an-section"><h3 class="an-section-title"><i class="ph ph-check-circle"></i> Field Completeness</h3><div id="pt-fields"></div></div>
                     </div>
                     <div class="an-section"><h3 class="an-section-title"><i class="ph ph-shield-check"></i> NDAA / Compliance by Category</h3><div id="pt-ndaa"></div></div>
-                </div>
+                
+  </div>
 
-                <!-- INTEL -->
-                <div class="an-panel" id="panel-intel">
+  <div class="panel" id="panel-intel">
+                
                     <div class="an-stats" id="in-stats"></div>
                     <div class="an-section"><h3 class="an-section-title"><i class="ph ph-calendar-blank"></i> Article Volume (6 months)</h3><div id="in-timeline"></div></div>
                     <div class="an-grid-2">
@@ -143,10 +226,11 @@
                         <div class="an-section"><h3 class="an-section-title"><i class="ph ph-flag-banner"></i> DoD Programs</h3><div id="in-progs"></div></div>
                         <div class="an-section"><h3 class="an-section-title"><i class="ph ph-tag"></i> Trending Tags</h3><div id="in-tags"></div></div>
                     </div>
-                </div>
+                
+  </div>
 
-                <!-- USER SIGNALS -->
-                <div class="an-panel" id="panel-users">
+  <div class="panel" id="panel-users">
+                
                     <div class="an-stats" id="us-stats"></div>
                     <div class="an-grid-2">
                         <div class="an-section">
@@ -164,10 +248,11 @@
                         <div class="an-section"><h3 class="an-section-title"><i class="ph ph-funnel"></i> Category Interest</h3><div id="us-cats"></div></div>
                         <div class="an-section"><h3 class="an-section-title"><i class="ph ph-path"></i> Daily Activity</h3><div id="us-daily"></div></div>
                     </div>
-                </div>
+                
+  </div>
 
-                <!-- UAS LANDSCAPE -->
-                <div class="an-panel" id="panel-landscape">
+  <div class="panel" id="panel-landscape">
+                
                     <div class="an-stats" id="ls-stats"></div>
                     <div class="an-grid-2">
                         <div class="an-section">
@@ -184,10 +269,8 @@
                     <div class="an-section"><h3 class="an-section-title"><i class="ph ph-map-trifold"></i> Market Intelligence</h3><div id="ls-market"></div></div>
                 </div>
 
-                <div class="an-footer">AI Wingman Analytics · No cookies · No PII · No fingerprinting · Self-hosted<br><span class="teal">Buddy up.</span></div>
-            </div>
-        </main>
-    </div>
+  <div class="an-footer">Mission Control · No cookies · No PII · No fingerprinting · <span class="teal">DroneClear Intelligence</span></div>
+</div>
 
 <script>
 (function(){'use strict';
@@ -203,11 +286,13 @@ function spark(d,lb){var mx=Math.max.apply(null,d.concat([1]));var h=d.map(funct
 function sortObj(o,n){return Object.entries(o).sort(function(a,b){return b[1]-a[1]}).slice(0,n||999);}
 function daysSince(s){try{return Math.floor((new Date()-new Date(s))/864e5)}catch(e){return 999}}
 
-// Tabs
-document.querySelectorAll('.an-tab').forEach(function(tab){tab.addEventListener('click',function(){
-    document.querySelectorAll('.an-tab').forEach(function(t){t.classList.remove('active')});
-    document.querySelectorAll('.an-panel').forEach(function(p){p.classList.remove('active')});
-    tab.classList.add('active');$('panel-'+tab.dataset.tab).classList.add('active');
+// PIE-style tab switching
+document.querySelectorAll('#tabs .tab').forEach(function(tab){tab.addEventListener('click',function(){
+    document.querySelectorAll('#tabs .tab').forEach(function(t){t.classList.remove('active')});
+    document.querySelectorAll('.content .panel').forEach(function(p){p.classList.remove('active')});
+    tab.classList.add('active');
+    var panel = document.getElementById('panel-'+tab.dataset.tab);
+    if(panel) panel.classList.add('active');
 });});
 
 async function loadJSON(u){try{var r=await fetch(u);if(!r.ok)throw r.status;return await r.json()}catch(e){return null}}
