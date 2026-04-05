@@ -58,6 +58,7 @@ PAGES = {
     'pid-tuning.html': 'pid-tuning/index.html',
     'patterns.html': 'patterns/index.html',
     'brief.html': 'brief/index.html',
+    'patterns-home.html': 'patterns-home/index.html',
 }
 
 # Static assets to copy (JS, CSS, JSON, images)
