@@ -92,9 +92,9 @@ def inject_adapter(html, depth=0):
     prefix = '../' * depth if depth > 0 else ''
     adapter_tag = f'    <script src="{prefix}static/forge-static-adapter.js"></script>\n'
     
-    # Insert before the first <script src="static/ (our app scripts)
+    # Insert before the first local app <script> (static/ or ../static/)
     # But after CDN scripts (phosphor, three.js, codemirror)
-    pattern = r'(<script\s+src="static/)'
+    pattern = r'(<script\s+src="(?:\.\./)*static/)'
     match = re.search(pattern, html)
     if match:
         pos = match.start()
