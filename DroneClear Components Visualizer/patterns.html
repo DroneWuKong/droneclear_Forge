@@ -50,6 +50,14 @@ a{color:var(--blue);text-decoration:none}a:hover{text-decoration:underline}
 .filter-btn{background:none;border:1px solid var(--border);color:var(--text-d);border-radius:6px;padding:4px 10px;font:10px var(--font);cursor:pointer;text-transform:capitalize;transition:all .15s}
 .filter-btn.active{border-color:var(--amber);color:var(--text);background:var(--amber-d)}
 .filter-btn.hidden-filter{border-color:var(--border);color:var(--text-d);background:none;opacity:.5;text-decoration:line-through}
+.filter-section{margin-bottom:4px}
+.filter-header{display:flex;align-items:center;gap:6px;padding:6px 2px;cursor:pointer;font:600 11px var(--font);color:var(--text-d);user-select:none}
+.filter-header:hover{color:var(--text)}
+.filter-chevron{font-size:10px;transition:transform .15s;margin-left:auto}
+.filter-header.open .filter-chevron{transform:rotate(90deg)}
+.filter-hidden-count{font:10px var(--mono);color:var(--amber);margin-left:2px}
+.filter-collapsible{max-height:0;overflow:hidden;transition:max-height .2s ease}
+.filter-collapsible.open{max-height:300px}
 .map-region path{transition:fill-opacity .2s,stroke-width .2s}
 .map-region:hover path{fill-opacity:0.35;stroke-width:2.5}
 
@@ -155,9 +163,24 @@ a{color:var(--blue);text-decoration:none}a:hover{text-decoration:underline}
   <!-- FLAGS PANEL -->
   <div class="panel active" id="panel-flags">
     <input class="search-bar" id="flag-search" placeholder="Search flags... (e.g. TrellisWare, Jetson, DRAM, SOF, mesh)" oninput="renderFlags()">
-    <div class="filter-row" id="severity-filters"></div>
-    <div class="filter-row" id="type-filters"></div>
-    <div class="filter-row" id="region-filters"></div>
+    <div class="filter-section">
+      <div class="filter-header" onclick="toggleFilterSection(this)">
+        <span>Severity</span><span class="filter-hidden-count" id="sev-hidden-count"></span><span class="filter-chevron">▸</span>
+      </div>
+      <div class="filter-row filter-collapsible collapsed" id="severity-filters"></div>
+    </div>
+    <div class="filter-section">
+      <div class="filter-header" onclick="toggleFilterSection(this)">
+        <span>Type</span><span class="filter-hidden-count" id="type-hidden-count"></span><span class="filter-chevron">▸</span>
+      </div>
+      <div class="filter-row filter-collapsible collapsed" id="type-filters"></div>
+    </div>
+    <div class="filter-section">
+      <div class="filter-header" onclick="toggleFilterSection(this)">
+        <span>Region</span><span class="filter-hidden-count" id="region-hidden-count"></span><span class="filter-chevron">▸</span>
+      </div>
+      <div class="filter-row filter-collapsible collapsed" id="region-filters"></div>
+    </div>
     <div style="display:flex;gap:8px;align-items:center;margin-bottom:14px;flex-wrap:wrap">
       <span style="font:10px var(--mono);color:var(--text-d)">Sort:</span>
       <select id="flag-sort" onchange="renderFlags()" style="background:var(--surface);border:1px solid var(--border);border-radius:6px;padding:6px 10px;font:11px var(--mono);color:var(--text);outline:none;-webkit-appearance:menulist;appearance:menulist;min-height:32px">
@@ -584,6 +607,14 @@ function extractRegions(f) {
 let activeType = "all";
 let activeRegion = "all";
 
+// ── Toggle collapsible filter sections ──
+function toggleFilterSection(header) {
+  header.classList.toggle("open");
+  const row = header.nextElementSibling;
+  row.classList.toggle("collapsed");
+  row.classList.toggle("open");
+}
+
 // ── Severity filters (hide-toggle: all start ON, click to hide) ──
 function renderFilters() {
   // Severity row
@@ -602,6 +633,9 @@ function renderFilters() {
     renderFilters();
     renderFlags();
   }));
+  // Update header badge
+  const sevHidden = document.getElementById("sev-hidden-count");
+  if (sevHidden) sevHidden.textContent = hiddenSeverities.size > 0 ? `(${hiddenSeverities.size} hidden)` : "";
 
   // Type row
   const tc = document.getElementById("type-filters");
@@ -619,6 +653,8 @@ function renderFilters() {
     renderFilters();
     renderFlags();
   }));
+  const typeHidden = document.getElementById("type-hidden-count");
+  if (typeHidden) typeHidden.textContent = hiddenTypes.size > 0 ? `(${hiddenTypes.size} hidden)` : "";
 
   // Region row
   const rc = document.getElementById("region-filters");
@@ -635,6 +671,8 @@ function renderFilters() {
     renderFilters();
     renderFlags();
   }));
+  const regHidden = document.getElementById("region-hidden-count");
+  if (regHidden) regHidden.textContent = hiddenRegions.size > 0 ? `(${hiddenRegions.size} hidden)` : "";
 }
 
 // ── Severity sort weight ──
