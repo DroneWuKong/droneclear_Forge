@@ -780,6 +780,7 @@ async function loadRAG() {
   } catch(e) { console.warn('Orqa configs load skipped:', e.message); }
 
   buildIDF(); // compute TF-IDF weights now that corpus is loaded
+  buildComponentCache(); // build category lookup cache for validator
   updateStats();
   updateSourcePills();
   console.log(`RAG loaded: ${ragIndex.length} items, ${handbookChunks.length} handbook chunks in ${Date.now()-t0}ms`);
@@ -988,6 +989,7 @@ var INTENT_PATTERNS = {
   compliance:  /ndaa|blue uas|section 848|chinese|dji|autel|dod|military|procurement|approved|compliant/i,
   intel:       /news|latest|recent|procurement|contract|defense|military|announcement|2024|2025|2026/i,
   firmware_version: /version|4\.5|4\.6|2025\.12|1\.15|1\.16|inav 8|inav 9|ardupilot 4\.|what version|which version|latest version|update|upgrade|current version|configurator|breaking change|migrate|diff all/i,
+  validate:         /will.*work|does.*work|check.*build|validate.*build|build check|stack check|these.*together|this.*combo|compatible.*with|fit together|my build|my stack/i,
 };
 
 function classifyIntent(query) {
@@ -1014,6 +1016,7 @@ function intentToParams(intents) {
   if (primary === 'incompat')        { params.maxComp = 25; params.maxHb = 3;  params.lambdaMMR = 0.7; }
   if (primary === 'intel')           { params.maxComp = 5;  params.maxHb = 3;  params.lambdaMMR = 0.7; }
   if (primary === 'firmware_version'){ params.maxComp = 10; params.maxHb = 6;  params.lambdaMMR = 0.8; }
+  if (primary === 'validate')        { params.maxComp = 30; params.maxHb = 3;  params.lambdaMMR = 0.6; }
   return params;
 }
 
@@ -1420,6 +1423,268 @@ FrSky R-XSR: 5V, GND, SBUS out, SmartPort (S.Port)
 10. 9V BEC output used for 5V-only device (some GPS modules, some receivers)
 `;
 
+// ─── BUILD VALIDATOR ─────────────────────────────────────────
+// In-browser compatibility checker using ragIndex + compat blocks + incompat registry
+// Called from buildPrompt when intent === 'hardware_lookup' or 'validate'
+
+// Cached component DB for quick lookup by category
+var componentCache = {};
+
+function buildComponentCache() {
+  componentCache = {};
+  for (const entry of ragIndex) {
+    if (!componentCache[entry.cat]) componentCache[entry.cat] = [];
+    componentCache[entry.cat].push(entry.data);
+  }
+}
+
+function getCompat(item) {
+  return (item && item.compatibility) ? item.compatibility : {};
+}
+
+// Fuzzy find a part in ragIndex by name substring
+function findPart(nameFragment, category) {
+  const q = nameFragment.toLowerCase();
+  const candidates = category ? ragIndex.filter(e => e.cat === category) : ragIndex;
+  const exact = candidates.find(e => e.name && e.name.toLowerCase() === q);
+  if (exact) return exact.data;
+  const partial = candidates.find(e => e.name && e.name.toLowerCase().includes(q));
+  return partial ? partial.data : null;
+}
+
+function validateBuild(partsByCategory) {
+  const errors = [];
+  const warnings = [];
+  const info = [];
+
+  const fc    = partsByCategory['flight_controllers'] || partsByCategory['stacks'];
+  const esc   = partsByCategory['escs'] || (!fc?.is_aio && partsByCategory['stacks']);
+  const frame = partsByCategory['frames'];
+  const motor = partsByCategory['motors'];
+  const prop  = partsByCategory['propellers'];
+  const batt  = partsByCategory['batteries'];
+  const rx    = partsByCategory['receivers'];
+  const vtx   = partsByCategory['video_transmitters'];
+
+  const c = getCompat;
+
+  // ── 1. FC ↔ Frame mounting pattern
+  if (fc && frame) {
+    const fcMount = c(fc).mounting_pattern_mm;
+    const framePatterns = c(frame).fc_mounting_patterns_mm;
+    if (fcMount && framePatterns) {
+      const patterns = Array.isArray(framePatterns) ? framePatterns : [framePatterns];
+      if (!patterns.includes(fcMount)) {
+        errors.push(`MOUNT MISMATCH: FC is ${fcMount}mm — frame supports [${patterns.join(', ')}]mm. FC will not bolt to frame.`);
+      } else {
+        info.push(`Mount pattern: ${fcMount}mm ✓`);
+      }
+    }
+  }
+
+  // ── 2. FC ↔ ESC mounting pattern
+  if (fc && esc && !fc.is_aio) {
+    const fcMount = c(fc).mounting_pattern_mm;
+    const escMount = c(esc).mounting_pattern_mm;
+    if (fcMount && escMount && fcMount !== escMount) {
+      errors.push(`MOUNT MISMATCH: FC is ${fcMount}mm, ESC is ${escMount}mm — stack won't bolt together.`);
+    }
+  }
+
+  // ── 3. Battery ↔ FC voltage
+  if (batt && fc) {
+    const cells = c(batt).cell_count;
+    const fcMin = c(fc).cell_count_min;
+    const fcMax = c(fc).cell_count_max;
+    if (cells && fcMin && fcMax) {
+      if (cells > fcMax) errors.push(`OVERVOLTAGE: ${cells}S battery exceeds FC max ${fcMax}S — will destroy FC.`);
+      else if (cells < fcMin) errors.push(`UNDERVOLTAGE: ${cells}S battery below FC minimum ${fcMin}S.`);
+      else info.push(`Voltage: ${cells}S within FC range ${fcMin}-${fcMax}S ✓`);
+    }
+  }
+
+  // ── 4. Battery ↔ ESC voltage
+  if (batt && esc) {
+    const cells = c(batt).cell_count;
+    const escMin = c(esc).cell_count_min;
+    const escMax = c(esc).cell_count_max;
+    if (cells && escMax) {
+      if (cells > escMax) errors.push(`OVERVOLTAGE: ${cells}S battery exceeds ESC max ${escMax}S — will destroy ESC.`);
+      else if (escMin && cells < escMin) warnings.push(`UNDERVOLTAGE: ${cells}S battery below ESC minimum ${escMin}S.`);
+      else info.push(`ESC voltage: ${cells}S within ESC range ✓`);
+    }
+  }
+
+  // ── 5. Motor ↔ Frame mount
+  if (motor && frame) {
+    const mBolt     = c(motor).motor_mount_bolt_size;
+    const fBolt     = c(frame).motor_mount_bolt_size;
+    const mSpacing  = c(motor).motor_mount_hole_spacing_mm;
+    const fSpacing  = c(frame).motor_mount_hole_spacing_mm;
+    if (mBolt && fBolt && mBolt !== fBolt)
+      errors.push(`MOTOR BOLT MISMATCH: Motor uses ${mBolt}, frame expects ${fBolt}.`);
+    if (mSpacing && fSpacing && Math.abs(mSpacing - fSpacing) > 0.5)
+      errors.push(`MOTOR SPACING MISMATCH: Motor ${mSpacing}mm, frame ${fSpacing}mm.`);
+    if (mBolt && fBolt && mBolt === fBolt && mSpacing && fSpacing && Math.abs(mSpacing - fSpacing) <= 0.5)
+      info.push(`Motor mount: ${mSpacing}mm ${mBolt} ✓`);
+  }
+
+  // ── 6. Motor KV ↔ Battery cells
+  if (motor && batt) {
+    const kv    = motor.kv_rating;
+    const cells = c(batt).cell_count;
+    const mMax  = c(motor).cell_count_max || motor.cell_count_max;
+    const mMin  = c(motor).cell_count_min || motor.cell_count_min;
+    if (cells && mMax && cells > mMax)
+      errors.push(`MOTOR OVERVOLTAGE: Motor max is ${mMax}S, battery is ${cells}S — windings will burn.`);
+    else if (cells && mMin && cells < mMin)
+      warnings.push(`MOTOR UNDERVOLTAGE: Motor min is ${mMin}S, battery is ${cells}S — underpowered.`);
+    if (kv && cells && kv > 2400 && cells >= 6)
+      warnings.push(`HIGH KV ON 6S: ${kv}KV motor on ${cells}S will likely overspeed. Use 4S max for ${kv}KV+.`);
+    if (kv && cells)
+      info.push(`Motor: ${kv}KV on ${cells}S`);
+  }
+
+  // ── 7. Prop ↔ Motor size
+  if (prop && motor) {
+    const propSize  = c(prop).diameter_in;
+    const mPropMin  = c(motor).prop_size_min_in || motor.prop_size_min_in;
+    const mPropMax  = c(motor).prop_size_max_in || motor.prop_size_max_in;
+    if (propSize && mPropMin && mPropMax) {
+      if (propSize < mPropMin) warnings.push(`PROP UNDERSIZED: ${propSize}" prop below motor minimum ${mPropMin}" — inefficient.`);
+      else if (propSize > mPropMax) warnings.push(`PROP OVERSIZED: ${propSize}" prop above motor maximum ${mPropMax}" — overloaded, heat risk.`);
+      else info.push(`Prop size: ${propSize}" within motor range ${mPropMin}-${mPropMax}" ✓`);
+    }
+  }
+
+  // ── 8. Prop shaft ↔ Motor shaft
+  if (prop && motor) {
+    const propShaft  = parseFloat(c(prop).motor_shaft_diameter_mm);
+    const motorShaft = parseFloat(motor.shaft_diameter_mm);
+    if (propShaft && motorShaft && Math.abs(propShaft - motorShaft) > 0.2)
+      errors.push(`SHAFT MISMATCH: Prop needs ${propShaft}mm shaft, motor has ${motorShaft}mm — prop won't seat.`);
+  }
+
+  // ── 9. ESC current headroom
+  if (esc && motor && batt) {
+    const escCont   = c(esc).continuous_current_per_motor_a || esc.continuous_current_per_motor_a;
+    const statorD   = motor.stator_diameter_mm || 0;
+    const statorH   = motor.stator_height_mm || 0;
+    const cells     = c(batt).cell_count || 4;
+    if (escCont && statorD && statorH) {
+      const estPeak = Math.round(statorD * statorH * 0.08 * (cells / 4) * 10) / 10;
+      if (estPeak > escCont * 1.25)
+        warnings.push(`ESC UNDERSIZED: Motor stator ${statorD}x${statorH}mm on ${cells}S estimated ~${estPeak}A peak, ESC rated ${escCont}A continuous.`);
+      else
+        info.push(`ESC headroom: ${escCont}A rated, estimated ~${estPeak}A peak ✓`);
+    }
+  }
+
+  // ── 10. F4 DSHOT bidir warning
+  if (fc) {
+    const mcu = c(fc).mcu_family || fc.mcu_family;
+    if (mcu === 'F4')
+      warnings.push(`F4 MCU: Use DSHOT300 for reliable bidirectional DSHOT. DSHOT600 bidir is unreliable on F4 — desync risk.`);
+  }
+
+  // ── 11. ESC firmware RPM filter check
+  if (esc) {
+    const escFw = esc.esc_firmware || '';
+    if (escFw.toLowerCase().includes('blheli_s') || escFw.toLowerCase().includes('blheli-s'))
+      warnings.push(`BLHeli_S HAS NO TELEMETRY: RPM filter requires BLHeli_32 or AM32. Disable RPM filter or upgrade ESC firmware.`);
+  }
+
+  // ── 12. Digital VTX MSP requirement
+  if (vtx) {
+    const vs = vtx.video_system || '';
+    if (['DJI O3','DJI O4','Walksnail','HDZero'].includes(vs))
+      warnings.push(`${vs}: Requires MSP enabled on FC UART at 115200 baud for OSD. Never power without antennas connected.`);
+  }
+
+  // ── 13. Spektrum voltage hazard
+  if (rx) {
+    const proto = rx.protocol || '';
+    if (proto.includes('Spektrum') || proto.includes('DSMX') || proto.includes('DSM2'))
+      warnings.push(`SPEKTRUM 3.3V: ${rx.name} is 3.3V logic — connecting to 5V UART TX will destroy it. Use logic level shifter.`);
+  }
+
+  // ── 14. ELRS baud rate reminder
+  if (rx && fc) {
+    const proto = rx.protocol || '';
+    if (proto === 'ELRS')
+      info.push(`ELRS setup: Set Serial RX UART baud to 420000 in Betaflight Ports tab.`);
+  }
+
+  // ── 15. NDAA compliance flags
+  const ndaaFails = [];
+  for (const [cat, item] of Object.entries(partsByCategory)) {
+    if (!item) continue;
+    const nc = item.ndaa_compliant;
+    const country = item.country || item.manufacturer_hq || item.manufacturing_country || '';
+    if (nc === false)
+      ndaaFails.push(`${item.name} (non-compliant)`);
+    else if (country && country.toLowerCase().includes('china') && nc !== true)
+      ndaaFails.push(`${item.name} (Chinese origin — unverified)`);
+  }
+  if (ndaaFails.length)
+    warnings.push(`NDAA: Verify before DOD use — ${ndaaFails.join(', ')}.`);
+
+  return { errors, warnings, info };
+}
+
+// ── Parse a user message to extract named components for validation
+function extractBuildParts(query) {
+  // Try to find mentioned parts in ragIndex by matching names/PIDs
+  const found = {};
+  const q = query.toLowerCase();
+  const categories = ['flight_controllers','escs','stacks','frames','motors','propellers','batteries','receivers','video_transmitters'];
+
+  for (const cat of categories) {
+    const entries = ragIndex.filter(e => e.cat === cat);
+    // Score each entry against the query
+    let best = null, bestScore = 0;
+    for (const e of entries) {
+      const nameLower = (e.name || '').toLowerCase();
+      // Only match if at least 3 consecutive chars of the name appear in query
+      const words = nameLower.split(/\s+/).filter(w => w.length >= 3);
+      let score = 0;
+      for (const w of words) {
+        if (q.includes(w)) score += w.length;
+      }
+      if (score > bestScore) { bestScore = score; best = e; }
+    }
+    // Require a meaningful match (at least 8 chars of name matched)
+    if (best && bestScore >= 8) found[cat] = best.data;
+  }
+  return found;
+}
+
+// ── Build validation context string for injection into prompts
+function buildValidationContext(query) {
+  const parts = extractBuildParts(query);
+  if (Object.keys(parts).length < 2) return ''; // Need at least 2 parts to validate
+
+  const { errors, warnings, info } = validateBuild(parts);
+  if (!errors.length && !warnings.length) return '';
+
+  let ctx = '\n\n## BUILD VALIDATION RESULTS\n';
+  ctx += `Components identified: ${Object.entries(parts).map(([cat, p]) => `${cat}: ${p.name}`).join(', ')}\n`;
+
+  if (errors.length) {
+    ctx += '\n🚫 ERRORS (will not work as built):\n';
+    errors.forEach(e => ctx += `  - ${e}\n`);
+  }
+  if (warnings.length) {
+    ctx += '\n⚠ WARNINGS (may work but with caveats):\n';
+    warnings.forEach(w => ctx += `  - ${w}\n`);
+  }
+  if (info.length) {
+    ctx += '\n✓ CHECKS PASSED:\n';
+    info.forEach(i => ctx += `  - ${i}\n`);
+  }
+  return ctx;
+}
+
 // ─── SYSTEM PROMPT ────────────────────────────────────────────
 function buildPrompt(query, hasImages) {
   // ── 4. Conversation-aware: extract last 3 user messages as context
@@ -1429,6 +1694,12 @@ function buildPrompt(query, hasImages) {
     .map(m => m.text);
 
   var ragCtx = query ? ragSearch(query, undefined, undefined, recentUserMsgs) : '';
+
+  // ── Build validator: run if query mentions specific hardware names
+  var validationCtx = '';
+  if (query && ragIndex.length > 100) {
+    try { validationCtx = buildValidationContext(query + ' ' + recentUserMsgs.join(' ')); } catch(e) {}
+  }
 
   // If images attached, also search for wiring/FC/VTX specific context
   if (hasImages && query) {
@@ -1594,6 +1865,7 @@ ${hasImages ? 'The user attached a photo. FOLLOW THE IMAGE TRIAGE PROTOCOL BELOW
 KNOWLEDGE BASE:
 ${FALLBACK_KB}
 ${kbData !== FALLBACK_KB ? kbData : ''}
+${validationCtx ? validationCtx : ''}
 ${ragCtx ? '\nFROM DATABASE (matching query):' + ragCtx : ''}
 ${imageInstructions}
 
