@@ -1,5 +1,15 @@
 # Changelog
 
+## [Military Firmware + DB Expansion] - 2026-04-05
+
+### Added
+- **military_firmware** category (8 entries) — MILELRS v2.30 (ELRS 3.3.2 fork, multiband encrypted), MILBETA v1.23 (Betaflight fork, EW OSD), BarvinokLRS (independent Ukrainian control link), Barvinok-5 Video (encrypted FHSS digital video, prototype), "1001" DJI mod (Russian, 200K drones, disrupted), CIAJeepDoors (DJI Remote ID disable), mLRS (LoRa RC+MAVLink 7-87 km), DroneBridge ESP32 (AES-256 telemetry bridge)
+- `docs/Military_Firmware_Forks.docx` — comprehensive reference document covering all 9 military firmware systems with Forge DB entry specs, handbook integration plan, and sources
+
+### Changed
+- Total components: 3575 → 3583 (8 new military firmware entries)
+- Total categories: 31 → 32
+
 ## [5 New Component Categories] - 2026-04-04
 
 ### Added
