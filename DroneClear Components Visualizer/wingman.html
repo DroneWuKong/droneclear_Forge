@@ -667,6 +667,28 @@ async function loadRAG() {
     await Promise.all(hbPromises);
   } catch(e) { console.warn('Handbook load skipped:', e.message); }
 
+  // Load incompatibilities registry
+  try {
+    const res = await fetch('forge_incompatibilities.json');
+    if (res.ok) {
+      const incompat = await res.json();
+      for (const entry of (incompat.entries || [])) {
+        const textParts = [
+          entry.a, entry.b, entry.description, entry.workaround,
+          entry.type, entry.severity === 'hard' ? 'will not work hard incompatible' : 'may not work unreliable',
+          ...(entry.tags || []),
+        ].filter(Boolean);
+        ragIndex.push({
+          cat: 'incompatibilities', name: `${entry.a} + ${entry.b}`,
+          text: textParts.join(' ').toLowerCase(),
+          src: 'incompatibilities', data: entry,
+        });
+        ragStats.categories.add('incompatibilities');
+      }
+      console.log(`Incompatibilities loaded: ${incompat.entries?.length || 0} entries`);
+    }
+  } catch(e) { console.warn('Incompatibilities load skipped:', e.message); }
+
   // Load Orqa board configs (UART maps, gotchas, CLI quickstart)
   try {
     const res = await fetch('forge_orqa_configs.json');
@@ -903,6 +925,7 @@ var INTENT_PATTERNS = {
   wiring:      /wire|solder|pad|uart|tx|rx|connect|pinout|diagram|port|plug|connector|short|ground|bec|5v|9v/i,
   compliance:  /ndaa|blue uas|section 848|chinese|dji|autel|dod|military|procurement|approved|compliant/i,
   intel:       /news|latest|recent|procurement|contract|defense|military|announcement|2024|2025|2026/i,
+  incompat:    /will.*work|compatible|work together|work with|can i use|mix|combine|vs\.|versus|difference|does.*support|won'?t bind|won'?t connect|not compatible/i,
 };
 
 function classifyIntent(query) {
@@ -926,6 +949,7 @@ function intentToParams(intents) {
   if (primary === 'tuning')          { params.maxComp = 10; params.maxHb = 10; params.lambdaMMR = 0.5; }
   if (primary === 'wiring')          { params.maxComp = 15; params.maxHb = 8;  params.lambdaMMR = 0.5; }
   if (primary === 'compliance')      { params.maxComp = 20; params.maxHb = 5;  params.lambdaMMR = 0.6; }
+  if (primary === 'incompat')        { params.maxComp = 25; params.maxHb = 3;  params.lambdaMMR = 0.7; }
   if (primary === 'intel')           { params.maxComp = 5;  params.maxHb = 3;  params.lambdaMMR = 0.7; }
   return params;
 }
@@ -1002,6 +1026,31 @@ function ragSearch(query, maxComponents, maxHandbook, contextHistory) {
     const fwResults    = scored.filter(s => s.cat === 'firmware');
     const orqaResults  = scored.filter(s => s.cat === 'orqa_boards');
     const compResults  = scored.filter(s => s.cat !== 'firmware' && s.cat !== 'orqa_boards');
+
+    // ── Hard incompatibilities first — most critical information
+    const incompatResults = scored.filter(s => s.cat === 'incompatibilities');
+    if (incompatResults.length > 0) {
+      const hardIncompat = incompatResults.filter(s => s.data.severity === 'hard');
+      const softIncompat = incompatResults.filter(s => s.data.severity === 'soft');
+      if (hardIncompat.length > 0) {
+        ctx += '\n\n## ⚠ KNOWN INCOMPATIBILITIES (HARD — WILL NOT WORK)\n';
+        for (const s of hardIncompat) {
+          const d = s.data;
+          ctx += `\n### ${d.id}: ${d.a} ↔ ${d.b}\n`;
+          ctx += `${d.description}\n`;
+          ctx += `FIX: ${d.workaround}\n`;
+        }
+      }
+      if (softIncompat.length > 0) {
+        ctx += '\n\n## ⚡ KNOWN INCOMPATIBILITIES (SOFT — UNRELIABLE)\n';
+        for (const s of softIncompat) {
+          const d = s.data;
+          ctx += `\n### ${d.id}: ${d.a} ↔ ${d.b}\n`;
+          ctx += `${d.description}\n`;
+          ctx += `WORKAROUND: ${d.workaround}\n`;
+        }
+      }
+    }
 
     // ── Orqa board configs: UART maps + gotchas (highest priority for Orqa queries)
     if (orqaResults.length > 0) {
