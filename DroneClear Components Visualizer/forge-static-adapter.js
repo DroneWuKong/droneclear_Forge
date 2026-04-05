@@ -17,10 +17,10 @@
     // ── Load static data on page load ──
     _ready = Promise.all([
         fetch('/static/forge_database.json').then(r => r.json()),
-        fetch('/static/drone_parts_schema_v3.json').then(r => r.json()),
+        fetch('/static/drone_parts_schema_v3.json').then(r => r.ok ? r.json() : null).catch(() => null),
     ]).then(([db, schema]) => {
         _db = db;
-        _schema = schema;
+        _schema = schema || db;  // Fallback: use forge_database as schema
         console.log(`[Forge] Static DB loaded: ${Object.values(_db.components).reduce((a, b) => a + b.length, 0)} parts`);
     });
 
