@@ -118,7 +118,7 @@ a{color:var(--blue);text-decoration:none}a:hover{text-decoration:underline}
 const DKW=['pentagon','dod ','department of defense','military','army','navy','air force','marine corps','replicator','counter-uas','c-uas','jiatf','dawg','diu','ndaa','blue uas','combat','warfare','warfighter','deployed','tactical','darpa','socom','centcom','indopacom','program of record','weapon system','munition','loitering','fcc','covered list','drone dominance'];
 const FKW=['billion','million','contract worth','contract valued','contract award','awarded a','funding','investment','raise','series a','series b','ipo','acquisition','merger','valuation','budget request','procurement','rfp ','fiscal year','fy2','fy3','defense budget','sbir','sttr','ota ','other transaction'];
 const REGS=['US','China','Russia','Ukraine','Turkey','Israel','NATO','Taiwan','Iran','North Korea','Japan','India','Australia','UK','France','Germany','EU'];
-const SL={defensescoop:'DefenseScoop',defensenews:'Defense News',breakingdefense:'Breaking Defense',twz:'The War Zone',dronedj:'DroneDJ',dronelife:'DroneLife',dronexl:'DroneXL',reuters:'Reuters',suasnews:'sUAS News'};
+const SL={militarnyi:'militarnyi',defensescoop:'DefenseScoop',defensenews:'Defense News',breakingdefense:'Breaking Defense',twz:'The War Zone',unmannedairspace:'unmannedairspace',dronedj:'DroneDJ',dronelife:'DroneLife',dronexl:'DroneXL',reuters:'Reuters',suasnews:'sUAS News'};
 const CC={defense:'var(--red)',financial:'var(--amber)',commercial:'var(--cyan)'};
 function cat(a){const t=((a.title||'')+(a.summary||'')+(a.body_text||'')).toLowerCase();const d=DKW.filter(k=>t.includes(k)).length;const f=FKW.filter(k=>t.includes(k)).length;if(d>=4)return'defense';if(f>=2&&f>d)return'financial';if(d>=2)return'defense';return'commercial';}
 function ar(a){const t=(a.title||'')+' '+(a.summary||'')+' '+(a.body_text||'').slice(0,500);return REGS.filter(r=>t.includes(r));}
@@ -128,7 +128,7 @@ function rFi(){
   const cc={all:ALL.length,defense:0,financial:0,commercial:0};ALL.forEach(a=>cc[cat(a)]++);
   document.getElementById('cat-filters').innerHTML=['all','defense','financial','commercial'].map(c=>`<button class="fbtn${cC===c?' active':''}" onclick="cC='${c}';rFi();renderFeed()">${c==='all'?'All Types':c.charAt(0).toUpperCase()+c.slice(1)} (${cc[c]})</button>`).join('');
   const sc={};ALL.forEach(a=>{const s=a.site||'other';sc[s]=(sc[s]||0)+1;});
-  const ts=Object.entries(sc).sort((a,b)=>b[1]-a[1]).slice(0,8);
+  const ts=Object.entries(sc).sort((a,b)=>b[1]-a[1]);
   document.getElementById('src-filters').innerHTML=`<button class="fbtn${cS==='all'?' active':''}" onclick="cS='all';rFi();renderFeed()">All Sources</button>`+ts.map(([s,c])=>`<button class="fbtn${cS===s?' active':''}" onclick="cS='${s}';rFi();renderFeed()">${SL[s]||s} (${c})</button>`).join('');
   const rc={};ALL.forEach(a=>ar(a).forEach(r=>{rc[r]=(rc[r]||0)+1;}));
   const tr=Object.entries(rc).sort((a,b)=>b[1]-a[1]).slice(0,12);
@@ -140,7 +140,7 @@ function renderFeed(){
   a.sort((x,y)=>(y.pub_date||'').localeCompare(x.pub_date||''));
   document.getElementById('feed-count').textContent=a.length;
   const cs={defense:0,financial:0,commercial:0};a.forEach(x=>cs[cat(x)]++);
-  document.getElementById('feed-stats').innerHTML=`<span>Showing <b>${a.length}</b> of <b>${ALL.length}</b></span><span style="color:var(--red)">⬥ ${cs.defense} defense</span><span style="color:var(--amber)">⬥ ${cs.financial} financial</span><span style="color:var(--cyan)">⬥ ${cs.commercial} commercial</span>`;
+  document.getElementById('feed-stats').innerHTML=`<span>Showing <b style="color:var(--green)">${a.length}</b> of <b style="color:var(--green)">${ALL.length}</b> &nbsp;◆ <b style="color:var(--red)">${cs.defense} defense</b> &nbsp;◆ <b style="color:var(--amber)">${cs.financial} financial</b></span><span style="color:var(--cyan)">◆ ${cs.commercial} commercial</span>`;
   const l=document.getElementById('feed-list');
   if(!a.length){l.innerHTML='<div style="text-align:center;padding:40px;color:var(--text-d)">No articles match.</div>';return;}
   l.innerHTML=a.slice(0,100).map(x=>{
