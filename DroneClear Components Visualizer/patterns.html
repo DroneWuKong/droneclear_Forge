@@ -506,6 +506,31 @@ a.brief-source-chip:hover{color:var(--text-s);border-color:var(--border-hi)}
 </div>
 
 <script>
+// ── Detail modal ──
+function openDetailModal(title, subtitle, body) {
+  var ov = document.getElementById('flag-modal-overlay');
+  if (!ov) return;
+  var el = document.getElementById('flag-modal-meta');
+  if (el) el.innerHTML = subtitle ? '<span style="font:500 10px var(--mono);color:var(--text-d)">'+subtitle+'</span>' : '';
+  el = document.getElementById('flag-modal-title');
+  if (el) el.textContent = title || '';
+  el = document.getElementById('flag-modal-body');
+  if (el) el.innerHTML = body || '';
+  ov.classList.add('open');
+}
+function closeDetailModal() {
+  var ov = document.getElementById('flag-modal-overlay');
+  if (ov) ov.classList.remove('open');
+  selectedFlag = null;
+}
+document.addEventListener('DOMContentLoaded', function() {
+  var ov = document.getElementById('flag-modal-overlay');
+  var cb = document.getElementById('flag-modal-close');
+  if (cb) cb.addEventListener('click', closeDetailModal);
+  if (ov) ov.addEventListener('click', function(e) { if (e.target===ov) closeDetailModal(); });
+  document.addEventListener('keydown', function(e) { if (e.key==='Escape') closeDetailModal(); });
+});
+
 // ═══════════════════════════════════════════════════════════
 // Pattern Intelligence Engine — Forge Module
 // Loads data from /data/flags.json + /data/predictions.json
@@ -2351,20 +2376,6 @@ fetch('../static/pie_flags.json').then(r=>r.json()).then(flags=>{
     <div id="flag-modal-body"></div>
   </div>
 </div>
-<script>
-function openDetailModal(title, subtitle, body, accentColor) {
-  document.getElementById("flag-modal-meta").innerHTML = subtitle ? `<span style="font:500 10px var(--mono);color:var(--text-d)">${subtitle}</span>` : "";
-  document.getElementById("flag-modal-title").textContent = title || "";
-  document.getElementById("flag-modal-body").innerHTML = body || "";
-  document.getElementById("flag-modal-overlay").classList.add("open");
-}
-document.addEventListener("DOMContentLoaded", function() {
-  var ov = document.getElementById("flag-modal-overlay");
-  document.getElementById("flag-modal-close").addEventListener("click", function() { ov.classList.remove("open"); selectedFlag = null; });
-  ov.addEventListener("click", function(e) { if (e.target===ov) { ov.classList.remove("open"); selectedFlag = null; } });
-  document.addEventListener("keydown", function(e) { if (e.key==="Escape") { ov.classList.remove("open"); selectedFlag = null; } });
-});
-</script>
 
 </body>
 </html>
