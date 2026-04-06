@@ -1,0 +1,413 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Industry Intel — Patterns</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <script src="https://unpkg.com/@phosphor-icons/web"></script>
+  <style>
+    :root{--bg:#0c0c0a;--surface:#141410;--card:#1c1c17;--card-hi:#242420;--border:#2e2e26;--border-hi:#3e3e34;--green:#22c55e;--green-d:#22c55e20;--red:#d62828;--red-d:#d6282820;--mustard:#c9a227;--mustard-d:#c9a22720;--blue:#2563eb;--blue-d:#2563eb18;--purple:#7c3aed;--purple-d:#7c3aed18;--text:#f5f0e8;--text-s:#b8b0a0;--text-d:#6b6358;--text-xd:#3d3830;--font:'DM Sans',system-ui,sans-serif;--mono:'JetBrains Mono',monospace;--bg-panel:var(--card);--bg-dark:var(--bg);--bg-panel-hover:var(--card-hi);--text-main:var(--text);--text-muted:var(--text-d);--accent-red:var(--green);--border-color:var(--border);--radius-md:10px;}
+    *{box-sizing:border-box;margin:0;padding:0}
+    body{background:var(--bg);color:var(--text);font-family:var(--font);line-height:1.5;-webkit-font-smoothing:antialiased}
+    a{text-decoration:none;color:inherit}
+    .topbar{display:flex;align-items:center;justify-content:space-between;padding:10px 16px;border-bottom:1px solid var(--border);background:var(--bg);position:sticky;top:0;z-index:100}
+    .topbar-left{display:flex;align-items:center;gap:8px;min-width:0;flex:1;overflow:hidden}
+    .topbar-logo{font:700 14px var(--mono);color:#22c55e;letter-spacing:-0.02em;text-decoration:none;white-space:nowrap}
+    .topbar-sep{color:var(--text-xd);font-size:12px;flex-shrink:0}
+    .topbar-current{font:600 13px var(--font);color:var(--text);white-space:nowrap}
+    .topbar-links{display:flex;gap:4px;flex-shrink:0}
+    .topbar-pill{font:500 11px var(--font);color:var(--text-d);padding:4px 10px;border:1px solid var(--border);border-radius:20px;transition:all .15s;text-decoration:none;white-space:nowrap}
+    .topbar-pill:hover{border-color:var(--border-hi);color:var(--text-s)}
+    .tabs{display:flex;border-bottom:1px solid var(--border);padding:0 20px;overflow-x:auto;scrollbar-width:none}
+    .tabs::-webkit-scrollbar{display:none}
+    .tab{background:none;border:none;border-bottom:2px solid transparent;color:var(--text-d);padding:10px 16px;font:500 11px var(--font);cursor:pointer;transition:all .15s;white-space:nowrap}
+    .tab.active{color:var(--green);border-bottom-color:var(--green);font-weight:600}
+    .content{padding:16px 20px;max-width:960px;margin:0 auto}
+    .panel{display:none}.panel.active{display:block}
+    .intel-card{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:14px 16px;margin-bottom:8px;transition:all .15s;cursor:pointer}
+    .intel-card:hover{background:var(--card-hi);border-color:var(--border-hi)}
+    .intel-card.expanded{border-left:3px solid var(--green)}
+    .intel-card-expand{display:none;margin-top:10px;padding-top:10px;border-top:1px solid var(--border)}
+    .intel-card.expanded .intel-card-expand{display:block}
+    .intel-card-header{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;margin-bottom:6px}
+    .intel-card-title{font:600 13px var(--font);color:var(--text)}
+    .intel-card-meta{font:500 10px var(--mono);color:var(--text-d)}
+    .intel-card-body{font-size:11px;color:var(--text-s);line-height:1.5;margin-top:6px}
+    .intel-card-note{font-size:12px;color:var(--text-s);line-height:1.6;margin-bottom:10px}
+    .intel-card-actions{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-top:8px}
+    .intel-amount{font:700 18px var(--mono);color:var(--green);margin:6px 0}
+    .intel-expand-hint{font:500 10px var(--mono);color:var(--text-xd)}
+    .intel-card:hover .intel-expand-hint{opacity:0}
+    .intel-stat-row{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:8px;margin-bottom:16px}
+    .intel-stat{background:var(--card);border:1px solid var(--border);border-left:3px solid var(--green);border-radius:10px;padding:12px 14px}
+    .intel-stat-value{font:700 22px var(--mono);color:var(--green);line-height:1}
+    .intel-stat-label{font-size:10px;color:var(--text-d);text-transform:uppercase;letter-spacing:.06em;margin-top:4px}
+    .intel-badge{display:inline-flex;align-items:center;padding:2px 8px;border-radius:5px;font:600 9px var(--mono);white-space:nowrap}
+    .badge-green{background:var(--green-d);color:var(--green)}.badge-red{background:var(--red-d);color:var(--red)}
+    .badge-blue{background:var(--blue-d);color:var(--blue)}.badge-amber{background:var(--mustard-d);color:var(--mustard)}
+    .badge-purple{background:var(--purple-d);color:var(--purple)}.badge-gray{background:#3d383020;color:var(--text-d)}
+    .filter-chips{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:14px}
+    .filter-chip{padding:4px 10px;font:500 10px var(--font);border-radius:6px;border:1px solid var(--border);background:none;color:var(--text-d);cursor:pointer;transition:all .15s}
+    .filter-chip:hover{border-color:var(--border-hi);color:var(--text-s)}
+    .filter-chip.active{border-color:var(--green);color:var(--green);background:var(--green-d)}
+    .source-row{display:flex;align-items:flex-start;gap:10px;padding:10px 12px;background:var(--card);border:1px solid var(--border);border-radius:8px;margin-bottom:6px;transition:all .15s;flex-wrap:wrap}
+    .source-row:hover{border-color:var(--border-hi);background:var(--card-hi)}
+    .source-name{font:600 12px var(--font);color:var(--text);min-width:120px;max-width:160px;flex-shrink:0;padding-top:1px}
+    .source-type{font:500 10px var(--mono);color:var(--green)}
+    .source-note{font-size:11px;color:var(--text-d);flex:1;min-width:0;line-height:1.5}
+    .source-link{color:var(--green);font-size:11px;white-space:nowrap;display:flex;align-items:center;gap:3px;flex-shrink:0;margin-left:auto;padding-top:1px}
+    .section-title{font:600 9px var(--mono);color:var(--text-d);text-transform:uppercase;letter-spacing:.1em;margin:20px 0 10px;display:flex;align-items:center;gap:8px}
+    .section-title::after{content:'';flex:1;height:1px;background:var(--border)}
+    .section-title i{color:var(--green)}
+    .intel-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:8px}
+    .intel-search-link{display:inline-flex;align-items:center;gap:4px;padding:3px 8px;border-radius:5px;border:1px solid var(--green);color:var(--green);font:500 10px var(--mono);background:var(--green-d);transition:all .15s}
+    .intel-search-link:hover{background:rgba(34,197,94,.2)}
+    @media(max-width:640px){.intel-grid{grid-template-columns:1fr}.topbar-links{display:none}}
+  </style>
+</head>
+<body>
+<header style="display:flex;align-items:center;justify-content:space-between;gap:8px;padding:10px 16px;border-bottom:1px solid #2e2e26;background:#1c1c17;position:sticky;top:0;z-index:100;flex-shrink:0;">
+  <a href="/intel/" style="font:800 18px 'JetBrains Mono',monospace;color:#f59e0b;letter-spacing:-0.03em;text-decoration:none;flex-shrink:0;">Intel</a>
+  <div style="display:flex;gap:5px;align-items:center;flex-wrap:nowrap;"><a href="/" class="tp-pill">Forge</a><a href="/patterns/" class="tp-pill">Patterns</a><a href="/wingman/" class="tp-pill">Wingman</a></div>
+</header>
+<style>.tp-pill{font:500 10px 'DM Sans',system-ui,sans-serif;color:#6b6358;padding:4px 9px;border:1px solid #2e2e26;border-radius:20px;text-decoration:none;white-space:nowrap;transition:all .15s}.tp-pill:hover{border-color:#3e3e34;color:#b8b0a0}</style>
+<div style="padding:5px 16px;font:500 10px var(--mono);color:var(--text-xd);border-bottom:1px solid var(--border);background:var(--bg);display:flex;align-items:center;gap:8px">
+  <span id="last-updated">Loading...</span>
+</div>
+<div class="tabs">
+  <button class="tab active" data-tab="commercial">Commercial</button>
+  <button class="tab" data-tab="defense">Defense</button>
+  <button class="tab" data-tab="finance">Finance</button>
+</div>
+
+<div class="content">
+<!-- ═══ COMMERCIAL ═══ -->
+            <div class="panel active" id="panel-commercial">
+                <div class="intel-stat-row" id="comm-stats"></div>
+                <div class="section-title"><i class="ph ph-link"></i> Trusted Sources</div>
+                <div id="comm-sources"></div>
+                <div class="section-title" style="margin-top:28px"><i class="ph ph-package"></i> Manufacturers by Category</div>
+                <div class="filter-chips" id="comm-cat-chips"></div>
+                <div id="comm-mfr-list"></div>
+            </div>
+
+            <!-- ═══ DEFENSE ═══ -->
+            <div class="panel" id="panel-defense">
+                <div class="intel-stat-row" id="def-stats"></div>
+                <div class="section-title"><i class="ph ph-medal-military"></i> Recent Contracts & Awards</div>
+                <div class="filter-chips" id="def-type-chips"></div>
+                <div class="intel-grid" id="def-contracts"></div>
+                <div class="section-title" style="margin-top:28px"><i class="ph ph-scroll"></i> Regulatory & Policy</div>
+                <div class="intel-grid" id="def-grants"></div>
+            </div>
+
+            <!-- ═══ FINANCE ═══ -->
+            <div class="panel" id="panel-finance">
+                <div class="intel-stat-row" id="fin-stats"></div>
+                <div id="fin-market-banner" style="margin-bottom:20px"></div>
+                <div class="section-title"><i class="ph ph-hand-coins"></i> Funding Rounds & Deals</div>
+                <div class="filter-chips" id="fin-type-chips"></div>
+                <div class="intel-grid" id="fin-deals"></div>
+            </div>
+</div>
+
+<script>
+    (function(){
+        'use strict';
+
+        const E = s => { const d=document.createElement('div'); d.textContent=String(s??''); return d.innerHTML; };
+
+        // ── Expandable card helpers ──────────────────────────
+        document.addEventListener('click', e => {
+            const card = e.target.closest('.intel-card[data-expandable]');
+            if (!card) return;
+            card.closest('section,div')
+                ?.querySelectorAll('.intel-card.expanded')
+                .forEach(c => { if (c !== card) c.classList.remove('expanded'); });
+            card.classList.toggle('expanded');
+        });
+
+        function searchLinks(entry) {
+            const term = entry.company || entry.awardee || entry.program || '';
+            const q = encodeURIComponent(term + ' UAS drone');
+            const src = (entry.source || '').replace(/^https?:\/\//, '').split('/')[0];
+            return (src ? `<a class="intel-search-link" href="https://${src}" target="_blank" rel="noopener">↗ ${src}</a>` : '')
+                 + `<a class="intel-search-link" href="https://www.google.com/search?q=${q}" target="_blank" rel="noopener"><i class="ph ph-magnifying-glass"></i> Google</a>`;
+        }
+
+        function expandPanel(entry) {
+            const note = entry.note || '';
+            return `<div class="intel-card-expand">
+                ${note ? `<div class="intel-card-note">${E(note)}</div>` : ''}
+                <div class="intel-card-actions">${searchLinks(entry)}</div>
+            </div>`;
+        }
+
+        let intel = null;
+        let db = null;
+        let activeFilter = { comm: 'all', def: 'all', fin: 'all' };
+
+        // Tab switching
+        document.querySelectorAll('.tabs .tab').forEach(tab => {
+            tab.addEventListener('click', () => {
+                document.querySelectorAll('.tabs .tab').forEach(t => t.classList.remove('active'));
+                document.querySelectorAll('.content .panel').forEach(p => p.classList.remove('active'));
+                tab.classList.add('active');
+                document.getElementById('panel-' + tab.dataset.tab).classList.add('active');
+            });
+        });
+
+        function badgeType(type) {
+            const map = {'C-UAS':'red','Tactical ISR':'blue','Thermal sensors':'amber','Hydrogen UAS':'green',
+                'Mapping':'purple','Loitering munition':'red','MALE ISR/Strike':'red','event security':'amber',
+                'Series A':'green','Series B':'green','Series F':'green','Series F+':'green','Seed':'blue',
+                'IPO':'purple','Growth':'amber','Exchange upgrade':'amber','Multiple rounds':'green',
+                'Series E':'green','Series A + SBIR':'amber','Regulatory':'amber','Legislation':'red',
+                'Automotive regulation':'blue','State program':'green','National initiative':'blue',
+                'Retailer':'green','Manufacturer':'blue','NDAA marketplace':'amber'};
+            return map[type] || 'gray';
+        }
+
+        function renderCommercial() {
+            const sources = intel.commercial_sources || [];
+            const cats = {};
+            let totalLinks = 0;
+            let totalMfrs = new Set();
+
+            for (const [cat, parts] of Object.entries(db.components || {})) {
+                if (!Array.isArray(parts)) continue;
+                for (const p of parts) {
+                    if (p.link) totalLinks++;
+                    if (p.manufacturer) totalMfrs.add(p.manufacturer);
+                    if (!cats[cat]) cats[cat] = {};
+                    const mfr = p.manufacturer || 'Unknown';
+                    if (!cats[cat][mfr]) cats[cat][mfr] = 0;
+                    cats[cat][mfr]++;
+                }
+            }
+
+            document.getElementById('comm-stats').innerHTML = `
+                <div class="intel-stat"><div class="intel-stat-value">${totalLinks.toLocaleString()}</div><div class="intel-stat-label">Product Links</div></div>
+                <div class="intel-stat"><div class="intel-stat-value">${totalMfrs.size}</div><div class="intel-stat-label">Manufacturers</div></div>
+                <div class="intel-stat"><div class="intel-stat-value">${Object.keys(cats).length}</div><div class="intel-stat-label">Categories</div></div>
+                <div class="intel-stat"><div class="intel-stat-value">${sources.length}</div><div class="intel-stat-label">Trusted Sources</div></div>`;
+
+            document.getElementById('comm-sources').innerHTML = sources.map(s => `
+                <div class="source-row">
+                    <span class="source-name">${E(s.name)}</span>
+                    <span class="intel-badge badge-${badgeType(s.type)}">${E(s.type)}</span>
+                    <span class="source-note">${E(s.note)}</span>
+                    ${s.url ? `<a href="${E(s.url)}" target="_blank" rel="noopener" class="source-link"><i class="ph ph-arrow-square-out"></i> Visit</a>` : ''}
+                </div>`).join('');
+
+            // Category chips
+            const catNames = Object.keys(cats).sort();
+            document.getElementById('comm-cat-chips').innerHTML =
+                `<button class="filter-chip active" data-cat="all">All</button>` +
+                catNames.map(c => `<button class="filter-chip" data-cat="${E(c)}">${E(c.replace(/_/g,' '))} (${Object.keys(cats[c]).length})</button>`).join('');
+
+            document.querySelectorAll('#comm-cat-chips .filter-chip').forEach(chip => {
+                chip.addEventListener('click', () => {
+                    document.querySelectorAll('#comm-cat-chips .filter-chip').forEach(c => c.classList.remove('active'));
+                    chip.classList.add('active');
+                    activeFilter.comm = chip.dataset.cat;
+                    renderMfrList(cats);
+                });
+            });
+            renderMfrList(cats);
+        }
+
+        function renderMfrList(cats) {
+            const filter = activeFilter.comm;
+            const mfrMap = {};
+            for (const [cat, mfrs] of Object.entries(cats)) {
+                if (filter !== 'all' && cat !== filter) continue;
+                for (const [mfr, count] of Object.entries(mfrs)) {
+                    if (!mfrMap[mfr]) mfrMap[mfr] = { total: 0, cats: {} };
+                    mfrMap[mfr].total += count;
+                    mfrMap[mfr].cats[cat] = count;
+                }
+            }
+            const sorted = Object.entries(mfrMap).sort((a,b) => b[1].total - a[1].total).slice(0, 60);
+            document.getElementById('comm-mfr-list').innerHTML = sorted.map(([mfr, data]) => `
+                <div class="source-row">
+                    <span class="source-name">${E(mfr)}</span>
+                    <span style="font-size:12px;color:var(--accent-red);font-family:'JetBrains Mono',monospace;min-width:50px;text-align:right">${data.total}</span>
+                    <span class="source-note">${Object.entries(data.cats).map(([c,n]) => c.replace(/_/g,' ')+' ('+n+')').join(', ')}</span>
+                </div>`).join('');
+        }
+
+        function renderDefense() {
+            const contracts = intel.contracts || [];
+            const grants = intel.grants_awards || [];
+            const platforms = db.drone_models || [];
+            const blueUas = platforms.filter(p => p.blue_uas).length;
+            const ndaa = platforms.filter(p => p.compliance_data?.ndaa_compliant || p.ndaa_compliant).length;
+            const combatProven = platforms.filter(p => p.combat_proven).length;
+
+            document.getElementById('def-stats').innerHTML = `
+                <div class="intel-stat"><div class="intel-stat-value">${contracts.length}</div><div class="intel-stat-label">Tracked Contracts</div></div>
+                <div class="intel-stat"><div class="intel-stat-value">${blueUas}</div><div class="intel-stat-label">Blue UAS Platforms</div></div>
+                <div class="intel-stat"><div class="intel-stat-value">${ndaa || '80+'}</div><div class="intel-stat-label">NDAA Compliant</div></div>
+                <div class="intel-stat"><div class="intel-stat-value">${combatProven}</div><div class="intel-stat-label">Combat Proven</div></div>`;
+
+            const types = [...new Set(contracts.map(c => c.type))];
+            document.getElementById('def-type-chips').innerHTML =
+                `<button class="filter-chip active" data-type="all">All</button>` +
+                types.map(t => `<button class="filter-chip" data-type="${E(t)}">${E(t)}</button>`).join('');
+
+            document.querySelectorAll('#def-type-chips .filter-chip').forEach(chip => {
+                chip.addEventListener('click', () => {
+                    document.querySelectorAll('#def-type-chips .filter-chip').forEach(c => c.classList.remove('active'));
+                    chip.classList.add('active');
+                    activeFilter.def = chip.dataset.type;
+                    renderContracts(contracts);
+                });
+            });
+            renderContracts(contracts);
+
+            document.getElementById('def-grants').innerHTML = grants.map(g => `
+                <div class="intel-card">
+                    <div class="intel-card-header">
+                        <span class="intel-card-title">${E(g.program)}</span>
+                        <span class="intel-badge badge-${badgeType(g.type)}">${E(g.type)}</span>
+                    </div>
+                    <div class="intel-card-meta">${E(g.date)}</div>
+                    <div class="intel-card-body">${E(g.note)}</div>
+                </div>`).join('');
+        }
+
+        function renderContracts(contracts) {
+            const filter = activeFilter.def;
+            const filtered = filter === 'all' ? contracts : contracts.filter(c => c.type === filter);
+            document.getElementById('def-contracts').innerHTML = filtered.map(c => `
+                <div class="intel-card">
+                    <div class="intel-card-header">
+                        <div>
+                            <div class="intel-card-title">${E(c.program)}</div>
+                            <div class="intel-card-meta">${E(c.awardee)} &middot; ${E(c.date)}</div>
+                        </div>
+                        <span class="intel-badge badge-${badgeType(c.type)}">${E(c.type)}</span>
+                    </div>
+                    ${c.value ? `<div class="intel-amount">${E(c.value)}</div>` : ''}
+                    <div class="intel-card-body">${E(c.note)}</div>
+                    ${c.source ? `<div class="intel-card-meta" style="margin-top:6px">Source: ${E(c.source)}</div>` : ''}
+                </div>`).join('');
+        }
+
+        function renderFinance() {
+            const deals = intel.funding || [];
+            const ms = intel.market_stats || {};
+            const totalRaised = deals.reduce((sum, d) => {
+                const m = (d.amount || '').match(/\$?([\d.]+)([MBK])/i);
+                if (!m) return sum;
+                const n = parseFloat(m[1]);
+                const mult = m[2].toUpperCase() === 'B' ? 1000 : m[2].toUpperCase() === 'K' ? 0.001 : 1;
+                return sum + n * mult;
+            }, 0);
+
+            document.getElementById('fin-stats').innerHTML = `
+                <div class="intel-stat"><div class="intel-stat-value">${deals.length}</div><div class="intel-stat-label">Tracked Deals</div></div>
+                <div class="intel-stat"><div class="intel-stat-value">$${totalRaised >= 1000 ? (totalRaised/1000).toFixed(1)+'B' : totalRaised.toFixed(0)+'M'}</div><div class="intel-stat-label">Total Tracked Capital</div></div>
+                <div class="intel-stat"><div class="intel-stat-value">${[...new Set(deals.map(d => d.sector))].length}</div><div class="intel-stat-label">Sectors</div></div>
+                <div class="intel-stat"><div class="intel-stat-value">${deals.filter(d => d.date?.startsWith('2026')).length}</div><div class="intel-stat-label">2026 Deals</div></div>`;
+
+            // Market banner
+            if (ms.key_trend) {
+                document.getElementById('fin-market-banner').innerHTML = `
+                    <div class="intel-card" style="border-color:var(--accent-red);background:linear-gradient(135deg,rgba(34,211,238,0.04),rgba(239,68,68,0.04))">
+                        <div class="intel-card-header">
+                            <span class="intel-card-title"><i class="ph ph-trend-up" style="color:var(--accent-red)"></i> Market Overview</span>
+                            <span class="intel-badge badge-red">2025-2026</span>
+                        </div>
+                        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px;margin:12px 0">
+                            ${ms['2025_total_funding'] ? `<div><div style="font-size:11px;color:var(--text-muted)">2025 Total Funding</div><div style="font-size:16px;font-weight:700;color:var(--text-main);font-family:'JetBrains Mono',monospace">${E(ms['2025_total_funding'])}</div></div>` : ''}
+                            ${ms['2025_defense_share'] ? `<div><div style="font-size:11px;color:var(--text-muted)">Defense Share</div><div style="font-size:16px;font-weight:700;color:#ef4444;font-family:'JetBrains Mono',monospace">${E(ms['2025_defense_share'])}</div></div>` : ''}
+                            ${ms['2026_ytd_funding'] ? `<div><div style="font-size:11px;color:var(--text-muted)">2026 YTD</div><div style="font-size:16px;font-weight:700;color:#22c55e;font-family:'JetBrains Mono',monospace">${E(ms['2026_ytd_funding'])}</div></div>` : ''}
+                            ${ms.largest_contract_2026 ? `<div><div style="font-size:11px;color:var(--text-muted)">Largest Contract 2026</div><div style="font-size:16px;font-weight:700;color:var(--accent-red);font-family:'JetBrains Mono',monospace">${E(ms.largest_contract_2026)}</div></div>` : ''}
+                        </div>
+                        <div class="intel-card-body">${E(ms.key_trend)}</div>
+                        <div class="intel-card-meta" style="margin-top:8px">Sources: ${E(ms.source || '')}</div>
+                    </div>`;
+            }
+
+            const types = [...new Set(deals.map(d => d.type))];
+            document.getElementById('fin-type-chips').innerHTML =
+                `<button class="filter-chip active" data-type="all">All</button>` +
+                types.map(t => `<button class="filter-chip" data-type="${E(t)}">${E(t)}</button>`).join('');
+
+            document.querySelectorAll('#fin-type-chips .filter-chip').forEach(chip => {
+                chip.addEventListener('click', () => {
+                    document.querySelectorAll('#fin-type-chips .filter-chip').forEach(c => c.classList.remove('active'));
+                    chip.classList.add('active');
+                    activeFilter.fin = chip.dataset.type;
+                    renderDeals(deals);
+                });
+            });
+            renderDeals(deals);
+        }
+
+        function renderDeals(deals) {
+            const filter = activeFilter.fin;
+            const filtered = filter === 'all' ? deals : deals.filter(d => d.type === filter);
+            document.getElementById('fin-deals').innerHTML = filtered.map(d => `
+                <div class="intel-card" data-expandable>
+                    <div class="intel-card-header">
+                        <div>
+                            <div class="intel-card-title">${E(d.company)}</div>
+                            <div class="intel-card-meta">${E(d.sector)} &middot; ${E(d.date)}</div>
+                        </div>
+                        <span class="intel-badge badge-${badgeType(d.type)}">${E(d.type)}</span>
+                    </div>
+                    <div class="intel-amount" style="color:var(--accent-red)">${E(d.amount)}${d.valuation ? ` <span style="font-size:12px;color:var(--text-muted)">· val ${E(d.valuation)}</span>` : ''}</div>
+                    ${expandPanel(d)}
+                    <span class="intel-expand-hint">tap for details ›</span>
+                </div>`).join('');
+        }
+
+        async function init() {
+            try {
+                const [iRes, dRes] = await Promise.all([
+                    fetch('../static/forge_intel.json'),
+                    fetch('../static/forge_database.json')
+                ]);
+                intel = await iRes.json();
+                db = await dRes.json();
+                renderCommercial();
+                renderDefense();
+                renderFinance();
+            } catch(e) {
+                console.error('Failed to load intel data:', e);
+            }
+        }
+        init();
+    })();
+    
+
+function fmtUpdated(iso) {
+  try {
+    var d = new Date(iso);
+    var now = new Date();
+    var diffMs = now - d;
+    var diffMins = Math.round(diffMs / 60000);
+    var diffHrs = Math.round(diffMs / 3600000);
+    var diffDays = Math.round(diffMs / 86400000);
+    var timeStr;
+    if (diffMins < 2) timeStr = 'just now';
+    else if (diffMins < 60) timeStr = diffMins + 'm ago';
+    else if (diffHrs < 24) timeStr = diffHrs + 'h ago';
+    else timeStr = diffDays + 'd ago';
+    var dt = d.toISOString().replace('T',' ').slice(0,16) + ' UTC';
+    var el = document.getElementById('last-updated');
+    if (el) el.textContent = 'Pipeline: ' + dt + ' · ' + timeStr;
+  } catch(e) {}
+}
+fetch('../static/forge_intel.json').then(r=>r.json()).then(intel=>{
+    var el=document.getElementById('last-updated');
+    if(el && intel && intel.contracts) el.textContent='Intel DB: '+intel.contracts.length+' contracts tracked';
+  }).catch(()=>{});
+</script>
+</body>
+</html>

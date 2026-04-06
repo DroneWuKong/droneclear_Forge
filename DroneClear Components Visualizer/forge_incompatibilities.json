@@ -1,0 +1,307 @@
+{
+  "schema": "incompatibility-registry-v1",
+  "updated": "2026-04-05",
+  "description": "Explicit component and firmware incompatibilities with reasons and workarounds. Hard = will not work. Soft = may work but unreliable or degraded.",
+  "entries": [
+    {
+      "id": "INCOMPAT-001",
+      "type": "firmware_version",
+      "severity": "hard",
+      "a": "ELRS 3.x receiver",
+      "b": "ELRS 2.x transmitter module",
+      "description": "ELRS 3.x introduced breaking protocol changes. A 3.x RX will not bind to a 2.x TX module and vice versa.",
+      "workaround": "Update both TX module and all RX units to the same ELRS major version (all 2.x or all 3.x).",
+      "tags": ["elrs", "receiver", "binding", "firmware-version", "protocol"]
+    },
+    {
+      "id": "INCOMPAT-002",
+      "type": "protocol_hardware",
+      "severity": "soft",
+      "a": "Bidirectional DSHOT600",
+      "b": "STM32F4 flight controller",
+      "description": "F4 processors have timer limitations that make DSHOT600 bidirectional unreliable. Packet loss causes desync and death rolls.",
+      "workaround": "Use DSHOT300 bidirectional on F4 boards. DSHOT600 bidir requires F7 or H7.",
+      "tags": ["dshot", "f4", "blheli32", "am32", "rpm-filter", "desync"]
+    },
+    {
+      "id": "INCOMPAT-003",
+      "type": "voltage",
+      "severity": "hard",
+      "a": "Spektrum / DSMX receiver (3.3V logic max)",
+      "b": "5V FC UART TX output",
+      "description": "Spektrum receivers operate at 3.3V logic. Connecting directly to a 5V UART TX output will damage or destroy the receiver immediately.",
+      "workaround": "Use a 3.3V logic level shifter between FC UART TX and Spektrum receiver. Or use a UART pad that outputs 3.3V if available on your FC.",
+      "tags": ["spektrum", "dsmx", "voltage", "wiring", "uart", "3.3v"]
+    },
+    {
+      "id": "INCOMPAT-004",
+      "type": "protocol",
+      "severity": "hard",
+      "a": "TrellisWare TSM radio (TW-950, TW-135, TW-650, TW-870, TW-880)",
+      "b": "batman-adv mesh protocol (Doodle Labs, OpenWRT nodes)",
+      "description": "TrellisWare TSM uses a proprietary waveform. TSM radios cannot communicate with batman-adv nodes even on the same frequency band.",
+      "workaround": "Choose one mesh architecture per network. TSM-only or batman-adv-only. Bridging requires external protocol conversion hardware.",
+      "tags": ["trellisware", "batman-adv", "mesh", "swarm", "waveform", "protocol"]
+    },
+    {
+      "id": "INCOMPAT-005",
+      "type": "protocol",
+      "severity": "hard",
+      "a": "BLHeli_S ESC",
+      "b": "RPM filter (requires ESC telemetry)",
+      "description": "BLHeli_S firmware does not output ESC telemetry. The RPM filter in Betaflight requires bidirectional DSHOT telemetry to function. Enabling RPM filter with BLHeli_S results in no noise filtering.",
+      "workaround": "Flash ESC to Bluejay (BLHeli_S compatible open-source) which supports PWM dithering, or upgrade to BLHeli_32 or AM32 ESC hardware for proper RPM filter support.",
+      "tags": ["blheli_s", "rpm-filter", "telemetry", "dshot", "betaflight"]
+    },
+    {
+      "id": "INCOMPAT-006",
+      "type": "voltage",
+      "severity": "hard",
+      "a": "9V BEC output (present on Orqa QuadCore H7 and some other FCs)",
+      "b": "5V-only peripherals (GPS modules, most receivers, LED strips, most accessories)",
+      "description": "Some H7 FCs including the Orqa QuadCore H7 have a 9V BEC output for VTX power. Connecting 5V-only devices to this output will immediately destroy them.",
+      "workaround": "Use 9V BEC output for VTX only. Connect GPS, receiver, and all other accessories to the 5V BEC output.",
+      "tags": ["9v", "bec", "voltage", "orqa", "gps", "receiver", "wiring"]
+    },
+    {
+      "id": "INCOMPAT-007",
+      "type": "protocol",
+      "severity": "soft",
+      "a": "SBUS receiver output",
+      "b": "Non-inverted UART RX input (most modern FC UART pads)",
+      "description": "SBUS is an inverted signal. Most FC UART pads are non-inverted. Without inversion, SBUS data appears as garbage in Betaflight.",
+      "workaround": "Use the dedicated SBUS/SINV pad if available on your FC, or enable software inversion in Betaflight CLI: 'set sbus_config = AUTO'. Some FCs auto-detect inversion.",
+      "tags": ["sbus", "uart", "inversion", "frsky", "futaba", "signal"]
+    },
+    {
+      "id": "INCOMPAT-008",
+      "type": "protocol",
+      "severity": "hard",
+      "a": "DJI O3 / O4 / Walksnail Avatar VTX (requires MSP OSD)",
+      "b": "FC without MSP-capable UART or MSP not configured",
+      "description": "DJI and Walksnail digital FPV systems use MSP protocol for OSD data. If the FC UART connected to the VTX does not have MSP enabled at 115200 baud, there will be no OSD overlay.",
+      "workaround": "Enable MSP on the UART connected to the VTX in Betaflight Ports tab at exactly 115200 baud. Also enable OSD feature in Configuration tab.",
+      "tags": ["dji", "walksnail", "o3", "o4", "msp", "osd", "uart", "digital-fpv"]
+    },
+    {
+      "id": "INCOMPAT-009",
+      "type": "firmware_version",
+      "severity": "hard",
+      "a": "DJI Goggles V1/V2",
+      "b": "DJI O3 Air Unit",
+      "description": "DJI O3 Air Unit requires DJI Goggles 2, DJI Goggles 3, or FPV Goggles V2 with specific firmware. Goggles V1 are not compatible with O3 without a specific adapter and firmware pairing.",
+      "workaround": "Upgrade to DJI Goggles 2/3. Check DJI compatibility matrix for exact goggle/air unit firmware pairing requirements.",
+      "tags": ["dji", "o3", "goggles", "compatibility", "firmware-version"]
+    },
+    {
+      "id": "INCOMPAT-010",
+      "type": "protocol",
+      "severity": "hard",
+      "a": "SmartAudio VTX control",
+      "b": "Wired to FC UART RX pad",
+      "description": "SmartAudio is a one-wire protocol where the FC transmits commands. It must be connected to the FC UART TX pad. Wiring to UART RX will result in no VTX control.",
+      "workaround": "Wire SmartAudio VTX control wire to FC UART TX pad only. In Betaflight Ports tab, enable VTX (TBS SmartAudio) on that UART.",
+      "tags": ["smartaudio", "vtx", "uart", "wiring", "tx-pad", "betaflight"]
+    },
+    {
+      "id": "INCOMPAT-011",
+      "type": "hardware",
+      "severity": "hard",
+      "a": "NDAA Section 848 / Section 889 defense procurement",
+      "b": "Espressif ESP32 / ESP8266 (Chinese origin)",
+      "description": "ESP32 and ESP8266 are manufactured by Espressif Systems, a Chinese company. Products containing these chips fail NDAA Section 889 compliance for DOD procurement.",
+      "workaround": "Use Nordic Semiconductor nRF5340 (Norwegian) or similar NDAA-compliant alternatives for defense track development.",
+      "tags": ["ndaa", "esp32", "espressif", "compliance", "dod", "section-889"]
+    },
+    {
+      "id": "INCOMPAT-012",
+      "type": "protocol_hardware",
+      "severity": "soft",
+      "a": "High-power analog VTX (800mW+)",
+      "b": "GPS module mounted nearby",
+      "description": "Analog VTX RF output in the 5.8GHz band and harmonic interference causes GPS signal degradation, increased TTFF, and compass noise when mounted within 10cm.",
+      "workaround": "Mount GPS module as far as possible from VTX and on a mast. Use maximum separation. Consider lower VTX power during GPS-critical phases.",
+      "tags": ["vtx", "gps", "interference", "rf", "analog", "placement"]
+    },
+    {
+      "id": "INCOMPAT-013",
+      "type": "protocol",
+      "severity": "hard",
+      "a": "ELRS Airport mode receiver",
+      "b": "Standard ELRS RC control operation",
+      "description": "ELRS Airport mode configures the ELRS unit as a transparent serial bridge. In this mode, no RC control is available — it is pass-through serial only.",
+      "workaround": "Use Airport mode only for ground-to-air serial tunneling (MAVLink, etc.). Use a separate ELRS link for RC control if needed simultaneously.",
+      "tags": ["elrs", "airport-mode", "serial-bridge", "mavlink", "rc-control"]
+    },
+    {
+      "id": "INCOMPAT-014",
+      "type": "firmware_version",
+      "severity": "hard",
+      "a": "Betaflight 4.3+ RPM filter configuration",
+      "b": "BLHeli_32 firmware older than v32.7",
+      "description": "Bidirectional DSHOT (required for RPM filter) was implemented in BLHeli_32 v32.7. Older firmware will not output RPM telemetry, making the RPM filter non-functional.",
+      "workaround": "Update BLHeli_32 firmware to v32.7 or later via BLHeli32 Suite. Or switch to AM32 (open-source, actively maintained).",
+      "tags": ["blheli32", "rpm-filter", "dshot-bidir", "firmware-version", "betaflight"]
+    },
+    {
+      "id": "INCOMPAT-015",
+      "type": "hardware",
+      "severity": "hard",
+      "a": "CW (clockwise) prop",
+      "b": "CCW (counter-clockwise) motor position",
+      "description": "Props are directional — a CW prop on a CCW motor generates thrust in the wrong direction and will unscrew itself during flight. Standard quad layout: M1/M4 (diagonals) CW, M2/M3 CCW.",
+      "workaround": "Match prop rotation direction to motor rotation direction per Betaflight motor diagram. CW motors get CW props, CCW motors get CCW props.",
+      "tags": ["props", "motor-direction", "cw", "ccw", "first-build", "flip"]
+    },
+    {
+      "id": "INCOMPAT-016",
+      "type": "protocol",
+      "severity": "soft",
+      "a": "FrSky SmartPort telemetry",
+      "b": "Non-inverted UART on FC",
+      "description": "FrSky SmartPort telemetry uses inverted serial. Connecting to a standard non-inverted UART TX without inversion support results in garbled telemetry data.",
+      "workaround": "Use a UART pad that supports software inversion, or use an external inverter (transistor circuit). In Betaflight CLI: configure telemetry inversion for SmartPort.",
+      "tags": ["frsky", "smartport", "telemetry", "inversion", "uart"]
+    },
+    {
+      "id": "INCOMPAT-017",
+      "type": "hardware",
+      "severity": "hard",
+      "a": "HMC5883L compass (I2C address 0x1E)",
+      "b": "Another HMC5883L device on same I2C bus",
+      "description": "HMC5883L has a fixed I2C address (0x1E). Two modules with this chip on the same I2C bus cause an address conflict and one or both will fail to respond.",
+      "workaround": "Use GPS/compass modules with different compass chips on the same bus (e.g. one HMC5883L, one IST8310 at 0x0E). Or route them to separate I2C buses.",
+      "tags": ["compass", "i2c", "address-conflict", "hmc5883l", "gps"]
+    },
+    {
+      "id": "INCOMPAT-018",
+      "type": "protocol_hardware",
+      "severity": "hard",
+      "a": "Here4 GPS (DroneCAN / UAVCAN)",
+      "b": "Flight controller without CAN bus support",
+      "description": "CubePilot Here4 uses DroneCAN protocol exclusively. It cannot be used with flight controllers that only have standard UART/I2C GPS interfaces.",
+      "workaround": "Use Here3 (UART) for non-CAN flight controllers. Here4 requires a CAN-capable FC like Pixhawk 6C, Cube Orange, or WingCore H7.",
+      "tags": ["here4", "dronecan", "uavcan", "can-bus", "gps", "pixhawk"]
+    },
+    {
+      "id": "INCOMPAT-019",
+      "type": "protocol",
+      "severity": "hard",
+      "a": "IRC Tramp VTX control",
+      "b": "Single-wire connection (TX only)",
+      "description": "Unlike SmartAudio (one-wire TX only), IRC Tramp requires full two-way communication — both TX and RX wires must be connected between FC and VTX.",
+      "workaround": "Wire both TX and RX between FC UART and VTX Tramp pads. In Betaflight Ports tab, select IRC Tramp on the full UART.",
+      "tags": ["irc-tramp", "vtx", "uart", "wiring", "two-wire", "betaflight"]
+    },
+    {
+      "id": "INCOMPAT-020",
+      "type": "firmware_version",
+      "severity": "hard",
+      "a": "iNav GPS navigation modes (POSHOLD, RTH, WP)",
+      "b": "Flight without compass calibration",
+      "description": "iNav GPS navigation modes require a calibrated compass for accurate heading. Without a good compass, position hold drifts and RTH may fly in the wrong direction entirely.",
+      "workaround": "Always calibrate compass before any GPS-assisted flight. Recalibrate after any crash or when operating in a new geographic area with different magnetic declination.",
+      "tags": ["inav", "gps", "compass", "poshold", "rth", "navigation"]
+    },
+    {
+      "id": "INCOMPAT-021",
+      "type": "hardware",
+      "severity": "soft",
+      "a": "High-KV motor (2400+ KV)",
+      "b": "6S battery",
+      "description": "High-KV motors at 6S (25.2V) will exceed their maximum designed RPM, causing overheating, winding failure, or motor destruction. High KV is designed for lower cell counts.",
+      "workaround": "Use high-KV motors (2400+) on 3S-4S maximum. For 6S, use lower KV motors (1700-2200 KV depending on prop size).",
+      "tags": ["motor", "kv", "6s", "voltage", "overspeed", "cell-count"]
+    },
+    {
+      "id": "INCOMPAT-022",
+      "type": "protocol_hardware",
+      "severity": "soft",
+      "a": "Li-Ion battery (18650/21700)",
+      "b": "High-current freestyle/racing application",
+      "description": "Li-Ion cells have lower maximum discharge current (typically 10-20C) compared to LiPo (50-120C). High-current applications will cause voltage sag, cell damage, and inadequate power delivery.",
+      "workaround": "Li-Ion is suitable for long-range/efficiency builds only. Use LiPo for freestyle, racing, or any application requiring high instantaneous current.",
+      "tags": ["li-ion", "lipo", "battery", "discharge-rate", "current", "freestyle"]
+    },
+    {
+      "id": "INCOMPAT-023",
+      "type": "protocol",
+      "severity": "hard",
+      "a": "Betaflight target for board A",
+      "b": "Different board B with same MCU family",
+      "description": "Betaflight targets are board-specific. Flashing the wrong target (e.g. generic H743 on an Orqa QuadCore H7) results in incorrect UART, motor, and peripheral pin mappings.",
+      "workaround": "Always flash the exact board-specific target. For Orqa boards: ORQA_QUADCORE_H7 and ORQA_3030LITE_F405. Verify target name matches board manufacturer spec exactly.",
+      "tags": ["betaflight", "target", "flash", "pin-mapping", "uart", "orqa"]
+    },
+    {
+      "id": "INCOMPAT-024",
+      "type": "hardware",
+      "severity": "hard",
+      "a": "Self-tightening prop nut (CW thread)",
+      "b": "CCW-rotating motor",
+      "description": "Self-tightening prop nuts work by having the thread direction oppose the motor rotation — the spinning motor tightens the nut. A CW-thread nut on a CCW motor will loosen during flight.",
+      "workaround": "CCW-rotating motors require CCW-thread (left-hand thread) prop nuts. Most prop nut sets include both — check the 'L' or 'R' marking, or the color code (often silver=CW, gold=CCW).",
+      "tags": ["prop-nut", "self-tightening", "motor-direction", "cw", "ccw", "safety"]
+    },
+    {
+      "id": "INCOMPAT-025",
+      "type": "firmware_version",
+      "severity": "soft",
+      "a": "PX4 v1.13+ EKF3",
+      "b": "Single IMU flight controller",
+      "description": "PX4's EKF3 in newer versions is optimized for multi-IMU setups and may produce warnings or reduced performance with single-IMU boards. Not a hard incompatibility but reduces navigation reliability.",
+      "workaround": "Use dual-IMU FCs (like Orqa QuadCore H7 or WingCore H7) for PX4 navigation applications. Single-IMU boards are adequate for manual/stabilized flight only.",
+      "tags": ["px4", "ekf3", "imu", "single-imu", "navigation", "reliability"]
+    },
+    {
+      "id": "INCOMPAT-026",
+      "type": "protocol_hardware",
+      "severity": "hard",
+      "a": "Analog FPV VTX",
+      "b": "Digital FPV goggles (DJI, Walksnail, HDZero) without analog module",
+      "description": "Digital FPV goggles do not receive analog 5.8GHz video signals without a dedicated analog module add-on. Analog VTX signal is invisible to digital goggles.",
+      "workaround": "Use a digital VTX matched to your goggle system, or purchase the analog module/adapter for your digital goggles if available.",
+      "tags": ["analog", "digital-fpv", "vtx", "goggles", "dji", "walksnail", "hdzero"]
+    },
+    {
+      "id": "INCOMPAT-027",
+      "type": "hardware",
+      "severity": "hard",
+      "a": "DJI O3/O4 antennas",
+      "b": "Operation without both antennas connected",
+      "description": "The DJI O3 and O4 power amplifier will be permanently destroyed within seconds if powered without both antennas properly connected. This is an irreversible hardware failure.",
+      "workaround": "Always connect both antennas before applying power. Never power the O3/O4 on the bench without antennas. Inspect antenna connections before every flight.",
+      "tags": ["dji", "o3", "o4", "antenna", "pa-burn", "power-amplifier", "destruction"]
+    },
+    {
+      "id": "INCOMPAT-028",
+      "type": "protocol",
+      "severity": "hard",
+      "a": "ELRS 2.4GHz receiver",
+      "b": "ELRS 900MHz transmitter module",
+      "description": "ELRS 2.4GHz and 900MHz operate on different frequency bands and are not cross-compatible regardless of firmware version. The hardware radio front ends are different.",
+      "workaround": "Match transmitter module and receiver frequency band: 2.4GHz TX with 2.4GHz RX, 900MHz TX with 900MHz RX.",
+      "tags": ["elrs", "frequency", "2.4ghz", "900mhz", "binding", "band-mismatch"]
+    },
+    {
+      "id": "INCOMPAT-029",
+      "type": "hardware",
+      "severity": "soft",
+      "a": "Carbon fiber frame",
+      "b": "2.4GHz receiver antenna routed inside the frame",
+      "description": "Carbon fiber is conductive and acts as a Faraday cage for RF signals. Routing 2.4GHz receiver antennas inside CF tubes or between CF plates significantly reduces effective range.",
+      "workaround": "Route all receiver antennas outside the carbon fiber frame. Use flexible PCB or whip antennas that can exit the frame. Maintain separation from CF surfaces.",
+      "tags": ["carbon-fiber", "antenna", "rf", "2.4ghz", "range", "receiver", "elrs"]
+    },
+    {
+      "id": "INCOMPAT-030",
+      "type": "hardware",
+      "severity": "hard",
+      "a": "LiPo battery (storage or flight charge)",
+      "b": "Leaving at full charge (4.2V/cell) for more than 24 hours",
+      "description": "Storing LiPo batteries at full charge (4.2V/cell) accelerates cathode degradation and reduces cycle life significantly. Long-term storage at full charge also risks thermal runaway.",
+      "workaround": "Store LiPo batteries at storage voltage: 3.8V per cell. Most smart chargers have a storage charge/discharge program. Never store fully charged for more than 24 hours.",
+      "tags": ["lipo", "storage", "voltage", "charging", "degradation", "fire-hazard"]
+    }
+  ]
+}

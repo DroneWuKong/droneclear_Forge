@@ -1,0 +1,393 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Platform Compare — Forge</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&family=Source+Serif+4:opsz,wght@8..60,400;8..60,600;8..60,700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="">
+    <link rel="stylesheet" href="{% static 'base.css' %}">
+    <link rel="stylesheet" href="{% static 'layout.css' %}?v=4">
+    <link rel="stylesheet" href="{% static 'components.css' %}">
+    <link rel="stylesheet" href="{% static 'utilities.css' %}">
+    <link rel="stylesheet" href="">
+    <link rel="stylesheet" href="">
+    <script src="https://unpkg.com/@phosphor-icons/web"></script>
+    <script>
+        (function(){
+            const saved = localStorage.getItem('dc-theme');
+            document.documentElement.setAttribute('data-theme', saved ? saved : 'dark');
+        })();
+    </script>
+    <style>
+        .compare-page { max-width: 1400px; margin: 0 auto; padding: 32px 24px; }
+
+        /* ── Slot Picker ── */
+        .compare-slots {
+            display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 16px; margin-bottom: 32px;
+        }
+        .compare-slot {
+            background: var(--bg-panel); border: 2px dashed var(--border-color);
+            border-radius: var(--radius-md); padding: 24px; text-align: center;
+            min-height: 120px; display: flex; flex-direction: column; align-items: center;
+            justify-content: center; gap: 8px; transition: all 0.2s; position: relative;
+        }
+        .compare-slot.filled { border-style: solid; border-color: var(--accent-red); }
+        .compare-slot.filled .slot-empty { display: none; }
+        .compare-slot .slot-filled { display: none; }
+        .compare-slot.filled .slot-filled { display: flex; flex-direction: column; align-items: center; gap: 4px; width: 100%; }
+        .slot-empty { color: var(--text-muted); cursor: pointer; }
+        .slot-empty:hover { color: var(--accent-red); }
+        .slot-empty i { font-size: 28px; margin-bottom: 4px; display: block; }
+        .slot-platform-name { font-size: 16px; font-weight: 700; color: var(--text-main); }
+        .slot-platform-mfr { font-size: 12px; color: var(--text-muted); }
+        .slot-remove {
+            position: absolute; top: 8px; right: 8px; background: none; border: none;
+            color: var(--text-muted); cursor: pointer; font-size: 16px; padding: 4px;
+        }
+        .slot-remove:hover { color: #ef4444; }
+        .slot-tier-bar { width: 100%; height: 3px; border-radius: 2px; margin-top: 8px; }
+        .slot-tier-bar.green { background: #22c55e; }
+        .slot-tier-bar.yellow { background: #eab308; }
+        .slot-tier-bar.orange { background: #f97316; }
+        .slot-tier-bar.red { background: #ef4444; }
+
+        /* ── Search Dropdown ── */
+        .slot-search-wrap { position: relative; width: 100%; }
+        .slot-search {
+            width: 100%; padding: 10px 12px; background: var(--bg-dark);
+            border: 1px solid var(--border-color); color: var(--text-main);
+            border-radius: var(--radius-sm); outline: none; font-size: 14px;
+        }
+        .slot-search:focus { border-color: var(--accent-red); }
+        .slot-dropdown {
+            position: absolute; top: 100%; left: 0; right: 0; max-height: 240px;
+            overflow-y: auto; background: var(--bg-panel); border: 1px solid var(--border-color);
+            border-radius: 0 0 var(--radius-sm) var(--radius-sm); z-index: 100;
+            box-shadow: 0 8px 24px rgba(0,0,0,0.4); display: none;
+        }
+        .slot-dropdown.open { display: block; }
+        .slot-dropdown-item {
+            padding: 10px 14px; cursor: pointer; font-size: 13px;
+            border-bottom: 1px solid rgba(255,255,255,0.04); display: flex;
+            justify-content: space-between; align-items: center;
+        }
+        .slot-dropdown-item:hover { background: rgba(255,255,255,0.05); }
+        .slot-dropdown-item .dd-name { color: var(--text-main); font-weight: 500; }
+        .slot-dropdown-item .dd-meta { color: var(--text-muted); font-size: 11px; }
+
+        /* ── Comparison Table ── */
+        .compare-table-wrap {
+            background: var(--bg-panel); border: 1px solid var(--border-color);
+            border-radius: var(--radius-md); overflow-x: auto;
+        }
+        .compare-table { width: 100%; border-collapse: collapse; }
+        .compare-table th {
+            padding: 10px 16px; text-align: left; font-size: 12px;
+            text-transform: uppercase; letter-spacing: 0.5px; color: var(--text-muted);
+            background: var(--bg-dark); border-bottom: 2px solid var(--border-color);
+            position: sticky; top: 0; white-space: nowrap;
+        }
+        .compare-table td {
+            padding: 10px 16px; border-bottom: 1px solid rgba(255,255,255,0.04);
+            font-size: 13px; vertical-align: top;
+        }
+        .compare-table .row-label {
+            font-weight: 600; color: var(--text-muted); font-size: 12px;
+            text-transform: uppercase; letter-spacing: 0.3px; white-space: nowrap;
+            background: var(--bg-dark); min-width: 160px;
+        }
+        .compare-table .section-header td {
+            padding: 14px 16px 8px; font-size: 11px; font-weight: 700;
+            text-transform: uppercase; letter-spacing: 1px; color: var(--accent-red);
+            border-bottom: 2px solid var(--border-color); background: var(--bg-dark);
+        }
+        .compare-table .val { color: var(--text-main); }
+        .compare-table .val-best { color: #22c55e; font-weight: 600; }
+        .compare-table .val-worst { color: #ef4444; }
+        .compare-table .val-na { color: var(--text-muted); font-style: italic; }
+
+        .badge-sm {
+            display: inline-flex; align-items: center; gap: 3px; padding: 2px 8px;
+            border-radius: 10px; font-size: 11px; font-weight: 600;
+            font-family: 'JetBrains Mono', monospace;
+        }
+        .badge-sm.green { background: rgba(34,197,94,0.15); color: #22c55e; }
+        .badge-sm.red { background: rgba(239,68,68,0.15); color: #ef4444; }
+        .badge-sm.muted { background: rgba(100,100,100,0.15); color: var(--text-muted); }
+        .badge-sm.purple { background: rgba(168,85,247,0.15); color: #a855f7; }
+
+        .empty-compare {
+            text-align: center; padding: 64px 24px; color: var(--text-muted);
+        }
+        .empty-compare i { font-size: 48px; display: block; margin-bottom: 12px; opacity: 0.4; }
+
+        @media (max-width: 768px) {
+            .compare-slots { grid-template-columns: 1fr; }
+            .compare-table .row-label { min-width: 120px; font-size: 11px; }
+            .compare-table td { padding: 8px 10px; font-size: 12px; }
+        }
+    </style>
+<style>html,body{background:#0c0c0a!important;color:#f5f0e8}</style>
+</head>
+<body>
+<header style="display:flex;align-items:center;justify-content:space-between;gap:8px;padding:10px 16px;border-bottom:1px solid #2e2e26;background:#1c1c17;position:sticky;top:0;z-index:100;flex-shrink:0;">
+  <a href="/" style="font:800 18px 'JetBrains Mono',monospace;color:#ff3b5c;letter-spacing:-0.03em;text-decoration:none;flex-shrink:0;">Forge</a>
+  <div style="display:flex;gap:5px;align-items:center;flex-wrap:nowrap;"><a href="/intel/" class="tp-pill">Intel</a><a href="/patterns/" class="tp-pill">Patterns</a><a href="/tools-home/" class="tp-pill">Tools</a><a href="/wingman/" class="tp-pill">Wingman</a></div>
+</header>
+<style>.tp-pill{font:500 10px 'DM Sans',system-ui,sans-serif;color:#6b6358;padding:4px 9px;border:1px solid #2e2e26;border-radius:20px;text-decoration:none;white-space:nowrap;transition:all .15s}.tp-pill:hover{border-color:#3e3e34;color:#b8b0a0}</style>
+    <div class="app-container" style="display: flex; flex-direction: column; min-height: 100vh;">
+        <main class="compare-page">
+            <div style="margin-bottom: 24px;">
+                <h1 style="font-size: 24px; font-weight: 700; margin-bottom: 4px;">Platform Compare</h1>
+                <p style="font-size: 14px; color: var(--text-muted);">Select 2–3 platforms to compare specs, compliance, and capabilities side by side.</p>
+            </div>
+
+            <div class="compare-slots" id="compare-slots"></div>
+
+            <div id="compare-output"></div>
+        </main>
+    </div>
+
+    <script src=""></script>
+    <script>
+    (function() {
+        'use strict';
+
+        let allPlatforms = [];
+        let selected = [null, null, null]; // up to 3
+
+        const ESC = s => {
+            if (s == null) return '';
+            const d = document.createElement('div');
+            d.textContent = String(s);
+            return d.innerHTML;
+        };
+
+        function getTier(p) {
+            const blue = p.blue_uas === true || p.compliance?.blue_uas === true;
+            const ndaa = p.ndaa_compliant === true || p.compliance?.ndaa_compliant === true;
+            const country = (p.country || '').toLowerCase();
+            const adversary = ['china', 'iran', 'russia', 'north korea'].some(c => country.includes(c));
+            if (blue && ndaa) return 'green';
+            if (ndaa && !blue) return 'yellow';
+            if (!ndaa && !adversary) return 'orange';
+            return 'red';
+        }
+
+        function fmtBool(val, yesClass, yesText, noText) {
+            if (val === true) return `<span class="badge-sm ${yesClass}">${yesText || 'Yes'}</span>`;
+            if (val === false) return `<span class="badge-sm red">${noText || 'No'}</span>`;
+            return '<span class="badge-sm muted">—</span>';
+        }
+
+        function fmtVal(v) {
+            if (v == null || v === '' || v === 'Unknown' || v === 0) return '<span class="val-na">—</span>';
+            return `<span class="val">${ESC(String(v))}</span>`;
+        }
+
+        function fmtNum(v, unit, best, worst) {
+            if (v == null || v === 0) return '<span class="val-na">—</span>';
+            let cls = 'val';
+            if (best !== undefined && v === best) cls = 'val-best';
+            if (worst !== undefined && v === worst) cls = 'val-worst';
+            return `<span class="${cls}">${v.toLocaleString()}${unit || ''}</span>`;
+        }
+
+        function renderSlots() {
+            const container = document.getElementById('compare-slots');
+            container.innerHTML = selected.map((p, i) => {
+                if (p) {
+                    const tier = getTier(p);
+                    return `<div class="compare-slot filled" data-idx="${i}">
+                        <button class="slot-remove" data-idx="${i}"><i class="ph ph-x"></i></button>
+                        <div class="slot-filled">
+                            <div class="slot-platform-name">${ESC(p.name)}</div>
+                            <div class="slot-platform-mfr">${ESC(p.manufacturer || '')} · ${ESC(p.country || '')}</div>
+                            <div class="slot-tier-bar ${tier}"></div>
+                        </div>
+                    </div>`;
+                }
+                return `<div class="compare-slot" data-idx="${i}">
+                    <div class="slot-empty" data-idx="${i}">
+                        <i class="ph ph-plus-circle"></i>
+                        <div style="font-size:13px;">Add Platform ${i + 1}</div>
+                    </div>
+                    <div class="slot-search-wrap" style="display:none;">
+                        <input type="text" class="slot-search" placeholder="Search platforms..." data-idx="${i}">
+                        <div class="slot-dropdown" data-idx="${i}"></div>
+                    </div>
+                </div>`;
+            }).join('');
+
+            // Wire remove buttons
+            container.querySelectorAll('.slot-remove').forEach(btn => {
+                btn.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    selected[parseInt(btn.dataset.idx)] = null;
+                    renderSlots();
+                    renderComparison();
+                });
+            });
+
+            // Wire empty slot clicks → show search
+            container.querySelectorAll('.slot-empty').forEach(el => {
+                el.addEventListener('click', () => {
+                    const idx = el.dataset.idx;
+                    const slot = el.closest('.compare-slot');
+                    el.style.display = 'none';
+                    const searchWrap = slot.querySelector('.slot-search-wrap');
+                    searchWrap.style.display = 'block';
+                    const input = searchWrap.querySelector('.slot-search');
+                    input.focus();
+                });
+            });
+
+            // Wire search inputs
+            container.querySelectorAll('.slot-search').forEach(input => {
+                const idx = parseInt(input.dataset.idx);
+                const dropdown = container.querySelector(`.slot-dropdown[data-idx="${idx}"]`);
+
+                input.addEventListener('input', () => {
+                    const q = input.value.trim().toLowerCase();
+                    if (!q) { dropdown.classList.remove('open'); return; }
+
+                    const selectedPids = new Set(selected.filter(Boolean).map(p => p.pid));
+                    const results = allPlatforms.filter(p =>
+                        !selectedPids.has(p.pid) &&
+                        [p.name, p.manufacturer, p.country].join(' ').toLowerCase().includes(q)
+                    ).slice(0, 12);
+
+                    dropdown.innerHTML = results.map(p =>
+                        `<div class="slot-dropdown-item" data-pid="${ESC(p.pid)}">
+                            <span class="dd-name">${ESC(p.name)}</span>
+                            <span class="dd-meta">${ESC(p.manufacturer || '')} · ${ESC(p.country || '')}</span>
+                        </div>`
+                    ).join('') || '<div style="padding:12px; color:var(--text-muted); font-size:13px;">No results</div>';
+                    dropdown.classList.add('open');
+
+                    dropdown.querySelectorAll('.slot-dropdown-item').forEach(item => {
+                        item.addEventListener('click', () => {
+                            const plat = allPlatforms.find(p => p.pid === item.dataset.pid);
+                            if (plat) {
+                                selected[idx] = plat;
+                                renderSlots();
+                                renderComparison();
+                            }
+                        });
+                    });
+                });
+
+                input.addEventListener('blur', () => {
+                    setTimeout(() => dropdown.classList.remove('open'), 200);
+                });
+            });
+        }
+
+        function renderComparison() {
+            const output = document.getElementById('compare-output');
+            const filled = selected.filter(Boolean);
+
+            if (filled.length < 2) {
+                output.innerHTML = `<div class="empty-compare">
+                    <i class="ph ph-scales"></i>
+                    Select at least 2 platforms to compare.
+                </div>`;
+                return;
+            }
+
+            // Compute best/worst for numeric fields
+            const times = filled.map(p => p.max_flight_time_min || 0).filter(v => v > 0);
+            const payloads = filled.map(p => p.max_payload_kg || 0).filter(v => v > 0);
+            const bestTime = times.length ? Math.max(...times) : undefined;
+            const worstTime = times.length > 1 ? Math.min(...times) : undefined;
+            const bestPayload = payloads.length ? Math.max(...payloads) : undefined;
+
+            const rows = [
+                { section: 'Identity' },
+                { label: 'Manufacturer', fn: p => fmtVal(p.manufacturer) },
+                { label: 'Country', fn: p => fmtVal(p.country) },
+                { label: 'Vehicle Type', fn: p => fmtVal(p.vehicle_type) },
+                { label: 'Firmware', fn: p => fmtVal(p.firmware) },
+                { section: 'Performance' },
+                { label: 'Flight Time', fn: p => fmtNum(p.max_flight_time_min, ' min', bestTime, worstTime) },
+                { label: 'Max Payload', fn: p => fmtNum(p.max_payload_kg, ' kg', bestPayload) },
+                { label: 'Video System', fn: p => fmtVal(p.video_system) },
+                { label: 'Thermal', fn: p => fmtBool(p.thermal_capable, 'green', 'Yes', 'No') },
+                { label: 'RF Bands', fn: p => fmtVal(p.rf_bands) },
+                { section: 'Compliance' },
+                { label: 'Blue UAS', fn: p => fmtBool(p.blue_uas === true || p.compliance?.blue_uas === true, 'green', '<i class="ph ph-seal-check"></i> Listed', 'No') },
+                { label: 'NDAA §848', fn: p => fmtBool(p.ndaa_compliant === true || p.compliance?.ndaa_compliant === true, 'green', 'Compliant', 'Non-compliant') },
+                { label: 'Combat Proven', fn: p => fmtBool(p.compliance?.combat_proven, 'purple', 'Yes', '—') },
+                { label: 'Compliance Tier', fn: p => {
+                    const t = getTier(p);
+                    const labels = { green: 'Green — Gov cleared', yellow: 'Yellow — NDAA OK', orange: 'Orange — Commercial', red: 'Red — Restricted' };
+                    return `<span class="badge-sm ${t === 'orange' ? 'muted' : t}">${labels[t]}</span>`;
+                }},
+                { section: 'Integration' },
+                { label: 'MAVLink', fn: p => fmtBool(p.mavlink_support, 'green', 'Yes', 'No') },
+                { label: 'SDK', fn: p => fmtBool(p.sdk_available, 'green', 'Available', 'No') },
+                { label: 'Notes', fn: p => {
+                    const note = p.compliance?.note || '';
+                    return note ? `<span class="val" style="font-size:12px;">${ESC(note)}</span>` : '<span class="val-na">—</span>';
+                }},
+            ];
+
+            const colHeaders = filled.map(p => `<th>${ESC(p.name)}</th>`).join('');
+
+            const tableRows = rows.map(r => {
+                if (r.section) {
+                    return `<tr class="section-header"><td colspan="${filled.length + 1}">${r.section}</td></tr>`;
+                }
+                const cells = filled.map(p => `<td>${r.fn(p)}</td>`).join('');
+                return `<tr><td class="row-label">${r.label}</td>${cells}</tr>`;
+            }).join('');
+
+            output.innerHTML = `<div class="compare-table-wrap">
+                <table class="compare-table">
+                    <thead><tr><th style="min-width:160px;">Spec</th>${colHeaders}</tr></thead>
+                    <tbody>${tableRows}</tbody>
+                </table>
+            </div>`;
+        }
+
+        async function init() {
+            try {
+                const res = await fetch('forge_database.json');
+                if (!res.ok) throw new Error('Failed to load database');
+                const db = await res.json();
+                allPlatforms = (db.drone_models || []).sort((a, b) => a.name.localeCompare(b.name));
+
+                // Check URL params for pre-selected platforms
+                const params = new URLSearchParams(window.location.search);
+                const pids = [params.get('a'), params.get('b'), params.get('c')].filter(Boolean);
+                pids.forEach((pid, i) => {
+                    const p = allPlatforms.find(x => x.pid === pid);
+                    if (p && i < 3) selected[i] = p;
+                });
+
+                renderSlots();
+                renderComparison();
+            } catch (err) {
+                console.error(err);
+                document.getElementById('compare-output').innerHTML = '<div class="empty-compare">Failed to load database.</div>';
+            }
+        }
+
+        // Dark mode
+        document.getElementById('dark-mode-toggle')?.addEventListener('click', () => {
+            const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+            document.documentElement.setAttribute('data-theme', isDark ? 'light' : 'dark');
+            localStorage.setItem('dc-theme', isDark ? 'light' : 'dark');
+            const icon = document.getElementById('dark-mode-icon');
+            if (icon) icon.className = isDark ? 'ph ph-moon' : 'ph ph-sun';
+        });
+
+        init();
+    })();
+    </script>
+</body>
+</html>

@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Patterns — UAS Supply Chain Intelligence</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <script src="https://unpkg.com/@phosphor-icons/web"></script>
+  <style>
+    :root{
+      --bg:#0c0c0a;--surface:#141410;--card:#1c1c17;--card-hi:#242420;
+      --border:#2e2e26;--border-hi:#3e3e34;
+      --red:#22c55e;--red-d:#22c55e20;
+      --green:#22c55e;--green-d:#22c55e20;
+      --mustard:#22c55e;--mustard-d:#22c55e20;
+      --text:#f5f0e8;--text-s:#b8b0a0;--text-d:#6b6358;--text-xd:#3d3830;
+      --font:'DM Sans',system-ui,sans-serif;
+      --mono:'JetBrains Mono',monospace;
+    }
+    *{box-sizing:border-box;margin:0;padding:0}
+    body{background:var(--bg);color:var(--text);font-family:var(--font);line-height:1.5;-webkit-font-smoothing:antialiased;min-height:100vh}
+    a{text-decoration:none;color:inherit}
+
+    .topbar{display:flex;align-items:center;justify-content:space-between;padding:10px 16px;border-bottom:1px solid var(--border);background:var(--bg);position:sticky;top:0;z-index:100}
+    .topbar-left{display:flex;align-items:center;gap:8px;min-width:0;flex:1;overflow:hidden}
+    .topbar-logo{font:700 14px var(--mono);color:#22c55e;letter-spacing:-0.02em;text-decoration:none;white-space:nowrap}
+    .topbar-logo.red{color:#dc2626}
+    .topbar-sep{color:var(--text-xd);font-size:12px;flex-shrink:0}
+    .topbar-current{font:600 13px var(--font);color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    .topbar-links{display:flex;gap:4px;flex-shrink:0}
+    .topbar-pill{font:500 11px var(--font);color:var(--text-d);padding:4px 10px;border:1px solid var(--border);border-radius:20px;transition:all .15s;text-decoration:none;white-space:nowrap}
+    .topbar-pill:hover{border-color:var(--border-hi);color:var(--text-s)}
+    .topbar-pill:hover{border-color:var(--border-hi);color:var(--text-s)}
+
+    .page{max-width:680px;margin:0 auto;padding:40px 24px 60px}
+
+    .brand{margin-bottom:28px;position:relative}
+    .brand::before{content:'';position:absolute;top:-20px;left:-40px;width:220px;height:220px;background:radial-gradient(ellipse,rgba(34,197,94,.08),transparent 70%);pointer-events:none}
+    .eyebrow{font:600 9px var(--mono);text-transform:uppercase;letter-spacing:.12em;color:var(--text-xd);margin-bottom:8px}
+    .brand-name{font:700 32px var(--mono);color:#22c55e;letter-spacing:-0.03em;margin-bottom:10px}
+    .tagline{font-size:13px;color:var(--text-s);line-height:1.6;max-width:480px}
+
+    .stats{display:flex;gap:0;border:1px solid var(--border);border-radius:8px;overflow:hidden;margin:24px 0}
+    .st{flex:1;text-align:center;padding:12px 8px;border-right:1px solid var(--border)}
+    .st:last-child{border-right:none}
+    .st-n{font:700 20px var(--mono);color:#22c55e;display:block;line-height:1}
+    .st-n.amber{color:var(--mustard)}
+    .st-n.green{color:var(--green)}
+    .st-l{font:500 9px var(--font);text-transform:uppercase;letter-spacing:.07em;color:var(--text-d);margin-top:4px;display:block}
+
+    .grp{margin-bottom:28px}
+    .grp-lbl{font:600 9px var(--mono);text-transform:uppercase;letter-spacing:.1em;color:var(--text-xd);margin-bottom:10px;display:flex;align-items:center;gap:8px}
+    .grp-lbl::after{content:'';flex:1;height:1px;background:var(--border)}
+    .grp-list{display:flex;flex-direction:column;gap:3px}
+
+    .mod{display:flex;align-items:center;gap:12px;padding:10px 12px;border-radius:8px;border:1px solid transparent;transition:all .12s}
+    .mod:hover{background:var(--card);border-color:var(--border)}
+    .mod-ico{width:34px;height:34px;border-radius:7px;display:flex;align-items:center;justify-content:circle;font-size:16px;flex-shrink:0;background:var(--red-d)}
+    .mod-ico i{color:#22c55e}
+    .mod-body{flex:1;min-width:0}
+    .mod-title{font:600 12px var(--font);color:var(--text);display:flex;align-items:center;gap:6px}
+    .mod-desc{font-size:11px;color:var(--text-d);margin-top:1px}
+    .mod-arr{color:var(--text-xd);font-size:14px;flex-shrink:0;transition:all .12s}
+    .mod:hover .mod-title{color:#22c55e}
+    .mod:hover .mod-arr{transform:translateX(3px);color:var(--text-s)}
+    .pill-tag{font:600 8px var(--mono);padding:1px 5px;border-radius:8px;text-transform:uppercase;background:rgba(34,197,94,.15);color:#22c55e}
+    .pill-tag.amber{background:var(--mustard-d);color:var(--mustard)}
+    .pill-tag.green{background:var(--green-d);color:var(--green)}
+
+    /* Brief gets a featured treatment */
+    .featured{display:flex;align-items:center;gap:14px;padding:14px 16px;background:var(--card);border:1px solid var(--border);border-left:3px solid #22c55e;border-radius:10px;transition:all .15s;margin-bottom:3px}
+    .featured:hover{border-color:var(--border-hi);background:var(--card-hi);border-left-color:#22c55e}
+    .feat-ico{width:40px;height:40px;border-radius:9px;display:flex;align-items:center;justify-content:center;font-size:20px;flex-shrink:0;background:var(--red-d)}
+    .feat-ico i{color:#22c55e}
+    .feat-body{flex:1}
+    .feat-title{font:700 13px var(--font);color:var(--text);margin-bottom:2px;display:flex;align-items:center;gap:6px}
+    .feat-desc{font-size:11px;color:var(--text-d)}
+    .feat-arr{font-size:12px;color:var(--text-d);display:flex;align-items:center;gap:3px;transition:all .15s;white-space:nowrap}
+    .featured:hover .feat-arr{color:var(--text-s)}
+    .featured:hover .feat-title{color:#22c55e}
+  </style>
+</head>
+<body>
+<header style="display:flex;align-items:center;justify-content:space-between;gap:8px;padding:10px 16px;border-bottom:1px solid #2e2e26;background:#1c1c17;position:sticky;top:0;z-index:100;flex-shrink:0;">
+  <a href="/patterns-home/" style="font:800 18px 'JetBrains Mono',monospace;color:#22c55e;letter-spacing:-0.03em;text-decoration:none;flex-shrink:0;">Patterns</a>
+  <div style="display:flex;gap:5px;align-items:center;flex-wrap:nowrap;"><a href="/" class="tp-pill">Forge</a><a href="/intel/" class="tp-pill">Intel</a><a href="/wingman/" class="tp-pill">Wingman</a><a href="https://nvmilldoitmyself.com" class="tp-pill" target=_blank>Handbook</a></div>
+</header>
+<style>.tp-pill{font:500 10px 'DM Sans',system-ui,sans-serif;color:#6b6358;padding:4px 9px;border:1px solid #2e2e26;border-radius:20px;text-decoration:none;white-space:nowrap;transition:all .15s}.tp-pill:hover{border-color:#3e3e34;color:#b8b0a0}</style>
+
+<div class="page">
+  <div class="brand">
+    <div class="eyebrow">Intelligence</div>
+    <div class="brand-name">Patterns</div>
+    <div class="tagline">UAS supply chain intelligence. Gray zone detection, procurement signals, diversion risk, and daily AI-generated briefings — powered by the Forge DB.</div>
+  </div>
+
+  <div class="stats">
+    <div class="st"><span class="st-n" id="s-flags">251</span><span class="st-l">Flags</span></div>
+    <div class="st"><span class="st-n" id="s-crit">41</span><span class="st-l">Critical</span></div>
+    <div class="st"><span class="st-n amber" id="s-pred">10</span><span class="st-l">Predictions</span></div>
+    <div class="st"><span class="st-n green">4</span><span class="st-l">Gray Zone</span></div>
+  </div>
+
+  <div class="grp">
+    <div class="grp-lbl">Daily Intelligence</div>
+    <div class="grp-list">
+      <a href="/brief/" class="featured">
+        <div class="feat-ico"><i class="ph ph-newspaper"></i></div>
+        <div class="feat-body">
+          <div class="feat-title">Intelligence Brief <span class="pill-tag">AI · Daily</span></div>
+          <div class="feat-desc">Lead story, gray zone updates, supply chain signals, predictions with hedges</div>
+        </div>
+        <div class="feat-arr">Open <i class="ph ph-arrow-right"></i></div>
+      </a>
+    </div>
+  </div>
+
+  <div class="grp">
+    <div class="grp-lbl">Supply Chain Analysis</div>
+    <div class="grp-list">
+      <a href="/patterns/" class="mod"><div class="mod-ico"><i class="ph ph-graph"></i></div><div class="mod-body"><div class="mod-title">PIE Flags <span class="pill-tag" id="pie-count">251 active</span></div><div class="mod-desc">Procurement signals, diversion risk, gray zone entities, predictions</div></div><i class="ph ph-arrow-right mod-arr"></i></a>
+    </div>
+  </div>
+</div>
+
+<script>
+(function(){
+  fetch('../static/pie_flags.json').then(r=>r.json()).then(f=>{
+    document.getElementById('s-flags').textContent=f.length; var pc=document.getElementById('pie-count'); if(pc) pc.textContent=f.length+' active';
+    document.getElementById('s-crit').textContent=f.filter(x=>x.severity==='critical').length;
+  }).catch(()=>{});
+  fetch('../static/pie_predictions.json').then(r=>r.json()).then(p=>{
+    document.getElementById('s-pred').textContent=p.length;
+  }).catch(()=>{});
+})();
+</script>
+
+<!-- Page Analytics — fires batch events to /.netlify/functions/analytics -->
+<script>
+(function(){
+  var E='/.netlify/functions/analytics';
+  var S='sess_'+crypto.randomUUID().replace(/-/g,'').slice(0,16);
+  var surface='forge';
+  var q=[],t=null,ps=Date.now(),ms=0,ix=0;
+  function rg(){try{var z=Intl.DateTimeFormat().resolvedOptions().timeZone;if(z.includes('America'))return'Americas';if(z.includes('Europe'))return'Europe';if(z.includes('Asia')||z.includes('Australia')||z.includes('Pacific'))return'Asia-Pacific';}catch(e){}return'Unknown';}
+  function mkEvent(type,action,payload){return{event_id:crypto.randomUUID(),timestamp:new Date().toISOString(),surface:surface,event_type:type,event_action:action,context:{session_id:S,geo_region:rg(),platform:/Android|iPhone|iPad/i.test(navigator.userAgent)?'mobile':'web',path:location.pathname},payload:payload||{},data_policy:{collection_tier:'anonymous'}};}
+  function fl(){if(t){clearTimeout(t);t=null;}if(!q.length)return;var b=q.splice(0);navigator.sendBeacon?navigator.sendBeacon(E,JSON.stringify({type:'batch',events:b})):fetch(E,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({type:'batch',events:b}),keepalive:true}).catch(function(){});}
+  function ev(type,action,payload){q.push(mkEvent(type,action,payload));if(q.length>=20)fl();else if(!t)t=setTimeout(fl,5000);}
+  // Page view
+  ev('page_view','view',{path:location.pathname,title:document.title});
+  // Scroll depth
+  var st=null;addEventListener('scroll',function(){var h=document.documentElement.scrollHeight-innerHeight;if(h>0){var p=Math.round(100*scrollY/h);if(p>ms)ms=p;}if(st)clearTimeout(st);st=setTimeout(function(){ev('engagement','scroll_depth',{depth_pct:ms,path:location.pathname});},2000);},{passive:true});
+  // Click tracking
+  addEventListener('click',function(e){ix++;var el=e.target.closest('a,button,[data-track]');if(!el)return;ev('interaction','click',{label:(el.dataset.track||el.textContent.trim()).substring(0,50),href:(el.href||'').substring(0,200),element:el.tagName.toLowerCase(),path:location.pathname});},{passive:true});
+  // Exit
+  function end(){ev('engagement','page_exit',{duration_sec:Math.round((Date.now()-ps)/1e3),max_scroll_pct:ms,interactions:ix,path:location.pathname});fl();}
+  addEventListener('visibilitychange',function(){if(document.visibilityState==='hidden')end();});
+  addEventListener('pagehide',end);
+  // Expose for page-specific events
+  window.__pageAnalytics={ev:ev,flush:fl,session:S};
+})();
+</script>
+</body>
+</html>

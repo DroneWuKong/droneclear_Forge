@@ -1,0 +1,262 @@
+name: Forge Intelligence Pipeline
+
+on:
+  schedule:
+    - cron: '0 6 * * *'    # daily 06:00 UTC  → intel + analytics
+    - cron: '0 4 * * 0'    # sunday 04:00 UTC → full pipeline
+  workflow_dispatch:
+    inputs:
+      group:
+        description: 'Miner group to run'
+        required: true
+        default: 'intel'
+        type: choice
+        options:
+          - intel          # dronelife, sbir, blueuas, diu
+          - defense        # sam, ai_accelerators, c2, ew, gcs, nav_pnt
+          - commercial     # getfpv, rdq, manufacturer
+          - enrichment     # descriptions, platform_specs, (images opt-in)
+          - firmware       # betaflight, inav, ardupilot, px4 config miner
+          - troubleshooting # community TS sources
+          - analytics      # analytics gap analysis only
+          - full           # all groups end-to-end
+      dry_run:
+        description: 'Dry run (no writes)'
+        required: false
+        default: 'false'
+        type: boolean
+
+# ── Shared setup step (reused via composite or inline per job) ────────────────
+
+jobs:
+
+  # ── Daily: intel + analytics gap analysis ──────────────────────────────────
+  daily:
+    name: Daily intel + analytics
+    if: |
+      github.event.schedule == '0 6 * * *' ||
+      github.event.inputs.group == 'intel' ||
+      github.event.inputs.group == 'analytics'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: pip install requests beautifulsoup4 lxml 2>/dev/null || true
+
+      - name: Run intel miners
+        if: github.event.inputs.group != 'analytics'
+        run: python3 miners/mine_all.py --group intel
+        continue-on-error: true
+
+      - name: Analytics gap analysis
+        env:
+          ANALYTICS_ADMIN_KEY: ${{ secrets.ANALYTICS_ADMIN_KEY }}
+          FORGE_SITE: https://forgeprole.netlify.app
+        run: |
+          python3 miners/mine_from_analytics.py --analyze --days 7 || true
+          python3 miners/mine_from_analytics.py --mine --top 3 --days 7 || true
+
+      - name: Commit changes
+        run: |
+          git config user.name  "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add -A
+          if git diff --staged --quiet; then
+            echo "CHANGES=none" >> $GITHUB_ENV
+          else
+            git commit -m "chore(intel): daily update $(date -u +%Y-%m-%d) [skip ci]"
+            git push
+            echo "CHANGES=$(git diff HEAD~1 --stat | tail -1)" >> $GITHUB_ENV
+          fi
+
+      - name: Step summary
+        if: always()
+        run: |
+          echo "## Daily Intel — $(date -u +%Y-%m-%d)" >> $GITHUB_STEP_SUMMARY
+          echo "**Status:** ${{ job.status }} | **Changes:** ${{ env.CHANGES }}" >> $GITHUB_STEP_SUMMARY
+          if [ -d "miners/.analytics_output" ]; then
+            LATEST=$(ls -t miners/.analytics_output/gap_analysis_*.json 2>/dev/null | head -1)
+            if [ -n "$LATEST" ]; then
+              echo "### Top Gaps" >> $GITHUB_STEP_SUMMARY
+              echo '```' >> $GITHUB_STEP_SUMMARY
+              python3 miners/format_gap_summary.py "$LATEST" >> $GITHUB_STEP_SUMMARY 2>&1 || true
+              echo '```' >> $GITHUB_STEP_SUMMARY
+            fi
+          fi
+
+      - name: Email notification
+        if: always()
+        uses: dawidd6/action-send-mail@v3
+        with:
+          server_address: smtp.gmail.com
+          server_port: 465
+          secure: true
+          username: ${{ secrets.SMTP_USER }}
+          password: ${{ secrets.SMTP_PASS }}
+          subject: "Forge Intel Daily — ${{ job.status }} — $(date -u +%Y-%m-%d)"
+          to: jeremiah@midwestniceuas.com
+          from: Forge Pipeline <${{ secrets.SMTP_USER }}>
+          body: |
+            Daily intel pipeline — ${{ job.status }}
+            Run: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+            Changes: ${{ env.CHANGES }}
+        continue-on-error: true
+
+  # ── Single group dispatch ──────────────────────────────────────────────────
+  single-group:
+    name: "Run group: ${{ github.event.inputs.group }}"
+    if: |
+      github.event_name == 'workflow_dispatch' &&
+      github.event.inputs.group != 'intel' &&
+      github.event.inputs.group != 'analytics' &&
+      github.event.inputs.group != 'full'
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: pip install requests beautifulsoup4 lxml 2>/dev/null || true
+
+      - name: Install git (firmware miner needs it)
+        if: github.event.inputs.group == 'firmware'
+        run: sudo apt-get install -y git
+
+      - name: Run miner group
+        env:
+          FORGE_FETCH_IMAGES: ${{ github.event.inputs.group == 'enrichment' && '0' || '0' }}
+        run: |
+          DRY="${{ github.event.inputs.dry_run }}"
+          FLAGS=""
+          [ "$DRY" = "true" ] && FLAGS="--dry-run"
+          python3 miners/mine_all.py --group ${{ github.event.inputs.group }} $FLAGS
+
+      - name: Commit changes
+        if: github.event.inputs.dry_run != 'true'
+        run: |
+          git config user.name  "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add -A
+          if git diff --staged --quiet; then
+            echo "CHANGES=none" >> $GITHUB_ENV
+          else
+            git commit -m "chore(miners): ${{ github.event.inputs.group }} run $(date -u +%Y-%m-%d) [skip ci]"
+            git push
+            echo "CHANGES=$(git diff HEAD~1 --stat | tail -1)" >> $GITHUB_ENV
+          fi
+
+      - name: Step summary
+        if: always()
+        run: |
+          echo "## Group: ${{ github.event.inputs.group }} — $(date -u +%Y-%m-%d)" >> $GITHUB_STEP_SUMMARY
+          echo "**Status:** ${{ job.status }} | **Dry run:** ${{ github.event.inputs.dry_run }}" >> $GITHUB_STEP_SUMMARY
+
+      - name: Email notification
+        if: always()
+        uses: dawidd6/action-send-mail@v3
+        with:
+          server_address: smtp.gmail.com
+          server_port: 465
+          secure: true
+          username: ${{ secrets.SMTP_USER }}
+          password: ${{ secrets.SMTP_PASS }}
+          subject: "Forge Miner: ${{ github.event.inputs.group }} — ${{ job.status }}"
+          to: jeremiah@midwestniceuas.com
+          from: Forge Pipeline <${{ secrets.SMTP_USER }}>
+          body: |
+            Miner group: ${{ github.event.inputs.group }} — ${{ job.status }}
+            Dry run: ${{ github.event.inputs.dry_run }}
+            Run: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+            Changes: ${{ env.CHANGES }}
+        continue-on-error: true
+
+  # ── Weekly full pipeline ───────────────────────────────────────────────────
+  weekly-full:
+    name: Weekly full pipeline
+    if: |
+      github.event.schedule == '0 4 * * 0' ||
+      github.event.inputs.group == 'full'
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: |
+          pip install requests beautifulsoup4 lxml 2>/dev/null || true
+          sudo apt-get install -y git
+
+      - name: Run full pipeline
+        env:
+          ANALYTICS_ADMIN_KEY: ${{ secrets.ANALYTICS_ADMIN_KEY }}
+          FORGE_SITE: https://forgeprole.netlify.app
+          FORGE_FETCH_IMAGES: '0'   # images are slow; enable manually when needed
+        run: |
+          echo "=== FORGE FULL PIPELINE ==="
+          python3 miners/mine_all.py --group all
+
+      - name: Analytics gap mining (top 5, 30 days)
+        env:
+          ANALYTICS_ADMIN_KEY: ${{ secrets.ANALYTICS_ADMIN_KEY }}
+          FORGE_SITE: https://forgeprole.netlify.app
+        run: |
+          python3 miners/mine_from_analytics.py --mine --top 5 --days 30 || true
+          python3 miners/merge_mined_entries.py || true
+
+      - name: Commit all changes
+        run: |
+          git config user.name  "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add -A
+          if git diff --staged --quiet; then
+            echo "CHANGES=none" >> $GITHUB_ENV
+          else
+            NFILES=$(git diff --staged --name-only | wc -l)
+            git commit -m "chore(miners): weekly full pipeline $(date -u +%Y-%m-%d) — ${NFILES} files [skip ci]"
+            git push
+            echo "CHANGES=$(git diff HEAD~1 --stat | tail -1)" >> $GITHUB_ENV
+          fi
+
+      - name: Step summary
+        if: always()
+        run: |
+          echo "## Weekly Full Pipeline — $(date -u +%Y-%m-%d)" >> $GITHUB_STEP_SUMMARY
+          echo "**Status:** ${{ job.status }}" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "| Group | Run |" >> $GITHUB_STEP_SUMMARY
+          echo "|-------|-----|" >> $GITHUB_STEP_SUMMARY
+          for g in intel defense commercial enrichment firmware troubleshooting; do
+            echo "| $g | ✓ |" >> $GITHUB_STEP_SUMMARY
+          done
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Changes:** ${{ env.CHANGES }}" >> $GITHUB_STEP_SUMMARY
+
+      - name: Email notification
+        if: always()
+        uses: dawidd6/action-send-mail@v3
+        with:
+          server_address: smtp.gmail.com
+          server_port: 465
+          secure: true
+          username: ${{ secrets.SMTP_USER }}
+          password: ${{ secrets.SMTP_PASS }}
+          subject: "Forge Weekly Full Pipeline — ${{ job.status }} — $(date -u +%Y-%m-%d)"
+          to: jeremiah@midwestniceuas.com
+          from: Forge Pipeline <${{ secrets.SMTP_USER }}>
+          body: |
+            Weekly full pipeline — ${{ job.status }}
+            Groups: intel, defense, commercial, enrichment, firmware, troubleshooting
+            Run: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+            Changes: ${{ env.CHANGES }}
+        continue-on-error: true

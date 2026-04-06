@@ -1,0 +1,522 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Forge — Parts Browser</title>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://unpkg.com/@phosphor-icons/web"></script>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+:root{
+  --bg:#0c0c0a;--surface:#141410;--card:#1c1c17;--card-hi:#242420;
+  --border:#2e2e26;--border-hi:#3e3e34;
+  --red:#ff3b5c;--cyan:#00d4ff;--amber:#f59e0b;--green:#22c55e;
+  --text:#f5f0e8;--text-s:#b8b0a0;--text-d:#6b6358;--text-x:#3d3830;
+  --mono:'JetBrains Mono',monospace;--sans:'DM Sans',system-ui,sans-serif;
+  --r:8px;
+}
+html,body{height:100%;background:var(--bg);color:var(--text);font-family:var(--sans);-webkit-font-smoothing:antialiased}
+/* ── Layout ── */
+#app{display:flex;flex-direction:column;height:100vh;overflow:hidden}
+#topbar{display:flex;align-items:center;gap:10px;padding:0 14px;height:48px;background:var(--card);border-bottom:1px solid var(--border);flex-shrink:0;z-index:50}
+#topbar .logo{font:800 17px var(--mono);color:var(--red);letter-spacing:-0.04em;text-decoration:none;flex-shrink:0}
+#search-wrap{flex:1;max-width:320px;position:relative}
+#search-wrap i{position:absolute;left:9px;top:50%;transform:translateY(-50%);color:var(--text-d);font-size:14px;pointer-events:none}
+#search{width:100%;padding:6px 10px 6px 30px;background:var(--surface);border:1px solid var(--border);border-radius:var(--r);color:var(--text);font:400 12px var(--sans);outline:none;transition:.15s}
+#search:focus{border-color:var(--border-hi)}
+#search::placeholder{color:var(--text-d)}
+.pill{font:500 10px var(--sans);color:var(--text-d);padding:3px 9px;border:1px solid var(--border);border-radius:20px;text-decoration:none;white-space:nowrap;transition:.15s;flex-shrink:0}
+.pill:hover{border-color:var(--border-hi);color:var(--text-s)}
+#pills{display:flex;gap:5px;margin-left:auto}
+/* ── Body ── */
+#body{display:flex;flex:1;overflow:hidden}
+/* ── Sidebar ── */
+#sidebar{width:180px;flex-shrink:0;background:var(--card);border-right:1px solid var(--border);display:flex;flex-direction:column;overflow:hidden}
+#cat-header{padding:10px 12px 6px;font:600 9px var(--mono);color:var(--text-x);letter-spacing:.1em;text-transform:uppercase;flex-shrink:0}
+#cat-list{flex:1;overflow-y:auto;padding:0 6px 6px}
+#cat-list::-webkit-scrollbar{width:3px}
+#cat-list::-webkit-scrollbar-track{background:transparent}
+#cat-list::-webkit-scrollbar-thumb{background:var(--border);border-radius:2px}
+.cat-item{display:flex;align-items:center;justify-content:space-between;padding:5px 8px;border-radius:6px;cursor:pointer;font:500 11px var(--sans);color:var(--text-d);transition:.1s;white-space:nowrap;overflow:hidden}
+.cat-item:hover{background:var(--surface);color:var(--text-s)}
+.cat-item.active{background:rgba(255,59,92,.1);color:var(--red)}
+.cat-item .cnt{font:500 9px var(--mono);color:var(--text-x);margin-left:4px;flex-shrink:0}
+.cat-item.active .cnt{color:rgba(255,59,92,.5)}
+/* ── Main ── */
+#main{flex:1;display:flex;flex-direction:column;overflow:hidden}
+#toolbar{padding:8px 12px;border-bottom:1px solid var(--border);background:var(--surface);display:flex;align-items:center;gap:8px;flex-shrink:0;flex-wrap:wrap}
+#cat-title{font:700 13px var(--mono);color:var(--text);flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+#part-count{font:400 10px var(--mono);color:var(--text-d)}
+.tb-select{background:var(--card);border:1px solid var(--border);color:var(--text-s);font:400 10px var(--sans);padding:4px 8px;border-radius:6px;outline:none;cursor:pointer}
+#grid-wrap{flex:1;overflow-y:auto;padding:12px}
+#grid-wrap::-webkit-scrollbar{width:4px}
+#grid-wrap::-webkit-scrollbar-thumb{background:var(--border);border-radius:2px}
+#grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:8px}
+/* ── Cards ── */
+.part-card{background:var(--card);border:1px solid var(--border);border-radius:var(--r);padding:12px;cursor:pointer;transition:.15s;position:relative;overflow:hidden}
+.part-card:hover{border-color:var(--border-hi);background:var(--card-hi);transform:translateY(-1px)}
+.part-card .img{width:100%;height:80px;object-fit:cover;border-radius:5px;margin-bottom:8px;background:var(--surface);display:block}
+.part-card .img-placeholder{width:100%;height:80px;background:var(--surface);border-radius:5px;margin-bottom:8px;display:flex;align-items:center;justify-content:center}
+.part-card .img-placeholder i{font-size:28px;color:var(--text-x)}
+.part-card .name{font:600 12px var(--sans);color:var(--text);line-height:1.3;margin-bottom:3px;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.part-card .mfr{font:400 10px var(--sans);color:var(--text-d)}
+.part-card .pid{font:400 9px var(--mono);color:var(--text-x);margin-top:4px}
+.part-card .add-btn{position:absolute;bottom:8px;right:8px;width:26px;height:26px;border-radius:50%;background:var(--red);border:none;color:#fff;cursor:pointer;display:flex;align-items:center;justify-content:center;opacity:0;transition:.15s;font-size:14px}
+.part-card:hover .add-btn{opacity:1}
+.part-card.in-build{border-color:rgba(255,59,92,.4)}
+.part-card.in-build::after{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:var(--red)}
+/* ── States ── */
+#loader{display:flex;flex-direction:column;align-items:center;justify-content:center;flex:1;gap:12px}
+.spinner{width:32px;height:32px;border:2px solid var(--border);border-top-color:var(--red);border-radius:50%;animation:spin .8s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+#loader p{font:400 12px var(--mono);color:var(--text-d)}
+#empty{display:none;flex-direction:column;align-items:center;justify-content:center;flex:1;gap:8px;color:var(--text-d);font:400 12px var(--sans)}
+#empty i{font-size:36px;color:var(--text-x)}
+/* ── Build FAB ── */
+#build-fab{position:fixed;bottom:20px;right:20px;background:var(--red);color:#fff;border:none;border-radius:24px;padding:10px 16px;font:700 12px var(--sans);cursor:pointer;display:flex;align-items:center;gap:8px;box-shadow:0 4px 20px rgba(255,59,92,.4);transition:.15s;z-index:100}
+#build-fab:hover{background:#ff1a3d;transform:translateY(-1px)}
+#build-count{background:rgba(0,0,0,.3);border-radius:12px;padding:2px 7px;font:700 10px var(--mono)}
+/* ── Build Drawer ── */
+#build-overlay{position:fixed;inset:0;background:rgba(0,0,0,.6);backdrop-filter:blur(4px);z-index:200;display:none}
+#build-overlay.open{display:block}
+#build-drawer{position:fixed;right:0;top:0;bottom:0;width:320px;max-width:90vw;background:var(--card);border-left:1px solid var(--border);z-index:201;display:flex;flex-direction:column;transform:translateX(100%);transition:transform .25s cubic-bezier(.4,0,.2,1)}
+#build-drawer.open{transform:translateX(0)}
+#drawer-header{padding:14px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;flex-shrink:0}
+#drawer-header h2{font:700 14px var(--mono);color:var(--text)}
+#drawer-close{background:none;border:none;color:var(--text-d);cursor:pointer;font-size:18px;padding:2px}
+#drawer-close:hover{color:var(--text)}
+#drawer-body{flex:1;overflow-y:auto;padding:12px}
+#build-empty{display:flex;flex-direction:column;align-items:center;justify-content:center;height:120px;color:var(--text-d);font:400 12px var(--sans);gap:6px}
+#build-empty i{font-size:28px;color:var(--text-x)}
+.build-slot{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:10px 12px;margin-bottom:6px;display:flex;align-items:center;gap:10px}
+.build-slot .slot-cat{font:500 9px var(--mono);color:var(--text-x);text-transform:uppercase;letter-spacing:.06em;min-width:70px}
+.build-slot .slot-name{font:500 11px var(--sans);color:var(--text-s);flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.build-slot .slot-remove{background:none;border:none;color:var(--text-x);cursor:pointer;font-size:14px;flex-shrink:0;padding:2px}
+.build-slot .slot-remove:hover{color:var(--red)}
+#drawer-footer{padding:12px 16px;border-top:1px solid var(--border);flex-shrink:0}
+#build-total{font:400 11px var(--sans);color:var(--text-d);margin-bottom:10px}
+#build-total span{color:var(--text);font-weight:600}
+.btn{display:inline-flex;align-items:center;gap:6px;padding:7px 14px;border-radius:var(--r);font:600 11px var(--sans);cursor:pointer;border:1px solid var(--border);transition:.15s;white-space:nowrap}
+.btn-primary{background:var(--red);border-color:var(--red);color:#fff}
+.btn-primary:hover{background:#ff1a3d}
+.btn-outline{background:none;color:var(--text-d)}
+.btn-outline:hover{border-color:var(--border-hi);color:var(--text-s)}
+.btn-row{display:flex;gap:6px;flex-wrap:wrap}
+/* ── Modal ── */
+#modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.75);backdrop-filter:blur(6px);z-index:300;display:none;align-items:center;justify-content:center;padding:16px}
+#modal-overlay.open{display:flex}
+#modal{background:var(--card);border:1px solid var(--border);border-radius:12px;width:100%;max-width:560px;max-height:85vh;display:flex;flex-direction:column;overflow:hidden}
+#modal-top{padding:16px;border-bottom:1px solid var(--border);display:flex;gap:14px;flex-shrink:0}
+#modal-img{width:80px;height:80px;border-radius:var(--r);background:var(--surface);object-fit:cover;flex-shrink:0}
+#modal-img-ph{width:80px;height:80px;border-radius:var(--r);background:var(--surface);display:flex;align-items:center;justify-content:center;flex-shrink:0}
+#modal-img-ph i{font-size:28px;color:var(--text-x)}
+#modal-info{flex:1;min-width:0}
+#modal-name{font:700 14px var(--sans);color:var(--text);margin-bottom:4px;line-height:1.3}
+#modal-mfr{font:400 11px var(--sans);color:var(--text-d);margin-bottom:6px}
+#modal-pid{font:400 9px var(--mono);color:var(--text-x)}
+#modal-desc-wrap{padding:14px 16px;border-bottom:1px solid var(--border);font:400 12px var(--sans);color:var(--text-s);line-height:1.6;max-height:100px;overflow-y:auto;flex-shrink:0}
+#modal-specs-wrap{flex:1;overflow-y:auto;padding:14px 16px}
+#modal-specs-title{font:600 10px var(--mono);color:var(--text-x);text-transform:uppercase;letter-spacing:.08em;margin-bottom:10px}
+#modal-specs{display:grid;grid-template-columns:1fr 1fr;gap:6px 16px}
+.spec-row{font-size:11px}
+.spec-label{color:var(--text-d);font:400 10px var(--mono)}
+.spec-value{color:var(--text-s);font:500 11px var(--sans)}
+#modal-foot{padding:12px 16px;border-top:1px solid var(--border);display:flex;gap:8px;align-items:center;flex-shrink:0}
+#modal-close-x{position:absolute;top:8px;right:8px;background:none;border:none;color:var(--text-d);cursor:pointer;font-size:18px;padding:4px}
+#modal-close-x:hover{color:var(--text)}
+#modal-link-btn{font:500 11px var(--sans);color:var(--cyan);text-decoration:none}
+#modal-link-btn:hover{text-decoration:underline}
+/* ── Mobile ── */
+@media(max-width:600px){
+  #sidebar{width:0;overflow:hidden;transition:.25s}
+  #sidebar.mob-open{width:200px}
+  #mob-cat-btn{display:flex}
+  #pills .pill:not(:first-child){display:none}
+  #grid{grid-template-columns:repeat(auto-fill,minmax(150px,1fr))}
+}
+#mob-cat-btn{display:none;background:none;border:none;color:var(--text-d);cursor:pointer;font-size:20px;padding:4px}
+</style>
+</head>
+<body>
+<header style="display:flex;align-items:center;justify-content:space-between;gap:8px;padding:10px 16px;border-bottom:1px solid #2e2e26;background:#1c1c17;position:sticky;top:0;z-index:100;flex-shrink:0;">
+  <a href="/" style="font:800 18px 'JetBrains Mono',monospace;color:#ff3b5c;letter-spacing:-0.03em;text-decoration:none;flex-shrink:0;">Forge</a>
+  <div style="display:flex;gap:5px;align-items:center;flex-wrap:nowrap;"><a href="/intel/" class="tp-pill">Intel</a><a href="/patterns/" class="tp-pill">Patterns</a><a href="/tools-home/" class="tp-pill">Tools</a><a href="/wingman/" class="tp-pill">Wingman</a></div>
+</header>
+<style>.tp-pill{font:500 10px 'DM Sans',system-ui,sans-serif;color:#6b6358;padding:4px 9px;border:1px solid #2e2e26;border-radius:20px;text-decoration:none;white-space:nowrap;transition:all .15s}.tp-pill:hover{border-color:#3e3e34;color:#b8b0a0}</style>
+<div id="app">
+
+  <!-- Topbar -->
+  <!-- Body -->
+  <div id="body">
+
+    <!-- Sidebar -->
+    <aside id="sidebar">
+      <div id="cat-header">Categories</div>
+      <div id="cat-list"></div>
+    </aside>
+
+    <!-- Main -->
+    <div id="main">
+      <div id="toolbar">
+        <span id="cat-title">Loading...</span>
+        <span id="part-count"></span>
+        <select id="sort-sel" class="tb-select">
+          <option value="">Sort: Default</option>
+          <option value="name-asc">Name A→Z</option>
+          <option value="name-desc">Name Z→A</option>
+          <option value="mfr">Manufacturer</option>
+        </select>
+      </div>
+
+      <div id="grid-wrap">
+        <div id="loader">
+          <div class="spinner"></div>
+          <p>Loading database...</p>
+        </div>
+        <div id="grid" style="display:none"></div>
+        <div id="empty"><i class="ph ph-magnifying-glass"></i><span>No parts match</span></div>
+      </div>
+    </div>
+
+  </div><!-- /body -->
+</div><!-- /app -->
+
+<!-- Build FAB -->
+<button id="build-fab">
+  <i class="ph ph-wrench"></i>
+  <span>Build</span>
+  <span id="build-count">0</span>
+</button>
+
+<!-- Build Drawer -->
+<div id="build-overlay"></div>
+<div id="build-drawer">
+  <div id="drawer-header">
+    <h2><i class="ph ph-wrench"></i> Current Build</h2>
+    <button id="drawer-close"><i class="ph ph-x"></i></button>
+  </div>
+  <div id="drawer-body">
+    <div id="build-empty"><i class="ph ph-stack"></i><span>No parts added yet</span></div>
+    <div id="build-slots"></div>
+  </div>
+  <div id="drawer-footer">
+    <div id="build-total">Parts: <span id="build-n">0</span></div>
+    <div class="btn-row">
+      <button class="btn btn-outline" id="btn-export"><i class="ph ph-export"></i> Export</button>
+      <button class="btn btn-outline" id="btn-clear" style="color:#ef4444;border-color:rgba(239,68,68,.3)"><i class="ph ph-trash"></i> Clear</button>
+    </div>
+  </div>
+</div>
+
+<!-- Part Modal -->
+<div id="modal-overlay">
+  <div id="modal" style="position:relative">
+    <button id="modal-close-x"><i class="ph ph-x"></i></button>
+    <div id="modal-top">
+      <div id="modal-img-ph"><i class="ph ph-image"></i></div>
+      <div id="modal-info">
+        <div id="modal-name"></div>
+        <div id="modal-mfr"></div>
+        <div id="modal-pid"></div>
+      </div>
+    </div>
+    <div id="modal-desc-wrap"></div>
+    <div id="modal-specs-wrap">
+      <div id="modal-specs-title">Specifications</div>
+      <div id="modal-specs"></div>
+    </div>
+    <div id="modal-foot">
+      <button class="btn btn-primary" id="modal-add-btn"><i class="ph ph-plus"></i> Add to Build</button>
+      <a id="modal-link-btn" href="#" target="_blank" rel="noopener" style="display:none"><i class="ph ph-arrow-square-out"></i> View Part</a>
+      <span style="flex:1"></span>
+      <button class="btn btn-outline" id="modal-close-btn">Close</button>
+    </div>
+  </div>
+</div>
+
+<script>
+(function() {
+'use strict';
+
+// ── State ──
+let DB = null;
+let allParts = [];
+let currentCat = null;
+let currentParts = [];
+let build = JSON.parse(localStorage.getItem('forge-build') || '[]');
+let modalPart = null;
+
+// ── Helpers ──
+const $ = id => document.getElementById(id);
+const esc = s => String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+const fmtCat = s => s.replace(/_/g,' ').replace(/\b\w/g,c=>c.toUpperCase());
+
+// ── Load DB ──
+async function loadDB() {
+  const paths = ['/static/forge_database.json','../static/forge_database.json','forge_database.json'];
+  for (const p of paths) {
+    try {
+      const r = await fetch(p);
+      if (r.ok) return await r.json();
+    } catch(e) {}
+  }
+  return null;
+}
+
+async function init() {
+  DB = await loadDB();
+  if (!DB || !DB.components) {
+    $('loader').innerHTML = '<i class="ph ph-warning-circle" style="font-size:32px;color:#ef4444"></i><p style="color:#ef4444">Failed to load database</p><button class="btn btn-outline" onclick="location.reload()" style="margin-top:8px"><i class="ph ph-arrow-clockwise"></i> Retry</button>';
+    return;
+  }
+
+  // Build flat parts list
+  allParts = [];
+  for (const [cat, parts] of Object.entries(DB.components)) {
+    for (const p of parts) allParts.push({...p, _cat: cat});
+  }
+
+  renderSidebar();
+  $('loader').style.display = 'none';
+  $('grid').style.display = 'grid';
+  updateBuildUI();
+
+  // Select first category
+  const firstCat = Object.keys(DB.components)[0];
+  selectCat(firstCat);
+}
+
+// ── Sidebar ──
+function renderSidebar() {
+  const list = $('cat-list');
+  list.innerHTML = '';
+  for (const [cat, parts] of Object.entries(DB.components)) {
+    const el = document.createElement('div');
+    el.className = 'cat-item';
+    el.dataset.cat = cat;
+    el.innerHTML = `<span>${esc(fmtCat(cat))}</span><span class="cnt">${parts.length}</span>`;
+    el.addEventListener('click', () => selectCat(cat));
+    list.appendChild(el);
+  }
+}
+
+function selectCat(cat) {
+  currentCat = cat;
+  // Update sidebar active
+  document.querySelectorAll('.cat-item').forEach(el => {
+    el.classList.toggle('active', el.dataset.cat === cat);
+  });
+  $('cat-title').textContent = fmtCat(cat);
+  // Close mobile sidebar
+  $('sidebar').classList.remove('mob-open');
+  renderGrid();
+}
+
+// ── Grid ──
+function renderGrid() {
+  const search = $('search').value.trim().toLowerCase();
+  const sort = $('sort-sel').value;
+
+  let parts = DB.components[currentCat] || [];
+
+  if (search) {
+    parts = allParts.filter(p => {
+      const haystack = [p.name,p.manufacturer,p.pid,...(p.tags||[])].join(' ').toLowerCase();
+      return haystack.includes(search);
+    });
+  }
+
+  if (sort === 'name-asc') parts = [...parts].sort((a,b) => (a.name||'').localeCompare(b.name||''));
+  else if (sort === 'name-desc') parts = [...parts].sort((a,b) => (b.name||'').localeCompare(a.name||''));
+  else if (sort === 'mfr') parts = [...parts].sort((a,b) => (a.manufacturer||'').localeCompare(b.manufacturer||''));
+
+  currentParts = parts;
+  $('part-count').textContent = `${parts.length} parts`;
+
+  const grid = $('grid');
+  const empty = $('empty');
+
+  if (!parts.length) {
+    grid.style.display = 'none';
+    empty.style.display = 'flex';
+    return;
+  }
+  grid.style.display = 'grid';
+  empty.style.display = 'none';
+
+  const inBuild = new Set(build.map(b => b.pid));
+
+  grid.innerHTML = parts.map(p => {
+    const imgHtml = p.image_file
+      ? `<img class="img" src="${esc(p.image_file)}" alt="" loading="lazy" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'">`+
+        `<div class="img-placeholder" style="display:none"><i class="ph ph-image"></i></div>`
+      : `<div class="img-placeholder"><i class="ph ph-image"></i></div>`;
+    return `<div class="part-card${inBuild.has(p.pid)?' in-build':''}" data-pid="${esc(p.pid)}">
+      ${imgHtml}
+      <div class="name">${esc(p.name)}</div>
+      <div class="mfr">${esc(p.manufacturer||'')}</div>
+      <div class="pid">${esc(p.pid)}</div>
+      <button class="add-btn" data-pid="${esc(p.pid)}" title="Add to build"><i class="ph ph-plus"></i></button>
+    </div>`;
+  }).join('');
+
+  // Card click → modal, add btn → add to build
+  grid.querySelectorAll('.part-card').forEach(card => {
+    card.addEventListener('click', e => {
+      if (e.target.closest('.add-btn')) {
+        addToBuild(card.dataset.pid);
+      } else {
+        openModal(card.dataset.pid);
+      }
+    });
+  });
+}
+
+// ── Modal ──
+function openModal(pid) {
+  const p = allParts.find(x => x.pid === pid);
+  if (!p) return;
+  modalPart = p;
+
+  $('modal-name').textContent = p.name || '';
+  $('modal-mfr').textContent = p.manufacturer || '';
+  $('modal-pid').textContent = p.pid || '';
+  $('modal-desc-wrap').textContent = p.description || 'No description available.';
+
+  // Image
+  const imgPh = $('modal-img-ph');
+  imgPh.innerHTML = '';
+  if (p.image_file) {
+    const img = document.createElement('img');
+    img.id = 'modal-img';
+    img.src = p.image_file;
+    img.style.cssText = 'width:80px;height:80px;border-radius:8px;object-fit:cover;flex-shrink:0';
+    img.onerror = () => { imgPh.innerHTML = '<i class="ph ph-image" style="font-size:28px;color:var(--text-x)"></i>'; };
+    imgPh.appendChild(img);
+  } else {
+    imgPh.innerHTML = '<i class="ph ph-image" style="font-size:28px;color:var(--text-x)"></i>';
+  }
+
+  // Specs
+  const skip = new Set(['pid','category','name','manufacturer','description','link','image_file','tags','_cat','schema_data']);
+  const specs = Object.entries(p).filter(([k]) => !skip.has(k) && p[k] !== null && p[k] !== '' && p[k] !== undefined);
+  $('modal-specs').innerHTML = specs.map(([k,v]) =>
+    `<div class="spec-row"><div class="spec-label">${esc(k.replace(/_/g,' '))}</div><div class="spec-value">${esc(Array.isArray(v)?v.join(', '):String(v))}</div></div>`
+  ).join('');
+
+  // Link
+  const linkBtn = $('modal-link-btn');
+  if (p.link) { linkBtn.href = p.link; linkBtn.style.display = 'inline-flex'; }
+  else { linkBtn.style.display = 'none'; }
+
+  // Add btn state
+  const inBuild = build.some(b => b.pid === pid);
+  const addBtn = $('modal-add-btn');
+  addBtn.innerHTML = inBuild
+    ? '<i class="ph ph-check"></i> In Build'
+    : '<i class="ph ph-plus"></i> Add to Build';
+  addBtn.style.opacity = inBuild ? '.6' : '1';
+
+  $('modal-overlay').classList.add('open');
+}
+
+function closeModal() { $('modal-overlay').classList.remove('open'); }
+
+// ── Build ──
+function addToBuild(pid) {
+  const p = allParts.find(x => x.pid === pid);
+  if (!p || build.some(b => b.pid === pid)) return;
+  build.push({pid: p.pid, name: p.name, cat: p._cat || p.category});
+  saveBuild();
+  updateBuildUI();
+  renderGrid();
+  // Update modal if open
+  if (modalPart && modalPart.pid === pid) {
+    $('modal-add-btn').innerHTML = '<i class="ph ph-check"></i> In Build';
+    $('modal-add-btn').style.opacity = '.6';
+  }
+}
+
+function removeFromBuild(pid) {
+  build = build.filter(b => b.pid !== pid);
+  saveBuild();
+  updateBuildUI();
+  renderGrid();
+}
+
+function clearBuild() {
+  build = [];
+  saveBuild();
+  updateBuildUI();
+  renderGrid();
+}
+
+function saveBuild() {
+  try { localStorage.setItem('forge-build', JSON.stringify(build)); } catch(e) {}
+}
+
+function updateBuildUI() {
+  $('build-count').textContent = build.length;
+  $('build-n').textContent = build.length;
+
+  const slots = $('build-slots');
+  const empty = $('build-empty');
+
+  if (!build.length) {
+    empty.style.display = 'flex';
+    slots.innerHTML = '';
+    return;
+  }
+  empty.style.display = 'none';
+  slots.innerHTML = build.map(b => `
+    <div class="build-slot">
+      <span class="slot-cat">${esc(fmtCat(b.cat||''))}</span>
+      <span class="slot-name" title="${esc(b.name)}">${esc(b.name)}</span>
+      <button class="slot-remove" data-pid="${esc(b.pid)}" title="Remove"><i class="ph ph-x"></i></button>
+    </div>
+  `).join('');
+  slots.querySelectorAll('.slot-remove').forEach(btn => {
+    btn.addEventListener('click', () => removeFromBuild(btn.dataset.pid));
+  });
+}
+
+function exportBuild() {
+  const lines = ['PID,Name,Category', ...build.map(b => `${b.pid},"${b.name}",${b.cat}`)];
+  const blob = new Blob([lines.join('\n')], {type:'text/csv'});
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'forge-build.csv';
+  a.click();
+}
+
+// ── Events ──
+$('search').addEventListener('input', () => renderGrid());
+$('sort-sel').addEventListener('change', () => renderGrid());
+$('build-fab').addEventListener('click', () => {
+  $('build-drawer').classList.add('open');
+  $('build-overlay').classList.add('open');
+});
+$('drawer-close').addEventListener('click', () => {
+  $('build-drawer').classList.remove('open');
+  $('build-overlay').classList.remove('open');
+});
+$('build-overlay').addEventListener('click', () => {
+  $('build-drawer').classList.remove('open');
+  $('build-overlay').classList.remove('open');
+});
+$('btn-clear').addEventListener('click', () => { if(confirm('Clear build?')) clearBuild(); });
+$('btn-export').addEventListener('click', exportBuild);
+$('modal-close-x').addEventListener('click', closeModal);
+$('modal-close-btn').addEventListener('click', closeModal);
+$('modal-overlay').addEventListener('click', e => { if(e.target === $('modal-overlay')) closeModal(); });
+$('modal-add-btn').addEventListener('click', () => { if(modalPart) { addToBuild(modalPart.pid); } });
+$('mob-cat-btn').addEventListener('click', () => $('sidebar').classList.toggle('mob-open'));
+document.addEventListener('keydown', e => { if(e.key==='Escape') closeModal(); });
+
+// ── Go ──
+init();
+})();
+</script>
+</body>
+</html>

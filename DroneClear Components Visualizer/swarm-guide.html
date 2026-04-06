@@ -1,0 +1,323 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Drone Show / Swarm Guide — Forge</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&family=Source+Serif+4:opsz,wght@8..60,400;8..60,600;8..60,700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="{% static 'base.css' %}?v=2">
+    <link rel="stylesheet" href="{% static 'layout.css' %}?v=4">
+    <link rel="stylesheet" href="{% static 'utilities.css' %}?v=2">
+    <script src="https://unpkg.com/@phosphor-icons/web"></script>
+    <script>(function(){const s=localStorage.getItem('dc-theme');document.documentElement.setAttribute('data-theme',s||'dark')})();</script>
+    <style>
+        .sw-container{max-width:900px;margin:0 auto;padding:32px 24px 80px}.sw-hero{text-align:center;margin-bottom:40px}.sw-hero h1{font-size:26px;font-weight:700;background:linear-gradient(135deg,var(--accent-blue) 0%,var(--accent-purple) 100%);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;margin:0 0 8px}.sw-hero p{color:var(--text-muted);font-size:14px;max-width:640px;margin:0 auto;line-height:1.6}
+        .sw-back{font-size:12px;color:var(--text-muted);text-decoration:none;display:inline-flex;align-items:center;gap:4px;margin-bottom:24px}.sw-back:hover{color:var(--accent-blue)}
+        .sw-section{margin-bottom:32px}.sw-section-title{font-size:18px;font-weight:700;color:var(--text-main);margin:0 0 8px;display:flex;align-items:center;gap:8px}.sw-section-title i{color:var(--accent-blue)}.sw-section-desc{font-size:13px;color:var(--text-muted);line-height:1.7;margin-bottom:16px}
+        .sw-code{background:#0d0d0d;border:1px solid var(--border-color);border-radius:var(--radius-sm);padding:16px;font-family:var(--font-family);font-size:12px;line-height:1.7;color:#a3e635;overflow-x:auto;margin-bottom:16px;white-space:pre;position:relative}.sw-code .c{color:#525252}.sw-code-label{position:absolute;top:8px;right:12px;font-size:9px;text-transform:uppercase;letter-spacing:0.1em;color:var(--text-faint);background:#0d0d0d;padding:2px 6px}
+        .sw-info{padding:14px 16px;border-radius:var(--radius-sm);font-size:13px;line-height:1.6;margin-bottom:16px;display:flex;gap:10px}.sw-info i{font-size:18px;flex-shrink:0;margin-top:1px}.sw-info-blue{background:rgba(14,165,233,0.06);border:1px solid rgba(14,165,233,0.15);color:var(--accent-blue)}.sw-info-yellow{background:rgba(251,191,36,0.06);border:1px solid rgba(251,191,36,0.15);color:#fbbf24}.sw-info-green{background:rgba(74,222,128,0.06);border:1px solid rgba(74,222,128,0.15);color:var(--accent-green)}.sw-info-purple{background:rgba(167,139,250,0.06);border:1px solid rgba(167,139,250,0.15);color:var(--accent-purple)}
+        .sw-glossary{display:grid;grid-template-columns:repeat(auto-fit,minmax(250px,1fr));gap:12px;margin-bottom:20px}.sw-gloss-card{background:var(--bg-panel);border:1px solid var(--border-color);border-radius:var(--radius-sm);padding:14px}.sw-gloss-card h4{font-size:13px;font-weight:700;color:var(--accent-blue);margin:0 0 4px}.sw-gloss-card p{font-size:12px;color:var(--text-muted);margin:0;line-height:1.5}
+        .sw-table{width:100%;border-collapse:collapse;margin-bottom:16px;font-size:12px}.sw-table th{text-align:left;padding:8px 12px;background:var(--bg-dark);color:var(--text-muted);border:1px solid var(--border-color);font-weight:600;text-transform:uppercase;letter-spacing:0.05em;font-size:10px}.sw-table td{padding:8px 12px;border:1px solid var(--border-color);color:var(--text-main)}
+    </style>
+<style>html,body{background:#0c0c0a!important;color:#f5f0e8}</style>
+</head>
+<body>
+<header style="display:flex;align-items:center;justify-content:space-between;gap:8px;padding:10px 16px;border-bottom:1px solid #2e2e26;background:#1c1c17;position:sticky;top:0;z-index:100;flex-shrink:0;">
+  <a href="/guides/" style="font:800 18px 'JetBrains Mono',monospace;color:#ff3b5c;letter-spacing:-0.03em;text-decoration:none;flex-shrink:0;">Forge</a>
+  <div style="display:flex;gap:5px;align-items:center;flex-wrap:nowrap;"><a href="/intel/" class="tp-pill">Intel</a><a href="/patterns/" class="tp-pill">Patterns</a><a href="/tools-home/" class="tp-pill">Tools</a><a href="/wingman/" class="tp-pill">Wingman</a></div>
+</header>
+<style>.tp-pill{font:500 10px 'DM Sans',system-ui,sans-serif;color:#6b6358;padding:4px 9px;border:1px solid #2e2e26;border-radius:20px;text-decoration:none;white-space:nowrap;transition:all .15s}.tp-pill:hover{border-color:#3e3e34;color:#b8b0a0}</style>
+<div class="app-container" style="flex-direction:column;">
+    <div class="sw-container">
+        <a href="/guides/" class="sw-back"><i class="ph ph-caret-left"></i> Implementation Guides</a>
+
+        <div class="sw-hero">
+            <h1><i class="ph ph-users-three"></i> Drone Show & Swarm Coordination</h1>
+            <p>Choreographed light shows, formation flying, and multi-drone swarm operations. From simulation to synchronized real-world flight with 2 to 100+ drones.</p>
+        </div>
+
+        <!-- JARGON -->
+        <div class="sw-section">
+            <div class="sw-section-title"><i class="ph ph-translate"></i> Jargon Buster</div>
+            <div class="sw-glossary">
+                <div class="sw-gloss-card"><h4>Swarm vs Drone Show</h4><p><strong>Drone show:</strong> Pre-choreographed — every drone follows a scripted waypoint path with timed LED colors. Like synchronized swimming. <strong>Swarm:</strong> Reactive — drones make real-time decisions based on leader commands, neighbor positions, or sensor data. Like a flock of birds. Different problems, different software.</p></div>
+                <div class="sw-gloss-card"><h4>MAVSDK</h4><p>MAVLink SDK. A high-level Python/C++ API for controlling PX4/ArduPilot drones. The standard way to send commands (takeoff, goto, land) programmatically. Simpler than raw MAVLink. One MAVSDK instance per drone.</p></div>
+                <div class="sw-gloss-card"><h4>SITL</h4><p>Software-In-The-Loop. Runs the full PX4/ArduPilot firmware on your PC without hardware. Simulates physics, GPS, IMU. Essential for testing swarm code before flying real drones. One SITL instance per simulated drone.</p></div>
+                <div class="sw-gloss-card"><h4>Formation Origin</h4><p>The GPS coordinate that serves as (0,0,0) for the formation. Each drone's position is defined as a NED (North-East-Down) offset from this point. Set once before the show, all drones calculate their positions from it.</p></div>
+                <div class="sw-gloss-card"><h4>Choreography / Shape File</h4><p>A CSV or JSON file defining where each drone should be at each timestamp. Created in Blender, SkyBrush, or custom tools. Columns: time, drone_id, north, east, down, red, green, blue. The "sheet music" for the show.</p></div>
+                <div class="sw-gloss-card"><h4>Leader-Follower</h4><p>A swarm pattern where one drone (leader) flies a path and followers maintain fixed offsets relative to it. The leader can be human-controlled or autonomous. Followers need position of leader + their offset — that's it.</p></div>
+                <div class="sw-gloss-card"><h4>HW_ID</h4><p>Hardware ID. A unique integer (1, 2, 3...) assigned to each drone. It determines which row of the choreography CSV this drone follows, which MAVSDK port it connects on, and which position in the formation it takes.</p></div>
+                <div class="sw-gloss-card"><h4>SkyBrush</h4><p>A Blender add-on for designing drone show choreographies. Export 3D animations as waypoint CSVs. The MDS (MAVSDK Drone Show) project can import SkyBrush output directly. Open-source alternative: write CSV by hand or use custom Python scripts.</p></div>
+                <div class="sw-gloss-card"><h4>Time Synchronization</h4><p>All drones must agree on what time it is — sub-second accuracy. GPS provides this via PPS (pulse per second). Without sync, drones will be in different positions at the "same" moment. NTP over mesh works for coarse sync, GPS PPS for fine.</p></div>
+                <div class="sw-gloss-card"><h4>Collision Avoidance</h4><p>In a show, the choreography guarantees safe separation. In a swarm, you need active avoidance — each drone monitors neighbor positions and adjusts path. ORCA (Optimal Reciprocal Collision Avoidance) is the standard algorithm.</p></div>
+            </div>
+        </div>
+
+        <!-- SWARM SOFTWARE COMPARISON -->
+        <div class="sw-section">
+            <div class="sw-section-title"><i class="ph ph-scales"></i> Swarm Software Stacks</div>
+            <div class="sw-section-desc">Choose your stack based on what you're doing: choreographed show, reactive swarm, or research.</div>
+
+            <table class="sw-table">
+                <tr><th>Stack</th><th>Type</th><th>FC Support</th><th>Stars</th><th>Best For</th><th>Link</th></tr>
+                <tr><td style="color:var(--accent-blue);font-weight:600;">Skybrush (Server + Live + Studio)</td><td>Show platform</td><td>PX4 / ArduPilot</td><td>114+106+79</td><td>Industry-standard open-source drone show framework. Server backend, React GCS frontend, Blender choreography addon. Active daily development. Updated Mar 2026.</td><td><a href="https://github.com/skybrush-io/skybrush-server" target="_blank" style="color:var(--accent-cyan);">Server</a> · <a href="https://github.com/skybrush-io/live" target="_blank" style="color:var(--accent-cyan);">GCS</a> · <a href="https://github.com/skybrush-io/studio-blender" target="_blank" style="color:var(--accent-cyan);">Blender</a></td></tr>
+                <tr><td style="color:var(--accent-blue);font-weight:600;">MDS (MAVSDK Drone Show)</td><td>Show + Swarm</td><td>PX4</td><td>274</td><td>All-in-one drone show + smart swarm. Docker SITL, React GCS, SkyBrush import, LED control, leader-follower clustering. Free for &lt;10 drones.</td><td><a href="https://github.com/alireza787b/mavsdk_drone_show" target="_blank" style="color:var(--accent-cyan);">GitHub</a></td></tr>
+                <tr><td style="color:var(--accent-blue);font-weight:600;">DSSE (Drone Swarm Search Env)</td><td>RL Training Env</td><td>Simulated</td><td>68</td><td>Multi-agent RL for SAR missions. PettingZoo-based. Maritime search with dynamic probability matrices. Published JOSS + arXiv. <code>pip install DSSE</code></td><td><a href="https://github.com/capstone-insper/drone-swarm-search" target="_blank" style="color:var(--accent-cyan);">Env</a> · <a href="https://github.com/capstone-insper/drone-swarm-search-algorithms" target="_blank" style="color:var(--accent-cyan);">Algorithms</a> · <a href="https://arxiv.org/abs/2307.06240" target="_blank" style="color:var(--accent-cyan);">Paper</a></td></tr>
+                <tr><td style="color:var(--accent-blue);font-weight:600;">Crazyswarm2</td><td>Research swarm</td><td>Crazyflie</td><td>300+</td><td>USC ACTS Lab. Gold standard for swarm research on Crazyflie nano-quads. 49+ drones. ROS2.</td><td><a href="https://github.com/IMRCLab/crazyswarm2" target="_blank" style="color:var(--accent-cyan);">GitHub</a></td></tr>
+                <tr><td style="color:var(--accent-blue);font-weight:600;">ORCUS</td><td>Tactical swarm</td><td>ArduPilot</td><td>27</td><td>Autonomous kamikaze swarm — area surveillance + target engagement. YOLO detection, pixel-to-GPS, task allocation. ArduPilot SITL + ROS + Gazebo.</td><td><a href="https://github.com/koesan/ORCUS" target="_blank" style="color:var(--accent-cyan);">GitHub</a></td></tr>
+                <tr><td style="color:var(--accent-blue);font-weight:600;">CoFlyers</td><td>Research platform</td><td>Crazyflie / Tello</td><td>33</td><td>General platform for collective flying. MATLAB/Simulink + real hardware. Bio-inspired swarming behaviors.</td><td><a href="https://github.com/micros-uav/CoFlyers" target="_blank" style="color:var(--accent-cyan);">GitHub</a></td></tr>
+                <tr><td style="color:var(--accent-blue);font-weight:600;">Swarm-LIO2</td><td>Multi-robot SLAM</td><td>PX4/ArduPilot</td><td>200+</td><td>HKU-MARS. Multi-drone LiDAR SLAM with inter-drone loop closure. Decentralized mapping.</td><td><a href="https://github.com/hku-mars/Swarm-LIO2" target="_blank" style="color:var(--accent-cyan);">GitHub</a></td></tr>
+                <tr><td style="color:var(--accent-blue);font-weight:600;">Lumifly DroneShow</td><td>Show (indoor)</td><td>PX4 (ROS)</td><td>0</td><td>Indoor light shows via ROS + Gazebo. U. of Turku capstone. ROS-based swarm learning resource.</td><td><a href="https://github.com/sumietgore/DroneShow" target="_blank" style="color:var(--accent-cyan);">GitHub</a></td></tr>
+                <tr><td style="color:var(--accent-blue);font-weight:600;">3D Drone Show Visualizer</td><td>Visualization</td><td>N/A</td><td>0</td><td>Three.js browser-based 3D choreography previewer.</td><td><a href="https://github.com/lucianotonet/3d-drone-show" target="_blank" style="color:var(--accent-cyan);">GitHub</a></td></tr>
+                <tr><td style="color:var(--accent-blue);font-weight:600;">Hivemind (Shield AI)</td><td>Tactical swarm</td><td>Proprietary</td><td>N/A</td><td>Production autonomous swarm AI. V-BAT Teams. Not open-source but sets the bar.</td><td>Proprietary</td></tr>
+            </table>
+        </div>
+
+        <!-- MDS SETUP -->
+        <div class="sw-section">
+            <div class="sw-section-title"><i class="ph ph-play"></i> Quick Start: MDS (MAVSDK Drone Show)</div>
+            <div class="sw-section-desc">The fastest path from zero to a simulated 10-drone light show. All in Docker — nothing to install except Docker itself.</div>
+
+            <div class="sw-code"><span class="c"># ═══ MDS SITL DEMO — 10 DRONES IN SIMULATION ═══</span>
+
+<span class="c"># 1. Clone the repo</span>
+git clone https://github.com/alireza787b/mavsdk_drone_show.git
+cd mavsdk_drone_show
+
+<span class="c"># 2. Install Python deps (3.11-3.13)</span>
+pip install -r requirements.txt
+
+<span class="c"># 3. Run the SITL demo (starts 10 PX4 instances in Docker)</span>
+<span class="c"># See: docs/guides/sitl-comprehensive.md for full walkthrough</span>
+python3 multiple_sitl/multi_sitl_runner.py --num-drones 10
+
+<span class="c"># 4. Start the GCS server (React dashboard)</span>
+cd gcs-server && python3 app.py
+
+<span class="c"># 5. Open browser: http://localhost:5000</span>
+<span class="c"># You'll see 10 drones on a map, ready to fly formation</span>
+
+<span class="c"># 6. Load a shape file (CSV choreography)</span>
+<span class="c"># shapes_sitl/ has pre-made formations</span>
+<span class="c"># Or design your own in Blender + SkyBrush</span>
+
+<span class="c"># 7. Hit "Start Show" in the dashboard</span>
+<span class="c"># Drones take off, fly to formation positions, execute choreography</span><span class="sw-code-label">MDS SITL</span></div>
+
+            <div class="sw-info sw-info-green"><i class="ph ph-info"></i><div><strong>Why MDS?</strong> It handles the hard parts: MAVSDK connection management per drone, time synchronization, formation origin calculation (GPS ↔ NED conversion), LED color control, failsafe behaviors, and a web dashboard. You focus on choreography design, not plumbing.</div></div>
+        </div>
+
+        <!-- CHOREOGRAPHY -->
+        <div class="sw-section">
+            <div class="sw-section-title"><i class="ph ph-pencil-line"></i> Creating Choreographies</div>
+
+            <div class="sw-code"><span class="c"># ═══ SHAPE CSV FORMAT (config.csv) ═══</span>
+<span class="c"># Each drone has its own row. Columns define position offsets from origin.</span>
+
+<span class="c"># hw_id, pos_id, x, y, z, ...</span>
+<span class="c"># hw_id: Hardware ID (matches physical drone)</span>
+<span class="c"># x: North offset (meters from formation origin)</span>
+<span class="c"># y: East offset (meters)</span>
+<span class="c"># z: altitude (positive = up)</span>
+
+<span class="c"># Example: 5-drone line formation at 10m altitude</span>
+1, 1, 0.0,  0.0, 10.0
+2, 2, 0.0,  3.0, 10.0
+3, 3, 0.0,  6.0, 10.0
+4, 4, 0.0,  9.0, 10.0
+5, 5, 0.0, 12.0, 10.0
+
+<span class="c"># For animated shows, use time-stamped waypoints per drone:</span>
+<span class="c"># shapes/ folder contains CSV files with columns:</span>
+<span class="c"># timestamp, north, east, down, red, green, blue</span><span class="sw-code-label">CSV Format</span></div>
+
+            <div class="sw-code"><span class="c"># ═══ GENERATE CHOREOGRAPHY WITH PYTHON ═══</span>
+
+import numpy as np
+import csv
+
+num_drones = 20
+radius = 15  <span class="c"># meters</span>
+
+<span class="c"># Circle formation</span>
+with open('shapes/circle_20.csv', 'w') as f:
+    writer = csv.writer(f)
+    for i in range(num_drones):
+        angle = 2 * np.pi * i / num_drones
+        north = radius * np.cos(angle)
+        east = radius * np.sin(angle)
+        alt = 20.0
+        <span class="c"># RGB: rainbow colors around the circle</span>
+        r = int(127 + 127 * np.sin(angle))
+        g = int(127 + 127 * np.sin(angle + 2.094))
+        b = int(127 + 127 * np.sin(angle + 4.189))
+        writer.writerow([0, north, east, -alt, r, g, b])
+
+<span class="c"># For animated shows: multiple rows per drone with timestamps</span>
+<span class="c"># t=0: circle, t=5: expand, t=10: star, t=15: land</span><span class="sw-code-label">Python</span></div>
+
+            <div class="sw-info sw-info-blue"><i class="ph ph-cube"></i><div><strong>Blender + SkyBrush:</strong> For complex shows, design in Blender — animate point objects along paths, assign LED colors as material properties. Export via SkyBrush add-on to CSV. MDS imports SkyBrush output directly. <a href="https://skybrush.io" target="_blank" style="color:var(--accent-cyan);">skybrush.io</a></div></div>
+        </div>
+
+        <!-- LEADER-FOLLOWER -->
+        <div class="sw-section">
+            <div class="sw-section-title"><i class="ph ph-user-focus"></i> Leader-Follower Swarm</div>
+            <div class="sw-section-desc">MDS supports real-time smart swarm mode — one leader drone is controlled manually or via mission, followers maintain formation relative to the leader.</div>
+
+            <div class="sw-code"><span class="c"># ═══ MDS SMART SWARM — LEADER-FOLLOWER ═══</span>
+
+<span class="c"># smart_swarm_src/ contains the swarm logic</span>
+<span class="c"># Each drone runs drone_show.py which checks its role:</span>
+<span class="c">#   - Leader: flies its own mission or is manually controlled</span>
+<span class="c">#   - Follower: queries leader position + maintains offset</span>
+
+<span class="c"># Configuration in config.csv:</span>
+<span class="c"># Set 'swarm' column to group ID (1, 2, 3...)</span>
+<span class="c"># Set 'is_leader' to 1 for the leader of each group</span>
+<span class="c"># Followers maintain their (x, y, z) offset relative to leader</span>
+
+<span class="c"># Multi-group example:</span>
+<span class="c"># Group 1: drone 1 (leader), drones 2-4 (followers)</span>
+<span class="c"># Group 2: drone 5 (leader), drones 6-8 (followers)</span>
+<span class="c"># Groups operate independently — fly different missions</span>
+
+<span class="c"># Communication: followers poll leader position via GCS server</span>
+<span class="c"># Mesh radio recommended for field deployment (see Mesh Guide)</span><span class="sw-code-label">Leader-Follower</span></div>
+        </div>
+
+        <!-- REAL HARDWARE -->
+        <div class="sw-section">
+            <div class="sw-section-title"><i class="ph ph-drone"></i> Real Hardware Deployment</div>
+
+            <div class="sw-info sw-info-yellow"><i class="ph ph-warning"></i><div><strong>Simulation first, always.</strong> Run your full choreography in SITL before touching real hardware. MDS supports 100+ simulated drones. If it works in sim, it'll work in the field (minus wind and GPS errors).</div></div>
+
+            <div class="sw-code"><span class="c"># ═══ REAL HARDWARE CHECKLIST ═══</span>
+
+<span class="c"># Per-drone hardware:</span>
+<span class="c"># □ PX4 flight controller (Pixhawk, Orqa H7, etc.)</span>
+<span class="c"># □ GPS module (RTK preferred for ≤2cm accuracy)</span>
+<span class="c"># □ Companion computer (RPi 4/5 is sufficient for MDS)</span>
+<span class="c"># □ WiFi or mesh radio (all drones + GCS on same network)</span>
+<span class="c"># □ LED strip (WS2812B) for light shows — controlled via companion</span>
+<span class="c"># □ Unique HW_ID set on each companion (file or env var)</span>
+
+<span class="c"># Per-drone software:</span>
+<span class="c"># □ PX4 firmware (latest stable)</span>
+<span class="c"># □ Python 3.11+ on companion</span>
+<span class="c"># □ MDS installed: git clone + pip install -r requirements.txt</span>
+<span class="c"># □ config.csv with correct HW_ID and formation offsets</span>
+<span class="c"># □ shapes/ folder with choreography CSV</span>
+
+<span class="c"># GCS:</span>
+<span class="c"># □ Laptop running gcs-server (Flask + React dashboard)</span>
+<span class="c"># □ Connected to same network as all drones</span>
+<span class="c"># □ QGroundControl as backup (multi-vehicle view)</span>
+
+<span class="c"># Critical PX4 parameters (per drone):</span>
+<span class="c"># COM_RCL_EXCEPT = 4    (allow offboard without RC)</span>
+<span class="c"># NAV_RCL_ACT = 0       (RC loss → continue mission)</span>
+<span class="c"># MAV_SYS_ID = HW_ID    (unique per drone)</span><span class="sw-code-label">Hardware</span></div>
+        </div>
+
+        <!-- TIME SYNC + GPS -->
+        <div class="sw-section">
+            <div class="sw-section-title"><i class="ph ph-clock-countdown"></i> Time Synchronization</div>
+            <div class="sw-code"><span class="c"># ═══ TIME SYNC — THE MAKE-OR-BREAK FOR SHOWS ═══</span>
+
+<span class="c"># Option 1: GPS PPS (best — sub-microsecond)</span>
+<span class="c"># PX4 syncs internal clock to GPS time automatically</span>
+<span class="c"># Companions sync via chrony or gpsd + PPS kernel module</span>
+
+<span class="c"># Option 2: NTP over mesh network (good — 1-10ms)</span>
+<span class="c"># GCS runs NTP server, all companions sync to it</span>
+sudo apt install chrony
+<span class="c"># /etc/chrony/chrony.conf on GCS:</span>
+<span class="c"># local stratum 1</span>
+<span class="c"># allow 192.168.168.0/24</span>
+<span class="c"># On each drone companion:</span>
+<span class="c"># server 192.168.168.1 iburst</span>
+
+<span class="c"># Option 3: MDS built-in sync (simplest)</span>
+<span class="c"># MDS uses GCS server time as reference</span>
+<span class="c"># Each drone fetches server time at startup and offsets</span>
+<span class="c"># Good enough for formations. Not precise enough for tight shows.</span>
+
+<span class="c"># Rule of thumb:</span>
+<span class="c"># 10ms sync error = ~0.3m position error at 30 m/s</span>
+<span class="c"># For shows with 2m separation: NTP is fine</span>
+<span class="c"># For shows with 0.5m separation: need GPS PPS</span><span class="sw-code-label">Time Sync</span></div>
+        </div>
+
+        <!-- 3D VISUALIZATION -->
+        <div class="sw-section">
+            <div class="sw-section-title"><i class="ph ph-cube"></i> 3D Show Preview</div>
+            <div class="sw-section-desc">Preview your choreography in the browser before flying. The <a href="https://github.com/lucianotonet/3d-drone-show" target="_blank" style="color:var(--accent-cyan);">3d-drone-show</a> project renders formations in Three.js — load your CSV, scrub the timeline, verify spacing.</div>
+
+            <div class="sw-code"><span class="c"># ═══ 3D PREVIEW IN BROWSER ═══</span>
+
+git clone https://github.com/lucianotonet/3d-drone-show.git
+cd 3d-drone-show
+npm install
+npm run dev
+
+<span class="c"># Open http://localhost:5173</span>
+<span class="c"># Load your choreography CSV</span>
+<span class="c"># Scrub timeline, rotate view, check spacing</span>
+<span class="c"># Red dots = collision risk (drones closer than safety threshold)</span>
+
+<span class="c"># Alternative: MDS GCS dashboard has built-in 2D formation view</span>
+<span class="c"># Alternative: Blender viewport (if using SkyBrush)</span><span class="sw-code-label">Preview</span></div>
+        </div>
+
+        <!-- INDOOR (ROS) -->
+        <div class="sw-section">
+            <div class="sw-section-title"><i class="ph ph-house-simple"></i> Indoor Swarm (ROS + Motion Capture)</div>
+            <div class="sw-section-desc">Indoor shows don't have GPS. You need external position tracking (motion capture / UWB / LiDAR SLAM) fed to each drone's FC as external position.</div>
+
+            <div class="sw-code"><span class="c"># ═══ INDOOR SWARM WITH OPTITRACK / VICON ═══</span>
+
+<span class="c"># Motion capture system provides position of each drone at 120+ Hz</span>
+<span class="c"># Pipe to PX4 via MAVROS vision_pose (same as SLAM guide)</span>
+
+<span class="c"># The Lumifly approach (sumietgore/DroneShow):</span>
+<span class="c"># 1. ROS master on GCS PC</span>
+<span class="c"># 2. Each drone runs MAVROS + position relay node</span>
+<span class="c"># 3. Choreography node publishes target positions per drone</span>
+<span class="c"># 4. Position controller on each drone tracks the target</span>
+
+<span class="c"># Without motion capture — use LiDAR SLAM (see SLAM Guide):</span>
+<span class="c"># Each drone runs FAST-LIO2 → MAVROS → PX4 LOITER mode</span>
+<span class="c"># Swarm coordinator sends target positions over mesh/WiFi</span>
+<span class="c"># Drone-to-drone relative positioning via UWB beacons (DWM1001)</span>
+
+<span class="c"># UWB ranging for relative formation:</span>
+<span class="c"># Each drone has a DWM1001 module ($15)</span>
+<span class="c"># Measures distance to neighbors (±10cm accuracy)</span>
+<span class="c"># No infrastructure needed — peer-to-peer ranging</span><span class="sw-code-label">Indoor</span></div>
+        </div>
+
+        <!-- SAFETY -->
+        <div class="sw-section">
+            <div class="sw-section-title"><i class="ph ph-shield-check"></i> Swarm Safety</div>
+            <div class="sw-info sw-info-yellow"><i class="ph ph-warning"></i><div><strong>Mandatory failsafes for multi-drone operations:</strong></div></div>
+            <div style="font-size:13px;color:var(--text-muted);line-height:2;margin-bottom:16px;">
+                <div>• <strong>Geofence:</strong> All drones must have PX4 geofence set. If any drone leaves the fence, it RTLs or lands.</div>
+                <div>• <strong>Kill switch:</strong> GCS must have a "land all" button. MDS dashboard has this built in.</div>
+                <div>• <strong>Battery monitor:</strong> Each drone should auto-land if battery drops below threshold. Set <code>BAT_LOW_THR</code> in PX4.</div>
+                <div>• <strong>Link loss:</strong> If a drone loses GCS connection, it should hold position and land after timeout — NOT RTH (RTH into a formation = collision).</div>
+                <div>• <strong>Minimum separation:</strong> Choreography must maintain ≥2m between any two drones at all times. Validate in 3D previewer before flying.</div>
+                <div>• <strong>Sequential startup:</strong> Take off drones one at a time (or in small groups), not all at once.</div>
+                <div>• <strong>Manual override:</strong> Always have one operator per 5-10 drones with RC override capability.</div>
+            </div>
+        </div>
+
+        <div class="sw-info sw-info-green"><i class="ph ph-check-circle"></i><div><strong>The full swarm pipeline:</strong> Design choreography (Blender/Python/CSV) → Preview (3D visualizer) → Simulate (MDS SITL, 10-100 drones) → Deploy (companion + PX4 per drone, mesh network, GCS dashboard) → Fly. Combine with Mesh Guide for comms, TAK Guide for ground SA, SLAM Guide for indoor GPS-denied ops.</div></div>
+
+        <a href="/guides/" style="display:inline-flex;align-items:center;gap:6px;margin-top:24px;padding:10px 20px;background:var(--bg-panel);border:1px solid var(--border-color);border-radius:var(--radius-sm);color:var(--text-muted);text-decoration:none;font-size:13px;"><i class="ph ph-caret-left"></i> Back to Implementation Guides</a>
+    </div>
+</div>
+<script>document.getElementById('dark-mode-toggle')?.addEventListener('click',()=>{const c=document.documentElement.getAttribute('data-theme');const n=c==='dark'?'light':'dark';document.documentElement.setAttribute('data-theme',n);try{localStorage.setItem('dc-theme',n)}catch(e){}const i=document.getElementById('dark-mode-icon');if(i)i.className=n==='dark'?'ph ph-moon':'ph ph-sun';});</script>
+</body>
+</html>

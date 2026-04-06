@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Intel — UAS Intelligence</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <script src="https://unpkg.com/@phosphor-icons/web"></script>
+  <style>
+    :root{
+      --bg:#0c0c0a;--surface:#141410;--card:#1c1c17;--card-hi:#242420;
+      --border:#2e2e26;--border-hi:#3e3e34;
+      --amber:#f59e0b;--amber-d:#f59e0b18;
+      --blue:#3b82f6;--blue-d:#3b82f618;
+      --cyan:#06b6d4;--cyan-d:#06b6d418;
+      --violet:#8b5cf6;--violet-d:#8b5cf618;
+      --green:#22c55e;--green-d:#22c55e20;
+      --text:#f5f0e8;--text-s:#b8b0a0;--text-d:#6b6358;--text-xd:#3d3830;
+      --font:'DM Sans',system-ui,sans-serif;
+      --mono:'JetBrains Mono',monospace;
+    }
+    *{box-sizing:border-box;margin:0;padding:0}
+    body{background:var(--bg);color:var(--text);font-family:var(--font);line-height:1.5;-webkit-font-smoothing:antialiased;min-height:100vh}
+    a{text-decoration:none;color:inherit}
+
+    .topbar{display:flex;align-items:center;justify-content:space-between;padding:10px 16px;border-bottom:1px solid var(--border);background:var(--bg);position:sticky;top:0;z-index:100}
+    .topbar-left{display:flex;align-items:center;gap:8px;min-width:0;flex:1;overflow:hidden}
+    .topbar-logo{font:700 14px var(--mono);color:var(--amber);letter-spacing:-0.02em;text-decoration:none;white-space:nowrap}
+    .topbar-links{display:flex;gap:4px;flex-shrink:0}
+    .topbar-pill{font:500 11px var(--font);color:var(--text-d);padding:4px 10px;border:1px solid var(--border);border-radius:20px;transition:all .15s;text-decoration:none;white-space:nowrap}
+    .topbar-pill:hover{border-color:var(--border-hi);color:var(--text-s)}
+
+    .page{max-width:680px;margin:0 auto;padding:40px 24px 60px}
+
+    .brand{margin-bottom:28px;position:relative}
+    .brand::before{content:'';position:absolute;top:-20px;left:-40px;width:220px;height:220px;background:radial-gradient(ellipse,rgba(245,158,11,.06),transparent 70%);pointer-events:none}
+    .eyebrow{font:600 9px var(--mono);text-transform:uppercase;letter-spacing:.12em;color:var(--text-xd);margin-bottom:8px}
+    .brand-name{font:700 32px var(--mono);color:var(--amber);letter-spacing:-0.03em;margin-bottom:10px}
+    .tagline{font-size:13px;color:var(--text-s);line-height:1.6;max-width:480px}
+
+    .stats{display:flex;gap:0;border:1px solid var(--border);border-radius:8px;overflow:hidden;margin:24px 0}
+    .st{flex:1;text-align:center;padding:12px 8px;border-right:1px solid var(--border)}
+    .st:last-child{border-right:none}
+    .st-n{font:700 20px var(--mono);color:var(--amber);display:block;line-height:1}
+    .st-n.blue{color:var(--blue)}
+    .st-n.cyan{color:var(--cyan)}
+    .st-n.violet{color:var(--violet)}
+    .st-l{font:500 9px var(--font);text-transform:uppercase;letter-spacing:.07em;color:var(--text-d);margin-top:4px;display:block}
+
+    .grp{margin-bottom:28px}
+    .grp-lbl{font:600 9px var(--mono);text-transform:uppercase;letter-spacing:.1em;color:var(--text-xd);margin-bottom:10px;display:flex;align-items:center;gap:8px}
+    .grp-lbl::after{content:'';flex:1;height:1px;background:var(--border)}
+    .grp-list{display:flex;flex-direction:column;gap:3px}
+
+    .mod{display:flex;align-items:center;gap:12px;padding:10px 12px;border-radius:8px;border:1px solid transparent;transition:all .12s}
+    .mod:hover{background:var(--card);border-color:var(--border)}
+    .mod-ico{width:34px;height:34px;border-radius:7px;display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0}
+    .mod-ico.amber{background:var(--amber-d)} .mod-ico.amber i{color:var(--amber)}
+    .mod-ico.blue{background:var(--blue-d)} .mod-ico.blue i{color:var(--blue)}
+    .mod-ico.cyan{background:var(--cyan-d)} .mod-ico.cyan i{color:var(--cyan)}
+    .mod-ico.violet{background:var(--violet-d)} .mod-ico.violet i{color:var(--violet)}
+    .mod-body{flex:1;min-width:0}
+    .mod-title{font:600 12px var(--font);color:var(--text);display:flex;align-items:center;gap:6px}
+    .mod-desc{font-size:11px;color:var(--text-d);margin-top:1px}
+    .mod-arr{color:var(--text-xd);font-size:14px;flex-shrink:0;transition:all .12s}
+    .mod:hover .mod-arr{transform:translateX(3px);color:var(--text-s)}
+    .mod:hover .mod-title{color:var(--amber)}
+    .pill-tag{font:600 8px var(--mono);padding:1px 5px;border-radius:8px;text-transform:uppercase;background:var(--amber-d);color:var(--amber)}
+
+    .featured{display:flex;align-items:center;gap:14px;padding:14px 16px;background:var(--card);border:1px solid var(--border);border-left:3px solid var(--amber);border-radius:10px;transition:all .15s;margin-bottom:3px}
+    .featured:hover{border-color:var(--border-hi);background:var(--card-hi);border-left-color:var(--amber)}
+    .feat-ico{width:40px;height:40px;border-radius:9px;display:flex;align-items:center;justify-content:center;font-size:20px;flex-shrink:0;background:var(--amber-d)}
+    .feat-ico i{color:var(--amber)}
+    .feat-body{flex:1}
+    .feat-title{font:700 13px var(--font);color:var(--text);margin-bottom:2px;display:flex;align-items:center;gap:6px}
+    .feat-desc{font-size:11px;color:var(--text-d)}
+    .feat-arr{font-size:12px;color:var(--text-d);display:flex;align-items:center;gap:3px;transition:all .15s;white-space:nowrap}
+    .featured:hover .feat-arr{color:var(--text-s)}
+    .featured:hover .feat-title{color:var(--amber)}
+  </style>
+</head>
+<body>
+<header style="display:flex;align-items:center;justify-content:space-between;gap:8px;padding:10px 16px;border-bottom:1px solid #2e2e26;background:#1c1c17;position:sticky;top:0;z-index:100;flex-shrink:0;">
+  <a href="/intel/" style="font:800 18px 'JetBrains Mono',monospace;color:#f59e0b;letter-spacing:-0.03em;text-decoration:none;flex-shrink:0;">Intel</a>
+  <div style="display:flex;gap:5px;align-items:center;flex-wrap:nowrap;"><a href="/" class="tp-pill">Forge</a><a href="/patterns/" class="tp-pill">Patterns</a><a href="/wingman/" class="tp-pill">Wingman</a><a href="https://nvmilldoitmyself.com" class="tp-pill" target=_blank>Handbook</a></div>
+</header>
+<style>.tp-pill{font:500 10px 'DM Sans',system-ui,sans-serif;color:#6b6358;padding:4px 9px;border:1px solid #2e2e26;border-radius:20px;text-decoration:none;white-space:nowrap;transition:all .15s}.tp-pill:hover{border-color:#3e3e34;color:#b8b0a0}</style>
+
+<div class="page">
+  <div class="brand">
+    <div class="eyebrow">UAS Intelligence</div>
+    <div class="brand-name">Intel</div>
+    <div class="tagline">Defense news, industry funding, platform intelligence, and mission analytics — aggregated from 25+ sources across the UAS ecosystem.</div>
+  </div>
+
+  <div class="stats">
+    <div class="st"><span class="st-n" id="s-articles">850</span><span class="st-l">Articles</span></div>
+    <div class="st"><span class="st-n blue" id="s-sources">7</span><span class="st-l">Sources</span></div>
+    <div class="st"><span class="st-n cyan" id="s-companies">30</span><span class="st-l">Companies</span></div>
+    <div class="st"><span class="st-n violet" id="s-platforms">237</span><span class="st-l">Platforms</span></div>
+  </div>
+
+  <div class="grp">
+    <div class="grp-lbl">News Feed</div>
+    <div class="grp-list">
+      <a href="/intel/feed/" class="featured">
+        <div class="feat-ico"><i class="ph ph-newspaper"></i></div>
+        <div class="feat-body">
+          <div class="feat-title">Intel Feed <span class="pill-tag" id="feed-count">850</span></div>
+          <div class="feat-desc">DefenseScoop, Breaking Defense, The War Zone, Militarnyi, Defense News, DroneLife, Unmanned Airspace — filterable by type, source, region</div>
+        </div>
+        <div class="feat-arr">Open <i class="ph ph-arrow-right"></i></div>
+      </a>
+    </div>
+  </div>
+
+  <div class="grp">
+    <div class="grp-lbl">Industry</div>
+    <div class="grp-list">
+      <a href="/industry/" class="mod"><div class="mod-ico cyan"><i class="ph ph-currency-dollar"></i></div><div class="mod-body"><div class="mod-title">Industry Intel</div><div class="mod-desc">Funding rounds, defense contracts, grants, market data</div></div><i class="ph ph-arrow-right mod-arr"></i></a>
+      <a href="/platforms/" class="mod"><div class="mod-ico blue"><i class="ph ph-shield-check"></i></div><div class="mod-body"><div class="mod-title">Platform Intelligence</div><div class="mod-desc">237 platforms — Blue UAS cleared, funding, production data</div></div><i class="ph ph-arrow-right mod-arr"></i></a>
+      <a href="/compliance/" class="mod"><div class="mod-ico" style="background:rgba(239,68,68,.1)"><i class="ph ph-traffic-signal" style="color:#ef4444"></i></div><div class="mod-body"><div class="mod-title">Compliance Dashboard</div><div class="mod-desc">Blue UAS, NDAA §848, ITAR, country-of-origin status</div></div><i class="ph ph-arrow-right mod-arr"></i></a>
+    </div>
+  </div>
+
+  <div class="grp">
+    <div class="grp-lbl">Analytics</div>
+    <div class="grp-list">
+      <a href="/analytics/" class="mod"><div class="mod-ico violet"><i class="ph ph-chart-line-up"></i></div><div class="mod-body"><div class="mod-title">Mission Control</div><div class="mod-desc">Intel velocity, source breakdown, company tracking, user signals</div></div><i class="ph ph-arrow-right mod-arr"></i></a>
+    </div>
+  </div>
+</div>
+
+<script>
+(function(){
+  fetch('/intel_articles.json').then(r=>r.json()).then(d=>{
+    var el=document.getElementById('s-articles');
+    var fc=document.getElementById('feed-count');
+    var src=document.getElementById('s-sources');
+    if(el) el.textContent=d.length;
+    if(fc) fc.textContent=d.length;
+    if(src){var s=new Set(d.map(function(a){return a.site}));src.textContent=s.size;}
+  }).catch(function(){});
+})();
+</script>
+</body>
+</html>

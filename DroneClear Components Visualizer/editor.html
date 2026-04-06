@@ -1,0 +1,491 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Parts Library Editor — Forge</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&family=Source+Serif+4:opsz,wght@8..60,400;8..60,600;8..60,700&display=swap"
+        rel="stylesheet">
+    <link rel="stylesheet" href="">
+    <link rel="stylesheet" href="{% static 'base.css' %}">
+    <link rel="stylesheet" href="{% static 'layout.css' %}?v=4">
+    <link rel="stylesheet" href="{% static 'components.css' %}">
+    <link rel="stylesheet" href="{% static 'utilities.css' %}">
+    <link rel="stylesheet" href="">
+    <link rel="stylesheet" href="">
+    <script src="https://unpkg.com/@phosphor-icons/web"></script>
+    <script>
+        // Apply saved theme before paint to avoid flash
+        (function () {
+            const saved = localStorage.getItem('dc-theme');
+            const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+            document.documentElement.setAttribute('data-theme', saved ? saved : 'dark');
+        })();
+    </script>
+<style>html,body{background:#0c0c0a!important;color:#f5f0e8}</style>
+</head>
+
+<body>
+<header style="display:flex;align-items:center;justify-content:space-between;gap:8px;padding:10px 16px;border-bottom:1px solid #2e2e26;background:#1c1c17;position:sticky;top:0;z-index:100;flex-shrink:0;">
+  <a href="/" style="font:800 18px 'JetBrains Mono',monospace;color:#ff3b5c;letter-spacing:-0.03em;text-decoration:none;flex-shrink:0;">Forge</a>
+  <div style="display:flex;gap:5px;align-items:center;flex-wrap:nowrap;"><a href="/intel/" class="tp-pill">Intel</a><a href="/patterns/" class="tp-pill">Patterns</a><a href="/tools-home/" class="tp-pill">Tools</a><a href="/wingman/" class="tp-pill">Wingman</a></div>
+</header>
+<style>.tp-pill{font:500 10px 'DM Sans',system-ui,sans-serif;color:#6b6358;padding:4px 9px;border:1px solid #2e2e26;border-radius:20px;text-decoration:none;white-space:nowrap;transition:all .15s}.tp-pill:hover{border-color:#3e3e34;color:#b8b0a0}</style>
+    <div class="app-container">
+
+        <!-- Sidebar -->
+        <aside class="sidebar">
+            <div class="sidebar-header">
+                <div class="logo">
+                    <span class="logo-text">Forge</span><span class="logo-sub">Powered by DroneClear</span>
+                </div>
+
+                <!-- System Meta Drawer -->
+                <details class="system-meta-drawer">
+                    <summary>
+                        <div style="display:flex; align-items:center; gap:6px;">
+                            <span class="status-indicator"></span>
+                            <span></span>
+                        </div>
+                        <i class="ph ph-caret-down"></i>
+                    </summary>
+                    <div class="meta-actions-grid">
+                        <p id="total-parts-count">0 Parts Loaded</p>
+
+                        <!-- Lang Toggle -->
+                        <div class="lang-toggle"
+                            style="display: flex; gap: 4px; background: rgba(0,0,0,0.2); padding: 2px; border-radius: 4px; grid-column: 1 / -1; margin-bottom: 8px;">
+                            <button id="btn-lang-en" class="btn"
+                                style="padding: 2px 6px; font-size: 10px; border: none; background: var(--bg-panel); color: var(--accent-red); box-shadow: var(--card-shadow); flex: 1;">EN</button>
+                            <button id="btn-lang-fr" class="btn"
+                                style="padding: 2px 6px; font-size: 10px; border: none; background: transparent; color: var(--text-muted); flex: 1;">FR</button>
+                        </div>
+
+                        <button class="btn btn-outline" id="btn-restart-server"
+                            style="padding: 6px; font-size: 11px; justify-content: center;">
+                            <i class="ph ph-arrows-clockwise"></i> Restart
+                        </button>
+                        <button class="btn btn-outline" id="btn-report-bug"
+                            style="padding: 6px; font-size: 11px; justify-content: center; color: var(--accent-red); border-color: rgba(34, 211, 238, 0.3);">
+                            <i class="ph ph-bug"></i> Report Bug
+                        </button>
+                        <button class="btn btn-outline" id="btn-reset-golden"
+                            style="padding: 6px; font-size: 11px; justify-content: center; color: var(--accent-orange, #f97316); border-color: rgba(249, 115, 22, 0.3);">
+                            <i class="ph ph-arrow-counter-clockwise"></i> Reset to Golden
+                        </button>
+                        <button class="btn btn-outline" id="btn-reset-examples"
+                            style="padding: 6px; font-size: 11px; justify-content: center; color: var(--text-muted); border-color: var(--border-color);">
+                            <i class="ph ph-arrow-counter-clockwise"></i> Reset to Examples
+                        </button>
+                    </div>
+                </details>
+
+                <nav class="sidebar-menu"
+                    style="border-top: 1px solid var(--border-color); display: flex; flex-direction: column; gap: 8px; padding-top: 16px;">
+                    <a href="/" class="btn btn-menu">
+                        <i class="ph ph-wrench"></i> The Bench
+                    </a>
+                    <a href="/template/" class="btn btn-menu">
+                        <i class="ph ph-tree-structure"></i> Master Attributes
+                    </a>
+                    <a href="/library/" class="btn btn-menu active">
+                        <i class="ph ph-books"></i> Parts Library Editor
+                    </a>
+                    <a href="/builder/" class="btn btn-menu">
+                        <i class="ph ph-magic-wand"></i> Model Builder
+                    </a>
+                    <a href="/guide/" class="btn btn-menu">
+                        <i class="ph ph-list-checks"></i> Build Guide
+                    </a>
+                    <a href="/audit/" class="btn btn-menu">
+                        <i class="ph ph-clipboard-text"></i> Build Audit
+                    </a>
+                    <a href="/academy/" class="btn btn-menu">
+                        <i class="ph ph-graduation-cap"></i> FPV Academy
+                    </a>
+                </nav>
+
+            </div>
+
+            <!-- Category nav injected by editor.js -->
+            <nav class="sidebar-nav" id="editor-nav"></nav>
+        </aside>
+
+        <!-- Main -->
+        <main class="main-content">
+
+            <!-- Loader -->
+            <div class="loader-container" id="editor-loader">
+                <div class="spinner"></div>
+                <p>Loading API Data...</p>
+            </div>
+
+            <!-- Editor workspace -->
+            <div id="editor-workspace" class="hidden editor-workspace">
+
+                <div class="editor-workspace-header">
+                    <h2 id="workspace-subtitle" class="editor-workspace-title">Components</h2>
+                </div>
+
+                <!-- Split layout: left = item list, right = form panels -->
+                <div class="editor-split">
+
+                    <!-- Left column: item list -->
+                    <div class="editor-split-list">
+                        <div id="editor-items-list" class="editor-items-list"></div>
+                    </div>
+
+                    <!-- Right column: form panels -->
+                    <div class="editor-split-form">
+
+                        <!-- Component form panel -->
+                        <div class="glass-panel hidden editor-panel" id="item-form-container">
+                            <h2 id="form-title" class="editor-panel-title">Create New Part</h2>
+                            <form id="component-form" class="editor-form">
+
+                                <div class="form-group">
+                                    <label class="form-label">PID</label>
+                                    <input class="form-input" type="text" id="field-pid" required
+                                        placeholder="e.g. MTR-0002">
+                                </div>
+                                <div class="form-group">
+                                    <label class="form-label">Name</label>
+                                    <input class="form-input" type="text" id="field-name" required>
+                                </div>
+                                <div class="form-group">
+                                    <label class="form-label">Manufacturer</label>
+                                    <input class="form-input" type="text" id="field-mfg" placeholder="e.g. iFlight">
+                                </div>
+                                <div class="form-group">
+                                    <label class="form-label">Approx Price</label>
+                                    <input class="form-input" type="text" id="field-price" placeholder="$0.00">
+                                </div>
+                                <div class="form-group form-group--full">
+                                    <label class="form-label">Description</label>
+                                    <textarea class="form-input form-textarea" id="field-desc" rows="3"></textarea>
+                                </div>
+                                <div class="form-group">
+                                    <label class="form-label">Thumbnail Image URL</label>
+                                    <input class="form-input" type="text" id="field-image"
+                                        placeholder="https://example.com/image.jpg">
+                                </div>
+                                <div class="form-group">
+                                    <label class="form-label">Manual / PDF Link</label>
+                                    <input class="form-input" type="text" id="field-manual"
+                                        placeholder="https://example.com/manual.pdf">
+                                </div>
+
+                                <!-- Dynamic schema fields -->
+                                <details class="form-section form-collapsible" id="dynamic-fields-container" open>
+                                    <summary class="form-section-title"><i class="ph ph-sliders"></i> Schema Attributes
+                                    </summary>
+                                    <div class="editor-form" id="dynamic-fields-grid"></div>
+                                </details>
+
+                                <!-- Compatibility rules -->
+                                <details class="form-section form-collapsible hidden" id="compatibility-section">
+                                    <summary class="form-section-title"><i class="ph ph-link"></i> Compatibility Rules
+                                    </summary>
+                                    <p class="form-section-hint">Define strict physical constraints for the Build
+                                        Engine.</p>
+                                    <div class="editor-form compat-grid" id="compatibility-fields-grid"></div>
+                                </details>
+
+                                <div class="form-actions">
+                                    <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
+                                        <button type="button" class="btn btn-danger hidden" id="btn-delete">
+                                            <i class="ph ph-trash"></i> Delete
+                                        </button>
+                                        <!-- Inline delete confirmation — replaces browser confirm() -->
+                                        <div id="delete-confirm-bar" class="hidden"
+                                            style="display:flex; align-items:center; gap:8px; background:rgba(220,38,38,0.08); border:1px solid rgba(220,38,38,0.3); border-radius:var(--radius-sm); padding:6px 12px;">
+                                            <span style="font-size:13px; color:#dc2626; font-weight:600;"><i
+                                                    class="ph ph-warning"></i> Permanently delete?</span>
+                                            <button type="button" class="btn btn-danger" id="btn-delete-confirm"
+                                                style="padding:4px 12px; font-size:12px;">
+                                                <i class="ph ph-trash"></i> Yes, Delete
+                                            </button>
+                                            <button type="button" class="btn btn-outline" id="btn-delete-abort"
+                                                style="padding:4px 12px; font-size:12px;">
+                                                Cancel
+                                            </button>
+                                        </div>
+                                    </div>
+                                    <div class="form-actions-right">
+                                        <button type="button" class="btn btn-outline" id="btn-cancel">Cancel</button>
+                                        <button type="submit" class="btn btn-primary" id="btn-save">
+                                            <i class="ph ph-floppy-disk"></i> Save to Database
+                                        </button>
+                                    </div>
+                                </div>
+                            </form>
+                        </div>
+
+                        <!-- Drone model form panel -->
+                        <div class="glass-panel hidden editor-panel" id="drone-form-container">
+                            <h2 id="drone-form-title" class="editor-panel-title">Create New Drone Model</h2>
+                            <form id="drone-form" class="editor-form">
+
+                                <div class="form-group">
+                                    <label class="form-label">Model PID</label>
+                                    <input class="form-input" type="text" id="df-pid" required
+                                        placeholder="e.g. MDL-0001">
+                                </div>
+                                <div class="form-group">
+                                    <label class="form-label">Name</label>
+                                    <input class="form-input" type="text" id="df-name" required>
+                                </div>
+                                <div class="form-group">
+                                    <label class="form-label">Vehicle Type</label>
+                                    <input class="form-input" type="text" id="df-type" placeholder="e.g. quad">
+                                </div>
+                                <div class="form-group">
+                                    <label class="form-label">Build Class</label>
+                                    <input class="form-input" type="text" id="df-class"
+                                        placeholder="e.g. 5inch_freestyle">
+                                </div>
+                                <div class="form-group form-group--full">
+                                    <label class="form-label">Description</label>
+                                    <textarea class="form-input form-textarea" id="df-desc" rows="3"></textarea>
+                                </div>
+                                <div class="form-group">
+                                    <label class="form-label">Thumbnail Image URL</label>
+                                    <input class="form-input" type="text" id="df-image"
+                                        placeholder="https://example.com/image.jpg">
+                                </div>
+                                <div class="form-group">
+                                    <label class="form-label">Manual / PDF Link</label>
+                                    <input class="form-input" type="text" id="df-manual"
+                                        placeholder="https://example.com/manual.pdf">
+                                </div>
+
+                                <div class="form-section form-group--full">
+                                    <h3 class="form-section-title"><i class="ph ph-graph"></i> Component Relations</h3>
+                                    <p class="form-section-hint">Map parts used in this build as JSON, e.g. <code
+                                            class="inline-code">{"frames": [{"pid": "FRM-0001"}]}</code></p>
+                                    <textarea class="form-input form-textarea code-editor" id="df-relations"
+                                        rows="10"></textarea>
+                                </div>
+
+                                <div class="form-actions">
+                                    <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
+                                        <button type="button" class="btn btn-danger hidden" id="btn-drone-delete">
+                                            <i class="ph ph-trash"></i> Delete
+                                        </button>
+                                        <!-- Inline drone delete confirmation -->
+                                        <div id="drone-delete-confirm-bar" class="hidden"
+                                            style="display:flex; align-items:center; gap:8px; background:rgba(220,38,38,0.08); border:1px solid rgba(220,38,38,0.3); border-radius:var(--radius-sm); padding:6px 12px;">
+                                            <span style="font-size:13px; color:#dc2626; font-weight:600;"><i
+                                                    class="ph ph-warning"></i> Permanently delete?</span>
+                                            <button type="button" class="btn btn-danger" id="btn-drone-delete-confirm"
+                                                style="padding:4px 12px; font-size:12px;">
+                                                <i class="ph ph-trash"></i> Yes, Delete
+                                            </button>
+                                            <button type="button" class="btn btn-outline" id="btn-drone-delete-abort"
+                                                style="padding:4px 12px; font-size:12px;">
+                                                Cancel
+                                            </button>
+                                        </div>
+                                    </div>
+                                    <div class="form-actions-right">
+                                        <button type="button" class="btn btn-outline"
+                                            id="btn-drone-cancel">Cancel</button>
+                                        <button type="submit" class="btn btn-primary" id="btn-drone-save">
+                                            <i class="ph ph-floppy-disk"></i> Save Drone Model
+                                        </button>
+                                    </div>
+                                </div>
+                            </form>
+                        </div><!-- /#drone-form-container -->
+
+                    </div><!-- /.editor-split-form -->
+                </div><!-- /.editor-split -->
+
+            </div><!-- /#editor-workspace -->
+        </main>
+    </div>
+
+    <button class="fab-bottom-right hidden" id="btn-create-new">
+        <i class="ph ph-plus"></i> Create New
+    </button>
+
+    <!-- Parts Import Modal (3 tabs) -->
+    <div id="import-parts-modal" class="modal-overlay hidden" role="dialog" aria-modal="true" style="z-index: 9998;">
+        <div class="modal-content" style="max-width: 700px; padding: 0; position: relative; max-height: 85vh; display: flex; flex-direction: column;">
+            <div style="padding: 20px 24px 0; flex-shrink: 0;">
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px;">
+                    <h2 style="font-size: 18px; color: var(--text-main); display:flex; align-items:center; gap:8px;">
+                        <i class="ph ph-upload-simple" style="color: var(--accent-blue);"></i> Import Parts
+                    </h2>
+                    <button class="btn" id="import-modal-close" style="background:none; border:none; font-size:20px; color:var(--text-muted); cursor:pointer; padding:4px;">
+                        <i class="ph ph-x"></i>
+                    </button>
+                </div>
+                <!-- Tab bar -->
+                <div style="display:flex; gap:0; border-bottom:2px solid var(--border-color);">
+                    <button class="btn import-tab-btn active" data-tab="upload"
+                        style="padding:10px 18px; font-size:13px; border:none; border-bottom:2px solid var(--accent-blue); margin-bottom:-2px; background:transparent; color:var(--text-main); font-weight:600; cursor:pointer;">
+                        <i class="ph ph-file-arrow-up"></i> Upload JSON
+                    </button>
+                    <button class="btn import-tab-btn" data-tab="format"
+                        style="padding:10px 18px; font-size:13px; border:none; border-bottom:2px solid transparent; margin-bottom:-2px; background:transparent; color:var(--text-muted); cursor:pointer;">
+                        <i class="ph ph-code"></i> View Format
+                    </button>
+                    <button class="btn import-tab-btn" data-tab="llm-guide"
+                        style="padding:10px 18px; font-size:13px; border:none; border-bottom:2px solid transparent; margin-bottom:-2px; background:transparent; color:var(--text-muted); cursor:pointer;">
+                        <i class="ph ph-robot"></i> LLM Guide
+                    </button>
+                </div>
+            </div>
+
+            <!-- Tab panels -->
+            <div style="overflow-y:auto; flex:1; padding:20px 24px;">
+                <!-- Upload tab -->
+                <div class="import-tab-panel" id="import-tab-upload">
+                    <div id="import-dropzone"
+                        style="border:2px dashed var(--border-color); border-radius:var(--radius-sm); padding:40px; text-align:center; cursor:pointer; transition: border-color 0.2s;">
+                        <i class="ph ph-cloud-arrow-up" style="font-size:40px; color:var(--text-muted); display:block; margin-bottom:12px;"></i>
+                        <p style="color:var(--text-main); font-weight:600; margin-bottom:4px;">Drop a JSON file here or click to browse</p>
+                        <p style="color:var(--text-muted); font-size:12px;">Expected format: array of part objects with pid, category, name fields</p>
+                        <input type="file" id="import-file-input" accept=".json" style="display:none;">
+                    </div>
+                    <!-- Pre-import summary (shown after file is loaded) -->
+                    <div id="import-preview" class="hidden" style="margin-top:16px;">
+                        <h3 style="font-size:14px; color:var(--text-main); margin-bottom:12px;"><i class="ph ph-list-checks"></i> Import Preview</h3>
+                        <div id="import-preview-content" style="background:var(--bg-dark); border-radius:var(--radius-sm); padding:16px; font-size:13px; color:var(--text-main);"></div>
+                        <div style="display:flex; gap:12px; justify-content:flex-end; margin-top:16px;">
+                            <button class="btn btn-outline" id="import-cancel-btn">Cancel</button>
+                            <button class="btn btn-primary" id="import-apply-btn">
+                                <i class="ph ph-check"></i> Import Parts
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Format tab -->
+                <div class="import-tab-panel hidden" id="import-tab-format">
+                    <p style="color:var(--text-muted); font-size:13px; margin-bottom:12px;">
+                        The import endpoint expects a JSON array of part objects. Each object must include <code class="inline-code">pid</code>, <code class="inline-code">category</code> (slug), and <code class="inline-code">name</code>. All other fields are optional.
+                    </p>
+                    <pre id="import-format-content" style="background:var(--bg-dark); border-radius:var(--radius-sm); padding:16px; font-size:12px; color:var(--text-main); overflow-x:auto; white-space:pre; max-height:400px; overflow-y:auto; border:1px solid var(--border-color);">Loading format template...</pre>
+                </div>
+
+                <!-- LLM Guide tab -->
+                <div class="import-tab-panel hidden" id="import-tab-llm-guide">
+                    <p style="color:var(--text-muted); font-size:13px; margin-bottom:12px;">
+                        Copy the system prompt below into ChatGPT, Claude, or any LLM to scrape product pages into import-ready JSON.
+                    </p>
+                    <div style="display:flex; justify-content:flex-end; margin-bottom:8px;">
+                        <button class="btn btn-outline" id="btn-copy-llm-guide" style="padding:6px 12px; font-size:12px;">
+                            <i class="ph ph-copy"></i> Copy to Clipboard
+                        </button>
+                    </div>
+                    <pre id="llm-guide-content" style="background:var(--bg-dark); border-radius:var(--radius-sm); padding:16px; font-size:12px; color:var(--text-main); overflow-x:auto; white-space:pre-wrap; max-height:400px; overflow-y:auto; border:1px solid var(--border-color);">Loading LLM guide...</pre>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Bug Report Modal Structure -->
+    <div id="bug-report-modal" class="modal-overlay hidden" role="dialog" aria-modal="true" style="z-index: 9999;">
+        <div class="modal-content" style="max-width: 500px; padding: 24px; position: relative;">
+            <div class="modal-title-area" style="margin-bottom: 16px;">
+                <h2 style="font-size: 20px; color: var(--text-main); display:flex; align-items:center; gap:8px;">
+                    <i class="ph ph-bug" style="color: var(--accent-red);"></i> Submit Bug Report
+                </h2>
+                <p style="color: var(--text-muted); font-size: 13px; margin-top: 4px;">Found an issue? Let us know.</p>
+            </div>
+            <div style="display:flex; flex-direction:column; gap:12px;">
+                <input type="text" id="bug-title-input" placeholder="Brief issue description..."
+                    style="width:100%; padding:10px; background:var(--bg-dark); border:1px solid var(--border-color); color:var(--text-main); border-radius:var(--radius-sm);">
+                <textarea id="bug-desc-input" rows="4" placeholder="Steps to reproduce..."
+                    style="width:100%; padding:10px; background:var(--bg-dark); border:1px solid var(--border-color); color:var(--text-main); border-radius:var(--radius-sm); resize:vertical;"></textarea>
+            </div>
+            <div class="modal-footer" style="margin-top:20px; display:flex; gap:12px; justify-content:flex-end;">
+                <button class="btn btn-outline" id="btn-cancel-bug">Cancel</button>
+                <button class="btn btn-primary" id="btn-submit-bug">Submit</button>
+            </div>
+        </div>
+    </div>
+    <!-- DEBT-007: Maintenance logic extracted to maintenance.js -->
+    <script src=""></script>
+    <script src="?v=2"></script>
+    <script src="?v=8"></script>
+    <script>
+        (function () {
+            function applyTheme(dark) {
+                document.documentElement.setAttribute('data-theme', dark ? 'dark' : 'light');
+                const icon = document.getElementById('dark-mode-icon');
+                const btn = document.getElementById('dark-mode-toggle');
+                if (icon) icon.className = dark ? 'ph ph-sun' : 'ph ph-moon';
+                if (btn) btn.title = dark ? 'Switch to light mode' : 'Switch to dark mode';
+            }
+            document.getElementById('dark-mode-toggle')?.addEventListener('click', function () {
+                const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+                applyTheme(!isDark);
+                localStorage.setItem('dc-theme', !isDark ? 'dark' : 'light');
+            });
+            const saved = localStorage.getItem('dc-theme');
+            const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+            applyTheme(saved ? saved === 'dark' : prefersDark);
+        })();
+
+        document.addEventListener('DOMContentLoaded', () => {
+            const toggle = document.getElementById('mobile-nav-toggle');
+            const sidebar = document.querySelector('.sidebar');
+            if (toggle && sidebar) {
+                toggle.addEventListener('click', () => sidebar.classList.toggle('open'));
+                document.addEventListener('click', (e) => {
+                    if (window.innerWidth <= 768 && !sidebar.contains(e.target) && !toggle.contains(e.target))
+                        sidebar.classList.remove('open');
+                });
+            }
+
+            // ── Static deployment: disable all write operations ──
+            const WRITE_BTN_IDS = [
+                'btn-save', 'btn-delete', 'btn-delete-confirm',
+                'btn-drone-save', 'btn-drone-delete', 'btn-drone-delete-confirm',
+                'btn-create-topbar', 'btn-create-new',
+                'btn-import-parts', 'btn-export-parts', 'btn-export-category', 'btn-export-all',
+            ];
+            WRITE_BTN_IDS.forEach(id => {
+                const el = document.getElementById(id);
+                if (el) {
+                    el.disabled = true;
+                    el.title = 'Read-only in static deployment';
+                    el.style.opacity = '0.4';
+                    el.style.cursor = 'not-allowed';
+                    el.style.pointerEvents = 'none';
+                }
+            });
+
+            // Banner below topbar
+            const topbar = document.querySelector('.topbar');
+            if (topbar) {
+                const banner = document.createElement('div');
+                banner.style.cssText = [
+                    'background: rgba(239,68,68,0.12)',
+                    'border-bottom: 1px solid rgba(239,68,68,0.3)',
+                    'color: #f87171',
+                    'font-size: 12px',
+                    'padding: 7px 24px',
+                    'display: flex',
+                    'align-items: center',
+                    'gap: 8px',
+                ].join(';');
+                banner.innerHTML = '<i class="ph ph-lock"></i> <strong>Read-only mode</strong> — this is a static deployment. Edits are not persisted. Run locally against the Django backend to write to the database.';
+                topbar.insertAdjacentElement('afterend', banner);
+            }
+        });
+    </script>
+
+<!-- AI Wingman Analytics v1.0 — Forge — No cookies, no PII -->
+<script>
+(function(){var E='https://nvmilldoitmyself.com/.netlify/functions/analytics-ingest',S='sess_'+crypto.randomUUID().replace(/-/g,'').slice(0,16),q=[],t=null,aid=null,ff=true;function r(){try{var z=Intl.DateTimeFormat().resolvedOptions().timeZone;if(z.includes('America'))return'Americas';if(z.includes('Europe'))return'Europe';if(z.includes('Asia')||z.includes('Australia')||z.includes('Pacific'))return'Asia-Pacific';if(z.includes('Africa'))return'Africa'}catch(e){}return'Unknown'}function ev(tp,ac,p,tier){q.push({event_id:crypto.randomUUID(),timestamp:new Date().toISOString(),surface:'forge',event_type:tp,event_action:ac,context:{session_id:S,account_id:aid,geo_region:r(),platform:/Android|iPhone|iPad/i.test(navigator.userAgent)?'mobile':'web',viewport:innerWidth+'x'+innerHeight},payload:p,data_policy:{collection_tier:tier||'anonymous',consent_version:'none',retention_days:tier==='account'?365:90,anonymized:tier!=='account'}});if(q.length>=20)fl();else if(!t)t=setTimeout(fl,5e3)}function fl(){if(t){clearTimeout(t);t=null}if(!q.length)return;var b=q.splice(0);fetch(E,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({events:b}),keepalive:true}).catch(function(){})}addEventListener('visibilitychange',function(){if(document.visibilityState==='hidden')fl()});addEventListener('pagehide',fl);ev('page_view','view',{path:location.pathname,title:document.title});window.__forgeAnalytics={search:function(query,cat,n){ev('search','component_search',{query:query.slice(0,200),category:cat,result_count:n,had_results:n>0});if(n===0)ev('search','no_results',{query:query.slice(0,200),category:cat})},filter:function(cat,f,n){ev('filter','apply_filter',{category:cat,filters:f,filter_names:Object.keys(f),first_filter:ff,result_count:n,zero_results:n===0});ff=false;if(n===0)ev('search','no_results',{query:'',category:cat,filters:f})},view:function(pid,cat,mfr,co,ndaa){ev('page_view','component_detail',{component_pid:pid,category:cat,manufacturer:mfr,country:co,ndaa_compliant:ndaa})},compare:function(a,b,cat){ev('compare','side_by_side',{component_a:a,component_b:b,category:cat})},save:function(pid,cat,ctx){ev('save','bookmark_component',{component_pid:pid,category:cat,save_context:ctx||'bookmark'},aid?'account':'pseudonymous')},setUser:function(id){aid=id},flush:fl}})();
+</script>
+</body>
+
+</html>

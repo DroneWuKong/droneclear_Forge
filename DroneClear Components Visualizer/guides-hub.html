@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Implementation Guides — Forge</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&family=Source+Serif+4:opsz,wght@8..60,400;8..60,600;8..60,700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="{% static 'base.css' %}?v=2">
+    <link rel="stylesheet" href="{% static 'layout.css' %}?v=4">
+    <link rel="stylesheet" href="{% static 'utilities.css' %}?v=2">
+    <script src="https://unpkg.com/@phosphor-icons/web"></script>
+    <script>(function(){const s=localStorage.getItem('dc-theme');document.documentElement.setAttribute('data-theme',s||'dark')})();</script>
+    <style>
+        .hub-container { max-width: 960px; margin: 0 auto; padding: 32px 24px 80px; }
+        /* Override global layout — this page is a simple document, not the sidebar app */
+        body { overflow-y: auto !important; }
+        .app-container { height: auto !important; min-height: 100vh; overflow: visible !important; }
+        .hub-hero { text-align: center; margin-bottom: 48px; }
+        .hub-hero h1 { font-size: 28px; font-weight: 700; background: linear-gradient(135deg, var(--accent-green) 0%, var(--accent-cyan) 100%); -webkit-background-clip:text; -webkit-text-fill-color:transparent; background-clip:text; margin: 0 0 10px; }
+        .hub-hero p { color: var(--text-muted); font-size: 14px; max-width: 600px; margin: 0 auto; line-height: 1.7; }
+        .hub-flow { display: flex; align-items: center; justify-content: center; gap: 6px; margin-top: 16px; flex-wrap: wrap; }
+        .hub-flow-step { font-size: 11px; padding: 4px 10px; border-radius: 20px; background: var(--bg-panel); border: 1px solid var(--border-color); color: var(--text-muted); }
+        .hub-flow-arrow { color: var(--text-faint); font-size: 14px; }
+
+        .hub-grid { display: grid; gap: 16px; margin-bottom: 40px; }
+        .hub-card { background: var(--bg-panel); border: 1px solid var(--border-color); border-radius: var(--radius-md); padding: 24px; text-decoration: none; color: inherit; display: grid; grid-template-columns: auto 1fr auto; gap: 16px; align-items: center; transition: border-color 0.2s, box-shadow 0.2s; }
+        .hub-card:hover { border-color: var(--border-hover); box-shadow: var(--card-shadow-hover); }
+        .hub-card-icon { width: 48px; height: 48px; border-radius: var(--radius-sm); display: flex; align-items: center; justify-content: center; font-size: 22px; }
+        .hub-card-icon.green { background: rgba(74,222,128,0.1); color: var(--accent-green); }
+        .hub-card-icon.cyan { background: rgba(34,211,238,0.1); color: var(--accent-cyan); }
+        .hub-card-icon.amber { background: rgba(251,191,36,0.1); color: #fbbf24; }
+        .hub-card-icon.purple { background: rgba(167,139,250,0.1); color: var(--accent-purple); }
+        .hub-card-icon.red { background: rgba(248,113,113,0.1); color: var(--negative-red); }
+        .hub-card-body h3 { font-size: 16px; font-weight: 700; color: var(--text-main); margin: 0 0 4px; }
+        .hub-card-body p { font-size: 13px; color: var(--text-muted); margin: 0; line-height: 1.5; }
+        .hub-card-status { font-size: 10px; padding: 4px 10px; border-radius: 20px; font-weight: 600; letter-spacing: 0.05em; white-space: nowrap; }
+        .hub-status-live { background: rgba(74,222,128,0.12); color: var(--accent-green); border: 1px solid rgba(74,222,128,0.25); }
+        .hub-status-soon { background: rgba(251,191,36,0.08); color: #fbbf24; border: 1px solid rgba(251,191,36,0.2); }
+        .hub-status-planned { background: var(--bg-dark); color: var(--text-faint); border: 1px solid var(--border-color); }
+
+        .hub-card.disabled { opacity: 0.5; cursor: default; }
+        .hub-card.disabled:hover { border-color: var(--border-color); box-shadow: none; }
+
+        .hub-section { margin-bottom: 32px; }
+        .hub-section-title { font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.12em; color: var(--text-faint); margin-bottom: 12px; display: flex; align-items: center; gap: 8px; }
+        .hub-section-title i { color: var(--accent-cyan); }
+
+        .hub-tools { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px; }
+        .hub-tool { background: var(--bg-panel); border: 1px solid var(--border-color); border-radius: var(--radius-sm); padding: 16px; text-decoration: none; color: inherit; transition: border-color 0.2s; }
+        .hub-tool:hover { border-color: var(--accent-cyan); }
+        .hub-tool h4 { font-size: 13px; font-weight: 600; color: var(--accent-cyan); margin: 0 0 4px; display: flex; align-items: center; gap: 6px; }
+        .hub-tool p { font-size: 12px; color: var(--text-muted); margin: 0; line-height: 1.4; }
+    </style>
+<style>html,body{background:#0c0c0a!important;color:#f5f0e8}</style>
+</head>
+<body>
+<header style="display:flex;align-items:center;justify-content:space-between;gap:8px;padding:10px 16px;border-bottom:1px solid #2e2e26;background:#1c1c17;position:sticky;top:0;z-index:100;flex-shrink:0;">
+  <a href="/" style="font:800 18px 'JetBrains Mono',monospace;color:#ff3b5c;letter-spacing:-0.03em;text-decoration:none;flex-shrink:0;">Forge</a>
+  <div style="display:flex;gap:5px;align-items:center;flex-wrap:nowrap;"><a href="/intel/" class="tp-pill">Intel</a><a href="/patterns/" class="tp-pill">Patterns</a><a href="/tools-home/" class="tp-pill">Tools</a><a href="/wingman/" class="tp-pill">Wingman</a></div>
+</header>
+<style>.tp-pill{font:500 10px 'DM Sans',system-ui,sans-serif;color:#6b6358;padding:4px 9px;border:1px solid #2e2e26;border-radius:20px;text-decoration:none;white-space:nowrap;transition:all .15s}.tp-pill:hover{border-color:#3e3e34;color:#b8b0a0}</style>
+    <div class="app-container" style="flex-direction: column;">
+        <div class="hub-container">
+            <div class="hub-hero">
+                <h1><i class="ph ph-rocket-launch"></i> Implementation Guides</h1>
+                <p>Your hardware is assembled. These guides take you from powered-on to mission-ready — one software layer at a time.</p>
+                <div class="hub-flow">
+                    <span class="hub-flow-step">Flash Firmware</span>
+                    <span class="hub-flow-arrow">→</span>
+                    <span class="hub-flow-step">Configure FC</span>
+                    <span class="hub-flow-arrow">→</span>
+                    <span class="hub-flow-step">Install OS</span>
+                    <span class="hub-flow-arrow">→</span>
+                    <span class="hub-flow-step">Add Autonomy</span>
+                    <span class="hub-flow-arrow">→</span>
+                    <span class="hub-flow-step">Connect Network</span>
+                    <span class="hub-flow-arrow">→</span>
+                    <span class="hub-flow-step">Fly</span>
+                </div>
+            </div>
+
+            <!-- ═══ GUIDES ═══ -->
+            <div class="hub-section">
+                <div class="hub-section-title"><i class="ph ph-book-open"></i> Guides</div>
+                <div class="hub-grid">
+
+                    <!-- FC Firmware -->
+                    <a href="/fc-firmware-guide/" class="hub-card">
+                        <div class="hub-card-icon amber"><i class="ph ph-microchip"></i></div>
+                        <div class="hub-card-body">
+                            <h3>FC Firmware Flashing</h3>
+                            <p>Install ArduPilot, PX4, Betaflight, or iNav on your flight controller. Covers STM32 DFU mode, bootloaders, STM32CubeProgrammer, and board-specific steps for Orqa H7, Pixhawk, Matek, and more.</p>
+                        </div>
+                        <span class="hub-card-status hub-status-live">LIVE</span>
+                    </a>
+
+                    <!-- LiDAR SLAM -->
+                    <a href="/slam-guide/" class="hub-card">
+                        <div class="hub-card-icon green"><i class="ph ph-compass-tool"></i></div>
+                        <div class="hub-card-body">
+                            <h3>LiDAR SLAM — Parts to Autonomous Hover</h3>
+                            <p>Flash companion OS, install ROS, LiDAR drivers, FAST-LIO2, MAVROS FC bridge, first hover. Includes SLAM stack selector. Adapts to your hardware (Jetson/APB/RPi + any LiDAR).</p>
+                        </div>
+                        <span class="hub-card-status hub-status-live">LIVE</span>
+                    </a>
+
+                    <!-- Mesh Networking -->
+                    <a href="/mesh-guide/" class="hub-card">
+                        <div class="hub-card-icon cyan"><i class="ph ph-graph"></i></div>
+                        <div class="hub-card-body">
+                            <h3>Mesh Radio Networking</h3>
+                            <p>Set up Doodle Labs, Silvus, or Microhard mesh radios for multi-vehicle MANET. IP config, bandwidth allocation, video/telemetry QoS, multi-hop relay, and GCS integration.</p>
+                        </div>
+                        <span class="hub-card-status hub-status-live">LIVE</span>
+                    </a>
+
+                    <!-- TAK Integration -->
+                    <a href="/tak-guide/" class="hub-card">
+                        <div class="hub-card-icon cyan"><i class="ph ph-crosshair-simple"></i></div>
+                        <div class="hub-card-body">
+                            <h3>TAK / ATAK Integration</h3>
+                            <p>Connect your drone to TAK ecosystem. ATAK plugin setup, CoT message format, MAVROS→TAK bridge, video streaming to TAK server, multi-drone COP display.</p>
+                        </div>
+                        <span class="hub-card-status hub-status-live">LIVE</span>
+                    </a>
+
+                    <!-- OpenHD -->
+                    <a href="/openhd-guide/" class="hub-card">
+                        <div class="hub-card-icon" style="background:rgba(74,222,128,0.1);">
+                            <i class="ph ph-wifi-high" style="color:var(--accent-green);"></i>
+                        </div>
+                        <div class="hub-card-body">
+                            <h3>OpenHD — Digital Video Link</h3>
+                            <p>Open-source wifibroadcast HD video + MAVLink. RTL8812AU on RPi Zero 2 or CM4. Range depends on antennas — stock 1–3km, high-gain + tracker 10–20km+.</p>
+                        </div>
+                        <span class="hub-card-status hub-status-live">LIVE</span>
+                    </a>
+
+
+                    <a href="/ai-guide/" class="hub-card">
+                        <div class="hub-card-icon purple"><i class="ph ph-brain"></i></div>
+                        <div class="hub-card-body">
+                            <h3>AI / Computer Vision Payloads</h3>
+                            <p>Run YOLO, object tracking, and detection models on Jetson/VOXL2/APB. Camera→inference→FC targeting pipeline, OpenCV + ROS, NPU acceleration, edge deployment.</p>
+                        </div>
+                        <span class="hub-card-status hub-status-live">LIVE</span>
+                    </a>
+
+                    <!-- Drone Show / Swarm -->
+                    <a href="/swarm-guide/" class="hub-card">
+                        <div class="hub-card-icon purple"><i class="ph ph-users-three"></i></div>
+                        <div class="hub-card-body">
+                            <h3>Drone Show & Swarm Coordination</h3>
+                            <p>Choreographed light shows, formation flying, and multi-drone swarm operations. MDS (MAVSDK Drone Show), leader-follower, SkyBrush, SITL simulation, time sync, and safety.</p>
+                        </div>
+                        <span class="hub-card-status hub-status-live">LIVE</span>
+                    </a>
+
+                    <!-- Counter-UAS -->
+                    <a href="/cuas-guide/" class="hub-card">
+                        <div class="hub-card-icon red"><i class="ph ph-shield-warning"></i></div>
+                        <div class="hub-card-body">
+                            <h3>Counter-UAS Integration</h3>
+                            <p>RF detection, radar tracking, and defeat system integration. DroneShield, Dedrone, and DIY approaches. Sensor fusion for autonomous C-UAS response.</p>
+                        </div>
+                        <span class="hub-card-status hub-status-live">LIVE</span>
+                    </a>
+
+                </div>
+            </div>
+
+            <!-- ═══ TOOLS ═══ -->
+            <div class="hub-section">
+                <div class="hub-section-title"><i class="ph ph-toolbox"></i> Tools</div>
+                <div class="hub-tools">
+                    <a href="/slam/" class="hub-tool">
+                        <h4><i class="ph ph-compass-tool"></i> SLAM Stack Selector</h4>
+                        <p>Pick LiDAR + computer + firmware → get ranked SLAM stack recommendations with config files.</p>
+                    </a>
+                    <a href="/swarm/" class="hub-tool">
+                        <h4><i class="ph ph-users-three"></i> Swarm Stack Selector</h4>
+                        <p>Pick mission type + FC + fleet size → get ranked swarm software recommendations with key params.</p>
+                    </a>
+                    <a href="/builder/" class="hub-tool">
+                        <h4><i class="ph ph-magic-wand"></i> Model Builder</h4>
+                        <p>Assemble builds from 3,000+ parts with compatibility checking.</p>
+                    </a>
+                    <a href="/platforms/" class="hub-tool">
+                        <h4><i class="ph ph-shield-check"></i> Platform Database</h4>
+                        <p>200+ platforms with specs, compliance, funding, and production data.</p>
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+    <script>
+    document.getElementById('dark-mode-toggle')?.addEventListener('click',()=>{const c=document.documentElement.getAttribute('data-theme');const n=c==='dark'?'light':'dark';document.documentElement.setAttribute('data-theme',n);try{localStorage.setItem('dc-theme',n)}catch(e){}const i=document.getElementById('dark-mode-icon');if(i)i.className=n==='dark'?'ph ph-moon':'ph ph-sun';});
+    </script>
+</body>
+</html>

@@ -1,0 +1,831 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Contribute — Forge</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&family=Source+Serif+4:opsz,wght@8..60,400;8..60,600;8..60,700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="{% static 'base.css' %}?v=2">
+    <link rel="stylesheet" href="{% static 'layout.css' %}?v=4">
+    <link rel="stylesheet" href="{% static 'components.css' %}?v=2">
+    <link rel="stylesheet" href="{% static 'utilities.css' %}?v=2">
+    <script src="https://unpkg.com/@phosphor-icons/web"></script>
+    <script>
+        (function(){const s=localStorage.getItem('dc-theme');document.documentElement.setAttribute('data-theme',s||'dark')})();
+    </script>
+    <style>
+        .contribute-form{max-width:720px;margin:0 auto}
+        .form-section{background:var(--surface-secondary,#1a1a2e);border-radius:12px;padding:24px;margin-bottom:16px}
+        .form-section h3{font-size:15px;font-weight:600;margin:0 0 16px;color:var(--accent,#4ECDC4);display:flex;align-items:center;gap:8px}
+        .field{margin-bottom:16px}
+        .field label{display:block;font-size:13px;font-weight:500;margin-bottom:6px;color:var(--text-secondary,#ccc)}
+        .field label .req{color:var(--accent,#4ECDC4);margin-left:2px}
+        .field input,.field select,.field textarea{width:100%;padding:10px 14px;border-radius:8px;border:1px solid var(--border-color,#333);background:var(--surface-primary,#111);color:var(--text-primary,#eee);font-family:inherit;font-size:14px}
+        .field textarea{min-height:80px;resize:vertical}
+        .field input:focus,.field select:focus,.field textarea:focus{outline:none;border-color:var(--accent,#4ECDC4)}
+        .field-row{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+        .field-row-3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px}
+        .field small{display:block;margin-top:4px;font-size:11px;color:var(--text-muted,#666)}
+        .submit-btn{background:var(--accent,#4ECDC4);color:#111;border:none;padding:14px 32px;border-radius:8px;font-size:15px;font-weight:700;font-family:inherit;cursor:pointer;width:100%;transition:all .2s}
+        .submit-btn:hover{opacity:.9;transform:translateY(-1px)}
+        .submit-btn:disabled{opacity:.4;cursor:not-allowed;transform:none}
+        .type-toggle{display:flex;gap:8px;margin-bottom:24px}
+        .type-btn{flex:1;padding:14px;border-radius:8px;border:2px solid var(--border-color,#333);background:transparent;color:var(--text-secondary,#aaa);font-size:14px;font-weight:600;font-family:inherit;cursor:pointer;text-align:center;transition:all .2s}
+        .type-btn.active{border-color:var(--accent,#4ECDC4);color:var(--accent,#4ECDC4);background:rgba(78,205,196,0.08)}
+        .type-btn i{display:block;font-size:24px;margin-bottom:6px}
+        .success-msg{background:rgba(78,205,196,0.1);border:1px solid var(--accent);border-radius:12px;padding:24px;text-align:center;display:none}
+        .success-msg h3{color:var(--accent);margin:0 0 8px}
+        .success-msg a{color:var(--accent)}
+        .error-msg{background:rgba(255,107,107,0.1);border:1px solid #ff6b6b;border-radius:12px;padding:16px;text-align:center;display:none;color:#ff6b6b;margin-bottom:16px}
+        .dynamic-fields{display:none}
+        .dynamic-fields.show{display:block}
+        /* Fix mobile scroll */
+        .app-container{height:100vh;overflow:hidden}
+        .main-content{overflow-y:auto !important;height:100vh;-webkit-overflow-scrolling:touch}
+        .sidebar-overlay.hidden{pointer-events:none;display:none !important}
+        @media(max-width:600px){.field-row,.field-row-3{grid-template-columns:1fr}}
+    </style>
+<style>html,body{background:#0c0c0a!important;color:#f5f0e8}</style>
+</head>
+<body>
+<header style="display:flex;align-items:center;justify-content:space-between;gap:8px;padding:10px 16px;border-bottom:1px solid #2e2e26;background:#1c1c17;position:sticky;top:0;z-index:100;flex-shrink:0;">
+  <a href="/" style="font:800 18px 'JetBrains Mono',monospace;color:#ff3b5c;letter-spacing:-0.03em;text-decoration:none;flex-shrink:0;">Forge</a>
+  <div style="display:flex;gap:5px;align-items:center;flex-wrap:nowrap;"><a href="/intel/" class="tp-pill">Intel</a><a href="/patterns/" class="tp-pill">Patterns</a><a href="/tools-home/" class="tp-pill">Tools</a><a href="/wingman/" class="tp-pill">Wingman</a></div>
+</header>
+<style>.tp-pill{font:500 10px 'DM Sans',system-ui,sans-serif;color:#6b6358;padding:4px 9px;border:1px solid #2e2e26;border-radius:20px;text-decoration:none;white-space:nowrap;transition:all .15s}.tp-pill:hover{border-color:#3e3e34;color:#b8b0a0}</style>
+<div class="app-container">
+        <div class="sidebar-overlay hidden" id="sidebar-overlay"></div>
+        <aside class="sidebar">
+            <div class="sidebar-header">
+                <div class="logo"><span class="logo-text">Forge</span><span class="logo-sub">Powered by DroneClear</span></div>
+            </div>
+            <nav class="sidebar-menu" style="border-top:1px solid var(--border-color);display:flex;flex-direction:column;gap:8px;padding-top:16px;">
+                <a href="/" class="btn btn-menu"><i class="ph ph-wrench"></i> The Bench</a>
+                <a href="/builder/" class="btn btn-menu"><i class="ph ph-magic-wand"></i> Model Builder</a>
+                <a href="/guide/" class="btn btn-menu"><i class="ph ph-list-checks"></i> Build Guide</a>
+                <a href="/audit/" class="btn btn-menu"><i class="ph ph-clipboard-text"></i> Build Audit</a>
+                <a href="/academy/" class="btn btn-menu"><i class="ph ph-graduation-cap"></i> FPV Academy</a>
+                <a href="/platforms/" class="btn btn-menu"><i class="ph ph-shield-check"></i> Platforms</a>
+                <a href="/contribute/" class="btn btn-menu active"><i class="ph ph-plus-circle"></i> Contribute</a>
+                <a href="https://nvmilldoitmyself.com" target="_blank" class="btn btn-menu"><i class="ph ph-book-open-text"></i> Handbook</a>
+            </nav>
+        </aside>
+
+        <main class="main-content">
+            <div style="padding:24px" class="contribute-form">
+                <div style="display:flex;align-items:center;gap:12px;margin-bottom:20px">
+                    <button class="btn btn-icon mobile-menu-btn" onclick="document.querySelector('.sidebar').classList.toggle('open');document.getElementById('sidebar-overlay').classList.toggle('hidden')" style="flex-shrink:0"><i class="ph ph-list"></i></button>
+                    <h2 style="margin:0;font-size:18px"><i class="ph ph-plus-circle" style="color:var(--accent)"></i> Contribute to the Database</h2>
+                </div>
+                <div class="error-msg" id="errorMsg"></div>
+                <div class="success-msg" id="successMsg">
+                    <h3><i class="ph ph-check-circle"></i> Submission Received!</h3>
+                    <p>Your contribution has been submitted for review.</p>
+                    <p style="margin-top:8px"><a id="issueLink" href="#" target="_blank">View on GitHub →</a></p>
+                    <button onclick="resetForm()" style="margin-top:16px;padding:10px 24px;border-radius:8px;border:1px solid var(--accent);background:transparent;color:var(--accent);cursor:pointer;font-family:inherit;font-weight:600">Submit Another</button>
+                </div>
+
+                <div id="formContainer">
+                    <!-- Type Toggle -->
+                    <div class="type-toggle">
+                        <button class="type-btn active" onclick="setType('platform',this)" id="btnPlatform">
+                            <i class="ph ph-drone"></i>Platform / Drone
+                        </button>
+                        <button class="type-btn" onclick="setType('component',this)" id="btnComponent">
+                            <i class="ph ph-cpu"></i>Component / Part
+                        </button>
+                        <button class="type-btn" onclick="setType('csv',this)" id="btnCsv">
+                            <i class="ph ph-file-csv"></i>Bulk CSV
+                        </button>
+                    </div>
+
+                    <!-- Common Fields -->
+                    <div class="form-section">
+                        <h3><i class="ph ph-identification-card"></i> Basic Information</h3>
+                        <div class="field">
+                            <label>Product / Platform Name <span class="req">*</span></label>
+                            <input type="text" id="name" placeholder="e.g. Spirit HL, Brave 55A ESC, VANDAL Motor" required>
+                        </div>
+                        <div class="field-row">
+                            <div class="field">
+                                <label>Manufacturer <span class="req">*</span></label>
+                                <input type="text" id="manufacturer" placeholder="e.g. Ascent Aerosystems">
+                            </div>
+                            <div class="field">
+                                <label>Country <span class="req">*</span></label>
+                                <input type="text" id="country" placeholder="e.g. USA, Ukraine, Israel">
+                            </div>
+                        </div>
+                        <div class="field">
+                            <label>Description <span class="req">*</span></label>
+                            <textarea id="description" placeholder="2-3 sentences. What is it, what does it do, why does it matter?"></textarea>
+                        </div>
+                        <div class="field">
+                            <label>Source URL</label>
+                            <input type="url" id="source_url" placeholder="https://manufacturer.com/product-page">
+                            <small>Manufacturer page, datasheet, or article</small>
+                        </div>
+                    </div>
+
+                    <!-- Platform-specific fields -->
+                    <div class="dynamic-fields show" id="platformFields">
+                        <div class="form-section">
+                            <h3><i class="ph ph-airplane-tilt"></i> Platform Specifications</h3>
+                            <div class="field-row">
+                                <div class="field">
+                                    <label>Category <span class="req">*</span></label>
+                                    <select id="p_category">
+                                        <option value="">Select...</option>
+                                        <option value="fpv_strike">FPV Strike</option>
+                                        <option value="loitering_munition">Loitering Munition</option>
+                                        <option value="tactical_isr">Tactical ISR</option>
+                                        <option value="fixed_wing_isr">Fixed-Wing ISR</option>
+                                        <option value="male_ucav">MALE UCAV</option>
+                                        <option value="heavy_ucav">Heavy / Stealth UCAV</option>
+                                        <option value="deep_strike">Deep Strike</option>
+                                        <option value="heavy_lift">Heavy Lift</option>
+                                        <option value="armed_multirotor">Armed Multirotor</option>
+                                        <option value="maritime_isr">Maritime ISR</option>
+                                        <option value="swarm_autonomy">Swarm / Autonomy</option>
+                                        <option value="special_purpose">Special Purpose</option>
+                                    </select>
+                                </div>
+                                <div class="field">
+                                    <label>Type</label>
+                                    <select id="p_type">
+                                        <option value="">Select...</option>
+                                        <option value="multirotor">Multirotor</option>
+                                        <option value="fixed_wing">Fixed Wing</option>
+                                        <option value="vtol_fixed_wing">VTOL Fixed Wing</option>
+                                        <option value="helicopter">Helicopter</option>
+                                        <option value="jet">Jet</option>
+                                        <option value="coaxial">Coaxial</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="field-row-3">
+                                <div class="field">
+                                    <label>MTOW (kg)</label>
+                                    <input type="number" id="p_mtow" step="0.1" placeholder="e.g. 9.5">
+                                </div>
+                                <div class="field">
+                                    <label>Payload (kg)</label>
+                                    <input type="number" id="p_payload" step="0.1" placeholder="e.g. 3.6">
+                                </div>
+                                <div class="field">
+                                    <label>Endurance (min)</label>
+                                    <input type="number" id="p_endurance" placeholder="e.g. 50">
+                                </div>
+                            </div>
+                            <div class="field-row-3">
+                                <div class="field">
+                                    <label>Range (km)</label>
+                                    <input type="number" id="p_range" step="0.1" placeholder="e.g. 10">
+                                </div>
+                                <div class="field">
+                                    <label>Max Speed (km/h)</label>
+                                    <input type="number" id="p_speed" placeholder="e.g. 120">
+                                </div>
+                                <div class="field">
+                                    <label>Propulsion</label>
+                                    <input type="text" id="p_propulsion" placeholder="e.g. electric, turboprop">
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Component-specific fields -->
+                    <div class="dynamic-fields" id="componentFields">
+                        <div class="form-section">
+                            <h3><i class="ph ph-cpu"></i> Component Specifications</h3>
+                            <div class="field">
+                                <label>Category <span class="req">*</span></label>
+                                <select id="c_category" onchange="showCategoryFields(this.value)">
+                                    <option value="">Select category...</option>
+                                    <option value="motors">Motors</option>
+                                    <option value="escs">ESCs</option>
+                                    <option value="flight_controllers">Flight Controllers</option>
+                                    <option value="stacks">FC/ESC Stacks</option>
+                                    <option value="batteries">Batteries</option>
+                                    <option value="frames">Frames</option>
+                                    <option value="fpv_cameras">FPV Cameras</option>
+                                    <option value="video_transmitters">Video Transmitters</option>
+                                    <option value="receivers">Receivers</option>
+                                    <option value="antennas">Antennas</option>
+                                    <option value="propellers">Propellers</option>
+                                    <option value="gps_modules">GPS Modules</option>
+                                    <option value="mesh_radios">Mesh Radios / Datalinks</option>
+                                    <option value="thermal_cameras">Thermal Cameras</option>
+                                    <option value="lidar">LiDAR & Mapping Payloads</option>
+                                    <option value="companion_computers">Companion Computers</option>
+                                    <option value="integrated_stacks">Integrated FC + Compute</option>
+                                    <option value="sensors">Sensors (Lidar/Radar/IMU)</option>
+                                    <option value="counter_uas">Counter-UAS</option>
+                                    <option value="esad">ESAD / Safe-and-Arm</option>
+                                </select>
+                            </div>
+                            <!-- Dynamic spec fields render here -->
+                            <div id="categorySpecFields"></div>
+                        </div>
+                    </div>
+
+                    <!-- CSV Bulk Upload -->
+                    <div class="dynamic-fields" id="csvFields">
+                        <div class="form-section">
+                            <h3><i class="ph ph-file-csv"></i> Bulk CSV Upload</h3>
+                            <p style="font-size:13px;color:var(--text-secondary);margin-bottom:16px">
+                                Upload a CSV file with multiple platforms or components. Download a template first, fill it out, then upload.
+                            </p>
+                            <div class="field-row" style="margin-bottom:16px">
+                                <button onclick="downloadTemplate('platform')" style="padding:10px 16px;border-radius:8px;border:1px solid var(--accent);background:transparent;color:var(--accent);cursor:pointer;font-family:inherit;font-weight:600;font-size:13px;width:100%">
+                                    <i class="ph ph-download-simple"></i> Platform Template
+                                </button>
+                                <button onclick="downloadTemplate('component')" style="padding:10px 16px;border-radius:8px;border:1px solid var(--accent);background:transparent;color:var(--accent);cursor:pointer;font-family:inherit;font-weight:600;font-size:13px;width:100%">
+                                    <i class="ph ph-download-simple"></i> Component Template
+                                </button>
+                            </div>
+                            <div class="field">
+                                <label>Upload Filled CSV <span class="req">*</span></label>
+                                <input type="file" id="csvFile" accept=".csv,.tsv" onchange="parseCSV(this)" style="padding:12px;border-style:dashed">
+                                <small>Max 100 rows per upload. CSV must match the template format.</small>
+                            </div>
+                            <div id="csvPreview" style="display:none">
+                                <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+                                    <span style="font-size:14px;font-weight:600;color:var(--accent)" id="csvCount"></span>
+                                    <span style="font-size:12px;color:var(--text-muted)" id="csvErrors"></span>
+                                </div>
+                                <div id="csvTable" style="max-height:300px;overflow:auto;border-radius:8px;border:1px solid var(--border-color)"></div>
+                            </div>
+                        </div>
+                        <div class="form-section">
+                            <h3><i class="ph ph-user"></i> About You (optional)</h3>
+                            <div class="field-row">
+                                <div class="field">
+                                    <label>Your Name / Handle</label>
+                                    <input type="text" id="csvSubmitter" placeholder="e.g. DroneWuKong">
+                                </div>
+                                <div class="field">
+                                    <label>Email</label>
+                                    <input type="email" id="csvEmail" placeholder="Optional">
+                                </div>
+                            </div>
+                        </div>
+                        <button class="submit-btn" id="csvSubmitBtn" onclick="submitCSV()" disabled>
+                            <i class="ph ph-paper-plane-tilt"></i> Submit CSV for Review
+                        </button>
+                        <div style="text-align:center;margin-top:12px;font-size:11px;color:var(--text-muted)">
+                            Each row creates a separate GitHub Issue for review.
+                        </div>
+                    </div>
+
+                    <!-- Compliance -->
+                    <div class="form-section">
+                        <h3><i class="ph ph-shield-check"></i> Compliance & Status</h3>
+                        <div class="field-row-3">
+                            <div class="field">
+                                <label>NDAA Compliant</label>
+                                <select id="ndaa"><option value="">Unknown</option><option value="yes">Yes</option><option value="no">No</option></select>
+                            </div>
+                            <div class="field">
+                                <label>Blue UAS Listed</label>
+                                <select id="blue_uas"><option value="">Unknown</option><option value="yes">Yes</option><option value="no">No</option></select>
+                            </div>
+                            <div class="field">
+                                <label>Combat Proven</label>
+                                <select id="combat_proven"><option value="">Unknown</option><option value="yes">Yes</option><option value="no">No</option></select>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Submitter -->
+                    <div class="form-section">
+                        <h3><i class="ph ph-user"></i> About You (optional)</h3>
+                        <div class="field-row">
+                            <div class="field">
+                                <label>Your Name / Handle</label>
+                                <input type="text" id="submitter" placeholder="e.g. DroneWuKong">
+                            </div>
+                            <div class="field">
+                                <label>Email (for follow-up only)</label>
+                                <input type="email" id="email" placeholder="Optional">
+                            </div>
+                        </div>
+                    </div>
+
+                    <button class="submit-btn" id="submitBtn" onclick="submitContribution()">
+                        <i class="ph ph-paper-plane-tilt"></i> Submit for Review
+                    </button>
+                    <div style="text-align:center;margin-top:12px;font-size:11px;color:var(--text-muted)">
+                        Submissions are reviewed before being added to the database. A GitHub Issue will be created for tracking.
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+<script>
+let submissionType = 'platform';
+
+function setType(type, btn) {
+    submissionType = type;
+    document.querySelectorAll('.type-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    document.getElementById('platformFields').classList.toggle('show', type === 'platform');
+    document.getElementById('componentFields').classList.toggle('show', type === 'component');
+    document.getElementById('csvFields').classList.toggle('show', type === 'csv');
+    // Hide single-entry sections when in CSV mode
+    const singleSections = document.querySelectorAll('.form-section');
+    const csvEl = document.getElementById('csvFields');
+    singleSections.forEach(s => {
+        if (!csvEl.contains(s)) s.style.display = type === 'csv' ? 'none' : '';
+    });
+    document.getElementById('submitBtn').style.display = type === 'csv' ? 'none' : '';
+}
+
+async function submitContribution() {
+    const btn = document.getElementById('submitBtn');
+    const errEl = document.getElementById('errorMsg');
+    errEl.style.display = 'none';
+
+    // Validate required fields
+    const name = document.getElementById('name').value.trim();
+    const manufacturer = document.getElementById('manufacturer').value.trim();
+    const country = document.getElementById('country').value.trim();
+    const description = document.getElementById('description').value.trim();
+
+    if (!name || !manufacturer || !country || !description) {
+        errEl.textContent = 'Please fill in all required fields (Name, Manufacturer, Country, Description)';
+        errEl.style.display = 'block';
+        return;
+    }
+
+    const category = submissionType === 'platform'
+        ? document.getElementById('p_category').value
+        : document.getElementById('c_category').value;
+
+    if (!category) {
+        errEl.textContent = 'Please select a category';
+        errEl.style.display = 'block';
+        return;
+    }
+
+    btn.disabled = true;
+    btn.innerHTML = '<i class="ph ph-circle-notch"></i> Submitting...';
+
+    const payload = {
+        type: submissionType,
+        name, manufacturer, country, description,
+        category,
+        source_url: document.getElementById('source_url').value.trim(),
+        compliance: {
+            ndaa: document.getElementById('ndaa').value,
+            blue_uas: document.getElementById('blue_uas').value,
+            combat_proven: document.getElementById('combat_proven').value,
+        },
+        submitter: document.getElementById('submitter').value.trim(),
+        email: document.getElementById('email').value.trim(),
+    };
+
+    if (submissionType === 'platform') {
+        payload.specs = {
+            type: document.getElementById('p_type').value,
+            mtow_kg: parseFloat(document.getElementById('p_mtow').value) || null,
+            payload_kg: parseFloat(document.getElementById('p_payload').value) || null,
+            endurance_min: parseInt(document.getElementById('p_endurance').value) || null,
+            range_km: parseFloat(document.getElementById('p_range').value) || null,
+            speed_max_kmh: parseInt(document.getElementById('p_speed').value) || null,
+            propulsion: document.getElementById('p_propulsion').value.trim(),
+        };
+    } else {
+        payload.component_specs = getComponentSpecs(category);
+        // Enforce 90% completion
+        if (!validateCompletion(category)) {
+            errEl.textContent = 'At least 90% of the spec fields must be filled. Check the completion bar.';
+            errEl.style.display = 'block';
+            btn.disabled = false;
+            btn.innerHTML = '<i class="ph ph-paper-plane-tilt"></i> Submit for Review';
+            return;
+        }
+    }
+
+    try {
+        const res = await fetch('https://nvmilldoitmyself.com/.netlify/functions/contribution-submit', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload),
+        });
+
+        const data = await res.json();
+
+        if (res.ok && data.issue_url) {
+            document.getElementById('formContainer').style.display = 'none';
+            document.getElementById('successMsg').style.display = 'block';
+            document.getElementById('issueLink').href = data.issue_url;
+        } else {
+            throw new Error(data.error || 'Submission failed');
+        }
+    } catch (err) {
+        errEl.textContent = 'Submission failed: ' + err.message;
+        errEl.style.display = 'block';
+    }
+
+    btn.disabled = false;
+    btn.innerHTML = '<i class="ph ph-paper-plane-tilt"></i> Submit for Review';
+}
+
+function resetForm() {
+    document.getElementById('formContainer').style.display = 'block';
+    document.getElementById('successMsg').style.display = 'none';
+    document.querySelectorAll('input, textarea, select').forEach(el => {
+        if (el.type !== 'button' && el.type !== 'submit') el.value = '';
+    });
+    setType('platform', document.getElementById('btnPlatform'));
+}
+
+// ── Category-Specific Spec Fields (DroneClear Schema) ──
+// Each field matches the actual JSON schema in the parts database.
+// 90% of fields must be filled or submission is rejected.
+
+const CF = {
+    motors: [
+        {id:'stator_size',label:'Stator Size',ph:'e.g. 2207, 2806.5',type:'text',req:1},
+        {id:'kv_rating',label:'KV Rating',ph:'e.g. 1750',type:'number',req:1},
+        {id:'cell_count_min',label:'Min Cells (S)',ph:'e.g. 4',type:'number',req:1},
+        {id:'cell_count_max',label:'Max Cells (S)',ph:'e.g. 6',type:'number',req:1},
+        {id:'weight_g',label:'Weight (g)',ph:'e.g. 33.5',type:'number',step:'0.1',req:1},
+        {id:'motor_mount_bolt_size',label:'Mount Bolt',ph:'e.g. M3',type:'text',req:1},
+        {id:'motor_mount_hole_spacing_mm',label:'Mount Spacing (mm)',ph:'e.g. 16x16',type:'text'},
+        {id:'shaft_size_mm',label:'Shaft (mm)',ph:'e.g. 5',type:'number',step:'0.1'},
+        {id:'motor_count',label:'Qty per Pack',ph:'e.g. 1',type:'number'},
+        {id:'price_usd',label:'Price (USD)',ph:'e.g. 24.99',type:'number',step:'0.01',req:1},
+        {id:'link',label:'Product URL',ph:'https://...',type:'url'},
+    ],
+    escs: [
+        {id:'continuous_current_per_motor_a',label:'Continuous A/motor',ph:'e.g. 55',type:'number',req:1},
+        {id:'burst_current_a',label:'Burst Current (A)',ph:'e.g. 65',type:'number'},
+        {id:'cell_count_min',label:'Min Cells (S)',ph:'e.g. 3',type:'number',req:1},
+        {id:'cell_count_max',label:'Max Cells (S)',ph:'e.g. 6',type:'number',req:1},
+        {id:'esc_firmware',label:'Firmware',type:'select',opts:['BLHeli_32','BLHeli_S','AM32','KISS','Other'],req:1},
+        {id:'esc_format',label:'Format',type:'select',opts:['4-in-1','Single','2-in-1','AIO'],req:1},
+        {id:'motor_output_count',label:'Motor Outputs',ph:'e.g. 4',type:'number',req:1},
+        {id:'mounting_pattern_mm',label:'Mounting (mm)',ph:'e.g. 30.5x30.5',type:'text',req:1},
+        {id:'price_usd',label:'Price (USD)',ph:'e.g. 49.99',type:'number',step:'0.01',req:1},
+        {id:'link',label:'Product URL',ph:'https://...',type:'url'},
+    ],
+    flight_controllers: [
+        {id:'mcu_family',label:'MCU',type:'select',opts:['STM32F405','STM32F722','STM32F745','STM32H743','STM32H750','AT32F435','RP2040','Other'],req:1},
+        {id:'imu',label:'IMU / Gyro',ph:'e.g. BMI270, ICM-42688-P',type:'text',req:1},
+        {id:'firmware_targets',label:'Firmware Support',ph:'e.g. Betaflight, iNav, ArduPilot',type:'text',req:1},
+        {id:'uart_count',label:'UART Count',ph:'e.g. 6',type:'number',req:1},
+        {id:'has_osd',label:'OSD Chip',type:'select',opts:['Yes','No','AT7456E','None'],req:1},
+        {id:'cell_count_min',label:'Min Cells (S)',ph:'e.g. 3',type:'number',req:1},
+        {id:'cell_count_max',label:'Max Cells (S)',ph:'e.g. 6',type:'number',req:1},
+        {id:'mounting_hole_size',label:'Mounting',ph:'e.g. 30.5x30.5',type:'text',req:1},
+        {id:'has_barometer',label:'Barometer',type:'select',opts:['Yes','No']},
+        {id:'price_usd',label:'Price (USD)',ph:'e.g. 34.99',type:'number',step:'0.01',req:1},
+        {id:'link',label:'Product URL',ph:'https://...',type:'url'},
+    ],
+    stacks: [
+        {id:'mcu_family',label:'FC MCU',type:'select',opts:['STM32F405','STM32F722','STM32H743','STM32H750','AT32F435','Other'],req:1},
+        {id:'imu',label:'IMU / Gyro',ph:'e.g. BMI270',type:'text',req:1},
+        {id:'esc_current_a',label:'ESC Current (A)',ph:'e.g. 55',type:'number',req:1},
+        {id:'esc_firmware',label:'ESC Firmware',type:'select',opts:['BLHeli_32','BLHeli_S','AM32','Other'],req:1},
+        {id:'cell_count_min',label:'Min Cells',ph:'e.g. 3',type:'number',req:1},
+        {id:'cell_count_max',label:'Max Cells',ph:'e.g. 6',type:'number',req:1},
+        {id:'is_aio',label:'AIO (all-in-one)?',type:'select',opts:['Yes','No'],req:1},
+        {id:'mounting_hole_size',label:'Mounting (mm)',ph:'e.g. 30.5x30.5',type:'text',req:1},
+        {id:'price_usd',label:'Price (USD)',ph:'e.g. 79.99',type:'number',step:'0.01',req:1},
+        {id:'link',label:'Product URL',ph:'https://...',type:'url'},
+    ],
+    batteries: [
+        {id:'capacity_mah',label:'Capacity (mAh)',ph:'e.g. 1500',type:'number',req:1},
+        {id:'cell_count',label:'Cell Count (S)',ph:'e.g. 6',type:'number',req:1},
+        {id:'chemistry',label:'Chemistry',type:'select',opts:['LiPo','Li-Ion','LiHV','LiFe','Solid State'],req:1},
+        {id:'discharge_rate_c',label:'Discharge Rate (C)',ph:'e.g. 120',type:'number',req:1},
+        {id:'weight_g',label:'Weight (g)',ph:'e.g. 248',type:'number',step:'0.1',req:1},
+        {id:'battery_connector',label:'Connector',type:'select',opts:['XT60','XT30','XT90','EC5','Proprietary','Other'],req:1},
+        {id:'dimensions_mm',label:'Dimensions (mm)',ph:'e.g. 76x38x34',type:'text'},
+        {id:'price_usd',label:'Price (USD)',ph:'e.g. 32.99',type:'number',step:'0.01',req:1},
+        {id:'link',label:'Product URL',ph:'https://...',type:'url'},
+    ],
+    frames: [
+        {id:'arm_configuration',label:'Config',type:'select',opts:['True-X','Stretch-X','Deadcat','H','Plus','Other'],req:1},
+        {id:'motor_count',label:'Motor Count',ph:'e.g. 4',type:'number',req:1},
+        {id:'prop_size_in',label:'Prop Size (in)',ph:'e.g. 5',type:'number',step:'0.1',req:1},
+        {id:'material',label:'Material',type:'select',opts:['Carbon Fiber','TPU + CF','Aluminum','Injection Molded','Other'],req:1},
+        {id:'fc_mounting_patterns_mm',label:'FC Mount (mm)',ph:'e.g. 30.5x30.5, 20x20',type:'text',req:1},
+        {id:'camera_mount_size',label:'Camera Size',type:'select',opts:['Micro','Nano','Full','DJI O3','DJI O4','Other'],req:1},
+        {id:'weight_g',label:'Weight (g)',ph:'e.g. 115',type:'number',step:'0.1',req:1},
+        {id:'wheelbase_mm',label:'Wheelbase (mm)',ph:'e.g. 225',type:'number'},
+        {id:'price_usd',label:'Price (USD)',ph:'e.g. 39.99',type:'number',step:'0.01',req:1},
+        {id:'link',label:'Product URL',ph:'https://...',type:'url'},
+    ],
+    fpv_cameras: [
+        {id:'video_system',label:'Video System',type:'select',opts:['DJI O3','DJI O4','HDZero','Walksnail','Analog','OpenIPC'],req:1},
+        {id:'sensor_size',label:'Sensor Size',ph:'e.g. 1/1.8, 1/2.7',type:'text',req:1},
+        {id:'resolution',label:'Resolution',ph:'e.g. 4K, 1080p',type:'text',req:1},
+        {id:'fov_deg',label:'FOV (degrees)',ph:'e.g. 155',type:'number',req:1},
+        {id:'camera_size',label:'Camera Size',type:'select',opts:['Full','Micro','Nano'],req:1},
+        {id:'weight_g',label:'Weight (g)',ph:'e.g. 28',type:'number',step:'0.1',req:1},
+        {id:'latency_ms',label:'Latency (ms)',ph:'e.g. 22',type:'number'},
+        {id:'price_usd',label:'Price (USD)',ph:'e.g. 89.99',type:'number',step:'0.01',req:1},
+        {id:'link',label:'Product URL',ph:'https://...',type:'url'},
+    ],
+    video_transmitters: [
+        {id:'video_system',label:'Video System',type:'select',opts:['DJI O3','DJI O4','HDZero','Walksnail','Analog','OpenIPC'],req:1},
+        {id:'max_power_mw',label:'Max Power (mW)',ph:'e.g. 1000',type:'number',req:1},
+        {id:'frequency_ghz',label:'Frequency (GHz)',ph:'e.g. 5.8',type:'number',step:'0.1',req:1},
+        {id:'channels',label:'Channels',ph:'e.g. 40',type:'number'},
+        {id:'antenna_connector',label:'Antenna Connector',type:'select',opts:['U.FL/IPEX','MMCX','SMA','RP-SMA'],req:1},
+        {id:'weight_g',label:'Weight (g)',ph:'e.g. 8',type:'number',step:'0.1',req:1},
+        {id:'price_usd',label:'Price (USD)',ph:'e.g. 29.99',type:'number',step:'0.01',req:1},
+        {id:'link',label:'Product URL',ph:'https://...',type:'url'},
+    ],
+    receivers: [
+        {id:'protocol',label:'Protocol',type:'select',opts:['ELRS','CRSF/Crossfire','Ghost','FrSky ACCESS','FrSky ACCST','FlySky IBUS','SBUS','Other'],req:1},
+        {id:'frequency_ghz',label:'Frequency (GHz)',type:'select',opts:['2.4','900/868','Dual-Band'],req:1},
+        {id:'diversity',label:'Diversity',type:'select',opts:['Yes','No'],req:1},
+        {id:'antenna_count',label:'Antenna Count',ph:'e.g. 2',type:'number',req:1},
+        {id:'weight_g',label:'Weight (g)',ph:'e.g. 2.5',type:'number',step:'0.1',req:1},
+        {id:'has_wifi',label:'WiFi Backpack',type:'select',opts:['Yes','No']},
+        {id:'price_usd',label:'Price (USD)',ph:'e.g. 14.99',type:'number',step:'0.01',req:1},
+        {id:'link',label:'Product URL',ph:'https://...',type:'url'},
+    ],
+    antennas: [
+        {id:'antenna_type',label:'Type',type:'select',opts:['Omni Dipole','Patch','Helical','Pagoda','Lollipop','Moxon','Yagi','PCB','Other'],req:1},
+        {id:'frequency_ghz',label:'Frequency (GHz)',ph:'e.g. 5.8',type:'number',step:'0.1',req:1},
+        {id:'gain_dbi',label:'Gain (dBi)',ph:'e.g. 5.8',type:'number',step:'0.1',req:1},
+        {id:'polarization',label:'Polarization',type:'select',opts:['RHCP','LHCP','Linear','Dual'],req:1},
+        {id:'connector',label:'Connector',type:'select',opts:['SMA','RP-SMA','U.FL/IPEX','MMCX'],req:1},
+        {id:'weight_g',label:'Weight (g)',ph:'e.g. 12',type:'number',step:'0.1'},
+        {id:'price_usd',label:'Price (USD)',ph:'e.g. 9.99',type:'number',step:'0.01',req:1},
+        {id:'link',label:'Product URL',ph:'https://...',type:'url'},
+    ],
+    propellers: [
+        {id:'diameter_in',label:'Diameter (in)',ph:'e.g. 5.1',type:'number',step:'0.1',req:1},
+        {id:'pitch_in',label:'Pitch (in)',ph:'e.g. 3.6',type:'number',step:'0.1',req:1},
+        {id:'blade_count',label:'Blade Count',type:'select',opts:['2','3','4'],req:1},
+        {id:'material',label:'Material',type:'select',opts:['PC','PC+Glass','Carbon Fiber','Nylon','Other'],req:1},
+        {id:'hub_type',label:'Hub Type',type:'select',opts:['T-Mount','Press-Fit','Bolt-On','Other'],req:1},
+        {id:'weight_g',label:'Weight per Prop (g)',ph:'e.g. 4.2',type:'number',step:'0.1',req:1},
+        {id:'props_per_pack',label:'Props per Pack',ph:'e.g. 16',type:'number'},
+        {id:'price_usd',label:'Price/Pack (USD)',ph:'e.g. 3.99',type:'number',step:'0.01',req:1},
+        {id:'link',label:'Product URL',ph:'https://...',type:'url'},
+    ],
+    gps_modules: [
+        {id:'chipset',label:'Chipset',ph:'e.g. u-blox M10, M9N',type:'text',req:1},
+        {id:'constellations',label:'Constellations',ph:'e.g. GPS, GLONASS, Galileo, BeiDou',type:'text',req:1},
+        {id:'has_compass',label:'Built-in Compass',type:'select',opts:['Yes','No'],req:1},
+        {id:'update_rate_hz',label:'Update Rate (Hz)',ph:'e.g. 10',type:'number',req:1},
+        {id:'weight_g',label:'Weight (g)',ph:'e.g. 8',type:'number',step:'0.1',req:1},
+        {id:'price_usd',label:'Price (USD)',ph:'e.g. 19.99',type:'number',step:'0.01',req:1},
+        {id:'link',label:'Product URL',ph:'https://...',type:'url'},
+    ],
+    mesh_radios: [
+        {id:'band',label:'Band',ph:'e.g. 2.4 GHz, 900 MHz, L/S-band',type:'text',req:1},
+        {id:'max_power_w',label:'Max TX Power (W)',ph:'e.g. 2',type:'number',step:'0.1',req:1},
+        {id:'range_km',label:'Range (km)',ph:'e.g. 15',type:'number',req:1},
+        {id:'throughput_mbps',label:'Throughput (Mbps)',ph:'e.g. 50',type:'number',req:1},
+        {id:'encryption',label:'Encryption',type:'select',opts:['AES-256','AES-128','FIPS 140-2','None','Other'],req:1},
+        {id:'form_factor',label:'Form Factor',ph:'e.g. embedded OEM, standalone',type:'text',req:1},
+        {id:'weight_g',label:'Weight (g)',ph:'e.g. 180',type:'number',step:'0.1',req:1},
+        {id:'price_usd',label:'Price (USD)',ph:'e.g. 2500',type:'number',step:'0.01'},
+        {id:'link',label:'Product URL',ph:'https://...',type:'url'},
+    ],
+    thermal_cameras: [
+        {id:'resolution',label:'Resolution',ph:'e.g. 640x512',type:'text',req:1},
+        {id:'pixel_pitch_um',label:'Pixel Pitch (µm)',ph:'e.g. 12',type:'number',req:1},
+        {id:'spectral_range',label:'Spectral Range',ph:'e.g. 8-14 µm (LWIR)',type:'text',req:1},
+        {id:'frame_rate_hz',label:'Frame Rate (Hz)',ph:'e.g. 30',type:'number',req:1},
+        {id:'fov_deg',label:'FOV (degrees)',ph:'e.g. 40',type:'number'},
+        {id:'weight_g',label:'Weight (g)',ph:'e.g. 72',type:'number',step:'0.1',req:1},
+        {id:'interface',label:'Interface',type:'select',opts:['USB','Ethernet','MIPI','Analog','Other'],req:1},
+        {id:'price_usd',label:'Price (USD)',ph:'e.g. 4500',type:'number',step:'0.01'},
+        {id:'link',label:'Product URL',ph:'https://...',type:'url'},
+    ],
+    companion_computers: [
+        {id:'processor',label:'Processor',ph:'e.g. Qualcomm QRB5165, Jetson Orin',type:'text',req:1},
+        {id:'compute_power',label:'AI Compute (TOPS)',ph:'e.g. 15',type:'number',req:1},
+        {id:'ram_gb',label:'RAM (GB)',ph:'e.g. 8',type:'number',req:1},
+        {id:'interfaces',label:'Key Interfaces',ph:'e.g. USB3, Ethernet, MIPI CSI, UART',type:'text',req:1},
+        {id:'os_support',label:'OS Support',ph:'e.g. Linux, ROS2, PX4',type:'text',req:1},
+        {id:'weight_g',label:'Weight (g)',ph:'e.g. 40',type:'number',step:'0.1',req:1},
+        {id:'power_w',label:'Power Draw (W)',ph:'e.g. 12',type:'number',step:'0.1',req:1},
+        {id:'price_usd',label:'Price (USD)',ph:'e.g. 799',type:'number',step:'0.01'},
+        {id:'link',label:'Product URL',ph:'https://...',type:'url'},
+    ],
+    sensors: [
+        {id:'sensor_type',label:'Sensor Type',type:'select',opts:['LiDAR','Radar','IMU','Optical Flow','Barometer','Rangefinder','AHRS','Other'],req:1},
+        {id:'range_m',label:'Range (m)',ph:'e.g. 200',type:'number',req:1},
+        {id:'accuracy',label:'Accuracy',ph:'e.g. ±2cm, ±0.1°',type:'text',req:1},
+        {id:'update_rate_hz',label:'Update Rate (Hz)',ph:'e.g. 100',type:'number',req:1},
+        {id:'interface',label:'Interface',type:'select',opts:['I2C','SPI','UART','Ethernet','CAN','USB'],req:1},
+        {id:'weight_g',label:'Weight (g)',ph:'e.g. 15',type:'number',step:'0.1',req:1},
+        {id:'price_usd',label:'Price (USD)',ph:'e.g. 149',type:'number',step:'0.01',req:1},
+        {id:'link',label:'Product URL',ph:'https://...',type:'url'},
+    ],
+    counter_uas: [
+        {id:'defeat_method',label:'Defeat Method',type:'select',opts:['RF Jamming','GPS Spoofing','Kinetic','Directed Energy','Cyber','Net/Capture','Combined'],req:1},
+        {id:'detection_range_km',label:'Detection Range (km)',ph:'e.g. 5',type:'number',req:1},
+        {id:'defeat_range_km',label:'Defeat Range (km)',ph:'e.g. 2',type:'number',req:1},
+        {id:'frequency_bands',label:'Frequency Bands',ph:'e.g. 2.4 GHz, 5.8 GHz, 900 MHz',type:'text',req:1},
+        {id:'form_factor',label:'Form Factor',type:'select',opts:['Man-portable','Vehicle-mounted','Fixed Site','Handheld','Drone-mounted'],req:1},
+        {id:'weight_kg',label:'Weight (kg)',ph:'e.g. 15',type:'number',step:'0.1',req:1},
+        {id:'price_usd',label:'Price (USD)',ph:'e.g. 50000',type:'number',step:'0.01'},
+        {id:'link',label:'Product URL',ph:'https://...',type:'url'},
+    ],
+    esad: [
+        {id:'device_type',label:'Device Type',type:'select',opts:['Electronic Safe & Arm','Fuze','Initiator','Arming Unit','Complete System'],req:1},
+        {id:'activation_method',label:'Activation',type:'select',opts:['Electronic','Mechanical','Electromechanical','Pyrotechnic'],req:1},
+        {id:'safe_arm_time_ms',label:'Safe-to-Arm Time (ms)',ph:'e.g. 200',type:'number',req:1},
+        {id:'payload_interface',label:'Payload Interface',ph:'e.g. EBW, SCB, contact',type:'text',req:1},
+        {id:'weight_g',label:'Weight (g)',ph:'e.g. 45',type:'number',step:'0.1',req:1},
+        {id:'mil_spec',label:'Mil-Spec',ph:'e.g. MIL-STD-1316, MIL-STD-882',type:'text'},
+        {id:'price_usd',label:'Price (USD)',ph:'e.g. 800',type:'number',step:'0.01'},
+        {id:'link',label:'Product URL',ph:'https://...',type:'url'},
+    ],
+};
+
+function showCategoryFields(cat) {
+    const container = document.getElementById('categorySpecFields');
+    const fields = CF[cat];
+    if (!fields) { container.innerHTML = ''; updateCompletionBar(cat); return; }
+    let html = '<div style="margin-top:16px;margin-bottom:8px;display:flex;justify-content:space-between;align-items:center"><span style="font-size:12px;color:var(--text-muted)">DroneClear schema — fill <strong style=color:var(--accent)>90%+</strong> to submit</span><span id="completionPct" style="font-family:JetBrains Mono;font-size:13px;font-weight:700;color:var(--accent)">0%</span></div>';
+    html += '<div style="height:4px;background:var(--surface-primary,#111);border-radius:2px;margin-bottom:16px;overflow:hidden"><div id="completionBar" style="height:100%;width:0%;background:var(--accent);border-radius:2px;transition:width .3s"></div></div>';
+    for (let i = 0; i < fields.length; i += 2) {
+        html += '<div class="field-row">';
+        for (let j = i; j < Math.min(i + 2, fields.length); j++) {
+            const f = fields[j];
+            html += '<div class="field"><label>' + f.label + (f.req ? ' <span class="req">*</span>' : '') + '</label>';
+            if (f.type === 'select') {
+                html += '<select id="cs_' + f.id + '" onchange="updateCompletionBar(\'' + cat + '\')"><option value="">Select...</option>';
+                (f.opts || []).forEach(o => { html += '<option value="' + o + '">' + o + '</option>'; });
+                html += '</select>';
+            } else {
+                html += '<input type="' + (f.type || 'text') + '" id="cs_' + f.id + '"' + (f.ph ? ' placeholder="' + f.ph + '"' : '') + (f.step ? ' step="' + f.step + '"' : '') + ' oninput="updateCompletionBar(\'' + cat + '\')">';
+            }
+            html += '</div>';
+        }
+        if (fields.length % 2 !== 0 && i + 2 >= fields.length && fields.length % 2 === 1) html += '<div class="field"></div>';
+        html += '</div>';
+    }
+    container.innerHTML = html;
+    updateCompletionBar(cat);
+}
+
+function updateCompletionBar(cat) {
+    const fields = CF[cat];
+    if (!fields) return;
+    let filled = 0, total = fields.length;
+    fields.forEach(f => {
+        const el = document.getElementById('cs_' + f.id);
+        if (el && el.value.trim()) filled++;
+    });
+    const pct = Math.round((filled / total) * 100);
+    const bar = document.getElementById('completionBar');
+    const txt = document.getElementById('completionPct');
+    if (bar) { bar.style.width = pct + '%'; bar.style.background = pct >= 90 ? 'var(--accent,#4ECDC4)' : pct >= 50 ? '#f0ad4e' : '#ff6b6b'; }
+    if (txt) { txt.textContent = pct + '%'; txt.style.color = pct >= 90 ? 'var(--accent,#4ECDC4)' : pct >= 50 ? '#f0ad4e' : '#ff6b6b'; }
+}
+
+function getComponentSpecs(cat) {
+    const fields = CF[cat];
+    if (!fields) return {};
+    const specs = {};
+    fields.forEach(f => {
+        const el = document.getElementById('cs_' + f.id);
+        if (el && el.value.trim()) {
+            specs[f.id] = f.type === 'number' ? parseFloat(el.value) || el.value : el.value.trim();
+        }
+    });
+    return specs;
+}
+
+function validateCompletion(cat) {
+    const fields = CF[cat];
+    if (!fields) return true;
+    let filled = 0;
+    fields.forEach(f => { const el = document.getElementById('cs_' + f.id); if (el && el.value.trim()) filled++; });
+    return (filled / fields.length) >= 0.9;
+}
+
+const PLATFORM_HEADERS = ['name','manufacturer','country','category','type','description','mtow_kg','payload_kg','endurance_min','range_km','speed_max_kmh','propulsion','ndaa','blue_uas','combat_proven','source_url'];
+const COMPONENT_HEADERS = ['name','manufacturer','country','category','description','price_usd','specs','ndaa','blue_uas','combat_proven','source_url'];
+
+let csvRows = [];
+let csvType = null;
+
+function downloadTemplate(type) {
+    const headers = type === 'platform' ? PLATFORM_HEADERS : COMPONENT_HEADERS;
+    const example = type === 'platform'
+        ? ['Spirit HL','Ascent Aerosystems','USA','tactical_isr','coaxial','Modular coaxial ISR drone with hot-swappable batteries','9.5','3.6','50','10','','electric','yes','yes','no','https://ascent.com']
+        : ['Brave 55A','Unusual Machines','USA','escs','Blue UAS compliant 4-in-1 ESC with AM32 firmware','49.99','55A continuous 4-in-1 AM32 30.5x30.5mm','yes','yes','no','https://unusualmachines.com'];
+    const csv = headers.join(',') + '\n' + example.map(v => (v+'').includes(',') ? '"'+v+'"' : v).join(',') + '\n';
+    const blob = new Blob([csv], {type:'text/csv'});
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = type === 'platform' ? 'forge_platform_template.csv' : 'forge_component_template.csv';
+    a.click();
+}
+
+function parseCSV(input) {
+    const file = input.files[0];
+    if (!file) return;
+    const errEl = document.getElementById('errorMsg');
+    errEl.style.display = 'none';
+    const reader = new FileReader();
+    reader.onload = function(e) {
+        const text = e.target.result;
+        const lines = text.split(/\r?\n/).filter(l => l.trim());
+        if (lines.length < 2) { showCsvError('CSV must have a header row and at least one data row'); return; }
+        const header = parseCSVLine(lines[0]).map(h => h.trim().toLowerCase());
+        if (header.includes('mtow_kg') || header.includes('endurance_min')) csvType = 'platform';
+        else if (header.includes('price_usd') || header.includes('specs')) csvType = 'component';
+        else { showCsvError('Could not detect CSV type — use a downloaded template'); return; }
+        const missing = ['name','manufacturer','country','category'].filter(h => !header.includes(h));
+        if (missing.length) { showCsvError('Missing required columns: ' + missing.join(', ')); return; }
+        csvRows = [];
+        let errors = 0;
+        for (let i = 1; i < Math.min(lines.length, 101); i++) {
+            const vals = parseCSVLine(lines[i]);
+            const row = {};
+            header.forEach((h, idx) => { row[h] = (vals[idx] || '').trim(); });
+            if (!row.name || !row.manufacturer || !row.country) { errors++; continue; }
+            csvRows.push(row);
+        }
+        document.getElementById('csvCount').textContent = csvRows.length + ' ' + csvType + (csvRows.length !== 1 ? 's' : '') + ' ready';
+        const errorsEl = document.getElementById('csvErrors');
+        errorsEl.textContent = errors > 0 ? errors + ' rows skipped' : '';
+        errorsEl.style.color = '#ff6b6b';
+        let html = '<table style="width:100%;border-collapse:collapse;font-size:12px"><tr style="background:var(--surface-secondary,#1a1a2e)">';
+        ['#','Name','Manufacturer','Country','Category'].forEach(h => { html += '<th style="padding:8px 10px;text-align:left;border-bottom:1px solid var(--border-color,#333);white-space:nowrap">'+h+'</th>'; });
+        html += '</tr>';
+        csvRows.forEach((r, i) => {
+            html += '<tr style="border-bottom:1px solid var(--border-color,#222)"><td style="padding:6px 10px;color:var(--text-muted)">'+(i+1)+'</td>';
+            html += '<td style="padding:6px 10px;font-weight:600">'+esc(r.name)+'</td>';
+            html += '<td style="padding:6px 10px">'+esc(r.manufacturer)+'</td>';
+            html += '<td style="padding:6px 10px">'+esc(r.country)+'</td>';
+            html += '<td style="padding:6px 10px;font-family:JetBrains Mono;font-size:11px">'+esc(r.category)+'</td></tr>';
+        });
+        html += '</table>';
+        document.getElementById('csvTable').innerHTML = html;
+        document.getElementById('csvPreview').style.display = 'block';
+        document.getElementById('csvSubmitBtn').disabled = csvRows.length === 0;
+    };
+    reader.readAsText(file);
+}
+
+function parseCSVLine(line) {
+    const result = []; let cur = '', inQ = false;
+    for (let i = 0; i < line.length; i++) {
+        const c = line[i];
+        if (c === '"') inQ = !inQ;
+        else if (c === ',' && !inQ) { result.push(cur); cur = ''; }
+        else cur += c;
+    }
+    result.push(cur); return result;
+}
+
+function esc(s) { return (s||'').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+function showCsvError(msg) { const e = document.getElementById('errorMsg'); e.textContent = msg; e.style.display = 'block'; document.getElementById('csvPreview').style.display = 'none'; }
+
+async function submitCSV() {
+    if (!csvRows.length) return;
+    const btn = document.getElementById('csvSubmitBtn');
+    const errEl = document.getElementById('errorMsg');
+    errEl.style.display = 'none';
+    btn.disabled = true;
+    const submitter = document.getElementById('csvSubmitter').value.trim() || 'Anonymous';
+    const email = document.getElementById('csvEmail').value.trim();
+    let ok = 0, fail = 0, lastUrl = null;
+    for (const row of csvRows) {
+        btn.innerHTML = '<i class="ph ph-circle-notch"></i> Submitting ' + (ok+fail+1) + '/' + csvRows.length + '...';
+        const payload = { type: csvType, name: row.name, manufacturer: row.manufacturer, country: row.country,
+            category: row.category, description: row.description || '', source_url: row.source_url || '',
+            compliance: { ndaa: row.ndaa||'', blue_uas: row.blue_uas||'', combat_proven: row.combat_proven||'' },
+            submitter, email };
+        if (csvType === 'platform') {
+            payload.specs = { type: row.type||'', mtow_kg: parseFloat(row.mtow_kg)||null, payload_kg: parseFloat(row.payload_kg)||null,
+                endurance_min: parseInt(row.endurance_min)||null, range_km: parseFloat(row.range_km)||null,
+                speed_max_kmh: parseInt(row.speed_max_kmh)||null, propulsion: row.propulsion||'' };
+        } else { payload.approx_price = parseFloat(row.price_usd)||null; payload.specs_text = row.specs||''; }
+        try {
+            const res = await fetch('https://nvmilldoitmyself.com/.netlify/functions/contribution-submit',
+                { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(payload) });
+            if (res.ok) { ok++; const d = await res.json(); if (d.issue_url) lastUrl = d.issue_url; } else fail++;
+        } catch { fail++; }
+    }
+    if (ok > 0) {
+        document.getElementById('formContainer').style.display = 'none';
+        const msg = document.getElementById('successMsg');
+        msg.querySelector('p').textContent = ok + ' of ' + csvRows.length + ' entries submitted.' + (fail ? ' ' + fail + ' failed.' : '');
+        if (lastUrl) { const a = document.getElementById('issueLink'); a.href = lastUrl.replace(/\/\d+$/,''); a.textContent = 'View Issues on GitHub →'; }
+        msg.style.display = 'block';
+    } else { errEl.textContent = 'All submissions failed.'; errEl.style.display = 'block'; }
+    btn.disabled = false; btn.innerHTML = '<i class="ph ph-paper-plane-tilt"></i> Submit CSV for Review';
+}
+</script>
+</body>
+</html>

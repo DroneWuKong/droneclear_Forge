@@ -1,0 +1,334 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>PIE Intelligence Brief — Forge Module</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg:#0c0c0a;--surface:#141410;--card:#1c1c17;--card-hi:#242420;
+  --border:#2e2e26;--border-hi:#3e3e34;
+  --amber:#c9a227;--amber-d:#c9a22720;
+  --warning:#f97316;--warning-d:#f9731620;
+  --red:#d62828;--red-d:#d6282820;
+  --green:#40916c;--green-d:#40916c20;
+  --blue:#2563eb;--blue-d:#2563eb18;
+  --purple:#7c3aed;--purple-d:#7c3aed18;
+  --cyan:#0891b2;--cyan-d:#0891b218;
+  --orange:#ea580c;--orange-d:#ea580c18;
+  --text:#f5f0e8;--text-s:#b8b0a0;--text-d:#6b6358;--text-xd:#3d3830;
+  --font:'DM Sans',system-ui,sans-serif;
+  --mono:'JetBrains Mono',monospace;
+}
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:var(--bg);color:var(--text);font-family:var(--font);line-height:1.5;-webkit-font-smoothing:antialiased}
+a{color:var(--blue);text-decoration:none}
+a:hover{text-decoration:underline}
+
+/* Nav — matches PIE exactly */
+.topbar{display:flex;align-items:center;justify-content:space-between;padding:10px 16px;border-bottom:1px solid var(--border);background:var(--bg);position:sticky;top:0;z-index:100}
+.topbar-left{display:flex;align-items:center;gap:8px;min-width:0;flex:1;overflow:hidden}
+.topbar-logo{font:700 14px var(--mono);color:#22c55e;letter-spacing:-0.02em;text-decoration:none;white-space:nowrap}
+.topbar-sep{color:var(--text-xd);font-size:12px;flex-shrink:0}
+.topbar-current{font:600 13px var(--font);color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.topbar-links{display:flex;gap:4px;flex-shrink:0}
+.topbar-pill{font:500 11px var(--font);color:var(--text-d);padding:4px 10px;border:1px solid var(--border);border-radius:20px;transition:all .15s;text-decoration:none;white-space:nowrap}
+.topbar-pill:hover{border-color:var(--border-hi);color:var(--text-s)}
+
+/* Sub-header */
+.brief-meta{display:flex;align-items:center;justify-content:space-between;padding:10px 20px;border-bottom:1px solid var(--border);background:var(--surface)}
+.brief-meta-left{display:flex;align-items:center;gap:10px}
+.brief-icon{font-size:16px}
+.brief-title{font:600 13px var(--font);color:var(--text)}
+.brief-date{font:500 11px var(--mono);color:var(--text-d);background:var(--card);border:1px solid var(--border);border-radius:5px;padding:2px 8px}
+
+/* Layout */
+.content{padding:16px 20px;max-width:720px;margin:0 auto}
+
+/* Badges — matches PIE */
+.badge{padding:2px 8px;border-radius:5px;font:600 10px var(--mono);white-space:nowrap;letter-spacing:.03em;display:inline-block}
+.badge-blue{background:var(--blue-d);color:var(--blue)}
+.badge-green{background:var(--green-d);color:var(--green)}
+.badge-red{background:var(--red-d);color:var(--red)}
+.badge-amber{background:var(--amber-d);color:var(--amber)}
+.badge-purple{background:var(--purple-d);color:var(--purple)}
+.badge-cyan{background:var(--cyan-d);color:var(--cyan)}
+.badge-orange{background:var(--orange-d);color:var(--orange)}.badge-warning{background:var(--warning-d);color:var(--warning)}
+
+/* Severity dot — matches PIE */
+.sev{width:8px;height:8px;border-radius:50%;display:inline-block;flex-shrink:0}
+.sev-critical{background:var(--red);box-shadow:0 0 6px #ef444466}
+.sev-warning{background:var(--warning);box-shadow:0 0 6px #f9731666}
+.sev-info{background:var(--blue);box-shadow:0 0 6px #3b82f666}
+
+/* Signal bar */
+.signal-bar{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:14px 18px;margin-bottom:14px;display:flex;gap:0;align-items:stretch}
+.signal-stat{flex:1;text-align:center;padding:0 12px;border-right:1px solid var(--border)}
+.signal-stat:last-child{border-right:none}
+.signal-stat .num{font:700 22px var(--mono);display:block;line-height:1}
+.signal-stat .lbl{font-size:9px;color:var(--text-d);text-transform:uppercase;letter-spacing:.08em;margin-top:4px;display:block}
+.signal-stat.critical .num{color:var(--red)}
+.signal-stat.warning .num{color:var(--warning)}
+.signal-stat.new .num{color:var(--green)}
+.concern-bar{background:var(--card);border:1px solid var(--border);border-top:none;border-radius:0 0 10px 10px;margin-top:-4px;margin-bottom:14px;padding:8px 18px;font-size:11px;color:var(--text-s);display:flex;align-items:center;gap:8px}
+.concern-bar .dot{width:6px;height:6px;border-radius:50%;background:var(--amber);flex-shrink:0}
+
+/* Headline */
+.headline{font-size:15px;font-weight:600;line-height:1.5;color:var(--text);margin-bottom:14px;padding:14px 16px;background:var(--card);border-radius:10px;border-left:3px solid var(--amber)}
+
+/* Section label — matches PIE style */
+.section-label{font:600 9px var(--mono);color:var(--text-d);text-transform:uppercase;letter-spacing:.1em;margin:20px 0 8px;display:flex;align-items:center;gap:8px}
+.section-label::after{content:'';flex:1;height:1px;background:var(--border)}
+
+/* Cards — matches PIE flag-card style */
+.brief-card{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:14px 16px;margin-bottom:8px;transition:border-color .15s}
+.brief-card:hover{border-color:var(--border-hi)}
+.brief-card.lead{border-left:3px solid var(--red)}
+.brief-card.entity{border-left:3px solid var(--orange)}
+.brief-card.supply{border-left:3px solid var(--cyan)}
+.brief-card.pred{display:flex;gap:14px;align-items:flex-start}
+
+.card-header{display:flex;align-items:center;gap:8px;margin-bottom:8px;flex-wrap:wrap}
+.card-title{font:600 13px var(--font);color:var(--text)}
+.card-body{font-size:12px;color:var(--text-s);line-height:1.6;margin-bottom:10px}
+
+/* Action box — matches PIE prediction-box */
+.action-box{background:var(--blue-d);border:1px solid #3b82f622;border-radius:6px;padding:8px 10px;margin-top:8px}
+.action-box .action-label{font:600 8px var(--font);color:var(--blue);text-transform:uppercase;letter-spacing:.08em;margin-bottom:3px}
+.action-box .action-text{font-size:11px;color:var(--text-s);line-height:1.5}
+
+/* Entity-specific */
+.entity-status{font:500 11px var(--font);color:var(--amber);margin-bottom:6px}
+.entity-exposure{font-size:11px;color:var(--text-d);margin-bottom:8px}
+.entity-exposure strong{color:var(--text-s)}
+
+/* Supply chain */
+.supply-signal{font-size:11px;color:var(--text-s);margin-bottom:4px}
+.supply-window{display:inline-flex;align-items:center;gap:4px;font:500 10px var(--mono);color:var(--cyan);background:var(--cyan-d);border-radius:4px;padding:2px 6px;margin-bottom:8px}
+
+/* Watch list */
+.watch-list{background:var(--card);border:1px solid var(--border);border-radius:10px;overflow:hidden;margin-bottom:8px}
+.watch-item{display:flex;gap:12px;padding:10px 14px;border-bottom:1px solid var(--border);align-items:flex-start}
+.watch-item:last-child{border-bottom:none}
+.watch-dot{width:7px;height:7px;border-radius:50%;background:var(--amber);box-shadow:0 0 5px #f59e0b55;margin-top:5px;flex-shrink:0}
+.watch-label{font:600 12px var(--font);color:var(--text);margin-bottom:2px}
+.watch-why{font-size:11px;color:var(--text-s);line-height:1.4;margin-bottom:3px}
+.watch-trigger{font-size:10px;color:var(--text-d)}
+.watch-trigger strong{color:var(--text-xd)}
+
+/* Predictions */
+.pred-prob{min-width:52px;text-align:center;padding-top:2px}
+.pred-prob .pct{font:700 22px var(--mono);display:block;line-height:1.1}
+.pred-prob .pct-lbl{font-size:9px;color:var(--text-d);text-transform:uppercase;letter-spacing:.06em}
+.pred-body{flex:1}
+.pred-event{font:600 12px var(--font);color:var(--text);margin-bottom:3px;line-height:1.4}
+.pred-timeframe{margin-bottom:8px}
+.hedge-box{background:var(--purple-d);border:1px solid #a78bfa22;border-radius:6px;padding:7px 10px}
+.hedge-box .hedge-label{font:600 8px var(--font);color:var(--purple);text-transform:uppercase;letter-spacing:.08em;margin-bottom:3px}
+.hedge-box .hedge-text{font-size:11px;color:var(--text-s);line-height:1.5}
+
+/* Sources — inline chips */
+.sources{display:flex;flex-wrap:wrap;gap:5px;margin-top:10px;padding-top:8px;border-top:1px solid var(--border)}
+.source-chip{display:inline-flex;align-items:center;gap:4px;padding:2px 8px;border-radius:5px;font:500 9px var(--mono);text-decoration:none;border:1px solid var(--border);color:var(--text-d);background:var(--surface);transition:all .15s;white-space:nowrap}
+.source-chip:hover{border-color:var(--blue-d);color:var(--text-s);text-decoration:none}
+.source-chip.primary{border-color:#22c55e22;color:var(--green)}
+.source-chip.primary:hover{background:var(--green-d)}
+.source-chip.reporting{border-color:#3b82f622;color:var(--blue)}
+.source-chip.reporting:hover{background:var(--blue-d)}
+.sources-label{font:500 9px var(--mono);color:var(--text-xd);text-transform:uppercase;letter-spacing:.06em;width:100%;margin-bottom:2px}
+
+/* Loading / error */
+.loading{text-align:center;padding:60px 20px;color:var(--text-d);font-size:12px}
+.no-brief{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:32px;text-align:center}
+.no-brief strong{display:block;font-size:14px;color:var(--text-s);margin-bottom:8px}
+.no-brief p{font-size:12px;color:var(--text-d);line-height:1.6}
+
+/* Footer */
+.brief-footer{margin-top:24px;padding:12px 16px;text-align:center;font-size:10px;color:var(--text-d);font-family:var(--mono);border-top:1px solid var(--border)}
+</style>
+</head>
+<body>
+<header style="display:flex;align-items:center;justify-content:space-between;gap:8px;padding:10px 16px;border-bottom:1px solid #2e2e26;background:#1c1c17;position:sticky;top:0;z-index:100;flex-shrink:0;">
+  <a href="/patterns-home/" style="font:800 18px 'JetBrains Mono',monospace;color:#22c55e;letter-spacing:-0.03em;text-decoration:none;flex-shrink:0;">Patterns</a>
+  <div style="display:flex;gap:5px;align-items:center;flex-wrap:nowrap;"><a href="/" class="tp-pill">Forge</a><a href="/intel/" class="tp-pill">Intel</a><a href="/wingman/" class="tp-pill">Wingman</a><a href="https://nvmilldoitmyself.com" class="tp-pill" target=_blank>Handbook</a></div>
+</header>
+<style>.tp-pill{font:500 10px 'DM Sans',system-ui,sans-serif;color:#6b6358;padding:4px 9px;border:1px solid #2e2e26;border-radius:20px;text-decoration:none;white-space:nowrap;transition:all .15s}.tp-pill:hover{border-color:#3e3e34;color:#b8b0a0}</style>
+<div style="padding:5px 16px;font:500 10px var(--mono);color:var(--text-xd);border-bottom:1px solid var(--border);background:var(--bg);display:flex;align-items:center;gap:8px"><span id="brief-date-tag"></span><span id="last-updated" style="margin-left:auto"></span></div>
+
+<div class="content">
+  <div id="brief-content">
+    <div class="loading">Loading intelligence brief...</div>
+  </div>
+</div>
+
+<script>
+function pctColor(p) {
+  if (p >= 0.8) return 'var(--red)';
+  if (p >= 0.65) return 'var(--amber)';
+  return 'var(--text-s)';
+}
+
+function renderSources(sources) {
+  if (!sources || !sources.length) return '';
+  const chips = sources.map(s => {
+    const cls = s.type === 'primary' ? 'primary' : s.type === 'reporting' ? 'reporting' : '';
+    const icon = s.type === 'primary' ? '⬤' : s.type === 'reporting' ? '↗' : '◈';
+    if (s.url) {
+      return `<a href="${s.url}" target="_blank" rel="noopener" class="source-chip ${cls}">${icon} ${s.name}</a>`;
+    }
+    return `<span class="source-chip ${cls}">${icon} ${s.name}</span>`;
+  }).join('');
+  return `<div class="sources"><span class="sources-label">Sources</span>${chips}</div>`;
+}
+
+function renderBrief(b) {
+  document.getElementById('brief-date-tag').textContent = b.date || '—';
+  const sig = b.signal_summary || {};
+  const lead = b.lead_story || {};
+
+  let html = '';
+
+  // ── Signal bar ──
+  html += `<div class="signal-bar">
+    <div class="signal-stat critical"><span class="num">${sig.critical||0}</span><span class="lbl">Critical</span></div>
+    <div class="signal-stat warning"><span class="num">${sig.warning||0}</span><span class="lbl">Warning</span></div>
+    <div class="signal-stat new"><span class="num">${sig.new_today||0}</span><span class="lbl">New</span></div>
+    <div class="signal-stat"><span class="num">${sig.total_flags||0}</span><span class="lbl">Flags</span></div>
+  </div>
+  <div class="concern-bar"><div class="dot"></div>${sig.top_concern||''}</div>`;
+
+  // ── Headline ──
+  html += `<div class="headline">${b.headline||''}</div>`;
+
+  // ── Lead story ──
+  html += `<div class="section-label">🔴 Lead Story</div>`;
+  html += `<div class="brief-card lead">
+    <div class="card-header">
+      <span class="sev sev-critical"></span>
+      <span class="card-title">${lead.title||''}</span>
+    </div>
+    <div class="card-body">${lead.body||''}</div>
+    <div class="action-box">
+      <div class="action-label">→ Action</div>
+      <div class="action-text">${lead.action||''}</div>
+    </div>
+    ${renderSources(lead.sources)}
+  </div>`;
+
+  // ── Gray zone ──
+  html += `<div class="section-label">⚠ Gray Zone Entities</div>`;
+  for (const e of (b.gray_zone||[])) {
+    html += `<div class="brief-card entity">
+      <div class="card-header">
+        <span class="sev sev-warning"></span>
+        <span class="card-title">${e.entity||''}</span>
+      </div>
+      <div class="entity-status">${e.status||''}</div>
+      <div class="card-body">${e.development||''}</div>
+      <div class="entity-exposure"><strong>Buyer exposure:</strong> ${e.buyer_exposure||''}</div>
+      <div class="action-box">
+        <div class="action-label">→ Action</div>
+        <div class="action-text">${e.action||''}</div>
+      </div>
+      ${renderSources(e.sources)}
+    </div>`;
+  }
+
+  // ── Supply chain ──
+  html += `<div class="section-label">🔩 Supply Chain Signals</div>`;
+  for (const s of (b.supply_chain||[])) {
+    html += `<div class="brief-card supply">
+      <div class="card-header">
+        <span class="sev sev-info"></span>
+        <span class="card-title">${s.component||''}</span>
+        <span class="supply-window">⏱ ${s.window||''}</span>
+      </div>
+      <div class="supply-signal">${s.signal||''}</div>
+      <div class="action-box">
+        <div class="action-label">→ Action</div>
+        <div class="action-text">${s.action||''}</div>
+      </div>
+      ${renderSources(s.sources)}
+    </div>`;
+  }
+
+  // ── Watch list ──
+  html += `<div class="section-label">👁 Watch List</div>`;
+  html += `<div class="watch-list">`;
+  for (const w of (b.watch_list||[])) {
+    html += `<div class="watch-item">
+      <div class="watch-dot"></div>
+      <div>
+        <div class="watch-label">${w.item||''}</div>
+        <div class="watch-why">${w.why||''}</div>
+        <div class="watch-trigger"><strong>Trigger:</strong> ${w.trigger||''}</div>
+      </div>
+    </div>`;
+  }
+  html += `</div>`;
+
+  // ── Predictions ──
+  html += `<div class="section-label">🔮 Predictions & Hedges</div>`;
+  for (const p of (b.predictions||[])) {
+    const pct = Math.round((p.probability||0)*100);
+    html += `<div class="brief-card pred">
+      <div class="pred-prob">
+        <span class="pct" style="color:${pctColor(p.probability)}">${pct}%</span>
+        <span class="pct-lbl">prob</span>
+      </div>
+      <div class="pred-body">
+        <div class="pred-event">${p.event||''}</div>
+        <div class="pred-timeframe"><span class="badge badge-purple">${p.timeframe||''}</span></div>
+        <div class="hedge-box">
+          <div class="hedge-label">◎ Hedge</div>
+          <div class="hedge-text">${p.hedge||''}</div>
+        </div>
+      </div>
+    </div>`;
+  }
+
+  // ── Footer ──
+  const gen = b.generated_at ? new Date(b.generated_at).toLocaleString() : '';
+  html += `<div class="brief-footer">${b.pipeline_version||'PIE v0.9'} · Generated ${gen}</div>`;
+
+  document.getElementById('brief-content').innerHTML = html;
+}
+
+async function loadBrief() {
+  try {
+    const r = await fetch('../static/pie_brief.json');
+    if (!r.ok) throw new Error(`HTTP ${r.status}`);
+    const b = await r.json();
+    renderBrief(b);
+  } catch(e) {
+    document.getElementById('brief-content').innerHTML = `<div class="no-brief">
+      <strong>No brief available yet</strong>
+      <p>The PIE pipeline generates a fresh brief daily at 14:30 UTC.<br>
+      Add <code>ANTHROPIC_API_KEY</code> to repo secrets to enable AI generation.<br><br>
+      <span style="font-family:var(--mono);font-size:10px;color:var(--text-xd)">${e.message}</span></p>
+    </div>`;
+  }
+}
+
+loadBrief();
+
+function fmtUpdated(iso) {
+  try {
+    var d = new Date(iso);
+    var diffMs = new Date() - d;
+    var diffHrs = Math.round(diffMs / 3600000);
+    var diffDays = Math.round(diffMs / 86400000);
+    var timeStr = diffHrs < 1 ? 'just now' : diffHrs < 24 ? diffHrs+'h ago' : diffDays+'d ago';
+    var el = document.getElementById('last-updated');
+    if (el) el.textContent = 'Pipeline ' + new Date(iso).toISOString().slice(11,16) + ' UTC · ' + timeStr;
+  } catch(e) {}
+}
+fetch('../static/pie_flags.json').then(r=>r.json()).then(flags=>{
+  var ts = flags.map(f=>f.timestamp||'').filter(Boolean).sort().pop();
+  if(ts) fmtUpdated(ts);
+}).catch(()=>{});
+</script>
+</body>
+</html>

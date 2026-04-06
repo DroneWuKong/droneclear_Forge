@@ -1,0 +1,548 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Docs & Setup — DroneClear</title>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600;700&family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet"/>
+<style>
+  :root {
+    --bg:     #0c0c0a; --card:   #141410; --card2: #1a1a14;
+    --border: #2a2a22; --border2:#222218;
+    --cyan:   #22c55e; --amber:  #c9a227; --red: #d62828;
+    --white:  #f0ede6; --g1:     #a8a090; --g2:   #5e5a50; --g3: #2e2c26;
+    --mono:   'JetBrains Mono', monospace;
+    --sans:   'DM Sans', system-ui, sans-serif;
+  }
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  html { scroll-behavior: smooth; }
+  body { background: var(--bg); color: var(--g1); font-family: var(--sans); font-size: 14px; line-height: 1.6; }
+
+  nav { position: sticky; top: 0; z-index: 100; background: rgba(12,12,10,.96); backdrop-filter: blur(8px); border-bottom: 1px solid var(--border); padding: 0 24px; height: 48px; display: flex; align-items: center; gap: 16px; }
+  .nav-logo { font: 700 15px var(--mono); color: var(--cyan); text-decoration: none; }
+  .nav-pills { display: flex; gap: 6px; margin-left: auto; flex-wrap: nowrap; }
+  .nav-pill  { font: 500 11px var(--sans); color: var(--g2); padding: 4px 10px; border: 1px solid var(--border); border-radius: 20px; text-decoration: none; transition: all .15s; white-space: nowrap; }
+  .nav-pill:hover { color: var(--g1); border-color: var(--g2); }
+  .nav-pill.pro { color: var(--cyan); border-color: rgba(34,197,94,.3); }
+
+  .page { display: grid; grid-template-columns: 210px 1fr; min-height: calc(100vh - 48px); max-width: 1080px; margin: 0 auto; }
+
+  .sidebar { border-right: 1px solid var(--border); padding: 28px 0; position: sticky; top: 48px; height: calc(100vh - 48px); overflow-y: auto; }
+  .sidebar-section { font: 700 9px var(--mono); color: var(--g2); text-transform: uppercase; letter-spacing: .12em; padding: 0 18px; margin: 18px 0 5px; }
+  .sidebar-section:first-child { margin-top: 0; }
+  .sidebar-link { display: block; padding: 7px 18px; font-size: 12px; color: var(--g1); text-decoration: none; border-left: 2px solid transparent; transition: all .12s; }
+  .sidebar-link:hover { color: var(--white); background: rgba(255,255,255,.03); }
+  .sidebar-link.active { color: var(--cyan); border-left-color: var(--cyan); background: rgba(34,197,94,.04); }
+  .badge { display: inline-block; font: 700 8px var(--mono); padding: 1px 5px; border-radius: 3px; margin-left: 5px; vertical-align: middle; background: rgba(34,197,94,.12); color: var(--cyan); border: 1px solid rgba(34,197,94,.2); }
+  .badge.free { background: rgba(94,90,80,.2); color: var(--g2); border-color: var(--border); }
+  .badge.tester { background: rgba(201,162,39,.12); color: var(--amber); border-color: rgba(201,162,39,.25); }
+
+  .content { padding: 36px 44px 80px; max-width: 740px; }
+  .doc-section { margin-bottom: 52px; scroll-margin-top: 64px; }
+  .section-eyebrow { font: 700 9px var(--mono); color: var(--cyan); text-transform: uppercase; letter-spacing: .12em; margin-bottom: 7px; }
+  .section-title { font: 700 22px var(--sans); color: var(--white); margin-bottom: 10px; }
+  .section-divider { border: none; border-top: 1px solid var(--border); margin-bottom: 28px; }
+  p { font-size: 13px; color: var(--g2); margin-bottom: 10px; line-height: 1.65; }
+  p a { color: var(--cyan); text-decoration: none; }
+  p a:hover { text-decoration: underline; }
+
+  .steps { display: flex; flex-direction: column; gap: 8px; }
+  .step { display: grid; grid-template-columns: 36px 1fr; background: var(--card); border: 1px solid var(--border); border-radius: 8px; overflow: hidden; }
+  .step-num { display: flex; align-items: flex-start; justify-content: center; padding: 16px 0 0; font: 700 12px var(--mono); color: var(--g3); background: var(--card2); border-right: 1px solid var(--border); }
+  .step-body { padding: 14px 16px; }
+  .step-title { font: 600 13px var(--sans); color: var(--white); margin-bottom: 3px; }
+  .step-detail { font-size: 12px; color: var(--g2); line-height: 1.6; }
+  .step-detail a { color: var(--cyan); text-decoration: none; }
+  .code { display: inline-block; font: 500 11px var(--mono); background: var(--g3); color: var(--white); padding: 2px 7px; border-radius: 4px; }
+
+  .callout { border-radius: 8px; padding: 13px 15px; margin: 14px 0; font-size: 12px; line-height: 1.6; display: flex; gap: 11px; align-items: flex-start; }
+  .callout-icon { font-size: 14px; flex-shrink: 0; margin-top: 1px; }
+  .callout.tip  { background: rgba(34,197,94,.06);  border: 1px solid rgba(34,197,94,.18);  color: var(--g1); }
+  .callout.warn { background: rgba(201,162,39,.06); border: 1px solid rgba(201,162,39,.2);  color: var(--g1); }
+  .callout.info { background: rgba(80,80,100,.1);   border: 1px solid var(--border);        color: var(--g1); }
+  .callout strong { color: var(--white); }
+
+  .feature-table { width: 100%; border-collapse: collapse; font-size: 12px; margin: 14px 0; }
+  .feature-table th { font: 700 9px var(--mono); text-transform: uppercase; letter-spacing: .08em; color: var(--g2); padding: 7px 10px; border-bottom: 1px solid var(--border); text-align: left; }
+  .feature-table th:not(:first-child) { text-align: center; }
+  .feature-table td { padding: 8px 10px; border-bottom: 1px solid var(--border2); color: var(--g1); }
+  .feature-table td:not(:first-child) { text-align: center; }
+  .feature-table tr:last-child td { border-bottom: none; }
+  .yes { color: var(--cyan); font-weight: 700; }
+  .no  { color: var(--g3); }
+
+  .tool-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin: 14px 0; }
+  .tool-card { background: var(--card); border: 1px solid var(--border); border-radius: 8px; padding: 13px 14px; text-decoration: none; display: block; transition: all .15s; border-left: 3px solid var(--border); }
+  .tool-card:hover { border-color: var(--g2); }
+  .tool-card.pro { border-left-color: var(--cyan); }
+  .tool-card-title { font: 600 12px var(--sans); color: var(--white); margin-bottom: 3px; }
+  .tool-card-url { font: 500 10px var(--mono); color: var(--cyan); margin-bottom: 4px; }
+  .tool-card-desc { font-size: 11px; color: var(--g2); line-height: 1.4; }
+
+  .faq-item { border-bottom: 1px solid var(--border); }
+  .faq-q { width: 100%; text-align: left; background: none; border: none; color: var(--white); font: 600 13px var(--sans); padding: 13px 0; cursor: pointer; display: flex; justify-content: space-between; align-items: center; gap: 12px; }
+  .faq-q:hover { color: var(--cyan); }
+  .faq-arrow { font-size: 10px; color: var(--g2); transition: transform .2s; flex-shrink: 0; }
+  .faq-item.open .faq-arrow { transform: rotate(180deg); }
+  .faq-a { display: none; font-size: 12px; color: var(--g2); line-height: 1.7; padding-bottom: 13px; }
+  .faq-a a { color: var(--cyan); }
+  .faq-item.open .faq-a { display: block; }
+
+  /* Tester card */
+  .tester-card { background: var(--card); border: 1px solid rgba(201,162,39,.3); border-radius: 8px; padding: 16px 18px; margin: 14px 0; }
+  .tester-card-head { font: 700 11px var(--mono); color: var(--amber); letter-spacing: .08em; margin-bottom: 6px; }
+  .tester-item { font-size: 12px; color: var(--g1); padding: 5px 0; border-bottom: 1px solid var(--border2); line-height: 1.5; }
+  .tester-item:last-child { border-bottom: none; padding-bottom: 0; }
+  .tester-item strong { color: var(--white); display: block; font-size: 11px; }
+
+  .token-checker { background: var(--card); border: 1px solid var(--border); border-radius: 8px; padding: 18px; margin-top: 14px; }
+  .token-checker label { font: 700 9px var(--mono); color: var(--g2); text-transform: uppercase; letter-spacing: .1em; display: block; margin-bottom: 7px; }
+  .token-row { display: flex; gap: 8px; }
+  .token-row input { flex: 1; background: var(--bg); border: 1px solid var(--border); color: var(--white); font: 12px var(--mono); padding: 9px 11px; border-radius: 6px; outline: none; transition: border-color .15s; }
+  .token-row input:focus { border-color: var(--cyan); }
+  .token-row input::placeholder { color: var(--g3); }
+  .token-check-btn { font: 600 11px var(--sans); padding: 9px 15px; background: var(--cyan); color: #0c0c0a; border: none; border-radius: 6px; cursor: pointer; white-space: nowrap; }
+  .token-result { margin-top: 9px; font-size: 12px; min-height: 16px; }
+
+  @media (max-width: 680px) {
+    .page { grid-template-columns: 1fr; }
+    .sidebar { display: none; }
+    .content { padding: 24px 18px 60px; }
+    .tool-grid { grid-template-columns: 1fr; }
+  }
+</style>
+</head>
+<body>
+
+<nav>
+  <a href="/" class="nav-logo">DroneClear</a>
+  <div class="nav-pills">
+    <a href="/wingman/" class="nav-pill">Wingman AI</a>
+    <a href="/pro/" class="nav-pill pro">Pro</a>
+    <a href="/report/" class="nav-pill pro">Reports</a>
+  </div>
+</nav>
+
+<div class="page">
+  <div class="sidebar">
+    <div class="sidebar-section">Getting Started</div>
+    <a href="#quickstart"  class="sidebar-link active">Quick Start</a>
+    <a href="#activate"   class="sidebar-link">Activate Your Token</a>
+    <a href="#alltools"   class="sidebar-link">All Tools</a>
+    <a href="#features"   class="sidebar-link">Free vs Pro</a>
+
+    <div class="sidebar-section">Pro Features</div>
+    <a href="#reports"    class="sidebar-link">Compliance Reports <span class="badge">Pro</span></a>
+    <a href="#patterns"   class="sidebar-link">PIE Predictions <span class="badge">Pro</span></a>
+    <a href="#wingman"    class="sidebar-link">Wingman AI</a>
+    <a href="#gap"        class="sidebar-link">Gap Analyzer <span class="badge">Pro</span></a>
+    <a href="#grayzone"   class="sidebar-link">Gray Zone</a>
+
+    <div class="sidebar-section">For Testers</div>
+    <a href="#tester"     class="sidebar-link">Tester Guide <span class="badge tester">Beta</span></a>
+    <a href="#feedback"   class="sidebar-link">What We Need</a>
+
+    <div class="sidebar-section">Help</div>
+    <a href="#faq"        class="sidebar-link">FAQ</a>
+    <a href="#contact"    class="sidebar-link">Contact</a>
+  </div>
+
+  <div class="content">
+
+    <!-- QUICK START -->
+    <div class="doc-section" id="quickstart">
+      <div class="section-eyebrow">// Getting Started</div>
+      <h1 class="section-title">DroneClear — what it is and how to use it</h1>
+      <p>DroneClear is a drone procurement intelligence platform. It tells you what's NDAA compliant, which products are gray zone risks (adversary-connected despite marketing claims), what components are about to go on allocation, and lets you generate compliance PDFs for procurement submissions — all from one subscription.</p>
+      <p>The free tier is genuinely useful. Pro ($49/month) adds Claude AI, gray zone intelligence, supply chain predictions, and compliance report generation.</p>
+
+      <div class="tool-grid">
+        <a href="/pro/" class="tool-card pro">
+          <div class="tool-card-title">Your Dashboard</div>
+          <div class="tool-card-url">/pro/</div>
+          <div class="tool-card-desc">Start here after activating. Links to all Pro tools.</div>
+        </a>
+        <a href="/wingman/" class="tool-card pro">
+          <div class="tool-card-title">Wingman AI</div>
+          <div class="tool-card-url">/wingman/</div>
+          <div class="tool-card-desc">Ask anything — NDAA questions, hardware triage, photo analysis.</div>
+        </a>
+        <a href="/report/" class="tool-card pro">
+          <div class="tool-card-title">Compliance Reports</div>
+          <div class="tool-card-url">/report/</div>
+          <div class="tool-card-desc">Generate PDF reports for procurement submissions.</div>
+        </a>
+        <a href="/patterns/" class="tool-card pro">
+          <div class="tool-card-title">PIE Intelligence</div>
+          <div class="tool-card-url">/patterns/</div>
+          <div class="tool-card-desc">Gray zone scoring and supply chain predictions.</div>
+        </a>
+      </div>
+    </div>
+
+    <hr class="section-divider"/>
+
+    <!-- ACTIVATE TOKEN -->
+    <div class="doc-section" id="activate">
+      <div class="section-eyebrow">// Token Activation</div>
+      <h2 class="section-title">I have a token. How do I activate?</h2>
+      <p>Two ways — pick whichever is faster:</p>
+
+      <p><strong style="color:var(--white)">Option 1 — From the Pro page (easiest):</strong></p>
+      <div class="steps">
+        <div class="step">
+          <div class="step-num">1</div>
+          <div class="step-body">
+            <div class="step-title">Go to <a href="/pro/">/pro/</a></div>
+            <div class="step-detail">Scroll down past the pricing cards to the dark card that says <span class="code">// Already have a token?</span></div>
+          </div>
+        </div>
+        <div class="step">
+          <div class="step-num">2</div>
+          <div class="step-body">
+            <div class="step-title">Paste your token and hit Enter</div>
+            <div class="step-detail">Token starts with <span class="code">eyJ</span> and ends with <span class="code">==</span>. Copy the entire thing from the email. The page reloads as your dashboard.</div>
+          </div>
+        </div>
+      </div>
+
+      <p style="margin-top:16px"><strong style="color:var(--white)">Option 2 — From Wingman Settings (to enable Claude AI):</strong></p>
+      <div class="steps">
+        <div class="step">
+          <div class="step-num">1</div>
+          <div class="step-body">
+            <div class="step-title">Go to <a href="/wingman/">/wingman/</a> → tap the gear ⚙ icon</div>
+            <div class="step-detail">Settings panel opens. Find the <span class="code">Subscription Token</span> field near the top.</div>
+          </div>
+        </div>
+        <div class="step">
+          <div class="step-num">2</div>
+          <div class="step-body">
+            <div class="step-title">Paste token → Save &amp; Connect</div>
+            <div class="step-detail">Claude activates automatically. Status shows <span class="code">✓ Pro active · N days remaining</span> below the field.</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="callout warn" style="margin-top:16px">
+        <div class="callout-icon">⚠</div>
+        <div><strong>Token stored per device.</strong> On a new phone or after clearing browser data, paste it again. Search your inbox for <em>"Wingman Pro access token"</em> — it's in that email.</div>
+      </div>
+
+      <div class="token-checker">
+        <label>Check your token status</label>
+        <div class="token-row">
+          <input type="password" id="tc-input" placeholder="Paste token to verify…"/>
+          <button class="token-check-btn" onclick="checkToken()">Check</button>
+        </div>
+        <div class="token-result" id="tc-result"></div>
+      </div>
+    </div>
+
+    <hr class="section-divider"/>
+
+    <!-- ALL TOOLS -->
+    <div class="doc-section" id="alltools">
+      <div class="section-eyebrow">// Site Map</div>
+      <h2 class="section-title">Every tool and where to find it</h2>
+
+      <div class="tool-grid">
+        <a href="/pro/" class="tool-card pro">
+          <div class="tool-card-title">Pro Dashboard</div>
+          <div class="tool-card-url">/pro/</div>
+          <div class="tool-card-desc">Your home base. Subscribe, activate token, access all Pro tools.</div>
+        </a>
+        <a href="/report/" class="tool-card pro">
+          <div class="tool-card-title">Compliance Reports</div>
+          <div class="tool-card-url">/report/</div>
+          <div class="tool-card-desc">Generate NDAA + gray zone + supply chain PDFs. Pro only.</div>
+        </a>
+        <a href="/patterns/" class="tool-card pro">
+          <div class="tool-card-title">PIE Intelligence</div>
+          <div class="tool-card-url">/patterns/</div>
+          <div class="tool-card-desc">Gray zone entity scoring, PIE predictions, supply chain alerts. Full data is Pro.</div>
+        </a>
+        <a href="/wingman/" class="tool-card pro">
+          <div class="tool-card-title">Wingman AI</div>
+          <div class="tool-card-url">/wingman/</div>
+          <div class="tool-card-desc">AI chat with drone KB. Free (Gemini/Groq) or Pro (Claude server-side).</div>
+        </a>
+        <a href="/platforms/" class="tool-card">
+          <div class="tool-card-title">Platform Browser</div>
+          <div class="tool-card-url">/platforms/</div>
+          <div class="tool-card-desc">237 drone platforms with specs, NDAA status, country of origin. Free.</div>
+        </a>
+        <a href="/compare/" class="tool-card">
+          <div class="tool-card-title">Platform Compare</div>
+          <div class="tool-card-url">/compare/</div>
+          <div class="tool-card-desc">Side-by-side specs, compliance, payload, MAVLink support. Free.</div>
+        </a>
+        <a href="/compliance/" class="tool-card">
+          <div class="tool-card-title">NDAA Compliance</div>
+          <div class="tool-card-url">/compliance/</div>
+          <div class="tool-card-desc">Traffic-light compliance status for all tracked platforms. Free.</div>
+        </a>
+        <a href="/intel/" class="tool-card">
+          <div class="tool-card-title">Intel Feed</div>
+          <div class="tool-card-url">/intel/</div>
+          <div class="tool-card-desc">Curated defense and drone industry news. Free.</div>
+        </a>
+        <a href="/builder/" class="tool-card">
+          <div class="tool-card-title">Model Builder</div>
+          <div class="tool-card-url">/builder/</div>
+          <div class="tool-card-desc">3,600+ parts, 12-check real-time compatibility engine. Free.</div>
+        </a>
+        <a href="/troubleshoot/" class="tool-card">
+          <div class="tool-card-title">Troubleshooter</div>
+          <div class="tool-card-url">/troubleshoot/</div>
+          <div class="tool-card-desc">52 common drone issues with step-by-step fixes. Free.</div>
+        </a>
+      </div>
+    </div>
+
+    <hr class="section-divider"/>
+
+    <!-- FREE VS PRO -->
+    <div class="doc-section" id="features">
+      <div class="section-eyebrow">// Tiers</div>
+      <h2 class="section-title">What's free vs Pro?</h2>
+      <p>The free tier is genuinely useful. Pro is for people making real procurement decisions.</p>
+      <table class="feature-table">
+        <tr><th>Feature</th><th>Free</th><th>Pro $49/mo</th></tr>
+        <tr><td><strong>Wingman AI chat</strong></td><td class="yes">✓</td><td class="yes">✓</td></tr>
+        <tr><td>AI model</td><td style="font-size:11px;color:var(--g2)">Gemini / Groq</td><td style="font-size:11px;color:var(--cyan)">Claude Sonnet</td></tr>
+        <tr><td>API key required?</td><td style="font-size:11px;color:var(--g2)">Optional</td><td style="font-size:11px;color:var(--cyan)">No</td></tr>
+        <tr><td><strong>Platform browser (237 UAS)</strong></td><td class="yes">✓</td><td class="yes">✓</td></tr>
+        <tr><td><strong>NDAA compliance checker</strong></td><td class="yes">✓</td><td class="yes">✓</td></tr>
+        <tr><td><strong>Intel feed</strong></td><td class="yes">✓</td><td class="yes">✓</td></tr>
+        <tr><td><strong>Gray zone flags (public)</strong></td><td class="yes">✓</td><td class="yes">✓</td></tr>
+        <tr><td><strong>Gap Analyzer</strong></td><td class="no">—</td><td class="yes">✓</td></tr>
+        <tr><td><strong>PIE Predictions + confidence scores</strong></td><td class="no">—</td><td class="yes">✓</td></tr>
+        <tr><td><strong>Gray zone risk scores + evidence</strong></td><td class="no">—</td><td class="yes">✓</td></tr>
+        <tr><td><strong>Compliance report PDF</strong></td><td class="no">—</td><td class="yes">✓</td></tr>
+        <tr><td><strong>Supply chain risk reports</strong></td><td class="no">—</td><td class="yes">✓</td></tr>
+      </table>
+    </div>
+
+    <hr class="section-divider"/>
+
+    <!-- COMPLIANCE REPORTS -->
+    <div class="doc-section" id="reports">
+      <div class="section-eyebrow">// Compliance Reports · Pro</div>
+      <h2 class="section-title">Generating compliance reports</h2>
+      <p>Reports cover NDAA §848 status, gray zone entity scoring with sourced evidence, supply chain risk flags, and PIE predictions — formatted as PDFs you can attach directly to procurement submissions or contract vehicles.</p>
+      <div class="steps">
+        <div class="step"><div class="step-num">1</div><div class="step-body"><div class="step-title">Go to <a href="/report/">/report/</a></div><div class="step-detail">Select a subject using the quick-select chips (SkyRover, FLIR Boson, Jetson Orin, etc.) or type a custom subject.</div></div></div>
+        <div class="step"><div class="step-num">2</div><div class="step-body"><div class="step-title">Pick report type</div><div class="step-detail">Full Report covers everything. Gray Zone Focus drills into adversary connections. Supply Chain focuses on allocation risk. Procurement Signals focuses on contract awards.</div></div></div>
+        <div class="step"><div class="step-num">3</div><div class="step-body"><div class="step-title">Hit Generate → Save as PDF</div><div class="step-detail">Claude writes the executive assessment server-side. Click <span class="code">⬇ Save as PDF</span> → select "Save as PDF" in the print dialog. Report ID is in the footer for filing reference.</div></div></div>
+      </div>
+      <div class="callout tip"><div class="callout-icon">💡</div><div>The best subjects to try: <span class="code">SkyRover</span> (gray zone), <span class="code">FLIR Boson 640</span> (supply chain), <span class="code">Jetson Orin NX</span> (allocation risk), or leave it blank for a full brief.</div></div>
+    </div>
+
+    <hr class="section-divider"/>
+
+    <!-- PIE -->
+    <div class="doc-section" id="patterns">
+      <div class="section-eyebrow">// PIE Predictions · Pro</div>
+      <h2 class="section-title">PIE Intelligence and Gray Zone Scoring</h2>
+      <p>Go to <a href="/patterns/">/patterns/</a>. Three tabs: Components (supply chain risk per part), Predictions (30/60/90-day forecasts), What-If (scenario modeling).</p>
+      <p><strong style="color:var(--white)">Free users</strong> see the gray zone flag list. <strong style="color:var(--cyan)">Pro users</strong> unlock full prediction cards with probability scores, confidence intervals, 3-model breakdowns, and sourced gray zone evidence. Tap any card to expand.</p>
+      <div class="callout info"><div class="callout-icon">◎</div><div>Predictions are cross-validated across Claude Sonnet, Gemini Pro, and Groq Llama. A prediction with 80%+ probability and 80%+ confidence means act now. 60–79% = monitor closely.</div></div>
+    </div>
+
+    <hr class="section-divider"/>
+
+    <!-- WINGMAN -->
+    <div class="doc-section" id="wingman">
+      <div class="section-eyebrow">// Wingman AI</div>
+      <h2 class="section-title">How Wingman works</h2>
+      <p>Wingman is backed by 3,600+ components, 237 platforms, 49 handbook pages, and 1,700+ firmware targets — plus live web search on every query. It knows drone terminology without you explaining it.</p>
+      <div class="steps">
+        <div class="step"><div class="step-num">→</div><div class="step-body"><div class="step-title">Ask directly, no preamble needed</div><div class="step-detail">Try: <span class="code">Is the DJI O3 Air Unit NDAA compliant?</span> or <span class="code">Compare Silvus SC3822 vs TrellisWare TW-950 for DDP</span></div></div></div>
+        <div class="step"><div class="step-num">→</div><div class="step-body"><div class="step-title">Upload photos for visual triage</div><div class="step-detail">Tap the camera icon and attach a photo of wiring, burnt ESC pads, or your FC layout. Works best with Claude (Pro) but also works with Gemini.</div></div></div>
+        <div class="step"><div class="step-num">→</div><div class="step-body"><div class="step-title">Use the Gap Analyzer (Pro)</div><div class="step-detail">Right sidebar on desktop. Enter two entities — platforms, components, vendors — and get a structured comparison across spec, compliance, and supply chain dimensions.</div></div></div>
+      </div>
+    </div>
+
+    <hr class="section-divider"/>
+
+    <!-- GAP ANALYZER -->
+    <div class="doc-section" id="gap">
+      <div class="section-eyebrow">// Gap Analyzer · Pro</div>
+      <h2 class="section-title">Using the Gap Analyzer</h2>
+      <p>In Wingman AI, scroll down to the Gap Analyzer panel. Enter any two entities and hit Run — Claude pulls context from the Forge database and produces up to 8 gaps across spec, compliance, and supply chain.</p>
+      <p>Good examples: <span class="code">Skydio X10D</span> vs <span class="code">DJI Matrice 350</span> · <span class="code">Silvus SC3822</span> vs <span class="code">TrellisWare TW-950</span> · <span class="code">STM32H743</span> vs <span class="code">STM32H750</span></p>
+      <div class="callout warn"><div class="callout-icon">🔒</div><div><strong>Pro required.</strong> If you see a lock icon, activate your token first at <a href="/pro/">/pro/</a>.</div></div>
+    </div>
+
+    <hr class="section-divider"/>
+
+    <!-- GRAY ZONE -->
+    <div class="doc-section" id="grayzone">
+      <div class="section-eyebrow">// Gray Zone</div>
+      <h2 class="section-title">What is a "gray zone" drone?</h2>
+      <p>A gray zone product is one that appears domestic or independent but has material ties to adversary entities — undisclosed DJI technology, Chinese manufacturing, or data pipelines that route through Chinese cloud infrastructure.</p>
+      <div class="callout warn"><div class="callout-icon">⚠</div><div><strong>This isn't about "made in China."</strong> Gray zone scoring is about undisclosed adversary technology dependency, data routing risk, and deceptive marketing. A product made in China with full transparency is a different risk profile than one claiming US origin while running DJI firmware on DJI hardware with all data routed to DJI cloud.</div></div>
+      <p>Common signals: DJI SDK embedded · Firmware signed with DJI crypto keys · App connects to DJI cloud · PCB layout matches DJI products · Zero corporate transparency · "American-owned" claims with no substance.</p>
+      <p><strong style="color:var(--white)">Legal exposure:</strong> NDAA §848 prohibits procurement of covered entity products with federal funds. State and local agencies using federal grants (SOAR, DHS) are included. The Texas AG lawsuit against a gray zone vendor (Feb 2026) is the first signal that buyer liability is real, not just seller liability.</p>
+    </div>
+
+    <hr class="section-divider"/>
+
+    <!-- TESTER GUIDE -->
+    <div class="doc-section" id="tester">
+      <div class="section-eyebrow">// For Testers</div>
+      <h2 class="section-title">You have a demo token. Here's how to test it.</h2>
+      <p>You've been given a Pro demo token. It gives you full Pro access for the duration shown in the token. Here's what to actually try — in order of what gives the most signal:</p>
+
+      <div class="tester-card">
+        <div class="tester-card-head">// START HERE — takes 5 minutes</div>
+        <div class="tester-item">
+          <strong>1. Activate at <a href="/pro/" style="color:var(--cyan)">/pro/</a></strong>
+          Scroll past pricing to "Already have a token?" — paste your token, hit Enter. Page reloads as your dashboard.
+        </div>
+        <div class="tester-item">
+          <strong>2. Generate a compliance report at <a href="/report/" style="color:var(--cyan)">/report/</a></strong>
+          Click "SkyRover / Knowact" chip → Full Intelligence Report → Generate. Read the executive assessment. Does it feel like $50 worth of intelligence?
+        </div>
+        <div class="tester-item">
+          <strong>3. Check the PIE predictions at <a href="/patterns/" style="color:var(--cyan)">/patterns/</a></strong>
+          Tap the Predictions tab. Tap any card to expand it. Is the model breakdown useful? Do the drivers make sense?
+        </div>
+        <div class="tester-item">
+          <strong>4. Ask Wingman something real at <a href="/wingman/" style="color:var(--cyan)">/wingman/</a></strong>
+          Try: "Is SkyRover NDAA compliant and why?" or "Compare Silvus vs TrellisWare for DDP Gauntlet II". Claude should answer with actual depth.
+        </div>
+        <div class="tester-item">
+          <strong>5. Try the Gap Analyzer</strong>
+          In Wingman, scroll to Gap Analyzer panel. Enter "DJI Matrice 350" vs "Skydio X10D" and run it. Does the output give you something actionable?
+        </div>
+      </div>
+    </div>
+
+    <hr class="section-divider"/>
+
+    <!-- FEEDBACK -->
+    <div class="doc-section" id="feedback">
+      <div class="section-eyebrow">// Feedback We Need</div>
+      <h2 class="section-title">What to tell us after testing</h2>
+      <p>Honest answers to these questions are more valuable than anything else:</p>
+
+      <div class="tester-card">
+        <div class="tester-card-head">// The 4 questions</div>
+        <div class="tester-item">
+          <strong>1. Does the compliance report feel worth $49/month?</strong>
+          Not "is it impressive" — would you actually use it in a procurement workflow? Would you attach it to anything? What's missing?
+        </div>
+        <div class="tester-item">
+          <strong>2. Is the ICP right?</strong>
+          Who do you think the actual buyer is — police procurement officer, defense integrator, program manager, BD person at a prime? Who would pay without hesitation and who would never?
+        </div>
+        <div class="tester-item">
+          <strong>3. What's broken or confusing?</strong>
+          Anything that made you stop and think "what do I do next" is a bug. Anything that didn't work is a bug. Be blunt.
+        </div>
+        <div class="tester-item">
+          <strong>4. Who should I be talking to?</strong>
+          Names, programs, agencies, or organizations where this would land immediately. Introductions welcome.
+        </div>
+      </div>
+
+      <div class="callout tip" style="margin-top:16px">
+        <div class="callout-icon">✉</div>
+        <div>Send feedback to <a href="mailto:Jeremiah@midwestniceuas.com">Jeremiah@midwestniceuas.com</a> — text, voice memo, whatever. No format required.</div>
+      </div>
+    </div>
+
+    <hr class="section-divider"/>
+
+    <!-- FAQ -->
+    <div class="doc-section" id="faq">
+      <div class="section-eyebrow">// FAQ</div>
+      <h2 class="section-title">Common questions</h2>
+
+      <div class="faq-item">
+        <button class="faq-q" onclick="toggleFaq(this)">My token isn't working<span class="faq-arrow">▼</span></button>
+        <div class="faq-a">Make sure you copied the entire token — it's long and may wrap across lines in email. Starts with <span class="code">eyJ</span>, ends with <span class="code">==</span>. Use the token checker above. If it still fails, email Jeremiah@midwestniceuas.com with the first 8 characters of your token (never the full thing).</div>
+      </div>
+      <div class="faq-item">
+        <button class="faq-q" onclick="toggleFaq(this)">Do I need my own Claude API key?<span class="faq-arrow">▼</span></button>
+        <div class="faq-a">No. Pro includes server-side Claude — the API key lives on the server. Just activate your token and Claude works automatically on any device.</div>
+      </div>
+      <div class="faq-item">
+        <button class="faq-q" onclick="toggleFaq(this)">I switched phones — do I need to re-enter my token?<span class="faq-arrow">▼</span></button>
+        <div class="faq-a">Yes — tokens are stored in your browser's localStorage. On a new device, go to <a href="/pro/">/pro/</a>, paste your token in the "Already have a token?" field, and hit Enter.</div>
+      </div>
+      <div class="faq-item">
+        <button class="faq-q" onclick="toggleFaq(this)">Is the free tier actually free forever?<span class="faq-arrow">▼</span></button>
+        <div class="faq-a">Yes. The Forge component database, platform browser, NDAA compliance checker, intel feed, and Wingman AI with Gemini/Groq will always be free. Pro adds the operational intelligence layer on top.</div>
+      </div>
+      <div class="faq-item">
+        <button class="faq-q" onclick="toggleFaq(this)">How do I cancel Pro?<span class="faq-arrow">▼</span></button>
+        <div class="faq-a">Go to <a href="/pro/">/pro/</a> → Manage → Stripe customer portal. Cancel in one click. Access continues until end of billing period.</div>
+      </div>
+      <div class="faq-item">
+        <button class="faq-q" onclick="toggleFaq(this)">What's the Agency plan?<span class="faq-arrow">▼</span></button>
+        <div class="faq-a">$299/month for government buyers, defense integrators, and Blue UAS program managers. Includes sourced gray zone evidence, NDAA-formatted compliance reports for contract vehicles, component supply chain risk, 5 seats, and API access. Email <a href="mailto:Jeremiah@midwestniceuas.com">Jeremiah@midwestniceuas.com</a>.</div>
+      </div>
+    </div>
+
+    <hr class="section-divider"/>
+
+    <!-- CONTACT -->
+    <div class="doc-section" id="contact">
+      <div class="section-eyebrow">// Contact</div>
+      <h2 class="section-title">Still stuck?</h2>
+      <div class="callout tip">
+        <div class="callout-icon">✉</div>
+        <div>
+          <strong>Jeremiah Wong</strong> — Midwest Nice Advisory LLC<br>
+          <a href="mailto:Jeremiah@midwestniceuas.com">Jeremiah@midwestniceuas.com</a><br>
+          <span style="font-size:11px;color:var(--g2);margin-top:3px;display:block">This goes directly to me. Include the first 8 chars of your token for access issues (not the full token).</span>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<script>
+const sections = document.querySelectorAll('.doc-section');
+const links    = document.querySelectorAll('.sidebar-link');
+const obs = new IntersectionObserver((entries) => {
+  entries.forEach(e => {
+    if (e.isIntersecting) {
+      links.forEach(l => l.classList.remove('active'));
+      const link = document.querySelector(`.sidebar-link[href="#${e.target.id}"]`);
+      if (link) link.classList.add('active');
+    }
+  });
+}, { rootMargin: '-20% 0px -70% 0px' });
+sections.forEach(s => obs.observe(s));
+
+function toggleFaq(btn) { btn.closest('.faq-item').classList.toggle('open'); }
+
+function checkToken() {
+  const tok = document.getElementById('tc-input').value.trim();
+  const res = document.getElementById('tc-result');
+  if (!tok) { res.textContent = 'Paste a token first.'; res.style.color = 'var(--g2)'; return; }
+  try {
+    const { payload } = JSON.parse(atob(tok));
+    if (!payload) throw new Error();
+    const expired  = payload.exp && Date.now() > payload.exp;
+    const daysLeft = payload.exp ? Math.max(0, Math.ceil((payload.exp - Date.now()) / 86400000)) : null;
+    if (expired) { res.innerHTML = '⚠ Expired. <a href="/pro/" style="color:var(--cyan)">Renew →</a>'; res.style.color = 'var(--amber)'; return; }
+    res.textContent = ['✓ Valid', payload.email ? '· ' + payload.email : '', payload.tier ? '· ' + payload.tier.toUpperCase() : '', payload.demo ? '· demo' : '', daysLeft !== null ? '· ' + daysLeft + ' days remaining' : ''].filter(Boolean).join(' ');
+    res.style.color = 'var(--cyan)';
+  } catch {
+    fetch(`/.netlify/functions/subscription-check?action=verify&token=${encodeURIComponent(tok)}`)
+      .then(r => r.json()).then(d => {
+        if (d.valid) { const dl = d.exp ? Math.max(0, Math.ceil((d.exp - Date.now()) / 86400000)) : null; res.textContent = '✓ Valid · ' + (d.tier||'pro').toUpperCase() + (dl ? ' · ' + dl + ' days' : ''); res.style.color = 'var(--cyan)'; }
+        else { res.textContent = d.reason === 'revoked' ? '✗ Revoked.' : '✗ Not recognized — check you copied it fully.'; res.style.color = 'var(--red)'; }
+      }).catch(() => { res.textContent = '✗ Invalid format.'; res.style.color = 'var(--red)'; });
+  }
+}
+document.getElementById('tc-input').addEventListener('keydown', e => { if (e.key === 'Enter') checkToken(); });
+</script>
+</body>
+</html>

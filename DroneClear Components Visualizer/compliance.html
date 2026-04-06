@@ -1,0 +1,379 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Compliance Dashboard — Forge</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+      :root{
+        --bg:#0c0c0a;--surface:#141410;--card:#1c1c17;--card-hi:#242420;
+        --border:#2e2e26;--border-hi:#3e3e34;
+        --c-green:#22c55e;--c-green-d:#22c55e18;
+        --c-yellow:#eab308;--c-yellow-d:#eab30818;
+        --c-orange:#f97316;--c-orange-d:#f9731618;
+        --c-red:#ef4444;--c-red-d:#ef444418;
+        --c-purple:#a855f7;--c-purple-d:#a855f718;
+        --c-amber:#f59e0b;--c-amber-d:#f59e0b18;
+        --text:#f5f0e8;--text-s:#b8b0a0;--text-d:#6b6358;--text-xd:#3d3830;
+        --font:'DM Sans',system-ui,sans-serif;
+        --mono:'JetBrains Mono',monospace;
+      }
+      *{box-sizing:border-box;margin:0;padding:0}
+      body{background:var(--bg);color:var(--text);font-family:var(--font);line-height:1.5;-webkit-font-smoothing:antialiased}
+      a{text-decoration:none;color:inherit}
+
+      .topbar{display:flex;align-items:center;justify-content:space-between;padding:10px 16px;border-bottom:1px solid var(--border);background:var(--bg);position:sticky;top:0;z-index:100}
+      .topbar-left{display:flex;align-items:center;gap:8px;min-width:0;flex:1;overflow:hidden}
+      .topbar-logo{font:700 14px var(--mono);letter-spacing:-0.02em;white-space:nowrap}
+      .topbar-sep{color:var(--text-xd);font-size:12px;flex-shrink:0}
+      .topbar-current{font:600 13px var(--font);color:var(--text);white-space:nowrap}
+      .topbar-links{display:flex;gap:4px;flex-shrink:0}
+      .topbar-pill{font:500 11px var(--font);color:var(--text-d);padding:4px 10px;border:1px solid var(--border);border-radius:20px;transition:all .15s;text-decoration:none;white-space:nowrap}
+      .topbar-pill:hover{border-color:var(--border-hi);color:var(--text-s)}
+    </style>
+    <script src="https://unpkg.com/@phosphor-icons/web"></script>
+    <script>
+        (function(){
+            const saved = localStorage.getItem('dc-theme');
+            document.documentElement.setAttribute('data-theme', saved ? saved : 'dark');
+        })();
+    </script>
+    <style>
+      .compliance-page{max-width:960px;margin:0 auto;padding:20px 16px 60px}
+      .page-header{margin-bottom:20px}
+      .page-header h1{font:700 22px var(--font);color:var(--text);margin-bottom:4px}
+      .page-header p{font-size:12px;color:var(--text-d)}
+
+      /* Summary stat row — mobile first, no overflow */
+      .compliance-summary{display:grid;grid-template-columns:repeat(5,1fr);gap:8px;margin-bottom:20px}
+      @media(max-width:600px){.compliance-summary{grid-template-columns:repeat(3,1fr)}}
+      .summary-card{background:var(--card);border:1px solid var(--border);border-radius:8px;padding:12px 8px;text-align:center;cursor:pointer;transition:all .15s;border-top:3px solid transparent}
+      .summary-card:hover{background:var(--card-hi)}
+      .summary-card.active{border-color:var(--border-hi);background:var(--card-hi)}
+      .summary-card.tier-all.active{border-top-color:var(--text-d)}
+      .summary-card.tier-green.active{border-top-color:var(--c-green)}
+      .summary-card.tier-yellow.active{border-top-color:var(--c-yellow)}
+      .summary-card.tier-orange.active{border-top-color:var(--c-orange)}
+      .summary-card.tier-red.active{border-top-color:var(--c-red)}
+      .summary-count{font:700 22px var(--mono);line-height:1;display:block}
+      .tier-all .summary-count{color:var(--text)}
+      .tier-green .summary-count{color:var(--c-green)}
+      .tier-yellow .summary-count{color:var(--c-yellow)}
+      .tier-orange .summary-count{color:var(--c-orange)}
+      .tier-red .summary-count{color:var(--c-red)}
+      .summary-label{font:600 9px var(--mono);text-transform:uppercase;letter-spacing:.06em;color:var(--text-d);margin-top:4px;display:block}
+      .summary-desc{font-size:10px;color:var(--text-xd);margin-top:2px}
+
+      /* Legend */
+      .compliance-legend{display:flex;gap:12px;flex-wrap:wrap;margin-bottom:16px;padding:10px 12px;background:var(--surface);border-radius:8px;border:1px solid var(--border);font-size:11px}
+      .legend-item{display:flex;align-items:center;gap:5px;color:var(--text-d)}
+
+      /* Controls */
+      .compliance-controls{display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap;align-items:center}
+      .compliance-search{flex:1;min-width:180px;position:relative}
+      .compliance-search input{width:100%;padding:8px 10px 8px 32px;background:var(--surface);border:1px solid var(--border);color:var(--text);border-radius:6px;outline:none;font:12px var(--mono)}
+      .compliance-search input:focus{border-color:var(--c-amber)}
+      .compliance-search i{position:absolute;left:10px;top:50%;transform:translateY(-50%);color:var(--text-d);font-size:14px}
+      .filter-chips{display:flex;gap:4px;flex-wrap:wrap}
+      .filter-chip{padding:4px 8px;font:500 10px var(--font);border-radius:5px;border:1px solid var(--border);background:none;color:var(--text-d);cursor:pointer;transition:all .12s;white-space:nowrap}
+      .filter-chip:hover{border-color:var(--border-hi);color:var(--text-s)}
+      .filter-chip.active{border-color:var(--c-amber);color:var(--c-amber);background:var(--c-amber-d)}
+      .sort-select{padding:7px 10px;background:var(--surface);border:1px solid var(--border);color:var(--text);border-radius:6px;font:11px var(--mono);outline:none}
+
+      /* Table */
+      .results-count{font:500 10px var(--mono);color:var(--text-d);margin-bottom:8px}
+      .compliance-table-wrap{background:var(--card);border:1px solid var(--border);border-radius:8px;overflow:hidden;overflow-x:auto}
+      .compliance-table{width:100%;border-collapse:collapse;font-size:12px;min-width:560px}
+      .compliance-table thead th{padding:8px 12px;text-align:left;font:600 9px var(--mono);text-transform:uppercase;letter-spacing:.06em;color:var(--text-d);border-bottom:1px solid var(--border);background:var(--surface);white-space:nowrap;cursor:pointer;user-select:none}
+      .compliance-table thead th:hover{color:var(--text)}
+      .compliance-table thead th.sorted{color:var(--c-amber)}
+      .compliance-table tbody tr{border-bottom:1px solid var(--border)}
+      .compliance-table tbody tr:last-child{border-bottom:none}
+      .compliance-table tbody tr:hover{background:var(--card-hi)}
+      .compliance-table td{padding:9px 12px;vertical-align:middle}
+      .platform-name{font:600 12px var(--font);color:var(--text)}
+      .platform-mfr{font-size:11px;color:var(--text-d)}
+      .country-flag{font-size:11px;color:var(--text-d)}
+      .note-text{font-size:11px;color:var(--text-d);max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+
+      /* Dots */
+      .tier-dot{width:8px;height:8px;border-radius:50%;display:inline-block;flex-shrink:0}
+      .tier-dot.green{background:var(--c-green);box-shadow:0 0 5px rgba(34,197,94,.5)}
+      .tier-dot.yellow{background:var(--c-yellow);box-shadow:0 0 5px rgba(234,179,8,.5)}
+      .tier-dot.orange{background:var(--c-orange);box-shadow:0 0 5px rgba(249,115,22,.5)}
+      .tier-dot.red{background:var(--c-red);box-shadow:0 0 5px rgba(239,68,68,.5)}
+
+      /* Badges */
+      .badge{display:inline-flex;align-items:center;gap:3px;padding:2px 7px;border-radius:4px;font:600 10px var(--mono);white-space:nowrap}
+      .badge-green{background:var(--c-green-d);color:var(--c-green);border:1px solid rgba(34,197,94,.2)}
+      .badge-yellow{background:var(--c-yellow-d);color:var(--c-yellow);border:1px solid rgba(234,179,8,.2)}
+      .badge-red{background:var(--c-red-d);color:var(--c-red);border:1px solid rgba(239,68,68,.2)}
+      .badge-muted{background:rgba(100,100,100,.1);color:var(--text-d);border:1px solid var(--border)}
+      .badge-combat{background:var(--c-purple-d);color:var(--c-purple);border:1px solid rgba(168,85,247,.2)}
+
+      .empty-state{padding:40px;text-align:center;color:var(--text-d);font-size:13px}
+      .hidden{display:none}
+
+      @media(max-width:640px){
+        .topbar-links{display:none}
+        .note-text{display:none}
+        .compliance-controls{flex-direction:column;align-items:stretch}
+        .compliance-search{min-width:0}
+      }
+    </style>
+</head>
+<body>
+<header style="display:flex;align-items:center;justify-content:space-between;gap:8px;padding:10px 16px;border-bottom:1px solid #2e2e26;background:#1c1c17;position:sticky;top:0;z-index:100;flex-shrink:0;">
+  <a href="/intel/" style="font:800 18px 'JetBrains Mono',monospace;color:#f59e0b;letter-spacing:-0.03em;text-decoration:none;flex-shrink:0;">Intel</a>
+  <div style="display:flex;gap:5px;align-items:center;flex-wrap:nowrap;"><a href="/" class="tp-pill">Forge</a><a href="/patterns/" class="tp-pill">Patterns</a><a href="/wingman/" class="tp-pill">Wingman</a></div>
+</header>
+<style>.tp-pill{font:500 10px 'DM Sans',system-ui,sans-serif;color:#6b6358;padding:4px 9px;border:1px solid #2e2e26;border-radius:20px;text-decoration:none;white-space:nowrap;transition:all .15s}.tp-pill:hover{border-color:#3e3e34;color:#b8b0a0}</style>
+    
+        <!-- Topbar -->
+
+        <main class="compliance-page">
+      <div class="page-header">
+        <h1>Compliance Dashboard</h1>
+        <p>Blue UAS, NDAA §848, ITAR, and country-of-origin status for all 237 platforms in the Forge database.</p>
+      </div>
+
+            <!-- Summary Cards -->
+            <div class="compliance-summary" id="summary-cards"></div>
+
+            <!-- Legend -->
+            <div class="compliance-legend">
+                <div class="legend-item"><span class="tier-dot green"></span> Blue UAS + NDAA — cleared for US Gov procurement</div>
+                <div class="legend-item"><span class="tier-dot yellow"></span> NDAA compliant — no adversary components</div>
+                <div class="legend-item"><span class="tier-dot orange"></span> Non-NDAA — commercial / allied nation</div>
+                <div class="legend-item"><span class="tier-dot red"></span> Adversary nation — banned / restricted</div>
+                <div class="legend-item"><span class="badge badge-combat" style="font-size:10px;">COMBAT</span> Combat-proven in conflict</div>
+            </div>
+
+            <!-- Controls -->
+            <div class="compliance-controls">
+                <div class="compliance-search">
+                    <i class="ph ph-magnifying-glass"></i>
+                    <label for="comp-search" class="sr-only">Search compliance</label>
+                    <input type="text" id="comp-search" placeholder="Search platforms, manufacturers, countries...">
+                </div>
+                <div class="filter-chips" id="filter-chips"></div>
+                <select class="sort-select" id="sort-select">
+                    <option value="tier">Sort: Compliance Tier</option>
+                    <option value="name">Sort: Name A-Z</option>
+                    <option value="country">Sort: Country</option>
+                    <option value="manufacturer">Sort: Manufacturer</option>
+                </select>
+            </div>
+
+            <div class="results-count" id="results-count"></div>
+
+            <!-- Table -->
+            <div class="compliance-table-wrap">
+                <table class="compliance-table">
+                    <thead>
+                        <tr>
+                            <th>Tier</th>
+                            <th>Platform</th>
+                            <th>Manufacturer</th>
+                            <th>Country</th>
+                            <th>Blue UAS</th>
+                            <th>NDAA §848</th>
+                            <th>Combat</th>
+                            <th>Notes</th>
+                        </tr>
+                    </thead>
+                    <tbody id="compliance-tbody"></tbody>
+                </table>
+            </div>
+            <div class="empty-state hidden" id="empty-state">
+                <i class="ph ph-magnifying-glass" style="font-size: 32px; margin-bottom: 8px; display: block;"></i>
+                No platforms match your filters.
+            </div>
+        </main>
+    <script>
+    (function() {
+        'use strict';
+
+        let platforms = [];
+        let currentTier = 'all';
+        let currentCountryFilter = null;
+        let searchTerm = '';
+        let sortField = 'tier';
+
+        const ESC = s => {
+            if (s == null) return '';
+            const d = document.createElement('div');
+            d.textContent = String(s);
+            return d.innerHTML;
+        };
+
+        function getTier(p) {
+            const blue = p.blue_uas === true || p.compliance?.blue_uas === true;
+            const ndaa = p.ndaa_compliant === true || p.compliance?.ndaa_compliant === true;
+            const country = (p.country || '').toLowerCase();
+            const adversary = ['china', 'iran', 'russia', 'north korea'].some(c => country.includes(c));
+            if (blue && ndaa) return 'green';
+            if (ndaa && !blue) return 'yellow';
+            if (!ndaa && !adversary) return 'orange';
+            return 'red';
+        }
+
+        function tierOrder(t) { return { green: 0, yellow: 1, orange: 2, red: 3 }[t] ?? 4; }
+
+        function render() {
+            let filtered = platforms.filter(p => {
+                if (currentTier !== 'all' && getTier(p) !== currentTier) return false;
+                if (currentCountryFilter && (p.country || '').toLowerCase() !== currentCountryFilter.toLowerCase()) return false;
+                if (searchTerm) {
+                    const q = searchTerm.toLowerCase();
+                    const haystack = [p.name, p.manufacturer, p.country, p.compliance?.note || ''].join(' ').toLowerCase();
+                    if (!haystack.includes(q)) return false;
+                }
+                return true;
+            });
+
+            // Sort
+            filtered.sort((a, b) => {
+                if (sortField === 'tier') return tierOrder(getTier(a)) - tierOrder(getTier(b)) || a.name.localeCompare(b.name);
+                if (sortField === 'name') return a.name.localeCompare(b.name);
+                if (sortField === 'country') return (a.country || '').localeCompare(b.country || '') || a.name.localeCompare(b.name);
+                if (sortField === 'manufacturer') return (a.manufacturer || '').localeCompare(b.manufacturer || '') || a.name.localeCompare(b.name);
+                return 0;
+            });
+
+            // Results count
+            document.getElementById('results-count').textContent = `Showing ${filtered.length} of ${platforms.length} platforms`;
+
+            // Table
+            const tbody = document.getElementById('compliance-tbody');
+            const empty = document.getElementById('empty-state');
+
+            if (!filtered.length) {
+                tbody.innerHTML = '';
+                empty.classList.remove('hidden');
+                return;
+            }
+            empty.classList.add('hidden');
+
+            tbody.innerHTML = filtered.map(p => {
+                const tier = getTier(p);
+                const blue = p.blue_uas === true || p.compliance?.blue_uas === true;
+                const ndaa = p.ndaa_compliant === true || p.compliance?.ndaa_compliant === true;
+                const combat = p.compliance?.combat_proven === true;
+                const note = p.compliance?.note || '';
+
+                return `<tr>
+                    <td><span class="tier-dot ${tier}"></span></td>
+                    <td>
+                        <div class="platform-name">${ESC(p.name)}</div>
+                    </td>
+                    <td class="platform-mfr">${ESC(p.manufacturer || '—')}</td>
+                    <td class="country-flag">${ESC(p.country || 'Unknown')}</td>
+                    <td>${blue ? '<span class="badge badge-green"><i class="ph ph-seal-check"></i> Listed</span>' : '<span class="badge badge-muted">—</span>'}</td>
+                    <td>${ndaa ? '<span class="badge badge-green"><i class="ph ph-check"></i> Yes</span>' : '<span class="badge badge-red"><i class="ph ph-x"></i> No</span>'}</td>
+                    <td>${combat ? '<span class="badge badge-combat"><i class="ph ph-crosshair"></i> Yes</span>' : '<span class="badge badge-muted">—</span>'}</td>
+                    <td><span class="note-text" title="${ESC(note)}">${ESC(note)}</span></td>
+                </tr>`;
+            }).join('');
+        }
+
+        function renderSummary() {
+            const counts = { all: 0, green: 0, yellow: 0, orange: 0, red: 0 };
+            platforms.forEach(p => { counts[getTier(p)]++; counts.all++; });
+
+            const cards = [
+                { tier: 'all', label: 'All Platforms', count: counts.all, desc: 'Complete database' },
+                { tier: 'green', label: 'Blue UAS + NDAA', count: counts.green, desc: 'Cleared for US Gov' },
+                { tier: 'yellow', label: 'NDAA Compliant', count: counts.yellow, desc: 'No adversary components' },
+                { tier: 'orange', label: 'Non-NDAA', count: counts.orange, desc: 'Commercial / allied' },
+                { tier: 'red', label: 'Restricted', count: counts.red, desc: 'Adversary nation' },
+            ];
+
+            document.getElementById('summary-cards').innerHTML = cards.map(c =>
+                `<div class="summary-card tier-${c.tier} ${currentTier === c.tier ? 'active' : ''}" data-tier="${c.tier}">
+                    <div class="summary-count">${c.count}</div>
+                    <div class="summary-label">${c.label}</div>
+                    <div class="summary-desc">${c.desc}</div>
+                </div>`
+            ).join('');
+
+            // Wire clicks
+            document.querySelectorAll('.summary-card').forEach(card => {
+                card.addEventListener('click', () => {
+                    currentTier = card.dataset.tier;
+                    renderSummary();
+                    render();
+                });
+            });
+        }
+
+        function renderCountryChips() {
+            const countries = {};
+            platforms.forEach(p => {
+                const c = p.country || 'Unknown';
+                countries[c] = (countries[c] || 0) + 1;
+            });
+
+            const top = Object.entries(countries)
+                .sort((a, b) => b[1] - a[1])
+                .slice(0, 8);
+
+            document.getElementById('filter-chips').innerHTML = top.map(([c, n]) =>
+                `<button class="filter-chip ${currentCountryFilter === c ? 'active' : ''}" data-country="${ESC(c)}">${ESC(c)} (${n})</button>`
+            ).join('');
+
+            document.querySelectorAll('.filter-chip').forEach(chip => {
+                chip.addEventListener('click', () => {
+                    const country = chip.dataset.country;
+                    currentCountryFilter = currentCountryFilter === country ? null : country;
+                    renderCountryChips();
+                    render();
+                });
+            });
+        }
+
+        // Init
+        async function init() {
+            try {
+                const res = await fetch('forge_database.json');
+                if (!res.ok) throw new Error('Failed to load database');
+                const db = await res.json();
+                platforms = db.drone_models || [];
+                renderSummary();
+                renderCountryChips();
+                render();
+            } catch (err) {
+                console.error(err);
+                document.getElementById('compliance-tbody').innerHTML = '<tr><td colspan="8" style="text-align:center; padding:24px; color:var(--text-muted);">Failed to load database.</td></tr>';
+            }
+        }
+
+        // Wire search
+        document.getElementById('comp-search').addEventListener('input', (e) => {
+            searchTerm = e.target.value.trim();
+            render();
+        });
+
+        // Wire sort
+        document.getElementById('sort-select').addEventListener('change', (e) => {
+            sortField = e.target.value;
+            render();
+        });
+
+        // Dark mode
+        document.getElementById('dark-mode-toggle')?.addEventListener('click', () => {
+            const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+            document.documentElement.setAttribute('data-theme', isDark ? 'light' : 'dark');
+            localStorage.setItem('dc-theme', isDark ? 'light' : 'dark');
+            const icon = document.getElementById('dark-mode-icon');
+            if (icon) icon.className = isDark ? 'ph ph-moon' : 'ph ph-sun';
+        });
+
+        init();
+    })();
+    </script>
+</body>
+</html>

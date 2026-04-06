@@ -1,0 +1,2461 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Pattern Intelligence — Forge Module</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg:#0c0c0a;--surface:#141410;--card:#1c1c17;--card-hi:#242420;
+  --border:#2e2e26;--border-hi:#3e3e34;
+  --amber:#22c55e;--amber-d:#22c55e20;
+  --warning:#f97316;--warning-d:#f9731620;
+  --blue:#2563eb;--blue-d:#2563eb18;
+  --green:#22c55e;--green-d:#22c55e20;
+  --red:#d62828;--red-d:#d6282820;
+  --purple:#7c3aed;--purple-d:#7c3aed18;
+  --cyan:#0891b2;--cyan-d:#0891b218;
+  --orange:#ea580c;--orange-d:#ea580c18;
+  --text:#f5f0e8;--text-s:#b8b0a0;--text-d:#6b6358;--text-xd:#3d3830;
+  --font:'DM Sans',system-ui,sans-serif;
+  --sans:'DM Sans',system-ui,sans-serif;
+  --mono:'JetBrains Mono',monospace;
+  --mono:'JetBrains Mono',monospace;
+}
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:var(--bg);color:var(--text);font-family:var(--font);line-height:1.5;-webkit-font-smoothing:antialiased}
+a{color:var(--blue);text-decoration:none}a:hover{text-decoration:underline}
+
+/* ── Forge nav bar (matches existing modules) ── */
+.topbar{display:flex;align-items:center;justify-content:space-between;padding:10px 16px;border-bottom:1px solid var(--border);background:var(--bg);position:sticky;top:0;z-index:100}
+.topbar-left{display:flex;align-items:center;gap:8px;min-width:0;flex:1;overflow:hidden}
+.topbar-logo{font:700 14px var(--mono);color:#22c55e;letter-spacing:-0.02em;text-decoration:none;white-space:nowrap}
+.topbar-sep{color:var(--text-xd);font-size:12px;flex-shrink:0}
+.topbar-current{font:600 13px var(--font);color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.topbar-links{display:flex;gap:4px;flex-shrink:0}
+.topbar-pill{font:500 11px var(--font);color:var(--text-d);padding:4px 10px;border:1px solid var(--border);border-radius:20px;transition:all .15s;text-decoration:none;white-space:nowrap}
+.topbar-pill:hover{border-color:var(--border-hi);color:var(--text-s)}
+
+/* ── Tabs ── */
+.tabs{display:flex;gap:0;border-bottom:1px solid var(--border);padding:0 20px;overflow-x:auto;-webkit-overflow-scrolling:touch;scrollbar-width:none}
+.tabs::-webkit-scrollbar{display:none}
+.tab{background:none;border:none;border-bottom:2px solid transparent;color:var(--text-d);padding:10px 16px;font:500 11px var(--font);cursor:pointer;transition:all .15s;white-space:nowrap;flex-shrink:0}
+.tab.active{color:var(--amber);border-bottom-color:var(--amber);font-weight:600}
+.tab .count{background:var(--red);color:#fff;border-radius:8px;padding:1px 5px;font-size:9px;margin-left:4px;font-weight:700}
+
+/* ── Layout ── */
+.content{padding:16px 20px;max-width:960px;margin:0 auto}
+.panel{display:none}.panel.active{display:block}
+.search-bar{background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:7px 12px;font:11px var(--font);color:var(--text);width:100%;outline:none;margin-bottom:14px}
+.search-bar:focus{border-color:var(--amber)}
+.filter-row{display:flex;gap:6px;margin-bottom:14px;flex-wrap:wrap}
+.filter-btn{background:none;border:1px solid var(--border);color:var(--text-d);border-radius:6px;padding:4px 10px;font:10px var(--font);cursor:pointer;text-transform:capitalize;transition:all .15s}
+.filter-btn.active{border-color:var(--amber);color:var(--text);background:var(--amber-d)}
+.filter-btn.hidden-filter{border-color:var(--border);color:var(--text-d);background:none;opacity:.5;text-decoration:line-through}
+.filter-section{margin-bottom:4px}
+.filter-header{display:flex;align-items:center;gap:6px;padding:6px 2px;cursor:pointer;font:600 11px var(--font);color:var(--text-d);user-select:none}
+.filter-header:hover{color:var(--text)}
+.filter-chevron{font-size:10px;transition:transform .15s;margin-left:auto}
+.filter-header.open .filter-chevron{transform:rotate(90deg)}
+.filter-hidden-count{font:10px var(--mono);color:var(--amber);margin-left:2px}
+.filter-collapsible{max-height:0;overflow:hidden;transition:max-height .2s ease}
+.filter-collapsible.open{max-height:300px}
+.map-region path{transition:fill-opacity .2s,stroke-width .2s}
+.map-region:hover path{fill-opacity:0.35;stroke-width:2.5}
+
+/* ── Badges ── */
+.badge{padding:2px 8px;border-radius:5px;font:600 10px var(--mono);white-space:nowrap;letter-spacing:.03em;display:inline-block}
+.badge-blue{background:var(--blue-d);color:var(--blue)}.badge-green{background:var(--green-d);color:var(--green)}
+.badge-red{background:var(--red-d);color:var(--red)}.badge-amber{background:var(--amber-d);color:var(--amber)}
+.badge-purple{background:var(--purple-d);color:var(--purple)}.badge-cyan{background:var(--cyan-d);color:var(--cyan)}
+.badge-orange{background:var(--orange-d);color:var(--orange)}.badge-warning{background:var(--warning-d);color:var(--warning)}
+
+/* ── Severity dot ── */
+.sev{width:8px;height:8px;border-radius:50%;display:inline-block;flex-shrink:0}
+.sev-critical{background:var(--red);box-shadow:0 0 6px #ef444466}
+.sev-warning{background:var(--warning);box-shadow:0 0 6px #f9731666}
+.sev-info{background:var(--blue);box-shadow:0 0 6px #3b82f666}
+.sev-prediction{background:var(--purple);box-shadow:0 0 6px #a78bfa66}
+
+/* ── Flag cards ── */
+.flag-list{display:flex;flex-direction:column;gap:6px}
+.flag-card{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:12px 16px;cursor:pointer;transition:all .15s;text-align:left;font-family:var(--font);display:flex;gap:12px;align-items:flex-start;width:100%}
+.flag-card:hover{background:var(--card-hi);border-color:var(--border-hi)}
+.card-body.expanded{max-height:500px !important}
+.card-chevron.open{transform:rotate(90deg)}
+.flag-chevron.open{transform:rotate(90deg)}
+.g-chevron.open{transform:rotate(90deg)}
+.flag-group .flag-group-body{display:none}
+.flag-group.open .flag-group-body{display:block}
+.flag-group-header:hover{background:var(--card-hi)}
+.flag-card .meta{display:flex;gap:6px;align-items:center;margin-bottom:4px;flex-wrap:wrap}
+.flag-card .title{font-size:12px;font-weight:500;color:var(--text);line-height:1.4}
+
+/* ── Flag detail ── */
+.flag-detail{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:14px;max-height:85vh;overflow-y:auto;-webkit-overflow-scrolling:touch}
+.flag-detail .header{display:flex;justify-content:space-between;align-items:flex-start;gap:8px;margin-bottom:8px}
+.flag-detail .body{font-size:11px;color:var(--text-s);line-height:1.6;margin-bottom:10px}
+.flag-detail .cards{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px}
+.flag-detail .info-card{background:var(--surface);border-radius:6px;padding:6px 10px;flex:1 1 100px;min-width:100px}
+.flag-detail .info-card .label{font:500 8px var(--font);color:var(--text-d);text-transform:uppercase;letter-spacing:.06em;margin-bottom:2px}
+.flag-detail .prediction-box{background:var(--purple-d);border:1px solid #a78bfa22;border-radius:6px;padding:8px 10px;margin-bottom:8px}
+.flag-detail .prediction-box .label{font:600 8px var(--font);color:var(--purple);text-transform:uppercase;letter-spacing:.06em;margin-bottom:3px}
+.close-btn{display:flex;align-items:center;justify-content:center;width:32px;height:32px;background:var(--surface);border:1px solid var(--border);border-radius:8px;color:var(--text-s);font-size:20px;cursor:pointer;flex-shrink:0;transition:all .15s}.close-btn:hover{background:var(--card-hi);border-color:var(--border-hi);color:var(--text)}
+
+/* ── Prediction cards ── */
+.pred-card{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:16px 18px;margin-bottom:10px;cursor:pointer;transition:border-color .15s}.pred-card:hover{border-color:var(--border-hi)}
+.pred-card .drivers{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px}
+.pred-modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.75);backdrop-filter:blur(6px);z-index:500;display:none;align-items:center;justify-content:center;padding:16px}
+.pred-modal-overlay.open{display:flex}
+.pred-modal{background:var(--card);border:1px solid var(--border);border-radius:12px;width:100%;max-width:520px;max-height:85vh;display:flex;flex-direction:column;overflow:hidden}
+.pred-modal-head{padding:16px 18px;border-bottom:1px solid var(--border);flex-shrink:0}
+.pred-modal-body{flex:1;overflow-y:auto;padding:16px 18px}
+.pred-modal-close{float:right;background:none;border:none;color:var(--text-d);cursor:pointer;font-size:18px;margin:-4px -4px 0 0}
+.pred-modal-close:hover{color:var(--text)}
+.model-row{background:var(--surface);border-radius:8px;padding:12px;margin-bottom:8px;border-left:3px solid var(--purple)}
+.model-bar-track{height:6px;background:var(--border);border-radius:3px;margin:6px 0}
+.model-bar-fill{height:100%;border-radius:3px;background:var(--amber)}
+.pred-card .driver{font-size:10px;color:var(--text-s);background:var(--surface);padding:2px 7px;border-radius:4px}
+
+/* ── Component table ── */
+.comp-table{width:100%;border-collapse:separate;border-spacing:0 4px;min-width:640px}
+.comp-table th{padding:6px 10px;font:500 9px var(--font);color:var(--text-d);text-align:left;text-transform:uppercase;letter-spacing:.06em}
+.comp-table td{padding:10px;background:var(--card)}
+.comp-table tr td:first-child{border-radius:8px 0 0 8px}
+.comp-table tr td:last-child{border-radius:0 8px 8px 0}
+
+/* ── Platform cards ── */
+.plat-card{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:14px 16px;margin-bottom:8px}
+.plat-card .top{display:flex;justify-content:space-between;align-items:flex-start;gap:8px;margin-bottom:8px}
+.plat-card .tags{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:6px}
+.plat-card .tag{font-size:10px;color:var(--text-s);background:var(--surface);padding:2px 6px;border-radius:4px}
+
+/* ── Footer ── */
+.footer{margin-top:24px;padding:14px 0;border-top:1px solid var(--border);display:flex;justify-content:space-between;font-size:10px;color:var(--text-d);flex-wrap:wrap;gap:8px}
+
+/* ── Responsive ── */
+@media(max-width:640px){
+  .forge-nav .links{display:none}
+  .flag-detail .cards{flex-direction:column}
+  .comp-table{font-size:10px}
+}
+
+/* ── Brief panel ── */
+.signal-bar{display:flex;gap:8px;margin-bottom:10px;flex-wrap:wrap}
+.signal-stat{background:var(--surface);border-radius:8px;padding:8px 12px;text-align:center;flex:1;min-width:60px}
+.signal-stat .num{font:700 20px var(--mono);display:block}
+.signal-stat .lbl{font:500 9px var(--font);color:var(--text-d);text-transform:uppercase;letter-spacing:.06em}
+.signal-stat.critical .num{color:var(--red)}
+.signal-stat.warning .num{color:var(--warning,#f59e0b)}
+.signal-stat.new .num{color:var(--green)}
+.concern-bar{display:flex;align-items:center;gap:6px;font:400 11px var(--font);color:var(--text-s);margin-bottom:12px;padding:7px 10px;background:var(--surface);border-radius:6px}
+.concern-bar .dot{width:6px;height:6px;border-radius:50%;background:var(--red);flex-shrink:0}
+.brief-headline{font:700 15px var(--font);color:var(--text);line-height:1.4;margin-bottom:14px;padding:10px 12px;background:var(--surface);border-radius:8px;border-left:3px solid var(--red)}
+.brief-section-label{font:600 9px var(--mono);color:var(--text-d);text-transform:uppercase;letter-spacing:.08em;margin:14px 0 6px}
+.brief-card{background:var(--card);border:1px solid var(--border);border-radius:8px;padding:12px;margin-bottom:8px}
+.brief-card .card-header{display:flex;align-items:center;gap:6px;margin-bottom:6px}
+.brief-card .card-title{font:600 12px var(--font);color:var(--text);flex:1}
+.brief-card .card-body{font:400 11px var(--font);color:var(--text-s);line-height:1.6;margin-bottom:8px}
+.brief-card .action-box{background:var(--surface);border-radius:6px;padding:7px 9px;margin-top:6px}
+.brief-card .action-label{font:600 9px var(--mono);color:var(--cyan);margin-bottom:2px}
+.brief-card .action-text{font:400 11px var(--font);color:var(--text-s);line-height:1.5}
+.brief-card.lead{border-left:3px solid var(--red)}
+.brief-card.entity{border-left:3px solid var(--warning,#f59e0b)}
+.brief-card.supply{border-left:3px solid var(--blue)}
+.brief-card.pred{display:flex;gap:10px;align-items:flex-start;border-left:3px solid var(--purple)}
+.brief-card .entity-status{font:500 10px var(--mono);color:var(--text-d);margin-bottom:4px}
+.brief-card .entity-exposure{font:400 10px var(--font);color:var(--text-d);margin-bottom:6px}
+.brief-card .supply-window{font:500 9px var(--mono);color:var(--text-d)}
+.brief-card .supply-signal{font:400 11px var(--font);color:var(--text-s);margin-bottom:6px}
+.pred-prob{text-align:center;flex-shrink:0;min-width:44px}
+.pred-prob .pct{font:700 20px var(--mono);display:block;line-height:1}
+.pred-prob .pct-lbl{font:400 9px var(--font);color:var(--text-d)}
+.pred-body{flex:1;min-width:0}
+.pred-event{font:600 12px var(--font);color:var(--text);margin-bottom:4px;line-height:1.4}
+.pred-timeframe{margin-bottom:6px}
+.hedge-box{background:var(--surface);border-radius:5px;padding:6px 8px}
+.hedge-label{font:600 8px var(--mono);color:var(--purple);margin-bottom:2px}
+.hedge-text{font:400 10px var(--font);color:var(--text-s);line-height:1.5}
+.watch-list{display:flex;flex-direction:column;gap:6px;margin-bottom:8px}
+.watch-item{display:flex;gap:8px;align-items:flex-start;background:var(--surface);border-radius:6px;padding:8px 10px}
+.watch-dot{width:6px;height:6px;border-radius:50%;background:var(--amber);flex-shrink:0;margin-top:4px}
+.watch-label{font:600 11px var(--font);color:var(--text);margin-bottom:2px}
+.watch-why{font:400 10px var(--font);color:var(--text-s);margin-bottom:2px}
+.watch-trigger{font:400 10px var(--font);color:var(--text-d)}
+.brief-source-chip{font:500 9px var(--font);color:var(--text-d);padding:2px 6px;background:var(--surface);border-radius:4px;text-decoration:none;margin-right:3px;border:1px solid var(--border)}
+a.brief-source-chip:hover{color:var(--text-s);border-color:var(--border-hi)}
+.brief-footer{font:400 10px var(--mono);color:var(--text-d);margin-top:14px;padding-top:10px;border-top:1px solid var(--border)}
+#panel-brief #brief-inner{padding:4px 0}
+
+  /* ── Detail modal ── */
+  #flag-modal-overlay {
+    display: none; position: fixed; inset: 0;
+    background: rgba(0,0,0,.78); backdrop-filter: blur(6px);
+    z-index: 600; align-items: center; justify-content: center; padding: 16px;
+  }
+  #flag-modal-overlay.open { display: flex; }
+  #flag-modal {
+    background: var(--card); border: 1px solid var(--border-hi);
+    border-radius: 12px; width: 100%; max-width: 540px;
+    max-height: 88vh; display: flex; flex-direction: column; overflow: hidden;
+    animation: modalIn .2s ease;
+  }
+  @keyframes modalIn { from { opacity:0; transform:translateY(12px); } to { opacity:1; transform:none; } }
+  #flag-modal-head {
+    padding: 16px 18px; border-bottom: 1px solid var(--border);
+    display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; flex-shrink: 0;
+  }
+  #flag-modal-head-text { flex: 1; min-width: 0; }
+  #flag-modal-close {
+    background: none; border: none; color: var(--text-d); cursor: pointer;
+    font-size: 20px; padding: 0; line-height: 1; flex-shrink: 0; margin-top: -2px;
+  }
+  #flag-modal-close:hover { color: var(--text); }
+  #flag-modal-body { flex: 1; overflow-y: auto; padding: 16px 18px; }
+</style>
+</head>
+<body>
+<header style="display:flex;align-items:center;justify-content:space-between;gap:8px;padding:10px 16px;border-bottom:1px solid #2e2e26;background:#1c1c17;position:sticky;top:0;z-index:100;flex-shrink:0;">
+  <a href="/patterns-home/" style="font:800 18px 'JetBrains Mono',monospace;color:#22c55e;letter-spacing:-0.03em;text-decoration:none;flex-shrink:0;">Patterns</a>
+  <div style="display:flex;gap:5px;align-items:center;flex-wrap:nowrap;"><a href="/" class="tp-pill">Forge</a><a href="/intel/" class="tp-pill">Intel</a><a href="/wingman/" class="tp-pill">Wingman</a><a href="/start/" class="tp-pill">Docs</a><a href="/pro/" class="tp-pill" style="color:#22c55e;border-color:rgba(34,197,94,.3)">Pro</a></div>
+</header>
+<style>.tp-pill{font:500 10px 'DM Sans',system-ui,sans-serif;color:#6b6358;padding:4px 9px;border:1px solid #2e2e26;border-radius:20px;text-decoration:none;white-space:nowrap;transition:all .15s}.tp-pill:hover{border-color:#3e3e34;color:#b8b0a0}</style>
+
+<!-- ═══ Forge Navigation Bar ═══ -->
+
+<!-- ═══ Tabs ═══ -->
+<div class="tabs" id="tabs">
+  <button class="tab active" data-tab="brief">📋 Brief</button>
+  <button class="tab" data-tab="flags">🚩 Flags <span class="count" id="flag-count">—</span></button>
+  <button class="tab" data-tab="dashboard">📊 Dashboard</button>
+  <button class="tab" data-tab="regions">🌍 Regions</button>
+  <button class="tab" data-tab="platforms">🛡 Blue UAS</button>
+  <button class="tab" data-tab="components">🔩 Components</button>
+  <button class="tab" data-tab="predictions">🔮 Predictions</button>
+  <button class="tab" data-tab="whatif">⚡ What-If</button>
+</div>
+
+<!-- ═══ Content ═══ -->
+<div class="content">
+
+  <!-- FLAGS PANEL -->
+  <div class="panel active" id="panel-brief">
+    <div id="brief-inner"><div style="color:var(--text-d);font:400 11px var(--mono);padding:20px 0">Loading brief...</div></div>
+  </div>
+  <div class="panel active" id="panel-brief">
+    <div id="brief-inner"><div style="color:var(--text-d);font:400 11px var(--mono);padding:20px 0">Loading brief...</div></div>
+  </div>
+  <div class="panel" id="panel-flags">
+    <input class="search-bar" id="flag-search" placeholder="Search flags... (e.g. TrellisWare, Jetson, DRAM, SOF, mesh)" oninput="renderFlags()">
+    <div class="filter-section">
+      <div class="filter-header" onclick="toggleFilterSection(this)">
+        <span>Severity</span><span class="filter-hidden-count" id="sev-hidden-count"></span><span class="filter-chevron">▸</span>
+      </div>
+      <div class="filter-row filter-collapsible collapsed" id="severity-filters"></div>
+    </div>
+    <div class="filter-section">
+      <div class="filter-header" onclick="toggleFilterSection(this)">
+        <span>Type</span><span class="filter-hidden-count" id="type-hidden-count"></span><span class="filter-chevron">▸</span>
+      </div>
+      <div class="filter-row filter-collapsible collapsed" id="type-filters"></div>
+    </div>
+    <div class="filter-section">
+      <div class="filter-header" onclick="toggleFilterSection(this)">
+        <span>Region</span><span class="filter-hidden-count" id="region-hidden-count"></span><span class="filter-chevron">▸</span>
+      </div>
+      <div class="filter-row filter-collapsible collapsed" id="region-filters"></div>
+    </div>
+    <div style="display:flex;gap:8px;align-items:center;margin-bottom:14px;flex-wrap:wrap">
+      <span style="font:10px var(--mono);color:var(--text-d)">Sort:</span>
+      <select id="flag-sort" onchange="renderFlags()" style="background:var(--surface);border:1px solid var(--border);border-radius:6px;padding:6px 10px;font:11px var(--mono);color:var(--text);outline:none;-webkit-appearance:menulist;appearance:menulist;min-height:32px">
+        <option value="confidence-desc">Confidence ↓</option>
+        <option value="confidence-asc">Confidence ↑</option>
+        <option value="date-desc" selected>Newest first</option>
+        <option value="severity">Most critical first</option>
+        <option value="date-asc">Oldest first</option>
+        <option value="severity">Severity</option>
+        <option value="type">Type A→Z</option>
+      </select>
+      <span style="font:10px var(--mono);color:var(--text-d)">View:</span>
+      <select id="flag-view" onchange="renderFlags()" style="background:var(--surface);border:1px solid var(--border);border-radius:6px;padding:6px 10px;font:11px var(--mono);color:var(--text);outline:none;-webkit-appearance:menulist;appearance:menulist;min-height:32px">
+        <option value="grouped" selected>Grouped</option>
+        <option value="flat">All flags</option>
+      </select>
+      <span id="flag-count" style="font:10px var(--mono);color:var(--text-d);margin-left:auto"></span>
+    </div>
+    <div id="flag-detail-container" style="display:none"></div>
+    <div class="flag-list" id="flag-list"></div>
+  </div>
+
+  <!-- DASHBOARD PANEL -->
+  <div class="panel" id="panel-dashboard">
+    <p style="font-size:11px;color:var(--text-d);margin-bottom:16px">
+      Visual overview of the UAS supply chain intelligence landscape. Data from PIE pipeline — 
+      <span id="dash-flag-count">0</span> flags across <span id="dash-layer-count">0</span> analysis layers.
+    </p>
+
+    <!-- Row 1: Severity + Type breakdown -->
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px">
+      <div style="background:var(--surface);border-radius:10px;padding:14px">
+        <div style="font:600 10px var(--mono);color:var(--text-d);text-transform:uppercase;letter-spacing:.06em;margin-bottom:10px">Severity Distribution</div>
+        <div id="dash-severity"></div>
+      </div>
+      <div style="background:var(--surface);border-radius:10px;padding:14px">
+        <div style="font:600 10px var(--mono);color:var(--text-d);text-transform:uppercase;letter-spacing:.06em;margin-bottom:10px">Flag Categories</div>
+        <div id="dash-types"></div>
+      </div>
+    </div>
+
+    <!-- Row 2: Component Risk Heatmap -->
+    <div style="background:var(--surface);border-radius:10px;padding:14px;margin-bottom:16px">
+      <div style="font:600 10px var(--mono);color:var(--text-d);text-transform:uppercase;letter-spacing:.06em;margin-bottom:10px">Component Risk Heatmap</div>
+      <p style="font-size:10px;color:var(--text-xd);margin-bottom:10px">How many flags mention each critical component. More flags = more supply chain pressure.</p>
+      <div id="dash-heatmap"></div>
+    </div>
+
+    <!-- Row 3: BOM Cost Breakdown -->
+    <div style="background:var(--surface);border-radius:10px;padding:14px;margin-bottom:16px">
+      <div style="font:600 10px var(--mono);color:var(--text-d);text-transform:uppercase;letter-spacing:.06em;margin-bottom:10px">Blue UAS BOM Cost Breakdown — $4,348 Total</div>
+      <p style="font-size:10px;color:var(--text-xd);margin-bottom:10px">Where the money goes in a compliant ISR quad. Mesh radio alone is 41% of total cost.</p>
+      <div id="dash-bom"></div>
+    </div>
+
+    <!-- Row 4: Geographic Risk -->
+    <div style="background:var(--surface);border-radius:10px;padding:14px;margin-bottom:16px">
+      <div style="font:600 10px var(--mono);color:var(--text-d);text-transform:uppercase;letter-spacing:.06em;margin-bottom:10px">Supply Chain Geographic Risk</div>
+      <p style="font-size:10px;color:var(--text-xd);margin-bottom:10px">Allied nation dependency — where critical components are manufactured.</p>
+      <div id="dash-geo"></div>
+    </div>
+
+    <!-- Row 5: Program Demand -->
+    <div style="background:var(--surface);border-radius:10px;padding:14px;margin-bottom:16px">
+      <div style="font:600 10px var(--mono);color:var(--text-d);text-transform:uppercase;letter-spacing:.06em;margin-bottom:10px">Government Program Demand Signals</div>
+      <p style="font-size:10px;color:var(--text-xd);margin-bottom:10px">Which programs are driving the most component demand.</p>
+      <div id="dash-programs"></div>
+    </div>
+
+    <!-- Row 6: Confidence Distribution -->
+    <div style="background:var(--surface);border-radius:10px;padding:14px;margin-bottom:16px">
+      <div style="font:600 10px var(--mono);color:var(--text-d);text-transform:uppercase;letter-spacing:.06em;margin-bottom:10px">Intelligence Confidence Levels</div>
+      <p style="font-size:10px;color:var(--text-xd);margin-bottom:10px">How confident is each flag? Higher confidence = stronger evidence chain.</p>
+      <div id="dash-confidence"></div>
+    </div>
+  </div>
+
+  <!-- REGIONS PANEL -->
+  <div class="panel" id="panel-regions">
+    <!-- Global overview (shown when no region selected) -->
+    <div id="region-global">
+      <p style="font-size:11px;color:var(--text-d);margin-bottom:14px">
+        Global UAS supply chain intelligence across 42 countries. Tap a region to drill in. Bookmark any region: <span style="font:10px var(--mono);color:var(--text-xd)">/patterns/#region-europe</span>
+      </p>
+
+      <!-- SVG World Map -->
+      <div style="background:var(--surface);border-radius:10px;padding:16px;margin-bottom:16px;overflow:hidden">
+        <svg viewBox="0 0 1000 500" style="width:100%;height:auto" id="region-map">
+          <!-- Grid lines for map feel -->
+          <line x1="0" y1="250" x2="1000" y2="250" stroke="var(--border)" stroke-width="0.5" stroke-dasharray="4"/>
+          <line x1="500" y1="0" x2="500" y2="500" stroke="var(--border)" stroke-width="0.5" stroke-dasharray="4"/>
+
+          <!-- North America -->
+          <g onclick="selectRegion('north-america')" style="cursor:pointer" class="map-region">
+            <path d="M50,80 L120,45 L200,40 L250,55 L270,90 L260,130 L240,160 L200,200 L180,220 L150,210 L120,180 L80,150 L55,120 Z" fill="var(--blue)" fill-opacity="0.15" stroke="var(--blue)" stroke-width="1.5"/>
+            <path d="M130,160 L150,180 L165,210 L160,235 L140,225 L125,200 L120,175 Z" fill="var(--blue)" fill-opacity="0.1" stroke="var(--blue)" stroke-width="1"/>
+            <text x="165" y="115" fill="var(--blue)" font-size="13" font-weight="700" text-anchor="middle" font-family="var(--font)">N. AMERICA</text>
+            <text x="165" y="133" fill="var(--text-d)" font-size="10" text-anchor="middle" font-family="var(--mono)" id="map-count-north-america"></text>
+          </g>
+
+          <!-- South America -->
+          <g onclick="selectRegion('south-america')" style="cursor:pointer" class="map-region">
+            <path d="M200,260 L240,250 L265,270 L275,310 L270,360 L250,400 L220,430 L195,420 L180,380 L175,330 L180,290 Z" fill="var(--green)" fill-opacity="0.15" stroke="var(--green)" stroke-width="1.5"/>
+            <text x="225" y="340" fill="var(--green)" font-size="12" font-weight="700" text-anchor="middle" font-family="var(--font)">S. AMERICA</text>
+            <text x="225" y="358" fill="var(--text-d)" font-size="10" text-anchor="middle" font-family="var(--mono)" id="map-count-south-america"></text>
+          </g>
+
+          <!-- Europe -->
+          <g onclick="selectRegion('europe')" style="cursor:pointer" class="map-region">
+            <path d="M430,65 L460,50 L510,55 L530,70 L535,100 L520,130 L500,140 L470,135 L445,120 L435,95 Z" fill="var(--cyan)" fill-opacity="0.2" stroke="var(--cyan)" stroke-width="1.5"/>
+            <text x="480" y="95" fill="var(--cyan)" font-size="12" font-weight="700" text-anchor="middle" font-family="var(--font)">EUROPE</text>
+            <text x="480" y="112" fill="var(--text-d)" font-size="10" text-anchor="middle" font-family="var(--mono)" id="map-count-europe"></text>
+          </g>
+
+          <!-- Ukraine -->
+          <g onclick="selectRegion('ukraine')" style="cursor:pointer" class="map-region">
+            <path d="M535,75 L570,70 L585,85 L575,105 L550,110 L535,95 Z" fill="var(--amber)" fill-opacity="0.25" stroke="var(--amber)" stroke-width="2"/>
+            <text x="558" y="93" fill="var(--amber)" font-size="10" font-weight="700" text-anchor="middle" font-family="var(--font)">UA</text>
+          </g>
+
+          <!-- Russia -->
+          <g onclick="selectRegion('russia')" style="cursor:pointer" class="map-region">
+            <path d="M560,30 L650,20 L780,25 L870,40 L880,70 L850,90 L750,85 L660,80 L590,75 L560,55 Z" fill="var(--red)" fill-opacity="0.12" stroke="var(--red)" stroke-width="1.5"/>
+            <text x="720" y="55" fill="var(--red)" font-size="13" font-weight="700" text-anchor="middle" font-family="var(--font)">RUSSIA</text>
+            <text x="720" y="73" fill="var(--text-d)" font-size="10" text-anchor="middle" font-family="var(--mono)" id="map-count-russia"></text>
+          </g>
+
+          <!-- Middle East -->
+          <g onclick="selectRegion('middle-east')" style="cursor:pointer" class="map-region">
+            <path d="M540,140 L590,130 L620,150 L615,190 L590,210 L555,200 L535,175 Z" fill="var(--orange)" fill-opacity="0.2" stroke="var(--orange)" stroke-width="1.5"/>
+            <text x="575" y="170" fill="var(--orange)" font-size="11" font-weight="700" text-anchor="middle" font-family="var(--font)">MID EAST</text>
+            <text x="575" y="187" fill="var(--text-d)" font-size="10" text-anchor="middle" font-family="var(--mono)" id="map-count-middle-east"></text>
+          </g>
+
+          <!-- Africa -->
+          <g onclick="selectRegion('africa')" style="cursor:pointer" class="map-region">
+            <path d="M440,165 L510,155 L540,185 L545,240 L530,310 L510,370 L470,400 L440,380 L420,330 L415,270 L420,220 L430,185 Z" fill="var(--purple)" fill-opacity="0.12" stroke="var(--purple)" stroke-width="1.5"/>
+            <text x="478" y="280" fill="var(--purple)" font-size="13" font-weight="700" text-anchor="middle" font-family="var(--font)">AFRICA</text>
+            <text x="478" y="298" fill="var(--text-d)" font-size="10" text-anchor="middle" font-family="var(--mono)" id="map-count-africa"></text>
+          </g>
+
+          <!-- Asia-Pacific -->
+          <g onclick="selectRegion('asia-pacific')" style="cursor:pointer" class="map-region">
+            <path d="M650,95 L750,90 L830,100 L880,130 L900,170 L890,220 L850,260 L780,270 L720,250 L670,220 L640,180 L635,140 Z" fill="var(--red)" fill-opacity="0.12" stroke="var(--red)" stroke-width="1.5"/>
+            <path d="M830,180 L870,175 L900,200 L910,240 L890,270 L860,260 L840,230 L835,200 Z" fill="var(--red)" fill-opacity="0.08" stroke="var(--red)" stroke-width="1"/>
+            <text x="770" y="175" fill="var(--red)" font-size="13" font-weight="700" text-anchor="middle" font-family="var(--font)">ASIA-PACIFIC</text>
+            <text x="770" y="195" fill="var(--text-d)" font-size="10" text-anchor="middle" font-family="var(--mono)" id="map-count-asia-pacific"></text>
+          </g>
+
+          <!-- Oceania -->
+          <g onclick="selectRegion('oceania')" style="cursor:pointer" class="map-region">
+            <path d="M830,320 L880,310 L920,330 L930,360 L910,390 L870,400 L840,380 L825,350 Z" fill="var(--green)" fill-opacity="0.15" stroke="var(--green)" stroke-width="1.5"/>
+            <path d="M910,350 L940,345 L950,370 L935,385 L915,375 Z" fill="var(--green)" fill-opacity="0.1" stroke="var(--green)" stroke-width="1"/>
+            <text x="880" y="358" fill="var(--green)" font-size="11" font-weight="700" text-anchor="middle" font-family="var(--font)">OCEANIA</text>
+            <text x="880" y="375" fill="var(--text-d)" font-size="10" text-anchor="middle" font-family="var(--mono)" id="map-count-oceania"></text>
+          </g>
+        </svg>
+      </div>
+
+      <!-- Region list below map -->
+      <div id="region-list"></div>
+    </div>
+
+    <!-- Region detail (shown when a region is selected) -->
+    <div id="region-detail" style="display:none"></div>
+  </div>
+
+  <!-- PLATFORMS PANEL -->
+  <div class="panel" id="panel-platforms">
+    <p style="font-size:11px;color:var(--text-d);margin-bottom:12px">
+      Blue UAS & tracked platforms from <a href="/platforms/">Forge DB (<span id="plat-count-blueuas">237</span> platforms)</a> ·
+      Compliance from <a href="https://nvmillbuilditmyself.com/compliance/">Compliance Dashboard</a>
+    </p>
+
+    <!-- Gray Zone Alert Banner -->
+    <div style="background:var(--red)08;border:1px solid var(--red)30;border-radius:8px;padding:10px 12px;margin-bottom:14px">
+      <div style="font:600 9px var(--mono);color:var(--red);text-transform:uppercase;letter-spacing:.04em;margin-bottom:4px">⚠ Gray Zone Warning</div>
+      <div style="font-size:11px;color:var(--text-s);line-height:1.5">4 entities detected operating between Blue UAS (trusted) and banned adversary platforms. Marketing to government buyers while carrying adversary supply chain dependencies. <span style="color:var(--amber)">See Flags tab → filter "Gray Zone" for full intel.</span></div>
+    </div>
+
+    <!-- Gray Zone Entities Summary -->
+    <div style="font:600 9px var(--mono);color:var(--text-d);text-transform:uppercase;letter-spacing:.04em;margin-bottom:6px">Gray Zone Entities (4 tracked)</div>
+    <div id="grayzone-entities" style="display:flex;flex-direction:column;gap:4px;margin-bottom:16px"></div>
+
+    <!-- Blue UAS Platforms -->
+    <div style="font:600 9px var(--mono);color:var(--text-d);text-transform:uppercase;letter-spacing:.04em;margin-bottom:6px">Blue UAS Cleared Platforms (8 tracked in PIE)</div>
+    <div id="platform-list"></div>
+  </div>
+
+  <!-- COMPONENTS PANEL -->
+  <div class="panel" id="panel-components">
+    <p style="font-size:11px;color:var(--text-d);margin-bottom:12px">
+      46 critical components tracked · Risk-scored by supply chain vulnerability, diversion risk &amp; geographic concentration ·
+      <a href="https://nvmillbuilditmyself.com/">Full DB: 3,800+ components</a>
+    </p>
+    <div id="component-table-wrap"></div>
+  </div>
+
+  <!-- PREDICTIONS PANEL -->
+  <div class="panel" id="panel-predictions">
+    <p style="font-size:11px;color:var(--text-d);margin-bottom:14px">
+      Generated by correlation engine: Granger causality, cross-correlation &amp; structural VAR models against Forge DB + distributor data
+    </p>
+    <div id="prediction-list"></div>
+  </div>
+
+  <!-- WHAT-IF SIMULATOR PANEL -->
+  <div class="panel" id="panel-whatif">
+    <p style="font-size:11px;color:var(--text-d);margin-bottom:14px">
+      Interactive supply chain disruption simulator. Select a scenario or build your own to see cascade effects across the Blue UAS ecosystem.
+    </p>
+
+    <!-- Scenario selector -->
+    <div style="margin-bottom:16px">
+      <div style="font:600 10px var(--mono);color:var(--text-d);text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px">Select Disruption Scenario</div>
+      <div id="whatif-scenarios" style="display:flex;flex-direction:column;gap:6px"></div>
+    </div>
+
+    <!-- Custom scenario builder -->
+    <div style="background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:16px;margin-bottom:16px">
+      <div style="font:600 11px var(--font);color:var(--text);margin-bottom:4px">Build Your Own Scenario</div>
+      <div style="font-size:11px;color:var(--text-d);margin-bottom:14px;line-height:1.5">
+        Pick a component and ask "what happens if this takes <em>X weeks</em> to get?" — the simulator traces every platform and government program that would be affected.
+      </div>
+
+      <div style="margin-bottom:12px">
+        <label style="font:500 10px var(--mono);color:var(--text-d);text-transform:uppercase;letter-spacing:.04em;display:block;margin-bottom:6px">1. What component gets disrupted?</label>
+        <select id="whatif-component" onchange="updateCustomPreview()" style="background:var(--card);border:1px solid var(--border);border-radius:6px;padding:8px 12px;font:12px var(--font);color:var(--text);width:100%;outline:none">
+          <option value="">Pick a component...</option>
+        </select>
+      </div>
+
+      <!-- Live preview of what depends on this component -->
+      <div id="whatif-preview" style="display:none;background:var(--card);border-radius:8px;padding:10px 12px;margin-bottom:12px;border-left:3px solid var(--cyan)">
+      </div>
+
+      <div style="margin-bottom:14px">
+        <label style="font:500 10px var(--mono);color:var(--text-d);text-transform:uppercase;letter-spacing:.04em;display:block;margin-bottom:6px">2. How bad does it get? (lead time in weeks)</label>
+        <div style="display:flex;gap:8px;align-items:center">
+          <input type="range" id="whatif-slider" min="4" max="52" value="30" oninput="updateSliderLabel()" style="flex:1;accent-color:var(--amber)">
+          <span id="whatif-slider-label" style="font:700 14px var(--mono);color:var(--amber);min-width:55px;text-align:right">30 wk</span>
+        </div>
+        <div style="display:flex;justify-content:space-between;font-size:9px;color:var(--text-xd);margin-top:2px">
+          <span>Tight (4 wk)</span>
+          <span>Constrained</span>
+          <span>Allocation-only</span>
+          <span>Crisis (52 wk)</span>
+        </div>
+      </div>
+
+      <button onclick="runCustomScenario()" style="background:var(--amber);color:#000;border:none;border-radius:8px;padding:10px 20px;font:600 12px var(--font);cursor:pointer;width:100%">Run Simulation ⚡</button>
+    </div>
+
+    <!-- Simulation results -->
+    <div id="whatif-results" style="display:none">
+      <div style="font:600 10px var(--mono);color:var(--red);text-transform:uppercase;letter-spacing:.06em;margin-bottom:10px">⚠ Cascade Analysis</div>
+      <div id="whatif-cascade"></div>
+    </div>
+  </div>
+
+  <div class="footer">
+    <span>Pipeline: GitHub Actions · Data: Forge DB + GUR OSINT + distributor APIs</span>
+    <span style="font-family:var(--mono)">PIE v0.7 · Forge Module</span>
+  </div>
+</div>
+
+<script>
+// ── Pro auth check ──────────────────────────────────────────────────
+function isProUser() {
+  var tok = localStorage.getItem('wingman_sub_token') || '';
+  var ps  = localStorage.getItem('wingman_proxy_secret') || '';
+  if (ps) return true;
+  if (!tok) return false;
+  try { var p = JSON.parse(atob(tok)); return !p.exp || Date.now() < p.exp; } catch { return false; }
+}
+
+function showProGate(containerId, featureName) {
+  var el = document.getElementById(containerId);
+  if (!el) return;
+  el.innerHTML = '<div style="display:flex;flex-direction:column;align-items:center;justify-content:center;padding:32px 20px;gap:10px;text-align:center">'
+    + '<span style="font-size:22px">🔒</span>'
+    + '<span style="font:600 13px var(--sans);color:var(--text)">' + featureName + ' is a Pro feature</span>'
+    + '<span style="font-size:11px;color:var(--text-d);line-height:1.5;max-width:280px">Get PIE predictions with confidence scores, gray zone delta alerts, and procurement signals with a Pro subscription.</span>'
+    + '<a href="/pro/" style="margin-top:6px;padding:8px 22px;background:var(--amber);color:#0c0c0a;border-radius:6px;font:600 12px var(--sans);text-decoration:none">Upgrade to Pro →</a>'
+    + '</div>';
+}
+// ── Detail modal ──
+function openDetailModal(title, subtitle, body) {
+  var ov = document.getElementById('flag-modal-overlay');
+  if (!ov) return;
+  var el = document.getElementById('flag-modal-meta');
+  if (el) el.innerHTML = subtitle ? '<span style="font:500 10px var(--mono);color:var(--text-d)">'+subtitle+'</span>' : '';
+  el = document.getElementById('flag-modal-title');
+  if (el) el.textContent = title || '';
+  el = document.getElementById('flag-modal-body');
+  if (el) el.innerHTML = body || '';
+  ov.classList.add('open');
+}
+function closeDetailModal() {
+  var ov = document.getElementById('flag-modal-overlay');
+  if (ov) ov.classList.remove('open');
+  selectedFlag = null;
+}
+document.addEventListener('DOMContentLoaded', function() {
+  var ov = document.getElementById('flag-modal-overlay');
+  var cb = document.getElementById('flag-modal-close');
+  if (cb) cb.addEventListener('click', closeDetailModal);
+  if (ov) ov.addEventListener('click', function(e) { if (e.target===ov) closeDetailModal(); });
+  document.addEventListener('keydown', function(e) { if (e.key==='Escape') closeDetailModal(); });
+});
+
+// ═══════════════════════════════════════════════════════════
+// Pattern Intelligence Engine — Forge Module
+// Loads data from /data/flags.json + /data/predictions.json
+// (committed by GitHub Actions pipeline)
+// ═══════════════════════════════════════════════════════════
+
+const FLAG_META = {
+  procurement_spike: {label:"Procurement Spike",badge:"badge-red",sev:"critical",icon:"▲"},
+  supply_constraint: {label:"Supply Constraint",badge:"badge-warning",sev:"warning",icon:"⬡"},
+  supply_chain_risk: {label:"Supply Chain Risk",badge:"badge-warning",sev:"warning",icon:"⬡"},
+  price_anomaly:     {label:"Price Anomaly",badge:"badge-warning",sev:"warning",icon:"◈"},
+  cost_analysis:     {label:"Cost Analysis",badge:"badge-warning",sev:"warning",icon:"◈"},
+  diversion_risk:    {label:"Diversion Risk",badge:"badge-red",sev:"critical",icon:"⚠"},
+  contract_signal:   {label:"Contract Signal",badge:"badge-blue",sev:"info",icon:"★"},
+  prediction:        {label:"Prediction",badge:"badge-purple",sev:"prediction",icon:"◎"},
+  correlation:       {label:"Correlation",badge:"badge-cyan",sev:"info",icon:"⟐"},
+  grayzone:          {label:"Gray Zone",badge:"badge-red",sev:"critical",icon:"🔒"},
+  grayzone_xref:     {label:"Gray Zone Cross-Ref",badge:"badge-warning",sev:"warning",icon:"🔗"},
+  compliance:        {label:"Compliance",badge:"badge-red",sev:"critical",icon:"⚖"},
+  component_analysis:{label:"Component Analysis",badge:"badge-blue",sev:"info",icon:"🔬"},
+  buyer_exposure:    {label:"Buyer Exposure",badge:"badge-red",sev:"critical",icon:"🎯"},
+  corporate_evasion: {label:"Corporate Evasion",badge:"badge-red",sev:"critical",icon:"🕵"},
+  corporate_structure:{label:"Corporate Structure",badge:"badge-warning",sev:"warning",icon:"🏗"},
+  cost_impact:       {label:"Cost Impact",badge:"badge-warning",sev:"warning",icon:"💰"},
+  legal_action:      {label:"Legal Action",badge:"badge-red",sev:"critical",icon:"⚖"},
+  legal_precedent:   {label:"Legal Precedent",badge:"badge-blue",sev:"info",icon:"📜"},
+  legislation:       {label:"Legislation",badge:"badge-blue",sev:"info",icon:"🏛"},
+  market_data:       {label:"Market Data",badge:"badge-cyan",sev:"info",icon:"📊"},
+  market_dynamics:   {label:"Market Dynamics",badge:"badge-cyan",sev:"info",icon:"📈"},
+  osint:             {label:"OSINT",badge:"badge-purple",sev:"info",icon:"🔍"},
+  regulatory:        {label:"Regulatory",badge:"badge-warning",sev:"warning",icon:"📋"},
+  regulatory_deadline:{label:"Regulatory Deadline",badge:"badge-red",sev:"critical",icon:"⏰"},
+};
+
+// ── Simulated platform + component data (in production: fetched from Forge API) ──
+const PLATFORMS = [
+  {id:"skydio-x10d",name:"Skydio X10D",mfr:"Skydio",tier:"blue",country:"US",combat:false,sbc:["NVIDIA Jetson Orin NX"],prod:380,yoy:42,contracts:["USSOCOM FY25","CBP Replicator"]},
+  {id:"teal-2",name:"Teal 2",mfr:"Red Cat / Teal",tier:"blue",country:"US",combat:true,sbc:["Qualcomm RB5","STM32H7"],prod:520,yoy:88,contracts:["SRR Tranche 2","USMC FPV","Drone Dominance"]},
+  {id:"freefly-astro",name:"Freefly Astro",mfr:"Freefly Systems",tier:"blue",country:"US",combat:false,sbc:["RPi CM4"],prod:145,yoy:18,contracts:["DOI Survey Fleet"]},
+  {id:"anduril-ghost-x",name:"Anduril Ghost-X",mfr:"Anduril Industries",tier:"blue",country:"US",combat:true,sbc:["Jetson AGX Orin","Lattice FPGA"],prod:210,yoy:135,contracts:["USSOCOM MFWS","Replicator Phase 2"]},
+  {id:"shield-v-bat",name:"Shield AI V-BAT",mfr:"Shield AI",tier:"blue",country:"US",combat:true,sbc:["NVIDIA Orin","Hivemind AI"],prod:85,yoy:67,contracts:["USMC Group 3"]},
+  {id:"neros-archer",name:"Neros Archer",mfr:"Neros Technologies",tier:"blue",country:"US",combat:true,sbc:["STM32H7","ESP32-S3"],prod:2200,yoy:310,contracts:["Drone Dominance FPV"]},
+  {id:"modalai-seeker",name:"ModalAI Seeker",mfr:"ModalAI",tier:"blue",country:"US",combat:true,sbc:["VOXL 2 (QRB5165)"],prod:340,yoy:95,contracts:["SRR Tranche 2","Army FTUAS"]},
+  {id:"aerovironment-switchblade",name:"Switchblade 600",mfr:"AeroVironment",tier:"blue",country:"US",combat:true,sbc:["Custom AV SoC"],prod:480,yoy:72,contracts:["USSOCOM","Ukraine USAI"]},
+];
+
+const COMPONENTS = [
+  // ── SBC / Compute (3) ──
+  {id:"jetson-orin-nx",name:"NVIDIA Jetson Orin NX 16GB",cat:"SBC/SoM",price:649,avg:599,lead:16,status:"constrained",users:["Skydio","Shield AI","Anduril"],risk:"single_source",note:"TSMC fab — all Blue UAS compute depends on Taiwan"},
+  {id:"jetson-orin-nano",name:"NVIDIA Jetson Orin Nano 8GB",cat:"SBC/SoM",price:249,avg:199,lead:14,status:"constrained",users:["Teal","Inspired Flight"],risk:"single_source",note:"Same TSMC dependency as Orin NX"},
+  {id:"qrb5165",name:"Qualcomm QRB5165 (VOXL 2)",cat:"SBC/SoM",price:479,avg:449,lead:10,status:"available",users:["Teal","ModalAI"],risk:"single_source",note:"TSMC fab — alternative to Jetson but same foundry risk"},
+  // ── SBC (3) ──
+  {id:"rpi-cm4",name:"RPi Compute Module 4 (8GB)",cat:"SBC",price:105,avg:90,lead:8,status:"constrained",users:["Freefly","Inspired Flight"],risk:"diversion",note:"40K+ units diverted to Russian weapons (GUR confirmed)"},
+  {id:"rpi5",name:"Raspberry Pi 5",cat:"SBC",price:80,avg:60,lead:6,status:"available",users:["Freefly"],risk:"diversion",note:"Confirmed in Molniya-2R reconnaissance drone"},
+  {id:"orange-pi-5",name:"Orange Pi 5 (RK3588S)",cat:"SBC",price:89,avg:79,lead:5,status:"available",users:["DIY builds","ArduPilot companion"],risk:"china_source",note:"Rockchip SoC — Chinese alternative to RPi. Lower diversion risk but NDAA non-compliant"},
+  // ── AI Accelerator (3) ──
+  {id:"hailo8",name:"Hailo-8 AI Accelerator",cat:"AI Accel",price:89,avg:89,lead:12,status:"available",users:["Percepto"],risk:"geographic",note:"Israel-manufactured — geopolitical supply risk"},
+  {id:"google-coral",name:"Google Coral Edge TPU",cat:"AI Accel",price:60,avg:50,lead:6,status:"available",users:["DIY detection","AgriDrone"],risk:"none",note:"US-designed, TSMC fab. 4 TOPS edge inference. Widely available."},
+  {id:"intel-ncs2",name:"Intel Neural Compute Stick 2",cat:"AI Accel",price:99,avg:85,lead:8,status:"constrained",users:["OpenVINO builds"],risk:"supply",note:"Intel Movidius VPU — being phased out. Stock declining."},
+  // ── MCU / Flight Controllers (3) ──
+  {id:"stm32h743",name:"STM32H743VIT6",cat:"MCU/FC",price:14.50,avg:12,lead:6,status:"available",users:["Neros","Pixhawk builds"],risk:"diversion",note:"Found in Russian weapons via gray market. STMicro EU fabs building sovereign supply"},
+  {id:"stm32f405",name:"STM32F405RGT6",cat:"MCU/FC",price:8.20,avg:7,lead:5,status:"available",users:["Betaflight builds","ArduPilot"],risk:"diversion",note:"Legacy FC chip — still highest volume in FPV"},
+  {id:"rp2350",name:"Raspberry Pi RP2350",cat:"MCU/FC",price:0.80,avg:0.70,lead:3,status:"available",users:["Next-gen FCs"],risk:"none",note:"UK-designed, dual Arm/RISC-V cores. Potential STM32 alternative for simple FCs."},
+  // ── Thermal / ISR (3) ──
+  {id:"flir-boson",name:"FLIR Boson 640",cat:"Thermal",price:3400,avg:3200,lead:18,status:"allocated",users:["AeroVironment","Anduril","Skydio","Teal"],risk:"allocated",note:"19 platforms, 7 programs — SINGLE SOURCE for US thermal ISR"},
+  {id:"flir-lepton",name:"FLIR Lepton 3.5",cat:"Thermal",price:250,avg:210,lead:10,status:"constrained",users:["DIY thermal","BRINC"],risk:"demand",note:"Lower-cost thermal alternative seeing FPV demand surge"},
+  {id:"lynred-pico",name:"Lynred Pico640 (via Safran)",cat:"Thermal",price:2800,avg:2600,lead:14,status:"available",users:["European ISR platforms"],risk:"none",note:"French-made — ITAR-free alternative to FLIR Boson. Emerging Blue UAS option."},
+  // ── Mesh / Comms (3) ──
+  {id:"doodlelabs-rm915",name:"Doodle Labs RM-915-2J",cat:"Mesh Radio",price:2100,avg:1800,lead:20,status:"constrained",users:["Anduril"],risk:"supply",note:"Limited NDAA-compliant mesh options — only 29 in Forge DB"},
+  {id:"silvus-mn-micro",name:"Silvus MN Micro",cat:"Mesh Radio",price:5200,avg:4500,lead:22,status:"allocated",users:["Teal"],risk:"allocated",note:"Premium mesh radio — allocated to DoD programs"},
+  {id:"persistent-mpu5",name:"Persistent Systems MPU5",cat:"Mesh Radio",price:6800,avg:6200,lead:24,status:"allocated",users:["Shield AI","SOF programs"],risk:"allocated",note:"SOF-standard MANET radio — long lead times"},
+  // ── Waveform (1 — specialized) ──
+  {id:"trellisware-tsm",name:"TrellisWare TSM Waveform",cat:"Waveform",price:0,avg:0,lead:0,status:"allocated",users:["L3Harris PRC-163","Collins"],risk:"ecosystem",note:"Software waveform — licensed to radio OEMs. SOF backbone."},
+  // ── RC / Data Links (3) ──
+  {id:"elrs-900",name:"ELRS 900MHz Module",cat:"RC Link",price:32,avg:28,lead:3,status:"available",users:["Neros","FPV builders"],risk:"none",note:"Open-source — multiple manufacturers, no single-source risk"},
+  {id:"elrs-24g",name:"ELRS 2.4GHz Module",cat:"RC Link",price:25,avg:22,lead:3,status:"available",users:["FPV builders"],risk:"none",note:"Open-source 2.4GHz variant"},
+  {id:"herelink-blue",name:"CubePilot Herelink Blue",cat:"RC Link",price:899,avg:799,lead:10,status:"available",users:["Blue UAS platforms","Enterprise"],risk:"none",note:"Australian-made. Integrated HD video + telemetry + RC. Blue UAS compliant."},
+  // ── Navigation (3) ──
+  {id:"ublox-f9p",name:"u-blox ZED-F9P (RTK GNSS)",cat:"GNSS",price:189,avg:165,lead:8,status:"available",users:["Freefly","survey platforms"],risk:"geographic",note:"Swiss-made — neutral supply chain, NATO-friendly"},
+  {id:"ublox-m10",name:"u-blox MAX-M10S",cat:"GNSS",price:12,avg:10,lead:4,status:"available",users:["FPV builds","consumer"],risk:"none",note:"Consumer GNSS — abundant supply"},
+  {id:"here4-rtk",name:"CubePilot Here4 RTK GNSS",cat:"GNSS",price:299,avg:279,lead:8,status:"available",users:["CubePilot ecosystem","Blue UAS"],risk:"none",note:"Australian-made. Multi-band RTK. Blue UAS ecosystem standard."},
+  // ── Motors (3) ──
+  {id:"t-motor-u8ii",name:"T-Motor U8 II KV100",cat:"Motor",price:289,avg:260,lead:8,status:"available",users:["Heavy lift builds"],risk:"china_source",note:"Chinese manufacturer — NDAA non-compliant. Dominant in heavy lift."},
+  {id:"lumenier-2307",name:"Lumenier 2307 JohnnyFPV V3 Pro",cat:"Motor",price:24,avg:22,lead:4,status:"available",users:["Neros-class FPV"],risk:"none",note:"US brand (Lumenier/GetFPV). Popular in 5\" FPV builds. NDAA-aligned."},
+  {id:"kde-uas75",name:"KDE Direct UAS75XLD",cat:"Motor",price:445,avg:420,lead:10,status:"available",users:["Heavy lift Blue UAS"],risk:"none",note:"US-manufactured (AZ). NDAA compliant. Used in enterprise/defense heavy lift."},
+  // ── Batteries (3) ──
+  {id:"lumenier-nav6s",name:"Lumenier NAV 4000mAh 6S Li-Ion",cat:"Battery",price:75,avg:65,lead:4,status:"available",users:["Long-range FPV"],risk:"none",note:"US brand, Amprius 18650 cells. Li-Ion for endurance. NDAA-aligned."},
+  {id:"tattu-6s",name:"Tattu R-Line 1400mAh 6S LiPo",cat:"Battery",price:38,avg:32,lead:3,status:"available",users:["FPV racing","FPV strike"],risk:"china_source",note:"Tattu/Gens Ace (Chinese). Industry standard FPV LiPo. High C-rate."},
+  {id:"epc-mil",name:"EaglePicher LiPo Mil-Spec",cat:"Battery",price:850,avg:780,lead:16,status:"constrained",users:["Switchblade","ALTIUS"],risk:"allocated",note:"US-manufactured military cells. Critical for defense UAS. Limited production."},
+  // ── Frames (3) ──
+  {id:"lumenier-qavs2",name:"Lumenier QAV-S 2 (5\" frame)",cat:"Frame",price:40,avg:35,lead:3,status:"available",users:["FPV builders","training"],risk:"none",note:"US brand. Carbon fiber 5\". The standard FPV freestyle/cinema frame."},
+  {id:"custom-3dp",name:"3D-Printed FPV Frame (TPU/PETG)",cat:"Frame",price:8,avg:5,lead:0,status:"available",users:["Ukraine FPV","attritable"],risk:"none",note:"Printed locally. Zero supply chain risk. Ukraine produces thousands/day."},
+  {id:"skydio-x10-airframe",name:"Skydio X10D Airframe",cat:"Frame",price:0,avg:0,lead:0,status:"allocated",users:["Skydio"],risk:"single_source",note:"Proprietary. Not available for purchase. US-manufactured in San Mateo, CA."},
+  // ── FPV Cameras (3) ──
+  {id:"dji-o4",name:"DJI O4 Air Unit",cat:"FPV Camera",price:219,avg:179,lead:0,status:"constrained",users:["Consumer FPV"],risk:"china_source",note:"DJI proprietary. Best HD FPV system but Chinese — subject to FCC Covered List."},
+  {id:"walksnail-avatar",name:"Walksnail Avatar HD Pro",cat:"FPV Camera",price:119,avg:99,lead:4,status:"available",users:["FPV builders"],risk:"china_source",note:"Caddx/Walksnail (Chinese). HD FPV alternative to DJI. Growing market share."},
+  {id:"hdzero-whoop",name:"HDZero Whoop Lite Bundle",cat:"FPV Camera",price:99,avg:85,lead:5,status:"available",users:["FPV builders","Tiny Whoop"],risk:"china_source",note:"HDZero (Chinese). Ultra-low latency digital. Preferred by racing pilots."},
+  // ── Video Transmitters (3) ──
+  {id:"hdzero-freestyle",name:"HDZero Freestyle V2",cat:"VTX",price:60,avg:52,lead:4,status:"available",users:["FPV builders"],risk:"china_source",note:"Digital VTX. Low latency. Growing as DJI alternative."},
+  {id:"rushfpv-tank",name:"Rush FPV Tank Ultimate",cat:"VTX",price:35,avg:30,lead:3,status:"available",users:["FPV analog"],risk:"china_source",note:"Analog VTX. Still dominant in military/attritable FPV due to simplicity."},
+  {id:"tbs-unify",name:"TBS Unify Pro32 HV",cat:"VTX",price:40,avg:35,lead:4,status:"available",users:["Long-range FPV"],risk:"none",note:"European brand (Team BlackSheep). SmartAudio protocol. Widely used."},
+  // ── ESCs (3) ──
+  {id:"blheli32-45a",name:"BLHeli_32 45A ESC (generic)",cat:"ESC",price:22,avg:18,lead:3,status:"available",users:["FPV builders"],risk:"china_source",note:"Chinese-manufactured. Industry standard. Multiple OEMs."},
+  {id:"aikon-ak32",name:"Aikon AK32 35A 4-in-1",cat:"ESC",price:55,avg:48,lead:4,status:"available",users:["FPV builders","Neros-class"],risk:"china_source",note:"Premium ESC stack. Chinese. Popular in high-performance builds."},
+  {id:"kde-uas55",name:"KDE Direct UAS55HVC",cat:"ESC",price:185,avg:170,lead:10,status:"available",users:["Heavy lift Blue UAS"],risk:"none",note:"US-manufactured (AZ). NDAA compliant. Paired with KDE motors for defense."},
+  // ── Memory (3) ──
+  {id:"dram-ddr4",name:"DDR4 DRAM (8GB module)",cat:"Memory",price:28,avg:23,lead:4,status:"constrained",users:["All SBC platforms"],risk:"geographic",note:"Samsung/SK Hynix — South Korea concentration. +22% YoY pricing"},
+  {id:"emmc-64",name:"eMMC 5.1 64GB (Industrial)",cat:"Memory",price:18,avg:15,lead:5,status:"available",users:["Companion computers"],risk:"china_source",note:"Mostly Chinese/Korean fab. Used for OS storage on SBCs."},
+  {id:"sd-industrial",name:"Industrial microSD 32GB (SLC)",cat:"Memory",price:45,avg:38,lead:4,status:"available",users:["Flight logging","ISR storage"],risk:"none",note:"Multi-source (Samsung, Western Digital). SLC for reliability in vibration."},
+];
+
+let FLAGS = [];
+let PREDICTIONS = [];
+let activeTab = "flags";
+let activeSeverity = "all"; // kept for compat but unused in new logic
+// ── Hide-based filter sets (empty = show all, add items to hide them) ──
+let hiddenSeverities = new Set(['info']); // default: hide low-priority info flags
+let hiddenTypes = new Set();
+let hiddenRegions = new Set();
+let selectedFlag = null;
+let _flagScrollY = 0;
+
+// ── Data loading ──
+async function loadData() {
+  const flagList = document.getElementById("flag-list");
+  flagList.innerHTML = '<div style="color:var(--text-d);font-size:12px;padding:20px;text-align:center">Loading pipeline data...</div>';
+
+  // Dynamic platform count (fire-and-forget, outside Promise.all)
+  fetch("../static/forge_database.json").then(r=>r.json()).then(db=>{
+    const n = (db.drone_models||[]).length;
+    const el = document.getElementById('plat-count-blueuas');
+    if(el) el.textContent = n;
+  }).catch(()=>{});
+
+  try {
+    const [fRes, pRes] = await Promise.all([
+      fetch("../static/pie_flags.json").then(r => {
+        if (!r.ok) throw new Error(`flags.json: HTTP ${r.status}`);
+        return r.json();
+      }),
+      fetch("../static/pie_predictions.json").then(r => {
+        if (!r.ok) throw new Error(`predictions.json: HTTP ${r.status}`);
+        return r.json();
+      }),
+    ]);
+    FLAGS = fRes; PREDICTIONS = pRes;
+  } catch(e) {
+    console.error("Pipeline data load failed:", e);
+    FLAGS = []; PREDICTIONS = [];
+    flagList.innerHTML = `<div style="color:var(--red);font-size:12px;padding:20px;text-align:center">
+      Failed to load pipeline data: ${e.message}<br>
+      <span style="color:var(--text-d)">Check browser console. Data should be at ../static/pie_flags.json</span>
+    </div>`;
+    return;
+  }
+  document.getElementById("flag-count").textContent = FLAGS.length;
+  renderAll();
+}
+
+
+// ── Brief panel ──
+function pctColorB(p) {
+  if (p >= 0.8) return 'var(--red)';
+  if (p >= 0.65) return 'var(--warning,#f59e0b)';
+  return 'var(--text-s)';
+}
+function renderSrcs(sources) {
+  if (!sources || !sources.length) return '';
+  return '<div style="display:flex;flex-wrap:wrap;gap:3px;margin-top:6px">' +
+    sources.map(s => s.url
+      ? `<a href="${s.url}" target="_blank" rel="noopener" class="brief-source-chip">${s.name} ↗</a>`
+      : `<span class="brief-source-chip">${s.name}</span>`
+    ).join('') + '</div>';
+}
+function renderBriefPanel(b) {
+  const el = document.getElementById('brief-inner');
+  if (!el) return;
+  const sig = b.signal_summary || {};
+  const lead = b.lead_story || {};
+  let html = '';
+  html += `<div class="signal-bar">
+    <div class="signal-stat critical"><span class="num">${sig.critical||0}</span><span class="lbl">Critical</span></div>
+    <div class="signal-stat warning"><span class="num">${sig.warning||0}</span><span class="lbl">Warning</span></div>
+    <div class="signal-stat new"><span class="num">${sig.new_today||0}</span><span class="lbl">New</span></div>
+    <div class="signal-stat"><span class="num">${sig.total_flags||0}</span><span class="lbl">Total</span></div>
+  </div>`;
+  if (sig.top_concern) html += `<div class="concern-bar"><div class="dot"></div>${sig.top_concern}</div>`;
+  if (b.headline) html += `<div class="brief-headline">${b.headline}</div>`;
+  if (lead.title) {
+    html += `<div class="brief-section-label">🔴 Lead Story</div>
+    <div class="brief-card lead">
+      <div class="card-header"><span class="sev sev-critical"></span><span class="card-title">${lead.title}</span></div>
+      <div class="card-body">${lead.body||''}</div>
+      ${lead.action ? `<div class="action-box"><div class="action-label">→ Action</div><div class="action-text">${lead.action}</div></div>` : ''}
+      ${renderSrcs(lead.sources)}
+    </div>`;
+  }
+  for (const e of (b.gray_zone||[])) {
+    html += `<div class="brief-section-label">⚠ Gray Zone</div>
+    <div class="brief-card entity">
+      <div class="card-header"><span class="sev sev-warning"></span><span class="card-title">${e.entity||''}</span></div>
+      ${e.status ? `<div class="entity-status">${e.status}</div>` : ''}
+      <div class="card-body">${e.development||''}</div>
+      ${e.buyer_exposure ? `<div class="entity-exposure"><strong>Buyer exposure:</strong> ${e.buyer_exposure}</div>` : ''}
+      ${e.action ? `<div class="action-box"><div class="action-label">→ Action</div><div class="action-text">${e.action}</div></div>` : ''}
+      ${renderSrcs(e.sources)}
+    </div>`;
+  }
+  if ((b.supply_chain||[]).length) {
+    html += `<div class="brief-section-label">🔩 Supply Chain</div>`;
+    for (const s of b.supply_chain) {
+      html += `<div class="brief-card supply">
+        <div class="card-header"><span class="sev sev-info"></span><span class="card-title">${s.component||''}</span>${s.window ? `<span class="supply-window">⏱ ${s.window}</span>` : ''}</div>
+        <div class="supply-signal">${s.signal||''}</div>
+        ${s.action ? `<div class="action-box"><div class="action-label">→ Action</div><div class="action-text">${s.action}</div></div>` : ''}
+        ${renderSrcs(s.sources)}
+      </div>`;
+    }
+  }
+  if ((b.watch_list||[]).length) {
+    html += `<div class="brief-section-label">👁 Watch List</div><div class="watch-list">`;
+    for (const w of b.watch_list) {
+      html += `<div class="watch-item"><div class="watch-dot"></div><div>
+        <div class="watch-label">${w.item||''}</div>
+        ${w.why ? `<div class="watch-why">${w.why}</div>` : ''}
+        ${w.trigger ? `<div class="watch-trigger"><strong>Trigger:</strong> ${w.trigger}</div>` : ''}
+      </div></div>`;
+    }
+    html += '</div>';
+  }
+  if ((b.predictions||[]).length) {
+    html += `<div class="brief-section-label">🔮 Predictions</div>`;
+    for (const p of b.predictions) {
+      const pct = Math.round((p.probability||0)*100);
+      html += `<div class="brief-card pred">
+        <div class="pred-prob"><span class="pct" style="color:${pctColorB(p.probability)}">${pct}%</span><span class="pct-lbl">prob</span></div>
+        <div class="pred-body">
+          <div class="pred-event">${p.event||''}</div>
+          <div class="pred-timeframe"><span class="badge badge-purple">${p.timeframe||''}</span></div>
+          ${p.hedge ? `<div class="hedge-box"><div class="hedge-label">◎ Hedge</div><div class="hedge-text">${p.hedge}</div></div>` : ''}
+        </div>
+      </div>`;
+    }
+  }
+  const gen = b.generated_at ? new Date(b.generated_at).toLocaleString() : '';
+  html += `<div class="brief-footer">${b.pipeline_version||'PIE'} · ${gen}</div>`;
+  el.innerHTML = html;
+}
+
+async function loadBriefPanel() {
+  try {
+    const paths = ['../static/pie_brief.json', '/static/pie_brief.json'];
+    let b = null;
+    for (const p of paths) {
+      try { const r = await fetch(p); if (r.ok) { b = await r.json(); break; } } catch(e) {}
+    }
+    if (!b) throw new Error('No brief data found');
+    renderBriefPanel(b);
+  } catch(e) {
+    const el = document.getElementById('brief-inner');
+    if (el) el.innerHTML = `<div style="color:var(--text-d);font:400 11px var(--font);padding:20px 0;text-align:center">
+      <strong>No brief available yet</strong><br>
+      <span style="font-size:10px">PIE pipeline generates a fresh brief daily at 14:30 UTC</span>
+    </div>`;
+  }
+}
+
+// ── Brief panel ──
+function pctColorB(p){return p>=0.8?"var(--red)":p>=0.65?"var(--warning,#f59e0b)":"var(--text-s)";}
+function renderBriefPanel(b){
+  const el=document.getElementById("brief-inner");if(!el)return;
+  const sig=b.signal_summary||{};const lead=b.lead_story||{};let html="";
+  html+=`<div class="signal-bar"><div class="signal-stat critical"><span class="num">${sig.critical||0}</span><span class="lbl">Critical</span></div><div class="signal-stat warning"><span class="num">${sig.warning||0}</span><span class="lbl">Warning</span></div><div class="signal-stat new"><span class="num">${sig.new_today||0}</span><span class="lbl">New</span></div><div class="signal-stat"><span class="num">${sig.total_flags||0}</span><span class="lbl">Total</span></div></div>`;
+  if(sig.top_concern)html+=`<div class="concern-bar"><div class="dot"></div>${sig.top_concern}</div>`;
+  if(b.headline)html+=`<div class="brief-headline">${b.headline}</div>`;
+  if(lead.title){html+=`<div class="brief-section-label">🔴 Lead Story</div><div class="brief-card lead"><div class="card-header"><span class="sev sev-critical"></span><span class="card-title">${lead.title}</span></div><div class="card-body">${lead.body||""}</div>${lead.action?`<div class="action-box"><div class="action-label">→ Action</div><div class="action-text">${lead.action}</div></div>`:""}</div>`;}
+  for(const e of(b.gray_zone||[])){html+=`<div class="brief-section-label">⚠ Gray Zone</div><div class="brief-card entity"><div class="card-header"><span class="sev sev-warning"></span><span class="card-title">${e.entity||""}</span></div>${e.status?`<div class="entity-status">${e.status}</div>`:""}<div class="card-body">${e.development||""}</div>${e.action?`<div class="action-box"><div class="action-label">→ Action</div><div class="action-text">${e.action}</div></div>`:""}</div>`;}
+  if((b.supply_chain||[]).length){html+=`<div class="brief-section-label">🔩 Supply Chain</div>`;for(const s of b.supply_chain){html+=`<div class="brief-card supply"><div class="card-header"><span class="sev sev-info"></span><span class="card-title">${s.component||""}</span>${s.window?`<span class="supply-window">⏱ ${s.window}</span>`:""}</div><div class="supply-signal">${s.signal||""}</div>${s.action?`<div class="action-box"><div class="action-label">→ Action</div><div class="action-text">${s.action}</div></div>`:""}</div>`;}}
+  if((b.watch_list||[]).length){html+=`<div class="brief-section-label">👁 Watch List</div><div class="watch-list">`;for(const w of b.watch_list){html+=`<div class="watch-item"><div class="watch-dot"></div><div><div class="watch-label">${w.item||""}</div>${w.why?`<div class="watch-why">${w.why}</div>`:""}</div></div>`;}html+=`</div>`;}
+  if((b.predictions||[]).length){html+=`<div class="brief-section-label">🔮 Predictions</div>`;for(const p of b.predictions){const pct=Math.round((p.probability||0)*100);html+=`<div class="brief-card pred"><div class="pred-prob"><span class="pct" style="color:${pctColorB(p.probability)}">${pct}%</span><span class="pct-lbl">prob</span></div><div class="pred-body"><div class="pred-event">${p.event||""}</div><div class="pred-timeframe"><span class="badge badge-purple">${p.timeframe||""}</span></div>${p.hedge?`<div class="hedge-box"><div class="hedge-label">◎ Hedge</div><div class="hedge-text">${p.hedge}</div></div>`:""}</div></div>`;}}
+  const gen=b.generated_at?new Date(b.generated_at).toLocaleString():"";
+  html+=`<div class="brief-footer">${b.pipeline_version||"PIE"} · ${gen}</div>`;
+  el.innerHTML=html;
+}
+async function loadBriefPanel(){
+  try{
+    let b=null;
+    for(const p of["../static/pie_brief.json","/static/pie_brief.json"]){try{const r=await fetch(p);if(r.ok){b=await r.json();break;}}catch(e){}}
+    if(!b)throw new Error("no data");
+    renderBriefPanel(b);
+  }catch(e){
+    const el=document.getElementById("brief-inner");
+    if(el)el.innerHTML=`<div style="color:var(--text-d);font:400 11px var(--font);padding:20px 0;text-align:center"><strong>No brief available yet</strong><br><span style="font-size:10px">PIE pipeline generates daily at 14:30 UTC</span></div>`;
+  }
+}
+
+// ── Tab switching ──
+document.querySelectorAll(".tab").forEach(t => {
+  t.addEventListener("click", () => {
+    document.querySelectorAll(".tab").forEach(x => x.classList.remove("active"));
+    document.querySelectorAll(".panel").forEach(x => x.classList.remove("active"));
+    t.classList.add("active");
+    document.getElementById("panel-" + t.dataset.tab).classList.add("active");
+    activeTab = t.dataset.tab;
+    selectedFlag = null;
+    document.getElementById("flag-detail-container").style.display = "none";
+    document.getElementById("flag-list").style.display = "";
+  });
+});
+
+// ── Region extraction from flag detail text ──
+const REGIONS = ["China","Russia","Iran","Ukraine","Turkey","Israel","US","EU","NATO","Taiwan","North Korea","Japan","India","Australia","UK","France","Germany"];
+function extractRegions(f) {
+  const text = (f.title||"") + " " + (f.detail||"") + " " + (f.prediction||"");
+  return REGIONS.filter(r => text.includes(r));
+}
+
+// ── Active filters ──
+let activeType = "all";
+let activeRegion = "all";
+
+// ── Toggle collapsible filter sections ──
+function toggleFilterSection(header) {
+  header.classList.toggle("open");
+  const row = header.nextElementSibling;
+  row.classList.toggle("collapsed");
+  row.classList.toggle("open");
+}
+
+// ── Severity filters (hide-toggle: all start ON, click to hide) ──
+function renderFilters() {
+  // Severity row
+  const c = document.getElementById("severity-filters");
+  const sevs = ["critical","warning","info","prediction","high"];
+  const sevLabels = {critical:"Critical",warning:"Warning",info:"Info",prediction:"Prediction",high:"High"};
+  c.innerHTML = sevs.map(s => {
+    const count = FLAGS.filter(f => f.severity === s || (FLAG_META[f.flag_type]||{}).sev === s).length;
+    if (count === 0) return "";
+    const hidden = hiddenSeverities.has(s);
+    return `<button class="filter-btn ${hidden?"hidden-filter":"active"}" data-sev="${s}" title="${hidden?'Show':'Hide'} ${s}">${hidden?"⊘ ":""}${sevLabels[s]||s} (${count})</button>`;
+  }).filter(Boolean).join("");
+  c.querySelectorAll(".filter-btn").forEach(b => b.addEventListener("click", () => {
+    const s = b.dataset.sev;
+    if (hiddenSeverities.has(s)) hiddenSeverities.delete(s); else hiddenSeverities.add(s);
+    renderFilters();
+    renderFlags();
+  }));
+  // Update header badge
+  const sevHidden = document.getElementById("sev-hidden-count");
+  if (sevHidden) sevHidden.textContent = hiddenSeverities.size > 0 ? `(${hiddenSeverities.size} hidden)` : "";
+
+  // Type row
+  const tc = document.getElementById("type-filters");
+  const types = Object.keys(FLAG_META);
+  tc.innerHTML = types.map(t => {
+    const count = FLAGS.filter(f => f.flag_type === t).length;
+    if (count === 0) return "";
+    const label = (FLAG_META[t]||{}).label || t;
+    const hidden = hiddenTypes.has(t);
+    return `<button class="filter-btn ${hidden?"hidden-filter":"active"}" data-type="${t}" title="${hidden?'Show':'Hide'} ${label}">${hidden?"⊘ ":""}${label} (${count})</button>`;
+  }).filter(Boolean).join("");
+  tc.querySelectorAll(".filter-btn").forEach(b => b.addEventListener("click", () => {
+    const t = b.dataset.type;
+    if (hiddenTypes.has(t)) hiddenTypes.delete(t); else hiddenTypes.add(t);
+    renderFilters();
+    renderFlags();
+  }));
+  const typeHidden = document.getElementById("type-hidden-count");
+  if (typeHidden) typeHidden.textContent = hiddenTypes.size > 0 ? `(${hiddenTypes.size} hidden)` : "";
+
+  // Region row
+  const rc = document.getElementById("region-filters");
+  const regionCounts = {};
+  FLAGS.forEach(f => extractRegions(f).forEach(r => { regionCounts[r] = (regionCounts[r]||0)+1; }));
+  const sortedRegions = Object.entries(regionCounts).sort((a,b) => b[1]-a[1]);
+  rc.innerHTML = sortedRegions.map(([r,count]) => {
+    const hidden = hiddenRegions.has(r);
+    return `<button class="filter-btn ${hidden?"hidden-filter":"active"}" data-region="${r}" title="${hidden?'Show':'Hide'} ${r}">${hidden?"⊘ ":""}${r} (${count})</button>`;
+  }).join("");
+  rc.querySelectorAll(".filter-btn").forEach(b => b.addEventListener("click", () => {
+    const r = b.dataset.region;
+    if (hiddenRegions.has(r)) hiddenRegions.delete(r); else hiddenRegions.add(r);
+    renderFilters();
+    renderFlags();
+  }));
+  const regHidden = document.getElementById("region-hidden-count");
+  if (regHidden) regHidden.textContent = hiddenRegions.size > 0 ? `(${hiddenRegions.size} hidden)` : "";
+}
+
+// ── Severity sort weight ──
+const SEV_WEIGHT = {critical:0, warning:1, info:2, prediction:3};
+
+// ── Smart grouping logic ──
+function getGroupKey(f) {
+  const title = f.title || '';
+  const type = f.flag_type || f.category || '';
+  
+  // Gray zone entities
+  if (title.startsWith('[GRAY ZONE]')) {
+    const m = title.match(/\[GRAY ZONE\]\s*([^:—–-]+)/);
+    if (m) return 'gz:' + m[1].trim();
+    return 'gz:General';
+  }
+  
+  // By component for supply/cascade
+  const comps = ['NVIDIA Jetson', 'Qualcomm QRB5165', 'FLIR Boson', 'STM32', 'Raspberry Pi', 'RPi', 'ELRS', 'u-blox', 'DRAM', 'Hailo', 'OcuSync'];
+  for (const c of comps) {
+    if (title.toLowerCase().includes(c.toLowerCase())) return 'comp:' + c.replace('NVIDIA ','').replace('Qualcomm ','');
+  }
+  
+  // By manufacturer in parens
+  const paren = title.match(/\(([^)]+)\)/);
+  if (paren && type === 'contract_signal') return 'mfg:' + paren[1];
+  if (paren && type === 'correlation') return 'corr:' + paren[1];
+  
+  // By region for geographic
+  if (title.startsWith('Geographic risk:')) return 'geo:Geographic Risk';
+  if (title.startsWith('Cascade risk:')) return 'cascade:Single-Source Risk';
+  
+  // By program for policy/contract
+  const programs = ['Drone Dominance','Replicator','DAWG','SRR','CCA','USMC FPV','SOCOM','USAI','Blue UAS','JIATF','FEMA','NDAA','ASDA'];
+  for (const p of programs) {
+    if (title.toLowerCase().includes(p.toLowerCase())) return 'prog:' + p;
+  }
+  
+  // By country for geopolitical
+  const countries = ['China','Iran','Russia','Taiwan','Israel','Ukraine','South Korea','North Korea'];
+  for (const c of countries) {
+    if (title.startsWith(c + ':') || title.startsWith(c + ' ')) return 'geo:' + c;
+  }
+  
+  // Fallback: by flag_type
+  return 'type:' + type;
+}
+
+function getGroupMeta(key, flags) {
+  const [prefix, name] = key.split(':', 2);
+  const icons = {gz:'🔍', comp:'⚡', mfg:'🏭', corr:'📊', geo:'🌍', cascade:'⚠️', prog:'🏛️', type:'📋'};
+  const labels = {gz:'Gray Zone', comp:'Component', mfg:'Manufacturer', corr:'Correlation', geo:'Region/Country', cascade:'Supply Chain', prog:'Program', type:'Category'};
+  
+  const sevCounts = {critical:0, warning:0, info:0, high:0};
+  let maxConf = 0;
+  flags.forEach(f => {
+    const sev = f.severity || (FLAG_META[f.flag_type]||{}).sev || 'info';
+    if (sevCounts[sev] !== undefined) sevCounts[sev]++;
+    maxConf = Math.max(maxConf, f.confidence || 0);
+  });
+  
+  const topSev = sevCounts.critical > 0 ? 'critical' : sevCounts.high > 0 ? 'high' : sevCounts.warning > 0 ? 'warning' : 'info';
+  const sevColor = topSev === 'critical' ? 'var(--red)' : topSev === 'high' ? 'var(--orange)' : topSev === 'warning' ? 'var(--warning)' : 'var(--cyan)';
+  
+  return { icon: icons[prefix] || '📋', label: labels[prefix] || 'Other', name, sevCounts, topSev, sevColor, maxConf };
+}
+
+// ── Flag list ──
+function renderFlags() {
+  const list = document.getElementById("flag-list");
+  let flags = FLAGS;
+
+  // Severity filter (hide-based)
+  if (hiddenSeverities.size > 0) flags = flags.filter(f => {
+    const sev = f.severity || (FLAG_META[f.flag_type]||{}).sev || '';
+    return !hiddenSeverities.has(sev);
+  });
+
+  // Type filter (hide-based)
+  if (hiddenTypes.size > 0) flags = flags.filter(f => !hiddenTypes.has(f.flag_type) && !hiddenTypes.has(f.category));
+
+  // Region filter (hide-based)
+  if (hiddenRegions.size > 0) flags = flags.filter(f => {
+    const regs = extractRegions(f);
+    return regs.length === 0 || regs.some(r => !hiddenRegions.has(r));
+  });
+
+  // Search filter
+  const searchQ = (document.getElementById("flag-search")?.value || "").toLowerCase().trim();
+  if (searchQ) {
+    flags = flags.filter(f =>
+      (f.title||"").toLowerCase().includes(searchQ) ||
+      (f.detail||"").toLowerCase().includes(searchQ) ||
+      (f.prediction||"").toLowerCase().includes(searchQ)
+    );
+  }
+
+  // Sort
+  const sortVal = document.getElementById("flag-sort")?.value || "date-desc";
+  if (sortVal === "confidence-desc") flags.sort((a,b) => (b.confidence||0) - (a.confidence||0));
+  else if (sortVal === "confidence-asc") flags.sort((a,b) => (a.confidence||0) - (b.confidence||0));
+  else if (sortVal === "date-desc") flags.sort((a,b) => (b.timestamp||"").localeCompare(a.timestamp||""));
+  else if (sortVal === "date-asc") flags.sort((a,b) => (a.timestamp||"").localeCompare(b.timestamp||""));
+  else if (sortVal === "severity") flags.sort((a,b) => (SEV_WEIGHT[(FLAG_META[a.flag_type]||{}).sev]||9) - (SEV_WEIGHT[(FLAG_META[b.flag_type]||{}).sev]||9));
+  else if (sortVal === "type") flags.sort((a,b) => (a.flag_type||"").localeCompare(b.flag_type||""));
+
+  // Count display
+  const countEl = document.getElementById("flag-count");
+  
+  const viewMode = document.getElementById("flag-view")?.value || "grouped";
+
+  if (flags.length === 0 && FLAGS.length > 0) {
+    list.innerHTML = `<div style="color:var(--text-d);font-size:12px;padding:20px;text-align:center">No flags match your filter. ${FLAGS.length} flags total.</div>`;
+    if (countEl) countEl.textContent = `0 of ${FLAGS.length} flags`;
+    return;
+  }
+
+  // ── GROUPED VIEW ──
+  if (viewMode === "grouped" && !searchQ) {
+    const groups = {};
+    const groupOrder = [];
+    flags.forEach(f => {
+      const key = getGroupKey(f);
+      if (!groups[key]) { groups[key] = []; groupOrder.push(key); }
+      groups[key].push(f);
+    });
+    
+    // Sort groups: most flags first, critical groups first
+    groupOrder.sort((a, b) => {
+      const ga = groups[a], gb = groups[b];
+      const aCrit = ga.filter(f => (f.severity || (FLAG_META[f.flag_type]||{}).sev) === 'critical').length;
+      const bCrit = gb.filter(f => (f.severity || (FLAG_META[f.flag_type]||{}).sev) === 'critical').length;
+      if (aCrit !== bCrit) return bCrit - aCrit;
+      return gb.length - ga.length;
+    });
+
+    if (countEl) countEl.textContent = `${flags.length} flags · ${groupOrder.length} groups`;
+
+    list.innerHTML = groupOrder.map(key => {
+      const gFlags = groups[key];
+      const meta = getGroupMeta(key, gFlags);
+      const topFlag = gFlags[0];
+      const topTitle = topFlag.title.replace(/^\[GRAY ZONE\]\s*/, '').substring(0, 70);
+      
+      return `<div class="flag-group" data-key="${key}" style="background:var(--card);border:1px solid var(--border);border-radius:10px;margin-bottom:6px;overflow:hidden;border-left:3px solid ${meta.sevColor}">
+        <div class="flag-group-header" data-toggle="group" style="padding:10px 14px;cursor:pointer;display:flex;align-items:center;gap:10px">
+          <span style="font-size:16px">${meta.icon}</span>
+          <div style="flex:1;min-width:0">
+            <div style="display:flex;gap:5px;align-items:center;flex-wrap:wrap;margin-bottom:2px">
+              <span style="font:600 12px var(--font);color:var(--text)">${meta.name}</span>
+              <span style="font:10px var(--mono);color:var(--text-d);background:var(--surface);padding:1px 6px;border-radius:4px">${gFlags.length}</span>
+              ${meta.sevCounts.critical ? `<span class="badge badge-red" style="font-size:8px">${meta.sevCounts.critical} critical</span>` : ''}
+              ${meta.sevCounts.warning ? `<span class="badge badge-warning" style="font-size:8px">${meta.sevCounts.warning} warning</span>` : ''}
+            </div>
+            <div style="font-size:10px;color:var(--text-d);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${topTitle}${gFlags.length > 1 ? ` (+${gFlags.length-1} more)` : ''}</div>
+          </div>
+          <span class="g-chevron" style="color:var(--text-d);font-size:14px;transition:transform .2s">▸</span>
+        </div>
+        <div class="flag-group-body">
+          <div style="padding:0 10px 10px;display:flex;flex-direction:column;gap:3px">
+            ${gFlags.map(f => {
+              const m = FLAG_META[f.flag_type] || {label:"Intel",badge:"badge-amber",sev:f.severity||"info",icon:"?"};
+              const sev = f.severity || m.sev;
+              const sc = sev === 'critical' ? 'var(--red)' : sev === 'high' ? 'var(--orange)' : sev === 'warning' ? 'var(--warning)' : 'var(--cyan)';
+              return `<div class="flag-card" data-id="${f.id}" style="border-left:2px solid ${sc}">
+                <span class="sev sev-${sev}"></span>
+                <div style="flex:1;min-width:0">
+                  <div class="title">${f.title}</div>
+                  <div style="font-size:8px;color:var(--text-d);margin-top:1px">${sev} · ${Math.round((f.confidence||0)*100)}%</div>
+                </div>
+              </div>`;
+            }).join("")}
+          </div>
+        </div>
+      </div>`;
+    }).join("");
+
+    // Single event delegation — bulletproof on mobile
+    list.onclick = function(e) {
+      // Check if tapped a group header
+      const header = e.target.closest("[data-toggle='group']");
+      if (header) {
+        e.preventDefault();
+        const group = header.closest(".flag-group");
+        if (group) group.classList.toggle("open");
+        const chev = header.querySelector(".g-chevron");
+        if (chev) chev.classList.toggle("open");
+        return;
+      }
+      // Check if tapped a flag card
+      const card = e.target.closest(".flag-card[data-id]");
+      if (card) {
+        e.stopPropagation();
+        selectedFlag = FLAGS.find(function(f){ return f.id === card.dataset.id; });
+        if (selectedFlag) renderFlagDetail();
+      }
+    };
+    return;
+  }
+
+  // ── FLAT VIEW (original) ──
+  if (countEl) countEl.textContent = `${flags.length} of ${FLAGS.length} flags`;
+  
+  list.innerHTML = flags.map(f => {
+    const m = FLAG_META[f.flag_type] || {label:"Unknown",badge:"badge-amber",sev:"info",icon:"?"};
+    const conf = Math.round((f.confidence||0)*100);
+    const confBadge = conf > 85 ? "badge-green" : "badge-amber";
+    const d = f.timestamp ? new Date(f.timestamp) : null;
+    const date = (d && !isNaN(d)) ? d.toLocaleDateString() : '';
+    const regions = extractRegions(f);
+    const regionTags = regions.length ? regions.map(r => `<span class="badge badge-blue" style="font-size:9px;padding:1px 5px">${r}</span>`).join(" ") : "";
+    return `<div class="flag-card" data-id="${f.id}">
+      <span class="sev sev-${m.sev}"></span>
+      <div style="flex:1;min-width:0">
+        <div class="meta">
+          <span class="badge ${m.badge}">${m.icon} ${m.label}</span>
+          <span style="font:10px var(--mono);color:var(--text-d)">${date}</span>
+          <span class="badge ${confBadge}">${conf}%</span>
+          ${regionTags}
+        </div>
+        <div class="title">${f.title}</div>
+      </div>
+    </div>`;
+  }).join("");
+
+  list.querySelectorAll(".flag-card").forEach(card => {
+    card.addEventListener("click", function() {
+      selectedFlag = FLAGS.find(function(f){ return f.id === card.dataset.id; });
+      if (selectedFlag) renderFlagDetail();
+    });
+  });
+}
+
+// ── Flag detail ──
+function renderFlagDetail() {
+  if (!selectedFlag) return;
+  const f = selectedFlag;
+  const m = FLAG_META[f.flag_type] || {};
+  const conf = Math.round((f.confidence||0)*100);
+  const _d = f.timestamp ? new Date(f.timestamp) : null;
+  const date = (_d && !isNaN(_d)) ? _d.toLocaleDateString() : '';
+  document.getElementById("flag-modal-meta").innerHTML =
+    `<span class="sev sev-${m.sev}"></span>
+     <span class="badge ${m.badge}">${m.icon||""} ${m.label||""}</span>
+     <span style="font:10px var(--mono);color:var(--text-d)">${date}</span>`;
+  document.getElementById("flag-modal-title").textContent = f.title || "";
+  let html = "";
+  html += `<div style="font:400 12px var(--font);color:var(--text-s);line-height:1.6;margin-bottom:12px">${f.detail||""}</div>`;
+  html += `<div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-bottom:12px">
+    <span class="badge ${conf>85?"badge-green":"badge-amber"}" style="font-size:10px">${conf}% confidence</span>
+    ${f.correlation_r ? `<span class="badge badge-cyan" style="font-size:10px">r=${f.correlation_r}${f.correlation_lag_weeks?" · "+f.correlation_lag_weeks+"wk lag":""}</span>` : ""}
+    ${(f.data_sources||[]).map(s=>`<span class="badge" style="background:var(--surface);color:var(--text-d);font-size:8px">${s.replace(/_/g," ")}</span>`).join("")}
+  </div>`;
+  if (f.prediction) {
+    html += `<div style="background:var(--purple-d);border:1px solid #a78bfa22;border-radius:6px;padding:7px 10px;margin-bottom:8px">
+      <div style="font:600 8px var(--font);color:var(--purple);text-transform:uppercase;letter-spacing:.06em;margin-bottom:2px">◎ Prediction</div>
+      <div style="font-size:11px;color:var(--text-s);line-height:1.5">${f.prediction}</div>
+    </div>`;
+  }
+  if (f.sources && f.sources.length) {
+    const tc2 = {primary:"var(--green)",reporting:"var(--blue)",aggregated:"var(--cyan)",derived:"var(--amber)",estimated:"var(--orange)",unknown:"var(--text-d)"};
+    html += `<div style="margin-top:10px"><div style="font:600 9px var(--font);color:var(--text-d);text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px">Sources</div><div style="display:flex;flex-direction:column;gap:4px">`;
+    f.sources.forEach(s => {
+      const tc = tc2[s.type] || "var(--text-d)";
+      html += `<div style="background:var(--surface);border-radius:6px;padding:7px 9px;border-left:2px solid ${tc}">
+        <div style="display:flex;align-items:center;gap:5px;flex-wrap:wrap;margin-bottom:2px">
+          ${s.url ? `<a href="${s.url}" target="_blank" rel="noopener" style="font-size:11px;font-weight:600;color:var(--text)">${s.name} ↗</a>` : `<span style="font-size:11px;font-weight:600;color:var(--text)">${s.name}</span>`}
+          <span class="badge" style="background:${tc}18;color:${tc};font-size:8px">${s.type}</span>
+        </div>
+        ${s.description ? `<div style="font-size:10px;color:var(--text-s);line-height:1.3">${s.description}</div>` : ""}
+      </div>`;
+    });
+    html += `</div></div>`;
+  }
+  document.getElementById("flag-modal-body").innerHTML = html;
+  document.getElementById("flag-modal-overlay").classList.add("open");
+}
+
+
+// ── Platforms ──
+function renderPlatforms() {
+  // Gray Zone Entities
+  const gzEntities = [
+    {name:"SkyRover / Knowact",score:0.850,tier:"CRITICAL",hq:"Shenzhen (Nanshan District — DJI's district)",status:"Active — selling at retailers",
+     finding:"DJI Mini 4 Pro clone. Direct DJI cloud. 9+ shell companies. OcuSync frequency fingerprint confirmed. App = DJI Fly fork.",
+     flags:FLAGS.filter(f=>(f.title||'').includes('SkyRover')).length},
+    {name:"Anzu Robotics",score:0.782,tier:"CRITICAL",hq:"Austin, TX → XTI Aerospace (NASDAQ: XTIA)",status:"Product discontinued. Active TX AG litigation.",
+     finding:"DJI Mavic 3 licensed derivative. DJI retains crypto signing keys. ~50% Chinese components. 3 PDs holding dead hardware.",
+     flags:FLAGS.filter(f=>(f.title||'').includes('Anzu')).length},
+    {name:"Cogito Tech / SPECTA",score:0.537,tier:"HIGH",hq:"Hong Kong (Google Sites website, no support infrastructure)",status:"Products on Amazon. Subject to FCC Covered List.",
+     finding:"DJI Air 3 clone — identical PCBs within 2 grams. Denies DJI connection. OcuSync + patented DJI chipsets prove otherwise.",
+     flags:FLAGS.filter(f=>(f.title||'').includes('Cogito')).length},
+    {name:"Autel Robotics",score:0.525,tier:"HIGH",hq:"Shenzhen → US operations",status:"Named in FY2025 NDAA Section 1709. FCC authorizations revoked.",
+     finding:"Chinese-owned. Entity List. CITIC/Ministry of Finance investor. Cannot bypass ban even via US manufacturing.",
+     flags:FLAGS.filter(f=>(f.title||'').includes('Autel')).length},
+  ];
+
+  const gzContainer = document.getElementById("grayzone-entities");
+  gzContainer.innerHTML = gzEntities.map(function(gz,gi) {
+    var tc = gz.tier==="CRITICAL"?"var(--red)":"var(--orange)";
+    return '<div style="background:var(--card);border:1px solid var(--border);border-radius:8px;padding:10px 12px;border-left:3px solid '+tc+';cursor:pointer" data-gz-idx="'+gi+'">'
+      +'<div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px">'
+      +'<div style="flex:1;min-width:0">'
+      +'<div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;margin-bottom:3px">'
+      +'<span style="font-size:12px;font-weight:700;color:var(--text)">🔍 '+gz.name+'</span>'
+      +'<span style="font-size:8px;padding:1px 5px;border-radius:3px;background:'+tc+'20;color:'+tc+'">'+gz.tier+'</span>'
+      +'<span style="font-size:8px;padding:1px 5px;border-radius:3px;background:var(--surface);color:var(--text-d)">'+gz.flags+' flags</span>'
+      +'</div>'
+      +'<div style="font-size:9px;color:var(--text-d);margin-bottom:3px">'+gz.hq+'</div>'
+      +'<div style="font-size:10px;color:var(--text-s);line-height:1.4">'+gz.finding+'</div>'
+      +'<div style="font-size:9px;color:var(--amber);margin-top:3px">'+gz.status+'</div>'
+      +'</div>'
+      +'<div style="text-align:center;min-width:50px">'
+      +'<div style="font:700 18px var(--mono);color:'+tc+'">'+gz.score.toFixed(2)+'</div>'
+      +'<div style="font-size:8px;color:var(--text-d)">risk score</div>'
+      +'</div></div></div>';
+  }).join("");
+  gzContainer.querySelectorAll("[data-gz-idx]").forEach(function(el) {
+    el.addEventListener("click", function() {
+      var gz = gzEntities[+el.dataset.gzIdx]; if (!gz) return;
+      var tc = gz.tier==="CRITICAL"?"var(--red)":"var(--orange)";
+      var relFlags = FLAGS.filter(function(f){return (f.title||"").indexOf(gz.name.split(" ")[0])>-1;});
+      var body = "";
+      body += '<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px">';
+      body += '<span style="font-size:9px;padding:2px 7px;border-radius:4px;background:'+tc+'20;color:'+tc+';font-weight:700">'+gz.tier+'</span>';
+      body += '<span class="badge badge-amber">Risk: '+gz.score.toFixed(3)+'</span>';
+      body += '<span class="badge" style="background:var(--surface);color:var(--text-d)">'+gz.flags+' flags</span>';
+      body += '</div>';
+      body += '<div style="background:var(--surface);border-radius:6px;padding:8px 10px;margin-bottom:10px"><div style="font:500 9px var(--mono);color:var(--text-d);margin-bottom:2px">HQ</div><div style="font:400 11px var(--font);color:var(--text-s)">'+gz.hq+'</div></div>';
+      body += '<div style="background:var(--surface);border-radius:6px;padding:8px 10px;margin-bottom:10px"><div style="font:500 9px var(--mono);color:var(--text-d);margin-bottom:2px">KEY FINDING</div><div style="font:400 11px var(--font);color:var(--text-s);line-height:1.5">'+gz.finding+'</div></div>';
+      body += '<div style="background:'+tc+'12;border:1px solid '+tc+'30;border-radius:6px;padding:8px 10px;margin-bottom:10px;font:500 11px var(--font);color:'+tc+'">'+gz.status+'</div>';
+      if (relFlags.length) { body += '<div><div style="font:600 9px var(--mono);color:var(--text-d);margin-bottom:6px">Related PIE Flags ('+relFlags.length+')</div>'+relFlags.slice(0,5).map(function(f){return '<div style="background:var(--surface);border-radius:6px;padding:6px 9px;margin-bottom:4px;font:400 10px var(--font);color:var(--text-s)">'+f.title+'</div>';}).join("")+'</div>'; }
+      openDetailModal(gz.name, gz.hq, body);
+    });
+  });
+
+  // Blue UAS Platforms
+  const c = document.getElementById("platform-list");
+  const tierBadge = {blue:"badge-blue",ndaa:"badge-green",commercial:"badge-amber",adversary:"badge-red"};
+  const tierLabel = {blue:"◆ Blue UAS",ndaa:"◇ NDAA §848",commercial:"○ Commercial",adversary:"✕ Adversary"};
+
+  c.innerHTML = PLATFORMS.map((p,pi) => `<div class="plat-card" data-plat-idx="${pi}">
+    <div class="top">
+      <div>
+        <div style="display:flex;gap:8px;align-items:center;margin-bottom:4px">
+          <span style="font-size:13px;font-weight:600">${p.name}</span>
+          <span class="badge ${tierBadge[p.tier]}">${tierLabel[p.tier]}</span>
+          ${p.combat?'<span class="badge badge-red">COMBAT</span>':""}
+        </div>
+        <div style="font-size:11px;color:var(--text-s)">${p.mfr} · ${p.country}</div>
+      </div>
+      <div style="text-align:right">
+        <div style="font:700 18px var(--mono);color:${p.yoy>50?"var(--green)":"var(--text)"}">${p.prod.toLocaleString()}<span style="font-size:10px;color:var(--text-d)">/mo</span></div>
+        <span class="badge ${p.yoy>0?"badge-green":"badge-red"}">${p.yoy>0?"+":""}${p.yoy}% YoY</span>
+      </div>
+    </div>
+    <div class="tags"><span style="font-size:10px;color:var(--text-d);margin-right:4px">SBC:</span>${p.sbc.map(s=>`<span class="badge badge-cyan">${s}</span>`).join("")}</div>
+    ${p.contracts.length?`<div class="tags"><span style="font-size:10px;color:var(--text-d);margin-right:4px">Contracts:</span>${p.contracts.map(cn=>`<span class="badge badge-amber">${cn}</span>`).join("")}</div>`:""}
+  </div>`).join("");
+  c.querySelectorAll("[data-plat-idx]").forEach(function(el) {
+    el.addEventListener("click", function() {
+      var p = PLATFORMS[+el.dataset.platIdx]; if (!p) return;
+      var tb = {blue:"badge-blue",ndaa:"badge-green",commercial:"badge-amber",adversary:"badge-red"};
+      var tl = {blue:"Blue UAS",ndaa:"NDAA §848",commercial:"Commercial",adversary:"Adversary"};
+      var tColor = p.tier==="blue"?"var(--blue)":"var(--red)";
+      var relFlags = FLAGS.filter(function(f){return (f.title||"").toLowerCase().indexOf(p.name.split(" ")[0].toLowerCase())>-1;});
+      var body = "";
+      body += '<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px">';
+      body += '<span class="badge '+(tb[p.tier]||"badge-amber")+'">'+(tl[p.tier]||p.tier)+'</span>';
+      if (p.combat) body += '<span class="badge badge-red">COMBAT</span>';
+      body += '<span class="badge badge-green">'+p.prod.toLocaleString()+'/mo</span>';
+      body += '<span class="badge '+(p.yoy>0?"badge-green":"badge-red")+'">'+(p.yoy>0?"+":"")+p.yoy+'% YoY</span></div>';
+      body += '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px">';
+      body += '<div style="background:var(--surface);border-radius:6px;padding:8px 10px"><div style="font:500 9px var(--mono);color:var(--text-d);margin-bottom:2px">MANUFACTURER</div><div style="font:600 11px var(--font)">'+p.mfr+'</div></div>';
+      body += '<div style="background:var(--surface);border-radius:6px;padding:8px 10px"><div style="font:500 9px var(--mono);color:var(--text-d);margin-bottom:2px">COUNTRY</div><div style="font:600 11px var(--font)">'+p.country+'</div></div></div>';
+      if (p.sbc&&p.sbc.length){body+='<div style="margin-bottom:10px"><div style="font:600 9px var(--mono);color:var(--text-d);margin-bottom:5px">SBC</div><div style="display:flex;gap:4px;flex-wrap:wrap">'+p.sbc.map(function(s){return '<span class="badge badge-cyan">'+s+'</span>';}).join("")+'</div></div>';}
+      if (p.contracts&&p.contracts.length){body+='<div style="margin-bottom:10px"><div style="font:600 9px var(--mono);color:var(--text-d);margin-bottom:5px">Contracts</div><div style="display:flex;gap:4px;flex-wrap:wrap">'+p.contracts.map(function(cn){return '<span class="badge badge-amber">'+cn+'</span>';}).join("")+'</div></div>';}
+      if (relFlags.length){body+='<div><div style="font:600 9px var(--mono);color:var(--text-d);margin-bottom:6px">Related Flags ('+relFlags.length+')</div>'+relFlags.slice(0,5).map(function(f){return '<div style="background:var(--surface);border-radius:6px;padding:6px 9px;margin-bottom:4px;font:400 10px var(--font);color:var(--text-s)">'+f.title+'</div>';}).join("")+'</div>';}
+      openDetailModal(p.name, p.mfr+" · "+p.country, body);
+    });
+  });
+}
+
+// ── Components ──
+function renderComponents() {
+  const w = document.getElementById("component-table-wrap");
+  const riskColors = {single_source:"var(--red)",diversion:"var(--red)",allocated:"var(--orange)",geographic:"var(--amber)",supply:"var(--amber)",demand:"var(--amber)",china_source:"var(--orange)",ecosystem:"var(--cyan)",none:"var(--green)"};
+  const riskLabels = {single_source:"SINGLE SOURCE",diversion:"DIVERSION RISK",allocated:"ALLOCATED",geographic:"GEO RISK",supply:"SUPPLY CONSTRAINED",demand:"DEMAND SURGE",china_source:"CHINA SOURCE",ecosystem:"ECOSYSTEM",none:"LOW RISK"};
+  const statusColor = {available:"var(--green)",constrained:"var(--amber)",allocated:"var(--red)"};
+
+  // Group by category
+  const cats = {};
+  COMPONENTS.forEach(c => {
+    if (!cats[c.cat]) cats[c.cat] = [];
+    cats[c.cat].push(c);
+  });
+
+  let html = '';
+  Object.entries(cats).forEach(([cat, items]) => {
+    const worstStatus = items.some(i=>i.status==='allocated') ? 'allocated' : items.some(i=>i.status==='constrained') ? 'constrained' : 'available';
+    html += `<div style="margin-bottom:16px">
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">
+        <div style="font:600 11px var(--mono);color:var(--text)">${cat}</div>
+        <span style="font:10px var(--mono);color:var(--text-d)">${items.length} tracked</span>
+        <span style="width:8px;height:8px;border-radius:50%;background:${statusColor[worstStatus]}"></span>
+      </div>
+      ${items.map(c => {
+        const delta = Math.round(((c.price - c.avg) / (c.avg||1)) * 100);
+        const rc = riskColors[c.risk] || 'var(--text-d)';
+        const rl = riskLabels[c.risk] || c.risk;
+        return `<div style="background:var(--card);border:1px solid var(--border);border-radius:8px;padding:10px 12px;margin-bottom:4px;border-left:3px solid ${rc};cursor:pointer" data-comp-name="${c.name}">
+          <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px">
+            <div style="flex:1;min-width:0">
+              <div style="font-size:12px;font-weight:600;color:var(--text)">${c.name}</div>
+              <div style="display:flex;gap:4px;flex-wrap:wrap;margin-top:3px">
+                <span style="font-size:8px;padding:1px 5px;border-radius:3px;background:${rc}20;color:${rc}">${rl}</span>
+                <span style="font-size:8px;padding:1px 5px;border-radius:3px;background:${statusColor[c.status]}20;color:${statusColor[c.status]}">${c.status.toUpperCase()}</span>
+                ${c.lead ? `<span style="font-size:8px;padding:1px 5px;border-radius:3px;background:var(--surface);color:var(--text-d)">${c.lead}wk lead</span>` : ''}
+              </div>
+            </div>
+            <div style="text-align:right;min-width:65px">
+              ${c.price ? `<div style="font:700 13px var(--mono);color:var(--text)">$${c.price.toLocaleString()}</div>` : ''}
+              ${delta && c.price ? `<div style="font:10px var(--mono);color:${delta>0?'var(--red)':'var(--green)'}">${delta>0?'+':''}${delta}% vs avg</div>` : ''}
+            </div>
+          </div>
+          <div style="font-size:9px;color:var(--text-d);margin-top:4px;line-height:1.4">${c.note || ''}</div>
+          <div style="display:flex;gap:3px;flex-wrap:wrap;margin-top:4px">
+            ${c.users.map(u=>`<span style="font-size:8px;color:var(--blue);background:var(--blue-d);padding:1px 5px;border-radius:3px">${u}</span>`).join("")}
+          </div>
+        </div>`;
+      }).join("")}
+    </div>`;
+  });
+
+  w.innerHTML = html;
+  w.querySelectorAll("[data-comp-name]").forEach(function(el) {
+    el.addEventListener("click", function() {
+      var comp = COMPONENTS.find(function(x){return x.name===el.dataset.compName;}); if(!comp) return;
+      var rc = riskColors[comp.risk]||"var(--text-d)";
+      var rl = riskLabels[comp.risk]||comp.risk;
+      var sc = statusColor[comp.status]||"var(--text-d)";
+      var delta = Math.round(((comp.price-comp.avg)/(comp.avg||1))*100);
+      var body = "";
+      body += '<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px">';
+      body += '<span style="font-size:9px;padding:2px 7px;border-radius:4px;background:'+rc+'20;color:'+rc+';font-weight:600">'+rl+'</span>';
+      body += '<span style="font-size:9px;padding:2px 7px;border-radius:4px;background:'+sc+'20;color:'+sc+';font-weight:600">'+(comp.status||"").toUpperCase()+'</span>';
+      if (comp.lead) body += '<span class="badge" style="background:var(--surface);color:var(--text-d)">'+comp.lead+'wk lead</span>';
+      body += '</div>';
+      if (comp.price) {
+        body += '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px">';
+        body += '<div style="background:var(--surface);border-radius:6px;padding:8px 10px"><div style="font:500 9px var(--mono);color:var(--text-d);margin-bottom:2px">PRICE</div><div style="font:700 14px var(--mono)">$'+comp.price.toLocaleString()+'</div>'+(delta?'<div style="font:10px var(--mono);color:'+(delta>0?"var(--red)":"var(--green)")+'">'+(delta>0?"+":"")+delta+'% vs avg</div>':'')+'</div>';
+        if (comp.avg) body += '<div style="background:var(--surface);border-radius:6px;padding:8px 10px"><div style="font:500 9px var(--mono);color:var(--text-d);margin-bottom:2px">AVG</div><div style="font:700 14px var(--mono);color:var(--text-s)">$'+comp.avg.toLocaleString()+'</div></div>';
+        body += '</div>';
+      }
+      if (comp.note) body += '<div style="background:var(--surface);border-radius:6px;padding:8px 10px;margin-bottom:10px;font:400 11px var(--font);color:var(--text-s);line-height:1.6">'+comp.note+'</div>';
+      if (comp.users && comp.users.length) { body += '<div><div style="font:600 9px var(--mono);color:var(--text-d);margin-bottom:5px">Used By</div><div style="display:flex;gap:4px;flex-wrap:wrap">'+comp.users.map(function(u){return '<span class="badge badge-blue">'+u+'</span>';}).join("")+'</div></div>'; }
+      openDetailModal(comp.name, comp.cat+" · "+comp.status, body);
+    });
+  });
+}
+
+// ── Predictions ──
+function renderPredictions() {
+  var el = document.getElementById("prediction-list");
+  if (!isProUser()) { showProGate('prediction-list', 'PIE Predictions'); return; }
+  var impactColor = {critical:"--red",high:"--warning",medium:"--blue",low:"--text-d"};
+  el.innerHTML = PREDICTIONS.map(function(p,i) {
+    var ic = impactColor[p.impact] || "--text-d";
+    var pct = Math.round((p.probability||0)*100);
+    return '<div class="pred-card" data-pred-idx="'+i+'" style="border-left:3px solid var('+ic+')">'
+      +'<div style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px;margin-bottom:8px">'
+      +'<div><div style="display:flex;gap:6px;align-items:center;margin-bottom:6px">'
+      +'<span class="badge badge-purple">◎ '+p.timeframe+'</span>'
+      +'<span class="badge" style="background:var('+ic+')18;color:var('+ic+')">'+p.impact+' impact</span>'
+      +'</div><div style="font-size:13px;font-weight:600;line-height:1.4">'+p.event+'</div></div>'
+      +'<div style="text-align:center;min-width:60px">'
+      +'<div style="font:700 22px var(--mono);color:'+(pct>70?"var(--amber)":"var(--text-s)")+'">'+pct+'%</div>'
+      +'<div style="font-size:9px;color:var(--text-d)">probability</div></div></div>'
+      +'<div class="drivers"><span style="font-size:10px;color:var(--text-d)">Drivers:</span>'
+      +(p.drivers||[]).slice(0,3).map(function(d){return '<span class="driver">'+d+'</span>';}).join("")
+      +'</div></div>';
+  }).join("");
+  el.querySelectorAll("[data-pred-idx]").forEach(function(card) {
+    card.addEventListener("click", function() {
+      var p = PREDICTIONS[+card.dataset.predIdx]; if (!p) return;
+      var ic = {critical:"var(--red)",high:"var(--warning)",medium:"var(--blue)",low:"var(--text-d)"}[p.impact]||"var(--text-d)";
+      var pct = Math.round((p.probability||0)*100);
+      var conf = Math.round((p.confidence||0)*100);
+      var body = "";
+      body += '<div style="background:var(--surface);border-radius:8px;padding:14px;margin-bottom:12px">';
+      body += '<div style="display:flex;justify-content:space-between;margin-bottom:6px">';
+      body += '<span style="font:600 11px var(--mono);color:var(--text-d)">PROBABILITY</span>';
+      body += '<span style="font:700 18px var(--mono);color:'+(pct>70?"var(--amber)":"var(--text-s)")+'">'+pct+'%</span></div>';
+      body += '<div style="height:6px;background:var(--border);border-radius:3px;margin-bottom:6px"><div style="width:'+pct+'%;height:100%;background:var(--amber);border-radius:3px"></div></div>';
+      body += '<div style="font:400 10px var(--font);color:var(--text-d);margin-top:2px">'+(p.model||"")+'</div></div>';
+      body += '<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px">';
+      body += '<span class="badge badge-purple">◎ '+p.timeframe+'</span>';
+      body += '<span class="badge" style="background:'+ic+'18;color:'+ic+'">'+p.impact+' impact</span>';
+      body += '<span class="badge" style="background:var(--surface);color:var(--text-d)">'+conf+'% confidence</span></div>';
+      if (p.model_outputs && p.model_outputs.length) {
+        body += '<div style="font:600 10px var(--mono);color:var(--text-d);text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px">Model Breakdown</div>';
+        p.model_outputs.forEach(function(m) {
+          var mp = Math.round((m.probability||0)*100);
+          body += '<div style="background:var(--surface);border-radius:8px;padding:10px;margin-bottom:6px;border-left:3px solid var(--purple)">';
+          body += '<div style="display:flex;justify-content:space-between;margin-bottom:3px">';
+          body += '<span style="font:600 10px var(--mono);color:var(--purple)">'+m.model+'</span>';
+          body += '<span style="font:700 13px var(--mono);color:var(--amber)">'+mp+'%</span></div>';
+          body += '<div style="height:4px;background:var(--border);border-radius:2px;margin-bottom:5px"><div style="width:'+mp+'%;height:100%;background:var(--purple);border-radius:2px"></div></div>';
+          (m.drivers||[]).forEach(function(d){ body += '<div style="font:400 10px var(--font);color:var(--text-s);margin-top:2px">→ '+d+'</div>'; });
+          body += '</div>';
+        });
+      }
+      if (p.drivers && p.drivers.length) {
+        body += '<div style="font:600 9px var(--mono);color:var(--text-d);text-transform:uppercase;letter-spacing:.08em;margin:12px 0 6px">All Drivers</div>';
+        p.drivers.forEach(function(d){ body += '<div style="font:400 11px var(--font);color:var(--text-s);padding:3px 0;border-bottom:1px solid var(--border)">→ '+d+'</div>'; });
+      }
+      openDetailModal(p.event, p.timeframe+' · '+p.impact, body);
+    });
+  });
+}
+
+// ── Dashboard Visualizations ──
+function renderDashboard() {
+  if (!FLAGS.length) return;
+
+  document.getElementById("dash-flag-count").textContent = FLAGS.length;
+  // Count unique data_sources as proxy for analysis layers
+  const allSources = new Set();
+  FLAGS.forEach(f => (f.data_sources||[]).forEach(s => allSources.add(s)));
+  document.getElementById("dash-layer-count").textContent = allSources.size;
+
+  // ── Severity bars ──
+  const sevs = {critical:0, warning:0, info:0};
+  FLAGS.forEach(f => { if (sevs[f.severity] !== undefined) sevs[f.severity]++; });
+  const sevColors = {critical:'var(--red)', warning:'var(--warning)', info:'var(--cyan)'};
+  const maxSev = Math.max(...Object.values(sevs));
+  document.getElementById("dash-severity").innerHTML = Object.entries(sevs).map(([s,c]) => `
+    <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
+      <span style="font:600 10px var(--mono);color:${sevColors[s]};width:60px;text-transform:uppercase">${s}</span>
+      <div style="flex:1;background:var(--card);border-radius:4px;height:24px;overflow:hidden">
+        <div style="width:${(c/maxSev)*100}%;height:100%;background:${sevColors[s]}30;border-right:3px solid ${sevColors[s]};display:flex;align-items:center;padding-left:8px">
+          <span style="font:700 11px var(--mono);color:${sevColors[s]}">${c}</span>
+        </div>
+      </div>
+    </div>
+  `).join("");
+
+  // ── Flag type breakdown ──
+  const types = {};
+  FLAGS.forEach(f => { types[f.flag_type] = (types[f.flag_type]||0) + 1; });
+  const typeLabels = {
+    contract_signal:'Contracts', correlation:'Correlations', procurement_spike:'Procurement',
+    supply_constraint:'Supply Risk', diversion_risk:'Diversion', price_anomaly:'Pricing'
+  };
+  const typeColors = {
+    contract_signal:'var(--amber)', correlation:'var(--cyan)', procurement_spike:'var(--red)',
+    supply_constraint:'var(--orange)', diversion_risk:'var(--red)', price_anomaly:'var(--purple)'
+  };
+  const maxType = Math.max(...Object.values(types));
+  document.getElementById("dash-types").innerHTML = Object.entries(types)
+    .sort((a,b) => b[1]-a[1])
+    .map(([t,c]) => `
+    <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">
+      <span style="font-size:10px;color:var(--text-s);width:70px;text-align:right">${typeLabels[t]||t}</span>
+      <div style="flex:1;background:var(--card);border-radius:4px;height:20px;overflow:hidden">
+        <div style="width:${(c/maxType)*100}%;height:100%;background:${typeColors[t]||'var(--text-d)'}25;border-right:2px solid ${typeColors[t]||'var(--text-d)'};display:flex;align-items:center;padding-left:6px">
+          <span style="font:600 10px var(--mono);color:var(--text-s)">${c}</span>
+        </div>
+      </div>
+    </div>
+  `).join("");
+
+  // ── Component Risk Heatmap ──
+  const compKeywords = [
+    {label:'Jetson Orin', key:'jetson', color:'#ef4444'},
+    {label:'FLIR/Thermal', key:'flir', color:'#f97316'},
+    {label:'Doodle Labs', key:'doodle', color:'#f59e0b'},
+    {label:'STM32', key:'stm32', color:'#eab308'},
+    {label:'RPi', key:'rpi', color:'#84cc16'},
+    {label:'QRB5165', key:'qrb5165', color:'#22c55e'},
+    {label:'ELRS', key:'elrs', color:'#06b6d4'},
+    {label:'Silvus', key:'silvus', color:'#3b82f6'},
+    {label:'TrellisWare', key:'trellisware', color:'#8b5cf6'},
+    {label:'u-blox', key:'u-blox', color:'#a78bfa'},
+  ];
+  const compCounts = compKeywords.map(c => {
+    const count = FLAGS.filter(f => 
+      ((f.title||'')+(f.detail||'')).toLowerCase().includes(c.key)
+    ).length;
+    return {...c, count};
+  }).sort((a,b) => b.count - a.count);
+  const maxComp = Math.max(...compCounts.map(c => c.count));
+  document.getElementById("dash-heatmap").innerHTML = compCounts.map(c => {
+    const intensity = c.count / maxComp;
+    const bg = `${c.color}${Math.round(intensity * 40 + 15).toString(16).padStart(2,'0')}`;
+    return `
+    <div style="display:flex;align-items:center;gap:8px;margin-bottom:5px">
+      <span style="font-size:10px;color:var(--text-s);width:80px;text-align:right">${c.label}</span>
+      <div style="flex:1;background:var(--card);border-radius:4px;height:22px;overflow:hidden">
+        <div style="width:${(c.count/maxComp)*100}%;height:100%;background:${bg};border-right:3px solid ${c.color};display:flex;align-items:center;padding-left:6px;min-width:30px">
+          <span style="font:700 10px var(--mono);color:${c.color}">${c.count}</span>
+        </div>
+      </div>
+      <span style="font-size:9px;color:var(--text-xd);width:40px">${c.count === 1 ? '1 flag' : c.count+' flags'}</span>
+    </div>`;
+  }).join("");
+
+  // ── BOM Cost Breakdown ──
+  const bom = [
+    {name:'Mesh Radio', cost:1800, color:'#ef4444'},
+    {name:'Companion SBC', cost:599, color:'#f97316'},
+    {name:'Frame', cost:400, color:'#f59e0b'},
+    {name:'Flight Controller', cost:300, color:'#eab308'},
+    {name:'Motors (×4)', cost:280, color:'#84cc16'},
+    {name:'Thermal Camera', cost:250, color:'#22c55e'},
+    {name:'ESCs', cost:200, color:'#06b6d4'},
+    {name:'GNSS/RTK', cost:189, color:'#3b82f6'},
+    {name:'Battery', cost:120, color:'#8b5cf6'},
+    {name:'RC Link', cost:120, color:'#a78bfa'},
+    {name:'Other', cost:90, color:'#64748b'},
+  ];
+  const bomTotal = bom.reduce((a,b) => a + b.cost, 0);
+  document.getElementById("dash-bom").innerHTML = bom.map(b => {
+    const pct = (b.cost / bomTotal * 100);
+    return `
+    <div style="display:flex;align-items:center;gap:8px;margin-bottom:5px">
+      <span style="font-size:10px;color:var(--text-s);width:90px;text-align:right">${b.name}</span>
+      <div style="flex:1;background:var(--card);border-radius:4px;height:22px;overflow:hidden">
+        <div style="width:${pct}%;height:100%;background:${b.color}30;border-right:3px solid ${b.color};display:flex;align-items:center;padding-left:6px;min-width:50px">
+          <span style="font:600 10px var(--mono);color:${b.color}">$${b.cost.toLocaleString()}</span>
+          <span style="font-size:9px;color:var(--text-d);margin-left:4px">${pct.toFixed(0)}%</span>
+        </div>
+      </div>
+    </div>`;
+  }).join("") + `<div style="text-align:right;font:600 11px var(--mono);color:var(--text-s);margin-top:6px">Total: $${bomTotal.toLocaleString()} · Non-compliant equivalent: ~$530 · Premium: ${Math.round((bomTotal/530-1)*100)}%</div>`;
+
+  // ── Geographic Risk ──
+  const geoData = [
+    {country:'Taiwan', risk:'high', components:'TSMC (Jetson + QRB5165 fab)', color:'var(--red)'},
+    {country:'South Korea', risk:'medium', components:'Samsung/SK Hynix DRAM', color:'var(--amber)'},
+    {country:'Israel', risk:'medium', components:'Hailo AI, D-Fend C-UAS', color:'var(--amber)'},
+    {country:'Switzerland', risk:'low', components:'u-blox GNSS modules', color:'var(--green)'},
+    {country:'France', risk:'low', components:'Parrot, Safran, Lynred', color:'var(--green)'},
+    {country:'UK', risk:'low', components:'Raspberry Pi, ARM', color:'var(--green)'},
+    {country:'Japan', risk:'low', components:'Sony sensors, Renesas MCUs', color:'var(--green)'},
+    {country:'Germany', risk:'low', components:'STMicro EU fabs, Bosch', color:'var(--green)'},
+  ];
+  const riskWidth = {high:'100%', medium:'60%', low:'30%'};
+  document.getElementById("dash-geo").innerHTML = geoData.map(g => `
+    <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">
+      <span style="font-size:10px;color:var(--text-s);width:70px;text-align:right">${g.country}</span>
+      <div style="flex:1;background:var(--card);border-radius:4px;height:28px;overflow:hidden">
+        <div style="width:${riskWidth[g.risk]};height:100%;background:${g.color}18;border-right:3px solid ${g.color};display:flex;align-items:center;padding-left:8px;gap:6px">
+          <span class="badge" style="background:${g.color}25;color:${g.color};font-size:8px">${g.risk.toUpperCase()}</span>
+          <span style="font-size:9px;color:var(--text-d)">${g.components}</span>
+        </div>
+      </div>
+    </div>
+  `).join("");
+
+  // ── Government Program Demand ──
+  const progKeywords = [
+    {name:'Drone Dominance', key:'drone dominance'},
+    {name:'Replicator/DAWG', key:'replicator'},
+    {name:'Army SRR', key:'srr'},
+    {name:'CCA (Air Force)', key:'cca'},
+    {name:'USMC FPV', key:'usmc'},
+    {name:'USSOCOM', key:'socom'},
+    {name:'Ukraine USAI', key:'usai'},
+    {name:'Blue UAS List', key:'blue uas'},
+    {name:'JIATF C-UAS', key:'jiatf'},
+    {name:'FEMA C-UAS', key:'fema'},
+  ];
+  const progCounts = progKeywords.map(p => {
+    const count = FLAGS.filter(f => 
+      ((f.title||'')+(f.detail||'')).toLowerCase().includes(p.key)
+    ).length;
+    return {...p, count};
+  }).sort((a,b) => b.count - a.count);
+  const maxProg = Math.max(...progCounts.map(p => p.count));
+  document.getElementById("dash-programs").innerHTML = progCounts.map(p => `
+    <div style="display:flex;align-items:center;gap:8px;margin-bottom:5px">
+      <span style="font-size:10px;color:var(--text-s);width:95px;text-align:right">${p.name}</span>
+      <div style="flex:1;background:var(--card);border-radius:4px;height:20px;overflow:hidden">
+        <div style="width:${(p.count/maxProg)*100}%;height:100%;background:var(--amber)20;border-right:2px solid var(--amber);display:flex;align-items:center;padding-left:6px;min-width:25px">
+          <span style="font:600 10px var(--mono);color:var(--amber)">${p.count}</span>
+        </div>
+      </div>
+    </div>
+  `).join("");
+
+  // ── Confidence Distribution ──
+  const confBuckets = {'90-100%':0, '80-89%':0, '70-79%':0, '60-69%':0, '<60%':0};
+  FLAGS.forEach(f => {
+    const c = Math.round((f.confidence||0)*100);
+    if (c >= 90) confBuckets['90-100%']++;
+    else if (c >= 80) confBuckets['80-89%']++;
+    else if (c >= 70) confBuckets['70-79%']++;
+    else if (c >= 60) confBuckets['60-69%']++;
+    else confBuckets['<60%']++;
+  });
+  const confColors = {'90-100%':'var(--green)', '80-89%':'var(--cyan)', '70-79%':'var(--amber)', '60-69%':'var(--orange)', '<60%':'var(--red)'};
+  const maxConf = Math.max(...Object.values(confBuckets));
+  document.getElementById("dash-confidence").innerHTML = Object.entries(confBuckets).map(([b,c]) => `
+    <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">
+      <span style="font:10px var(--mono);color:${confColors[b]};width:55px;text-align:right">${b}</span>
+      <div style="flex:1;background:var(--card);border-radius:4px;height:22px;overflow:hidden">
+        <div style="width:${c ? (c/maxConf)*100 : 0}%;height:100%;background:${confColors[b]}20;border-right:2px solid ${confColors[b]};display:flex;align-items:center;padding-left:6px;min-width:${c?25:0}px">
+          <span style="font:600 10px var(--mono);color:${confColors[b]}">${c}</span>
+        </div>
+      </div>
+      <span style="font-size:9px;color:var(--text-xd);width:30px">${c ? Math.round(c/FLAGS.length*100)+'%' : ''}</span>
+    </div>
+  `).join("");
+}
+
+const REGION_DATA = {
+  "north-america": {
+    name: "North America", emoji: "🇺🇸", color: "var(--blue)",
+    countries: ["usa", "united states", "canada", "north america"],
+    keyPlayers: "Skydio, Shield AI, Anduril, AeroVironment, ModalAI, Neros, L3Harris, Raytheon, Freefly, Red Cat/Teal",
+    programs: "Drone Dominance (200K drones/$1.4B), Army SRR (5,880 systems), CCA ($5.8B), Replicator/DAWG, USMC FPV ($47M), Blue UAS list (50+ platforms)",
+    supplyNote: "Primary demand driver. Blue UAS ecosystem centered here. Industrial base scaling under Drone Dominance EO.",
+  },
+  "europe": {
+    name: "Europe (NATO)", emoji: "🇪🇺", color: "var(--cyan)",
+    countries: ["france", "germany", "uk", "united kingdom", "netherlands", "poland", "croatia", "estonia", "belgium", "spain", "italy", "sweden", "czech", "latvia", "lithuania", "slovenia", "austria", "slovakia", "bulgaria", "switzerland", "eu", "nato", "europe"],
+    keyPlayers: "Parrot (France), Quantum Systems (Germany), Orqa (Croatia), WB Group (Poland), Helsing (Germany), Safran, Thales, STMicroelectronics",
+    programs: "FCAS (€100B+), EuroDrone (MALE RPAS), NATO interop standards, Polish €2B anti-drone barrier, NanoXplore FPGAs",
+    supplyNote: "STMicroelectronics fabs (STM32), u-blox GNSS (Swiss), NanoXplore FPGAs. Building sovereign supply chain to reduce US/Chinese dependency.",
+  },
+  "ukraine": {
+    name: "Ukraine", emoji: "🇺🇦", color: "var(--amber)",
+    countries: ["ukraine"],
+    keyPlayers: "TAF Industries, Vyriy Drone, Wild Hornets, Brave1 accelerator, Iron Belly + Shield AI Hivemind, Swarmer",
+    programs: "10K+ FPV/month production. Hivemind autonomy integration. Fastest-iterating drone ecosystem in the world.",
+    supplyNote: "Competes with US Drone Dominance for same FPV components (STM32, ELRS, Caddx). Combat experience drives global doctrine. 23 platforms in Forge DB.",
+  },
+  "middle-east": {
+    name: "Middle East", emoji: "🇹🇷", color: "var(--orange)",
+    countries: ["turkey", "israel", "uae", "iran", "saudi"],
+    keyPlayers: "Baykar (Turkey — TB2/TB3/Akıncı/Kızılelma), Elbit Systems (Israel), IAI (Israel), D-Fend (Israel), EDGE Group (UAE), HESA/Iran",
+    programs: "Baykar: 35+ export customers. Shahed mass production (Iran→Russia). Elbit Skylark/Lanius. D-Fend EnforceAir (C-UAS).",
+    supplyNote: "Turkey building indigenous supply chain after Canada sensor embargo. Iran drives gray market component diversion for Russian drones.",
+  },
+  "asia-pacific": {
+    name: "Asia-Pacific", emoji: "🌏", color: "var(--red)",
+    countries: ["china", "india", "south korea", "taiwan", "japan", "singapore"],
+    keyPlayers: "DJI (80% global share), CATL/BYD (batteries), TSMC (chip fab), Samsung/SK Hynix (DRAM), ideaForge (India), ST Engineering (Singapore)",
+    programs: "PLA drone swarms (China), KAI stealth UCAV (S.Korea), Taiwan NCSIST + Hivemind, ideaForge SWITCH (India), Shield AI + ST Engineering (Singapore)",
+    supplyNote: "TSMC is upstream of ALL Blue UAS compute (Jetson + QRB5165). China manufactures majority of drone motors, ESCs, LiPo cells. Samsung/SK Hynix: global DRAM.",
+  },
+  "russia": {
+    name: "Russia", emoji: "🇷🇺", color: "var(--red)",
+    countries: ["russia"],
+    keyPlayers: "Alabuga factory (Yelabuga), ZALA Aero (Lancet), Orlan (ISR), diverted Western components, Iranian airframe technology",
+    programs: "Mass drone production using gray market parts. GUR tracks 5,534 foreign components in 190 weapon systems. Geran/Shahed production at scale.",
+    supplyNote: "Primary driver of component diversion. 40K+ RPi units diverted. STM32, Western MCUs flowing through China/UAE gray market channels.",
+  },
+  "oceania": {
+    name: "Oceania", emoji: "🇦🇺", color: "var(--green)",
+    countries: ["australia", "new zealand"],
+    keyPlayers: "SYPAQ (Corvo cardboard drone), DroneShield (C-UAS), Boeing Australia (MQ-28 Ghost Bat)",
+    programs: "SYPAQ Corvo used in Ukraine. MQ-28 Ghost Bat is Australia's CCA testbed. DroneShield: A$1.2B European pipeline.",
+    supplyNote: "Five Eyes ally. MQ-28 feeds CCA concepts into US/UK programs. DroneShield is largest C-UAS customer base globally.",
+  },
+  "south-america": {
+    name: "South America", emoji: "🌎", color: "var(--green)",
+    countries: ["brazil", "argentina", "colombia", "chile", "mexico"],
+    keyPlayers: "Emerging military drone programs, commercial agriculture UAS adoption",
+    programs: "Growing adoption of ISR and agricultural UAS. Brazil military drone procurement expanding.",
+    supplyNote: "Expanding market creating additional global component demand. Mostly importing platforms, not manufacturing.",
+  },
+  "africa": {
+    name: "Africa", emoji: "🌍", color: "var(--purple)",
+    countries: ["south africa", "nigeria", "ethiopia", "morocco", "egypt", "kenya", "libya"],
+    keyPlayers: "Baykar exports (multiple African nations), Chinese drone exports, emerging local manufacturers",
+    programs: "Turkey/Baykar expanding across North/Sub-Saharan Africa. Chinese drone exports growing. Counter-terrorism ISR.",
+    supplyNote: "Import-driven market. Turkish and Chinese drones dominating. Limited indigenous manufacturing capability.",
+  },
+};
+
+function renderRegionMap() {
+  // Update map labels with flag counts
+  for (const [slug, data] of Object.entries(REGION_DATA)) {
+    const count = FLAGS.filter(f => {
+      const text = ((f.title||'')+(f.detail||'')).toLowerCase();
+      return data.countries.some(c => text.includes(c));
+    }).length;
+    const el = document.getElementById(`map-count-${slug}`);
+    if (el) el.textContent = count ? `${count} flags` : '';
+  }
+
+  // Render region list below map
+  const list = document.getElementById("region-list");
+  const regionStats = Object.entries(REGION_DATA).map(([slug, data]) => {
+    const flagCount = FLAGS.filter(f => {
+      const text = ((f.title||'')+(f.detail||'')).toLowerCase();
+      return data.countries.some(c => text.includes(c));
+    }).length;
+    return {slug, ...data, flagCount};
+  }).sort((a,b) => b.flagCount - a.flagCount);
+
+  const maxFlags = Math.max(...regionStats.map(r => r.flagCount), 1);
+
+  list.innerHTML = regionStats.map(r => `
+    <a href="#region-${r.slug}" onclick="selectRegion('${r.slug}');return false;" style="display:flex;align-items:center;gap:8px;padding:8px 10px;background:var(--surface);border-radius:8px;margin-bottom:4px;text-decoration:none;border:1px solid var(--border);transition:border-color .15s" onmouseover="this.style.borderColor='${r.color}'" onmouseout="this.style.borderColor='var(--border)'">
+      <span style="font-size:16px;width:22px;text-align:center">${r.emoji}</span>
+      <span style="font-size:11px;font-weight:600;color:var(--text);flex:1">${r.name}</span>
+      <span style="font:600 10px var(--mono);color:${r.color};min-width:45px;text-align:right">${r.flagCount}</span>
+      <div style="width:60px;background:var(--card);border-radius:3px;height:6px;overflow:hidden">
+        <div style="width:${(r.flagCount/maxFlags)*100}%;height:100%;background:${r.color};border-radius:3px"></div>
+      </div>
+    </a>
+  `).join("");
+}
+
+function selectRegion(slug) {
+  const data = REGION_DATA[slug];
+  if (!data) return;
+
+  // Update hash without reload
+  history.replaceState(null, '', `#region-${slug}`);
+
+  // Switch to regions tab if not already there
+  document.querySelectorAll(".tab").forEach(t => t.classList.remove("active"));
+  document.querySelectorAll(".panel").forEach(p => p.classList.remove("active"));
+  const regTab = [...document.querySelectorAll(".tab")].find(t => t.dataset.tab === "regions");
+  if (regTab) regTab.classList.add("active");
+  document.getElementById("panel-regions").classList.add("active");
+
+  // Hide global, show detail
+  document.getElementById("region-global").style.display = "none";
+  const detail = document.getElementById("region-detail");
+  detail.style.display = "block";
+
+  // Get flags for this region
+  const regionFlags = FLAGS.filter(f => {
+    const text = ((f.title||'')+(f.detail||'')).toLowerCase();
+    return data.countries.some(c => text.includes(c));
+  });
+  const sevCounts = {critical:0, warning:0, info:0};
+  regionFlags.forEach(f => { if (sevCounts[f.severity] !== undefined) sevCounts[f.severity]++; });
+
+  detail.innerHTML = `
+    <div style="margin-bottom:12px">
+      <a href="#" onclick="backToGlobal();return false;" style="font-size:10px;color:var(--text-d);text-decoration:none">← Back to Global Map</a>
+    </div>
+
+    <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px">
+      <span style="font-size:24px">${data.emoji}</span>
+      <div>
+        <div style="font:700 16px var(--font);color:var(--text)">${data.name}</div>
+        <div style="display:flex;gap:4px;flex-wrap:wrap;margin-top:3px">
+          <span style="font-size:9px;color:var(--text-d)">${regionFlags.length} flags</span>
+          ${sevCounts.critical ? `<span class="badge badge-red" style="font-size:8px">${sevCounts.critical} critical</span>` : ''}
+          ${sevCounts.warning ? `<span class="badge badge-warning" style="font-size:8px">${sevCounts.warning} warning</span>` : ''}
+          ${sevCounts.info ? `<span class="badge badge-cyan" style="font-size:8px">${sevCounts.info} info</span>` : ''}
+        </div>
+      </div>
+    </div>
+
+    <div style="display:flex;flex-direction:column;gap:10px;margin-bottom:14px">
+      <div data-toggle="info" style="background:var(--surface);border-radius:8px;padding:10px;border-left:3px solid ${data.color};cursor:pointer">
+        <div style="display:flex;justify-content:space-between;align-items:center">
+          <div style="font:600 8px var(--mono);color:${data.color};text-transform:uppercase;letter-spacing:.04em">Key Players</div>
+          <span class="card-chevron" style="color:var(--text-d);font-size:12px;transition:transform .2s">▸</span>
+        </div>
+        <div class="card-body" style="font-size:11px;color:var(--text-s);line-height:1.5;margin-top:3px;max-height:2.8em;overflow:hidden;transition:max-height .25s ease">${data.keyPlayers}</div>
+      </div>
+      <div data-toggle="info" style="background:var(--surface);border-radius:8px;padding:10px;border-left:3px solid ${data.color};cursor:pointer">
+        <div style="display:flex;justify-content:space-between;align-items:center">
+          <div style="font:600 8px var(--mono);color:${data.color};text-transform:uppercase;letter-spacing:.04em">Programs & Activity</div>
+          <span class="card-chevron" style="color:var(--text-d);font-size:12px;transition:transform .2s">▸</span>
+        </div>
+        <div class="card-body" style="font-size:11px;color:var(--text-s);line-height:1.5;margin-top:3px;max-height:2.8em;overflow:hidden;transition:max-height .25s ease">${data.programs}</div>
+      </div>
+      <div data-toggle="info" style="background:var(--surface);border-radius:8px;padding:10px;border-left:3px solid ${data.color};cursor:pointer">
+        <div style="display:flex;justify-content:space-between;align-items:center">
+          <div style="font:600 8px var(--mono);color:${data.color};text-transform:uppercase;letter-spacing:.04em">Supply Chain Significance</div>
+          <span class="card-chevron" style="color:var(--text-d);font-size:12px;transition:transform .2s">▸</span>
+        </div>
+        <div class="card-body" style="font-size:11px;color:var(--text-s);line-height:1.5;margin-top:3px;max-height:2.8em;overflow:hidden;transition:max-height .25s ease">${data.supplyNote}</div>
+      </div>
+    </div>
+
+    ${regionFlags.length ? `
+      <div style="font:600 9px var(--mono);color:var(--text-d);text-transform:uppercase;letter-spacing:.04em;margin-bottom:6px">Intelligence Flags (${regionFlags.length})</div>
+      <div id="region-flags-list" style="display:flex;flex-direction:column;gap:3px">
+        ${regionFlags.map(f => {
+          const sevColor = f.severity === 'critical' ? 'var(--red)' : f.severity === 'warning' ? 'var(--warning)' : 'var(--cyan)';
+          const conf = Math.round((f.confidence||0)*100);
+          const detail_text = (f.detail||'').replace(/"/g,'&quot;').replace(/</g,'&lt;');
+          const sources = (f.sources||[]).map(s => 
+            typeof s === 'string' ? s : (s.url || s.name || '')
+          ).filter(Boolean);
+          const sourceHtml = sources.length ? sources.map(s => {
+            const short = s.replace('https://','').replace('http://','').substring(0,50);
+            return `<a href="${s}" target="_blank" rel="noopener" style="color:var(--cyan);font-size:9px;word-break:break-all;text-decoration:none">${short}…</a>`;
+          }).join('<br>') : '';
+          return `<div class="region-flag-wrap" data-flag-id="${f.id}" style="background:var(--surface);border-radius:6px;border-left:2px solid ${sevColor};cursor:pointer">
+            <div class="region-flag-header" style="padding:7px 9px;display:flex;align-items:center">
+              <div style="flex:1;min-width:0">
+                <div style="font-size:11px;font-weight:600;color:var(--text);line-height:1.3">${f.title.substring(0,80)}${f.title.length>80?'…':''}</div>
+                <div style="font-size:8px;color:var(--text-d);margin-top:2px">${f.severity} · ${conf}% confidence</div>
+              </div>
+              <span class="flag-chevron" style="color:var(--text-d);font-size:14px;margin-left:6px;transition:transform .2s">▸</span>
+            </div>
+            <div class="region-flag-body" style="display:none;padding:0 9px 9px">
+              <div style="font-size:10px;color:var(--text-s);line-height:1.5;margin-bottom:6px">${f.detail||'No additional detail.'}</div>
+              ${f.prediction ? `<div style="background:var(--purple-d);border:1px solid #a78bfa22;border-radius:4px;padding:5px 8px;margin-bottom:6px"><div style="font:600 8px var(--font);color:var(--purple);text-transform:uppercase;margin-bottom:2px">Prediction</div><div style="font-size:10px;color:var(--text-s);line-height:1.4">${f.prediction}</div></div>` : ''}
+              ${sourceHtml ? `<div style="margin-top:4px"><div style="font:600 8px var(--mono);color:var(--text-d);margin-bottom:3px">SOURCES</div>${sourceHtml}</div>` : ''}
+            </div>
+          </div>`;
+        }).join("")}
+      </div>
+    ` : '<div style="font-size:11px;color:var(--text-d);padding:20px;text-align:center">No flags for this region yet. Add sources to expand coverage.</div>'}
+
+    <div style="margin-top:16px;text-align:center">
+      <span style="font:9px var(--mono);color:var(--text-xd)">Bookmark: /patterns/#region-${slug}</span>
+    </div>
+  `;
+  window.scrollTo({top: 0, behavior: 'smooth'});
+
+  // Event delegation for region detail page
+  detail.onclick = function(e) {
+    // Flag card expand/collapse inline
+    const flagWrap = e.target.closest(".region-flag-wrap");
+    if (flagWrap) {
+      const body = flagWrap.querySelector(".region-flag-body");
+      const chev = flagWrap.querySelector(".flag-chevron");
+      if (body) body.style.display = body.style.display === 'none' ? 'block' : 'none';
+      if (chev) chev.classList.toggle("open");
+      return;
+    }
+    // Info card expand/collapse
+    const cardBody = e.target.closest("[data-toggle='info']");
+    if (cardBody) {
+      const body = cardBody.querySelector(".card-body");
+      const chev = cardBody.querySelector(".card-chevron");
+      if (body) body.classList.toggle("expanded");
+      if (chev) chev.classList.toggle("open");
+    }
+  };
+}
+
+function backToGlobal() {
+  history.replaceState(null, '', '#');
+  document.getElementById("region-global").style.display = "";
+  document.getElementById("region-detail").style.display = "none";
+}
+
+function renderAll() {
+  // Each render step wrapped individually — one crash won't blank the whole page
+  const _safe = (name, fn) => { try { fn(); } catch(e) {
+    console.error(name + " crash:", e);
+    const errEl = document.getElementById("flag-list");
+    if (errEl && name === "renderFlags") {
+      errEl.innerHTML = `<div style="color:#f87171;font-size:12px;padding:20px;font-family:monospace;white-space:pre-wrap;background:#1a0a0a;border-radius:8px;margin:8px 0">
+⚠ ${name} error — screenshot this:
+
+${e.stack||e.message||e}</div>`;
+    }
+  }};
+  _safe("renderFilters",    renderFilters);
+  _safe("renderFlags",      renderFlags);
+  _safe("renderDashboard",  renderDashboard);
+  _safe("renderRegionMap",  renderRegionMap);
+  _safe("renderPlatforms",  renderPlatforms);
+  _safe("renderComponents", renderComponents);
+  _safe("renderPredictions",renderPredictions);
+  _safe("loadBriefPanel",loadBriefPanel);
+  _safe("loadBriefPanel",loadBriefPanel);
+  _safe("renderWhatIf",     renderWhatIf);
+
+  // Handle hash routing for bookmarked regions
+  const hash = window.location.hash;
+  if (hash.startsWith('#region-')) {
+    const slug = hash.replace('#region-', '');
+    if (REGION_DATA[slug]) selectRegion(slug);
+  }
+}
+
+// Listen for hash changes (back/forward)
+window.addEventListener('hashchange', () => {
+  const hash = window.location.hash;
+  if (hash.startsWith('#region-')) {
+    selectRegion(hash.replace('#region-', ''));
+  } else if (hash === '' || hash === '#') {
+    backToGlobal();
+  }
+});
+
+// ══════════════════════════════════════════
+// WHAT-IF SIMULATOR
+// ══════════════════════════════════════════
+
+// Full dependency graph — components → platforms → programs
+const DEP_GRAPH = {
+  "NVIDIA Jetson Orin NX": {
+    platforms: ["Skydio X10D", "Shield AI V-BAT", "Anduril Ghost-X", "Neousys FLYC-300"],
+    programs: ["Army SRR", "USAF CCA", "Replicator/DAWG", "USSOCOM ISR"],
+    upstream: ["TSMC (7nm fab)", "Samsung LPDDR5", "NVIDIA (design)"],
+    lead_wk: 16, single_source: true, cost: 599,
+    alternatives: [
+      {name: "Qualcomm QRB5165 (VOXL 2)", ndaa: true, cost: 449, note: "Less GPU, better power. Different SDK (SNPE vs CUDA). Blue UAS Framework certified."},
+      {name: "Hailo-8 AI Accelerator", ndaa: true, cost: 99, note: "AI inference only — no general compute. Pair with a host processor."},
+      {name: "Google Coral Edge TPU", ndaa: true, cost: 60, note: "TensorFlow Lite only. Very low power. Limited model support."},
+      {name: "Rockchip RK3588", ndaa: false, cost: 80, note: "Good specs, cheap — but Chinese-origin. NOT NDAA compliant."},
+    ],
+  },
+  "Qualcomm QRB5165": {
+    platforms: ["ModalAI VOXL 2", "ModalAI Seeker", "Teal 2", "Teal Black Widow"],
+    programs: ["Army SRR Tranche 2", "USMC FPV", "Drone Dominance"],
+    upstream: ["TSMC (5nm fab)", "Qualcomm (design)", "Samsung DRAM"],
+    lead_wk: 14, single_source: true, cost: 449,
+    alternatives: [
+      {name: "NVIDIA Jetson Orin NX", ndaa: true, cost: 599, note: "More GPU compute, larger form factor. CUDA ecosystem."},
+      {name: "NVIDIA Jetson Orin Nano", ndaa: true, cost: 249, note: "Lower-tier Jetson. Less AI throughput but cheaper."},
+      {name: "Ambarella CV72", ndaa: true, cost: 350, note: "Strong CV pipeline. Used in some ISR payloads. Different toolchain."},
+    ],
+  },
+  "STM32H743": {
+    platforms: ["Neros Archer", "Pixhawk 6X", "Orqa H7 FC", "100+ FCs in Forge DB"],
+    programs: ["Drone Dominance", "USMC FPV", "Ukraine FPV", "Commercial FPV"],
+    upstream: ["STMicroelectronics (EU fab)", "GlobalFoundries"],
+    lead_wk: 6, single_source: false, cost: 12,
+    alternatives: [
+      {name: "STM32H750", ndaa: true, cost: 8, note: "Pin-compatible. Less flash (128KB) — use external flash. Cheaper."},
+      {name: "STM32F765", ndaa: true, cost: 10, note: "Previous gen. Less compute but well-supported in Betaflight/ArduPilot."},
+      {name: "RP2350 (Raspberry Pi)", ndaa: true, cost: 1, note: "Dual-core Cortex-M33. Very cheap. Emerging FC support."},
+      {name: "GD32F405/450 (Chinese clone)", ndaa: false, cost: 4, note: "STM32 clone. Widely used in cheap FCs. NOT NDAA compliant."},
+    ],
+  },
+  "FLIR Boson 640": {
+    platforms: ["Switchblade 600", "Anduril Ghost-X", "Teal 2 (Hadron)"],
+    programs: ["Ukraine USAI", "USSOCOM", "Replicator"],
+    upstream: ["Teledyne FLIR (sole manufacturer)"],
+    lead_wk: 18, single_source: true, cost: 3200,
+    alternatives: [
+      {name: "FLIR Lepton 3.5", ndaa: true, cost: 250, note: "160×120 vs 640×512. Much cheaper but much lower resolution and range."},
+      {name: "DRS Tamarisk 640", ndaa: true, cost: 2800, note: "Similar resolution. Different interface. Less common in UAS."},
+      {name: "Lynred/Sofradir (French)", ndaa: true, cost: 2500, note: "European alternative. ITAR-free. Good for NATO/allied export."},
+    ],
+  },
+  "Doodle Labs Helix": {
+    platforms: ["Anduril Ghost-X", "Blue UAS integrators"],
+    programs: ["Lattice Mesh", "Replicator", "SOF MANET"],
+    upstream: ["Qualcomm/Atheros WiFi", "Doodle Labs (firmware)"],
+    lead_wk: 20, single_source: true, cost: 1800,
+    alternatives: [
+      {name: "Silvus StreamCaster SC4200", ndaa: true, cost: 5200, note: "Higher throughput, longer range. 2-3x cost and weight."},
+      {name: "Rajant BreadCrumb LX5", ndaa: true, cost: 3500, note: "Kinetic Mesh. More capacity, heavier. Industrial heritage."},
+      {name: "Persistent Systems MPU5", ndaa: true, cost: 12000, note: "Wave Relay. Highest performance. Most expensive. SOF-grade."},
+    ],
+  },
+  "Silvus MN Micro": {
+    platforms: ["Teal 2", "SOF ISR platforms"],
+    programs: ["Army SRR", "USSOCOM", "SOF MANET"],
+    upstream: ["Silvus (custom MIMO silicon)"],
+    lead_wk: 22, single_source: true, cost: 4500,
+    alternatives: [
+      {name: "Doodle Labs Helix", ndaa: true, cost: 1800, note: "Lower cost, good mesh. Less throughput than Silvus."},
+      {name: "Persistent Systems Embedded Module", ndaa: true, cost: 8000, note: "Wave Relay. Higher performance, much higher cost and SWaP."},
+      {name: "Mobilicom SkyHopper PRO", ndaa: true, cost: 3000, note: "Blue UAS Framework certified. IP mesh for UAS C2."},
+    ],
+  },
+  "ELRS 900MHz": {
+    platforms: ["Neros Archer", "Ukraine FPV fleet", "Commercial FPV"],
+    programs: ["Drone Dominance", "USMC FPV", "Ukraine defense"],
+    upstream: ["Semtech SX1262 (LoRa)", "Espressif ESP32"],
+    lead_wk: 4, single_source: false, cost: 28,
+    alternatives: [
+      {name: "TBS Crossfire", ndaa: true, cost: 60, note: "868/915MHz. Established long-range link. Proprietary protocol."},
+      {name: "Orqa IRONghost", ndaa: true, cost: 120, note: "EU-manufactured. Dual-band FHSS. NDAA compliant. Higher cost."},
+      {name: "TBS Tracer", ndaa: true, cost: 50, note: "2.4GHz. Lower latency, shorter range than 900MHz ELRS."},
+    ],
+  },
+  "RPi Compute Module 4": {
+    platforms: ["Freefly Astro", "Custom builds", "Education/research"],
+    programs: ["DOI fleet", "USGS mapping"],
+    upstream: ["Broadcom SoC", "Sony Wales fab", "Samsung DRAM"],
+    lead_wk: 8, single_source: true, cost: 105,
+    alternatives: [
+      {name: "ModalAI VOXL 2", ndaa: true, cost: 449, note: "Massive upgrade. Blue UAS Framework. Different class entirely."},
+      {name: "RPi 5 (8GB)", ndaa: true, cost: 95, note: "Standard board, not CM form factor. Need adapter."},
+      {name: "Orange Pi 5 (RK3588S)", ndaa: false, cost: 60, note: "Better specs, cheaper — but Chinese SoC. NOT NDAA."},
+    ],
+  },
+  "u-blox ZED-F9P": {
+    platforms: ["Most RTK-equipped Blue UAS", "Precision ag drones"],
+    programs: ["SRR", "Mapping/survey"],
+    upstream: ["u-blox (Swiss design)", "TSMC (fab)"],
+    lead_wk: 10, single_source: true, cost: 189,
+    alternatives: [
+      {name: "Septentrio Mosaic-X5", ndaa: true, cost: 320, note: "Multi-band RTK. Belgian company. Higher accuracy, higher cost."},
+      {name: "u-blox NEO-M9N", ndaa: true, cost: 45, note: "Same company, lower tier. No RTK. Good for non-precision use."},
+    ],
+  },
+  "TrellisWare TSM Waveform": {
+    platforms: ["L3Harris AN/PRC-163", "SOF ground radios"],
+    programs: ["USSOCOM MANET", "Army Tactical Network", "AFSOC"],
+    upstream: ["TrellisWare (waveform IP)", "Xilinx FPGA"],
+    lead_wk: 12, single_source: true, cost: 8000,
+    alternatives: [
+      {name: "Persistent Systems Wave Relay", ndaa: true, cost: 12000, note: "Different waveform, different network. Not interoperable with TSM."},
+      {name: "Silvus MANET", ndaa: true, cost: 5000, note: "Commercial MANET. Proven in UAS. Not TSM-interoperable."},
+    ],
+  },
+};
+
+// Pre-built scenarios
+const SCENARIOS = [
+  { id: "fcc-cliff", name: "🔒 FCC Firmware Cliff — Jan 1, 2027", probability: 70,
+    description: "Three deadlines converge: firmware waiver, Blue UAS exemption, Buy American exemption all expire. No DJI/Autel updates, no new foreign drone approvals.",
+    disrupted: ["All DJI fleet drones", "All Autel fleet drones", "Blue UAS exempted platforms"],
+    lead_override: 0, recovery: "Requires FCC extension or new rulemaking — 3–6 months minimum",
+    mitigation: "Agencies: inventory fleet now, begin replacement procurement. Operators: freeze firmware on stable version. Manufacturers: apply for Conditional Approval before deadline." },
+  { id: "passthrough", name: "⚖️ TX AG Passthrough Theory Succeeds", probability: 45,
+    description: "Texas court rules that licensing/rebranding from banned manufacturer = deceptive practices. Creates precedent for other state AGs against all gray zone entities.",
+    disrupted: ["Anzu Robotics", "Cogito/SPECTA", "SkyRover/Knowact", "Future shell companies"],
+    lead_override: 0, recovery: "Permanent — precedent-setting. Gray zone entities must fully decouple from adversary technology.",
+    mitigation: "Government buyers: audit all non-Blue UAS procurement. Gray zone entities: independent security audit + full supply chain transparency." },
+  { id: "ninth-circuit", name: "🏛️ DJI Wins Ninth Circuit — FCC Ban Modified", probability: 30,
+    description: "Court finds FCC exceeded authority or violated due process. Ban modified to require security audits instead of blanket prohibition.",
+    disrupted: ["Blue UAS manufacturers (market advantage reduced)", "Domestic manufacturers (investment thesis weakened)"],
+    lead_override: 0, recovery: "6–12 months for new framework to stabilize",
+    mitigation: "Domestic manufacturers: differentiate on capability, not just compliance. Blue UAS: focus on mission-critical features DJI can't match." },
+  { id: "tsmc", name: "🏭 Taiwan Crisis — TSMC Disruption", probability: 12,
+    description: "Cross-strait tensions or natural disaster halt TSMC production. All advanced node chips affected.",
+    disrupted: ["NVIDIA Jetson Orin NX", "Qualcomm QRB5165", "u-blox ZED-F9P"],
+    lead_override: 52, recovery: "12–24 months (alternative foundry qualification)",
+    mitigation: "Stockpile critical SoMs now. Qualify Samsung Foundry for QRB. Accelerate RISC-V alternatives." },
+  { id: "dram", name: "💾 DRAM Price Doubles (AI Demand Surge)", probability: 25,
+    description: "AI datacenter demand absorbs DRAM capacity. Embedded/SBC markets get squeezed.",
+    disrupted: ["NVIDIA Jetson Orin NX", "Qualcomm QRB5165", "RPi Compute Module 4"],
+    lead_override: 24, recovery: "18–24 months (new DRAM fab capacity online)",
+    mitigation: "Lock long-term DRAM contracts. Shift to lower-memory configs. RPi 5 1GB as fallback." },
+  { id: "stm", name: "⚡ STMicroelectronics Fab Disruption", probability: 8,
+    description: "Power grid failure, strike, or supply issue at STM EU fabs. STM32 production halts.",
+    disrupted: ["STM32H743"],
+    lead_override: 30, recovery: "6–12 months (GlobalFoundries has partial capacity)",
+    mitigation: "Stockpile H743/H750. Qualify RP2350 for simple FCs. GD32 is NOT NDAA-compliant." },
+  { id: "tariff", name: "🏛️ 50% US–China Tariffs on Components", probability: 40,
+    description: "Escalated tariffs on Chinese motors, ESCs, LiPo cells, frames. Non-NDAA costs surge.",
+    disrupted: ["ELRS 900MHz"],
+    lead_override: 8, recovery: "Permanent structural shift — drives domestic manufacturing",
+    mitigation: "Accelerate domestic motor/ESC/battery manufacturing. Allied sourcing (Taiwan, S.Korea, EU).",
+    price_multiplier: 1.5, note: "Affects Chinese-origin components. NDAA-compliant BOM less impacted but still feels pressure on raw materials." },
+  { id: "boson", name: "🔥 FLIR Boson 640 Allocation-Only", probability: 55,
+    description: "Switchblade 600 ramp + USAI packages consume Teledyne FLIR thermal production capacity.",
+    disrupted: ["FLIR Boson 640"],
+    lead_override: 36, recovery: "6–9 months (Teledyne capacity expansion)",
+    mitigation: "Qualify FLIR Lepton 3.5 (lower res). Evaluate Lynred/Sofradir (French, ITAR-free)." },
+  { id: "mesh", name: "📡 Mesh Radio Supply Crunch", probability: 35,
+    description: "Multi-drone programs (Lattice, Ghost-X, V-BAT Teams) simultaneously scale mesh radio demand.",
+    disrupted: ["Doodle Labs Helix", "Silvus MN Micro"],
+    lead_override: 30, recovery: "9–12 months",
+    mitigation: "Dual-source Doodle + Silvus. Evaluate Rajant for lower-priority links. Persistent Systems for premium tier." },
+  { id: "domestic-scale", name: "🇺🇸 Domestic Manufacturing Reaches Scale (2027)", probability: 60,
+    description: "UMAC, Performance Drone Works, and allied manufacturers reach volume production. Blue UAS BOM cost drops 30%.",
+    disrupted: ["Chinese component importers", "Gray market distributors"],
+    lead_override: 0, recovery: "N/A — positive disruption",
+    mitigation: "Component manufacturers: invest in NDAA-compliant production lines now. Lock Blue UAS supply agreements." },
+];
+
+function renderWhatIf() {
+  const container = document.getElementById("whatif-scenarios");
+  // Populate scenario buttons
+  container.innerHTML = SCENARIOS.map(s => `
+    <div class="flag-card" style="cursor:pointer" onclick="runScenario('${s.id}')">
+      <span class="sev sev-${s.probability > 30 ? 'warning' : s.probability > 15 ? 'info' : 'critical'}" style="margin-top:4px"></span>
+      <div style="flex:1;min-width:0">
+        <div style="display:flex;gap:6px;align-items:center;margin-bottom:4px">
+          <span style="font-size:13px;font-weight:600">${s.name}</span>
+          <span class="badge badge-amber">${s.probability}% prob</span>
+        </div>
+        <div style="font-size:11px;color:var(--text-s);line-height:1.4">${s.description}</div>
+      </div>
+    </div>
+  `).join("");
+
+  // Populate component dropdown for custom scenarios
+  const sel = document.getElementById("whatif-component");
+  sel.innerHTML = '<option value="">Choose a component...</option>' +
+    Object.keys(DEP_GRAPH).map(c => `<option value="${c}">${c} (${DEP_GRAPH[c].lead_wk}wk current)</option>`).join("");
+}
+
+function renderAlternatives(componentNames) {
+  const comps = componentNames.map(c => ({name: c, ...(DEP_GRAPH[c]||{})})).filter(c => c.alternatives && c.alternatives.length);
+  if (!comps.length) return '';
+  return `
+    <div style="background:var(--surface);border-radius:10px;padding:12px;border-left:3px solid var(--cyan)">
+      <div style="font:600 9px var(--mono);color:var(--cyan);text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px">🔄 Alternative Components</div>
+      ${comps.map(c => `
+        <div style="margin-bottom:10px">
+          <div style="font-size:11px;font-weight:600;color:var(--text);margin-bottom:6px">Instead of ${c.name} ($${c.cost.toLocaleString()}):</div>
+          <div style="display:flex;flex-direction:column;gap:4px">
+            ${c.alternatives.map(a => `
+              <div style="background:var(--card);border-radius:6px;padding:8px 10px;display:flex;justify-content:space-between;align-items:start;gap:8px">
+                <div style="flex:1;min-width:0">
+                  <div style="display:flex;gap:4px;align-items:center;flex-wrap:wrap">
+                    <span style="font-size:11px;font-weight:600;color:var(--text)">${a.name}</span>
+                    <span class="badge ${a.ndaa ? 'badge-green' : 'badge-red'}" style="font-size:8px">${a.ndaa ? 'NDAA ✓' : 'NOT NDAA ✗'}</span>
+                    <span style="font:11px var(--mono);color:var(--amber)">$${a.cost.toLocaleString()}</span>
+                  </div>
+                  <div style="font-size:10px;color:var(--text-d);margin-top:3px;line-height:1.4">${a.note}</div>
+                </div>
+              </div>
+            `).join("")}
+          </div>
+        </div>
+      `).join("")}
+    </div>
+  `;
+}
+
+function runScenario(scenarioId) {
+  const s = SCENARIOS.find(x => x.id === scenarioId);
+  if (!s) return;
+
+  const results = document.getElementById("whatif-results");
+  const cascade = document.getElementById("whatif-cascade");
+  results.style.display = "block";
+
+  // Collect all affected items
+  let allPlatforms = new Set();
+  let allPrograms = new Set();
+  let allUpstream = new Set();
+  let componentDetails = [];
+
+  for (const comp of s.disrupted) {
+    const dep = DEP_GRAPH[comp];
+    if (!dep) continue;
+    dep.platforms.forEach(p => allPlatforms.add(p));
+    dep.programs.forEach(p => allPrograms.add(p));
+    dep.upstream.forEach(u => allUpstream.add(u));
+    componentDetails.push({ name: comp, ...dep, new_lead: s.lead_override });
+  }
+
+  cascade.innerHTML = `
+    <div style="background:var(--red-d);border:1px solid var(--red)33;border-radius:10px;padding:16px;margin-bottom:14px">
+      <div style="font:700 15px var(--font);color:var(--text);margin-bottom:6px">${s.name}</div>
+      <div style="font-size:12px;color:var(--text-s);line-height:1.5;margin-bottom:10px">${s.description}</div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        <span class="badge badge-amber">${s.probability}% probability</span>
+        <span class="badge badge-red">Recovery: ${s.recovery}</span>
+      </div>
+    </div>
+
+    <!-- Cascade flow -->
+    <div style="display:flex;flex-direction:column;gap:10px">
+
+      <!-- Upstream -->
+      <div style="background:var(--surface);border-radius:10px;padding:12px;border-left:3px solid var(--purple)">
+        <div style="font:600 9px var(--mono);color:var(--purple);text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px">↑ Upstream Sources Affected</div>
+        <div style="display:flex;gap:4px;flex-wrap:wrap">
+          ${[...allUpstream].map(u => `<span class="badge badge-purple">${u}</span>`).join("")}
+        </div>
+      </div>
+
+      <div style="text-align:center;color:var(--text-xd);font-size:18px">▼</div>
+
+      <!-- Components disrupted -->
+      <div style="background:var(--surface);border-radius:10px;padding:12px;border-left:3px solid var(--red)">
+        <div style="font:600 9px var(--mono);color:var(--red);text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px">⚠ Components Disrupted</div>
+        ${componentDetails.map(c => `
+          <div style="background:var(--card);border-radius:8px;padding:10px;margin-bottom:6px">
+            <div style="display:flex;justify-content:space-between;align-items:center">
+              <span style="font-size:12px;font-weight:600">${c.name}</span>
+              <div style="display:flex;gap:4px">
+                <span class="badge badge-red">${c.lead_wk}wk → ${c.new_lead}wk</span>
+                <span class="badge" style="background:var(--red-d);color:var(--red)">${c.single_source ? 'SINGLE SOURCE' : 'Multi-source'}</span>
+              </div>
+            </div>
+            <div style="font-size:10px;color:var(--text-d);margin-top:4px">$${c.cost.toLocaleString()}/unit · ${c.platforms.length} platforms depend on this</div>
+          </div>
+        `).join("")}
+      </div>
+
+      <div style="text-align:center;color:var(--text-xd);font-size:18px">▼</div>
+
+      <!-- Platforms affected -->
+      <div style="background:var(--surface);border-radius:10px;padding:12px;border-left:3px solid var(--amber)">
+        <div style="font:600 9px var(--mono);color:var(--amber);text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px">🛩 ${allPlatforms.size} Platforms Halted / Delayed</div>
+        <div style="display:flex;gap:4px;flex-wrap:wrap">
+          ${[...allPlatforms].map(p => `<span class="badge badge-amber">${p}</span>`).join("")}
+        </div>
+      </div>
+
+      <div style="text-align:center;color:var(--text-xd);font-size:18px">▼</div>
+
+      <!-- Programs impacted -->
+      <div style="background:var(--surface);border-radius:10px;padding:12px;border-left:3px solid var(--red)">
+        <div style="font:600 9px var(--mono);color:var(--red);text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px">🎯 ${allPrograms.size} Government Programs Delayed</div>
+        <div style="display:flex;gap:4px;flex-wrap:wrap">
+          ${[...allPrograms].map(p => `<span class="badge badge-red">${p}</span>`).join("")}
+        </div>
+      </div>
+
+      <div style="text-align:center;color:var(--text-xd);font-size:18px">▼</div>
+
+      <!-- Mitigation -->
+      <div style="background:var(--surface);border-radius:10px;padding:12px;border-left:3px solid var(--green)">
+        <div style="font:600 9px var(--mono);color:var(--green);text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px">✓ Mitigation Strategy</div>
+        <div style="font-size:12px;color:var(--text-s);line-height:1.6">${s.mitigation}</div>
+        <div style="margin-top:8px"><span class="badge badge-amber">Recovery: ${s.recovery}</span></div>
+      </div>
+
+      <div style="text-align:center;color:var(--text-xd);font-size:18px">▼</div>
+
+      <!-- Alternatives -->
+      ${renderAlternatives(s.disrupted)}
+    </div>
+
+    ${s.note ? `<div style="margin-top:12px;font-size:11px;color:var(--text-d);font-style:italic;padding:10px;background:var(--surface);border-radius:8px">${s.note}</div>` : ''}
+  `;
+
+  // Smooth scroll to results
+  results.scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+function runCustomScenario() {
+  const comp = document.getElementById("whatif-component").value;
+  const leadWk = parseInt(document.getElementById("whatif-slider").value) || 30;
+  if (!comp || !DEP_GRAPH[comp]) return alert("Pick a component first");
+
+  const dep = DEP_GRAPH[comp];
+  const results = document.getElementById("whatif-results");
+  const cascade = document.getElementById("whatif-cascade");
+  results.style.display = "block";
+
+  cascade.innerHTML = `
+    <div style="background:var(--amber-d);border:1px solid var(--amber)33;border-radius:10px;padding:16px;margin-bottom:14px">
+      <div style="font:700 15px var(--font);color:var(--text);margin-bottom:6px">Custom: ${comp} → ${leadWk}-week lead time</div>
+      <div style="font-size:12px;color:var(--text-s);line-height:1.5">
+        Current lead time: ${dep.lead_wk} weeks → Simulated: ${leadWk} weeks (${((leadWk / dep.lead_wk - 1) * 100).toFixed(0)}% increase).
+        ${dep.single_source ? '⚠ This is a SINGLE-SOURCE component — no drop-in alternative.' : 'Multi-source — partial mitigation possible.'}
+      </div>
+    </div>
+
+    <div style="display:flex;flex-direction:column;gap:10px">
+      <div style="background:var(--surface);border-radius:10px;padding:12px;border-left:3px solid var(--purple)">
+        <div style="font:600 9px var(--mono);color:var(--purple);text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px">↑ Upstream</div>
+        <div style="display:flex;gap:4px;flex-wrap:wrap">${dep.upstream.map(u => `<span class="badge badge-purple">${u}</span>`).join("")}</div>
+      </div>
+
+      <div style="text-align:center;color:var(--text-xd);font-size:18px">▼</div>
+
+      <div style="background:var(--surface);border-radius:10px;padding:12px;border-left:3px solid var(--red)">
+        <div style="font:600 9px var(--mono);color:var(--red);text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px">⚠ Component</div>
+        <div style="background:var(--card);border-radius:8px;padding:10px">
+          <div style="display:flex;justify-content:space-between;align-items:center">
+            <span style="font-size:12px;font-weight:600">${comp}</span>
+            <span class="badge badge-red">${dep.lead_wk}wk → ${leadWk}wk</span>
+          </div>
+          <div style="font-size:10px;color:var(--text-d);margin-top:4px">$${dep.cost.toLocaleString()}/unit · ${dep.single_source ? 'SINGLE SOURCE' : 'Multi-source'}</div>
+        </div>
+      </div>
+
+      <div style="text-align:center;color:var(--text-xd);font-size:18px">▼</div>
+
+      <div style="background:var(--surface);border-radius:10px;padding:12px;border-left:3px solid var(--amber)">
+        <div style="font:600 9px var(--mono);color:var(--amber);text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px">🛩 ${dep.platforms.length} Platforms Affected</div>
+        <div style="display:flex;gap:4px;flex-wrap:wrap">${dep.platforms.map(p => `<span class="badge badge-amber">${p}</span>`).join("")}</div>
+      </div>
+
+      <div style="text-align:center;color:var(--text-xd);font-size:18px">▼</div>
+
+      <div style="background:var(--surface);border-radius:10px;padding:12px;border-left:3px solid var(--red)">
+        <div style="font:600 9px var(--mono);color:var(--red);text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px">🎯 ${dep.programs.length} Programs Impacted</div>
+        <div style="display:flex;gap:4px;flex-wrap:wrap">${dep.programs.map(p => `<span class="badge badge-red">${p}</span>`).join("")}</div>
+      </div>
+
+      <div style="text-align:center;color:var(--text-xd);font-size:18px">▼</div>
+
+      <div style="background:var(--surface);border-radius:10px;padding:12px;border-left:3px solid var(--cyan)">
+        <div style="font:600 9px var(--mono);color:var(--cyan);text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px">📊 Impact Summary</div>
+        <div style="font-size:12px;color:var(--text-s);line-height:1.6">
+          At ${leadWk}-week lead time, ${comp} becomes ${leadWk > 20 ? 'allocation-only — buyers must commit to quarterly forecasts' : leadWk > 12 ? 'constrained — expect partial fills and delayed programs' : 'tight but manageable'}.
+          ${dep.platforms.length} platforms and ${dep.programs.length} government programs directly affected.
+          ${dep.single_source ? 'No alternative supplier — mitigation requires platform redesign or stockpiling.' : 'Alternative sources available — partial mitigation through multi-sourcing.'}
+        </div>
+      </div>
+
+      <div style="text-align:center;color:var(--text-xd);font-size:18px">▼</div>
+
+      ${renderAlternatives([comp])}
+    </div>
+  `;
+
+  results.scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+function updateCustomPreview() {
+  const comp = document.getElementById("whatif-component").value;
+  const preview = document.getElementById("whatif-preview");
+  if (!comp || !DEP_GRAPH[comp]) { preview.style.display = "none"; return; }
+  const dep = DEP_GRAPH[comp];
+  preview.style.display = "block";
+  preview.innerHTML = `
+    <div style="font-size:11px;color:var(--text-s);line-height:1.6">
+      <strong style="color:var(--text)">${comp}</strong> — currently at <strong>${dep.lead_wk} weeks</strong> lead time · $${dep.cost.toLocaleString()}/unit · ${dep.single_source ? '<span style="color:var(--red)">Single source</span>' : '<span style="color:var(--green)">Multi-source</span>'}
+    </div>
+    <div style="display:flex;gap:4px;flex-wrap:wrap;margin-top:6px">
+      <span style="font-size:9px;color:var(--text-d)">Depends on it:</span>
+      ${dep.platforms.map(p => `<span class="badge badge-amber" style="font-size:9px">${p}</span>`).join("")}
+    </div>
+    <div style="display:flex;gap:4px;flex-wrap:wrap;margin-top:4px">
+      <span style="font-size:9px;color:var(--text-d)">Programs at risk:</span>
+      ${dep.programs.map(p => `<span class="badge badge-red" style="font-size:9px">${p}</span>`).join("")}
+    </div>
+  `;
+  // Set slider to just above current lead time as default
+  document.getElementById("whatif-slider").value = Math.min(52, dep.lead_wk * 2);
+  updateSliderLabel();
+}
+
+function updateSliderLabel() {
+  const val = document.getElementById("whatif-slider").value;
+  const label = document.getElementById("whatif-slider-label");
+  label.textContent = val + " wk";
+  label.style.color = val > 26 ? "var(--red)" : val > 16 ? "var(--amber)" : "var(--green)";
+}
+
+loadData();
+
+
+function fmtUpdated(iso) {
+  try {
+    var d = new Date(iso);
+    var now = new Date();
+    var diffMs = now - d;
+    var diffMins = Math.round(diffMs / 60000);
+    var diffHrs = Math.round(diffMs / 3600000);
+    var diffDays = Math.round(diffMs / 86400000);
+    var timeStr;
+    if (diffMins < 2) timeStr = 'just now';
+    else if (diffMins < 60) timeStr = diffMins + 'm ago';
+    else if (diffHrs < 24) timeStr = diffHrs + 'h ago';
+    else timeStr = diffDays + 'd ago';
+    var dt = d.toISOString().replace('T',' ').slice(0,16) + ' UTC';
+    var el = document.getElementById('last-updated');
+    if (el) el.textContent = 'Pipeline: ' + dt + ' · ' + timeStr;
+  } catch(e) {}
+}
+fetch('../static/pie_flags.json').then(r=>r.json()).then(flags=>{
+    var ts = flags.map(f=>f.timestamp||'').filter(Boolean).sort().pop();
+    if(ts) fmtUpdated(ts);
+  }).catch(()=>{});
+</script>
+
+<!-- Page Analytics — fires batch events to /.netlify/functions/analytics -->
+<script>
+(function(){
+  var E='/.netlify/functions/analytics';
+  var S='sess_'+crypto.randomUUID().replace(/-/g,'').slice(0,16);
+  var surface='forge';
+  var q=[],t=null,ps=Date.now(),ms=0,ix=0;
+  function rg(){try{var z=Intl.DateTimeFormat().resolvedOptions().timeZone;if(z.includes('America'))return'Americas';if(z.includes('Europe'))return'Europe';if(z.includes('Asia')||z.includes('Australia')||z.includes('Pacific'))return'Asia-Pacific';}catch(e){}return'Unknown';}
+  function mkEvent(type,action,payload){return{event_id:crypto.randomUUID(),timestamp:new Date().toISOString(),surface:surface,event_type:type,event_action:action,context:{session_id:S,geo_region:rg(),platform:/Android|iPhone|iPad/i.test(navigator.userAgent)?'mobile':'web',path:location.pathname},payload:payload||{},data_policy:{collection_tier:'anonymous'}};}
+  function fl(){if(t){clearTimeout(t);t=null;}if(!q.length)return;var b=q.splice(0);navigator.sendBeacon?navigator.sendBeacon(E,JSON.stringify({type:'batch',events:b})):fetch(E,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({type:'batch',events:b}),keepalive:true}).catch(function(){});}
+  function ev(type,action,payload){q.push(mkEvent(type,action,payload));if(q.length>=20)fl();else if(!t)t=setTimeout(fl,5000);}
+  // Page view
+  ev('page_view','view',{path:location.pathname,title:document.title});
+  // Scroll depth
+  var st=null;addEventListener('scroll',function(){var h=document.documentElement.scrollHeight-innerHeight;if(h>0){var p=Math.round(100*scrollY/h);if(p>ms)ms=p;}if(st)clearTimeout(st);st=setTimeout(function(){ev('engagement','scroll_depth',{depth_pct:ms,path:location.pathname});},2000);},{passive:true});
+  // Click tracking
+  addEventListener('click',function(e){ix++;var el=e.target.closest('a,button,[data-track]');if(!el)return;ev('interaction','click',{label:(el.dataset.track||el.textContent.trim()).substring(0,50),href:(el.href||'').substring(0,200),element:el.tagName.toLowerCase(),path:location.pathname});},{passive:true});
+  // Exit
+  function end(){ev('engagement','page_exit',{duration_sec:Math.round((Date.now()-ps)/1e3),max_scroll_pct:ms,interactions:ix,path:location.pathname});fl();}
+  addEventListener('visibilitychange',function(){if(document.visibilityState==='hidden')end();});
+  addEventListener('pagehide',end);
+  // Expose for page-specific events
+  window.__pageAnalytics={ev:ev,flush:fl,session:S};
+})();
+</script>
+
+<!-- Flag / Detail Modal -->
+<div id="flag-modal-overlay">
+  <div id="flag-modal">
+    <div id="flag-modal-head">
+      <div id="flag-modal-head-text">
+        <div id="flag-modal-meta" style="display:flex;gap:6px;align-items:center;margin-bottom:6px;flex-wrap:wrap"></div>
+        <div id="flag-modal-title" style="font:600 14px var(--font);color:var(--text);line-height:1.4"></div>
+      </div>
+      <button id="flag-modal-close"><i class="ph ph-x"></i></button>
+    </div>
+    <div id="flag-modal-body"></div>
+  </div>
+</div>
+
+</body>
+</html>

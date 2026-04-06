@@ -1,0 +1,52 @@
+name: Sync Forge DB → Ai-Project
+
+on:
+  push:
+    branches: [master]
+    paths:
+      - 'DroneClear Components Visualizer/forge_database.json'
+  workflow_dispatch:
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Checkout droneclear_Forge
+        uses: actions/checkout@v4
+        with:
+          path: droneclear_Forge
+
+      - name: Checkout Ai-Project
+        uses: actions/checkout@v4
+        with:
+          repository: DroneWuKong/Ai-Project
+          token: ${{ secrets.SYNC_PAT }}
+          path: Ai-Project
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Run sync script
+        env:
+          FORGE_DB_PATH: ${{ github.workspace }}/droneclear_Forge/DroneClear Components Visualizer/forge_database.json
+          AI_PARTS_DIR: ${{ github.workspace }}/Ai-Project/data/parts-db
+        run: python3 Ai-Project/scripts/sync_forge_to_aiproject.py
+
+      - name: Commit and push to Ai-Project
+        working-directory: Ai-Project
+        run: |
+          git config user.name  "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add data/parts-db/
+          if git diff --staged --quiet; then
+            echo "No database changes - nothing to commit."
+          else
+            CHANGED=$(git diff --staged --name-only | wc -l)
+            git commit -m "sync(parts-db): auto-sync from droneclear_Forge [skip ci] - ${CHANGED} file(s) updated"
+            git push
+            echo "Sync pushed to Ai-Project"
+          fi

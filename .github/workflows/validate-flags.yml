@@ -1,0 +1,42 @@
+name: Validate PIE Flags
+
+on:
+  push:
+    paths:
+      - 'DroneClear Components Visualizer/pie_flags.json'
+      - 'DroneClear Components Visualizer/forge_database.json'
+      - 'scripts/flag_validator.py'
+  workflow_dispatch:
+
+jobs:
+  validate:
+    name: Cross-reference flags against DB
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.MINER_PAT }}
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Run flag validator
+        run: python3 scripts/flag_validator.py
+
+      - name: Commit stamped flags
+        run: |
+          git config user.name "DroneWuKong"
+          git config user.email "drone@wukong.dev"
+          git add -A
+          if git diff --cached --quiet; then
+            echo "No changes to commit"
+          else
+            git commit -m "auto: flag validator — DB-stamped $(date -u +%Y-%m-%d)"
+            git push
+          fi

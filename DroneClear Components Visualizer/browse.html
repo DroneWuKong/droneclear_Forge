@@ -1,0 +1,553 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Browse — Forge</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="{% static 'base.css' %}?v=2">
+    <script src="https://unpkg.com/@phosphor-icons/web"></script>
+    <script>(function(){document.documentElement.setAttribute('data-theme',localStorage.getItem('dc-theme')||'dark');})()</script>
+<style>
+:root {
+    --bg: var(--bg-dark, #0B0F14);
+    --bg-card: var(--bg-panel, #111820);
+    --border: var(--border-color, #21262D);
+    --text: var(--text-main, #C9D1D9);
+    --text-dim: var(--text-muted, #8B949E);
+    --text-bright: #E6EDF3;
+    --accent: var(--accent-red, #4ECDC4);
+    --mono: 'JetBrains Mono', monospace;
+    --sans: 'Outfit', system-ui, sans-serif;
+}
+* { margin:0; padding:0; box-sizing:border-box; }
+html { overflow:auto !important; height:auto !important; }
+body { font-family:var(--sans); background:var(--bg); color:var(--text); -webkit-font-smoothing:antialiased; min-height:100vh; overflow:auto !important; -webkit-overflow-scrolling:touch; }
+
+/* ── Nav bar ── */
+.browse-nav { display:flex; align-items:center; gap:10px; padding:12px 16px; border-bottom:1px solid var(--border); background:rgba(11,15,20,0.95); backdrop-filter:blur(12px); position:sticky; top:0; z-index:100; }
+.browse-back { background:none; border:1px solid var(--border); border-radius:8px; color:var(--text-dim); padding:8px 10px; cursor:pointer; display:flex; align-items:center; font-size:16px; transition:border-color 0.15s; }
+.browse-back:hover { border-color:var(--accent); color:var(--accent); }
+.browse-title { font-family:var(--mono); font-size:14px; font-weight:600; color:var(--text-bright); }
+.browse-crumb { font-family:var(--mono); font-size:11px; color:var(--text-dim); }
+.browse-nav-right { margin-left:auto; display:flex; gap:8px; }
+.browse-nav-right a { color:var(--text-dim); font-size:18px; text-decoration:none; padding:6px; }
+
+/* ── Grid ── */
+.browse-grid { display:grid; grid-template-columns:repeat(auto-fill, minmax(140px, 1fr)); gap:10px; padding:16px; }
+.browse-card { display:flex; flex-direction:column; align-items:center; justify-content:center; background:var(--bg-card); border:1px solid var(--border); border-radius:10px; padding:20px 12px; text-decoration:none; color:inherit; cursor:pointer; transition:border-color 0.15s, transform 0.15s; text-align:center; min-height:100px; }
+.browse-card:hover { border-color:var(--accent); transform:translateY(-1px); }
+.browse-card:active { transform:scale(0.98); }
+.browse-card i { font-size:24px; color:var(--accent); margin-bottom:8px; }
+.browse-card-count { font-family:var(--mono); font-size:1.6rem; font-weight:700; color:var(--text-bright); line-height:1; }
+.browse-card-label { font-family:var(--mono); font-size:0.6rem; color:var(--text-dim); letter-spacing:0.06em; text-transform:uppercase; margin-top:6px; line-height:1.3; }
+
+/* ── Sub-group cards (smaller) ── */
+.browse-grid.sub-grid { grid-template-columns:repeat(auto-fill, minmax(120px, 1fr)); }
+.sub-grid .browse-card { padding:14px 10px; min-height:80px; }
+.sub-grid .browse-card-count { font-size:1.2rem; }
+
+/* ── Component list ── */
+.browse-toolbar { display:flex; gap:8px; padding:12px 16px; flex-wrap:wrap; align-items:center; border-bottom:1px solid var(--border); }
+.browse-search { flex:1; min-width:200px; padding:10px 14px; font-family:var(--mono); font-size:13px; color:var(--text); background:var(--bg-card); border:1px solid var(--border); border-radius:8px; outline:none; }
+.browse-search:focus { border-color:var(--accent); }
+.browse-search::placeholder { color:var(--text-dim); }
+.browse-filter { padding:8px 12px; font-family:var(--mono); font-size:11px; color:var(--text); background:var(--bg-card); border:1px solid var(--border); border-radius:6px; cursor:pointer; appearance:none; -webkit-appearance:none; }
+.browse-sort { padding:8px 12px; font-family:var(--mono); font-size:11px; color:var(--text); background:var(--bg-card); border:1px solid var(--border); border-radius:6px; }
+
+.browse-list { padding:8px 16px; }
+.browse-item { display:flex; align-items:center; gap:12px; padding:12px; background:var(--bg-card); border:1px solid var(--border); border-radius:8px; margin-bottom:8px; cursor:pointer; transition:border-color 0.15s; }
+.browse-item:hover { border-color:var(--accent); }
+.browse-item:active { transform:scale(0.995); }
+.browse-item-img { width:48px; height:48px; border-radius:6px; background:var(--border); display:flex; align-items:center; justify-content:center; flex-shrink:0; overflow:hidden; }
+.browse-item-img img { width:100%; height:100%; object-fit:cover; }
+.browse-item-img i { font-size:20px; color:var(--text-dim); }
+.browse-item-info { flex:1; min-width:0; }
+.browse-item-name { font-size:13px; font-weight:600; color:var(--text-bright); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.browse-item-mfr { font-size:11px; color:var(--text-dim); }
+.browse-item-pid { font-family:var(--mono); font-size:10px; color:var(--text-dim); }
+.browse-item-price { font-family:var(--mono); font-size:13px; font-weight:600; color:var(--accent); white-space:nowrap; }
+.browse-item-add { background:none; border:1px solid var(--border); border-radius:50%; width:32px; height:32px; color:var(--accent); cursor:pointer; display:flex; align-items:center; justify-content:center; font-size:16px; flex-shrink:0; transition:background 0.15s; }
+.browse-item-add:hover { background:rgba(78,205,196,0.15); }
+
+.browse-empty { text-align:center; padding:40px 20px; color:var(--text-dim); font-size:13px; }
+
+/* ── Detail modal ── */
+.browse-modal-bg { position:fixed; inset:0; background:rgba(0,0,0,0.6); backdrop-filter:blur(4px); z-index:200; display:none; }
+.browse-modal-bg.open { display:flex; align-items:flex-end; justify-content:center; }
+.browse-modal { background:var(--bg-card); border:1px solid var(--border); border-radius:16px 16px 0 0; width:100%; max-width:500px; max-height:85vh; overflow-y:auto; padding:20px; }
+.browse-modal-close { background:none; border:none; color:var(--text-dim); font-size:22px; cursor:pointer; float:right; padding:4px; }
+.browse-modal img { width:100%; max-height:250px; object-fit:contain; border-radius:8px; background:#fff; margin-bottom:12px; }
+.browse-modal h3 { font-size:18px; color:var(--text-bright); margin-bottom:4px; }
+.browse-modal .modal-mfr { font-size:12px; color:var(--text-dim); margin-bottom:8px; }
+.browse-modal .modal-pid { font-family:var(--mono); font-size:11px; color:var(--text-dim); }
+.browse-modal .modal-desc { font-size:13px; line-height:1.6; color:var(--text); margin:12px 0; }
+.browse-modal .modal-price { font-family:var(--mono); font-size:18px; color:var(--accent); font-weight:700; }
+.browse-modal .modal-specs { margin:12px 0; }
+.browse-modal .modal-spec { display:flex; justify-content:space-between; padding:6px 0; border-bottom:1px solid var(--border); font-size:12px; }
+.browse-modal .modal-spec-key { color:var(--text-dim); text-transform:uppercase; font-family:var(--mono); font-size:10px; letter-spacing:0.05em; }
+.browse-modal .modal-spec-val { color:var(--text-bright); font-weight:500; }
+
+@media (max-width:400px) {
+    .browse-grid { grid-template-columns:repeat(2, 1fr); gap:8px; padding:12px; }
+    .browse-card { padding:14px 8px; min-height:85px; }
+    .browse-card-count { font-size:1.3rem; }
+}
+</style>
+</head>
+<body>
+<header style="display:flex;align-items:center;justify-content:space-between;gap:8px;padding:10px 16px;border-bottom:1px solid #2e2e26;background:#1c1c17;position:sticky;top:0;z-index:100;flex-shrink:0;">
+  <a href="/" style="font:800 18px 'JetBrains Mono',monospace;color:#ff3b5c;letter-spacing:-0.03em;text-decoration:none;flex-shrink:0;">Forge</a>
+  <div style="display:flex;gap:5px;align-items:center;flex-wrap:nowrap;"><a href="/intel/" class="tp-pill">Intel</a><a href="/patterns/" class="tp-pill">Patterns</a><a href="/tools-home/" class="tp-pill">Tools</a><a href="/wingman/" class="tp-pill">Wingman</a></div>
+</header>
+<style>.tp-pill{font:500 10px 'DM Sans',system-ui,sans-serif;color:#6b6358;padding:4px 9px;border:1px solid #2e2e26;border-radius:20px;text-decoration:none;white-space:nowrap;transition:all .15s}.tp-pill:hover{border-color:#3e3e34;color:#b8b0a0}</style>
+<!-- Nav -->
+<div class="browse-nav" id="browse-nav">
+    <button class="browse-back" id="browse-back" onclick="goBack()"><i class="ph ph-caret-left"></i></button>
+    <div>
+        <div class="browse-title" id="browse-title">Parts Database</div>
+        <div class="browse-crumb" id="browse-crumb"></div>
+    </div>
+    <div class="browse-nav-right">
+        <a href="/" title="The Bench"><i class="ph ph-command"></i></a>
+    </div>
+</div>
+
+<!-- Content area — swapped by JS -->
+<div id="browse-content"></div>
+
+<!-- Detail modal -->
+<div class="browse-modal-bg" id="detail-modal">
+    <div class="browse-modal" id="detail-content"></div>
+</div>
+
+<script src=""></script>
+<script>
+(function() {
+    'use strict';
+
+    const SKIP_KEYS = new Set(['pid','name','description','link','image_file','approx_price','tags','category','manufacturer']);
+    const catIcons = {
+        antennas:'ph-broadcast', batteries:'ph-battery-full', escs:'ph-lightning',
+        flight_controllers:'ph-cpu', fpv_cameras:'ph-camera', frames:'ph-frame-corners',
+        gps_modules:'ph-map-pin', motors:'ph-gear-six', propellers:'ph-fan',
+        receivers:'ph-radio', stacks:'ph-stack', video_transmitters:'ph-monitor-play',
+        mesh_radios:'ph-wifi-high', build_guides:'ph-list-checks', drone_models:'ph-drone',
+        integrated_stacks:'ph-circuit-board',
+        lidar:'ph-scan', thermal_cameras:'ph-thermometer-hot',
+        sensors:'ph-compass', counter_uas:'ph-shield-warning', esad:'ph-target',
+        fpv_detectors:'ph-radio-button', payload_droppers:'ph-parachute',
+        video_scramblers:'ph-lock-key', control_link_tx:'ph-broadcast',
+    };
+    const catLabels = {
+        antennas:'Antennas', batteries:'Batteries', escs:'ESCs',
+        flight_controllers:'Flight Controllers', fpv_cameras:'FPV Cameras', frames:'Frames',
+        gps_modules:'GPS Modules', motors:'Motors', propellers:'Propellers',
+        receivers:'Receivers', stacks:'Stacks', video_transmitters:'Video Transmitters',
+        mesh_radios:'Mesh Radios',
+        integrated_stacks:'Integrated FC + Compute',
+        lidar:'LiDAR & Mapping', thermal_cameras:'Thermal Cameras',
+        sensors:'Sensors', counter_uas:'Counter-UAS', esad:'ESAD',
+        fpv_detectors:'FPV Detectors', payload_droppers:'Payload Droppers',
+        video_scramblers:'Video Scramblers', control_link_tx:'Control Link TX',
+    };
+    // Best sub-group field per category
+    const subGroupField = {
+        antennas:'frequency_ghz', batteries:'cell_count', escs:'size_class',
+        flight_controllers:'mcu_family', fpv_cameras:'video_system', frames:'size_class',
+        motors:'size_class', propellers:'size_class', receivers:'protocol',
+        stacks:'size_class', video_transmitters:'video_system', mesh_radios:'manufacturer',
+        integrated_stacks:'subcategory',
+        lidar:'subcategory', thermal_cameras:'manufacturer',
+        sensors:'subcategory', counter_uas:'subcategory', esad:'subcategory',
+        fpv_detectors:'manufacturer', payload_droppers:'manufacturer',
+        video_scramblers:'manufacturer', control_link_tx:'manufacturer',
+    };
+    const subGroupLabel = {
+        frequency_ghz:'Frequency', cell_count:'Cell Count', size_class:'Size Class',
+        mcu_family:'MCU Family', video_system:'Video System', protocol:'Protocol',
+        manufacturer:'Manufacturer', subcategory:'Type',
+    };
+
+    let allCategories = [];
+    let allComponents = {};
+    let navStack = []; // [{view, title, crumb}]
+    let currentParts = [];
+
+    const content = document.getElementById('browse-content');
+    const titleEl = document.getElementById('browse-title');
+    const crumbEl = document.getElementById('browse-crumb');
+    const modal = document.getElementById('detail-modal');
+    const modalContent = document.getElementById('detail-content');
+
+    // Check URL params
+    const params = new URLSearchParams(window.location.search);
+    const startView = params.get('view') || 'categories'; // 'categories' or 'components'
+    const startCat = params.get('category');
+
+    document.addEventListener('DOMContentLoaded', init);
+
+    async function init() {
+        try {
+            const catRes = await fetch('/api/categories/');
+            allCategories = await catRes.json();
+
+            if (startCat) {
+                const parts = await loadCategory(startCat);
+                showList(parts, catLabels[startCat] || startCat, startCat);
+            } else {
+                showCategories();
+            }
+        } catch(e) {
+            content.innerHTML = '<div class="browse-empty">Could not load data.</div>';
+        }
+    }
+
+    async function loadCategory(slug) {
+        if (allComponents[slug]) return allComponents[slug];
+        const res = await fetch('/api/components/?category=' + slug);
+        const data = await res.json();
+        const parts = data.map(p => ({ ...p, ...(p.schema_data || {}) }));
+        allComponents[slug] = parts;
+        return parts;
+    }
+
+    function pushNav(view, title, crumb) {
+        navStack.push({view, title, crumb});
+        titleEl.textContent = title;
+        crumbEl.textContent = crumb || '';
+    }
+
+    window.goBack = function() {
+        if (navStack.length <= 1) {
+            window.location.href = '/';
+            return;
+        }
+        navStack.pop();
+        const prev = navStack[navStack.length - 1];
+        prev.view();
+    };
+
+    // ── VIEW: Categories grid ──
+    function showCategories() {
+        navStack = [];
+        pushNav(showCategories, 'Parts Database', allCategories.length + ' categories');
+
+        content.innerHTML = '<div class="browse-grid">' +
+            allCategories.map(c => {
+                const icon = catIcons[c.slug] || 'ph-cube';
+                const label = catLabels[c.slug] || c.name;
+                return `<div class="browse-card" onclick="selectCategory('${c.slug}')">
+                    <i class="ph ${icon}"></i>
+                    <div class="browse-card-count">${c.count || 0}</div>
+                    <div class="browse-card-label">${label}</div>
+                </div>`;
+            }).join('') + '</div>';
+    }
+
+    window.selectCategory = async function(slug) {
+        const parts = await loadCategory(slug);
+        currentParts = parts;
+        showList(parts, catLabels[slug] || slug, slug);
+    };
+
+    // ── VIEW: Sub-group cards (e.g. frequency bands for antennas) ──
+    function showSubGroups(slug, parts, field) {
+        const label = catLabels[slug] || slug;
+        const fieldLabel = subGroupLabel[field] || field;
+        pushNav(() => showSubGroups(slug, parts, field), label, 'by ' + fieldLabel);
+
+        // Group parts by field value
+        const groups = {};
+        let noVal = 0;
+        for (const p of parts) {
+            const v = p[field];
+            if (v !== undefined && v !== null && v !== '') {
+                const key = String(v);
+                groups[key] = (groups[key] || 0) + 1;
+            } else {
+                noVal++;
+            }
+        }
+
+        // Sort groups by count desc
+        const sorted = Object.entries(groups).sort((a,b) => b[1] - a[1]);
+
+        let html = '<div class="browse-grid sub-grid">';
+        // "All" card
+        html += `<div class="browse-card" onclick="showFilteredList('${slug}', null, null)">
+            <i class="ph ${catIcons[slug] || 'ph-cube'}"></i>
+            <div class="browse-card-count">${parts.length}</div>
+            <div class="browse-card-label">All ${label}</div>
+        </div>`;
+
+        for (const [val, count] of sorted) {
+            const displayVal = field === 'frequency_ghz' ? val + ' GHz'
+                : field === 'cell_count' ? val + 'S'
+                : val;
+            html += `<div class="browse-card" onclick="showFilteredList('${slug}', '${field}', '${val.replace(/'/g,"\\'")}')">
+                <div class="browse-card-count">${count}</div>
+                <div class="browse-card-label">${displayVal}</div>
+            </div>`;
+        }
+
+        if (noVal > 0) {
+            html += `<div class="browse-card" onclick="showFilteredList('${slug}', '${field}', '__none__')">
+                <div class="browse-card-count">${noVal}</div>
+                <div class="browse-card-label">Other</div>
+            </div>`;
+        }
+
+        html += '</div>';
+        content.innerHTML = html;
+    }
+
+    window.showFilteredList = async function(slug, field, val) {
+        let parts = await loadCategory(slug);
+        let subtitle = catLabels[slug] || slug;
+
+        if (field && val) {
+            if (val === '__none__') {
+                parts = parts.filter(p => !p[field] && p[field] !== 0);
+                subtitle += ' · Other';
+            } else {
+                parts = parts.filter(p => String(p[field]) === val);
+                const displayVal = field === 'frequency_ghz' ? val + ' GHz'
+                    : field === 'cell_count' ? val + 'S' : val;
+                subtitle += ' · ' + displayVal;
+            }
+        }
+
+        currentParts = parts;
+        showList(parts, subtitle);
+    };
+
+    // Smart filters per category — show the most useful attribute filter
+    const smartFilters = {
+        antennas: [
+            {field:'frequency_ghz', label:'Frequency', fmt: v => v + ' GHz'},
+            {field:'polarization', label:'Polarization'},
+            {field:'antenna_type', label:'Type'},
+            {field:'connector', label:'Connector'},
+        ],
+        batteries: [
+            {field:'cell_count', label:'Cells', fmt: v => v + 'S'},
+            {field:'chemistry', label:'Chemistry'},
+        ],
+        escs: [
+            {field:'esc_firmware', label:'Firmware'},
+            {field:'size_class', label:'Size'},
+        ],
+        flight_controllers: [
+            {field:'mcu_family', label:'MCU'},
+            {field:'firmware_targets', label:'Firmware'},
+            {field:'size_class', label:'Size'},
+        ],
+        fpv_cameras: [
+            {field:'video_system', label:'Video System'},
+            {field:'camera_size', label:'Size'},
+        ],
+        frames: [
+            {field:'size_class', label:'Size'},
+        ],
+        motors: [
+            {field:'size_class', label:'Size'},
+            {field:'stator_size', label:'Stator'},
+        ],
+        propellers: [
+            {field:'blade_count', label:'Blades'},
+            {field:'size_class', label:'Size'},
+        ],
+        receivers: [
+            {field:'protocol', label:'Protocol'},
+            {field:'frequency_ghz', label:'Frequency', fmt: v => v + ' GHz'},
+        ],
+        stacks: [
+            {field:'mcu_family', label:'MCU'},
+            {field:'esc_firmware', label:'ESC Firmware'},
+        ],
+        video_transmitters: [
+            {field:'video_system', label:'Video System'},
+        ],
+        mesh_radios: [
+            {field:'manufacturer', label:'Manufacturer'},
+        ],
+        integrated_stacks: [
+            {field:'subcategory', label:'Type'},
+            {field:'ndaa_compliant', label:'NDAA'},
+            {field:'blue_uas_framework', label:'Blue UAS Framework'},
+        ],
+        lidar: [
+            {field:'subcategory', label:'Type'},
+            {field:'ndaa_compliant', label:'NDAA'},
+            {field:'scanning', label:'Scanning'},
+            {field:'manufacturer', label:'Manufacturer'},
+        ],
+        thermal_cameras: [
+            {field:'manufacturer', label:'Manufacturer'},
+            {field:'ndaa_compliant', label:'NDAA'},
+        ],
+        sensors: [
+            {field:'subcategory', label:'Type'},
+            {field:'manufacturer', label:'Manufacturer'},
+        ],
+        counter_uas: [
+            {field:'subcategory', label:'Type'},
+            {field:'ndaa_compliant', label:'NDAA'},
+        ],
+        esad: [
+            {field:'subcategory', label:'Type'},
+            {field:'ndaa_compliant', label:'NDAA'},
+        ],
+        fpv_detectors: [
+            {field:'manufacturer', label:'Manufacturer'},
+            {field:'country', label:'Country'},
+        ],
+        payload_droppers: [
+            {field:'manufacturer', label:'Manufacturer'},
+            {field:'compatible_platform', label:'Platform'},
+        ],
+        video_scramblers: [
+            {field:'manufacturer', label:'Manufacturer'},
+        ],
+        control_link_tx: [
+            {field:'manufacturer', label:'Manufacturer'},
+            {field:'country', label:'Country'},
+        ],
+    };
+
+    // ── VIEW: Component list with smart filters ──
+    function showList(parts, title, catSlug) {
+        currentParts = parts;
+        pushNav(() => showList(parts, title, catSlug), title, parts.length + ' parts');
+
+        // Get filterable manufacturers
+        const mfrs = [...new Set(parts.map(p => p.manufacturer).filter(Boolean))].sort();
+        const filters = smartFilters[catSlug] || [];
+
+        let html = '<div class="browse-toolbar">';
+        html += '<input type="text" class="browse-search" id="list-search" placeholder="Search...">';
+        if (mfrs.length > 1) {
+            html += '<select class="browse-filter" id="list-mfr" data-field="manufacturer"><option value="">All Manufacturers</option>';
+            mfrs.forEach(m => html += `<option value="${m}">${m}</option>`);
+            html += '</select>';
+        }
+        // Smart attribute filters
+        for (const filt of filters) {
+            const vals = {};
+            for (const p of parts) {
+                const v = p[filt.field];
+                if (v !== undefined && v !== null && v !== '') vals[String(v)] = (vals[String(v)]||0) + 1;
+            }
+            if (Object.keys(vals).length >= 2) {
+                const sorted = Object.entries(vals).sort((a,b) => b[1] - a[1]);
+                const id = 'list-sf-' + filt.field;
+                html += `<select class="browse-filter smart-filter" id="${id}" data-field="${filt.field}"><option value="">${filt.label}</option>`;
+                for (const [val, count] of sorted) {
+                    const display = filt.fmt ? filt.fmt(val) : val;
+                    html += `<option value="${val}">${display} (${count})</option>`;
+                }
+                html += '</select>';
+            }
+        }
+        html += '<select class="browse-sort" id="list-sort"><option value="default">Sort</option><option value="name">Name A-Z</option></select>';
+        html += '</div>';
+        html += '<div class="browse-list" id="list-items"></div>';
+
+        content.innerHTML = html;
+        renderList(parts);
+
+        // Wire up all filters
+        document.getElementById('list-search')?.addEventListener('input', applyListFilters);
+        document.getElementById('list-mfr')?.addEventListener('change', applyListFilters);
+        document.getElementById('list-sort')?.addEventListener('change', applyListFilters);
+        document.querySelectorAll('.smart-filter').forEach(el => el.addEventListener('change', applyListFilters));
+    }
+
+    function applyListFilters() {
+        const q = (document.getElementById('list-search')?.value || '').toLowerCase();
+        const mfr = document.getElementById('list-mfr')?.value || '';
+        const sort = document.getElementById('list-sort')?.value || 'default';
+
+        let filtered = currentParts;
+        if (q) filtered = filtered.filter(p => (p.name + ' ' + p.manufacturer + ' ' + p.description).toLowerCase().includes(q));
+        if (mfr) filtered = filtered.filter(p => p.manufacturer === mfr);
+
+        // Apply smart filters
+        document.querySelectorAll('.smart-filter').forEach(el => {
+            const field = el.dataset.field;
+            const val = el.value;
+            if (val) filtered = filtered.filter(p => String(p[field]) === val);
+        });
+
+        if (sort === 'name') filtered = [...filtered].sort((a,b) => (a.name||'').localeCompare(b.name||''));
+
+        renderList(filtered);
+    }
+
+    function renderList(parts) {
+        const container = document.getElementById('list-items');
+        if (!parts.length) {
+            container.innerHTML = '<div class="browse-empty">No parts match your filters.</div>';
+            return;
+        }
+        container.innerHTML = parts.map(p => {
+            const hasImg = p.image_file && !p.image_file.startsWith('data:');
+            const imgHtml = hasImg
+                ? `<img src="${p.image_file}" alt="" loading="lazy">`
+                : `<i class="ph ${catIcons[p.category] || 'ph-cube'}"></i>`;
+            return `<div class="browse-item" onclick="showDetail('${p.pid.replace(/'/g,"\\'")}', '${(p.category||'').replace(/'/g,"\\'")}')">
+                <div class="browse-item-img">${imgHtml}</div>
+                <div class="browse-item-info">
+                    <div class="browse-item-name">${p.name || ''}</div>
+                    <div class="browse-item-mfr">${p.manufacturer || ''}</div>
+                    <div class="browse-item-pid">${p.pid || ''}</div>
+                </div>
+                <button class="browse-item-add" onclick="event.stopPropagation()" title="Add to build"><i class="ph ph-plus"></i></button>
+            </div>`;
+        }).join('');
+    }
+
+    // ── Detail modal ──
+    window.showDetail = async function(pid, category) {
+        const parts = allComponents[category] || [];
+        const p = parts.find(x => x.pid === pid);
+        if (!p) return;
+
+        const hasImg = p.image_file && !p.image_file.startsWith('data:');
+
+        let specsHtml = '';
+        for (const [k,v] of Object.entries(p)) {
+            if (SKIP_KEYS.has(k) || v === null || v === undefined || v === '' || typeof v === 'object') continue;
+            const label = k.replace(/_/g,' ').replace(/\b\w/g,c=>c.toUpperCase());
+            specsHtml += `<div class="modal-spec"><span class="modal-spec-key">${label}</span><span class="modal-spec-val">${v}</span></div>`;
+        }
+
+        modalContent.innerHTML = `
+            <button class="browse-modal-close" onclick="closeDetail()"><i class="ph ph-x"></i></button>
+            ${hasImg ? `<img src="${p.image_file}" alt="${p.name}">` : ''}
+            <h3>${p.name}</h3>
+            <div class="modal-mfr">${p.manufacturer || ''}</div>
+            <div class="modal-pid">${p.pid}</div>
+            ${p.description ? `<div class="modal-desc">${p.description}</div>` : ''}
+            ${specsHtml ? `<div class="modal-specs">${specsHtml}</div>` : ''}
+            ${p.link ? `<a href="${p.link}" target="_blank" rel="noopener" style="display:inline-block;margin-top:12px;color:var(--accent);font-size:13px;text-decoration:none;">View product page →</a>` : ''}
+        `;
+        modal.classList.add('open');
+        modal.onclick = function(e) { if (e.target === modal) closeDetail(); };
+    };
+
+    window.closeDetail = function() {
+        modal.classList.remove('open');
+    };
+})();
+</script>
+
+<!-- AI Wingman Analytics v1.0 — Forge — No cookies, no PII -->
+<script>
+(function(){var E='https://nvmilldoitmyself.com/.netlify/functions/analytics-ingest',S='sess_'+crypto.randomUUID().replace(/-/g,'').slice(0,16),q=[],t=null,aid=null,ff=true;function r(){try{var z=Intl.DateTimeFormat().resolvedOptions().timeZone;if(z.includes('America'))return'Americas';if(z.includes('Europe'))return'Europe';if(z.includes('Asia')||z.includes('Australia')||z.includes('Pacific'))return'Asia-Pacific';if(z.includes('Africa'))return'Africa'}catch(e){}return'Unknown'}function ev(tp,ac,p,tier){q.push({event_id:crypto.randomUUID(),timestamp:new Date().toISOString(),surface:'forge',event_type:tp,event_action:ac,context:{session_id:S,account_id:aid,geo_region:r(),platform:/Android|iPhone|iPad/i.test(navigator.userAgent)?'mobile':'web',viewport:innerWidth+'x'+innerHeight},payload:p,data_policy:{collection_tier:tier||'anonymous',consent_version:'none',retention_days:tier==='account'?365:90,anonymized:tier!=='account'}});if(q.length>=20)fl();else if(!t)t=setTimeout(fl,5e3)}function fl(){if(t){clearTimeout(t);t=null}if(!q.length)return;var b=q.splice(0);fetch(E,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({events:b}),keepalive:true}).catch(function(){})}addEventListener('visibilitychange',function(){if(document.visibilityState==='hidden')fl()});addEventListener('pagehide',fl);ev('page_view','view',{path:location.pathname,title:document.title});window.__forgeAnalytics={search:function(query,cat,n){ev('search','component_search',{query:query.slice(0,200),category:cat,result_count:n,had_results:n>0});if(n===0)ev('search','no_results',{query:query.slice(0,200),category:cat})},filter:function(cat,f,n){ev('filter','apply_filter',{category:cat,filters:f,filter_names:Object.keys(f),first_filter:ff,result_count:n,zero_results:n===0});ff=false;if(n===0)ev('search','no_results',{query:'',category:cat,filters:f})},view:function(pid,cat,mfr,co,ndaa){ev('page_view','component_detail',{component_pid:pid,category:cat,manufacturer:mfr,country:co,ndaa_compliant:ndaa})},compare:function(a,b,cat){ev('compare','side_by_side',{component_a:a,component_b:b,category:cat})},save:function(pid,cat,ctx){ev('save','bookmark_component',{component_pid:pid,category:cat,save_context:ctx||'bookmark'},aid?'account':'pseudonymous')},setUser:function(id){aid=id},flush:fl}})();
+</script>
+</body>
+</html>

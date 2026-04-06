@@ -1,0 +1,2496 @@
+{
+  "meta": {
+    "version": 1,
+    "last_updated": "2026-04-05",
+    "total_entries": 59,
+    "categories": [
+      "motors",
+      "escs",
+      "flight_controllers",
+      "receivers",
+      "video",
+      "gps",
+      "power",
+      "firmware",
+      "radio_link",
+      "sensors",
+      "mechanical",
+      "pid_tuning",
+      "arming",
+      "crashes"
+    ]
+  },
+  "entries": [
+    {
+      "id": "TS-ARM-001",
+      "title": "Drone won't arm",
+      "category": "arming",
+      "severity": "blocking",
+      "symptoms": [
+        "No response when arm switch toggled",
+        "Betaflight shows arming disabled flags"
+      ],
+      "causes": [
+        "Throttle not at zero / minimum",
+        "Accelerometer not calibrated",
+        "Angle too steep (drone not level)",
+        "RX not bound or no signal",
+        "USB cable still connected",
+        "CLI 'status' shows arming prevention flags"
+      ],
+      "diagnostics": [
+        "Check Betaflight OSD or Configurator for arming disabled flags",
+        "Run 'status' in CLI \u2014 look for 'Arming disabled flags'",
+        "Verify throttle channel reads 1000 at idle in Receiver tab",
+        "Check accelerometer calibration in Setup tab"
+      ],
+      "fixes": [
+        "Lower throttle stick fully before arming",
+        "Calibrate accelerometer: place quad on flat surface \u2192 Setup tab \u2192 Calibrate Accelerometer",
+        "Bind receiver to transmitter",
+        "Disconnect USB before attempting to arm",
+        "Set arm switch on a dedicated AUX channel in Modes tab"
+      ],
+      "related_parts": [
+        "flight_controllers",
+        "receivers"
+      ],
+      "difficulty": "beginner",
+      "tags": [
+        "betaflight",
+        "arm",
+        "first-build",
+        "common"
+      ]
+    },
+    {
+      "id": "TS-ARM-002",
+      "title": "Arming but motors don't spin",
+      "category": "arming",
+      "severity": "blocking",
+      "symptoms": [
+        "Arm switch works (OSD shows armed)",
+        "Motors remain silent",
+        "No startup tones on arm"
+      ],
+      "causes": [
+        "Motor protocol mismatch (DSHOT vs PWM)",
+        "ESC not receiving signal \u2014 bad solder joint on signal wire",
+        "Motor output pins damaged on FC",
+        "DSHOT setting wrong (e.g. DSHOT600 on slow ESC)"
+      ],
+      "diagnostics": [
+        "Go to Motors tab \u2192 move sliders manually (props off!) \u2014 do motors spin?",
+        "If sliders work but arming doesn't: check Modes tab arm switch config",
+        "If sliders don't work: check ESC protocol in Configuration tab",
+        "Measure motor signal pad voltage with multimeter: should toggle between 0.2-0.4V on DSHOT"
+      ],
+      "fixes": [
+        "Match ESC protocol: Configuration \u2192 ESC/Motor Features \u2192 Motor Protocol",
+        "Try DSHOT300 if DSHOT600 doesn't work",
+        "Reflow solder joints on motor signal pads",
+        "Check motor resource mapping: CLI 'resource' command"
+      ],
+      "related_parts": [
+        "escs",
+        "flight_controllers",
+        "motors"
+      ],
+      "difficulty": "intermediate",
+      "tags": [
+        "betaflight",
+        "motors",
+        "dshot",
+        "signal"
+      ]
+    },
+    {
+      "id": "TS-MTR-001",
+      "title": "Motor stuttering / not spinning smoothly",
+      "category": "motors",
+      "severity": "high",
+      "symptoms": [
+        "Motor twitches but won't spin up",
+        "Erratic RPM",
+        "Audible clicking or grinding"
+      ],
+      "causes": [
+        "Bad solder joint on motor wires to ESC",
+        "Bridged motor pads on ESC",
+        "Motor bell debris / bent shaft",
+        "Motor screws too long \u2014 touching windings",
+        "Damaged MOSFET on ESC",
+        "Motor wire insulation rubbing on bell causing short"
+      ],
+      "diagnostics": [
+        "Swap motor to different ESC pad \u2014 if motor works, ESC is bad",
+        "Swap known-good motor to suspect ESC pad \u2014 if new motor fails, ESC is bad",
+        "Spin motor by hand \u2014 should spin freely with slight magnetic cogging",
+        "Check motor screws are not protruding through motor base",
+        "Inspect motor wires for wear where they exit the arm"
+      ],
+      "fixes": [
+        "Reflow all solder joints on that motor's arm",
+        "Check and trim motor screws if too long",
+        "Remove motor bell and clean debris",
+        "Replace damaged MOSFET (advanced) or replace ESC",
+        "Re-route motor wires away from bell contact"
+      ],
+      "related_parts": [
+        "motors",
+        "escs"
+      ],
+      "difficulty": "intermediate",
+      "tags": [
+        "motor",
+        "esc",
+        "solder",
+        "hardware"
+      ]
+    },
+    {
+      "id": "TS-MTR-002",
+      "title": "Motor hot after flight",
+      "category": "motors",
+      "severity": "medium",
+      "symptoms": [
+        "Motor too hot to touch after landing",
+        "Reduced flight time",
+        "Motor magnets demagnetizing"
+      ],
+      "causes": [
+        "Props too aggressive for motor KV",
+        "PID tune too aggressive (D-term oscillation)",
+        "Motor bearings failing",
+        "Flying on too many cells for the motor rating",
+        "Bent motor shaft causing vibration"
+      ],
+      "diagnostics": [
+        "Compare motor temps \u2014 one hotter than others = individual motor problem",
+        "All motors hot equally = tune/prop issue",
+        "Check blackbox log for D-term oscillation",
+        "Spin motors by hand \u2014 grinding = bad bearings"
+      ],
+      "fixes": [
+        "Use lighter / less aggressive props",
+        "Lower D-term gains in PID tune",
+        "Replace motor bearings or entire motor",
+        "Drop cell count (e.g. 6S to 4S) or lower motor KV",
+        "Enable motor temp monitoring if ESC supports telemetry"
+      ],
+      "related_parts": [
+        "motors",
+        "propellers",
+        "escs"
+      ],
+      "difficulty": "intermediate",
+      "tags": [
+        "thermal",
+        "props",
+        "pid",
+        "tuning"
+      ]
+    },
+    {
+      "id": "TS-ESC-001",
+      "title": "ESC desync / death roll",
+      "category": "escs",
+      "severity": "critical",
+      "symptoms": [
+        "Mid-flight tumble",
+        "One motor stops suddenly",
+        "Audible motor stutter during hard maneuvers",
+        "100% motor output in blackbox on one motor"
+      ],
+      "causes": [
+        "ESC timing out of sync with motor",
+        "Motor KV too high for ESC timing settings",
+        "CPU overload on FC causing DSHOT timing errors",
+        "Ramp-up power set too high in BLHeli",
+        "Low quality ESC unable to handle current spikes"
+      ],
+      "diagnostics": [
+        "Enable blackbox logging \u2014 look for motor hitting 100% while others normal",
+        "Check RPM errors in Motors tab (bidirectional DSHOT required)",
+        "Check CPU load in CLI: 'status' \u2014 should be under 50%",
+        "Reproduce: usually happens on hard maneuvers or punch-outs"
+      ],
+      "fixes": [
+        "BLHeli: set Ramp-Up Power to 0.125 (BLHeli_S) or 12% (BLHeli_32/AM32)",
+        "BLHeli: increase motor timing from Low to Medium or Med-High",
+        "Betaflight: lower PID loop frequency (8k/4k \u2192 4k/4k)",
+        "Betaflight: switch from DSHOT600 to DSHOT300",
+        "Betaflight: set Demag Compensation to High",
+        "Add capacitor (25V 1000uF low-ESR) to battery pads",
+        "Update ESC firmware to latest BLHeli_32 or AM32"
+      ],
+      "related_parts": [
+        "escs",
+        "motors",
+        "flight_controllers"
+      ],
+      "difficulty": "advanced",
+      "tags": [
+        "desync",
+        "death-roll",
+        "blheli",
+        "dshot",
+        "critical"
+      ]
+    },
+    {
+      "id": "TS-ESC-002",
+      "title": "ESC magic smoke / burned ESC",
+      "category": "escs",
+      "severity": "critical",
+      "symptoms": [
+        "Burning smell",
+        "Visible scorch marks on ESC",
+        "ESC stops responding",
+        "Popped capacitor"
+      ],
+      "causes": [
+        "Voltage spike from motor braking (no capacitor)",
+        "Short circuit from crashed prop hitting wires",
+        "Water/moisture ingress",
+        "Overcurrent \u2014 props too heavy for ESC amp rating",
+        "Reversed battery polarity"
+      ],
+      "diagnostics": [
+        "Visual inspection for scorch marks, popped caps, damaged MOSFETs",
+        "Continuity test between VBAT+ and motor pads \u2014 continuity = blown MOSFET",
+        "Smell test \u2014 burned electronics have distinct odor",
+        "Check if BLHeli Configurator still detects the ESC"
+      ],
+      "fixes": [
+        "Replace ESC (4-in-1) or affected arm ESC (individual)",
+        "ALWAYS add capacitor to prevent future voltage spikes (25V 1000uF+)",
+        "Ensure ESC amp rating exceeds max motor draw by 20%+ margin",
+        "Conformal coat ESC for moisture protection",
+        "Double-check polarity before connecting battery"
+      ],
+      "related_parts": [
+        "escs",
+        "batteries"
+      ],
+      "difficulty": "intermediate",
+      "tags": [
+        "magic-smoke",
+        "burned",
+        "capacitor",
+        "hardware"
+      ]
+    },
+    {
+      "id": "TS-ESC-003",
+      "title": "Motors spin on connect / won't calibrate",
+      "category": "escs",
+      "severity": "high",
+      "symptoms": [
+        "Motors spin immediately when battery connected",
+        "Beep pattern wrong on startup",
+        "Can't calibrate ESC endpoints"
+      ],
+      "causes": [
+        "ESC not receiving valid throttle signal",
+        "Wrong ESC protocol selected",
+        "FC motor output stuck high",
+        "ESC firmware corrupted"
+      ],
+      "diagnostics": [
+        "Listen to startup tones: 3 beeps = power OK. 2 long beeps = signal OK",
+        "No second set of beeps = ESC not getting valid signal from FC",
+        "Check Configuration tab \u2192 ESC protocol matches actual ESC type"
+      ],
+      "fixes": [
+        "Flash ESC firmware via BLHeli Configurator / Bluejay Configurator",
+        "Match protocol in Betaflight to ESC capability",
+        "Re-solder signal wire from FC to ESC",
+        "If individual ESC: try different motor output on FC"
+      ],
+      "related_parts": [
+        "escs",
+        "flight_controllers"
+      ],
+      "difficulty": "intermediate",
+      "tags": [
+        "calibration",
+        "startup",
+        "protocol",
+        "firmware"
+      ]
+    },
+    {
+      "id": "TS-FC-001",
+      "title": "Drone flips on takeoff",
+      "category": "flight_controllers",
+      "severity": "critical",
+      "symptoms": [
+        "Flips immediately on throttle up",
+        "Uncontrollable rotation",
+        "Crashes within first second"
+      ],
+      "causes": [
+        "Wrong motor order in Betaflight",
+        "Wrong motor spin direction",
+        "Props on wrong motors (CW/CCW swapped)",
+        "Gyro orientation incorrect",
+        "FC mounted in wrong orientation without board alignment set"
+      ],
+      "diagnostics": [
+        "Motors tab: verify motor 1-4 match Betaflight diagram",
+        "Props off \u2014 check each motor direction matches Betaflight diagram",
+        "Move quad by hand \u2014 verify Betaflight 3D model moves correctly",
+        "If model moves wrong: FC orientation or board alignment is off"
+      ],
+      "fixes": [
+        "Remap motors in Motors tab or CLI 'resource motor'",
+        "Reverse motor direction in BLHeli or swap any 2 motor wires",
+        "Place CW/CCW props on correct motors per Betaflight diagram",
+        "Set Board Alignment in Configuration tab to match FC mounting angle",
+        "If FC is rotated 90\u00b0/180\u00b0/270\u00b0: set yaw offset accordingly"
+      ],
+      "related_parts": [
+        "flight_controllers",
+        "motors",
+        "propellers"
+      ],
+      "difficulty": "beginner",
+      "tags": [
+        "flip",
+        "motor-order",
+        "props",
+        "first-build",
+        "common"
+      ]
+    },
+    {
+      "id": "TS-FC-002",
+      "title": "Betaflight won't connect / DFU mode",
+      "category": "flight_controllers",
+      "severity": "medium",
+      "symptoms": [
+        "Betaflight Configurator won't detect FC",
+        "FC stuck in DFU mode",
+        "COM port not showing"
+      ],
+      "causes": [
+        "Wrong USB driver (need STM32 VCP driver or Zadig for DFU)",
+        "Damaged USB connector on FC",
+        "FC bricked from bad firmware flash",
+        "Wrong COM port selected",
+        "USB cable is charge-only (no data lines)"
+      ],
+      "diagnostics": [
+        "Check Device Manager for unknown USB device",
+        "Try different USB cable \u2014 many cables are charge-only",
+        "Hold boot button while connecting USB to force DFU mode",
+        "Check if FC appears in DFU mode in Zadig"
+      ],
+      "fixes": [
+        "Install STM32 Virtual COM Port driver",
+        "Use Zadig to install WinUSB driver for DFU mode",
+        "Use known-good data USB cable",
+        "Flash firmware via DFU: Betaflight Configurator \u2192 Firmware Flasher \u2192 DFU",
+        "If USB port damaged: solder direct to USB pads or use alternate UART with FTDI adapter"
+      ],
+      "related_parts": [
+        "flight_controllers"
+      ],
+      "difficulty": "intermediate",
+      "tags": [
+        "betaflight",
+        "usb",
+        "dfu",
+        "driver",
+        "connection"
+      ]
+    },
+    {
+      "id": "TS-FC-003",
+      "title": "Flight controller rebooting mid-flight",
+      "category": "flight_controllers",
+      "severity": "critical",
+      "symptoms": [
+        "Drone drops from sky",
+        "OSD resets mid-flight",
+        "Blackbox shows gaps/resets",
+        "Beep sequence heard mid-flight"
+      ],
+      "causes": [
+        "Voltage regulator on FC overloaded or failing",
+        "Loose battery connector causing power interruption",
+        "Solder joint on VBAT pad cracked",
+        "Electrical noise from ESC/motors causing brownout",
+        "Capacitor missing or failed"
+      ],
+      "diagnostics": [
+        "Check blackbox for power interruptions (voltage drops to 0)",
+        "Wiggle battery connector while connected \u2014 does FC reboot?",
+        "Inspect all power solder joints under magnification",
+        "Measure voltage on 5V and 3.3V regulators during motor spin-up"
+      ],
+      "fixes": [
+        "Reflow VBAT solder joints",
+        "Replace battery lead / XT60 connector",
+        "Add low-ESR capacitor (25V 1000uF+) across battery pads",
+        "If voltage regulator failed: replace FC or use external 5V BEC",
+        "Secure battery with anti-slip pad to prevent connector loosening"
+      ],
+      "related_parts": [
+        "flight_controllers",
+        "batteries",
+        "escs"
+      ],
+      "difficulty": "intermediate",
+      "tags": [
+        "reboot",
+        "brownout",
+        "power",
+        "capacitor",
+        "critical"
+      ]
+    },
+    {
+      "id": "TS-FC-004",
+      "title": "Gyro drift / toilet bowl effect",
+      "category": "flight_controllers",
+      "severity": "medium",
+      "symptoms": [
+        "Drone slowly rotates on yaw without input",
+        "Circular drifting in hover (toilet bowl)",
+        "Heading slowly changes on its own"
+      ],
+      "causes": [
+        "GPS rescue or position hold interfering (if GPS present)",
+        "Magnetometer (compass) not calibrated or interfered by electronics",
+        "I-term windup on yaw axis",
+        "Vibrations causing gyro noise",
+        "Gyro hardware failing"
+      ],
+      "diagnostics": [
+        "Fly without GPS features enabled \u2014 if fixed, GPS/mag issue",
+        "Check gyro traces in blackbox \u2014 clean or noisy?",
+        "Check if toilet bowl only in GPS modes or all modes",
+        "Verify FC is soft-mounted to reduce vibrations"
+      ],
+      "fixes": [
+        "Disable magnetometer if not needed (CLI: 'set mag_hardware = NONE')",
+        "Recalibrate compass away from metal/electronics",
+        "Soft-mount FC with rubber grommets",
+        "Reduce yaw I-term if excessive",
+        "Update Betaflight firmware \u2014 newer versions have better gyro filtering"
+      ],
+      "related_parts": [
+        "flight_controllers",
+        "gps_modules"
+      ],
+      "difficulty": "intermediate",
+      "tags": [
+        "gyro",
+        "drift",
+        "toilet-bowl",
+        "gps",
+        "compass"
+      ]
+    },
+    {
+      "id": "TS-VID-001",
+      "title": "No FPV video / black screen in goggles",
+      "category": "video",
+      "severity": "blocking",
+      "symptoms": [
+        "Goggles show snow/static",
+        "Black screen",
+        "No signal indicator"
+      ],
+      "causes": [
+        "VTX not powered (check voltage input)",
+        "Wrong channel/band on VTX vs goggles",
+        "Camera not connected or dead",
+        "Antenna not connected to VTX \u2014 NEVER power VTX without antenna",
+        "Goggles antenna connector loose"
+      ],
+      "diagnostics": [
+        "Is VTX LED on? If not, power issue",
+        "Try channel scan on goggles \u2014 find any signal?",
+        "Connect camera directly to a monitor via composite if possible",
+        "Check VTX wiring: VBAT/5V in, video signal from camera, ground"
+      ],
+      "fixes": [
+        "Match VTX and goggle to same band/channel (e.g. R1 = Raceband Channel 1 = 5658 MHz)",
+        "Verify VTX is getting power \u2014 measure voltage at VTX input pad",
+        "Re-seat camera connector or re-solder camera signal wire",
+        "ALWAYS connect antenna before powering VTX",
+        "Try different VTX channel \u2014 may be on wrong one after firmware flash"
+      ],
+      "related_parts": [
+        "video_transmitters",
+        "fpv_cameras",
+        "antennas"
+      ],
+      "difficulty": "beginner",
+      "tags": [
+        "video",
+        "fpv",
+        "vtx",
+        "no-signal",
+        "common"
+      ]
+    },
+    {
+      "id": "TS-VID-002",
+      "title": "Video static / lines / interference",
+      "category": "video",
+      "severity": "medium",
+      "symptoms": [
+        "Horizontal lines in video",
+        "Rolling static bars",
+        "Video breaks up at throttle",
+        "Noise increases with motor RPM"
+      ],
+      "causes": [
+        "Electrical noise from ESCs/motors coupling into video",
+        "Missing or inadequate capacitor on battery input",
+        "Ground loop \u2014 FPV system not sharing common ground with FC",
+        "Camera power not filtered (needs LC filter)",
+        "VTX too close to ESC / high-current wires"
+      ],
+      "diagnostics": [
+        "Does noise change with throttle? If yes, motor/ESC noise",
+        "Does noise appear with motors off but battery connected? If yes, switching regulator noise",
+        "Try powering camera from separate regulated 5V source"
+      ],
+      "fixes": [
+        "Add capacitor (25V 1000uF low-ESR) across battery pads",
+        "Ensure all grounds connected (FC, ESC, VTX, camera share ground)",
+        "Add LC filter to camera power input",
+        "Route video signal wire away from motor/ESC wires",
+        "Use shielded camera cable if available",
+        "Twist camera signal and ground wires together to reduce noise pickup"
+      ],
+      "related_parts": [
+        "video_transmitters",
+        "fpv_cameras",
+        "escs"
+      ],
+      "difficulty": "intermediate",
+      "tags": [
+        "noise",
+        "interference",
+        "video",
+        "capacitor",
+        "ground"
+      ]
+    },
+    {
+      "id": "TS-VID-003",
+      "title": "FPV video range poor / breaks up close",
+      "category": "video",
+      "severity": "medium",
+      "symptoms": [
+        "Video breaks up at short range",
+        "Signal loss behind trees/buildings",
+        "Inconsistent range"
+      ],
+      "causes": [
+        "Damaged or wrong polarization antenna",
+        "VTX power set too low (25mW pit mode still active)",
+        "Antenna connector (MMCX/UFL) not fully seated",
+        "Multipathing / reflections in environment",
+        "Goggles antenna damaged"
+      ],
+      "diagnostics": [
+        "Check VTX power setting \u2014 may be stuck in 25mW pit mode",
+        "Wiggle VTX antenna connector \u2014 any change?",
+        "Try known-good antenna",
+        "Test in open field vs urban \u2014 significantly better = multipath issue"
+      ],
+      "fixes": [
+        "Increase VTX power: Betaflight OSD \u2192 VTX settings, or SmartAudio/Tramp menu",
+        "Use matched circular polarized antennas (RHCP on both VTX and goggles)",
+        "Re-seat MMCX/UFL connector \u2014 they work loose from crashes",
+        "Upgrade to higher-gain goggle antennas (patch + omni combo)",
+        "Position VTX antenna away from carbon fiber frame (CF blocks RF)"
+      ],
+      "related_parts": [
+        "video_transmitters",
+        "antennas"
+      ],
+      "difficulty": "beginner",
+      "tags": [
+        "range",
+        "antenna",
+        "vtx-power",
+        "fpv"
+      ]
+    },
+    {
+      "id": "TS-RX-001",
+      "title": "Receiver not binding / no link",
+      "category": "radio_link",
+      "severity": "blocking",
+      "symptoms": [
+        "RX LED solid/off (not blinking bind pattern)",
+        "Betaflight receiver tab shows no channel movement",
+        "Failsafe immediately on arm"
+      ],
+      "causes": [
+        "RX and TX on different protocols (ELRS vs CRSF vs SBUS)",
+        "RX firmware version doesn't match TX firmware",
+        "Binding phrase mismatch (ELRS)",
+        "RX wired to wrong UART or wrong pads (TX/RX swapped)",
+        "Serial RX not enabled on correct port"
+      ],
+      "diagnostics": [
+        "RX LED behavior: fast blink = searching. Solid = bound. Off = no power",
+        "Betaflight Ports tab: is Serial RX enabled on the UART the RX is connected to?",
+        "Betaflight Receiver tab: is protocol set correctly (CRSF for ELRS/TBS, SBUS for FrSky)?",
+        "For ELRS: are TX and RX on same firmware version? Check via ExpressLRS Configurator"
+      ],
+      "fixes": [
+        "ELRS: ensure binding phrase matches on TX and RX (set in ExpressLRS Configurator)",
+        "ELRS: update both TX and RX to same firmware version",
+        "Check wiring: TX pad on FC goes to RX pin on receiver and vice versa",
+        "Enable Serial RX on correct UART in Betaflight Ports tab",
+        "Set Receiver tab \u2192 Serial Receiver Provider to match your RX protocol"
+      ],
+      "related_parts": [
+        "receivers",
+        "control_link_tx"
+      ],
+      "difficulty": "beginner",
+      "tags": [
+        "binding",
+        "elrs",
+        "receiver",
+        "sbus",
+        "crsf",
+        "common"
+      ]
+    },
+    {
+      "id": "TS-RX-002",
+      "title": "Failsafe / signal loss mid-flight",
+      "category": "radio_link",
+      "severity": "critical",
+      "symptoms": [
+        "Drone drops or RTH activates unexpectedly",
+        "RSSI drops to zero momentarily",
+        "Betaflight OSD shows failsafe"
+      ],
+      "causes": [
+        "RX antenna damaged or positioned inside carbon fiber frame",
+        "RX antenna too close to VTX antenna (same polarization interference)",
+        "Loose UART connection (intermittent signal)",
+        "TX power set too low",
+        "Too many obstacles / out of range"
+      ],
+      "diagnostics": [
+        "Check RSSI/LQ in OSD or blackbox \u2014 gradual decline = range. Sudden drop = hardware",
+        "Inspect RX antenna for cuts/breaks in active element",
+        "Wiggle UART wires while monitoring receiver tab \u2014 any dropouts?",
+        "Compare signal at same distance with antenna inside vs outside frame"
+      ],
+      "fixes": [
+        "Mount RX antenna outside/away from carbon fiber frame",
+        "Use antenna tube/mount to position antenna optimally",
+        "Separate RX and VTX antennas (different polarization or physical distance)",
+        "Reflow UART solder joints",
+        "Increase TX power on radio module",
+        "Configure proper failsafe in Betaflight (drop, land, or GPS rescue)"
+      ],
+      "related_parts": [
+        "receivers",
+        "antennas"
+      ],
+      "difficulty": "intermediate",
+      "tags": [
+        "failsafe",
+        "signal",
+        "antenna",
+        "rssi",
+        "critical"
+      ]
+    },
+    {
+      "id": "TS-GPS-001",
+      "title": "No GPS fix / slow fix",
+      "category": "gps",
+      "severity": "medium",
+      "symptoms": [
+        "GPS satellite count stays at 0",
+        "Takes 10+ minutes to get fix",
+        "GPS icon missing from OSD"
+      ],
+      "causes": [
+        "GPS module not wired correctly (TX/RX/5V/GND)",
+        "GPS UART not configured in Betaflight Ports tab",
+        "GPS protocol mismatch (NMEA vs UBLOX)",
+        "GPS antenna facing down / blocked by battery",
+        "Flying indoors \u2014 GPS requires sky view"
+      ],
+      "diagnostics": [
+        "Does GPS module LED blink? (usually blinks on fix)",
+        "Betaflight GPS tab: does it show any data?",
+        "Check Ports tab: is GPS enabled on correct UART?",
+        "Configuration tab: GPS protocol set to UBLOX (most common)?"
+      ],
+      "fixes": [
+        "Wire GPS: TX\u2192RX, RX\u2192TX on a free UART. Power from 5V pad",
+        "Enable GPS on correct UART in Ports tab",
+        "Set GPS protocol to UBLOX in Configuration tab",
+        "Mount GPS on top of quad with antenna facing up (away from electronics)",
+        "For first use outdoors: allow 5-10 min cold start for almanac download"
+      ],
+      "related_parts": [
+        "gps_modules",
+        "flight_controllers"
+      ],
+      "difficulty": "beginner",
+      "tags": [
+        "gps",
+        "no-fix",
+        "ublox",
+        "wiring"
+      ]
+    },
+    {
+      "id": "TS-PWR-001",
+      "title": "Battery voltage sag / early low voltage",
+      "category": "power",
+      "severity": "medium",
+      "symptoms": [
+        "Voltage warning triggers early",
+        "Power cut feels weak",
+        "Battery hot after flight",
+        "Reduced flight time"
+      ],
+      "causes": [
+        "Battery internal resistance too high (old/damaged cells)",
+        "Battery C-rating too low for quad's current draw",
+        "Unbalanced cells \u2014 one cell sagging faster",
+        "Flying too aggressively for battery capacity"
+      ],
+      "diagnostics": [
+        "Check individual cell voltages after flight (balance port)",
+        "Measure internal resistance per cell (good: <15m\u03a9, bad: >30m\u03a9)",
+        "Compare flight time: new battery vs suspect battery",
+        "Check OSD voltage under load vs at rest"
+      ],
+      "fixes": [
+        "Replace battery if IR is high or cells unbalanced by >0.1V",
+        "Use higher C-rating battery",
+        "Use higher capacity battery (but heavier)",
+        "Storage charge batteries when not in use (3.8V/cell)",
+        "Never discharge below 3.5V/cell under load"
+      ],
+      "related_parts": [
+        "batteries"
+      ],
+      "difficulty": "beginner",
+      "tags": [
+        "battery",
+        "voltage",
+        "sag",
+        "lipo"
+      ]
+    },
+    {
+      "id": "TS-PWR-002",
+      "title": "Nothing powers on / dead quad",
+      "category": "power",
+      "severity": "blocking",
+      "symptoms": [
+        "No LEDs when battery connected",
+        "No beep tones",
+        "Completely dead"
+      ],
+      "causes": [
+        "Blown fuse (if FC has TVS diode / fuse)",
+        "Reversed polarity connection (check XT60 orientation)",
+        "Broken wire in battery lead",
+        "Bad solder joint on main power pads",
+        "XT60 connector pins pushed back"
+      ],
+      "diagnostics": [
+        "Measure voltage at battery pads on FC with multimeter \u2014 should read battery voltage",
+        "If voltage at pads: FC power regulator is dead",
+        "If no voltage at pads: wiring issue between battery and FC",
+        "Check battery is actually charged (connect to charger/checker)"
+      ],
+      "fixes": [
+        "Continuity test from battery connector through to FC pads",
+        "Reflow main power solder joints",
+        "Check for pushed-back pins in XT60",
+        "Replace blown TVS diode or trace the power path",
+        "If FC regulator dead: use external 5V BEC or replace FC"
+      ],
+      "related_parts": [
+        "flight_controllers",
+        "batteries"
+      ],
+      "difficulty": "intermediate",
+      "tags": [
+        "dead",
+        "no-power",
+        "xt60",
+        "solder"
+      ]
+    },
+    {
+      "id": "TS-PID-001",
+      "title": "Oscillation / vibrations in flight",
+      "category": "pid_tuning",
+      "severity": "medium",
+      "symptoms": [
+        "Visible wobble in video",
+        "Audible propwash",
+        "Jello in HD footage",
+        "Hot motors after flight"
+      ],
+      "causes": [
+        "PID gains too high (especially D-term)",
+        "Gyro filtering insufficient",
+        "Bent prop or motor shaft causing vibrations",
+        "FC not soft-mounted",
+        "Prop balance off"
+      ],
+      "diagnostics": [
+        "Blackbox: look for D-term oscillation (high-frequency noise on D trace)",
+        "Lower D-term by 20% \u2014 does oscillation reduce?",
+        "Try new/balanced props \u2014 does jello disappear?",
+        "Check all motors spin freely without vibration"
+      ],
+      "fixes": [
+        "Lower D-term gains (start at 80% of default)",
+        "Apply RPM filtering if ESC supports bidirectional DSHOT",
+        "Use Betaflight's gyro filter sliders (increase filtering)",
+        "Soft-mount FC with rubber grommets or O-rings",
+        "Balance props or use pre-balanced props (e.g. HQProp)",
+        "Use Betaflight 4.4+ preset tune as starting point"
+      ],
+      "related_parts": [
+        "flight_controllers",
+        "propellers",
+        "motors"
+      ],
+      "difficulty": "advanced",
+      "tags": [
+        "pid",
+        "oscillation",
+        "d-term",
+        "filtering",
+        "propwash"
+      ]
+    },
+    {
+      "id": "TS-MECH-001",
+      "title": "Arm cracked / frame damage after crash",
+      "category": "mechanical",
+      "severity": "medium",
+      "symptoms": [
+        "Visible crack in arm",
+        "Motor wobble",
+        "Prop not sitting level",
+        "Vibrations increased after crash"
+      ],
+      "causes": [
+        "Impact damage from crash",
+        "Carbon fiber fatigued from repeated crashes",
+        "Motor bolts too tight causing stress fracture",
+        "Design weakness in arm/body junction"
+      ],
+      "diagnostics": [
+        "Visual inspection \u2014 flex each arm looking for cracks",
+        "Spin props \u2014 wobble visible on one arm?",
+        "Check motor mount bolts are tight but not overtightened",
+        "Hold arm and wiggle \u2014 any play at body junction?"
+      ],
+      "fixes": [
+        "Replace cracked arm (most frames sell individual arms)",
+        "Temporary: super glue (CA) + baking soda for field repair",
+        "If body-arm junction: may need full bottom plate replacement",
+        "Consider upgrading to thicker arms (5mm+) or deadcat geometry"
+      ],
+      "related_parts": [
+        "frames"
+      ],
+      "difficulty": "beginner",
+      "tags": [
+        "crash",
+        "frame",
+        "arm",
+        "carbon-fiber"
+      ]
+    },
+    {
+      "id": "TS-FW-001",
+      "title": "Settings lost after firmware update",
+      "category": "firmware",
+      "severity": "medium",
+      "symptoms": [
+        "All settings reset to default after BF update",
+        "Rates/PID/modes all gone",
+        "OSD layout reset"
+      ],
+      "causes": [
+        "Normal behavior \u2014 major Betaflight versions reset settings",
+        "Didn't save backup before flashing",
+        "Full chip erase was selected during flash"
+      ],
+      "diagnostics": [
+        "Check if diff/dump backup exists",
+        "Major version jump (e.g. 4.3\u21924.4) always requires reconfiguration"
+      ],
+      "fixes": [
+        "ALWAYS backup before updating: CLI \u2192 'diff all' \u2192 save to file",
+        "After flash: CLI \u2192 paste your saved diff (review each line for deprecated commands)",
+        "Use Betaflight Presets for quick baseline configuration",
+        "For minor updates (4.4.1\u21924.4.2): settings usually preserved if 'no full chip erase'"
+      ],
+      "related_parts": [
+        "flight_controllers"
+      ],
+      "difficulty": "beginner",
+      "tags": [
+        "firmware",
+        "betaflight",
+        "backup",
+        "update"
+      ]
+    },
+    {
+      "id": "TS-SNS-001",
+      "title": "Barometer / altitude reading erratic",
+      "category": "sensors",
+      "severity": "low",
+      "symptoms": [
+        "Altitude jumps in OSD",
+        "Alt hold mode unstable",
+        "Baro reading affected by wind"
+      ],
+      "causes": [
+        "Barometer exposed to prop wash / airflow",
+        "Barometer not covered (needs light shield + foam)",
+        "Temperature changes affecting pressure reading"
+      ],
+      "diagnostics": [
+        "Cover baro sensor with dark foam \u2014 does reading stabilize?",
+        "Compare indoor vs outdoor readings",
+        "Check Betaflight sensor tab for baro data"
+      ],
+      "fixes": [
+        "Cover barometer chip with small piece of open-cell foam",
+        "Ensure foam is dark (light can affect some baro chips)",
+        "If not using altitude hold: disable baro in Betaflight (saves CPU)",
+        "For precision altitude: use GPS altitude instead of baro"
+      ],
+      "related_parts": [
+        "flight_controllers",
+        "sensors"
+      ],
+      "difficulty": "beginner",
+      "tags": [
+        "barometer",
+        "altitude",
+        "sensor",
+        "foam"
+      ]
+    },
+    {
+      "id": "TS-CRS-001",
+      "title": "Post-crash inspection checklist",
+      "category": "crashes",
+      "severity": "info",
+      "symptoms": [
+        "Just crashed \u2014 what to check before flying again"
+      ],
+      "causes": [
+        "Crash impact"
+      ],
+      "diagnostics": [
+        "1. Props: check for cracks, chips, bent blades. Replace if any damage",
+        "2. Motors: spin each by hand. Gritty/grinding = damaged bearing or bent bell",
+        "3. Frame: flex each arm. Check for cracks at motor mount and body junction",
+        "4. Camera: check mount and angle. Lens cracked?",
+        "5. Antenna: VTX antenna still attached? UFL connectors pop off in crashes",
+        "6. Battery: check for puffing/swelling. Smell for chemical odor. If puffy, retire immediately",
+        "7. Solder joints: visual check for cracked joints (especially XT60, motor wires)",
+        "8. Betaflight: connect and check gyro/accelerometer readings. Calibrate accel if needed"
+      ],
+      "fixes": [
+        "Replace any damaged props \u2014 even small chips affect balance",
+        "If motor gritty: replace bearings or motor",
+        "Reflow any suspect solder joints",
+        "Recalibrate accelerometer after crash",
+        "Test arm and briefly hover before full send"
+      ],
+      "related_parts": [
+        "frames",
+        "propellers",
+        "motors",
+        "batteries"
+      ],
+      "difficulty": "beginner",
+      "tags": [
+        "crash",
+        "inspection",
+        "checklist",
+        "safety"
+      ]
+    },
+    {
+      "id": "TS-APL-001",
+      "title": "ArduPilot pre-arm check failures",
+      "category": "arming",
+      "severity": "blocking",
+      "symptoms": [
+        "Mission Planner shows pre-arm check failed",
+        "Cannot arm in Loiter/Auto modes",
+        "HUD shows 'PreArm: ...' message"
+      ],
+      "causes": [
+        "GPS not locked (need 3D fix with HDOP < 2.0)",
+        "Compass not calibrated or inconsistent with GPS heading",
+        "Accelerometer not calibrated",
+        "Battery failsafe voltage set higher than current battery",
+        "RC calibration not performed",
+        "EKF variance too high (vibration or sensor disagreement)"
+      ],
+      "diagnostics": [
+        "Read the exact PreArm message on HUD or in Messages tab",
+        "Mission Planner \u2192 Flight Data \u2192 Messages tab shows specific failure",
+        "Check GPS status: need 3D lock, HDOP < 2.0, >6 satellites for Loiter",
+        "Check compass health: Mission Planner \u2192 Setup \u2192 Compass \u2192 offsets should be < 600"
+      ],
+      "fixes": [
+        "GPS: wait for 3D fix outdoors. Cold start can take 5-10 min",
+        "Compass: redo calibration away from metal. Offsets > 600 = bad placement",
+        "Accel: redo calibration on flat surface via Mission Planner \u2192 Setup",
+        "EKF: reduce vibrations (soft mount FC, balance props)",
+        "To bypass in emergency: set ARMING_CHECK = 0 (not recommended for normal flight)",
+        "BRD_SAFETYENABLE = 0 to disable safety switch requirement"
+      ],
+      "related_parts": [
+        "flight_controllers",
+        "gps_modules"
+      ],
+      "difficulty": "intermediate",
+      "tags": [
+        "ardupilot",
+        "pre-arm",
+        "mission-planner",
+        "compass",
+        "gps"
+      ]
+    },
+    {
+      "id": "TS-APL-002",
+      "title": "ArduPilot compass/EKF errors",
+      "category": "sensors",
+      "severity": "high",
+      "symptoms": [
+        "EKF VARIANCE warning",
+        "Toilet bowling in Loiter",
+        "Compass inconsistency error",
+        "Bad compass health"
+      ],
+      "causes": [
+        "Compass too close to power wires or ESCs (magnetic interference)",
+        "Multiple compasses disagreeing (internal vs external)",
+        "Compass calibration done near metal objects",
+        "Motor magnetic interference not compensated"
+      ],
+      "diagnostics": [
+        "Check compass offsets: > 600 on any axis = bad location",
+        "Flight log: compare compass heading vs GPS ground course \u2014 divergence = interference",
+        "MAG_ENABLE compass order: external should be primary",
+        "Test: rotate drone 360\u00b0 in Mission Planner \u2192 compass should track smoothly"
+      ],
+      "fixes": [
+        "Mount external compass on GPS mast ABOVE frame, away from wires",
+        "Disable internal compass if external available: COMPASS_USE2 = 0",
+        "Redo compass calibration outdoors away from cars/buildings/metal",
+        "Enable compass-motor calibration (MOT_COMP_TYPE = 2) for motor interference",
+        "Set COMPASS_ORIENT correctly for external compass mounting direction"
+      ],
+      "related_parts": [
+        "gps_modules",
+        "flight_controllers"
+      ],
+      "difficulty": "intermediate",
+      "tags": [
+        "ardupilot",
+        "compass",
+        "ekf",
+        "gps",
+        "interference"
+      ]
+    },
+    {
+      "id": "TS-APL-003",
+      "title": "ArduPilot EKF failsafe / flight mode change rejected",
+      "category": "sensors",
+      "severity": "critical",
+      "symptoms": [
+        "Mode change to Loiter/Auto rejected",
+        "EKF failsafe triggered mid-flight",
+        "Altitude jump on mode switch",
+        "Drone switches to Land or AltHold unexpectedly"
+      ],
+      "causes": [
+        "EKF position estimate unreliable (vibrations or sensor issues)",
+        "GPS glitch or loss of lock",
+        "Barometer affected by airflow (not covered)",
+        "IMU clipping from excessive vibrations"
+      ],
+      "diagnostics": [
+        "Download and review .bin flight log",
+        "Check Vibe message: clipping events should be 0. Any clipping = vibration problem",
+        "Check EKF status flags in log for innovation failures",
+        "Check GPS log: satellite count drops or HDOP spikes"
+      ],
+      "fixes": [
+        "Soft-mount flight controller to reduce vibrations",
+        "Balance propellers (or use pre-balanced)",
+        "Cover barometer with open-cell foam",
+        "Ensure GPS has clear sky view (not blocked by battery)",
+        "Consider setting EKF_CHECK_THRESH slightly higher if marginal",
+        "Add GPS mast to raise GPS/compass above frame interference"
+      ],
+      "related_parts": [
+        "flight_controllers",
+        "gps_modules"
+      ],
+      "difficulty": "advanced",
+      "tags": [
+        "ardupilot",
+        "ekf",
+        "failsafe",
+        "vibration",
+        "critical"
+      ]
+    },
+    {
+      "id": "TS-INA-001",
+      "title": "iNav navigation modes not working",
+      "category": "gps",
+      "severity": "high",
+      "symptoms": [
+        "NAV POSHOLD/RTH won't engage",
+        "Position hold drifts badly",
+        "RTH goes wrong direction"
+      ],
+      "causes": [
+        "GPS fix quality poor (need 3D fix, >6 sats)",
+        "Compass not calibrated or interfered",
+        "iNav navigation settings not configured",
+        "Accelerometer not calibrated on level surface",
+        "Board alignment incorrect"
+      ],
+      "diagnostics": [
+        "iNav Configurator \u2192 GPS tab: verify 3D fix with >6 sats",
+        "Check compass alignment: rotate drone, heading in configurator should match",
+        "Verify nav_extra_arming_safety is allowing arm",
+        "Check nav_mc_pos_xy_p and nav_mc_pos_z_p aren't zeroed"
+      ],
+      "fixes": [
+        "Calibrate compass: iNav Configurator \u2192 Calibration \u2192 Compass calibration",
+        "Set correct board alignment in Configuration tab",
+        "Calibrate accelerometer on level surface",
+        "Ensure GPS TX/RX wired to correct UART, GPS protocol set correctly",
+        "For first-time setup: use iNav's 'Navigation' preset as baseline",
+        "Set nav_user_control_mode to match your preference (CRUISE vs ATTI)"
+      ],
+      "related_parts": [
+        "gps_modules",
+        "flight_controllers"
+      ],
+      "difficulty": "intermediate",
+      "tags": [
+        "inav",
+        "navigation",
+        "gps",
+        "rth",
+        "poshold"
+      ]
+    },
+    {
+      "id": "TS-INA-002",
+      "title": "iNav fixed-wing launch / VTOL transition issues",
+      "category": "flight_controllers",
+      "severity": "high",
+      "symptoms": [
+        "Fixed-wing won't launch properly",
+        "Spirals after hand launch",
+        "VTOL transition crashes",
+        "Altitude lost during transition"
+      ],
+      "causes": [
+        "Motor mix / servo configuration incorrect",
+        "Launch parameters not set (nav_fw_launch_*)",
+        "CG (center of gravity) too far forward or aft",
+        "Control surface throws too large or reversed",
+        "Transition speed/altitude settings wrong for VTOL"
+      ],
+      "diagnostics": [
+        "Verify control surface direction: pitch stick forward \u2192 elevator down",
+        "Check motor direction and thrust direction",
+        "Check CG: should be 25-33% of wing chord from leading edge",
+        "For VTOL: verify transition_air_speed and transition_min_time"
+      ],
+      "fixes": [
+        "Set nav_fw_launch_thr for launch power (typically 1700-1800)",
+        "Set nav_fw_launch_motor_delay for safe hand-launch clearance",
+        "Adjust servo direction/endpoints in iNav Configurator \u2192 Servos tab",
+        "Ensure nav_fw_cruise_thr is sufficient for level flight",
+        "Balance aircraft at correct CG before flight",
+        "For VTOL: increase transition altitude and use ANGLE mode during transition"
+      ],
+      "related_parts": [
+        "flight_controllers",
+        "motors"
+      ],
+      "difficulty": "advanced",
+      "tags": [
+        "inav",
+        "fixed-wing",
+        "vtol",
+        "launch",
+        "servo"
+      ]
+    },
+    {
+      "id": "TS-PX4-001",
+      "title": "PX4 sensor calibration failures",
+      "category": "sensors",
+      "severity": "medium",
+      "symptoms": [
+        "QGroundControl calibration won't complete",
+        "Gyro/Accel calibration fails",
+        "Compass calibration stuck"
+      ],
+      "causes": [
+        "Not holding vehicle still enough during gyro calibration",
+        "Not rotating through all 6 orientations during accel calibration",
+        "Magnetic interference during compass calibration",
+        "Sensor hardware fault"
+      ],
+      "diagnostics": [
+        "QGroundControl \u2192 Sensors page shows specific failure",
+        "Check QGC messages for timeout or inconsistency errors",
+        "Try calibration outdoors away from metal/concrete reinforcing"
+      ],
+      "fixes": [
+        "Gyro: place on flat surface, don't touch for 10 seconds",
+        "Accel: follow QGC prompts for each orientation \u2014 hold steady 3 seconds each",
+        "Compass: calibrate outdoors. Rotate smoothly, not jerky",
+        "If persistent failure: check SYS_HAS_MAG, SYS_HAS_BARO parameters",
+        "Try power cycling and recalibrating from scratch"
+      ],
+      "related_parts": [
+        "flight_controllers",
+        "gps_modules"
+      ],
+      "difficulty": "beginner",
+      "tags": [
+        "px4",
+        "qgroundcontrol",
+        "calibration",
+        "sensors"
+      ]
+    },
+    {
+      "id": "TS-PX4-002",
+      "title": "PX4 failsafe cascade / unexpected landing",
+      "category": "radio_link",
+      "severity": "critical",
+      "symptoms": [
+        "Vehicle lands unexpectedly",
+        "Mode switches to Return/Land without input",
+        "Multiple failsafe warnings in QGC"
+      ],
+      "causes": [
+        "RC signal loss triggering COM_RC_LOSS_T timeout",
+        "Data link loss (telemetry radio)",
+        "Low battery failsafe (BAT_LOW_THR / BAT_CRIT_THR)",
+        "Geofence violation",
+        "Mission completion action set to Land"
+      ],
+      "diagnostics": [
+        "Download ULog flight log from SD card",
+        "Check QGC messages for specific failsafe trigger",
+        "Review COM_RC_LOSS_T, NAV_RCL_ACT, NAV_DLL_ACT parameters",
+        "Check battery cell voltages for imbalance/sag"
+      ],
+      "fixes": [
+        "Set appropriate RC loss timeout: COM_RC_LOSS_T (default 0.5s may be too aggressive)",
+        "Configure NAV_RCL_ACT to desired action (0=disabled, 1=loiter, 2=return, 3=land)",
+        "Set battery thresholds appropriately for your pack capacity",
+        "Verify geofence boundaries if GF_ACTION is set",
+        "For telemetry loss: set NAV_DLL_ACT appropriately"
+      ],
+      "related_parts": [
+        "receivers",
+        "flight_controllers",
+        "batteries"
+      ],
+      "difficulty": "intermediate",
+      "tags": [
+        "px4",
+        "failsafe",
+        "return-to-launch",
+        "battery",
+        "rc-loss"
+      ]
+    },
+    {
+      "id": "TS-CMN-001",
+      "title": "ELRS 3.x / 4.x binding issues",
+      "category": "radio_link",
+      "severity": "blocking",
+      "symptoms": [
+        "ELRS receiver won't bind after firmware update",
+        "LED pattern shows WiFi mode not bind mode",
+        "Binding phrase doesn't work after cross-version flash"
+      ],
+      "causes": [
+        "TX and RX on different major ELRS versions (3.x vs 4.x incompatible)",
+        "Binding phrase set on one but not other",
+        "WiFi mode entered instead of bind mode",
+        "Regulatory domain mismatch (EU vs FCC vs AU)"
+      ],
+      "diagnostics": [
+        "Check ELRS version on TX module (ELRS Lua script on radio)",
+        "Check ELRS version on RX (WiFi page at 10.0.0.1)",
+        "LED blink pattern: slow blink = binding, fast blink = no connection, solid = connected",
+        "Double-check regulatory domain matches between TX and RX"
+      ],
+      "fixes": [
+        "Flash TX and RX to SAME version using ExpressLRS Configurator",
+        "Set IDENTICAL binding phrase on both TX and RX firmware builds",
+        "To enter bind mode: power on RX, wait 60s for auto-WiFi, or triple-press button if available",
+        "For version mismatch: flash RX via WiFi (connect to ELRS_RX hotspot, navigate to 10.0.0.1)",
+        "Ensure regulatory domain (ISM band) matches between TX/RX"
+      ],
+      "related_parts": [
+        "receivers",
+        "control_link_tx"
+      ],
+      "difficulty": "intermediate",
+      "tags": [
+        "elrs",
+        "expresslrs",
+        "binding",
+        "firmware",
+        "common"
+      ]
+    },
+    {
+      "id": "TS-CMN-002",
+      "title": "DJI FPV system latency / OSD issues",
+      "category": "video",
+      "severity": "medium",
+      "symptoms": [
+        "DJI OSD elements not showing",
+        "OSD layout wrong after BF update",
+        "Custom OSD not displaying in DJI goggles",
+        "Latency feels higher than expected"
+      ],
+      "causes": [
+        "Betaflight OSD font not updated for DJI compatibility",
+        "MSP DisplayPort not configured (for custom OSD)",
+        "DJI air unit needs firmware update",
+        "UART baud rate mismatch between FC and DJI air unit"
+      ],
+      "diagnostics": [
+        "Check if analog OSD works (connect analog camera) \u2014 if yes, MSP issue",
+        "Verify UART config: DJI TX goes to FC RX on a free UART",
+        "Check Betaflight Ports tab: is MSP enabled on DJI UART?",
+        "Update DJI air unit firmware via DJI Assistant 2"
+      ],
+      "fixes": [
+        "Enable MSP on the UART connected to DJI air unit (Ports tab \u2192 MSP toggle)",
+        "Set display_port_msp_speed = 115200 in CLI (Betaflight 4.4+)",
+        "Flash correct OSD font: use INAV or BF font flasher for DJI",
+        "For custom OSD: WTFOS or similar custom firmware on DJI goggles",
+        "For latency: ensure DJI is in LOW LATENCY mode (not High Quality)"
+      ],
+      "related_parts": [
+        "video_transmitters",
+        "flight_controllers"
+      ],
+      "difficulty": "intermediate",
+      "tags": [
+        "dji",
+        "osd",
+        "displayport",
+        "msp",
+        "video"
+      ]
+    },
+    {
+      "id": "TS-CMN-003",
+      "title": "HDZero / Walksnail no video or poor signal",
+      "category": "video",
+      "severity": "blocking",
+      "symptoms": [
+        "HDZero goggles show no signal",
+        "Walksnail breaks up at close range",
+        "Digital video freezes then recovers"
+      ],
+      "causes": [
+        "VTX and goggles on different channels (not auto-matching)",
+        "VTX power set to minimum (25mW)",
+        "Antenna mismatch (LHCP vs RHCP or linear vs circular)",
+        "Firmware version mismatch between goggles and VTX",
+        "UFL antenna connector not fully seated after crash"
+      ],
+      "diagnostics": [
+        "HDZero: check channel in VTX menu via Betaflight OSD",
+        "Walksnail: check Avatar HD settings app on goggles",
+        "Wiggle UFL connector gently \u2014 any change in signal?",
+        "Check VTX power setting is appropriate (200-400mW for flying)"
+      ],
+      "fixes": [
+        "Match channel/band between VTX and goggles",
+        "Increase VTX power from pit mode to flight power",
+        "Re-seat UFL connector firmly (use antenna wrench if available)",
+        "Use matched antennas: same polarization on both ends",
+        "Update firmware on both goggles and VTX to latest matching version"
+      ],
+      "related_parts": [
+        "video_transmitters",
+        "antennas"
+      ],
+      "difficulty": "beginner",
+      "tags": [
+        "hdzero",
+        "walksnail",
+        "digital-fpv",
+        "video",
+        "common"
+      ]
+    },
+    {
+      "id": "TS-CMN-004",
+      "title": "LiPo battery puffing / swelling",
+      "category": "power",
+      "severity": "critical",
+      "symptoms": [
+        "Battery visibly swollen/puffy",
+        "Battery won't fit in strap anymore",
+        "Chemical smell from battery",
+        "Reduced flight time with puffed pack"
+      ],
+      "causes": [
+        "Over-discharged below safe voltage (< 3.3V/cell)",
+        "Overcharged above 4.2V/cell",
+        "Crash damage to cell (internal short forming)",
+        "Charged/stored in extreme heat",
+        "Old age \u2014 natural cell degradation"
+      ],
+      "diagnostics": [
+        "Visual: any swelling = gas generation inside cell = damage",
+        "Measure cell voltages: any cell > 0.1V different from others = imbalanced",
+        "Measure internal resistance: > 30m\u03a9 per cell = degraded",
+        "Slight puff after hard flight that goes away = OK (temporary gas). Permanent puff = retire"
+      ],
+      "fixes": [
+        "Mildly puffed (< 3mm): can fly at reduced capacity but monitor closely",
+        "Significantly puffed: RETIRE IMMEDIATELY. Discharge to storage voltage via charger",
+        "Disposal: discharge fully, tape terminals, take to battery recycling",
+        "NEVER puncture, crush, or throw in fire",
+        "Prevention: storage charge (3.8V/cell) when not flying for > 2 days",
+        "Prevention: never discharge below 3.5V/cell under load (set OSD warning)"
+      ],
+      "related_parts": [
+        "batteries"
+      ],
+      "difficulty": "beginner",
+      "tags": [
+        "lipo",
+        "battery",
+        "puffing",
+        "safety",
+        "critical"
+      ]
+    },
+    {
+      "id": "TS-CMN-005",
+      "title": "Betaflight blackbox logging not working",
+      "category": "firmware",
+      "severity": "low",
+      "symptoms": [
+        "No blackbox log files on SD card",
+        "Blackbox viewer shows no data",
+        "SD card not detected by FC"
+      ],
+      "causes": [
+        "SD card not formatted correctly (needs FAT32)",
+        "SD card too large (some FCs don't support > 32GB)",
+        "Blackbox not enabled in Betaflight",
+        "SD card slot contacts dirty/damaged",
+        "SD card full"
+      ],
+      "diagnostics": [
+        "CLI: 'blackbox' command \u2014 shows logging status",
+        "Check Configuration tab \u2192 Blackbox logging toggle",
+        "Remove SD card, format as FAT32 on computer, reinsert",
+        "Try different SD card (use quality brand, Class 10+)"
+      ],
+      "fixes": [
+        "Enable blackbox in Configuration tab",
+        "Format SD card as FAT32 (not exFAT) \u2014 max 32GB",
+        "Set blackbox logging rate (recommended: 500Hz for 8K PID loop)",
+        "Use onboard flash if no SD slot: set blackbox_device = SPIFLASH in CLI",
+        "Clean SD card contacts with isopropyl alcohol if intermittent"
+      ],
+      "related_parts": [
+        "flight_controllers"
+      ],
+      "difficulty": "beginner",
+      "tags": [
+        "blackbox",
+        "logging",
+        "sd-card",
+        "betaflight"
+      ]
+    },
+    {
+      "id": "TS-CMN-006",
+      "title": "Propwash oscillation on descent",
+      "category": "pid_tuning",
+      "severity": "medium",
+      "symptoms": [
+        "Oscillation / wobble when descending through own prop wash",
+        "Visible shake in video on dive pullouts",
+        "Worse in sharp turns and quick stops"
+      ],
+      "causes": [
+        "Propellers re-entering their own disturbed air vortex",
+        "PID controller unable to compensate fast enough for turbulent airflow",
+        "D-term filtering too aggressive (delays response)",
+        "Low motor authority at low throttle (idle speed too low)"
+      ],
+      "diagnostics": [
+        "Reproducible: do a punch-out, then cut throttle and descend \u2014 wobble on descent",
+        "Worse at specific throttle range (usually 30-50%)",
+        "Blackbox: look at gyro traces during descent \u2014 oscillation visible"
+      ],
+      "fixes": [
+        "Increase motor idle speed: set dshot_idle_value slightly higher (6-8%)",
+        "Increase D-term (counterintuitive but helps track through turbulence)",
+        "Reduce D-term lowpass filtering (allow faster D response)",
+        "Enable dynamic idle in Betaflight 4.3+ (adjusts idle per motor RPM)",
+        "Use RPM filtering to allow lower overall filtering",
+        "Fly through propwash rather than hovering in it (technique)"
+      ],
+      "related_parts": [
+        "propellers",
+        "motors",
+        "flight_controllers"
+      ],
+      "difficulty": "advanced",
+      "tags": [
+        "propwash",
+        "pid",
+        "tuning",
+        "oscillation",
+        "descent"
+      ]
+    },
+    {
+      "id": "TS-CMN-007",
+      "title": "GPS rescue / RTH flyaway",
+      "category": "gps",
+      "severity": "critical",
+      "symptoms": [
+        "GPS rescue sends drone wrong direction",
+        "RTH altitude too low \u2014 crashes into obstacles",
+        "Drone flies away instead of returning"
+      ],
+      "causes": [
+        "GPS home point set before good fix (inaccurate home)",
+        "Compass interference causing wrong heading",
+        "GPS rescue altitude set too low for terrain",
+        "Wind stronger than drone can fight at rescue throttle",
+        "GPS rescue not tested before needed"
+      ],
+      "diagnostics": [
+        "Check home point location: was GPS fix solid at arm time? (>8 sats, HDOP <2)",
+        "Did compass heading agree with GPS heading before takeoff?",
+        "Check GPS_RESCUE_MIN_SATS (Betaflight) or GPS_MIN_SATS (ArduPilot)"
+      ],
+      "fixes": [
+        "Always wait for solid GPS fix before arming (>10 sats preferred)",
+        "Set GPS rescue altitude above all nearby obstacles + 20m margin",
+        "Test GPS rescue in safe area at low altitude first",
+        "Betaflight: configure GPS_RESCUE_* parameters properly",
+        "ArduPilot: set RTL_ALT to safe altitude (in cm \u2014 e.g. 5000 = 50m)",
+        "Set minimum satellite requirement: don't arm without >8 sats in GPS modes"
+      ],
+      "related_parts": [
+        "gps_modules",
+        "flight_controllers"
+      ],
+      "difficulty": "intermediate",
+      "tags": [
+        "gps",
+        "rescue",
+        "rth",
+        "flyaway",
+        "critical"
+      ]
+    },
+    {
+      "id": "TS-MTR-003",
+      "title": "Motor doesn't spin in one direction (reversed)",
+      "category": "motors",
+      "severity": "medium",
+      "symptoms": [
+        "Motor spins wrong direction",
+        "Betaflight motor direction doesn't match diagram"
+      ],
+      "causes": [
+        "Motor wired with swapped phase wires",
+        "BLHeli direction setting wrong"
+      ],
+      "diagnostics": [
+        "Motors tab: spin each motor and verify direction matches Betaflight diagram",
+        "Props off \u2014 verify visually which direction each motor spins"
+      ],
+      "fixes": [
+        "BLHeli Suite/Configurator: change motor direction in ESC settings (easiest)",
+        "Hardware: swap any 2 of the 3 motor wires to ESC",
+        "Betaflight 4.4+: can reverse motor direction per-motor in Motors tab"
+      ],
+      "related_parts": [
+        "motors",
+        "escs"
+      ],
+      "difficulty": "beginner",
+      "tags": [
+        "motor",
+        "direction",
+        "reversed",
+        "blheli"
+      ]
+    },
+    {
+      "id": "TS-MTR-004",
+      "title": "Motor makes grinding noise",
+      "category": "motors",
+      "severity": "medium",
+      "symptoms": [
+        "Audible grinding/scraping when motor spins",
+        "Reduced thrust on one arm",
+        "Motor vibration felt in frame"
+      ],
+      "causes": [
+        "Bent motor shaft from crash",
+        "Bearing damaged \u2014 sand/dirt ingress",
+        "Motor bell rubbing on stator",
+        "Debris (grass/hair) wound around shaft"
+      ],
+      "diagnostics": [
+        "Remove prop and spin motor by hand \u2014 should be smooth with light magnetic cogging",
+        "Remove motor bell: inspect for debris, shaft straightness, bearing play",
+        "Compare sound to known-good motor"
+      ],
+      "fixes": [
+        "Clean debris from around shaft and bell gap",
+        "Replace bearings (press out old, press in new \u2014 same bore size)",
+        "If shaft bent: replace motor (shaft press not worth it on mini motors)",
+        "Preventive: use motor wire boots and conformal coat"
+      ],
+      "related_parts": [
+        "motors"
+      ],
+      "difficulty": "intermediate",
+      "tags": [
+        "grinding",
+        "bearing",
+        "shaft",
+        "crash-damage"
+      ]
+    },
+    {
+      "id": "TS-ESC-004",
+      "title": "BLHeli Suite won't detect ESCs",
+      "category": "escs",
+      "severity": "medium",
+      "symptoms": [
+        "BLHeli Suite shows 0 ESCs found",
+        "Can't change ESC settings",
+        "ESC passthrough fails"
+      ],
+      "causes": [
+        "Wrong ESC protocol selected in Betaflight (need DSHOT for BLHeli passthrough)",
+        "USB cable issue (charge-only cable)",
+        "FC firmware doesn't support 4-way interface",
+        "ESC firmware corrupted"
+      ],
+      "diagnostics": [
+        "Ensure battery is connected (BLHeli needs ESC power, not just USB)",
+        "Betaflight motors tab: do motors spin with sliders? If yes, signal path is OK",
+        "Try BLHeli Configurator (Chrome app) vs BLHeli Suite (standalone) \u2014 different compatibility"
+      ],
+      "fixes": [
+        "Connect battery + USB simultaneously",
+        "Use DSHOT protocol in Betaflight Configuration tab",
+        "For BLHeli_S: use BLHeli Configurator or Bluejay Configurator",
+        "For BLHeli_32: use BLHeli Suite",
+        "For AM32: use AM32 Configurator",
+        "If all fails: flash ESC firmware via signal pad using Arduino as programmer"
+      ],
+      "related_parts": [
+        "escs",
+        "flight_controllers"
+      ],
+      "difficulty": "intermediate",
+      "tags": [
+        "blheli",
+        "configurator",
+        "passthrough",
+        "firmware"
+      ]
+    },
+    {
+      "id": "TS-VID-004",
+      "title": "DJI/HDZero/Walksnail no link",
+      "category": "video",
+      "severity": "blocking",
+      "symptoms": [
+        "Digital FPV shows 'no link' or searching",
+        "Goggles can't find VTX",
+        "Worked before, now won't connect"
+      ],
+      "causes": [
+        "VTX and goggles not paired / on different channels",
+        "Firmware mismatch between VTX and goggles",
+        "VTX antenna not connected (UFL popped off in crash)",
+        "VTX damaged from powering on without antenna"
+      ],
+      "diagnostics": [
+        "Check VTX LED status: solid=linked, blinking=searching",
+        "DJI: long-press link button on both goggles and VTX simultaneously",
+        "HDZero: check VTX firmware matches goggle firmware version",
+        "Inspect UFL/MMCX connector under magnification"
+      ],
+      "fixes": [
+        "Re-pair: hold link buttons on VTX and goggles (varies by system)",
+        "Update both VTX and goggles to matching firmware version",
+        "Re-seat antenna connector \u2014 press firmly until click",
+        "If VTX damaged from no-antenna power-on: replace VTX",
+        "HDZero: try toggling between 25mW and higher power"
+      ],
+      "related_parts": [
+        "video_transmitters",
+        "fpv_detectors"
+      ],
+      "difficulty": "beginner",
+      "tags": [
+        "digital-fpv",
+        "dji",
+        "hdzero",
+        "walksnail",
+        "link",
+        "pairing"
+      ]
+    },
+    {
+      "id": "TS-VID-005",
+      "title": "OSD not showing / garbled OSD",
+      "category": "video",
+      "severity": "low",
+      "symptoms": [
+        "No OSD elements on video feed",
+        "OSD characters corrupted/garbled",
+        "OSD shows but wrong info"
+      ],
+      "causes": [
+        "OSD not enabled in Betaflight",
+        "Analog OSD chip on FC not connected to camera/VTX signal path",
+        "OSD font not uploaded (garbled characters)",
+        "For digital: MSP OSD not configured on correct UART"
+      ],
+      "diagnostics": [
+        "Betaflight OSD tab: are elements positioned on the screen?",
+        "Analog: is video signal routed through FC (camera\u2192FC\u2192VTX) not bypassing it?",
+        "Digital: is MSP enabled on the UART connected to VTX in Ports tab?"
+      ],
+      "fixes": [
+        "Enable OSD elements in Betaflight OSD tab and position them",
+        "Upload OSD font: OSD tab \u2192 Font Manager \u2192 Upload",
+        "Analog: wire camera\u2192FC video input, then FC video output\u2192VTX",
+        "Digital (DJI/HDZero): enable MSP on VTX UART in Ports tab",
+        "Check OSD is not disabled by switch (Modes tab)"
+      ],
+      "related_parts": [
+        "flight_controllers",
+        "video_transmitters"
+      ],
+      "difficulty": "beginner",
+      "tags": [
+        "osd",
+        "betaflight",
+        "font",
+        "msp",
+        "display"
+      ]
+    },
+    {
+      "id": "TS-RX-003",
+      "title": "ELRS won't update / flash fails",
+      "category": "radio_link",
+      "severity": "medium",
+      "symptoms": [
+        "ExpressLRS Configurator flash fails",
+        "RX won't enter WiFi mode",
+        "Bricked RX after failed update"
+      ],
+      "causes": [
+        "Wrong target selected for RX hardware",
+        "RX not in bootloader/WiFi mode",
+        "USB driver issue (for USB-flashing RXs)",
+        "WiFi password incorrect"
+      ],
+      "diagnostics": [
+        "Check exact RX hardware model \u2014 many variants with different MCUs",
+        "For WiFi flash: power RX without TX bound for 60s \u2192 WiFi AP should appear",
+        "For UART flash: hold boot button on RX while powering on"
+      ],
+      "fixes": [
+        "Verify correct target in ExpressLRS Configurator for your exact RX model",
+        "WiFi flash: connect to RX WiFi AP (ExpressLRS RX) \u2192 navigate to 10.0.0.1",
+        "Betaflight passthrough: set RX UART to 420000 baud, use BF passthrough in ELRS Configurator",
+        "If bricked: UART flash with FTDI adapter directly to RX TX/RX pads",
+        "ELRS 3.x: use binding phrase instead of button binding"
+      ],
+      "related_parts": [
+        "receivers"
+      ],
+      "difficulty": "intermediate",
+      "tags": [
+        "elrs",
+        "expresslrs",
+        "flash",
+        "update",
+        "wifi",
+        "firmware"
+      ]
+    },
+    {
+      "id": "TS-PWR-003",
+      "title": "LiPo battery puffed/swollen",
+      "category": "power",
+      "severity": "critical",
+      "symptoms": [
+        "Battery visibly swollen/puffy",
+        "Battery warm when not in use",
+        "Reduced capacity",
+        "Chemical smell"
+      ],
+      "causes": [
+        "Over-discharged below 3.0V/cell",
+        "Overcharged above 4.25V/cell",
+        "Physical damage from crash",
+        "Charging immediately after flight while hot",
+        "Old age / high cycle count"
+      ],
+      "diagnostics": [
+        "Visual: any puffing = internal gas from damaged cells",
+        "Measure individual cell voltages \u2014 if any below 3.0V or significantly unbalanced, battery is damaged",
+        "Check internal resistance per cell \u2014 high IR confirms degradation"
+      ],
+      "fixes": [
+        "STOP USING puffy batteries \u2014 they are a fire hazard",
+        "Dispose safely: discharge to 0V using light bulb method, then recycle at battery drop-off",
+        "Store batteries at storage voltage (3.8V/cell) when not in use",
+        "Never charge unattended. Use fireproof LiPo bag",
+        "Let batteries cool to room temperature before charging",
+        "Retire batteries after ~200 cycles or when IR doubles from new"
+      ],
+      "related_parts": [
+        "batteries"
+      ],
+      "difficulty": "beginner",
+      "tags": [
+        "lipo",
+        "puffed",
+        "swollen",
+        "fire",
+        "safety",
+        "critical"
+      ]
+    },
+    {
+      "id": "TS-FC-005",
+      "title": "Accelerometer won't calibrate / drifts",
+      "category": "flight_controllers",
+      "severity": "medium",
+      "symptoms": [
+        "Betaflight model shows quad tilted when level",
+        "Angle mode drifts to one side",
+        "Calibration fails or doesn't stick"
+      ],
+      "causes": [
+        "FC not perfectly level during calibration",
+        "FC board physically warped from crash or bad mounting",
+        "Accelerometer chip damaged",
+        "Board alignment offset needed but not set"
+      ],
+      "diagnostics": [
+        "Setup tab: place quad on level surface \u2014 does 3D model show level?",
+        "If tilted: try calibrating again on confirmed flat surface (use spirit level)",
+        "If calibration fails: accelerometer chip may be damaged"
+      ],
+      "fixes": [
+        "Place on verified flat surface \u2192 Setup tab \u2192 Calibrate Accelerometer",
+        "If FC is mounted at angle: set Board Alignment in Configuration tab",
+        "If accel chip damaged: disable accel in CLI and fly ACRO only (no angle/horizon mode)",
+        "For precision: use CLI 'set acc_trim_roll' and 'set acc_trim_pitch' for fine offset"
+      ],
+      "related_parts": [
+        "flight_controllers"
+      ],
+      "difficulty": "beginner",
+      "tags": [
+        "accelerometer",
+        "calibration",
+        "angle-mode",
+        "level"
+      ]
+    },
+    {
+      "id": "TS-FC-006",
+      "title": "UART conflict / not enough UARTs",
+      "category": "flight_controllers",
+      "severity": "medium",
+      "symptoms": [
+        "Can't use GPS + receiver + VTX control simultaneously",
+        "Peripheral stops working when another is enabled",
+        "Betaflight Ports tab shows limited UARTs"
+      ],
+      "causes": [
+        "FC has limited UARTs (F411 only has 2 usable)",
+        "Two peripherals assigned to same UART",
+        "SoftSerial not enabled for additional ports",
+        "UART physically damaged"
+      ],
+      "diagnostics": [
+        "Ports tab: count available UARTs",
+        "Check which peripherals need UARTs: RX(1), GPS(1), VTX SmartAudio/Tramp(1), ESC telemetry(1)",
+        "CLI 'resource': shows all UART assignments"
+      ],
+      "fixes": [
+        "Prioritize: RX is mandatory, others are optional",
+        "Enable SoftSerial in Configuration tab for 1-2 extra software UARTs",
+        "Use SBUS for RX (only needs half-UART), freeing TX pin for other use",
+        "Move VTX control to SmartAudio (single-wire, needs only TX)",
+        "Upgrade to F405/F722/H743 FC with more UARTs",
+        "Use LED pin for SoftSerial if no LED strip needed"
+      ],
+      "related_parts": [
+        "flight_controllers",
+        "receivers",
+        "gps_modules",
+        "video_transmitters"
+      ],
+      "difficulty": "intermediate",
+      "tags": [
+        "uart",
+        "ports",
+        "softserial",
+        "f411",
+        "wiring"
+      ]
+    },
+    {
+      "id": "TS-PROP-001",
+      "title": "Prop flies off during flight",
+      "category": "mechanical",
+      "severity": "critical",
+      "symptoms": [
+        "Prop detaches mid-flight",
+        "Drone immediately tumbles",
+        "Find prop on ground after crash"
+      ],
+      "causes": [
+        "Prop nut not tight enough",
+        "Wrong prop nut size (M5 vs T-mount)",
+        "Motor shaft threads stripped",
+        "Press-fit prop not seated fully"
+      ],
+      "diagnostics": [
+        "After each session: check prop tightness",
+        "Inspect motor shaft threads for wear",
+        "Check if prop adapter/collet matches motor shaft"
+      ],
+      "fixes": [
+        "Use threadlocker (blue Loctite) on prop nuts",
+        "Replace stripped motor shaft or motor",
+        "Ensure correct prop mount type: M5 thread vs T-Mount vs press-fit",
+        "Pre-flight: tug test on every prop before each session"
+      ],
+      "related_parts": [
+        "propellers",
+        "motors"
+      ],
+      "difficulty": "beginner",
+      "tags": [
+        "prop",
+        "nut",
+        "safety",
+        "pre-flight"
+      ]
+    },
+    {
+      "id": "TS-FW-002",
+      "title": "Betaflight preset not working as expected",
+      "category": "firmware",
+      "severity": "low",
+      "symptoms": [
+        "Applied preset but quad flies worse",
+        "Preset tune causes oscillation",
+        "Rates feel wrong after preset"
+      ],
+      "causes": [
+        "Preset designed for different prop/motor/frame class",
+        "Preset overrode your custom rates",
+        "Preset assumes specific ESC protocol or features (RPM filter)",
+        "Preset from old Betaflight version"
+      ],
+      "diagnostics": [
+        "Read preset description carefully \u2014 what hardware is it for?",
+        "Check if preset changed your rates (Rates tab)",
+        "Check if preset enabled features your hardware doesn't support (RPM filter needs bidir DSHOT)"
+      ],
+      "fixes": [
+        "Pick presets matching your exact frame size and motor class",
+        "After applying tune preset: reapply your personal rate preset separately",
+        "If oscillating: preset may need RPM filter \u2014 enable bidirectional DSHOT + Bluejay firmware",
+        "Start with a conservative preset (e.g. SupaFly for 5\") and adjust from there"
+      ],
+      "related_parts": [
+        "flight_controllers"
+      ],
+      "difficulty": "beginner",
+      "tags": [
+        "preset",
+        "betaflight",
+        "tune",
+        "rates"
+      ]
+    },
+    {
+      "id": "TS-ENV-001",
+      "title": "Cold weather flight issues",
+      "category": "power",
+      "severity": "medium",
+      "symptoms": [
+        "Dramatically reduced flight time in cold",
+        "Voltage sag warning almost immediately",
+        "Battery won't deliver power"
+      ],
+      "causes": [
+        "LiPo internal resistance increases dramatically below 10\u00b0C",
+        "Cold battery can't deliver rated current",
+        "Cold can cause cell imbalance"
+      ],
+      "diagnostics": [
+        "Check battery temperature before flight \u2014 below 15\u00b0C is concerning",
+        "Compare flight time: warm day vs cold day"
+      ],
+      "fixes": [
+        "Warm batteries before flight (keep in jacket pocket, car heater, hand warmers)",
+        "Never fly LiPo below 5\u00b0C battery temperature",
+        "Hover briefly before full send to warm the pack under gentle load",
+        "Use insulated battery strap or wrap in winter",
+        "Consider Li-Ion for cold weather (better cold tolerance than LiPo)"
+      ],
+      "related_parts": [
+        "batteries"
+      ],
+      "difficulty": "beginner",
+      "tags": [
+        "cold",
+        "winter",
+        "temperature",
+        "lipo",
+        "flight-time"
+      ]
+    },
+    {
+      "id": "TS-MECH-002",
+      "title": "Cold solder joint / intermittent connection",
+      "category": "mechanical",
+      "severity": "high",
+      "symptoms": [
+        "Intermittent failures (works sometimes)",
+        "Component works on bench but fails in flight",
+        "Issue appears after vibration or crash"
+      ],
+      "causes": [
+        "Solder joint not properly heated \u2014 cold/dull joint",
+        "Solder blob without actual adhesion to pad",
+        "Wire strand not tinned before soldering",
+        "Pad lifted from PCB"
+      ],
+      "diagnostics": [
+        "Visual: good joint is shiny and concave. Bad joint is dull, balled up, or cracked",
+        "Wiggle each wire while component is powered \u2014 does it cut in/out?",
+        "Magnifying glass or USB microscope: inspect all joints"
+      ],
+      "fixes": [
+        "Reflow: apply flux, heat joint until solder flows and wets both surfaces",
+        "If pad lifted: scrape trace nearby and solder wire to exposed copper",
+        "Tin wire ends before soldering to pads",
+        "Use proper temperature (350-380\u00b0C for leaded, 380-400\u00b0C for lead-free)",
+        "Add flux to every joint \u2014 flux is the secret to good solder"
+      ],
+      "related_parts": [
+        "flight_controllers",
+        "escs"
+      ],
+      "difficulty": "intermediate",
+      "tags": [
+        "solder",
+        "cold-joint",
+        "intermittent",
+        "wiring",
+        "common"
+      ]
+    },
+    {
+      "id": "TS-GPS-002",
+      "title": "GPS rescue flies wrong direction / RTH fails",
+      "category": "gps",
+      "severity": "critical",
+      "symptoms": [
+        "GPS rescue activates but drone flies away",
+        "RTH circles instead of returning",
+        "Heading indicator spins"
+      ],
+      "causes": [
+        "Compass/magnetometer not calibrated or interfered",
+        "GPS arrow orientation wrong in Betaflight",
+        "Not enough satellites for reliable fix (need 8+)",
+        "GPS rescue parameters not configured"
+      ],
+      "diagnostics": [
+        "GPS tab: check satellite count (need 8+ for reliable rescue)",
+        "Walk with quad: does GPS arrow point correct direction of travel?",
+        "Check for magnetic interference: compare heading near electronics vs away"
+      ],
+      "fixes": [
+        "Calibrate compass outdoors away from metal/electronics",
+        "Set correct GPS module orientation in Configuration tab",
+        "Configure GPS rescue in Failsafe tab: set altitude, min sats, sanity checks",
+        "Mount GPS/compass as far from motors/ESC/battery as possible",
+        "Test GPS rescue at low altitude over soft ground first",
+        "Set minimum satellite threshold to 8 before GPS rescue arms"
+      ],
+      "related_parts": [
+        "gps_modules",
+        "flight_controllers"
+      ],
+      "difficulty": "advanced",
+      "tags": [
+        "gps-rescue",
+        "rth",
+        "compass",
+        "magnetometer",
+        "critical"
+      ]
+    },
+    {
+      "id": "TS-WIR-001",
+      "title": "TX/RX wires swapped \u2014 receiver or VTX not communicating",
+      "category": "radio_link",
+      "severity": "blocking",
+      "symptoms": [
+        "Receiver bound but Betaflight shows no channel movement",
+        "VTX SmartAudio/Tramp not responding",
+        "GPS connected but no data in Betaflight GPS tab"
+      ],
+      "causes": [
+        "TX pad on FC wired to TX pad on peripheral (should be TX\u2192RX)",
+        "RX pad on FC wired to RX pad on peripheral (should be RX\u2192TX)",
+        "This is the single most common wiring mistake in FPV"
+      ],
+      "diagnostics": [
+        "Betaflight Receiver tab: do channels move when you move sticks? If not, TX/RX likely swapped",
+        "Check physical wiring: FC TX pad should have wire going to peripheral RX pad",
+        "If you can read board silkscreen in photo: verify TX\u2192RX crossing",
+        "Try swapping the two signal wires \u2014 if it works, they were swapped"
+      ],
+      "fixes": [
+        "Swap the TX and RX wires: FC TX \u2192 peripheral RX, FC RX \u2192 peripheral TX",
+        "Remember: TX (transmit) sends data OUT, RX (receive) takes data IN",
+        "The crossing is correct: what one board transmits, the other receives",
+        "Some FCs label pads from the FC's perspective, some from the peripheral's \u2014 check the manual"
+      ],
+      "related_parts": [
+        "flight_controllers",
+        "receivers",
+        "video_transmitters",
+        "gps_modules"
+      ],
+      "difficulty": "beginner",
+      "tags": [
+        "wiring",
+        "tx-rx",
+        "swap",
+        "uart",
+        "common",
+        "first-build"
+      ]
+    },
+    {
+      "id": "TS-WIR-002",
+      "title": "Wrong voltage to receiver \u2014 5V to 3.3V device",
+      "category": "radio_link",
+      "severity": "critical",
+      "symptoms": [
+        "Receiver smells burnt after first power-on",
+        "Receiver LED never lights up",
+        "Receiver worked once then died"
+      ],
+      "causes": [
+        "Powered a 3.3V receiver from a 5V pad",
+        "Spektrum/DSMX receivers are 3.3V \u2014 5V will kill them",
+        "Some ELRS receivers are 3.3V only (check datasheet)",
+        "Wire accidentally touching VBAT pad instead of regulated output"
+      ],
+      "diagnostics": [
+        "Check receiver datasheet for input voltage range",
+        "Measure voltage on the power wire with multimeter before connecting receiver",
+        "If receiver is dead: check for burn marks on voltage regulator chip",
+        "Smell test \u2014 burnt electronics have distinct acrid smell"
+      ],
+      "fixes": [
+        "ALWAYS check receiver voltage requirement before wiring",
+        "Use FC's 3V3 pad for 3.3V receivers, 5V/4V5 pad for 5V receivers",
+        "If receiver is burnt: replace it \u2014 voltage regulators don't survive overvoltage",
+        "Add a 3.3V regulator if FC doesn't have a 3V3 pad",
+        "Label your power pads with a marker to prevent future mistakes"
+      ],
+      "related_parts": [
+        "receivers",
+        "flight_controllers"
+      ],
+      "difficulty": "beginner",
+      "tags": [
+        "wiring",
+        "voltage",
+        "3v3",
+        "5v",
+        "burnt",
+        "receiver",
+        "critical"
+      ]
+    },
+    {
+      "id": "TS-WIR-003",
+      "title": "No OSD on digital FPV \u2014 MSP not configured",
+      "category": "video",
+      "severity": "medium",
+      "symptoms": [
+        "DJI/Walksnail/HDZero video works but no OSD overlay",
+        "Can see camera image but no battery voltage, RSSI, etc.",
+        "OSD elements configured in Betaflight but not showing in goggles"
+      ],
+      "causes": [
+        "MSP (MSP DisplayPort) not enabled on the UART connected to the digital VTX",
+        "TX/RX wires between FC and VTX not connected or swapped",
+        "Wrong UART selected in Betaflight Ports tab"
+      ],
+      "diagnostics": [
+        "Betaflight Ports tab: is 'MSP' enabled (under Peripherals) on the UART your VTX is connected to?",
+        "Check which UART the VTX TX/RX wires are soldered to on the FC",
+        "For DJI: the VTX needs both TX and RX wires connected for MSP OSD"
+      ],
+      "fixes": [
+        "Betaflight \u2192 Ports tab \u2192 find the UART your VTX is on \u2192 enable MSP under Peripherals column",
+        "Verify wiring: FC TX \u2192 VTX RX, FC RX \u2192 VTX TX (both wires needed for MSP)",
+        "For DJI: also set OSD to 'Auto' or 'MSP DisplayPort' in DJI goggles settings",
+        "For HDZero: enable MSP on the correct UART, OSD shows automatically",
+        "CLI shortcut: `serial <uart_number> 0 115200 57600 0 115200` to enable MSP on a UART"
+      ],
+      "related_parts": [
+        "video_transmitters",
+        "flight_controllers"
+      ],
+      "difficulty": "beginner",
+      "tags": [
+        "osd",
+        "msp",
+        "dji",
+        "hdzero",
+        "walksnail",
+        "digital",
+        "wiring",
+        "uart"
+      ]
+    },
+    {
+      "id": "TS-WIR-004",
+      "title": "ESC signal wires wrong order \u2014 motors spin in wrong positions",
+      "category": "escs",
+      "severity": "high",
+      "symptoms": [
+        "Drone flips on arm but motor directions are correct",
+        "Motors spin but quad is uncontrollable",
+        "Motor 1 in Betaflight spins the wrong physical motor"
+      ],
+      "causes": [
+        "Motor signal wires soldered to wrong M1-M4 pads on FC",
+        "ESC ribbon cable upside down or offset by one pin",
+        "FC motor resource mapping doesn't match physical wiring"
+      ],
+      "diagnostics": [
+        "Props OFF \u2014 go to Betaflight Motors tab",
+        "Spin Motor 1 slider \u2014 which physical motor spins? Should match Betaflight diagram",
+        "Spin Motor 2, 3, 4 \u2014 each should match the Betaflight motor layout diagram",
+        "If wrong: note which motor spins for each number"
+      ],
+      "fixes": [
+        "Option 1 (easiest): Remap motors in Betaflight \u2014 Motors tab \u2192 drag motors to correct positions",
+        "Option 2: CLI `resource motor <number> <pin>` to reassign output pins",
+        "Option 3 (hardware): Re-solder signal wires to correct M pads",
+        "For 4-in-1 ESC with ribbon: check ribbon orientation matches FC pinout",
+        "After fixing: re-test all 4 motors individually before props on"
+      ],
+      "related_parts": [
+        "escs",
+        "flight_controllers",
+        "motors"
+      ],
+      "difficulty": "intermediate",
+      "tags": [
+        "motor-order",
+        "wiring",
+        "esc",
+        "resource",
+        "remap",
+        "flip"
+      ]
+    },
+    {
+      "id": "TS-WIR-005",
+      "title": "Missing ground wire causing erratic behavior",
+      "category": "mechanical",
+      "severity": "high",
+      "symptoms": [
+        "Random twitching or oscillation",
+        "Receiver intermittent",
+        "Video noise correlated with throttle",
+        "ESC desync-like symptoms but ESC is fine"
+      ],
+      "causes": [
+        "Ground wire not connected between FC and ESC board",
+        "Ground wire not connected to receiver",
+        "No common ground between VTX and FC",
+        "Ground wire broken inside insulation (invisible break)"
+      ],
+      "diagnostics": [
+        "Check continuity between GND pads on FC, ESC, receiver, and VTX with multimeter",
+        "All ground pads should show 0 ohms (continuity) to each other",
+        "Wiggle ground wires while powered \u2014 does behavior change?",
+        "If JST connector: check if ground pin is making contact"
+      ],
+      "fixes": [
+        "Solder a ground wire between every board in the system \u2014 FC, ESC, RX, VTX, GPS all share ground",
+        "Even if a JST connector has ground, add a direct solder ground wire as backup",
+        "For carbon fiber frames: the frame itself is NOT a reliable ground path",
+        "Check JST crimps \u2014 ground wire may look connected but have a bad crimp"
+      ],
+      "related_parts": [
+        "flight_controllers",
+        "escs",
+        "receivers",
+        "video_transmitters"
+      ],
+      "difficulty": "intermediate",
+      "tags": [
+        "ground",
+        "wiring",
+        "noise",
+        "erratic",
+        "common"
+      ]
+    },
+    {
+      "id": "TS-WIR-006",
+      "title": "UART conflict \u2014 two devices on same port",
+      "category": "flight_controllers",
+      "severity": "medium",
+      "symptoms": [
+        "One peripheral works but another stops",
+        "GPS works until receiver is powered",
+        "Betaflight shows data from wrong device"
+      ],
+      "causes": [
+        "Two peripherals physically wired to the same UART TX/RX pads",
+        "Betaflight Ports tab has two functions enabled on the same UART",
+        "SoftSerial conflicting with hardware UART on same timer"
+      ],
+      "diagnostics": [
+        "Betaflight Ports tab: check each UART row \u2014 only ONE function should be enabled per UART",
+        "Physically trace wires: are two devices sharing the same TX or RX pad?",
+        "CLI: `serial` command shows all UART assignments"
+      ],
+      "fixes": [
+        "Move one device to a different UART \u2014 desolder and rewire to unused TX/RX pads",
+        "In Ports tab: ensure each UART has only one peripheral assigned",
+        "If out of UARTs: enable SoftSerial for low-bandwidth devices (SmartAudio, GPS)",
+        "Consider upgrade to FC with more UARTs (F7/H7 boards have 6-8)",
+        "VTX SmartAudio only needs TX wire \u2014 can share a UART with a device that only uses RX"
+      ],
+      "related_parts": [
+        "flight_controllers",
+        "receivers",
+        "gps_modules",
+        "video_transmitters"
+      ],
+      "difficulty": "intermediate",
+      "tags": [
+        "uart",
+        "conflict",
+        "wiring",
+        "ports",
+        "softserial"
+      ]
+    },
+    {
+      "id": "TS-OSC-023",
+      "title": "I am having this same issue",
+      "category": "radio_link",
+      "severity": "medium",
+      "symptoms": [
+        "My miniquad wont come down after i armed and try to hover, in order to make the quad drop, i need to disarm."
+      ],
+      "causes": [
+        "My miniquad wont come down after i armed and try to hover, in order to make the quad drop, i need to disarm."
+      ],
+      "diagnostics": [
+        "My miniquad wont come down after i armed and try to hover, in order to make the quad drop, i need to disarm."
+      ],
+      "fixes": [
+        "My miniquad wont come down after i armed and try to hover, in order to make the quad drop, i need to disarm."
+      ],
+      "related_parts": [],
+      "difficulty": "intermediate",
+      "tags": [
+        "oscarliang",
+        "fpv",
+        "oscarliang"
+      ],
+      "source_url": "https://oscarliang.com/avoid-quadcopter-technical-issues/",
+      "auto_extracted": true
+    }
+  ]
+}

@@ -1,0 +1,270 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Intel — Forge</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://unpkg.com/@phosphor-icons/web@2.0.3/src/regular/style.css">
+<style>
+:root {
+  --bg:#0c0c0a;--surface:#141410;--card:#1c1c17;--card-hi:#242420;
+  --border:#2e2e26;--border-hi:#3e3e34;
+  /* per-tab accent: Feed=amber, Programs=violet, Companies=cyan, Regions=blue */
+  --feed:#f59e0b;--feed-d:#f59e0b18;
+  --prog:#8b5cf6;--prog-d:#8b5cf618;
+  --comp:#06b6d4;--comp-d:#06b6d418;
+  --reg:#3b82f6;--reg-d:#3b82f618;
+  /* semantic */
+  --defense:#f97316;--defense-d:#f9731618;
+  --financial:#f59e0b;--financial-d:#f59e0b18;
+  --commercial:#06b6d4;--commercial-d:#06b6d418;
+  --amber:#f59e0b;--amber-d:#f59e0b18;
+  --blue:#3b82f6;--blue-d:#3b82f618;
+  --green:#22c55e;--green-d:#22c55e20;
+  --red:#ef4444;--red-d:#ef444418;
+  --purple:#8b5cf6;--purple-d:#8b5cf618;
+  --cyan:#06b6d4;--cyan-d:#06b6d418;
+  --text:#f5f0e8;--text-s:#b8b0a0;--text-d:#6b6358;--text-xd:#3d3830;
+  --font:'DM Sans',system-ui,sans-serif;
+  --mono:'JetBrains Mono',monospace;
+  --tab-accent:var(--feed);--tab-accent-d:var(--feed-d);
+}
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:var(--bg);color:var(--text);font-family:var(--font);line-height:1.5;-webkit-font-smoothing:antialiased}
+a{color:var(--blue);text-decoration:none}a:hover{text-decoration:underline}
+.topbar{display:flex;align-items:center;justify-content:space-between;padding:10px 16px;border-bottom:1px solid var(--border);background:var(--bg);position:sticky;top:0;z-index:100}
+.topbar-left{display:flex;align-items:center;gap:8px;min-width:0;flex:1;overflow:hidden}
+.topbar-logo{font:700 14px var(--mono);color:#22c55e;letter-spacing:-0.02em;text-decoration:none;white-space:nowrap}
+.topbar-sep{color:var(--text-xd);font-size:12px;flex-shrink:0}
+.topbar-current{font:600 13px var(--font);color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.topbar-links{display:flex;gap:4px;flex-shrink:0}
+.topbar-pill{font:500 11px var(--font);color:var(--text-d);padding:4px 10px;border:1px solid var(--border);border-radius:20px;transition:all .15s;text-decoration:none;white-space:nowrap}
+.topbar-pill:hover{border-color:var(--border-hi);color:var(--text-s)}
+.tabs{display:flex;gap:0;border-bottom:1px solid var(--border);padding:0 20px;overflow-x:auto;-webkit-overflow-scrolling:touch;scrollbar-width:none}
+.tabs::-webkit-scrollbar{display:none}
+.tab{background:none;border:none;border-bottom:2px solid transparent;color:var(--text-d);padding:10px 16px;font:500 11px var(--font);cursor:pointer;transition:all .15s;white-space:nowrap;flex-shrink:0}
+.tab.active{color:var(--tab-accent);border-bottom-color:var(--tab-accent);font-weight:600}
+.tab .count{background:var(--red);color:#fff;border-radius:8px;padding:1px 5px;font-size:9px;margin-left:4px;font-weight:700}
+.content{padding:16px 20px;max-width:960px;margin:0 auto}
+.panel{display:none}.panel.active{display:block}
+.search-bar{width:100%;background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:10px 14px;font:12px var(--mono);color:var(--text);outline:none;margin-bottom:12px}
+.search-bar:focus{border-color:var(--tab-accent)}
+.filter-row{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:14px}
+/* Patterns-style collapsible filter sections */
+.filter-section{margin-bottom:4px}
+.filter-header{display:flex;align-items:center;gap:6px;padding:6px 2px;cursor:pointer;font:600 11px var(--font);color:var(--text-d);user-select:none}
+.filter-header:hover{color:var(--text)}
+.filter-chevron{font-size:10px;transition:transform .15s;margin-left:auto}
+.filter-header.open .filter-chevron{transform:rotate(90deg)}
+.filter-hidden-count{font:10px var(--mono);color:var(--tab-accent);margin-left:2px}
+.filter-collapsible{max-height:0;overflow:hidden;transition:max-height .25s ease}
+.filter-collapsible.open{max-height:400px}
+/* filter buttons — match Patterns filter-btn */
+.fbtn{background:none;border:1px solid var(--border);color:var(--text-d);border-radius:6px;padding:4px 10px;font:10px var(--font);cursor:pointer;text-transform:capitalize;transition:all .15s;white-space:nowrap;-webkit-appearance:none}
+.fbtn:hover{border-color:var(--border-hi);color:var(--text-s)}
+.fbtn.active{border-color:var(--tab-accent);color:var(--text);background:var(--tab-accent-d);font-weight:600}
+.badge{display:inline-block;font:500 9px var(--mono);padding:2px 7px;border-radius:4px}
+.badge-red{background:var(--red-d);color:var(--red)}.badge-amber{background:var(--amber-d);color:var(--amber)}
+.badge-green{background:var(--green-d);color:var(--green)}.badge-blue{background:var(--blue-d);color:var(--blue)}
+.badge-cyan{background:var(--cyan-d);color:var(--cyan)}.badge-purple{background:var(--purple-d);color:var(--purple)}
+.acard{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:12px 14px;margin-bottom:8px;cursor:pointer;transition:all .15s;border-left:3px solid transparent}
+.acard:hover{background:var(--card-hi);border-color:var(--border-hi)}
+.acard.defense{border-left-color:var(--defense)}.acard.financial{border-left-color:var(--financial)}.acard.commercial{border-left-color:var(--commercial)}
+.acard h3{font-size:13px;font-weight:600;color:var(--text);line-height:1.4;margin-bottom:4px}
+.acard .sum{font-size:11px;color:var(--text-s);line-height:1.5;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}
+.ecard{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:12px 14px;margin-bottom:6px}
+.stats-bar{display:flex;gap:12px;flex-wrap:wrap;padding:10px 0;font:10px var(--mono);color:var(--text-d);margin-bottom:12px;border-bottom:1px solid var(--border)}
+.stats-bar b{color:var(--tab-accent)}
+.ro{display:none;position:fixed;inset:0;z-index:300;background:rgba(0,0,0,.6);backdrop-filter:blur(4px);align-items:center;justify-content:center;padding:16px}
+.ro.open{display:flex}
+.rf{position:relative;width:100%;max-width:960px;height:90vh;background:var(--card);border:1px solid var(--border);border-radius:10px;overflow:hidden;display:flex;flex-direction:column}
+.rb{display:flex;align-items:center;gap:8px;padding:8px 12px;border-bottom:1px solid var(--border);background:var(--surface);flex-shrink:0}
+.rb .rt{flex:1;font:11px var(--mono);color:var(--text-d);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.rb button{padding:4px 10px;border-radius:4px;border:1px solid var(--border);background:transparent;color:var(--text-d);font:11px var(--mono);cursor:pointer}
+.rb button:hover{border-color:var(--cyan);color:var(--cyan)}
+.ri{flex:1;border:none;width:100%;background:#fff}
+@media(max-width:600px){.rf{height:95vh;max-width:100%;border-radius:8px}.ro{padding:8px}}
+</style>
+</head>
+<body>
+<header style="display:flex;align-items:center;justify-content:space-between;gap:8px;padding:10px 16px;border-bottom:1px solid #2e2e26;background:#1c1c17;position:sticky;top:0;z-index:100;flex-shrink:0;">
+  <a href="/intel/" style="font:800 18px 'JetBrains Mono',monospace;color:#f59e0b;letter-spacing:-0.03em;text-decoration:none;flex-shrink:0;">Intel</a>
+  <div style="display:flex;gap:5px;align-items:center;flex-wrap:nowrap;"><a href="/" class="tp-pill">Forge</a><a href="/patterns/" class="tp-pill">Patterns</a><a href="/wingman/" class="tp-pill">Wingman</a><a href="https://nvmilldoitmyself.com" class="tp-pill" target=_blank>Handbook</a></div>
+</header>
+<style>.tp-pill{font:500 10px 'DM Sans',system-ui,sans-serif;color:#6b6358;padding:4px 9px;border:1px solid #2e2e26;border-radius:20px;text-decoration:none;white-space:nowrap;transition:all .15s}.tp-pill:hover{border-color:#3e3e34;color:#b8b0a0}</style>
+<div class="tabs">
+  <button class="tab active" data-tab="feed" data-accent="feed"><i class="ph ph-newspaper"></i> Feed <span class="count" id="feed-count">—</span></button>
+  <button class="tab" data-tab="programs" data-accent="prog"><i class="ph ph-flag-banner"></i> Programs</button>
+  <button class="tab" data-tab="companies" data-accent="comp"><i class="ph ph-buildings"></i> Companies</button>
+  <button class="tab" data-tab="regions" data-accent="reg"><i class="ph ph-globe-hemisphere-west"></i> Regions</button>
+</div>
+<div class="content">
+  <div class="panel active" id="panel-feed">
+    <input class="search-bar" id="feed-search" placeholder="Search articles... (e.g. Replicator, Skydio, FCC, DJI ban)" oninput="renderFeed()">
+    <div class="filter-section">
+      <div class="filter-header" onclick="toggleFS(this)">
+        <span>Type</span><span class="filter-hidden-count" id="cat-hidden-count"></span><span class="filter-chevron">▸</span>
+      </div>
+      <div class="filter-row filter-collapsible" id="cat-filters"></div>
+    </div>
+    <div class="filter-section">
+      <div class="filter-header" onclick="toggleFS(this)">
+        <span>Source</span><span class="filter-hidden-count" id="src-hidden-count"></span><span class="filter-chevron">▸</span>
+      </div>
+      <div class="filter-row filter-collapsible" id="src-filters"></div>
+    </div>
+    <div class="filter-section">
+      <div class="filter-header" onclick="toggleFS(this)">
+        <span>Region</span><span class="filter-hidden-count" id="region-hidden-count"></span><span class="filter-chevron">▸</span>
+      </div>
+      <div class="filter-row filter-collapsible" id="region-filters"></div>
+    </div>
+    <div style="display:flex;gap:8px;align-items:center;margin:10px 0 14px;flex-wrap:wrap">
+      <span style="font:10px var(--mono);color:var(--text-d)">Sort:</span>
+      <select id="feed-sort" onchange="renderFeed()" style="background:var(--surface);border:1px solid var(--border);border-radius:6px;padding:6px 10px;font:11px var(--mono);color:var(--text);outline:none;-webkit-appearance:menulist;appearance:menulist;min-height:32px">
+        <option value="date-desc" selected>Newest first</option>
+        <option value="date-asc">Oldest first</option>
+        <option value="type">Type A→Z</option>
+      </select>
+    </div>
+    <div class="stats-bar" id="feed-stats">Loading...</div>
+    <div id="feed-list">Loading...</div>
+  </div>
+  <div class="panel" id="panel-programs">
+    <p style="font-size:11px;color:var(--text-d);margin-bottom:12px">Defense &amp; government programs tracked across intel articles · Cross-referenced with <a href="/patterns/" style="color:var(--amber)">PIE flags</a></p>
+    <div id="program-list"></div>
+  </div>
+  <div class="panel" id="panel-companies">
+    <p style="font-size:11px;color:var(--text-d);margin-bottom:12px">Companies mentioned across intel articles · Ranked by mention frequency</p>
+    <div id="company-list"></div>
+  </div>
+  <div class="panel" id="panel-regions">
+    <p style="font-size:11px;color:var(--text-d);margin-bottom:12px">Geographic distribution · Click a region to filter the feed</p>
+    <div id="intel-region-list"></div>
+  </div>
+</div>
+<div class="ro" id="ro" onclick="if(event.target===this)cr()"><div class="rf"><div class="rb"><span class="rt" id="rt">Loading…</span><button onclick="oe()">↗</button><button onclick="cr()">✕</button></div><iframe class="ri" id="ri" sandbox="allow-scripts allow-same-origin allow-popups"></iframe></div></div>
+<div style="padding:16px 20px;border-top:1px solid var(--border);max-width:960px;margin:0 auto">
+  <div style="font-size:9px;color:var(--text-xd)">Pipeline: live scraper · Cross-referenced with <a href="/patterns/" style="color:var(--amber)">PIE (207 flags, 14 predictions)</a></div>
+</div>
+<script>
+const DKW=['pentagon','dod ','department of defense','military','army','navy','air force','marine corps','replicator','counter-uas','c-uas','jiatf','dawg','diu','ndaa','blue uas','combat','warfare','warfighter','deployed','tactical','darpa','socom','centcom','indopacom','program of record','weapon system','munition','loitering','fcc','covered list','drone dominance'];
+const FKW=['billion','million','contract worth','contract valued','contract award','awarded a','funding','investment','raise','series a','series b','ipo','acquisition','merger','valuation','budget request','procurement','rfp ','fiscal year','fy2','fy3','defense budget','sbir','sttr','ota ','other transaction'];
+const REGS=['US','China','Russia','Ukraine','Turkey','Israel','NATO','Taiwan','Iran','North Korea','Japan','India','Australia','UK','France','Germany','EU'];
+const SL={militarnyi:'militarnyi',defensescoop:'DefenseScoop',defensenews:'Defense News',breakingdefense:'Breaking Defense',twz:'The War Zone',unmannedairspace:'unmannedairspace',dronedj:'DroneDJ',dronelife:'DroneLife',dronexl:'DroneXL',reuters:'Reuters',suasnews:'sUAS News'};
+const CC={defense:'var(--defense)',financial:'var(--financial)',commercial:'var(--commercial)'};
+function cat(a){const t=((a.title||'')+(a.summary||'')+(a.body_text||'')).toLowerCase();const d=DKW.filter(k=>t.includes(k)).length;const f=FKW.filter(k=>t.includes(k)).length;if(d>=4)return'defense';if(f>=2&&f>d)return'financial';if(d>=2)return'defense';return'commercial';}
+function ar(a){const t=(a.title||'')+' '+(a.summary||'')+' '+(a.body_text||'').slice(0,500);return REGS.filter(r=>t.includes(r));}
+let ALL=[],cC='all',cS='all',cR='all';
+document.querySelectorAll('.tab').forEach(t=>{t.addEventListener('click',()=>{document.querySelectorAll('.tab').forEach(x=>x.classList.remove('active'));document.querySelectorAll('.panel').forEach(x=>x.classList.remove('active'));t.classList.add('active');document.getElementById('panel-'+t.dataset.tab).classList.add('active');const acc=t.dataset.accent||'feed';document.documentElement.style.setProperty('--tab-accent',`var(--${acc})`);document.documentElement.style.setProperty('--tab-accent-d',`var(--${acc}-d)`);});});
+function toggleFS(hdr){hdr.classList.toggle('open');const row=hdr.nextElementSibling;row.classList.toggle('open');}
+function rFi(){
+  const cc={all:ALL.length,defense:0,financial:0,commercial:0};ALL.forEach(a=>cc[cat(a)]++);
+  document.getElementById('cat-filters').innerHTML=['all','defense','financial','commercial'].map(c=>`<button class="fbtn${cC===c?' active':''}" onclick="cC='${c}';rFi();renderFeed()">${c==='all'?'All Types':c.charAt(0).toUpperCase()+c.slice(1)} (${cc[c]})</button>`).join('');
+  const sc={};ALL.forEach(a=>{const s=a.site||'other';sc[s]=(sc[s]||0)+1;});
+  const ts=Object.entries(sc).sort((a,b)=>b[1]-a[1]);
+  document.getElementById('src-filters').innerHTML=`<button class="fbtn${cS==='all'?' active':''}" onclick="cS='all';rFi();renderFeed()">All Sources</button>`+ts.map(([s,c])=>`<button class="fbtn${cS===s?' active':''}" onclick="cS='${s}';rFi();renderFeed()">${SL[s]||s} (${c})</button>`).join('');
+  const rc={};ALL.forEach(a=>ar(a).forEach(r=>{rc[r]=(rc[r]||0)+1;}));
+  const tr=Object.entries(rc).sort((a,b)=>b[1]-a[1]).slice(0,12);
+  // Update filter header counts
+  document.getElementById('cat-hidden-count').textContent = cC!=='all' ? cC : '';
+  document.getElementById('src-hidden-count').textContent = cS!=='all' ? (SL[cS]||cS) : '';
+  document.getElementById('region-hidden-count').textContent = cR!=='all' ? cR : '';
+  document.getElementById('region-filters').innerHTML=`<button class="fbtn${cR==='all'?' active':''}" onclick="cR='all';rFi();renderFeed()">All Regions</button>`+tr.map(([r,c])=>`<button class="fbtn${cR===r?' active':''}" onclick="cR='${r}';rFi();renderFeed()">${r} (${c})</button>`).join('');
+}
+function renderFeed(){
+  let a=ALL;if(cC!=='all')a=a.filter(x=>cat(x)===cC);if(cS!=='all')a=a.filter(x=>x.site===cS);if(cR!=='all')a=a.filter(x=>ar(x).includes(cR));
+  const q=(document.getElementById('feed-search')?.value||'').toLowerCase().trim();if(q)a=a.filter(x=>(x.title||'').toLowerCase().includes(q)||(x.summary||'').toLowerCase().includes(q));
+  const sortVal=(document.getElementById('feed-sort')?.value)||'date-desc';
+  if(sortVal==='date-desc')a.sort((x,y)=>(y.pub_date||'').localeCompare(x.pub_date||''));
+  else if(sortVal==='date-asc')a.sort((x,y)=>(x.pub_date||'').localeCompare(y.pub_date||''));
+  else if(sortVal==='type')a.sort((x,y)=>cat(x).localeCompare(cat(y)));
+  document.getElementById('feed-count').textContent=a.length;
+  const cs={defense:0,financial:0,commercial:0};a.forEach(x=>cs[cat(x)]++);
+  document.getElementById('feed-stats').innerHTML=`<span>Showing <b style="color:var(--tab-accent)">${a.length}</b> of <b style="color:var(--tab-accent)">${ALL.length}</b> &nbsp;◆ <b style="color:var(--defense)">${cs.defense} defense</b> &nbsp;◆ <b style="color:var(--financial)">${cs.financial} financial</b></span><span style="color:var(--commercial)">◆ ${cs.commercial} commercial</span>`;
+  const l=document.getElementById('feed-list');
+  if(!a.length){l.innerHTML='<div style="text-align:center;padding:40px;color:var(--text-d)">No articles match.</div>';return;}
+  l.innerHTML=a.slice(0,100).map(x=>{
+    const c=cat(x),rg=ar(x),en=x.entities||{},pr=(en.programs||[]).slice(0,2),co=(en.companies||[]).slice(0,2),u=x.url||'#';
+    return`<div class="acard ${c}" onclick="or('${u.replace(/'/g,"\\'")}','${(x.title||'').replace(/'/g,"\\'").substring(0,80)}')"><div style="display:flex;gap:6px;align-items:center;margin-bottom:4px;flex-wrap:wrap"><span class="badge" style="background:${CC[c]}18;color:${CC[c]}">${c}</span><span class="badge" style="background:var(--surface);color:var(--text-d)">${SL[x.site]||x.site}</span><span style="font:10px var(--mono);color:var(--text-xd);margin-left:auto">${(x.pub_date||'').slice(0,10)}</span></div><h3>${x.title||'Untitled'}</h3><div class="sum">${x.summary||(x.body_text||'').slice(0,200)||'—'}</div><div style="display:flex;gap:3px;flex-wrap:wrap;margin-top:6px">${pr.map(p=>`<span class="badge badge-red">${p}</span>`).join('')}${co.map(c=>`<span class="badge badge-blue">${c}</span>`).join('')}${rg.slice(0,2).map(r=>`<span class="badge badge-cyan">${r}</span>`).join('')}</div></div>`;
+  }).join('')+(a.length>100?`<div style="text-align:center;padding:20px;color:var(--text-d);font:11px var(--mono)">Showing 100 of ${a.length}</div>`:'');
+}
+function rP(){
+  const pc={};ALL.forEach(a=>{(a.entities?.programs||[]).forEach(p=>{pc[p]=(pc[p]||0)+1;});});
+  const s=Object.entries(pc).sort((a,b)=>b[1]-a[1]),mx=s[0]?s[0][1]:1;
+  document.getElementById('program-list').innerHTML=s.map(([n,c])=>`<div class="ecard" style="border-left:3px solid var(--prog)"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px"><span style="font:600 12px var(--font);color:var(--text)">${n}</span><span style="font:700 14px var(--mono);color:var(--prog)">${c}</span></div><div style="background:var(--surface);border-radius:3px;height:6px;overflow:hidden"><div style="width:${Math.round(c/mx*100)}%;height:100%;background:var(--prog);border-radius:3px"></div></div><div style="font-size:9px;color:var(--text-d);margin-top:4px">${c} articles · <a href="/patterns/" style="color:var(--amber)">PIE flags →</a></div></div>`).join('');
+}
+function rC(){
+  const cc={};ALL.forEach(a=>{(a.entities?.companies||[]).forEach(c=>{cc[c]=(cc[c]||0)+1;});});
+  const s=Object.entries(cc).sort((a,b)=>b[1]-a[1]).slice(0,30),mx=s[0]?s[0][1]:1;
+  document.getElementById('company-list').innerHTML=s.map(([n,c])=>`<div class="ecard" style="border-left:3px solid var(--comp)"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px"><span style="font:600 12px var(--font);color:var(--text)">${n}</span><span style="font:700 14px var(--mono);color:var(--comp)">${c}</span></div><div style="background:var(--surface);border-radius:3px;height:6px;overflow:hidden"><div style="width:${Math.round(c/mx*100)}%;height:100%;background:var(--comp);border-radius:3px"></div></div></div>`).join('');
+}
+function rR(){
+  const rc={};ALL.forEach(a=>ar(a).forEach(r=>{rc[r]=(rc[r]||0)+1;}));
+  const s=Object.entries(rc).sort((a,b)=>b[1]-a[1]),mx=s[0]?s[0][1]:1;
+  document.getElementById('intel-region-list').innerHTML=s.map(([n,c])=>{
+    const cl=n==='China'||n==='Russia'||n==='Iran'||n==='North Korea'?'var(--red)':n==='US'||n==='NATO'||n==='UK'||n==='Australia'?'var(--green)':'var(--amber)';
+    return`<div class="ecard" style="border-left:3px solid ${cl};cursor:pointer" onclick="cR='${n}';rFi();renderFeed();document.querySelector('[data-tab=feed]').click()"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px"><span style="font:600 12px var(--font);color:var(--text)">${n}</span><span style="font:700 14px var(--mono);color:${cl}">${c}</span></div><div style="background:var(--surface);border-radius:3px;height:6px;overflow:hidden"><div style="width:${Math.round(c/mx*100)}%;height:100%;background:${cl};border-radius:3px"></div></div><div style="font-size:9px;color:var(--text-d);margin-top:4px">${c} articles · <a href="/patterns/#region-${n.toLowerCase().replace(/\s+/g,'-')}" style="color:var(--amber)">PIE region →</a></div></div>`;
+  }).join('');
+}
+let ru='';function or(u,t){ru=u;document.getElementById('rt').textContent=t||u;document.getElementById('ri').src=u;document.getElementById('ro').classList.add('open');}
+function cr(){document.getElementById('ro').classList.remove('open');document.getElementById('ri').src='about:blank';ru='';}
+function oe(){if(ru)window.open(ru,'_blank');}
+document.addEventListener('keydown',e=>{if(e.key==='Escape'&&document.getElementById('ro').classList.contains('open'))cr();});
+fetch('intel_articles.json').then(r=>r.ok?r.json():[]).catch(()=>[]).then(d=>{ALL=d;rFi();renderFeed();rP();rC();rR();}).catch(e=>{document.getElementById('feed-list').innerHTML=`<div style="text-align:center;padding:40px;color:var(--red)">Error: ${e.message}</div>`;});
+
+
+function fmtUpdated(iso) {
+  try {
+    var d = new Date(iso);
+    var now = new Date();
+    var diffMs = now - d;
+    var diffMins = Math.round(diffMs / 60000);
+    var diffHrs = Math.round(diffMs / 3600000);
+    var diffDays = Math.round(diffMs / 86400000);
+    var timeStr;
+    if (diffMins < 2) timeStr = 'just now';
+    else if (diffMins < 60) timeStr = diffMins + 'm ago';
+    else if (diffHrs < 24) timeStr = diffHrs + 'h ago';
+    else timeStr = diffDays + 'd ago';
+    var dt = d.toISOString().replace('T',' ').slice(0,16) + ' UTC';
+    var el = document.getElementById('last-updated');
+    if (el) el.textContent = 'Pipeline: ' + dt + ' · ' + timeStr;
+  } catch(e) {}
+}
+fetch('../static/intel_articles.json').then(r=>r.json()).then(arts=>{
+    var dates = arts.map(a=>a.pub_date||a.scraped_date||'').filter(Boolean).sort();
+    var latest = dates[dates.length-1];
+    if(latest) { var el=document.getElementById('last-updated'); if(el) el.textContent='Latest article: '+latest; }
+  }).catch(()=>{});
+</script>
+
+<!-- Page Analytics — fires batch events to /.netlify/functions/analytics -->
+<script>
+(function(){
+  var E='/.netlify/functions/analytics';
+  var S='sess_'+crypto.randomUUID().replace(/-/g,'').slice(0,16);
+  var surface='forge';
+  var q=[],t=null,ps=Date.now(),ms=0,ix=0;
+  function rg(){try{var z=Intl.DateTimeFormat().resolvedOptions().timeZone;if(z.includes('America'))return'Americas';if(z.includes('Europe'))return'Europe';if(z.includes('Asia')||z.includes('Australia')||z.includes('Pacific'))return'Asia-Pacific';}catch(e){}return'Unknown';}
+  function mkEvent(type,action,payload){return{event_id:crypto.randomUUID(),timestamp:new Date().toISOString(),surface:surface,event_type:type,event_action:action,context:{session_id:S,geo_region:rg(),platform:/Android|iPhone|iPad/i.test(navigator.userAgent)?'mobile':'web',path:location.pathname},payload:payload||{},data_policy:{collection_tier:'anonymous'}};}
+  function fl(){if(t){clearTimeout(t);t=null;}if(!q.length)return;var b=q.splice(0);navigator.sendBeacon?navigator.sendBeacon(E,JSON.stringify({type:'batch',events:b})):fetch(E,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({type:'batch',events:b}),keepalive:true}).catch(function(){});}
+  function ev(type,action,payload){q.push(mkEvent(type,action,payload));if(q.length>=20)fl();else if(!t)t=setTimeout(fl,5000);}
+  // Page view
+  ev('page_view','view',{path:location.pathname,title:document.title});
+  // Scroll depth
+  var st=null;addEventListener('scroll',function(){var h=document.documentElement.scrollHeight-innerHeight;if(h>0){var p=Math.round(100*scrollY/h);if(p>ms)ms=p;}if(st)clearTimeout(st);st=setTimeout(function(){ev('engagement','scroll_depth',{depth_pct:ms,path:location.pathname});},2000);},{passive:true});
+  // Click tracking
+  addEventListener('click',function(e){ix++;var el=e.target.closest('a,button,[data-track]');if(!el)return;ev('interaction','click',{label:(el.dataset.track||el.textContent.trim()).substring(0,50),href:(el.href||'').substring(0,200),element:el.tagName.toLowerCase(),path:location.pathname});},{passive:true});
+  // Exit
+  function end(){ev('engagement','page_exit',{duration_sec:Math.round((Date.now()-ps)/1e3),max_scroll_pct:ms,interactions:ix,path:location.pathname});fl();}
+  addEventListener('visibilitychange',function(){if(document.visibilityState==='hidden')end();});
+  addEventListener('pagehide',end);
+  // Expose for page-specific events
+  window.__pageAnalytics={ev:ev,flush:fl,session:S};
+})();
+</script>
+</body>
+</html>

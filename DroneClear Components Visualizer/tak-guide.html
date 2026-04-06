@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TAK Integration Guide — Forge</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&family=Source+Serif+4:opsz,wght@8..60,400;8..60,600;8..60,700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="{% static 'base.css' %}?v=2">
+    <link rel="stylesheet" href="{% static 'layout.css' %}?v=4">
+    <link rel="stylesheet" href="{% static 'utilities.css' %}?v=2">
+    <script src="https://unpkg.com/@phosphor-icons/web"></script>
+    <script>(function(){const s=localStorage.getItem('dc-theme');document.documentElement.setAttribute('data-theme',s||'dark')})();</script>
+    <style>
+        .tg-container{max-width:900px;margin:0 auto;padding:32px 24px 80px}.tg-hero{text-align:center;margin-bottom:40px}.tg-hero h1{font-size:26px;font-weight:700;background:linear-gradient(135deg,#fbbf24 0%,var(--accent-cyan) 100%);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;margin:0 0 8px}.tg-hero p{color:var(--text-muted);font-size:14px;max-width:640px;margin:0 auto;line-height:1.6}
+        .tg-back{font-size:12px;color:var(--text-muted);text-decoration:none;display:inline-flex;align-items:center;gap:4px;margin-bottom:24px}.tg-back:hover{color:var(--accent-cyan)}
+        .tg-section{margin-bottom:32px}.tg-section-title{font-size:18px;font-weight:700;color:var(--text-main);margin:0 0 8px;display:flex;align-items:center;gap:8px}.tg-section-title i{color:#fbbf24}.tg-section-desc{font-size:13px;color:var(--text-muted);line-height:1.7;margin-bottom:16px}
+        .tg-code{background:#0d0d0d;border:1px solid var(--border-color);border-radius:var(--radius-sm);padding:16px;font-family:var(--font-family);font-size:12px;line-height:1.7;color:#a3e635;overflow-x:auto;margin-bottom:16px;white-space:pre;position:relative}.tg-code .c{color:#525252}.tg-code .xml{color:#fbbf24}.tg-code .attr{color:#22d3ee}.tg-code-label{position:absolute;top:8px;right:12px;font-size:9px;text-transform:uppercase;letter-spacing:0.1em;color:var(--text-faint);background:#0d0d0d;padding:2px 6px}
+        .tg-info{padding:14px 16px;border-radius:var(--radius-sm);font-size:13px;line-height:1.6;margin-bottom:16px;display:flex;gap:10px}.tg-info i{font-size:18px;flex-shrink:0;margin-top:1px}.tg-info-blue{background:rgba(34,211,238,0.06);border:1px solid rgba(34,211,238,0.15);color:var(--accent-cyan)}.tg-info-yellow{background:rgba(251,191,36,0.06);border:1px solid rgba(251,191,36,0.15);color:#fbbf24}.tg-info-green{background:rgba(74,222,128,0.06);border:1px solid rgba(74,222,128,0.15);color:var(--accent-green)}
+        .tg-glossary{display:grid;grid-template-columns:repeat(auto-fit,minmax(250px,1fr));gap:12px;margin-bottom:20px}.tg-gloss-card{background:var(--bg-panel);border:1px solid var(--border-color);border-radius:var(--radius-sm);padding:14px}.tg-gloss-card h4{font-size:13px;font-weight:700;color:#fbbf24;margin:0 0 4px}.tg-gloss-card p{font-size:12px;color:var(--text-muted);margin:0;line-height:1.5}
+            /* Scroll fix — standalone guide page, not sidebar app layout */
+        body { overflow-y: auto !important; }
+        .app-container { height: auto !important; min-height: 100vh; overflow: visible !important; }
+    </style>
+<style>html,body{background:#0c0c0a!important;color:#f5f0e8}</style>
+</head>
+<body>
+<header style="display:flex;align-items:center;justify-content:space-between;gap:8px;padding:10px 16px;border-bottom:1px solid #2e2e26;background:#1c1c17;position:sticky;top:0;z-index:100;flex-shrink:0;">
+  <a href="/guides/" style="font:800 18px 'JetBrains Mono',monospace;color:#ff3b5c;letter-spacing:-0.03em;text-decoration:none;flex-shrink:0;">Forge</a>
+  <div style="display:flex;gap:5px;align-items:center;flex-wrap:nowrap;"><a href="/intel/" class="tp-pill">Intel</a><a href="/patterns/" class="tp-pill">Patterns</a><a href="/tools-home/" class="tp-pill">Tools</a><a href="/wingman/" class="tp-pill">Wingman</a></div>
+</header>
+<style>.tp-pill{font:500 10px 'DM Sans',system-ui,sans-serif;color:#6b6358;padding:4px 9px;border:1px solid #2e2e26;border-radius:20px;text-decoration:none;white-space:nowrap;transition:all .15s}.tp-pill:hover{border-color:#3e3e34;color:#b8b0a0}</style>
+<div class="app-container" style="flex-direction:column;">
+    <div class="tg-container">
+        <a href="/guides/" class="tg-back"><i class="ph ph-caret-left"></i> Implementation Guides</a>
+
+        <div class="tg-hero">
+            <h1><i class="ph ph-crosshair-simple"></i> TAK / ATAK Integration</h1>
+            <p>Put your drone on the same map as everyone else. From zero to a live drone icon on ATAK in under an hour.</p>
+        </div>
+
+        <!-- JARGON -->
+        <div class="tg-section">
+            <div class="tg-section-title"><i class="ph ph-translate"></i> Jargon Buster</div>
+            <div class="tg-glossary">
+                <div class="tg-gloss-card"><h4>TAK</h4><p>Team Awareness Kit. Situational awareness platform used by US military, law enforcement, fire, SAR. Shows positions, tracks, and data on a shared map. The ecosystem: ATAK (Android), WinTAK (Windows), iTAK (iOS), WebTAK (browser).</p></div>
+                <div class="tg-gloss-card"><h4>CoT (Cursor-on-Target)</h4><p>The XML message format TAK speaks. Everything on the map is a CoT event — a position + type + metadata. If your drone sends one CoT message, it appears on every connected TAK device.</p></div>
+                <div class="tg-gloss-card"><h4>TAK Server</h4><p>Centralized server that relays CoT messages between TAK clients. Free/open-source version available. Without it, CoT goes via multicast on local network only.</p></div>
+                <div class="tg-gloss-card"><h4>2525C / MIL-STD-2525</h4><p>The military symbol standard. CoT "type" codes map to 2525C symbology. <code>a-f-A-M-H-Q</code> = friendly air military helicopter. The icon on the map comes from this code.</p></div>
+                <div class="tg-gloss-card"><h4>ATAK Plugin</h4><p>An Android app extension that runs inside ATAK. The UAS Tool plugin adds drone-specific features (telemetry overlay, video feed, mission planning). Available from TAK.gov.</p></div>
+                <div class="tg-gloss-card"><h4>Multicast vs Unicast</h4><p>Multicast: broadcast CoT to everyone on the LAN (239.2.3.1:6969). Unicast: send to a specific TAK Server IP. Multicast is simpler but doesn't cross network boundaries. TAK Server handles routing across networks.</p></div>
+            </div>
+        </div>
+
+        <!-- MINIMUM VIABLE CoT -->
+        <div class="tg-section">
+            <div class="tg-section-title"><i class="ph ph-code"></i> The Minimum Viable Drone-on-Map</div>
+            <div class="tg-section-desc">One UDP packet. That's all it takes to put your drone on TAK.</div>
+
+            <div class="tg-code"><span class="c"># ═══ MINIMUM CoT EVENT — PUT A DRONE ON THE MAP ═══</span>
+<span class="c"># This XML is the entire message. Send it over UDP.</span>
+
+<span class="xml">&lt;?xml version="1.0" encoding="UTF-8"?&gt;</span>
+<span class="xml">&lt;event</span> <span class="attr">version</span>="2.0"
+       <span class="attr">uid</span>="drone-01"
+       <span class="attr">type</span>="a-f-A-M-H-Q"
+       <span class="attr">how</span>="m-g"
+       <span class="attr">time</span>="2026-03-20T18:30:00Z"
+       <span class="attr">start</span>="2026-03-20T18:30:00Z"
+       <span class="attr">stale</span>="2026-03-20T18:31:00Z"<span class="xml">&gt;</span>
+  <span class="xml">&lt;point</span> <span class="attr">lat</span>="44.9778" <span class="attr">lon</span>="-93.2650" <span class="attr">hae</span>="300" <span class="attr">ce</span>="10" <span class="attr">le</span>="15"<span class="xml">/&gt;</span>
+<span class="xml">&lt;/event&gt;</span>
+
+<span class="c"># uid:   Unique ID — same uid = same icon moves on map</span>
+<span class="c"># type:  a-f-A-M-H-Q = friendly, air, military, helicopter</span>
+<span class="c"># how:   m-g = machine GPS</span>
+<span class="c"># stale: Remove from map after this time (set 30-60s for moving drone)</span>
+<span class="c"># hae:   Height above ellipsoid (meters, WGS84)</span>
+<span class="c"># ce/le: Circular/linear error (meters, 90% confidence)</span><span class="tg-code-label">CoT XML</span></div>
+
+            <div class="tg-code"><span class="c"># ═══ SEND CoT VIA PYTHON — WORKS ON ANY COMPANION COMPUTER ═══</span>
+
+<span class="c"># pip install pytak  (or just use raw sockets)</span>
+import socket, time, datetime
+
+def send_cot(lat, lon, alt, uid="drone-01", dest="239.2.3.1", port=6969):
+    now = datetime.datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%SZ")
+    stale = (datetime.datetime.utcnow() + datetime.timedelta(seconds=60)).strftime("%Y-%m-%dT%H:%M:%SZ")
+    
+    cot = f'''&lt;?xml version="1.0" encoding="UTF-8"?&gt;
+&lt;event version="2.0" uid="{uid}" type="a-f-A-M-H-Q" how="m-g"
+       time="{now}" start="{now}" stale="{stale}"&gt;
+  &lt;point lat="{lat}" lon="{lon}" hae="{alt}" ce="10" le="15"/&gt;
+&lt;/event&gt;'''
+    
+    sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    sock.sendto(cot.encode(), (dest, port))
+    sock.close()
+
+<span class="c"># Call in a loop with MAVROS position data:</span>
+<span class="c"># while True:</span>
+<span class="c">#     pos = get_position_from_mavros()</span>
+<span class="c">#     send_cot(pos.lat, pos.lon, pos.alt)</span>
+<span class="c">#     time.sleep(1)  # 1 Hz position updates</span><span class="tg-code-label">Python</span></div>
+
+            <div class="tg-info tg-info-green"><i class="ph ph-check-circle"></i><div><strong>That's it.</strong> Run this on your companion computer, open ATAK on your phone (connected to the same network), and your drone appears as a blue helicopter icon. Every 1-second update moves the icon in real time.</div></div>
+        </div>
+
+        <!-- MAVROS TO TAK BRIDGE -->
+        <div class="tg-section">
+            <div class="tg-section-title"><i class="ph ph-plugs"></i> MAVROS → TAK Bridge (ROS Node)</div>
+            <div class="tg-code"><span class="c"># ═══ ROS NODE: SUBSCRIBE TO MAVROS, PUBLISH CoT ═══</span>
+
+<span class="c"># Install: pip install rospy pytak</span>
+<span class="c"># This node reads position from MAVROS and sends CoT to TAK</span>
+
+#!/usr/bin/env python3
+import rospy, socket, datetime
+from sensor_msgs.msg import NavSatFix
+from geometry_msgs.msg import TwistStamped
+
+TAK_DEST = "239.2.3.1"    <span class="c"># Multicast (or TAK Server IP)</span>
+TAK_PORT = 6969
+DRONE_UID = "wingman-01"
+sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+
+def gps_callback(msg):
+    now = datetime.datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%SZ")
+    stale = (datetime.datetime.utcnow() + 
+             datetime.timedelta(seconds=30)).strftime("%Y-%m-%dT%H:%M:%SZ")
+    
+    cot = f'&lt;event version="2.0" uid="{DRONE_UID}" '
+    cot += f'type="a-f-A-M-H-Q" how="m-g" '
+    cot += f'time="{now}" start="{now}" stale="{stale}"&gt;'
+    cot += f'&lt;point lat="{msg.latitude}" lon="{msg.longitude}" '
+    cot += f'hae="{msg.altitude}" ce="10" le="15"/&gt;'
+    cot += '&lt;/event&gt;'
+    
+    sock.sendto(cot.encode(), (TAK_DEST, TAK_PORT))
+
+rospy.init_node('tak_bridge')
+rospy.Subscriber('/mavros/global_position/global', NavSatFix, gps_callback)
+rospy.spin()<span class="tg-code-label">ROS Node</span></div>
+        </div>
+
+        <!-- VIDEO STREAMING -->
+        <div class="tg-section">
+            <div class="tg-section-title"><i class="ph ph-video-camera"></i> Video Feed to ATAK</div>
+            <div class="tg-code"><span class="c"># ═══ STREAM VIDEO TO ATAK VIA RTSP ═══</span>
+
+<span class="c"># On companion computer — create RTSP server with GStreamer:</span>
+gst-launch-1.0 v4l2src device=/dev/video0 ! \
+  video/x-raw,width=1280,height=720,framerate=30/1 ! \
+  x264enc tune=zerolatency bitrate=1500 speed-preset=ultrafast ! \
+  rtph264pay ! \
+  udpsink host=239.2.3.1 port=5600
+
+<span class="c"># In ATAK → Video → Add → Network → UDP</span>
+<span class="c"># Address: 239.2.3.1  Port: 5600</span>
+<span class="c"># The video feed appears as a layer on the map</span>
+
+<span class="c"># For TAK Server routing, use RTSP instead:</span>
+<span class="c"># Install mediamtx (lightweight RTSP server)</span>
+<span class="c"># Stream to: rtsp://companion-ip:8554/drone1</span>
+<span class="c"># ATAK connects to the RTSP URL directly</span><span class="tg-code-label">Video</span></div>
+        </div>
+
+        <!-- TAK SERVER -->
+        <div class="tg-section">
+            <div class="tg-section-title"><i class="ph ph-server"></i> TAK Server (Optional)</div>
+            <div class="tg-section-desc">Without a server, CoT only works on local network (multicast). A TAK Server lets devices across different networks see each other.</div>
+            <div class="tg-code"><span class="c"># ═══ FREE TAK SERVER (FreeTAKServer) ═══</span>
+
+<span class="c"># Runs on any Linux box, Raspberry Pi, or cloud VM</span>
+pip install FreeTAKServer
+
+<span class="c"># Start:</span>
+python3 -m FreeTAKServer.controllers.services.FTS
+
+<span class="c"># Default ports:</span>
+<span class="c">#   TCP 8087 — CoT input (devices connect here)</span>
+<span class="c">#   TCP 8443 — REST API</span>
+<span class="c">#   TCP 19023 — Federation</span>
+
+<span class="c"># In ATAK: Settings → Network → TAK Server</span>
+<span class="c">#   Address: your-server-ip</span>
+<span class="c">#   Port: 8087</span>
+<span class="c">#   Protocol: TCP</span>
+
+<span class="c"># For your drone's CoT bridge, change dest to unicast:</span>
+<span class="c"># TAK_DEST = "your-server-ip"</span>
+<span class="c"># TAK_PORT = 8087</span>
+<span class="c"># Use TCP socket instead of UDP</span><span class="tg-code-label">TAK Server</span></div>
+
+            <div class="tg-info tg-info-blue"><i class="ph ph-info"></i><div><strong>Official TAK Server:</strong> Available from <a href="https://tak.gov" style="color:var(--accent-cyan);">tak.gov</a> (requires .mil/.gov email or TAK Product Center account). More robust than FreeTAKServer, supports certs, federation, and enterprise features.</div></div>
+        </div>
+
+        <a href="/guides/" style="display:inline-flex;align-items:center;gap:6px;margin-top:24px;padding:10px 20px;background:var(--bg-panel);border:1px solid var(--border-color);border-radius:var(--radius-sm);color:var(--text-muted);text-decoration:none;font-size:13px;"><i class="ph ph-caret-left"></i> Back to Implementation Guides</a>
+    </div>
+</div>
+<script>document.getElementById('dark-mode-toggle')?.addEventListener('click',()=>{const c=document.documentElement.getAttribute('data-theme');const n=c==='dark'?'light':'dark';document.documentElement.setAttribute('data-theme',n);try{localStorage.setItem('dc-theme',n)}catch(e){}const i=document.getElementById('dark-mode-icon');if(i)i.className=n==='dark'?'ph ph-moon':'ph ph-sun';});</script>
+</body>
+</html>

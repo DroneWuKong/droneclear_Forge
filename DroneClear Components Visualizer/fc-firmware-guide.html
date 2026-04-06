@@ -1,0 +1,646 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FC Firmware Flashing — Forge</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&family=Source+Serif+4:opsz,wght@8..60,400;8..60,600;8..60,700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="{% static 'base.css' %}?v=2">
+    <link rel="stylesheet" href="{% static 'layout.css' %}?v=4">
+    <link rel="stylesheet" href="{% static 'utilities.css' %}?v=2">
+    <script src="https://unpkg.com/@phosphor-icons/web"></script>
+    <script>(function(){const s=localStorage.getItem('dc-theme');document.documentElement.setAttribute('data-theme',s||'dark')})();</script>
+    <style>
+        .fc-container { max-width: 900px; margin: 0 auto; padding: 32px 24px 80px; }
+        .fc-hero { text-align: center; margin-bottom: 40px; }
+        .fc-hero h1 { font-size: 26px; font-weight: 700; background: linear-gradient(135deg, #fbbf24 0%, var(--accent-cyan) 100%); -webkit-background-clip:text; -webkit-text-fill-color:transparent; background-clip:text; margin: 0 0 8px; }
+        .fc-hero p { color: var(--text-muted); font-size: 14px; max-width: 640px; margin: 0 auto; line-height: 1.6; }
+        .fc-hero a { color: var(--accent-green); text-decoration: none; font-size: 13px; }
+
+        .fc-setup { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px; margin-bottom: 32px; }
+        .fc-setup select { width: 100%; padding: 10px 12px; background: var(--bg-panel); border: 1px solid var(--border-color); border-radius: var(--radius-sm); color: var(--text-main); font-family: var(--font-family); font-size: 13px; cursor: pointer; appearance: none; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%23737373' d='M6 8L1 3h10z'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 12px center; }
+        .fc-setup select:focus { outline: none; border-color: #fbbf24; }
+        .fc-setup-label { font-size: 10px; text-transform: uppercase; letter-spacing: 0.1em; color: var(--text-faint); margin-bottom: 4px; display: block; }
+
+        .fc-phases { display: flex; gap: 2px; margin-bottom: 32px; overflow-x: auto; }
+        .fc-phase-tab { padding: 10px 16px; background: var(--bg-panel); border: 1px solid var(--border-color); border-radius: var(--radius-sm); font-size: 12px; font-family: var(--font-family); color: var(--text-muted); cursor: pointer; white-space: nowrap; transition: all 0.2s; display: flex; align-items: center; gap: 6px; }
+        .fc-phase-tab:hover { border-color: var(--border-hover); color: var(--text-main); }
+        .fc-phase-tab.active { background: rgba(251,191,36,0.1); border-color: rgba(251,191,36,0.3); color: #fbbf24; }
+        .fc-phase-tab .num { display: inline-flex; width: 20px; height: 20px; align-items: center; justify-content: center; border-radius: 50%; background: var(--bg-dark); font-size: 10px; font-weight: 700; }
+        .fc-phase-tab.active .num { background: #fbbf24; color: #000; }
+
+        .fc-phase { display: none; }
+        .fc-phase.active { display: block; }
+
+        .fc-section { margin-bottom: 28px; }
+        .fc-title { font-size: 16px; font-weight: 700; color: var(--text-main); margin: 0 0 6px; display: flex; align-items: center; gap: 8px; }
+        .fc-title i { color: #fbbf24; }
+        .fc-desc { font-size: 13px; color: var(--text-muted); line-height: 1.7; margin-bottom: 16px; }
+
+        .fc-code { background: #0d0d0d; border: 1px solid var(--border-color); border-radius: var(--radius-sm); padding: 16px; font-family: var(--font-family); font-size: 12px; line-height: 1.7; color: #a3e635; overflow-x: auto; position: relative; margin-bottom: 16px; white-space: pre; }
+        .fc-code .c { color: #525252; }
+        .fc-code .cmd { color: #22d3ee; }
+        .fc-code .warn { color: #fbbf24; }
+        .fc-code-label { position: absolute; top: 8px; right: 12px; font-size: 9px; text-transform: uppercase; letter-spacing: 0.1em; color: var(--text-faint); background: #0d0d0d; padding: 2px 6px; }
+
+        .fc-info { padding: 14px 16px; border-radius: var(--radius-sm); font-size: 13px; line-height: 1.6; margin-bottom: 16px; display: flex; gap: 10px; }
+        .fc-info i { font-size: 18px; flex-shrink: 0; margin-top: 1px; }
+        .fc-info-blue { background: rgba(34,211,238,0.06); border: 1px solid rgba(34,211,238,0.15); color: var(--accent-cyan); }
+        .fc-info-yellow { background: rgba(251,191,36,0.06); border: 1px solid rgba(251,191,36,0.15); color: #fbbf24; }
+        .fc-info-green { background: rgba(74,222,128,0.06); border: 1px solid rgba(74,222,128,0.15); color: var(--accent-green); }
+        .fc-info-red { background: rgba(248,113,113,0.06); border: 1px solid rgba(248,113,113,0.15); color: var(--negative-red); }
+
+        .fc-step { display: grid; grid-template-columns: 40px 1fr; gap: 12px; margin-bottom: 20px; position: relative; }
+        .fc-step::before { content: ''; position: absolute; left: 19px; top: 40px; bottom: -20px; width: 2px; background: var(--border-color); }
+        .fc-step:last-child::before { display: none; }
+        .fc-step-num { width: 40px; height: 40px; border-radius: 50%; background: var(--bg-panel); border: 2px solid rgba(251,191,36,0.3); display: flex; align-items: center; justify-content: center; font-size: 14px; font-weight: 700; color: #fbbf24; z-index: 1; }
+        .fc-step-body { padding-top: 8px; }
+        .fc-step-title { font-size: 14px; font-weight: 600; color: var(--text-main); margin-bottom: 6px; }
+        .fc-step-desc { font-size: 13px; color: var(--text-muted); line-height: 1.6; }
+
+        .fc-dyn { display: none; }
+        .fc-dyn.show { display: block; }
+
+        .fc-tools-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px; margin-bottom: 20px; }
+        .fc-tool { background: var(--bg-panel); border: 1px solid var(--border-color); border-radius: var(--radius-sm); padding: 14px; }
+        .fc-tool h4 { font-size: 13px; font-weight: 600; color: #fbbf24; margin: 0 0 4px; }
+        .fc-tool p { font-size: 12px; color: var(--text-muted); margin: 0; line-height: 1.4; }
+        .fc-tool a { color: var(--accent-cyan); text-decoration: none; font-size: 12px; }
+
+        .fc-nav { display: flex; justify-content: space-between; margin-top: 32px; padding-top: 20px; border-top: 1px solid var(--border-color); }
+        .fc-nav-btn { padding: 10px 20px; border-radius: var(--radius-sm); font-size: 13px; font-family: var(--font-family); cursor: pointer; display: flex; align-items: center; gap: 6px; transition: all 0.2s; }
+        .fc-nav-prev { background: var(--bg-panel); border: 1px solid var(--border-color); color: var(--text-muted); }
+        .fc-nav-next { background: #fbbf24; border: 1px solid #fbbf24; color: #000; font-weight: 600; }
+            /* Scroll fix — standalone guide page, not sidebar app layout */
+        body { overflow-y: auto !important; }
+        .app-container { height: auto !important; min-height: 100vh; overflow: visible !important; }
+    </style>
+<style>html,body{background:#0c0c0a!important;color:#f5f0e8}</style>
+</head>
+<body>
+<header style="display:flex;align-items:center;justify-content:space-between;gap:8px;padding:10px 16px;border-bottom:1px solid #2e2e26;background:#1c1c17;position:sticky;top:0;z-index:100;flex-shrink:0;">
+  <a href="/guides/" style="font:800 18px 'JetBrains Mono',monospace;color:#ff3b5c;letter-spacing:-0.03em;text-decoration:none;flex-shrink:0;">Forge</a>
+  <div style="display:flex;gap:5px;align-items:center;flex-wrap:nowrap;"><a href="/intel/" class="tp-pill">Intel</a><a href="/patterns/" class="tp-pill">Patterns</a><a href="/tools-home/" class="tp-pill">Tools</a><a href="/wingman/" class="tp-pill">Wingman</a></div>
+</header>
+<style>.tp-pill{font:500 10px 'DM Sans',system-ui,sans-serif;color:#6b6358;padding:4px 9px;border:1px solid #2e2e26;border-radius:20px;text-decoration:none;white-space:nowrap;transition:all .15s}.tp-pill:hover{border-color:#3e3e34;color:#b8b0a0}</style>
+    <div class="app-container" style="flex-direction: column;">
+        <div class="fc-container">
+            <div class="fc-hero">
+                <h1><i class="ph ph-microchip"></i> FC Firmware Flashing Guide</h1>
+                <p>Install ArduPilot, PX4, Betaflight, or iNav on your flight controller. From DFU mode to first arm.</p>
+                <p style="margin-top:8px;"><a href="/guides/"><i class="ph ph-arrow-left"></i> Back to Implementation Guides</a></p>
+            </div>
+
+            <div class="fc-setup">
+                <div>
+                    <span class="fc-setup-label"><i class="ph ph-microchip"></i> Flight Controller</span>
+                    <select id="sel-fc">
+                        <option value="orqa_quad">Orqa QuadCore H7</option>
+                        <option value="orqa_wing">Orqa H7 WingCore</option>
+                        <option value="orqa_apb">Orqa DTK APB (FC side)</option>
+                        <option value="pixhawk6x">Pixhawk 6X / 6C</option>
+                        <option value="cubeblue">CubePilot Cube Blue H7</option>
+                        <option value="matek_h743">Matek H743</option>
+                        <option value="speedybee_f405">SpeedyBee F405</option>
+                        <option value="generic_h7">Other STM32H7 board</option>
+                        <option value="generic_f4">Other STM32F4 board</option>
+                    </select>
+                </div>
+                <div>
+                    <span class="fc-setup-label"><i class="ph ph-code"></i> Target Firmware</span>
+                    <select id="sel-fw">
+                        <option value="ardupilot">ArduPilot</option>
+                        <option value="px4">PX4</option>
+                        <option value="betaflight">Betaflight</option>
+                        <option value="inav">iNav</option>
+                    </select>
+                </div>
+                <div>
+                    <span class="fc-setup-label"><i class="ph ph-desktop-tower"></i> Your OS</span>
+                    <select id="sel-os">
+                        <option value="windows">Windows</option>
+                        <option value="mac">macOS</option>
+                        <option value="linux">Linux</option>
+                    </select>
+                </div>
+            </div>
+
+            <!-- Phase tabs -->
+            <div class="fc-phases" id="fc-tabs">
+                <div class="fc-phase-tab active" data-phase="0"><span class="num">0</span> Prerequisites</div>
+                <div class="fc-phase-tab" data-phase="1"><span class="num">1</span> Download</div>
+                <div class="fc-phase-tab" data-phase="2"><span class="num">2</span> DFU Mode</div>
+                <div class="fc-phase-tab" data-phase="3"><span class="num">3</span> Flash</div>
+                <div class="fc-phase-tab" data-phase="4"><span class="num">4</span> Configure</div>
+                <div class="fc-phase-tab" data-phase="5"><span class="num">5</span> First Arm</div>
+            </div>
+
+            <!-- ════ PHASE 0: PREREQUISITES ════ -->
+            <div class="fc-phase active" data-phase="0">
+                <div class="fc-section">
+                    <div class="fc-title"><i class="ph ph-toolbox"></i> What You Need</div>
+                    <div class="fc-desc">Before touching firmware, make sure you have these tools installed on your computer.</div>
+
+                    <div class="fc-tools-grid">
+                        <div class="fc-tool">
+                            <h4>STM32CubeProgrammer</h4>
+                            <p>ST's official tool for flashing STM32 chips. Works on all OSes. Required for DFU flashing.</p>
+                            <a href="https://www.st.com/en/development-tools/stm32cubeprog.html" target="_blank">Download →</a>
+                        </div>
+                        <div class="fc-tool">
+                            <h4>USB Driver (Windows only)</h4>
+                            <p>Zadig — replaces the default Windows USB driver so DFU mode works. Not needed on Mac/Linux.</p>
+                            <a href="https://zadig.akeo.ie/" target="_blank">Download Zadig →</a>
+                        </div>
+                        <div class="fc-tool">
+                            <h4>Ground Station</h4>
+                            <p><strong>Mission Planner</strong> (ArduPilot, Windows), <strong>QGroundControl</strong> (PX4, all OS), <strong>Betaflight Configurator</strong>, or <strong>iNav Configurator</strong>.</p>
+                        </div>
+                        <div class="fc-tool">
+                            <h4>USB-C Cable</h4>
+                            <p>A data-capable USB-C cable. Charge-only cables won't work. If the FC doesn't show up in device manager, try a different cable first.</p>
+                        </div>
+                    </div>
+
+                    <div class="fc-info fc-info-yellow"><i class="ph ph-warning"></i><div><strong>Important:</strong> If your FC currently runs Betaflight and you want ArduPilot (or vice versa), you MUST flash via DFU. You cannot cross-flash via the normal configurator — the bootloaders are different. This guide covers the DFU path.</div></div>
+
+                    <div class="fc-dyn" data-os="windows">
+                        <div class="fc-info fc-info-blue"><i class="ph ph-windows-logo"></i><div><strong>Windows:</strong> After installing STM32CubeProgrammer, you also need Zadig to install the correct USB DFU driver. When the board is in DFU mode, open Zadig, select "STM32 BOOTLOADER" from the dropdown, and click "Replace Driver" (select WinUSB).</div></div>
+                    </div>
+                    <div class="fc-dyn" data-os="mac">
+                        <div class="fc-info fc-info-blue"><i class="ph ph-apple-logo"></i><div><strong>macOS:</strong> STM32CubeProgrammer works natively. You may also use <code>dfu-util</code> from Homebrew: <code>brew install dfu-util</code>. No driver installation needed.</div></div>
+                    </div>
+                    <div class="fc-dyn" data-os="linux">
+                        <div class="fc-info fc-info-blue"><i class="ph ph-linux-logo"></i><div><strong>Linux:</strong> Install dfu-util: <code>sudo apt install dfu-util</code>. You may need udev rules for your USB device. STM32CubeProgrammer also works on Linux.</div></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ════ PHASE 1: DOWNLOAD FIRMWARE ════ -->
+            <div class="fc-phase" data-phase="1">
+                <div class="fc-section">
+                    <div class="fc-title"><i class="ph ph-download-simple"></i> Download Firmware</div>
+
+                    <div class="fc-dyn" data-fw="ardupilot">
+                        <div class="fc-desc">ArduPilot firmware comes as <code>arducopter_with_bl.hex</code> (includes bootloader — needed for first flash) or <code>.apj</code> (for subsequent updates via Mission Planner).</div>
+
+                        <div class="fc-step">
+                            <div class="fc-step-num">1</div>
+                            <div class="fc-step-body">
+                                <div class="fc-step-title">Find your board target on firmware.ardupilot.org</div>
+                                <div class="fc-step-desc">Go to <a href="https://firmware.ardupilot.org" target="_blank" style="color:var(--accent-cyan);">firmware.ardupilot.org</a> → Select vehicle type (Copter, Plane, Rover) → Select your board name.</div>
+                            </div>
+                        </div>
+
+                        <div class="fc-dyn" data-fc="orqa_quad,orqa_wing,orqa_apb">
+                            <div class="fc-info fc-info-yellow"><i class="ph ph-warning"></i><div><strong>Orqa boards:</strong> If there's no official "OrqaQuadCoreH7" target on firmware.ardupilot.org yet, you need to find the closest compatible hwdef. The Orqa QuadCore H7 uses STM32H743 + twin ICM42688 + DPS310 — this is very similar to <strong>MatekH743</strong> or a custom target. Check <a href="https://github.com/ArduPilot/ardupilot/tree/master/libraries/AP_HAL_ChibiOS/hwdef" target="_blank" style="color:var(--accent-cyan);">ArduPilot hwdef directory</a> for an Orqa entry, or ask on the <a href="https://discuss.ardupilot.org" target="_blank" style="color:var(--accent-cyan);">ArduPilot Forum</a>.</div></div>
+                        </div>
+
+                        <div class="fc-step">
+                            <div class="fc-step-num">2</div>
+                            <div class="fc-step-body">
+                                <div class="fc-step-title">Download the <code>_with_bl.hex</code> file</div>
+                                <div class="fc-step-desc">This file includes the ArduPilot bootloader + firmware in one. You need this for first-time flashing via DFU. For subsequent updates, Mission Planner can flash <code>.apj</code> files directly.</div>
+                            </div>
+                        </div>
+
+                        <div class="fc-info fc-info-red"><i class="ph ph-warning-circle"></i><div><strong>Point of no return:</strong> Flashing the ArduPilot bootloader overwrites the factory bootloader. You will NOT be able to go back to Betaflight/iNav without re-flashing via DFU again. This is normal — it's not bricking, just a different bootloader.</div></div>
+                    </div>
+
+                    <div class="fc-dyn" data-fw="px4">
+                        <div class="fc-desc">PX4 firmware is flashed via QGroundControl, which downloads it automatically. For DFU, you need the <code>.px4</code> file from the PX4 firmware server.</div>
+                        <div class="fc-step">
+                            <div class="fc-step-num">1</div>
+                            <div class="fc-step-body">
+                                <div class="fc-step-title">Open QGroundControl → Vehicle Setup → Firmware</div>
+                                <div class="fc-step-desc">QGC handles download + flash in one step. Plug in your FC and QGC will detect it. Select your board, firmware version, and click Flash. For custom/unsupported boards, use "Advanced" → "Custom firmware file" and point to a local <code>.px4</code> build.</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="fc-dyn" data-fw="betaflight">
+                        <div class="fc-desc">Betaflight Configurator downloads firmware automatically by board target name.</div>
+                        <div class="fc-step">
+                            <div class="fc-step-num">1</div>
+                            <div class="fc-step-body">
+                                <div class="fc-step-title">Open Betaflight Configurator → Firmware Flasher</div>
+                                <div class="fc-step-desc">Select your board target (e.g., "ORQA_H743" or the board's BF target name). Choose release version. Click "Load Firmware [Online]." For boards not yet in BF cloud, use "Load Firmware [Local]" with a .hex file.</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="fc-dyn" data-fw="inav">
+                        <div class="fc-desc">iNav Configurator works the same as Betaflight — select board target, download, flash.</div>
+                        <div class="fc-step">
+                            <div class="fc-step-num">1</div>
+                            <div class="fc-step-body">
+                                <div class="fc-step-title">Open iNav Configurator → Firmware Flasher</div>
+                                <div class="fc-step-desc">Select board target. For Orqa boards, the iNav target may already exist since Orqa builds are designed for iNav. Choose version ≥8.0.0 for H7 boards.</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ════ PHASE 2: DFU MODE ════ -->
+            <div class="fc-phase" data-phase="2">
+                <div class="fc-section">
+                    <div class="fc-title"><i class="ph ph-plug"></i> Enter DFU Mode</div>
+                    <div class="fc-desc">DFU (Device Firmware Update) is a special boot mode built into every STM32 chip. It lets you flash firmware over USB without any existing bootloader. This is the universal "start from scratch" method.</div>
+
+                    <div class="fc-step">
+                        <div class="fc-step-num">1</div>
+                        <div class="fc-step-body">
+                            <div class="fc-step-title">Find the BOOT button (or BOOT pads)</div>
+                            <div class="fc-step-desc">Every STM32 FC has a way to enter DFU. Look for: a small button labeled "BOOT" or "DFU" on the board, or two solder pads labeled "BOOT" that you bridge with tweezers.</div>
+                        </div>
+                    </div>
+
+                    <div class="fc-dyn" data-fc="orqa_quad,orqa_wing">
+                        <div class="fc-info fc-info-yellow"><i class="ph ph-info"></i><div><strong>Orqa QuadCore / WingCore H7:</strong> The BOOT button is on the PCB. Hold it down, then plug in USB-C. Release after 1 second. The board is now in DFU mode — no LED pattern, just silence.</div></div>
+
+                        <!-- Board diagram -->
+                        <div style="background:var(--bg-dark);border:1px solid var(--border-color);border-radius:var(--radius-sm);padding:20px;margin-bottom:16px;">
+                            <div style="font-size:10px;text-transform:uppercase;letter-spacing:0.1em;color:var(--text-faint);margin-bottom:12px;">Orqa QuadCore H7 — Board Layout</div>
+                            <svg viewBox="0 0 400 260" style="width:100%;max-width:500px;display:block;margin:0 auto;" xmlns="http://www.w3.org/2000/svg">
+                                <!-- Board outline -->
+                                <rect x="50" y="20" width="300" height="220" rx="8" fill="#1a1a1a" stroke="#333" stroke-width="2"/>
+                                <!-- Mounting holes -->
+                                <circle cx="80" cy="50" r="6" fill="none" stroke="#444" stroke-width="1.5"/>
+                                <circle cx="320" cy="50" r="6" fill="none" stroke="#444" stroke-width="1.5"/>
+                                <circle cx="80" cy="210" r="6" fill="none" stroke="#444" stroke-width="1.5"/>
+                                <circle cx="320" cy="210" r="6" fill="none" stroke="#444" stroke-width="1.5"/>
+                                <text x="200" y="48" text-anchor="middle" fill="#555" font-size="8" font-family="monospace">30.5mm × 30.5mm mounting</text>
+                                <!-- STM32H743 -->
+                                <rect x="150" y="80" width="80" height="80" rx="4" fill="#252525" stroke="#fbbf24" stroke-width="1.5"/>
+                                <text x="190" y="115" text-anchor="middle" fill="#fbbf24" font-size="9" font-family="monospace" font-weight="bold">STM32</text>
+                                <text x="190" y="128" text-anchor="middle" fill="#fbbf24" font-size="9" font-family="monospace" font-weight="bold">H743</text>
+                                <text x="190" y="145" text-anchor="middle" fill="#666" font-size="7" font-family="monospace">480MHz M7</text>
+                                <!-- IMU 1 -->
+                                <rect x="260" y="90" width="50" height="25" rx="3" fill="#252525" stroke="#22d3ee" stroke-width="1"/>
+                                <text x="285" y="106" text-anchor="middle" fill="#22d3ee" font-size="7" font-family="monospace">ICM42688</text>
+                                <!-- IMU 2 (orthogonal) -->
+                                <rect x="260" y="125" width="50" height="25" rx="3" fill="#252525" stroke="#22d3ee" stroke-width="1"/>
+                                <text x="285" y="141" text-anchor="middle" fill="#22d3ee" font-size="7" font-family="monospace">ICM42688</text>
+                                <text x="285" y="163" text-anchor="middle" fill="#444" font-size="6" font-family="monospace">orthogonal</text>
+                                <!-- Baro -->
+                                <rect x="90" y="105" width="45" height="20" rx="3" fill="#252525" stroke="#4ade80" stroke-width="1"/>
+                                <text x="112" y="118" text-anchor="middle" fill="#4ade80" font-size="7" font-family="monospace">DPS310</text>
+                                <!-- USB-C -->
+                                <rect x="170" y="222" width="60" height="18" rx="4" fill="#333" stroke="#a78bfa" stroke-width="1.5"/>
+                                <text x="200" y="234" text-anchor="middle" fill="#a78bfa" font-size="8" font-family="monospace">USB-C</text>
+                                <!-- BOOT button -->
+                                <circle cx="110" cy="80" r="8" fill="#f87171" stroke="#f87171" stroke-width="2" opacity="0.8"/>
+                                <text x="110" y="83" text-anchor="middle" fill="#000" font-size="6" font-family="monospace" font-weight="bold">B</text>
+                                <text x="110" y="68" text-anchor="middle" fill="#f87171" font-size="7" font-family="monospace" font-weight="bold">BOOT</text>
+                                <!-- Motor pads -->
+                                <rect x="55" y="170" width="30" height="12" rx="2" fill="#333" stroke="#666" stroke-width="0.5"/>
+                                <text x="70" y="179" text-anchor="middle" fill="#888" font-size="6" font-family="monospace">M1</text>
+                                <rect x="55" y="185" width="30" height="12" rx="2" fill="#333" stroke="#666" stroke-width="0.5"/>
+                                <text x="70" y="194" text-anchor="middle" fill="#888" font-size="6" font-family="monospace">M2</text>
+                                <rect x="305" y="170" width="30" height="12" rx="2" fill="#333" stroke="#666" stroke-width="0.5"/>
+                                <text x="320" y="179" text-anchor="middle" fill="#888" font-size="6" font-family="monospace">M3</text>
+                                <rect x="305" y="185" width="30" height="12" rx="2" fill="#333" stroke="#666" stroke-width="0.5"/>
+                                <text x="320" y="194" text-anchor="middle" fill="#888" font-size="6" font-family="monospace">M4</text>
+                                <!-- Connectors -->
+                                <rect x="90" y="170" width="40" height="10" rx="2" fill="#333" stroke="#666" stroke-width="0.5"/>
+                                <text x="110" y="178" text-anchor="middle" fill="#888" font-size="5" font-family="monospace">UART</text>
+                                <rect x="90" y="183" width="40" height="10" rx="2" fill="#333" stroke="#666" stroke-width="0.5"/>
+                                <text x="110" y="191" text-anchor="middle" fill="#888" font-size="5" font-family="monospace">GPS</text>
+                                <!-- Legend -->
+                                <circle cx="65" cy="245" r="4" fill="#f87171"/>
+                                <text x="75" y="248" fill="#f87171" font-size="7" font-family="monospace">Hold this + plug USB = DFU</text>
+                            </svg>
+                        </div>
+                    </div>
+
+                    <div class="fc-dyn" data-fc="orqa_apb">
+                        <div class="fc-info fc-info-yellow"><i class="ph ph-info"></i><div><strong>Orqa APB:</strong> The APB has a dedicated flash-mode button (see board layout in user manual, Section 19). Hold it while powering on. The i.MX8M side uses NXP's <code>uuu</code> tool for its own firmware, but the STM32H743 FC side uses standard DFU over the internal USB. You may need to flash the FC via the APB's SoC using the internal UART3 bridge (<code>/dev/ttymxc2</code>) if USB DFU isn't exposed on the APB's external connector.</div></div>
+                    </div>
+
+                    <div class="fc-step">
+                        <div class="fc-step-num">2</div>
+                        <div class="fc-step-body">
+                            <div class="fc-step-title">Hold BOOT + plug in USB</div>
+                            <div class="fc-step-desc">Hold the BOOT button (or bridge the pads), then connect the USB cable to your PC. Wait 1 second, then release. The chip is now in DFU mode.</div>
+                        </div>
+                    </div>
+
+                    <div class="fc-step">
+                        <div class="fc-step-num">3</div>
+                        <div class="fc-step-body">
+                            <div class="fc-step-title">Verify DFU mode</div>
+                            <div class="fc-step-desc">Your computer should now see the device.</div>
+                        </div>
+                    </div>
+
+                    <div class="fc-dyn" data-os="windows">
+                        <div class="fc-code"><span class="c"># Windows: Open Device Manager</span>
+<span class="c"># Look under "Universal Serial Bus devices" for:</span>
+<span class="warn">STM32 BOOTLOADER</span>
+
+<span class="c"># If you see it → DFU mode is working</span>
+<span class="c"># If you DON'T see it → try a different USB cable (data, not charge-only)</span>
+
+<span class="c"># Run Zadig to install WinUSB driver:</span>
+<span class="c"># 1. Open Zadig</span>
+<span class="c"># 2. Select "STM32 BOOTLOADER" from dropdown</span>
+<span class="c"># 3. Select "WinUSB" as the target driver</span>
+<span class="c"># 4. Click "Replace Driver"</span><span class="fc-code-label">Windows</span></div>
+                    </div>
+
+                    <div class="fc-dyn" data-os="mac">
+                        <div class="fc-code"><span class="c"># macOS: Check USB devices</span>
+<span class="cmd">system_profiler</span> SPUSBDataType | grep -A 5 "STM32\|DFU"
+
+<span class="c"># Or use dfu-util:</span>
+<span class="cmd">dfu-util</span> --list
+<span class="c"># Should show: [0483:df11] STM32 BOOTLOADER</span><span class="fc-code-label">macOS</span></div>
+                    </div>
+
+                    <div class="fc-dyn" data-os="linux">
+                        <div class="fc-code"><span class="c"># Linux: Check USB devices</span>
+<span class="cmd">lsusb</span> | grep <span class="warn">0483:df11</span>
+<span class="c"># Should show: STMicroelectronics STM Device in DFU Mode</span>
+
+<span class="c"># Or use dfu-util:</span>
+<span class="cmd">dfu-util</span> --list
+<span class="c"># Should show: [0483:df11] Internal Flash (0x08000000)</span>
+
+<span class="c"># If permission denied:</span>
+<span class="cmd">sudo</span> dfu-util --list
+<span class="c"># Or add udev rule:</span>
+echo 'SUBSYSTEM=="usb", ATTRS{idVendor}=="0483", ATTRS{idProduct}=="df11", MODE="0666"' | <span class="cmd">sudo tee</span> /etc/udev/rules.d/99-stm32-dfu.rules
+<span class="cmd">sudo</span> udevadm control --reload-rules<span class="fc-code-label">Linux</span></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ════ PHASE 3: FLASH ════ -->
+            <div class="fc-phase" data-phase="3">
+                <div class="fc-section">
+                    <div class="fc-title"><i class="ph ph-lightning"></i> Flash Firmware</div>
+                    <div class="fc-desc">With the board in DFU mode and firmware downloaded, flash it.</div>
+
+                    <div class="fc-dyn" data-fw="ardupilot">
+                        <div class="fc-info fc-info-blue"><i class="ph ph-info"></i><div><strong>Method A: STM32CubeProgrammer (GUI — recommended for beginners)</strong></div></div>
+
+                        <div class="fc-step">
+                            <div class="fc-step-num">1</div>
+                            <div class="fc-step-body">
+                                <div class="fc-step-title">Open STM32CubeProgrammer</div>
+                                <div class="fc-step-desc">Select "USB" as the connection type (top-right dropdown). Click "Connect." The board's MCU info should appear (STM32H743xx).</div>
+                            </div>
+                        </div>
+                        <div class="fc-step">
+                            <div class="fc-step-num">2</div>
+                            <div class="fc-step-body">
+                                <div class="fc-step-title">Open your firmware file</div>
+                                <div class="fc-step-desc">Click "Open file" (second tab on left) and select the <code>arducopter_with_bl.hex</code> file you downloaded. The file contents will appear in the memory view.</div>
+                            </div>
+                        </div>
+                        <div class="fc-step">
+                            <div class="fc-step-num">3</div>
+                            <div class="fc-step-body">
+                                <div class="fc-step-title">Click "Download"</div>
+                                <div class="fc-step-desc">This flashes the firmware to the chip. Progress bar will fill. Takes 10-30 seconds. When complete, you'll see "Download complete."</div>
+                            </div>
+                        </div>
+                        <div class="fc-step">
+                            <div class="fc-step-num">4</div>
+                            <div class="fc-step-body">
+                                <div class="fc-step-title">Disconnect and power cycle</div>
+                                <div class="fc-step-desc">Click "Disconnect." Unplug USB. Plug back in (without holding BOOT). The FC should now boot ArduPilot — look for a heartbeat LED pattern.</div>
+                            </div>
+                        </div>
+
+                        <div class="fc-dyn" data-os="linux,mac">
+                            <div class="fc-info fc-info-blue"><i class="ph ph-terminal"></i><div><strong>Method B: dfu-util (command line)</strong></div></div>
+                            <div class="fc-code"><span class="c"># Flash ArduPilot with bootloader via dfu-util</span>
+<span class="cmd">dfu-util</span> -a 0 --dfuse-address 0x08000000:leave -D <span class="warn">arducopter_with_bl.hex</span>
+
+<span class="c"># If using .bin instead of .hex:</span>
+<span class="cmd">dfu-util</span> -a 0 -s 0x08000000:leave -D <span class="warn">arducopter_with_bl.bin</span>
+
+<span class="c"># Verify flash (optional):</span>
+<span class="cmd">dfu-util</span> -a 0 -s 0x08000000 -U readback.bin
+<span class="cmd">diff</span> -sb arducopter_with_bl.bin readback.bin<span class="fc-code-label">dfu-util</span></div>
+                        </div>
+
+                        <div class="fc-info fc-info-blue"><i class="ph ph-info"></i><div><strong>Method C: ArduPilot Web DFU Loader</strong> — If you have Chrome, go to <a href="https://firmware.ardupilot.org/Tools/WebTools/DFULoader/" target="_blank" style="color:var(--accent-cyan);">firmware.ardupilot.org/Tools/WebTools/DFULoader</a>. It can flash directly from the browser using WebUSB. No software install needed.</div></div>
+                    </div>
+
+                    <div class="fc-dyn" data-fw="betaflight">
+                        <div class="fc-step">
+                            <div class="fc-step-num">1</div>
+                            <div class="fc-step-body">
+                                <div class="fc-step-title">Betaflight Configurator → Firmware Flasher</div>
+                                <div class="fc-step-desc">With the board in DFU mode, BF Configurator should show "DFU" in the port dropdown (top-right). Select your board target. Click "Load Firmware [Online]" then "Flash Firmware."</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="fc-dyn" data-fw="inav">
+                        <div class="fc-step">
+                            <div class="fc-step-num">1</div>
+                            <div class="fc-step-body">
+                                <div class="fc-step-title">iNav Configurator → Firmware Flasher</div>
+                                <div class="fc-step-desc">Same as Betaflight — DFU port appears automatically. Select board target, load firmware, flash. For Orqa boards, the iNav target should be available for version ≥8.0.</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="fc-dyn" data-fw="px4">
+                        <div class="fc-step">
+                            <div class="fc-step-num">1</div>
+                            <div class="fc-step-body">
+                                <div class="fc-step-title">QGroundControl auto-detects</div>
+                                <div class="fc-step-desc">Plug in the FC (in DFU or normal mode). QGC will prompt you to flash firmware. Select PX4 stable, your board, and click OK. For custom boards, check "Advanced" → "Custom firmware file."</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ════ PHASE 4: CONFIGURE ════ -->
+            <div class="fc-phase" data-phase="4">
+                <div class="fc-section">
+                    <div class="fc-title"><i class="ph ph-sliders-horizontal"></i> Initial Configuration</div>
+                    <div class="fc-desc">Firmware is on the board. Now connect your ground station and configure the basics.</div>
+
+                    <div class="fc-dyn" data-fw="ardupilot">
+                        <div class="fc-step">
+                            <div class="fc-step-num">1</div>
+                            <div class="fc-step-body">
+                                <div class="fc-step-title">Connect Mission Planner / QGC</div>
+                                <div class="fc-step-desc">Plug in USB. Select the COM port and baud rate 115200. Click Connect. You should see telemetry data (artificial horizon, etc.).</div>
+                            </div>
+                        </div>
+                        <div class="fc-step">
+                            <div class="fc-step-num">2</div>
+                            <div class="fc-step-body">
+                                <div class="fc-step-title">Frame Type</div>
+                                <div class="fc-step-desc">Setup → Frame Type. Select your configuration (Quad X, Hex, Y6, etc.). For Orqa QuadCore → Quad X. For WingCore → select your fixed-wing/VTOL type.</div>
+                            </div>
+                        </div>
+                        <div class="fc-step">
+                            <div class="fc-step-num">3</div>
+                            <div class="fc-step-body">
+                                <div class="fc-step-title">Accelerometer Calibration</div>
+                                <div class="fc-step-desc">Setup → Accel Calibration. Follow the prompts to hold the FC level, on each side, nose up, nose down, left, right. This calibrates the ICM42688 IMU.</div>
+                            </div>
+                        </div>
+                        <div class="fc-step">
+                            <div class="fc-step-num">4</div>
+                            <div class="fc-step-body">
+                                <div class="fc-step-title">Compass Calibration</div>
+                                <div class="fc-step-desc">If you have an external compass/GPS, calibrate it. If no compass (FPV builds), disable it: COMPASS_ENABLE = 0.</div>
+                            </div>
+                        </div>
+                        <div class="fc-step">
+                            <div class="fc-step-num">5</div>
+                            <div class="fc-step-body">
+                                <div class="fc-step-title">Radio Calibration</div>
+                                <div class="fc-step-desc">Setup → Radio Calibration. Bind your RC receiver, then move all sticks to extremes. Click Calibrate. Set up flight modes on a switch (at minimum: STABILIZE + LOITER + RTL).</div>
+                            </div>
+                        </div>
+                        <div class="fc-step">
+                            <div class="fc-step-num">6</div>
+                            <div class="fc-step-body">
+                                <div class="fc-step-title">ESC Calibration</div>
+                                <div class="fc-step-desc">Setup → ESC Calibration. Follow the "all-at-once" method: throttle high → power on → beeps → throttle low → beeps → done. For Orqa ESC3030 with DShot, you can skip this (DShot doesn't need calibration).</div>
+                            </div>
+                        </div>
+
+                        <div class="fc-info fc-info-green"><i class="ph ph-check-circle"></i><div><strong>Motor test:</strong> REMOVE PROPS FIRST. Setup → Motor Test. Spin each motor individually and verify: correct order (A→B→C→D), correct direction (ArduPilot motor map), no weird vibrations. If wrong direction, swap any 2 of the 3 motor wires or change direction in BLHeli.</div></div>
+                    </div>
+
+                    <div class="fc-dyn" data-fw="betaflight">
+                        <div class="fc-step">
+                            <div class="fc-step-num">1</div>
+                            <div class="fc-step-body">
+                                <div class="fc-step-title">Betaflight Configurator → Ports</div>
+                                <div class="fc-step-desc">Enable Serial RX on the UART connected to your receiver. Set protocol (SBUS, CRSF, etc.).</div>
+                            </div>
+                        </div>
+                        <div class="fc-step">
+                            <div class="fc-step-num">2</div>
+                            <div class="fc-step-body">
+                                <div class="fc-step-title">Configuration tab</div>
+                                <div class="fc-step-desc">Set mixer (Quad X), receiver protocol, motor protocol (DShot300/600), enable features (GPS, OSD, etc.).</div>
+                            </div>
+                        </div>
+                        <div class="fc-step">
+                            <div class="fc-step-num">3</div>
+                            <div class="fc-step-body">
+                                <div class="fc-step-title">Receiver tab</div>
+                                <div class="fc-step-desc">Verify channel mapping. Move sticks — bars should move correctly. Set channel map (AETR1234 for most).</div>
+                            </div>
+                        </div>
+                        <div class="fc-step">
+                            <div class="fc-step-num">4</div>
+                            <div class="fc-step-body">
+                                <div class="fc-step-title">Motors tab</div>
+                                <div class="fc-step-desc">PROPS OFF. Test each motor. Verify order and direction match the Betaflight motor diagram. Reverse in BLHeli/BLHeli_32 configurator if needed.</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="fc-dyn" data-fw="px4,inav">
+                        <div class="fc-info fc-info-blue"><i class="ph ph-info"></i><div>PX4: Use QGroundControl's Vehicle Setup wizard — it walks through Airframe, Sensors, Radio, Flight Modes, and Power in order. iNav: Use the iNav Configurator's Setup tab for similar calibration steps.</div></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ════ PHASE 5: FIRST ARM ════ -->
+            <div class="fc-phase" data-phase="5">
+                <div class="fc-section">
+                    <div class="fc-title"><i class="ph ph-shield-check"></i> First Arm</div>
+
+                    <div class="fc-info fc-info-red"><i class="ph ph-shield-warning"></i><div><strong>PROPS OFF for first arm test.</strong> Always. No exceptions. An unexpected motor spin at full RPM with props on can cut you or break things instantly.</div></div>
+
+                    <div class="fc-step">
+                        <div class="fc-step-num">1</div>
+                        <div class="fc-step-body">
+                            <div class="fc-step-title">Pre-arm checks</div>
+                            <div class="fc-step-desc">The FC will refuse to arm if something is wrong. Check your ground station for pre-arm failure messages. Common ones: "Compass not calibrated," "RC not calibrated," "Accelerometers inconsistent," "GPS not detected." Fix each one before proceeding.</div>
+                        </div>
+                    </div>
+                    <div class="fc-step">
+                        <div class="fc-step-num">2</div>
+                        <div class="fc-step-body">
+                            <div class="fc-step-title">Arm the motors</div>
+                            <div class="fc-step-desc">ArduPilot/PX4: Hold throttle down + yaw right for 2 seconds. Betaflight/iNav: Same, or use a switch (configured in Modes tab). Motors should spin at idle RPM.</div>
+                        </div>
+                    </div>
+                    <div class="fc-step">
+                        <div class="fc-step-num">3</div>
+                        <div class="fc-step-body">
+                            <div class="fc-step-title">Verify motor response</div>
+                            <div class="fc-step-desc">Move the sticks gently. All four motors should change speed in response. Tilt the FC by hand — motors should compensate (PID loop is running). If motors respond backwards to tilt, your motor order or direction is wrong.</div>
+                        </div>
+                    </div>
+                    <div class="fc-step">
+                        <div class="fc-step-num">4</div>
+                        <div class="fc-step-body">
+                            <div class="fc-step-title">Disarm and install props</div>
+                            <div class="fc-step-desc">Throttle down + yaw left (or disarm switch). Verify motors stop. Now you can install props (CW on CW motors, CCW on CCW) and proceed to your first test flight — ideally in STABILIZE/ACRO mode with a manual safety pilot.</div>
+                        </div>
+                    </div>
+
+                    <div class="fc-info fc-info-green"><i class="ph ph-confetti"></i><div><strong>Your FC is flashed, configured, and arming.</strong> If you need GPS-denied autonomous flight, head to the <a href="/slam-guide/" style="color:var(--accent-green);">LiDAR SLAM Implementation Guide</a> next.</div></div>
+                </div>
+            </div>
+
+            <!-- Nav buttons -->
+            <div class="fc-nav">
+                <button class="fc-nav-btn fc-nav-prev" id="btn-prev" style="visibility:hidden;"><i class="ph ph-caret-left"></i> Previous</button>
+                <button class="fc-nav-btn fc-nav-next" id="btn-next">Next Phase <i class="ph ph-caret-right"></i></button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+    let phase = 0; const total = 6;
+    const tabs = document.querySelectorAll('.fc-phase-tab');
+    const panes = document.querySelectorAll('.fc-phase');
+    function show(n) {
+        phase = Math.max(0, Math.min(n, total-1));
+        tabs.forEach(t => t.classList.toggle('active', +t.dataset.phase === phase));
+        panes.forEach(p => p.classList.toggle('active', +p.dataset.phase === phase));
+        document.getElementById('btn-prev').style.visibility = phase === 0 ? 'hidden' : 'visible';
+        document.getElementById('btn-next').innerHTML = phase === total-1 ? 'Done!' : 'Next Phase <i class="ph ph-caret-right"></i>';
+        updateDyn();
+        window.scrollTo({top:0, behavior:'smooth'});
+    }
+    tabs.forEach(t => t.addEventListener('click', () => show(+t.dataset.phase)));
+    document.getElementById('btn-prev').addEventListener('click', () => show(phase-1));
+    document.getElementById('btn-next').addEventListener('click', () => { if(phase<total-1) show(phase+1); });
+
+    const selFC = document.getElementById('sel-fc');
+    const selFW = document.getElementById('sel-fw');
+    const selOS = document.getElementById('sel-os');
+    function updateDyn() {
+        const fc = selFC.value, fw = selFW.value, os = selOS.value;
+        document.querySelectorAll('.fc-dyn').forEach(el => {
+            el.classList.remove('show');
+            const mFC = el.dataset.fc, mFW = el.dataset.fw, mOS = el.dataset.os;
+            let ok = false;
+            if (mFC && mFC.split(',').includes(fc)) ok = true;
+            if (mFW && mFW.split(',').includes(fw)) ok = true;
+            if (mOS && mOS.split(',').includes(os)) ok = true;
+            if (!mFC && !mFW && !mOS) ok = true;
+            if (ok) el.classList.add('show');
+        });
+    }
+    selFC.addEventListener('change', updateDyn);
+    selFW.addEventListener('change', updateDyn);
+    selOS.addEventListener('change', updateDyn);
+    updateDyn();
+
+    document.getElementById('dark-mode-toggle')?.addEventListener('click',()=>{const c=document.documentElement.getAttribute('data-theme');const n=c==='dark'?'light':'dark';document.documentElement.setAttribute('data-theme',n);try{localStorage.setItem('dc-theme',n)}catch(e){}document.getElementById('dark-mode-icon').className=n==='dark'?'ph ph-moon':'ph ph-sun';});
+    </script>
+</body>
+</html>

@@ -1,0 +1,351 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Build Cost Estimator — Forge</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&family=Source+Serif+4:opsz,wght@8..60,400;8..60,600;8..60,700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="">
+    <link rel="stylesheet" href="{% static 'base.css' %}">
+    <link rel="stylesheet" href="{% static 'layout.css' %}?v=4">
+    <link rel="stylesheet" href="{% static 'components.css' %}">
+    <link rel="stylesheet" href="{% static 'utilities.css' %}">
+    <link rel="stylesheet" href="">
+    <link rel="stylesheet" href="">
+    <script src="https://unpkg.com/@phosphor-icons/web"></script>
+    <script>
+        (function(){ document.documentElement.setAttribute('data-theme', localStorage.getItem('dc-theme') || 'dark'); })();
+    </script>
+    <style>
+        .cost-page { max-width: 1200px; margin: 0 auto; padding: 32px 24px; }
+
+        /* ── Build Selector ── */
+        .build-selector { display: flex; gap: 12px; flex-wrap: wrap; margin-bottom: 28px; }
+        .build-chip {
+            padding: 8px 16px; font-size: 13px; border-radius: var(--radius-sm);
+            border: 1px solid var(--border-color); background: var(--bg-panel);
+            color: var(--text-muted); cursor: pointer; transition: all 0.2s;
+            font-family: 'JetBrains Mono', monospace;
+        }
+        .build-chip:hover { border-color: var(--text-main); color: var(--text-main); }
+        .build-chip.active { border-color: var(--accent-red); color: var(--accent-red); background: rgba(34,211,238,0.08); font-weight: 600; }
+
+        /* ── Summary Gauges ── */
+        .cost-gauges {
+            display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+            gap: 16px; margin-bottom: 28px;
+        }
+        .gauge-card {
+            background: var(--bg-panel); border: 1px solid var(--border-color);
+            border-radius: var(--radius-md); padding: 20px; text-align: center;
+        }
+        .gauge-value {
+            font-size: 32px; font-weight: 700; font-family: 'JetBrains Mono', monospace;
+            color: var(--accent-red); line-height: 1;
+        }
+        .gauge-value.green { color: #22c55e; }
+        .gauge-value.amber { color: #eab308; }
+        .gauge-value.red { color: #ef4444; }
+        .gauge-label { font-size: 12px; color: var(--text-muted); margin-top: 6px; text-transform: uppercase; letter-spacing: 0.5px; }
+        .gauge-sub { font-size: 11px; color: var(--text-muted); margin-top: 2px; opacity: 0.6; }
+
+        /* ── BOM Table ── */
+        .bom-table-wrap {
+            background: var(--bg-panel); border: 1px solid var(--border-color);
+            border-radius: var(--radius-md); overflow: hidden; margin-bottom: 24px;
+        }
+        .bom-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+        .bom-table thead th {
+            padding: 10px 14px; text-align: left; font-size: 11px;
+            text-transform: uppercase; letter-spacing: 0.5px; color: var(--text-muted);
+            background: var(--bg-dark); border-bottom: 2px solid var(--border-color);
+        }
+        .bom-table tbody tr { border-bottom: 1px solid rgba(255,255,255,0.04); }
+        .bom-table tbody tr:hover { background: rgba(255,255,255,0.03); }
+        .bom-table td { padding: 10px 14px; }
+        .bom-table .part-name { font-weight: 500; color: var(--text-main); }
+        .bom-table .part-pid { font-size: 11px; color: var(--text-muted); font-family: 'JetBrains Mono', monospace; }
+        .bom-table .part-slot { font-size: 11px; color: var(--accent-red); text-transform: uppercase; letter-spacing: 0.3px; }
+        .bom-table .num { font-family: 'JetBrains Mono', monospace; text-align: right; }
+        .bom-table .subtotal { font-weight: 600; color: var(--text-main); }
+        .bom-table tfoot td {
+            padding: 12px 14px; font-weight: 700; border-top: 2px solid var(--border-color);
+            background: var(--bg-dark);
+        }
+        .missing-badge {
+            display: inline-flex; align-items: center; gap: 3px; padding: 2px 8px;
+            border-radius: 10px; font-size: 10px; background: rgba(239,68,68,0.15);
+            color: #ef4444; font-weight: 600;
+        }
+
+        /* ── Weight Bar ── */
+        .weight-bar-wrap { margin-bottom: 28px; }
+        .weight-bar-label { font-size: 12px; color: var(--text-muted); margin-bottom: 6px; display: flex; justify-content: space-between; }
+        .weight-bar-bg {
+            height: 24px; background: var(--bg-dark); border-radius: 12px;
+            overflow: hidden; border: 1px solid var(--border-color); position: relative;
+        }
+        .weight-bar-seg {
+            height: 100%; display: inline-block; transition: width 0.4s ease;
+        }
+        .weight-bar-tooltip {
+            position: absolute; top: -28px; font-size: 10px; color: var(--text-muted);
+            font-family: 'JetBrains Mono', monospace; white-space: nowrap;
+            transform: translateX(-50%);
+        }
+
+        .empty-bom { text-align: center; padding: 48px; color: var(--text-muted); }
+        .empty-bom i { font-size: 48px; display: block; margin-bottom: 12px; opacity: 0.4; }
+
+        @media (max-width: 768px) {
+            .cost-gauges { grid-template-columns: repeat(2, 1fr); }
+            .bom-table td { padding: 8px 10px; }
+        }
+    </style>
+<style>html,body{background:#0c0c0a!important;color:#f5f0e8}</style>
+</head>
+<body>
+<header style="display:flex;align-items:center;justify-content:space-between;gap:8px;padding:10px 16px;border-bottom:1px solid #2e2e26;background:#1c1c17;position:sticky;top:0;z-index:100;flex-shrink:0;">
+  <a href="/" style="font:800 18px 'JetBrains Mono',monospace;color:#ff3b5c;letter-spacing:-0.03em;text-decoration:none;flex-shrink:0;">Forge</a>
+  <div style="display:flex;gap:5px;align-items:center;flex-wrap:nowrap;"><a href="/intel/" class="tp-pill">Intel</a><a href="/patterns/" class="tp-pill">Patterns</a><a href="/tools-home/" class="tp-pill">Tools</a><a href="/wingman/" class="tp-pill">Wingman</a></div>
+</header>
+<style>.tp-pill{font:500 10px 'DM Sans',system-ui,sans-serif;color:#6b6358;padding:4px 9px;border:1px solid #2e2e26;border-radius:20px;text-decoration:none;white-space:nowrap;transition:all .15s}.tp-pill:hover{border-color:#3e3e34;color:#b8b0a0}</style>
+    <div class="app-container" style="display: flex; flex-direction: column; min-height: 100vh;">
+        <main class="cost-page">
+            <div style="margin-bottom: 24px;">
+                <h1 style="font-size: 24px; font-weight: 700; margin-bottom: 4px;">Build Cost Estimator</h1>
+                <p style="font-size: 14px; color: var(--text-muted);">Select a build to see the full BOM with cost, weight breakdown, and per-slot pricing.</p>
+            </div>
+
+            <div class="build-selector" id="build-selector"></div>
+            <div class="cost-gauges" id="cost-gauges"></div>
+            <div class="weight-bar-wrap" id="weight-bar-wrap"></div>
+            <div id="bom-output"></div>
+        </main>
+    </div>
+
+    <script src="?v=2"></script>
+    <script src=""></script>
+    <script>
+    (function() {
+        'use strict';
+
+        let db = null;
+        let allParts = {};
+        let builds = [];
+        let selectedBuild = null;
+
+        const ESC = s => {
+            if (s == null) return '';
+            const d = document.createElement('div');
+            d.textContent = String(s);
+            return d.innerHTML;
+        };
+
+        const SLOT_COLORS = {
+            frames: '#ef4444', motors: '#f97316', escs: '#eab308', flight_controllers: '#22c55e',
+            stacks: '#14b8a6', batteries: '#3b82f6', fpv_cameras: '#8b5cf6', video_transmitters: '#a855f7',
+            receivers: '#ec4899', antennas: '#f43f5e', propellers: '#6366f1', gps_modules: '#06b6d4',
+        };
+
+        const SLOT_LABELS = {
+            frames: 'Frame', motors: 'Motors', escs: 'ESC', flight_controllers: 'FC',
+            stacks: 'Stack', batteries: 'Battery', fpv_cameras: 'Camera', video_transmitters: 'VTX',
+            receivers: 'Receiver', antennas: 'Antenna', propellers: 'Props', gps_modules: 'GPS',
+        };
+
+        function renderBuildSelector() {
+            document.getElementById('build-selector').innerHTML = builds.map(b =>
+                `<button class="build-chip ${selectedBuild?.pid === b.pid ? 'active' : ''}" data-pid="${ESC(b.pid)}">${ESC(b.name)}</button>`
+            ).join('');
+
+            document.querySelectorAll('.build-chip').forEach(chip => {
+                chip.addEventListener('click', () => {
+                    selectedBuild = builds.find(b => b.pid === chip.dataset.pid);
+                    renderBuildSelector();
+                    renderBOM();
+                });
+            });
+        }
+
+        function resolveBOM(model) {
+            const items = [];
+            for (const [slot, refs] of Object.entries(model.relations || {})) {
+                if (!refs) continue;
+                for (const ref of refs) {
+                    const pid = typeof ref === 'string' ? ref : ref.pid;
+                    const qty = typeof ref === 'object' ? (ref.quantity || 1) : 1;
+                    const part = allParts[pid];
+                    items.push({
+                        slot,
+                        pid,
+                        qty,
+                        name: part?.name || `Unknown (${pid})`,
+                        price: part?.approx_price || 0,
+                        weight: part?.schema_data?.weight_g || 0,
+                        found: !!part,
+                    });
+                }
+            }
+            return items;
+        }
+
+        function renderBOM() {
+            if (!selectedBuild) {
+                document.getElementById('cost-gauges').innerHTML = '';
+                document.getElementById('weight-bar-wrap').innerHTML = '';
+                document.getElementById('bom-output').innerHTML = `<div class="empty-bom">
+                    <i class="ph ph-receipt"></i>Select a build above to see its BOM.
+                </div>`;
+                return;
+            }
+
+            const items = resolveBOM(selectedBuild);
+            const totalCost = items.reduce((s, i) => s + i.price * i.qty, 0);
+            const totalWeight = items.reduce((s, i) => s + i.weight * i.qty, 0);
+            const partCount = items.reduce((s, i) => s + i.qty, 0);
+            const missingCount = items.filter(i => !i.found).length;
+
+            // Gauges
+            const costClass = totalCost < 350 ? 'green' : totalCost < 500 ? 'amber' : 'red';
+            const fp = typeof formatPrice === 'function' ? formatPrice : (v) => '$' + v.toFixed(0);
+            document.getElementById('cost-gauges').innerHTML = `
+                <div class="gauge-card">
+                    <div class="gauge-value ${costClass}">${fp(totalCost)}</div>
+                    <div class="gauge-label">Total BOM Cost</div>
+                    <div class="gauge-sub">Retail pricing, no shipping</div>
+                </div>
+                <div class="gauge-card">
+                    <div class="gauge-value">${totalWeight.toLocaleString()}g</div>
+                    <div class="gauge-label">Total Weight</div>
+                    <div class="gauge-sub">${(totalWeight / 1000).toFixed(2)} kg dry</div>
+                </div>
+                <div class="gauge-card">
+                    <div class="gauge-value">${partCount}</div>
+                    <div class="gauge-label">Components</div>
+                    <div class="gauge-sub">${items.length} unique, ${partCount} total</div>
+                </div>
+                <div class="gauge-card">
+                    <div class="gauge-value" style="color: ${missingCount ? '#ef4444' : '#22c55e'}">${missingCount ? missingCount + ' missing' : 'Complete'}</div>
+                    <div class="gauge-label">BOM Status</div>
+                    <div class="gauge-sub">${missingCount ? 'Some parts not in DB' : 'All parts resolved'}</div>
+                </div>
+            `;
+
+            // Weight breakdown bar
+            const slotWeights = {};
+            items.forEach(i => {
+                slotWeights[i.slot] = (slotWeights[i.slot] || 0) + i.weight * i.qty;
+            });
+            const barSegs = Object.entries(slotWeights)
+                .filter(([, w]) => w > 0)
+                .sort((a, b) => b[1] - a[1]);
+            
+            document.getElementById('weight-bar-wrap').innerHTML = `
+                <div class="weight-bar-label">
+                    <span>Weight Breakdown</span>
+                    <span>${totalWeight}g total</span>
+                </div>
+                <div class="weight-bar-bg">
+                    ${barSegs.map(([slot, w]) => {
+                        const pct = (w / totalWeight * 100).toFixed(1);
+                        const color = SLOT_COLORS[slot] || '#666';
+                        const label = SLOT_LABELS[slot] || slot;
+                        return `<div class="weight-bar-seg" style="width:${pct}%; background:${color};" title="${label}: ${w}g (${pct}%)"></div>`;
+                    }).join('')}
+                </div>
+                <div style="display:flex; gap:12px; flex-wrap:wrap; margin-top:8px;">
+                    ${barSegs.map(([slot, w]) => {
+                        const color = SLOT_COLORS[slot] || '#666';
+                        const label = SLOT_LABELS[slot] || slot;
+                        return `<span style="font-size:11px; display:flex; align-items:center; gap:4px; color:var(--text-muted);">
+                            <span style="width:8px; height:8px; border-radius:2px; background:${color}; display:inline-block;"></span>
+                            ${label} ${w}g
+                        </span>`;
+                    }).join('')}
+                </div>
+            `;
+
+            // BOM Table
+            const rows = items.map(i => `
+                <tr>
+                    <td><span class="part-slot">${ESC(SLOT_LABELS[i.slot] || i.slot)}</span></td>
+                    <td>
+                        <div class="part-name">${ESC(i.name)} ${!i.found ? '<span class="missing-badge">Missing</span>' : ''}</div>
+                        <div class="part-pid">${ESC(i.pid)}</div>
+                    </td>
+                    <td class="num">${i.qty}</td>
+                    <td class="num">${i.price ? '' + (typeof formatPrice === 'function' ? formatPrice(i.price) : '$' + i.price.toFixed(2)) : '—'}</td>
+                    <td class="num">${i.weight ? i.weight + 'g' : '—'}</td>
+                    <td class="num subtotal">${i.price ? '' + (typeof formatPrice === 'function' ? formatPrice(i.price * i.qty) : '$' + (i.price * i.qty).toFixed(2)) : '—'}</td>
+                    <td class="num">${i.weight ? (i.weight * i.qty) + 'g' : '—'}</td>
+                </tr>
+            `).join('');
+
+            document.getElementById('bom-output').innerHTML = `
+                <div class="bom-table-wrap">
+                    <table class="bom-table">
+                        <thead><tr>
+                            <th>Slot</th><th>Component</th><th>Qty</th>
+                            <th style="text-align:right;">Unit $</th><th style="text-align:right;">Unit g</th>
+                            <th style="text-align:right;">Subtotal $</th><th style="text-align:right;">Subtotal g</th>
+                        </tr></thead>
+                        <tbody>${rows}</tbody>
+                        <tfoot><tr>
+                            <td colspan="3">Total</td>
+                            <td></td><td></td>
+                            <td class="num">${typeof formatPrice === 'function' ? formatPrice(totalCost) : '$' + totalCost.toFixed(2)}</td>
+                            <td class="num">${totalWeight.toLocaleString()}g</td>
+                        </tr></tfoot>
+                    </table>
+                </div>
+            `;
+        }
+
+        async function init() {
+            try {
+                const res = await fetch('forge_database.json');
+                if (!res.ok) throw new Error('Failed to load');
+                db = await res.json();
+
+                // Index all parts by PID
+                for (const [cat, parts] of Object.entries(db.components || {})) {
+                    if (!Array.isArray(parts)) continue;
+                    for (const p of parts) {
+                        if (p.pid) allParts[p.pid] = p;
+                    }
+                }
+
+                // Find models with BOM relations
+                builds = (db.drone_models || []).filter(m => {
+                    const rels = m.relations || {};
+                    return Object.values(rels).some(v => v && v.length > 0);
+                });
+
+                renderBuildSelector();
+                if (builds.length) {
+                    selectedBuild = builds[0];
+                    renderBuildSelector();
+                }
+                renderBOM();
+            } catch (err) {
+                console.error(err);
+                document.getElementById('bom-output').innerHTML = '<div class="empty-bom">Failed to load database.</div>';
+            }
+        }
+
+        document.getElementById('dark-mode-toggle')?.addEventListener('click', () => {
+            const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+            document.documentElement.setAttribute('data-theme', isDark ? 'light' : 'dark');
+            localStorage.setItem('dc-theme', isDark ? 'light' : 'dark');
+            const icon = document.getElementById('dark-mode-icon');
+            if (icon) icon.className = isDark ? 'ph ph-moon' : 'ph ph-sun';
+        });
+
+        init();
+    })();
+    </script>
+</body>
+</html>

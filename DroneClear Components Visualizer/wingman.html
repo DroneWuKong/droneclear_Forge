@@ -1,0 +1,3477 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover"/>
+<title>Wingman AI — Drone Systems Intelligence</title>
+<style>
+  :root {
+    --bg:        #0c0c0a;
+    --bg-card:   #1c1c17;
+    --bg-input:  #141410;
+    --border:    #2e2e26;
+    --border-act:#22c55e;
+    --cyan:      #22c55e;
+    --cyan-dim:  #166534;
+    --white:     #f5f0e8;
+    --g1:        #b8b0a0;
+    --g2:        #6b6358;
+    --g3:        #3d3830;
+    --g4:        #2e2e26;
+    --red:       #d62828;
+    --yellow:    #c9a227;
+    --sans:      'DM Sans', system-ui, sans-serif;
+    --mono:      'JetBrains Mono', 'Courier New', monospace;
+  }
+  @import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&display=swap');
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { height: 100%; background: var(--bg); color: var(--white); font-family: var(--sans); font-size: 13px; }
+
+  body { display: flex; flex-direction: column; height: 100vh; height: 100dvh; overflow: hidden; -webkit-overflow-scrolling: touch; }
+
+  /* ── TOP BAR ── */
+  #topbar {
+    display: flex; align-items: center; gap: 8px;
+    padding: 9px 14px; border-bottom: 1px solid var(--border);
+    background: var(--bg); flex-shrink: 0; flex-wrap: wrap;
+  }
+  #topbar .title { display: flex; align-items: center; gap: 7px; }
+  #topbar .title .slash { color: var(--cyan); font-family: var(--mono); font-size: 13px; font-weight: 700; }
+  #topbar .title .name { color: var(--white); font-size: 13px; font-weight: 700; letter-spacing: .02em; }
+  #topbar .nav-links { display: flex; gap: 2px; margin-left: 4px; }
+  #topbar .nav-link {
+    font-size: 11px; color: var(--g2); padding: 4px 9px; border-radius: 5px;
+    text-decoration: none; transition: all .12s; border: 1px solid transparent;
+  }
+  #topbar .nav-link:hover { color: var(--g1); border-color: var(--border); }
+  #topbar .spacer { flex: 1; }
+  #topbar .badges { display: flex; gap: 6px; align-items: center; }
+
+  .badge {
+    display: flex; align-items: center; gap: 5px;
+    padding: 4px 10px; border-radius: 5px; font-size: 11px; cursor: pointer;
+    font-family: var(--sans); border: 1px solid var(--border); background: transparent; color: var(--g2);
+    transition: all 0.12s;
+  }
+  .badge.cyan { border-color: rgba(34,197,94,.25); background: rgba(34,197,94,.07); color: var(--cyan); cursor: default; }
+  .badge.gh-ok { border-color: rgba(34,197,94,.35); background: rgba(34,197,94,.06); color: var(--cyan); }
+  .badge.gh-err { border-color: rgba(248,113,113,.3); color: var(--red); }
+  .badge.gh-loading { border-color: rgba(250,204,21,.3); color: var(--yellow); }
+  .badge:hover { border-color: var(--g3); color: var(--g1); }
+  .dot { width: 6px; height: 6px; border-radius: 50%; background: var(--cyan); box-shadow: 0 0 4px rgba(34,197,94,.6); flex-shrink: 0; }
+
+
+  .mode-btn.active { background: rgba(34,197,94,.12); color: var(--cyan); font-weight: 700; }
+
+  /* ── SOURCES BAR ── */
+  #sources-bar {
+    display: flex; gap: 5px; align-items: center; flex-wrap: wrap;
+    padding: 6px 14px; border-bottom: 1px solid var(--border);
+    background: #0d0d0b; flex-shrink: 0;
+  }
+  #sources-bar .label { color: var(--g2); font-size: 9px; letter-spacing: .1em; text-transform: uppercase; margin-right: 2px; font-family: var(--mono); }
+  /* source pills — dynamic via JS */
+  .source-pill {
+    display: inline-flex; align-items: center; gap: 5px;
+    font-size: 10px; font-family: var(--mono); font-weight: 500;
+    color: var(--g1); padding: 2px 8px 2px 6px;
+    border: 1px solid var(--border); border-radius: 4px;
+    transition: all .12s;
+  }
+  .source-pill::before { content: ''; display: inline-block; width: 5px; height: 5px; border-radius: 50%; background: var(--g3); flex-shrink: 0; }
+  .source-pill.live { color: var(--cyan); border-color: rgba(34,197,94,.25); }
+  .source-pill.live::before { background: var(--cyan); box-shadow: 0 0 4px rgba(34,197,94,.5); }
+  .source-pill[data-src="parts-db"]::before { background: var(--cyan); }
+  .source-pill[data-src="handbook"]::before { background: #60a5fa; }
+  .source-pill[data-src="intel"]::before { background: #f59e0b; }
+  .source-pill[data-src="platforms"]::before { background: #c084fc; }
+  .source-pill[data-src="firmware"]::before { background: #f87171; }
+  .source-pill.web-pill { color: var(--cyan); border-color: rgba(34,197,94,.25); }
+  .source-pill.web-pill::before { background: var(--cyan); box-shadow: 0 0 4px rgba(34,197,94,.5); }
+  #sources-spacer { flex: 1; }
+  .model-chip {
+    font-size: 9px; font-family: var(--mono); color: var(--g2);
+    padding: 2px 7px; border: 1px solid var(--border); border-radius: 4px;
+    cursor: pointer; transition: all .12s;
+  }
+  .model-chip:hover { color: var(--g2); border-color: var(--g3); }
+
+  /* ── MESSAGES ── */
+  #messages {
+    flex: 1; overflow-y: auto; padding: 20px 16px 8px;
+    scroll-behavior: smooth;
+  }
+  #messages::-webkit-scrollbar { width: 4px; }
+  #messages::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+
+  #empty-state { max-width: 560px; margin: 0 auto; }
+  .welcome-card {
+    background: var(--bg-card); border: 1px solid var(--border); border-radius: 8px;
+    overflow: hidden; margin-bottom: 12px;
+  }
+  .welcome-card .topper { height: 2px; background: linear-gradient(90deg, #22c55e 0%, #3b82f6 60%, #c084fc 100%); }
+  .welcome-card .body { padding: 16px 18px 18px; }
+  .welcome-card h2 { font-size: 16px; font-weight: 700; color: var(--white); margin-bottom: 6px; font-family: var(--mono); }
+  .welcome-card h2 span { color: var(--cyan); }
+  .welcome-card p { font-size: 12px; color: var(--g2); line-height: 1.6; }
+
+  .stat-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 5px; margin-bottom: 16px; }
+  .stat-card {
+    background: var(--bg-card); border: 1px solid var(--border); border-radius: 6px;
+    padding: 10px 8px; text-align: center; transition: border-color .12s;
+  }
+  .stat-card:hover { border-color: var(--g3); }
+  .stat-card .num { font-size: 17px; font-weight: 700; color: var(--white); line-height: 1; margin-bottom: 3px; font-family: var(--mono); }
+  .stat-card .lbl { font-size: 8px; color: var(--g2); letter-spacing: .1em; text-transform: uppercase; line-height: 1.3; }
+
+  .starters-label { display: flex; align-items: center; gap: 7px; margin-bottom: 8px; }
+  .starters-label .slash { color: var(--cyan); font-family: var(--mono); font-size: 11px; }
+  .starters-label .txt { color: var(--g2); font-size: 10px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; }
+  #starters { display: grid; grid-template-columns: 1fr 1fr; gap: 5px; }
+  .starter-btn {
+    padding: 8px 12px; border: 1px solid var(--border); border-radius: 6px;
+    background: var(--bg-card); color: var(--g2); cursor: pointer;
+    font-family: var(--sans); font-size: 12px; transition: all 0.12s;
+    text-align: left; line-height: 1.4;
+  }
+  .starter-btn:hover { border-color: var(--cyan); color: var(--g1); background: rgba(34,197,94,.05); }
+
+  /* message row */
+  .msg-row { margin-bottom: 18px; display: flex; flex-direction: column; }
+  .msg-row.user { align-items: flex-end; }
+  .msg-row.assistant { align-items: flex-start; }
+
+  .msg-meta {
+    display: flex; align-items: center; gap: 6px;
+    font-size: 10px; color: var(--g3); letter-spacing: .1em; text-transform: uppercase;
+    margin-bottom: 5px;
+  }
+  .msg-meta .slash { color: var(--cyan); font-family: var(--mono); }
+  .web-badge {
+    font-size: 9px; color: var(--cyan); border: 1px solid rgba(45,212,191,.3);
+    border-radius: 3px; padding: 1px 5px; letter-spacing: .06em;
+  }
+
+  .img-previews { display: flex; gap: 8px; margin-bottom: 8px; flex-wrap: wrap; justify-content: flex-end; }
+  .img-previews img { max-height: 150px; max-width: 210px; border-radius: 6px; border: 1px solid var(--border); object-fit: contain; }
+
+  .bubble {
+    max-width: 88%; padding: 11px 15px;
+    border: 1px solid var(--border); line-height: 1.65;
+  }
+  .bubble.user {
+    border-radius: 10px 2px 10px 10px;
+    background: rgba(26,140,128,.15); border-color: rgba(45,212,191,.25);
+    color: var(--g1);
+  }
+  .bubble.assistant {
+    border-radius: 2px 10px 10px 10px;
+    background: var(--bg-card);
+  }
+
+  /* markdown inside bubble */
+  .bubble h1 { font-size: 15px; font-weight: 700; color: var(--white); margin: 14px 0 6px; }
+  .bubble h2 { font-size: 11px; font-weight: 700; color: var(--cyan); text-transform: uppercase; letter-spacing: .1em; margin: 12px 0 5px; border-bottom: 1px solid var(--border); padding-bottom: 3px; }
+  .bubble h3 { font-size: 13px; font-weight: 600; color: var(--white); margin: 10px 0 4px; }
+  .bubble p { margin: 3px 0; color: var(--g1); }
+  .bubble ul { list-style: none; padding: 0; margin: 4px 0; }
+  .bubble ul li { display: flex; gap: 8px; margin-top: 3px; color: var(--g1); }
+  .bubble ul li::before { content: "—"; color: var(--cyan); flex-shrink: 0; }
+  .bubble ol { padding-left: 18px; margin: 4px 0; color: var(--g1); }
+  .bubble ol li { margin-top: 3px; }
+  .bubble code { background: #141410; color: var(--cyan); padding: 1px 6px; border-radius: 4px; font-size: 11px; font-family: var(--mono); border: 1px solid var(--border); }
+  .bubble pre { background: #141410; border: 1px solid var(--border); border-radius: 6px; padding: 10px 14px; overflow-x: auto; margin: 8px 0; }
+  .bubble pre code { background: none; border: none; padding: 0; font-size: 12px; line-height: 1.6; color: var(--cyan); }
+  .bubble strong { color: var(--white); font-weight: 600; }
+
+  /* thinking */
+  .thinking {
+    display: inline-flex; align-items: center; gap: 10px;
+    background: var(--bg-card); border: 1px solid var(--border);
+    border-radius: 2px 10px 10px 10px; padding: 10px 16px; margin-bottom: 16px;
+  }
+  .thinking .dots { display: flex; gap: 5px; }
+  .thinking .dots span {
+    width: 6px; height: 6px; border-radius: 50%; background: var(--cyan);
+    animation: pulse 1.3s ease-in-out infinite;
+  }
+  .thinking .dots span:nth-child(2) { animation-delay: .2s; }
+  .thinking .dots span:nth-child(3) { animation-delay: .4s; }
+  .thinking .lbl { font-size: 12px; color: var(--g2); }
+  @keyframes pulse { 0%,100%{opacity:.2;transform:scale(.75)} 50%{opacity:1;transform:scale(1.1)} }
+
+  /* ── INPUT AREA ── */
+  #input-area {
+    padding: 10px 16px calc(env(safe-area-inset-bottom, 0px) + 12px); border-top: 1px solid var(--border);
+    background: var(--bg); flex-shrink: 0;
+  }
+  #staged-images { display: flex; gap: 8px; margin-bottom: 8px; flex-wrap: wrap; }
+  .staged-img-wrap { position: relative; }
+  .staged-img-wrap img { height: 52px; border-radius: 5px; border: 1px solid var(--border-act); object-fit: contain; }
+  .staged-img-wrap .rm {
+    position: absolute; top: -5px; right: -5px; width: 16px; height: 16px;
+    border-radius: 50%; border: none; background: var(--red); color: #fff;
+    font-size: 11px; cursor: pointer; display: flex; align-items: center; justify-content: center;
+  }
+
+  #input-row { display: flex; gap: 8px; align-items: flex-end; }
+
+  .icon-btn {
+    width: 38px; height: 38px; flex-shrink: 0; border-radius: 6px;
+    border: 1px solid var(--border); background: var(--bg-input);
+    color: var(--g3); cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    transition: all 0.12s;
+  }
+  .icon-btn:hover, .icon-btn.active { border-color: var(--border-act); color: var(--cyan); background: rgba(45,212,191,.1); }
+  .icon-btn svg { pointer-events: none; }
+
+  #text-input {
+    flex: 1; resize: none; border-radius: 6px;
+    border: 1px solid var(--border); background: var(--bg-input);
+    color: var(--white); padding: 10px 12px;
+    font-family: var(--sans); font-size: 16px; line-height: 1.5;
+    outline: none; min-height: 38px; max-height: 120px; overflow-y: auto;
+    transition: border-color 0.12s;
+    -webkit-appearance: none; appearance: none;
+    touch-action: manipulation;
+  }
+  #text-input:focus { border-color: var(--border-act); }
+  #text-input::placeholder { color: var(--g3); }
+
+  #send-btn {
+    width: 44px; height: 44px; flex-shrink: 0; border-radius: 6px;
+    border: none; background: var(--cyan); color: #0c0c0a;
+    cursor: pointer; display: flex; align-items: center; justify-content: center;
+    transition: all 0.12s; touch-action: manipulation; -webkit-tap-highlight-color: transparent;
+  }
+  #send-btn:active { transform: scale(0.92); opacity: 0.8; }
+  #send-btn svg { pointer-events: none; }
+
+  #input-hint { margin-top: 8px; text-align: center; font-size: 10px; color: var(--g4); letter-spacing: .06em; }
+
+  /* feedback buttons */
+  .msg-feedback { display: flex; gap: 4px; margin-top: 4px; align-items: center; }
+  .fb-btn { background: none; border: 1px solid transparent; border-radius: 4px; padding: 2px 6px; cursor: pointer; font-size: 12px; color: var(--g3); transition: all .15s; font-family: var(--sans); display: flex; align-items: center; gap: 3px; }
+  .fb-btn:hover { border-color: var(--border); color: var(--g1); }
+  .fb-btn.active { border-color: var(--cyan); color: var(--cyan); }
+  .fb-btn.fb-save { font-size: 11px; color: var(--g3); }
+  .fb-btn.fb-save:hover { color: var(--cyan); border-color: var(--cyan); }
+  .fb-btn.fb-save.saved { color: var(--cyan); border-color: var(--cyan); }
+  
+  /* issue tracker badge */
+  .issue-count { position: fixed; bottom: 80px; right: 16px; background: var(--cyan); color: #0c0c0a; border-radius: 12px; padding: 4px 10px; font-size: 11px; font-weight: 700; cursor: pointer; z-index: 50; display: none; font-family: var(--sans); box-shadow: 0 2px 8px rgba(0,0,0,.3); }
+  .issue-count:hover { transform: scale(1.05); }
+  .issue-count.visible { display: block; }
+  
+  /* issue panel */
+  .issue-panel { display: none; position: fixed; bottom: 110px; right: 16px; width: 340px; max-height: 400px; background: var(--bg-card); border: 1px solid var(--border); border-radius: 8px; z-index: 50; overflow: hidden; box-shadow: 0 4px 20px rgba(0,0,0,.4); }
+  .issue-panel.open { display: flex; flex-direction: column; }
+  .issue-panel-hdr { padding: 10px 14px; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; }
+  .issue-panel-hdr h4 { font-size: 13px; color: var(--white); margin: 0; font-weight: 600; }
+  .issue-panel-body { flex: 1; overflow-y: auto; padding: 8px; max-height: 300px; }
+  .issue-item { padding: 8px; border: 1px solid var(--border); border-radius: 6px; margin-bottom: 6px; font-size: 11px; cursor: default; }
+  .issue-item-title { color: var(--white); font-weight: 600; margin-bottom: 3px; }
+  .issue-item-meta { color: var(--g3); font-size: 10px; }
+  .issue-item-actions { display: flex; gap: 4px; margin-top: 6px; }
+  .issue-item-actions button { font-size: 10px; padding: 2px 8px; border-radius: 3px; border: 1px solid var(--border); background: none; color: var(--g2); cursor: pointer; font-family: var(--sans); }
+  .issue-item-actions button:hover { border-color: var(--cyan); color: var(--cyan); }
+  .issue-panel-footer { padding: 8px 14px; border-top: 1px solid var(--border); display: flex; gap: 6px; }
+  .issue-panel-footer button { flex: 1; padding: 6px; border-radius: 4px; border: 1px solid var(--border); background: none; color: var(--g2); cursor: pointer; font-size: 11px; font-family: var(--sans); }
+  .issue-panel-footer button:hover { border-color: var(--cyan); color: var(--cyan); }
+  .issue-panel-footer button.primary { background: var(--cyan); color: #0c0c0a; border-color: var(--cyan); font-weight: 600; }
+  .issue-panel-footer button.primary:hover { opacity: .85; }
+
+  /* ── MOBILE ── */
+  @media (max-width: 600px) {
+    #topbar { padding: 8px 12px; gap: 5px; }
+    #topbar .nav-links { display: none; }
+    #sources-bar { padding: 5px 12px; }
+    #messages { padding: 14px 12px 6px; }
+    #input-area { padding: 8px 12px calc(env(safe-area-inset-bottom, 0px) + 8px); }
+    #input-hint { display: none; }
+    .welcome-card .body { padding: 12px 14px 14px; }
+    .welcome-card h2 { font-size: 14px; }
+    .stat-grid { grid-template-columns: repeat(3, 1fr); gap: 4px; }
+    .stat-card { padding: 8px 5px; }
+    .stat-card .num { font-size: 15px; }
+    #starters { grid-template-columns: 1fr; }
+  }
+
+  /* ── GAP ANALYZER PANEL ── */
+  #gap-panel {
+    display: none; position: fixed; top: 0; right: 0; bottom: 0;
+    width: 360px; background: var(--bg-card); border-left: 1px solid var(--border);
+    z-index: 150; flex-direction: column; box-shadow: -4px 0 24px rgba(0,0,0,.5);
+  }
+  #gap-panel.open { display: flex; }
+  #gap-hdr {
+    padding: 11px 14px; border-bottom: 1px solid var(--border);
+    display: flex; align-items: center; justify-content: space-between; flex-shrink: 0;
+  }
+  #gap-hdr .title { font: 700 12px var(--mono); color: var(--cyan); letter-spacing: .06em; text-transform: uppercase; display: flex; align-items: center; gap: 6px; }
+  #gap-hdr .close { background: none; border: none; color: var(--g2); cursor: pointer; font-size: 18px; line-height: 1; padding: 0; }
+  #gap-hdr .close:hover { color: var(--white); }
+  #gap-inputs { padding: 12px 14px; border-bottom: 1px solid var(--border); flex-shrink: 0; }
+  #gap-inputs label { font: 600 9px var(--mono); text-transform: uppercase; letter-spacing: .1em; color: var(--g2); display: block; margin-bottom: 4px; }
+  .gap-input-row { display: flex; gap: 6px; margin-bottom: 8px; }
+  .gap-field {
+    flex: 1; background: var(--bg); border: 1px solid var(--border); border-radius: 5px;
+    padding: 6px 9px; color: var(--white); font: 12px var(--sans); outline: none;
+    transition: border-color .15s;
+  }
+  .gap-field:focus { border-color: var(--cyan); }
+  .gap-field::placeholder { color: var(--g3); }
+  #gap-run {
+    width: 100%; padding: 7px; border-radius: 5px; border: 1px solid var(--cyan);
+    background: rgba(34,197,94,.1); color: var(--cyan); font: 600 11px var(--sans);
+    cursor: pointer; transition: all .15s; letter-spacing: .03em;
+  }
+  #gap-run:hover { background: rgba(34,197,94,.2); }
+  #gap-run:disabled { opacity: .4; cursor: default; }
+  #gap-auto-hint { font: 500 10px var(--sans); color: var(--g2); margin-top: 6px; display: none; }
+  #gap-auto-hint.visible { display: block; }
+  #gap-body { flex: 1; overflow-y: auto; padding: 10px 14px; }
+  .gap-empty {
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    height: 100%; color: var(--g3); font: 500 11px var(--sans); text-align: center; gap: 8px;
+  }
+  .gap-empty i { font-size: 28px; }
+  .gap-section-lbl { font: 600 9px var(--mono); text-transform: uppercase; letter-spacing: .1em; color: var(--g2); margin: 12px 0 6px; display: flex; align-items: center; gap: 6px; }
+  .gap-section-lbl::after { content: ''; flex: 1; height: 1px; background: var(--border); }
+  .gap-card {
+    border: 1px solid var(--border); border-radius: 6px; padding: 9px 11px;
+    margin-bottom: 6px; font-size: 11px; line-height: 1.5;
+  }
+  .gap-card.critical { border-color: rgba(214,40,40,.4); background: rgba(214,40,40,.05); }
+  .gap-card.warning  { border-color: rgba(201,162,39,.35); background: rgba(201,162,39,.04); }
+  .gap-card.info     { border-color: rgba(34,197,94,.25); background: rgba(34,197,94,.03); }
+  .gap-card-title { font: 600 11px var(--sans); color: var(--white); margin-bottom: 3px; display: flex; align-items: center; gap: 6px; }
+  .gap-dot { width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0; }
+  .gap-dot.critical { background: var(--red); }
+  .gap-dot.warning  { background: var(--yellow); }
+  .gap-dot.info     { background: var(--cyan); }
+  .gap-card-body { color: var(--g1); }
+  .gap-card-body strong { color: var(--white); }
+  .gap-thinking { display: flex; align-items: center; gap: 8px; color: var(--g2); font: 500 11px var(--sans); padding: 12px 0; }
+  .gap-thinking .dots { display: flex; gap: 4px; }
+  .gap-thinking .dots span { width: 4px; height: 4px; border-radius: 50%; background: var(--cyan); animation: gapPulse 1.2s ease-in-out infinite; }
+  .gap-thinking .dots span:nth-child(2) { animation-delay: .2s; }
+  .gap-thinking .dots span:nth-child(3) { animation-delay: .4s; }
+  @keyframes gapPulse { 0%,80%,100%{opacity:.2} 40%{opacity:1} }
+  #gap-panel .gap-cta { font: 500 10px var(--sans); color: var(--g2); margin-top: 10px; text-align: center; }
+  #gap-panel .gap-cta a { color: var(--cyan); text-decoration: none; }
+  @media (max-width: 600px) {
+    #gap-panel { width: 100%; border-left: none; }
+  }
+
+  /* ── CONFIG MODAL ── */
+  #cfg-overlay {
+    display: none; position: fixed; inset: 0; background: rgba(0,0,0,.75);
+    z-index: 200; align-items: center; justify-content: center;
+  }
+  #cfg-overlay.open { display: flex; }
+  #cfg-panel {
+    background: var(--bg-card); border: 1px solid var(--border); border-radius: 10px;
+    padding: 24px; width: 440px; max-width: 92vw;
+  }
+  #cfg-panel h3 { display: flex; align-items: center; gap: 8px; margin-bottom: 20px; }
+  #cfg-panel h3 .slash { color: var(--cyan); font-family: var(--mono); font-size: 11px; }
+  #cfg-panel h3 span { color: var(--white); font-size: 13px; font-weight: 700; letter-spacing: .05em; text-transform: uppercase; }
+  .cfg-label { display: block; color: var(--g2); font-size: 11px; letter-spacing: .04em; text-transform: uppercase; margin-bottom: 6px; }
+  #api-key-input, #pat-input {
+    width: 100%; background: #141410; border: 1px solid var(--border); border-radius: 6px;
+    color: var(--white); font-family: var(--mono); font-size: 12px; padding: 9px 12px;
+    outline: none; margin-bottom: 16px;
+    transition: border-color 0.12s;
+  }
+  #api-key-input:focus, #pat-input:focus { border-color: var(--border-act); }
+  #api-key-input::placeholder, #pat-input::placeholder { color: var(--g3); }
+  #file-list { background: #141410; border: 1px solid var(--border); border-radius: 6px; padding: 10px 12px; margin-bottom: 20px; }
+  .file-row { display: flex; gap: 8px; align-items: center; margin-bottom: 4px; font-size: 11px; font-family: var(--mono); }
+  .file-row .fi { width: 12px; flex-shrink: 0; }
+  .file-row .fp { color: var(--g3); }
+  .file-row.ok .fp { color: var(--g1); }
+  .file-row .fe { color: var(--red); font-size: 10px; }
+  .cfg-btns { display: flex; gap: 8px; }
+  #cfg-connect {
+    flex: 1; padding: 10px 0; border: none; border-radius: 6px;
+    background: var(--cyan); color: #0c0c0a; font-family: var(--sans);
+    font-size: 12px; font-weight: 700; cursor: pointer; letter-spacing: .05em;
+  }
+  #cfg-cancel {
+    padding: 10px 16px; border: 1px solid var(--border); border-radius: 6px;
+    background: transparent; color: var(--g2); font-family: var(--sans); font-size: 12px; cursor: pointer;
+  }
+</style>
+<style>html,body{background:#0c0c0a!important;color:#f5f0e8}</style>
+</head>
+<body>
+<header style="display:flex;align-items:center;gap:8px;padding:8px 14px;border-bottom:1px solid #2e2e26;background:#1c1c17;position:sticky;top:0;z-index:100;flex-shrink:0;">
+  <a href="/wingman/" style="font:800 16px 'JetBrains Mono',monospace;color:#00d4ff;letter-spacing:-0.03em;text-decoration:none;flex-shrink:0;">Wingman</a>
+  <div style="display:flex;gap:4px;align-items:center;margin-left:auto;flex-shrink:0;">
+    <a href="/" class="tp-pill">Forge</a>
+    <a href="/intel/" class="tp-pill">Intel</a>
+    <a href="/patterns/" class="tp-pill">Patterns</a>
+    <a href="/tools-home/" class="tp-pill">Tools</a>
+    <a href="/start/" class="tp-pill">Docs</a>
+    <a href="/pro/" class="tp-pill" style="color:#22c55e;border-color:rgba(34,197,94,.3)">Pro</a>
+    <button class="tp-pill" onclick="openCfg()" style="cursor:pointer;background:none;border:1px solid #2e2e26;border-radius:20px;color:#6b6358;font:500 10px 'DM Sans',sans-serif;padding:4px 9px;" title="Settings"><i class="ph ph-gear"></i></button>
+  </div>
+</header>
+<style>.tp-pill{font:500 10px 'DM Sans',system-ui,sans-serif;color:#6b6358;padding:4px 9px;border:1px solid #2e2e26;border-radius:20px;text-decoration:none;white-space:nowrap;transition:all .15s}.tp-pill:hover{border-color:#3e3e34;color:#b8b0a0}</style>
+<!-- ── SOURCES BAR ────────────────────────────────────────── -->
+<div id="sources-bar">
+  <span class="label">Sources</span>
+  <div id="source-pills">
+    <span class="source-pill">fallback</span>
+  </div>
+  <span class="source-pill web-pill" id="live-web-pill">+ live web</span>
+  <div id="sources-spacer"></div>
+  <span class="source-pill" id="analytics-pill" onclick="showAnalyticsDashboard()" style="cursor:pointer;" title="View analytics"><i class="ph ph-chart-bar"></i></span>
+</div>
+
+<!-- ── MESSAGES ─────────────────────────────────────────────── -->
+<div id="messages">
+  <div id="empty-state">
+    <div class="welcome-card">
+      <div class="topper"></div>
+      <div class="body">
+        <h2>Welcome to <span id="welcome-name">Wingman AI</span></h2>
+        <p>Drone systems intelligence powered by the Forge KB, 861 intel articles, and live web search. Just start typing — powered by Gemini AI. Enter your API key next to the model chip below.</p>
+      </div>
+    </div>
+    <div class="stat-grid">
+      <div class="stat-card"><div class="num" id="stat-platforms">—</div><div class="lbl">Platforms</div></div>
+      <div class="stat-card"><div class="num" id="stat-components">—</div><div class="lbl">Components</div></div>
+      <div class="stat-card"><div class="num" id="stat-handbook">—</div><div class="lbl">Handbook Pages</div></div>
+      <div class="stat-card"><div class="num" id="stat-categories">—</div><div class="lbl">Categories</div></div>
+      <div class="stat-card"><div class="num" id="stat-firmware">—</div><div class="lbl">FW Targets</div></div>
+      <div class="stat-card"><div class="num" id="stat-intel">—</div><div class="lbl">Intel Articles</div></div>
+    </div>
+    <div class="starters-label">
+      <span class="slash">//</span>
+      <span class="txt">Try asking</span>
+    </div>
+    <div id="starters"></div>
+  </div>
+</div>
+
+<!-- ── INPUT AREA ────────────────────────────────────────────── -->
+<div id="input-area">
+  <div id="staged-images"></div>
+  <!-- Model + API key row -->
+  <div style="display:flex;align-items:center;gap:6px;margin-bottom:6px;">
+    <span class="model-chip" id="model-chip" onclick="cycleModel()" title="Click to cycle model" style="cursor:pointer;flex-shrink:0;">gemini-2.0-flash</span>
+    <input type="password" id="inline-api-key" placeholder="API key (optional)"
+      style="flex:1;background:#141410;border:1px solid #2e2e26;border-radius:6px;color:#b8b0a0;font:400 10px 'DM Sans',sans-serif;padding:5px 8px;outline:none;min-width:0;"
+      title="Gemini / Groq / Anthropic API key">
+  </div>
+  <div id="input-row">
+    <button class="icon-btn" id="cam-btn" title="Attach image for visual triage" onclick="document.getElementById('file-input').click()">
+      <svg width="15" height="15" viewBox="0 0 16 16" fill="none">
+        <rect x="1" y="3" width="14" height="10" rx="1.5" stroke="currentColor" stroke-width="1.3"/>
+        <circle cx="8" cy="8" r="2.5" stroke="currentColor" stroke-width="1.3"/>
+        <path d="M5 3L6.2 1h3.6L11 3" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"/>
+      </svg>
+    </button>
+    <input type="file" id="file-input" accept="image/*" multiple style="display:none" onchange="handleFiles(this.files)"/>
+    <textarea id="text-input" rows="1" placeholder="Motor issue, binding problem, compliance question, hardware rec…"
+      oninput="autoResize(this); updateSendBtn()"
+      onkeydown="handleKey(event)"></textarea>
+    <button id="send-btn" onclick="send()">
+      <svg width="14" height="14" viewBox="0 0 16 16" fill="none">
+        <path d="M2 8L14 2L10 8L14 14L2 8Z" fill="currentColor"/>
+      </svg>
+    </button>
+  </div>
+  <div id="input-hint">Enter to send · Shift+Enter for newline · attach images for visual triage</div>
+</div>
+
+<!-- ── CONFIG MODAL ──────────────────────────────────────────── -->
+<div id="cfg-overlay" onclick="closeCfgOutside(event)">
+  <div id="cfg-panel">
+    <h3><span class="slash">//</span><span>Settings</span></h3>
+
+    <label class="cfg-label">AI Provider</label>
+    <div style="display:flex;gap:6px;margin-bottom:6px;">
+      <button id="prov-gemini" onclick="setProvider('gemini')" style="flex:1;padding:8px;border-radius:6px;border:1px solid var(--border);background:var(--bg-card);color:var(--g2);font-family:system-ui;font-size:12px;cursor:pointer;font-weight:600;">Gemini <span style="font-size:9px;opacity:.6">free</span></button>
+      <button id="prov-groq" onclick="setProvider('groq')" style="flex:1;padding:8px;border-radius:6px;border:1px solid var(--border);background:var(--bg-card);color:var(--g2);font-family:system-ui;font-size:12px;cursor:pointer;font-weight:600;">Groq / Llama <span style="font-size:9px;opacity:.6">free</span></button>
+      <button id="prov-anthropic" onclick="setProvider('anthropic')" style="flex:1;padding:8px;border-radius:6px;border:1px solid var(--border);background:var(--bg-card);color:var(--g2);font-family:system-ui;font-size:12px;cursor:pointer;font-weight:600;">Claude <span style="font-size:9px;opacity:.6">BYOK</span></button>
+    </div>
+    <div style="font-size:10px;color:var(--g3);margin-bottom:16px">API key is set inline next to the model picker above the chat box.</div>
+
+    <!-- Hidden inputs kept for JS compatibility -->
+    <input type="hidden" id="api-key-input"/>
+    <input type="hidden" id="gemini-key-input"/>
+    <input type="hidden" id="groq-key-input"/>
+    <input type="hidden" id="proxy-secret-input"/>
+    <div id="anthropic-cfg" style="display:none;"></div>
+    <div id="gemini-cfg" style="display:none;"></div>
+    <div id="groq-cfg" style="display:none;"></div>
+
+    <hr style="border:none;border-top:1px solid var(--border);margin:0 0 16px;"/>
+
+    <div style="margin-bottom:16px;">
+      <label class="cfg-label" style="display:flex;align-items:center;gap:6px;margin-bottom:6px;">
+        <span style="display:inline-block;width:7px;height:7px;border-radius:50%;background:var(--cyan);flex-shrink:0"></span>
+        Subscription Token <span style="font-size:9px;color:var(--g3);font-weight:400;text-transform:none;letter-spacing:0">(Pro — unlocks Claude, Gap Analyzer, PIE)</span>
+      </label>
+      <input type="password" id="sub-token-input" placeholder="Paste your Pro token here…" style="font-size:11px;letter-spacing:.03em"/>
+      <div id="sub-token-status" style="font-size:10px;margin-top:5px;min-height:14px;"></div>
+    </div>
+
+    <hr style="border:none;border-top:1px solid var(--border);margin:0 0 16px;"/>
+
+    <label class="cfg-label">GitHub PAT (optional — loads repo knowledge base)</label>
+    <input type="password" id="pat-input" placeholder="ghp_xxxxxxxxxxxxxxxxxxxx"/>
+    <label class="cfg-label">Files to Fetch</label>
+    <div id="file-list"></div>
+    <div class="cfg-btns">
+      <button id="cfg-connect" onclick="saveCfgAndConnect()">Save & Connect</button>
+      <button id="cfg-cancel" onclick="closeCfg()">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<!-- ── GAP ANALYZER PANEL ──────────────────────────────────── -->
+<div id="gap-panel">
+  <div id="gap-hdr">
+    <div class="title"><i class="ph ph-arrows-left-right"></i> Gap Analyzer</div>
+    <button class="close" onclick="toggleGapPanel()">×</button>
+  </div>
+  <div id="gap-inputs">
+    <label>Compare</label>
+    <div class="gap-input-row">
+      <input class="gap-field" id="gap-a" placeholder="Entity A — e.g. DBR4, Skydio X2…" autocomplete="off"/>
+      <input class="gap-field" id="gap-b" placeholder="Entity B — e.g. GX 12, SIYI…" autocomplete="off"/>
+    </div>
+    <button id="gap-run" onclick="runGapAnalysis()">Run Gap Analysis</button>
+    <div id="gap-auto-hint"></div>
+  </div>
+  <div id="gap-body">
+    <div class="gap-empty" id="gap-empty">
+      <i class="ph ph-arrows-left-right"></i>
+      <span>Run gap analyzer to populate</span>
+      <span style="font-size:10px;color:var(--g3);margin-top:2px;">Compares spec, compliance,<br>and supply chain gaps between two entities</span>
+    </div>
+    <div id="gap-results" style="display:none;"></div>
+  </div>
+</div>
+
+<!-- ── ISSUE TRACKER ──────────────────────────────────────── -->
+<div class="issue-count" id="issue-count" onclick="toggleIssuePanel()">0 saved issues</div>
+<div class="issue-panel" id="issue-panel">
+  <div class="issue-panel-hdr">
+    <h4>Saved Issues</h4>
+    <button onclick="toggleIssuePanel()" style="background:none;border:none;color:var(--g3);cursor:pointer;font-size:16px;">×</button>
+  </div>
+  <div class="issue-panel-body" id="issue-list"></div>
+  <div class="issue-panel-footer">
+    <button onclick="exportIssues()">Export JSON</button>
+    <button onclick="clearIssues()">Clear All</button>
+    <button class="primary" onclick="exportAsTroubleshooting()">Export as TS</button>
+  </div>
+  <div class="issue-panel-footer" style="border-top:1px solid var(--border);">
+    <button onclick="showAnalyticsDashboard()"><i class="ph ph-chart-bar"></i> View Stats</button>
+    <button onclick="exportAnalytics()"><i class="ph ph-download-simple"></i> Export Analytics</button>
+  </div>
+</div>
+
+<script>
+// ─── STATE ────────────────────────────────────────────────────
+var mode       = 'wingman';
+var messages   = [];       // {role, content(array), text, previews, searched}
+var stagedImgs = [];       // {b64, preview, name, mediaType}
+var ghStatus   = 'idle';
+var ghFiles    = [];
+var kbData     = '';  // Set to FALLBACK_KB after it's declared below
+var kbSources  = ['fallback'];
+var loading    = false;
+var apiKey     = localStorage.getItem('wingman_api_key') || '';
+var provider   = localStorage.getItem('wingman_provider') || 'gemini'; // gemini | groq | anthropic
+var geminiKey  = localStorage.getItem('wingman_gemini_key') || '';
+var groqKey    = localStorage.getItem('wingman_groq_key') || '';
+var proxySecret = localStorage.getItem('wingman_proxy_secret') || '';
+var subToken    = localStorage.getItem('wingman_sub_token') || '';
+
+var GH_RAW = 'https://raw.githubusercontent.com/DroneWuKong';
+
+var GH = {
+  owner: 'DroneWuKong',
+  repo: 'Ai-Project',
+  files: [
+    'DroneClear/forge_database.json',
+    'DroneClear/forge_database.json',
+  ],
+};
+
+// Parts-DB JSON files to fetch from drone-integration-handbook
+var PARTS_DB_FILES = [
+  'flight_controllers','motors','escs','frames','batteries','propellers',
+  'antennas','receivers','video_transmitters','fpv_cameras','gps_modules',
+  'stacks','sensors','lidar','mesh_radios','companion_computers',
+  'integrated_stacks','drone_models','build_guides',
+];
+
+// Handbook markdown files to fetch
+var HANDBOOK_FILES = [
+  'components/flight-controllers.md','components/flight-controller-selection.md',
+  'components/motors.md','components/escs.md','components/batteries.md',
+  'components/battery-deep-dive.md','components/comms-datalinks.md',
+  'components/companion-computers.md','components/counter-uas.md',
+  'components/thermal-cameras.md','components/lidar-mapping-payloads.md',
+  'components/sensor-payload-integration.md','components/platforms-global.md',
+  'components/remote-id-custom-builds.md','components/propulsion-system-matching.md',
+  'components/power-architecture-emi.md','components/gnss-receiver-quality-ecosystem.md',
+  'components/detect-and-avoid-integration.md','components/industry-intelligence.md',
+  'components/bvlos-pathways.md','components/utm-airspace-awareness.md',
+  'components/uas-maintenance-standards.md','components/openhd-implementation-guide.md',
+  'components/rtk-ppk-gps-integration.md','components/rtk-ppk-the-real-story.md',
+  'components/propulsion-non-electric.md',
+  'components/orqa-hardware-guide.md','components/ndaa-compliance.md',
+  'components/mafiairs-combat-elrs.md','components/rf-detection-hardware.md',
+  'field/troubleshooting.md','field/preflight.md','field/blackbox.md',
+  'field/pid-tuning.md','field/ghost-config.md','field/unsolved-problems.md',
+  'field/elrs-airport-mode.md','field/wingman-ai-pid-tuning.md',
+  'firmware/four-firmwares.md','firmware/mavlink-protocol.md',
+  'firmware/msp-protocol.md','firmware/uart-layout.md',
+  'fundamentals/antennas.md','fundamentals/five-link-types.md',
+  'fundamentals/frequency-bands.md','fundamentals/link-budgets.md',
+  'integration/companion.md','integration/mesh-radios.md','integration/tak.md',
+];
+
+var STARTERS = [
+  'Motor 3 dead after crash — triage',
+  'Is DJI Mavic 3 NDAA compliant?',
+  'Check my wiring [attach photo]',
+  'Compare ELRS vs Crossfire vs DJI',
+  'Help me tune PIDs for my 5" freestyle',
+  'Latest defense UAS procurement news',
+];
+
+// ─── RAG INDEX ───────────────────────────────────────────────
+// Each entry: {cat, name, text, src, data}
+var ragIndex = [];
+var handbookChunks = []; // {title, text, src}
+var ragStats = { platforms: 0, components: 0, handbook: 0, firmware: 0, categories: new Set() };
+
+async function loadRAG() {
+  const t0 = Date.now();
+
+  // Load from local forge_database.json (bundled in build) — single fast fetch
+  try {
+    const res = await fetch('forge_database.json');
+    if (res.ok) {
+      const db = await res.json();
+      // Index components
+      for (const [cat, parts] of Object.entries(db.components || {})) {
+        if (!Array.isArray(parts)) continue;
+        ragStats.categories.add(cat);
+        for (const item of parts) {
+          if (!item || typeof item !== 'object') continue;
+          ragStats.components++;
+          const textParts = [item.name, item.manufacturer, item.description, item.category,
+            item.pid, item.protocol, item.firmware, ...(item.tags || []),
+            ...(item.gotchas || [])].filter(Boolean);
+          ragIndex.push({
+            cat, name: item.name || '?', text: textParts.join(' ').toLowerCase(),
+            src: cat, data: item,
+          });
+        }
+      }
+      // Index platforms
+      for (const p of (db.drone_models || [])) {
+        ragStats.platforms++;
+        ragStats.categories.add('platforms');
+        const textParts = [p.name, p.manufacturer, p.country, p.propulsion,
+          p.group ? 'group ' + p.group : '', p.note].filter(Boolean);
+        ragIndex.push({
+          cat: 'platforms', name: p.name || '?', text: textParts.join(' ').toLowerCase(),
+          src: 'drone_models', data: p,
+        });
+      }
+    }
+  } catch(e) { console.warn('Failed to load forge_database.json:', e); }
+
+  // Also try loading troubleshooting DB
+  try {
+    const res = await fetch('forge_troubleshooting.json');
+    if (res.ok) {
+      const ts = await res.json();
+      for (const entry of (ts.entries || [])) {
+        const textParts = [entry.title, entry.category, ...(entry.symptoms||[]),
+          ...(entry.causes||[]), ...(entry.fixes||[]), ...(entry.tags||[])].filter(Boolean);
+        ragIndex.push({
+          cat: 'troubleshooting', name: entry.title, text: textParts.join(' ').toLowerCase(),
+          src: 'troubleshooting', data: entry,
+        });
+      }
+    }
+  } catch(e) {}
+
+  // Load firmware target configs (Betaflight, iNav, ArduPilot, PX4)
+  try {
+    const res = await fetch('forge_firmware_configs.json');
+    if (res.ok) {
+      const fw = await res.json();
+      for (const target of (fw.targets || [])) {
+        const textParts = [target.target_name, target.firmware, target.mcu, target.mcu_family,
+          target.board_name, target.bf_target, target.manufacturer_id, target.usb_manufacturer,
+          target.frame_type, target.frame_class,
+          ...(target.gyros||[]), ...(target.features||[])].filter(Boolean);
+        ragIndex.push({
+          cat: 'firmware', name: target.target_name, text: textParts.join(' ').toLowerCase(),
+          src: 'firmware-' + target.firmware, data: target,
+        });
+        ragStats.firmware++;
+      }
+      ragStats.categories.add('firmware');
+    }
+  } catch(e) { console.warn('Firmware configs load skipped:', e); }
+
+  // Still load handbook MDs from GitHub (small text files, optional enrichment)
+  try {
+    const hbPromises = [];
+    const hbFiles = typeof HANDBOOK_FILES !== 'undefined' ? HANDBOOK_FILES : [];
+    for (const file of hbFiles) {
+      hbPromises.push(
+        fetch(`${GH_RAW}/drone-integration-handbook/main/${file}`)
+          .then(r => r.ok ? r.text() : null)
+          .then(md => { if (md) indexHandbook(file, md); })
+          .catch(() => {})
+      );
+    }
+    await Promise.all(hbPromises);
+  } catch(e) { console.warn('Handbook load skipped:', e.message); }
+
+  // Load firmware version matrix
+  try {
+    const res = await fetch('forge_firmware_versions.json');
+    if (res.ok) {
+      const fwv = await res.json();
+      // Index each firmware family's versions
+      for (const [fwName, fwData] of Object.entries(fwv)) {
+        if (!fwData || typeof fwData !== 'object' || !fwData.versions) continue;
+        // Index family-level info
+        const familyText = [
+          fwName, fwData.current_stable, fwData.release_cadence,
+          fwData.configurator, fwData.orqa_support || '',
+        ].filter(Boolean).join(' ');
+        // Index each version
+        for (const v of fwData.versions) {
+          const featureText = Object.entries(v.key_features || {}).map(([feat, info]) => {
+            const sup = info.supported === true ? 'supported' : info.supported === false ? 'not supported unsupported' : '';
+            return `${feat} ${sup} ${info.notes || ''}`;
+          }).join(' ');
+          const textParts = [
+            fwName, v.version, v.also_known_as || '', v.status,
+            featureText,
+            ...(v.breaking_changes || []),
+            v.upgrade_path || '',
+            ...(v.known_issues || []),
+            'firmware version feature',
+          ].filter(Boolean);
+          ragIndex.push({
+            cat: 'firmware_versions',
+            name: `${fwName} ${v.version}`,
+            text: textParts.join(' ').toLowerCase(),
+            src: 'firmware_versions',
+            data: { fw: fwName, ...v, family_info: { current: fwData.current_stable, configurator: fwData.configurator } },
+          });
+        }
+        // Index common Q&A if present
+        for (const qa of (fwv.common_version_questions || [])) {
+          ragIndex.push({
+            cat: 'firmware_versions',
+            name: `Q: ${qa.q.slice(0, 60)}`,
+            text: (qa.q + ' ' + qa.a).toLowerCase(),
+            src: 'firmware_versions_qa',
+            data: qa,
+          });
+        }
+        // Index MCU capability matrix if present
+        for (const [mcu, caps] of Object.entries(fwData.mcu_capability_matrix || {})) {
+          const textParts = [mcu, caps.max_dshot, caps.bidir_dshot, caps.notes || '', 'mcu capability dshot'].filter(Boolean);
+          ragIndex.push({
+            cat: 'firmware_versions',
+            name: `${fwName} ${mcu} capabilities`,
+            text: textParts.join(' ').toLowerCase(),
+            src: 'firmware_versions',
+            data: { fw: fwName, mcu, ...caps },
+          });
+        }
+        ragStats.categories.add('firmware_versions');
+      }
+      console.log(`Firmware version matrix loaded`);
+    }
+  } catch(e) { console.warn('Firmware versions load skipped:', e.message); }
+
+  // Load incompatibilities registry
+  try {
+    const res = await fetch('forge_incompatibilities.json');
+    if (res.ok) {
+      const incompat = await res.json();
+      for (const entry of (incompat.entries || [])) {
+        const textParts = [
+          entry.a, entry.b, entry.description, entry.workaround,
+          entry.type, entry.severity === 'hard' ? 'will not work hard incompatible' : 'may not work unreliable',
+          ...(entry.tags || []),
+        ].filter(Boolean);
+        ragIndex.push({
+          cat: 'incompatibilities', name: `${entry.a} + ${entry.b}`,
+          text: textParts.join(' ').toLowerCase(),
+          src: 'incompatibilities', data: entry,
+        });
+        ragStats.categories.add('incompatibilities');
+      }
+      console.log(`Incompatibilities loaded: ${incompat.entries?.length || 0} entries`);
+    }
+  } catch(e) { console.warn('Incompatibilities load skipped:', e.message); }
+
+  // Load Orqa board configs (UART maps, gotchas, CLI quickstart)
+  try {
+    const res = await fetch('forge_orqa_configs.json');
+    if (res.ok) {
+      const orqa = await res.json();
+      for (const board of (orqa.boards || [])) {
+        // Build rich searchable text from all board fields
+        const uartText = (board.uarts || board.jst_gh_ports || []).map(u =>
+          `uart${u.uart || u.port} ${u.recommended_use || ''} ${u.protocol || ''} ${u.note || ''}`
+        ).join(' ');
+        const textParts = [
+          board.name, board.pid, board.bf_target, board.px4_target, board.ardupilot_target,
+          board.mcu, board.mcu_fc, board.mcu_companion, board.description,
+          ...(board.gotchas || []), uartText,
+          ...(board.betaflight_cli_quickstart || []),
+          'orqa', 'uart map', 'ndaa', 'croatian',
+        ].filter(Boolean);
+        ragIndex.push({
+          cat: 'orqa_boards', name: board.name,
+          text: textParts.join(' ').toLowerCase(),
+          src: 'orqa_configs', data: board,
+        });
+        ragStats.categories.add('orqa_boards');
+      }
+      console.log(`Orqa configs loaded: ${orqa.boards?.length || 0} boards`);
+    }
+  } catch(e) { console.warn('Orqa configs load skipped:', e.message); }
+
+  // ── Intel DB — articles, companies, programs ──────────────────────────────
+  try {
+    const [artRes, cosRes, progRes] = await Promise.all([
+      fetch('intel_articles.json').catch(() => null),
+      fetch('intel_companies.json').catch(() => null),
+      fetch('intel_programs.json').catch(() => null),
+    ]);
+
+    let intelCount = 0;
+
+    // Articles — index by title + summary, prioritise recent
+    if (artRes?.ok) {
+      const articles = await artRes.json();
+      // Sort newest first, take top 300 (keeps RAG context fast)
+      const sorted = [...articles]
+        .filter(a => a.title)
+        .sort((a, b) => (b.pub_date || '').localeCompare(a.pub_date || ''));
+      const top = sorted.slice(0, 300);
+      for (const a of top) {
+        const tags  = a.entities?.tags || [];
+        const cos   = a.entities?.companies || [];
+        const text  = [
+          a.title,
+          tags.join(' '),
+          cos.join(' '),
+          (a.summary || a.body_text || '').slice(0, 400),
+        ].join(' ').toLowerCase();
+        ragIndex.push({
+          cat: 'intel_article',
+          name: a.title,
+          text,
+          data: {
+            title: a.title,
+            pub_date: a.pub_date || '',
+            site: a.site || '',
+            url: a.url || '',
+            tags,
+            companies: cos,
+            summary: a.summary || (a.body_text || '').slice(0, 300),
+          },
+        });
+        intelCount++;
+      }
+    }
+
+    // Companies — index name + tags + programs
+    if (cosRes?.ok) {
+      const companies = await cosRes.json();
+      for (const c of companies) {
+        const text = [c.name, ...(c.tags || []), ...(c.programs || [])].join(' ').toLowerCase();
+        ragIndex.push({
+          cat: 'intel_company',
+          name: c.name,
+          text,
+          data: c,
+        });
+        intelCount++;
+      }
+    }
+
+    // Programs — index name + tags + participants
+    if (progRes?.ok) {
+      const programs = await progRes.json();
+      for (const p of programs) {
+        const text = [p.name, ...(p.tags || []), ...(p.participants || [])].join(' ').toLowerCase();
+        ragIndex.push({
+          cat: 'intel_program',
+          name: p.name,
+          text,
+          data: p,
+        });
+        intelCount++;
+      }
+    }
+
+    if (intelCount > 0) {
+      ragStats.categories.add('intel');
+      if (!kbSources.includes('intel')) kbSources.push('intel');
+      console.log(`Intel DB loaded: ${intelCount} items (articles + companies + programs)`);
+    }
+  } catch(e) { console.warn('Intel DB load skipped:', e.message); }
+
+  buildIDF(); // compute TF-IDF weights now that corpus is loaded
+  buildComponentCache(); // build category lookup cache for validator
+  updateStats();
+  updateSourcePills();
+  console.log(`RAG loaded: ${ragIndex.length} items, ${handbookChunks.length} handbook chunks in ${Date.now()-t0}ms`);
+}
+
+function indexPartsDB(file, data) {
+  const items = Array.isArray(data) ? data : Object.values(data).flat();
+  for (const item of items) {
+    if (!item || typeof item !== 'object') continue;
+    const cat = item.category || file;
+    ragStats.categories.add(cat);
+    if (file === 'drone_models') ragStats.platforms++;
+    else ragStats.components++;
+    // Build searchable text blob from all string fields
+    const textParts = [item.name, item.manufacturer, item.description, item.category,
+      item.mcu_family, item.protocol, item.video_system, item.mesh_protocol,
+      item.processor, item.firmware, ...(item.tags || []),
+      ...(item.gotchas || [])].filter(Boolean);
+    ragIndex.push({
+      cat, name: item.name || '?', text: textParts.join(' ').toLowerCase(),
+      src: file, data: item,
+    });
+  }
+}
+
+function indexHandbook(file, md) {
+  ragStats.handbook++;
+  // Split on ## headings into chunks
+  const sections = md.split(/^## /m);
+  for (const sec of sections) {
+    if (sec.trim().length < 50) continue;
+    const firstLine = sec.split('\n')[0].trim();
+    const title = firstLine || file.split('/').pop().replace('.md','');
+    handbookChunks.push({
+      title, text: sec.trim().toLowerCase(),
+      src: file, full: sec.trim(),
+    });
+  }
+}
+
+function updateStats() {
+  const el = (id, v) => { const e = document.getElementById(id); if (e) e.textContent = v; };
+  el('stat-platforms', ragStats.platforms || '—');
+  el('stat-components', ragStats.components || '—');
+  el('stat-handbook', ragStats.handbook || '—');
+  el('stat-categories', ragStats.categories.size || '—');
+  el('stat-firmware', ragStats.firmware || '—');
+  el('stat-intel', ragIndex.filter(r => r.cat === 'intel_article').length || '—');
+}
+
+// ─── 1. QUERY EXPANSION — synonym/alias map ───────────────────
+// Maps natural language phrases → canonical search terms
+var QUERY_EXPANSIONS = {
+  // Motor/ESC
+  'won\'t spin': 'motor esc dshot signal',
+  'not spinning': 'motor esc dshot signal',
+  'dead motor': 'motor burnt esc signal dshot',
+  'motor twitching': 'motor esc calibration dshot signal',
+  'motor stutter': 'motor esc dshot rpm filter',
+  'desync': 'esc desync dshot rpm filter betaflight',
+  'esc beeping': 'esc calibration signal arming dshot',
+  // Binding / receiver
+  'won\'t bind': 'receiver bind elrs crossfire sbus protocol',
+  'can\'t bind': 'receiver bind elrs crossfire sbus protocol',
+  'binding': 'receiver elrs crossfire sbus bind protocol',
+  'failsafe': 'receiver failsafe elrs sbus rssi signal lost',
+  'no signal': 'receiver signal rssi elrs crossfire range',
+  'range problems': 'receiver antenna elrs crossfire rssi range',
+  // GPS
+  'toilet bowl': 'gps compass mag calibration declination heading',
+  'no gps fix': 'gps fix satellite m8n m10 antenna',
+  'gps drift': 'gps compass declination heading accuracy',
+  'bad gps': 'gps satellite fix m8n m10 accuracy',
+  // Video
+  'no video': 'vtx camera osd analog digital fpv signal',
+  'static': 'vtx antenna power video signal interference',
+  'osd missing': 'osd msp uart vtx smartaudio configuration',
+  'black screen': 'vtx camera power signal cmos fpv',
+  // Arming
+  'won\'t arm': 'arming flags betaflight inav accelerometer throttle',
+  'can\'t arm': 'arming flags betaflight accelerometer cli status',
+  'arming issue': 'arming flags betaflight msp cli status',
+  // PID / tuning
+  'oscillation': 'pid filter dterm pterm oscillation tune rates',
+  'wobble': 'pid filter oscillation tune rates betaflight',
+  'propwash': 'propwash pid dterm filter rpm betaflight tune',
+  'slow response': 'pid pterm rates expo tune betaflight iterm',
+  'too sensitive': 'pid rates expo betaflight tune sensitivity',
+  // Power
+  'brownout': 'power capacitor brownout voltage battery sag bec',
+  'rebooting': 'brownout capacitor power battery sag reboot',
+  'won\'t power on': 'power short circuit fuse esc battery connection',
+  'voltage sag': 'battery sag internal resistance c-rating lipo',
+  'puffy battery': 'lipo swollen puffy overcharge damage fire hazard',
+  // NDAA / compliance
+  'ndaa': 'ndaa blue uas compliant dji autel section 848',
+  'ndaa compliant': 'ndaa blue uas compliant section 848 chinese',
+  'blue uas': 'blue uas ndaa compliant skydio parrot censys approved',
+  'dod approved': 'ndaa blue uas dod approved section 848 compliant',
+  // Firmware
+  'flashing': 'flash firmware betaflight configurator dfu bootloader',
+  'won\'t flash': 'dfu bootloader driver stm32 zadig flash firmware',
+  'bricked': 'dfu bootloader recovery flash betaflight stm32',
+  'betaflight update': 'betaflight firmware flash update configurator',
+  // Blackbox
+  'blackbox': 'blackbox log betaflight debug flight data recorder',
+  'log analysis': 'blackbox pid analysis rpm filter betaflight log',
+  // Misc
+  'flip on takeoff': 'motor order direction props betaflight motor tab',
+  'drifting': 'accelerometer calibration level trim pid hover',
+  'altitude hold': 'baro barometer altitude hold inav ardupilot',
+  'return to home': 'rth failsafe inav ardupilot gps navigation',
+};
+
+function expandQuery(q) {
+  let expanded = q;
+  const ql = q.toLowerCase();
+  for (const [phrase, expansion] of Object.entries(QUERY_EXPANSIONS)) {
+    if (ql.includes(phrase)) {
+      expanded += ' ' + expansion;
+    }
+  }
+  return expanded;
+}
+
+// ─── 2. TF-IDF SCORING ───────────────────────────────────────
+// IDF is computed once after RAG loads; scores terms by rarity across corpus
+var idfCache = {};
+
+function buildIDF() {
+  if (ragIndex.length === 0) return;
+  const N = ragIndex.length + handbookChunks.length;
+  const df = {};
+  for (const entry of ragIndex) {
+    const seen = new Set(entry.text.split(/\s+/).filter(t => t.length > 2));
+    for (const t of seen) df[t] = (df[t] || 0) + 1;
+  }
+  for (const ch of handbookChunks) {
+    const seen = new Set(ch.text.split(/\s+/).filter(t => t.length > 2));
+    for (const t of seen) df[t] = (df[t] || 0) + 1;
+  }
+  for (const [term, count] of Object.entries(df)) {
+    idfCache[term] = Math.log((N + 1) / (count + 1)) + 1; // smoothed IDF
+  }
+  console.log(`IDF built: ${Object.keys(idfCache).length} terms`);
+}
+
+function tfidfScore(terms, text, name) {
+  let score = 0;
+  const nameLower = (name || '').toLowerCase();
+  for (const t of terms) {
+    const idf = idfCache[t] || 1.5; // default IDF for unseen terms
+    // TF: count occurrences, capped to avoid stuffing
+    const tf = Math.min((text.match(new RegExp(t.replace(/[.*+?^${}()|[\]\\]/g,'\\$&'), 'g')) || []).length, 8);
+    if (tf > 0) score += tf * idf;
+    // Name field bonus — weighted heavily by IDF (rare term in name = very strong signal)
+    if (nameLower.includes(t)) score += 6 * idf;
+  }
+  return score;
+}
+
+// ─── 3. MMR — Maximal Marginal Relevance ─────────────────────
+// Picks results that are relevant but NOT redundant with already-selected results
+// lambda=0.6 balances relevance vs diversity
+function mmrSelect(candidates, k, lambda = 0.6) {
+  if (candidates.length <= k) return candidates;
+  const selected = [];
+  const remaining = [...candidates];
+
+  // Always take the top-scored first
+  selected.push(remaining.shift());
+
+  while (selected.length < k && remaining.length > 0) {
+    let bestIdx = 0;
+    let bestVal = -Infinity;
+
+    for (let i = 0; i < remaining.length; i++) {
+      const relevance = remaining[i].score;
+      // Similarity to already-selected: same cat + similar name = penalized
+      let maxSim = 0;
+      for (const s of selected) {
+        let sim = 0;
+        if (remaining[i].cat === s.cat) sim += 0.4;
+        // Jaccard-ish overlap on text tokens
+        const aTokens = new Set(remaining[i].text.split(/\s+/).slice(0, 30));
+        const bTokens = new Set(s.text.split(/\s+/).slice(0, 30));
+        const inter = [...aTokens].filter(t => bTokens.has(t)).length;
+        const union = new Set([...aTokens, ...bTokens]).size;
+        sim += union > 0 ? inter / union : 0;
+        maxSim = Math.max(maxSim, sim);
+      }
+      const mmrVal = lambda * relevance - (1 - lambda) * maxSim * relevance;
+      if (mmrVal > bestVal) { bestVal = mmrVal; bestIdx = i; }
+    }
+    selected.push(remaining.splice(bestIdx, 1)[0]);
+  }
+  return selected;
+}
+
+// ─── 4. INTENT CLASSIFIER → retrieval routing ────────────────
+var INTENT_PATTERNS = {
+  triage:      /crash|dead|broken|burnt|not work|won'?t|can'?t|fail|smoke|fire|damage|twitching|stutter|beep|reboot|brownout|oscillat|wobble|propwash|flip|drift/i,
+  firmware:    /betaflight|inav|ardupilot|px4|flash|target|cli|configurator|dfu|bootloader|rpm filter|dshot|update|version|bf |esc tool/i,
+  hardware_lookup: /recommend|suggest|which .*(fc|esc|motor|vtx|rx|gps|frame|battery)|best .*(for|under|\$)|compare|vs\.|versus|difference between|alternatives|ndaa|blue uas|compliant/i,
+  tuning:      /pid|rate|expo|tune|filter|setpoint|iterm|pterm|dterm|throttle curve|master|profile|blackbox/i,
+  wiring:      /wire|solder|pad|uart|tx|rx|connect|pinout|diagram|port|plug|connector|short|ground|bec|5v|9v/i,
+  compliance:  /ndaa|blue uas|section 848|chinese|dji|autel|dod|military|procurement|approved|compliant/i,
+  intel:       /news|latest|recent|procurement|contract|defense|military|announcement|2024|2025|2026/i,
+  firmware_version: /version|4\.5|4\.6|2025\.12|1\.15|1\.16|inav 8|inav 9|ardupilot 4\.|what version|which version|latest version|update|upgrade|current version|configurator|breaking change|migrate|diff all/i,
+  validate:         /will.*work|does.*work|check.*build|validate.*build|build check|stack check|these.*together|this.*combo|compatible.*with|fit together|my build|my stack/i,
+};
+
+function classifyIntent(query) {
+  const q = query.toLowerCase();
+  const scores = {};
+  for (const [intent, pattern] of Object.entries(INTENT_PATTERNS)) {
+    const matches = (q.match(pattern) || []).length;
+    if (matches > 0) scores[intent] = matches;
+  }
+  // Return sorted intents by match count
+  return Object.entries(scores).sort((a,b) => b[1]-a[1]).map(e => e[0]);
+}
+
+// Route retrieval params by intent
+function intentToParams(intents) {
+  const primary = intents[0] || 'triage';
+  const params = { maxComp: 20, maxHb: 5, lambdaMMR: 0.6 };
+  if (primary === 'triage')          { params.maxComp = 15; params.maxHb = 8;  params.lambdaMMR = 0.5; }
+  if (primary === 'firmware')        { params.maxComp = 25; params.maxHb = 6;  params.lambdaMMR = 0.7; }
+  if (primary === 'hardware_lookup') { params.maxComp = 30; params.maxHb = 4;  params.lambdaMMR = 0.55; }
+  if (primary === 'tuning')          { params.maxComp = 10; params.maxHb = 10; params.lambdaMMR = 0.5; }
+  if (primary === 'wiring')          { params.maxComp = 15; params.maxHb = 8;  params.lambdaMMR = 0.5; }
+  if (primary === 'compliance')      { params.maxComp = 20; params.maxHb = 5;  params.lambdaMMR = 0.6; }
+  if (primary === 'incompat')        { params.maxComp = 25; params.maxHb = 3;  params.lambdaMMR = 0.7; }
+  if (primary === 'intel')           { params.maxComp = 5;  params.maxHb = 3;  params.lambdaMMR = 0.7; params.boostCats = ['intel_article','intel_company','intel_program']; }
+  if (primary === 'firmware_version'){ params.maxComp = 10; params.maxHb = 6;  params.lambdaMMR = 0.8; }
+  if (primary === 'validate')        { params.maxComp = 30; params.maxHb = 3;  params.lambdaMMR = 0.6; }
+  return params;
+}
+
+// ─── RAG RETRIEVAL — upgraded ────────────────────────────────
+// query: current message
+// contextHistory: last N user messages for conversation-aware retrieval
+function ragSearch(query, maxComponents, maxHandbook, contextHistory) {
+  // ── 4. Conversation-aware: blend current query with recent context
+  var historyTerms = '';
+  if (contextHistory && contextHistory.length > 0) {
+    // Weight recent messages more — last message 100%, previous 50%, before that 25%
+    historyTerms = contextHistory.slice(-3).map((m, i, arr) => {
+      const weight = i === arr.length - 1 ? '' : i === arr.length - 2 ? m + ' ' : '';
+      return weight + m;
+    }).join(' ');
+  }
+  const blendedQuery = query + (historyTerms ? ' ' + historyTerms : '');
+
+  // ── 1. Expand query with synonyms
+  const expandedQuery = expandQuery(blendedQuery);
+
+  // ── 4. Classify intent → routing params
+  const intents = classifyIntent(query); // classify on RAW query only
+  const p = intentToParams(intents);
+  const maxComp = maxComponents !== undefined ? maxComponents : p.maxComp;
+  const maxHb   = maxHandbook  !== undefined ? maxHandbook  : p.maxHb;
+
+  const q = expandedQuery.toLowerCase();
+  const allTerms = q.split(/\s+/).filter(t => t.length > 2);
+  // Deduplicate terms, prioritize rarer ones
+  const terms = [...new Set(allTerms)].sort((a, b) => (idfCache[b] || 1) - (idfCache[a] || 1)).slice(0, 40);
+
+  if (terms.length === 0) return '';
+
+  // ── 2. TF-IDF scoring on ragIndex
+  const rawScored = ragIndex.map(entry => {
+    const score = tfidfScore(terms, entry.text, entry.name);
+    // Exact full-name match is still a strong bonus
+    if (entry.name && q.includes(entry.name.toLowerCase()) && entry.name.length > 3) {
+      return { ...entry, score: score + 20 };
+    }
+    return { ...entry, score };
+  }).filter(e => e.score > 0).sort((a, b) => b.score - a.score);
+
+  // Take top 3× budget before MMR (need candidates to diversify from)
+  const candidates = rawScored.slice(0, maxComp * 3);
+
+  // ── 3. MMR: pick diverse-yet-relevant subset
+  const scored = mmrSelect(candidates, maxComp, p.lambdaMMR);
+
+  // ── 2. TF-IDF scoring on handbook chunks
+  const rawHScored = handbookChunks.map(ch => {
+    let score = 0;
+    for (const t of terms) {
+      const idf = idfCache[t] || 1.5;
+      const tf = Math.min((ch.text.match(new RegExp(t.replace(/[.*+?^${}()|[\]\\]/g,'\\$&'), 'g')) || []).length, 10);
+      if (tf > 0) score += tf * idf;
+      if (ch.title.toLowerCase().includes(t)) score += 4 * idf;
+    }
+    return { ...ch, score };
+  }).filter(e => e.score > 0).sort((a, b) => b.score - a.score);
+
+  // MMR on handbook chunks too
+  const hScored = mmrSelect(rawHScored.slice(0, maxHb * 3), maxHb, 0.55);
+
+  // ── Build context string
+  let ctx = '';
+  if (intents.length > 0) {
+    ctx += `\n\n[INTENT: ${intents.slice(0,2).join(', ')} | expanded query used]`;
+  }
+
+  if (scored.length > 0) {
+    const fwResults    = scored.filter(s => s.cat === 'firmware');
+    const orqaResults  = scored.filter(s => s.cat === 'orqa_boards');
+    const intelResults = scored.filter(s => ['intel_article','intel_company','intel_program'].includes(s.cat));
+    const compResults  = scored.filter(s => s.cat !== 'firmware' && s.cat !== 'orqa_boards' && !['intel_article','intel_company','intel_program'].includes(s.cat));
+
+    // ── Firmware version matrix entries
+    const fwvResults = scored.filter(s => s.cat === 'firmware_versions');
+    if (fwvResults.length > 0) {
+      ctx += '\n\n## FIRMWARE VERSION INFORMATION\n';
+      for (const s of fwvResults.slice(0, 5)) {
+        const d = s.data;
+        // Q&A entries
+        if (d.q && d.a) {
+          ctx += `\nQ: ${d.q}\nA: ${d.a}\n`;
+          continue;
+        }
+        // MCU capability entries
+        if (d.mcu && d.max_dshot) {
+          ctx += `\n${d.fw} on ${d.mcu}: max DSHOT=${d.max_dshot} | bidir=${d.bidir_dshot}`;
+          if (d.notes) ctx += ` | ${d.notes}`;
+          ctx += '\n';
+          continue;
+        }
+        // Version entries
+        ctx += `\n### ${d.fw} ${d.version}${d.also_known_as ? ' (aka '+d.also_known_as+')' : ''} [${d.status}]\n`;
+        if (d.family_info?.current) ctx += `Current stable: ${d.family_info.current} | Configurator: ${d.family_info.configurator}\n`;
+        // Key features relevant to query
+        if (d.key_features) {
+          const featLines = Object.entries(d.key_features).map(([feat, info]) => {
+            const sup = info.supported === true ? '✓' : info.supported === false ? '✗ NOT SUPPORTED' : '?';
+            const note = info.notes ? ` — ${info.notes}` : '';
+            return `  ${feat}: ${sup}${note}`;
+          });
+          if (featLines.length) ctx += featLines.slice(0, 12).join('\n') + '\n';
+        }
+        if (d.breaking_changes?.length) {
+          ctx += `⚠ BREAKING CHANGES:\n${d.breaking_changes.map(b => '  - '+b).join('\n')}\n`;
+        }
+        if (d.upgrade_path) ctx += `UPGRADE PATH: ${d.upgrade_path}\n`;
+      }
+    }
+
+    // ── Hard incompatibilities first — most critical information
+    const incompatResults = scored.filter(s => s.cat === 'incompatibilities');
+    if (incompatResults.length > 0) {
+      const hardIncompat = incompatResults.filter(s => s.data.severity === 'hard');
+      const softIncompat = incompatResults.filter(s => s.data.severity === 'soft');
+      if (hardIncompat.length > 0) {
+        ctx += '\n\n## ⚠ KNOWN INCOMPATIBILITIES (HARD — WILL NOT WORK)\n';
+        for (const s of hardIncompat) {
+          const d = s.data;
+          ctx += `\n### ${d.id}: ${d.a} ↔ ${d.b}\n`;
+          ctx += `${d.description}\n`;
+          ctx += `FIX: ${d.workaround}\n`;
+        }
+      }
+      if (softIncompat.length > 0) {
+        ctx += '\n\n## ⚡ KNOWN INCOMPATIBILITIES (SOFT — UNRELIABLE)\n';
+        for (const s of softIncompat) {
+          const d = s.data;
+          ctx += `\n### ${d.id}: ${d.a} ↔ ${d.b}\n`;
+          ctx += `${d.description}\n`;
+          ctx += `WORKAROUND: ${d.workaround}\n`;
+        }
+      }
+    }
+
+    // ── Orqa board configs: UART maps + gotchas (highest priority for Orqa queries)
+    if (orqaResults.length > 0) {
+      ctx += '\n\n## ORQA BOARD CONFIGURATION\n';
+      for (const s of orqaResults) {
+        const d = s.data;
+        ctx += `\n### ${d.name}`;
+        if (d.bf_target) ctx += ` | BF: ${d.bf_target}`;
+        if (d.px4_target) ctx += ` | PX4: ${d.px4_target}`;
+        ctx += `\nMCU: ${d.mcu || d.mcu_fc || '?'} | NDAA: ${d.ndaa_compliant ? 'YES (Croatian)' : 'No'}\n`;
+
+        if (d.bec_outputs?.length) {
+          ctx += `BEC outputs: ${d.bec_outputs.map(b => `${b.voltage}/${b.current_a}A (${b.note})`).join(' | ')}\n`;
+        }
+
+        const ports = d.uarts || d.jst_gh_ports || [];
+        if (ports.length) {
+          ctx += `UART/PORT MAP:\n`;
+          for (const u of ports) {
+            const id = u.uart !== undefined ? `UART${u.uart}` : u.port;
+            const usable = u.usable_for_peripherals === false ? ' [VCP/USB ONLY — no peripherals]' : '';
+            const rec = u.recommended_use ? ` → ${u.recommended_use}` : '';
+            const baud = u.baud ? ` @ ${u.baud} baud` : '';
+            const note = u.note ? ` (${u.note})` : '';
+            ctx += `  ${id}${usable}${rec}${baud}${note}\n`;
+          }
+        }
+
+        if (d.gotchas?.length) {
+          ctx += `⚠ GOTCHAS:\n`;
+          for (const g of d.gotchas) ctx += `  - ${g}\n`;
+        }
+
+        if (d.betaflight_cli_quickstart?.length) {
+          ctx += `CLI QUICKSTART:\n${d.betaflight_cli_quickstart.join('\n')}\n`;
+        }
+      }
+    }
+
+    // ── Component results with gotchas prominently shown
+    if (compResults.length > 0) {
+      ctx += '\n\n## MATCHING COMPONENTS FROM DATABASE\n';
+      for (const s of compResults) {
+        const d = s.data;
+        const fields = Object.entries(d)
+          .filter(([k,v]) => v && typeof v !== 'object' && !['pid','image_file','pdf_file','link','description','gotchas'].includes(k))
+          .map(([k,v]) => `${k}: ${v}`).join(' | ');
+        ctx += `- [${s.cat}] ${s.name}: ${fields}\n`;
+        if (d.description) ctx += `  ${d.description.slice(0, 180)}\n`;
+        if (d.gotchas?.length) {
+          ctx += `  ⚠ GOTCHAS: ${d.gotchas.join(' | ')}\n`;
+        }
+      }
+    }
+
+    // ── Firmware targets
+    if (fwResults.length > 0) {
+      ctx += '\n\n## FIRMWARE TARGET CONFIGS\n';
+      ctx += 'These are actual firmware target definitions from the source repos.\n';
+      for (const s of fwResults.slice(0, 10)) {
+        const d = s.data;
+        ctx += `\n### ${d.target_name} [${d.firmware}]\n`;
+        if (d.mcu) ctx += `MCU: ${d.mcu} (${d.mcu_family || ''})\n`;
+        if (d.uart_count) ctx += `UARTs: ${d.uart_count}\n`;
+        if (d.gyros?.length) ctx += `Gyros: ${d.gyros.join(', ')}\n`;
+        if (d.osd) ctx += `OSD: ${d.osd}\n`;
+        if (d.serial_order) ctx += `Serial order: ${d.serial_order}\n`;
+        if (d.features?.length) ctx += `Features: ${d.features.join(', ')}\n`;
+        if (d.frame_type) ctx += `Frame type: ${d.frame_type} (${d.frame_class || ''})\n`;
+        if (d.bf_target) ctx += `BF target: ${d.bf_target}\n`;
+        if (d.raw_snippet) ctx += `Config excerpt:\n${d.raw_snippet.slice(0, 600)}\n`;
+      }
+    }
+  }
+
+  if (hScored.length > 0) {
+    ctx += '\n\n## RELEVANT HANDBOOK SECTIONS\n';
+    for (const h of hScored) {
+      ctx += `\n### ${h.title} (${h.src})\n${h.full.slice(0, 800)}\n`;
+    }
+  }
+
+  // ── Intel DB results: articles, companies, programs
+  if (typeof intelResults !== 'undefined' && intelResults.length > 0) {
+    const articles = intelResults.filter(s => s.cat === 'intel_article');
+    const companies = intelResults.filter(s => s.cat === 'intel_company');
+    const programs  = intelResults.filter(s => s.cat === 'intel_program');
+
+    if (articles.length > 0) {
+      ctx += '\n\n## RECENT INTEL ARTICLES\n';
+      ctx += `(From DroneClear intel feed — ${articles.length} relevant articles)\n`;
+      for (const s of articles.slice(0, 8)) {
+        const d = s.data;
+        const date  = d.pub_date ? `[${d.pub_date}]` : '';
+        const tags  = d.tags?.length ? ` | tags: ${d.tags.join(', ')}` : '';
+        const cos   = d.companies?.length ? ` | entities: ${d.companies.join(', ')}` : '';
+        ctx += `\n${date} ${d.site?.toUpperCase() || 'UNKNOWN'}: ${d.title}${tags}${cos}\n`;
+        if (d.summary) ctx += `  ${d.summary.slice(0, 300)}\n`;
+        if (d.url)     ctx += `  Source: ${d.url}\n`;
+      }
+    }
+
+    if (companies.length > 0) {
+      ctx += '\n\n## TRACKED COMPANIES (INTEL)\n';
+      for (const s of companies.slice(0, 5)) {
+        const d = s.data;
+        ctx += `\n${d.name}`;
+        if (d.tags?.length)     ctx += ` | ${d.tags.join(', ')}`;
+        if (d.programs?.length) ctx += ` | programs: ${d.programs.join(', ')}`;
+        ctx += '\n';
+        if (d.sources?.length)  ctx += `  Sources: ${d.sources.slice(0,3).map(s => s.url || s).join(' | ')}\n`;
+      }
+    }
+
+    if (programs.length > 0) {
+      ctx += '\n\n## TRACKED PROGRAMS (INTEL)\n';
+      for (const s of programs.slice(0, 4)) {
+        const d = s.data;
+        ctx += `\n${d.name}`;
+        if (d.tags?.length)         ctx += ` | ${d.tags.join(', ')}`;
+        if (d.participants?.length)  ctx += ` | participants: ${d.participants.join(', ')}`;
+        ctx += '\n';
+      }
+    }
+  }
+
+  return ctx;
+}
+
+// ─── FALLBACK KB (used before RAG loads) ─────────────────────
+var FALLBACK_KB = `
+## RF SIGNATURES
+- DJI OcuSync 2.4GHz: FHSS burst, 72ch, ~10ms beacon
+- ELRS 900MHz: LoRa chirp SF6-10 BW500kHz, 868/915MHz
+- ELRS 2.4GHz: LoRa/FLRC, Gemini dual-ant, 250-1000Hz packet rate
+- Microhard pDDL 900: FHSS/DSSS 902-928MHz, AES-256, Blue UAS
+- TBS Crossfire: FHSS 868/915MHz, <10ms latency
+- ELRS Airport mode: transparent serial bridge 115200 baud, both units RX firmware
+- DJI O3/O4 Digital: OFDM 5.8GHz
+
+## FC PROFILES
+- Betaflight: DSHOT600 (F7/H7), DSHOT300 (F4), RPM filter with BLHeli_32/AM32
+- iNav: nav_rth_altitude=3000, nav_wp_radius=200, failsafe=RTH
+- PX4 WingCore H7: STM32H743, dual ICM-42688-P, DPS310, 14 PWM, JST-GH connectors
+- Orqa QuadCore H7: STM32H743, dual ICM-42688-P, 7 UARTs, 9V BEC, DJI connector on UART2, target ORQA_QUADCORE_H7
+- Orqa 3030 Lite F405: STM32F405, ICM-42688-P, 5 UARTs, target ORQA_3030LITE_F405, pairs with 3030 70A ESC
+- Orqa WingCore H7: Fixed-wing/VTOL PX4 controller, all JST-GH, 160A current sensor, target orqa_wingcore_h7
+- Orqa DTK APB: Single-board FC+companion (STM32H7 + NXP i.MX8M Plus + 2.3 TOPS NPU)
+- Orqa 3030 70A ESC: BLHeli_32, 3-6S, DShot600, 30.5mm, NDAA compliant
+
+## NDAA/COMPLIANCE
+- §848 bans DOD procurement: DJI, Autel, Dahua, Hikvision
+- Blue UAS cleared: Skydio X10, Parrot ANAFI USA, Censys
+- Orqa: Croatian origin, FOCI mitigation pathway for DOD
+`;
+kbData = FALLBACK_KB; // Now safe to assign
+
+var WIRING_KB = `
+## COMMON FC PINOUT REFERENCE (verify against specific board silkscreen)
+
+### Standard 30.5x30.5mm FC Wiring (Betaflight)
+- VBAT+ / GND: Main battery power input (red/black). Goes to ESC power pads or direct from XT60.
+- 5V / 4V5: Regulated 5V output from onboard BEC. Powers receiver, GPS, LED.
+- 3V3: 3.3V regulated output. Some receivers need this instead of 5V.
+- M1-M4 (or S1-S4): Motor signal outputs to ESC. DShot protocol. Match Betaflight motor tab diagram.
+- TX1/RX1 through TX6/RX6: UART pairs. TX on FC connects to RX on peripheral and vice versa.
+  - UART1: Often USB/VCP (don't use for peripherals on many boards)
+  - UART2: Common for receiver (SBUS/CRSF/ELRS)
+  - UART3: Common for GPS or VTX control (SmartAudio/Tramp)
+  - UART4-6: Available for telemetry, Bluetooth, companion computer
+- SBUS/IBUS pad: Dedicated inverted input for SBUS receivers (alternative to using a UART RX pad)
+- LED: WS2812 LED strip signal output
+- BZ-/BZ+: Buzzer pads (BZ- is signal, BZ+ is voltage)
+- CURR: Current sensor input (from ESC current sensor)
+- RSSI: Analog RSSI input (legacy, most modern RX use digital)
+- BOOT: Hold during power-on to enter DFU/bootloader mode
+- CAM / VTX: Analog video signal routing. CAM = camera input, VTX = video output to VTX
+
+### POPULAR FC PINOUTS (board-specific)
+Orqa QuadCore H7 (NDAA — Croatian):
+  MCU: STM32H743, IMU: dual ICM-42688-P, Baro: DPS310, OSD: AT7456E
+  Mounting: 30.5x30.5mm, BEC: 5V/2A + 9V/2A
+  Betaflight target: ORQA_QUADCORE_H7
+  UART1: VCP/USB (debug — don't use for peripherals)
+  UART2: DJI connector (TX2/RX2) — use for DJI/Walksnail/HDZero MSP OSD
+  UART3: TX3/RX3 pads — recommended for GPS
+  UART4: TX4/RX4 pads — recommended for receiver (CRSF/ELRS)
+  UART5: TX5 only — SmartAudio or ESC telemetry
+  UART6: TX6/RX6 pads — available
+  UART7: TX7/RX7 pads — available
+  Top side: DJI JST-GH connector, USB-C, boot button
+  Bottom side: solder pads for UARTs, M1-M4 motor signals, power, LED, buzzer
+  Pairs with: Orqa 3030 70A ESC (30.5mm stack)
+
+Orqa 3030 Lite F405 (NDAA — Croatian):
+  MCU: STM32F405, IMU: ICM-42688-P, Baro: DPS310, OSD: AT7456E
+  Mounting: 30.5x30.5mm, BEC: 5V/2A
+  Betaflight target: ORQA_3030LITE_F405
+  UART1: VCP/USB
+  UART2: TX2/RX2 — recommended for receiver (CRSF/ELRS)
+  UART3: TX3/RX3 — recommended for GPS
+  UART4: TX4/RX4 — available
+  UART5: TX5 — SmartAudio
+  Pairs with: Orqa 3030 70A ESC (30.5mm stack)
+
+Orqa WingCore H7 (NDAA — Croatian, PX4/ArduPilot):
+  MCU: STM32H743, IMU: dual orthogonal ICM-42688-P, Baro: DPS310
+  Fixed-wing / VTOL controller. 10 servo + 4 motor outputs (14 PWM)
+  160A current sensor, dual redundant power input
+  ALL JST-GH connectors (Pixhawk standard — NO solder pads):
+    TELEM1: Primary telemetry (SiK radio, companion computer)
+    TELEM2: Secondary telemetry
+    GPS1: Primary GPS + I2C compass
+    GPS2: Secondary GPS
+    RC: Receiver input (SBUS/CRSF/ELRS)
+    VTX: Direct to Orqa FPV.Connect VTX module
+    DEBUG: USB-C console/flash
+    CAN: DroneCAN bus
+  PX4 target: orqa_wingcore_h7
+  ArduPilot target: OrqaWingCoreH7
+  Designed for: Orqa MRM2-10 platform
+
+Orqa 3030 70A 4-in-1 ESC (NDAA — Croatian):
+  70A continuous per motor, 80A burst. 3-6S. BLHeli_32.
+  DShot150/300/600 + analog protocols. 30.5x30.5mm mounting.
+  Current sensor + temperature sensor + LED support.
+  8-pin stack connector: M1-M4 signal + CURR + VBAT + GND + ESC telemetry TX
+
+Orqa DTK APB (All-in-one FC + Companion):
+  FC: STM32H7 running PX4. Companion: NXP i.MX8M Plus running Linux.
+  2.3 TOPS NPU for onboard AI. MAVLink bridge built-in.
+  All JST-GH connectors. No separate companion wiring needed.
+
+SpeedyBee F405 V3/V4:
+  RX pads: UART1(USB), UART2(top side RX2/TX2), UART3(bottom), UART4(bottom), UART5(bottom TX5 only), UART6(bottom)
+  Recommended: RX on UART2, VTX SmartAudio on TX1, GPS on UART3/4
+  BEC: 5V 2A, 9V 2A (for DJI/Walksnail)
+  
+MATEKSYS F405/F722:
+  UART1(TX1/RX1), UART2(TX2/RX2), UART3(TX3/RX3), UART4(TX4/RX4), UART5(TX5/RX5), UART6(TX6/RX6)
+  Recommended: RX on UART2, GPS on UART3, VTX on TX1
+  Has dedicated SBUS pad (inverted UART2 RX)
+
+Mamba F405 MK2/MK3:
+  UART1(TX1/RX1 - usually VTX), UART2(TX2/RX2 - usually RX), UART3(TX3/RX3), UART4(TX4/RX4), UART6(TX6/RX6)
+  9V BEC output for DJI/digital VTX
+
+HGLRC F405/F722:
+  UART1, UART2, UART3, UART4, UART5(some models)
+  DJI connector on dedicated UART
+  
+Holybro Kakute H7 V2:
+  UART1-UART7 (7 UARTs!), dedicated DJI/HDZero connector
+  Recommended: RX on UART6, GPS on UART1, VTX on UART3
+
+BetaFPV F4/F722 (whoop FCs):
+  Typically UART1(SBUS), UART2(free), onboard ELRS/SPI RX on some models
+  Small pads — use fine tip iron
+
+### Receiver Wiring (ELRS/CRSF/SBUS)
+- ELRS/CRSF: TX→RX, RX→TX on a free UART. 5V power (or 3.3V for some). Ground.
+  CRITICAL: FC TX pad → Receiver RX pad. FC RX pad → Receiver TX pad. This CROSSES.
+- SBUS (FrSky): Signal to SBUS pad (inverted) or RX pad with inversion enabled. 5V + GND.
+- Spectrum/DSMX: Signal to any UART RX. 3.3V power (NOT 5V — will damage!).
+
+### Popular Receiver Pinouts
+ELRS EP1/EP2 (BetaFPV): 5V, GND, TX, RX (4 pads in a row, silk labeled)
+HappyModel EP1/EP2: 5V, GND, TX, RX (same layout)
+RadioMaster RP series: 5V, GND, TX, RX + optional RSSI pad
+TBS Crossfire Nano: 5V, GND, TX (Ch1), RX (Ch2)
+FrSky R-XSR: 5V, GND, SBUS out, SmartPort (S.Port)
+
+### VTX Wiring
+- Analog VTX: Video signal from FC VTX pad. Power from VBAT (check VTX voltage rating). GND.
+  SmartAudio: Single wire from VTX SA pad to FC TX pad. Set UART in Betaflight Ports → Peripherals → TBS SmartAudio.
+  IRC Tramp: Single wire from VTX to FC TX pad. Set UART in Betaflight Ports → Peripherals → IRC Tramp.
+- DJI Air Unit / Vista: TX→RX, RX→TX on a free UART. Power from VBAT (7-26V) or 9V BEC. GND.
+  Enable MSP on that UART in Betaflight Ports tab for OSD.
+  DJI plug: 6-pin connector (GND, NC, TX, RX, NC, BAT+). Or solder directly.
+- Walksnail Avatar: TX→RX, RX→TX. Power 7-25V. Enable MSP on UART. 6-pin plug similar to DJI.
+- HDZero VTX: TX→RX, RX→TX. Power 7-25V. Enable MSP on UART. 
+  HDZero also needs SmartAudio on a SEPARATE TX pad for power/channel control.
+
+### ESC Wiring
+- 4-in-1 ESC to FC: 8-pin ribbon or solder — M1-M4 signal + CURR + VBAT + GND + (optional telemetry TX)
+- Individual ESCs: 3 motor wires per motor + signal wire to corresponding M pad on FC
+- ESC Telemetry: TX pad on ESC to a free UART RX pad on FC. Enable in Ports → Sensor → ESC.
+
+### GPS Wiring
+- TX→RX, RX→TX on a free UART. 5V + GND. Enable GPS on that UART in Ports tab.
+- If GPS has compass (magnetometer): also connect SCL/SDA to FC I2C pads.
+
+### WIRE COLOR CONVENTIONS (not universal but common)
+- Red: Power (VBAT or 5V)
+- Black: Ground
+- White: Signal (varies)
+- Yellow: Signal (often video or SmartAudio)
+- Green/Blue: Signal (varies by manufacturer)
+- DJI plug: Red=VBAT, Black=GND, Yellow=TX, White=RX (verify with your unit)
+
+### CRITICAL WIRING MISTAKES (ranked by frequency)
+1. TX↔TX instead of TX↔RX (most common — signal wires must CROSS)
+2. 5V to a 3.3V-only device (burns the device instantly — Spektrum/DSMX receivers)
+3. Motor signal wires not matching Betaflight motor diagram order (quad flips on arm)
+4. Missing ground connection between FC and ESC (causes erratic behavior/brownouts)
+5. VTX powered without antenna connected (burns the VTX power amplifier permanently)
+6. SBUS wire to non-inverted UART without enabling inversion in CLI
+7. DJI/digital VTX wired without MSP enabled on the UART (no OSD)
+8. Current sensor wire to wrong pad (no battery voltage/current in OSD)
+9. RX wired to UART1 which is USB/VCP on most boards (won't work as Serial RX)
+10. 9V BEC output used for 5V-only device (some GPS modules, some receivers)
+`;
+
+// ─── BUILD VALIDATOR ─────────────────────────────────────────
+// In-browser compatibility checker using ragIndex + compat blocks + incompat registry
+// Called from buildPrompt when intent === 'hardware_lookup' or 'validate'
+
+// Cached component DB for quick lookup by category
+var componentCache = {};
+
+function buildComponentCache() {
+  componentCache = {};
+  for (const entry of ragIndex) {
+    if (!componentCache[entry.cat]) componentCache[entry.cat] = [];
+    componentCache[entry.cat].push(entry.data);
+  }
+}
+
+function getCompat(item) {
+  return (item && item.compatibility) ? item.compatibility : {};
+}
+
+// Fuzzy find a part in ragIndex by name substring
+function findPart(nameFragment, category) {
+  const q = nameFragment.toLowerCase();
+  const candidates = category ? ragIndex.filter(e => e.cat === category) : ragIndex;
+  const exact = candidates.find(e => e.name && e.name.toLowerCase() === q);
+  if (exact) return exact.data;
+  const partial = candidates.find(e => e.name && e.name.toLowerCase().includes(q));
+  return partial ? partial.data : null;
+}
+
+function validateBuild(partsByCategory) {
+  const errors = [];
+  const warnings = [];
+  const info = [];
+
+  const fc    = partsByCategory['flight_controllers'] || partsByCategory['stacks'];
+  const esc   = partsByCategory['escs'] || (!fc?.is_aio && partsByCategory['stacks']);
+  const frame = partsByCategory['frames'];
+  const motor = partsByCategory['motors'];
+  const prop  = partsByCategory['propellers'];
+  const batt  = partsByCategory['batteries'];
+  const rx    = partsByCategory['receivers'];
+  const vtx   = partsByCategory['video_transmitters'];
+
+  const c = getCompat;
+
+  // ── 1. FC ↔ Frame mounting pattern
+  if (fc && frame) {
+    const fcMount = c(fc).mounting_pattern_mm;
+    const framePatterns = c(frame).fc_mounting_patterns_mm;
+    if (fcMount && framePatterns) {
+      const patterns = Array.isArray(framePatterns) ? framePatterns : [framePatterns];
+      if (!patterns.includes(fcMount)) {
+        errors.push(`MOUNT MISMATCH: FC is ${fcMount}mm — frame supports [${patterns.join(', ')}]mm. FC will not bolt to frame.`);
+      } else {
+        info.push(`Mount pattern: ${fcMount}mm ✓`);
+      }
+    }
+  }
+
+  // ── 2. FC ↔ ESC mounting pattern
+  if (fc && esc && !fc.is_aio) {
+    const fcMount = c(fc).mounting_pattern_mm;
+    const escMount = c(esc).mounting_pattern_mm;
+    if (fcMount && escMount && fcMount !== escMount) {
+      errors.push(`MOUNT MISMATCH: FC is ${fcMount}mm, ESC is ${escMount}mm — stack won't bolt together.`);
+    }
+  }
+
+  // ── 3. Battery ↔ FC voltage
+  if (batt && fc) {
+    const cells = c(batt).cell_count;
+    const fcMin = c(fc).cell_count_min;
+    const fcMax = c(fc).cell_count_max;
+    if (cells && fcMin && fcMax) {
+      if (cells > fcMax) errors.push(`OVERVOLTAGE: ${cells}S battery exceeds FC max ${fcMax}S — will destroy FC.`);
+      else if (cells < fcMin) errors.push(`UNDERVOLTAGE: ${cells}S battery below FC minimum ${fcMin}S.`);
+      else info.push(`Voltage: ${cells}S within FC range ${fcMin}-${fcMax}S ✓`);
+    }
+  }
+
+  // ── 4. Battery ↔ ESC voltage
+  if (batt && esc) {
+    const cells = c(batt).cell_count;
+    const escMin = c(esc).cell_count_min;
+    const escMax = c(esc).cell_count_max;
+    if (cells && escMax) {
+      if (cells > escMax) errors.push(`OVERVOLTAGE: ${cells}S battery exceeds ESC max ${escMax}S — will destroy ESC.`);
+      else if (escMin && cells < escMin) warnings.push(`UNDERVOLTAGE: ${cells}S battery below ESC minimum ${escMin}S.`);
+      else info.push(`ESC voltage: ${cells}S within ESC range ✓`);
+    }
+  }
+
+  // ── 5. Motor ↔ Frame mount
+  if (motor && frame) {
+    const mBolt     = c(motor).motor_mount_bolt_size;
+    const fBolt     = c(frame).motor_mount_bolt_size;
+    const mSpacing  = c(motor).motor_mount_hole_spacing_mm;
+    const fSpacing  = c(frame).motor_mount_hole_spacing_mm;
+    if (mBolt && fBolt && mBolt !== fBolt)
+      errors.push(`MOTOR BOLT MISMATCH: Motor uses ${mBolt}, frame expects ${fBolt}.`);
+    if (mSpacing && fSpacing && Math.abs(mSpacing - fSpacing) > 0.5)
+      errors.push(`MOTOR SPACING MISMATCH: Motor ${mSpacing}mm, frame ${fSpacing}mm.`);
+    if (mBolt && fBolt && mBolt === fBolt && mSpacing && fSpacing && Math.abs(mSpacing - fSpacing) <= 0.5)
+      info.push(`Motor mount: ${mSpacing}mm ${mBolt} ✓`);
+  }
+
+  // ── 6. Motor KV ↔ Battery cells
+  if (motor && batt) {
+    const kv    = motor.kv_rating;
+    const cells = c(batt).cell_count;
+    const mMax  = c(motor).cell_count_max || motor.cell_count_max;
+    const mMin  = c(motor).cell_count_min || motor.cell_count_min;
+    if (cells && mMax && cells > mMax)
+      errors.push(`MOTOR OVERVOLTAGE: Motor max is ${mMax}S, battery is ${cells}S — windings will burn.`);
+    else if (cells && mMin && cells < mMin)
+      warnings.push(`MOTOR UNDERVOLTAGE: Motor min is ${mMin}S, battery is ${cells}S — underpowered.`);
+    if (kv && cells && kv > 2400 && cells >= 6)
+      warnings.push(`HIGH KV ON 6S: ${kv}KV motor on ${cells}S will likely overspeed. Use 4S max for ${kv}KV+.`);
+    if (kv && cells)
+      info.push(`Motor: ${kv}KV on ${cells}S`);
+  }
+
+  // ── 7. Prop ↔ Motor size
+  if (prop && motor) {
+    const propSize  = c(prop).diameter_in;
+    const mPropMin  = c(motor).prop_size_min_in || motor.prop_size_min_in;
+    const mPropMax  = c(motor).prop_size_max_in || motor.prop_size_max_in;
+    if (propSize && mPropMin && mPropMax) {
+      if (propSize < mPropMin) warnings.push(`PROP UNDERSIZED: ${propSize}" prop below motor minimum ${mPropMin}" — inefficient.`);
+      else if (propSize > mPropMax) warnings.push(`PROP OVERSIZED: ${propSize}" prop above motor maximum ${mPropMax}" — overloaded, heat risk.`);
+      else info.push(`Prop size: ${propSize}" within motor range ${mPropMin}-${mPropMax}" ✓`);
+    }
+  }
+
+  // ── 8. Prop shaft ↔ Motor shaft
+  if (prop && motor) {
+    const propShaft  = parseFloat(c(prop).motor_shaft_diameter_mm);
+    const motorShaft = parseFloat(motor.shaft_diameter_mm);
+    if (propShaft && motorShaft && Math.abs(propShaft - motorShaft) > 0.2)
+      errors.push(`SHAFT MISMATCH: Prop needs ${propShaft}mm shaft, motor has ${motorShaft}mm — prop won't seat.`);
+  }
+
+  // ── 9. ESC current headroom
+  if (esc && motor && batt) {
+    const escCont   = c(esc).continuous_current_per_motor_a || esc.continuous_current_per_motor_a;
+    const statorD   = motor.stator_diameter_mm || 0;
+    const statorH   = motor.stator_height_mm || 0;
+    const cells     = c(batt).cell_count || 4;
+    if (escCont && statorD && statorH) {
+      const estPeak = Math.round(statorD * statorH * 0.08 * (cells / 4) * 10) / 10;
+      if (estPeak > escCont * 1.25)
+        warnings.push(`ESC UNDERSIZED: Motor stator ${statorD}x${statorH}mm on ${cells}S estimated ~${estPeak}A peak, ESC rated ${escCont}A continuous.`);
+      else
+        info.push(`ESC headroom: ${escCont}A rated, estimated ~${estPeak}A peak ✓`);
+    }
+  }
+
+  // ── 10. F4 DSHOT bidir warning
+  if (fc) {
+    const mcu = c(fc).mcu_family || fc.mcu_family;
+    if (mcu === 'F4')
+      warnings.push(`F4 MCU: Use DSHOT300 for reliable bidirectional DSHOT. DSHOT600 bidir is unreliable on F4 — desync risk.`);
+  }
+
+  // ── 11. ESC firmware RPM filter check
+  if (esc) {
+    const escFw = esc.esc_firmware || '';
+    if (escFw.toLowerCase().includes('blheli_s') || escFw.toLowerCase().includes('blheli-s'))
+      warnings.push(`BLHeli_S HAS NO TELEMETRY: RPM filter requires BLHeli_32 or AM32. Disable RPM filter or upgrade ESC firmware.`);
+  }
+
+  // ── 12. Digital VTX MSP requirement
+  if (vtx) {
+    const vs = vtx.video_system || '';
+    if (['DJI O3','DJI O4','Walksnail','HDZero'].includes(vs))
+      warnings.push(`${vs}: Requires MSP enabled on FC UART at 115200 baud for OSD. Never power without antennas connected.`);
+  }
+
+  // ── 13. Spektrum voltage hazard
+  if (rx) {
+    const proto = rx.protocol || '';
+    if (proto.includes('Spektrum') || proto.includes('DSMX') || proto.includes('DSM2'))
+      warnings.push(`SPEKTRUM 3.3V: ${rx.name} is 3.3V logic — connecting to 5V UART TX will destroy it. Use logic level shifter.`);
+  }
+
+  // ── 14. ELRS baud rate reminder
+  if (rx && fc) {
+    const proto = rx.protocol || '';
+    if (proto === 'ELRS')
+      info.push(`ELRS setup: Set Serial RX UART baud to 420000 in Betaflight Ports tab.`);
+  }
+
+  // ── 15. NDAA compliance flags
+  const ndaaFails = [];
+  for (const [cat, item] of Object.entries(partsByCategory)) {
+    if (!item) continue;
+    const nc = item.ndaa_compliant;
+    const country = item.country || item.manufacturer_hq || item.manufacturing_country || '';
+    if (nc === false)
+      ndaaFails.push(`${item.name} (non-compliant)`);
+    else if (country && country.toLowerCase().includes('china') && nc !== true)
+      ndaaFails.push(`${item.name} (Chinese origin — unverified)`);
+  }
+  if (ndaaFails.length)
+    warnings.push(`NDAA: Verify before DOD use — ${ndaaFails.join(', ')}.`);
+
+  return { errors, warnings, info };
+}
+
+// ── Parse a user message to extract named components for validation
+function extractBuildParts(query) {
+  // Try to find mentioned parts in ragIndex by matching names/PIDs
+  const found = {};
+  const q = query.toLowerCase();
+  const categories = ['flight_controllers','escs','stacks','frames','motors','propellers','batteries','receivers','video_transmitters'];
+
+  for (const cat of categories) {
+    const entries = ragIndex.filter(e => e.cat === cat);
+    // Score each entry against the query
+    let best = null, bestScore = 0;
+    for (const e of entries) {
+      const nameLower = (e.name || '').toLowerCase();
+      // Only match if at least 3 consecutive chars of the name appear in query
+      const words = nameLower.split(/\s+/).filter(w => w.length >= 3);
+      let score = 0;
+      for (const w of words) {
+        if (q.includes(w)) score += w.length;
+      }
+      if (score > bestScore) { bestScore = score; best = e; }
+    }
+    // Require a meaningful match (at least 8 chars of name matched)
+    if (best && bestScore >= 8) found[cat] = best.data;
+  }
+  return found;
+}
+
+// ── Build validation context string for injection into prompts
+function buildValidationContext(query) {
+  const parts = extractBuildParts(query);
+  if (Object.keys(parts).length < 2) return ''; // Need at least 2 parts to validate
+
+  const { errors, warnings, info } = validateBuild(parts);
+  if (!errors.length && !warnings.length) return '';
+
+  let ctx = '\n\n## BUILD VALIDATION RESULTS\n';
+  ctx += `Components identified: ${Object.entries(parts).map(([cat, p]) => `${cat}: ${p.name}`).join(', ')}\n`;
+
+  if (errors.length) {
+    ctx += '\n🚫 ERRORS (will not work as built):\n';
+    errors.forEach(e => ctx += `  - ${e}\n`);
+  }
+  if (warnings.length) {
+    ctx += '\n⚠ WARNINGS (may work but with caveats):\n';
+    warnings.forEach(w => ctx += `  - ${w}\n`);
+  }
+  if (info.length) {
+    ctx += '\n✓ CHECKS PASSED:\n';
+    info.forEach(i => ctx += `  - ${i}\n`);
+  }
+  return ctx;
+}
+
+// ─── SYSTEM PROMPT ────────────────────────────────────────────
+function buildPrompt(query, hasImages) {
+  // ── 4. Conversation-aware: extract last 3 user messages as context
+  const recentUserMsgs = messages
+    .filter(m => m.role === 'user' && m.text)
+    .slice(-4, -1)  // last 3 before current
+    .map(m => m.text);
+
+  var ragCtx = query ? ragSearch(query, undefined, undefined, recentUserMsgs) : '';
+
+  // ── Build validator: run if query mentions specific hardware names
+  var validationCtx = '';
+  if (query && ragIndex.length > 100) {
+    try { validationCtx = buildValidationContext(query + ' ' + recentUserMsgs.join(' ')); } catch(e) {}
+  }
+
+  // If images attached, also search for wiring/FC/VTX specific context
+  if (hasImages && query) {
+    var wiringCtx = ragSearch(query + ' wiring pinout UART solder pad connection FC VTX receiver ESC', 15, 3, []);
+    if (wiringCtx) ragCtx += wiringCtx;
+  }
+
+  var imageInstructions = '';
+  if (hasImages) {
+    imageInstructions = `
+
+IMAGE TRIAGE PROTOCOL (photo attached):
+
+Keep the same conversational tree approach. SHORT first response.
+
+PHASE 1 — FIRST LOOK (2-3 sentences max):
+Glance at the image. In 2-3 sentences, say:
+- What you can identify (board names, component types)
+- One obvious thing you notice (good or bad)
+Then ask 1-2 questions to narrow down what they need help with.
+
+Example good Phase 1:
+"I can see what looks like a SpeedyBee F405 with an ELRS receiver wired to the bottom pads. The solder joints on the power wires look solid. What's not working — is it a receiver issue, video issue, or something else?"
+
+Example bad Phase 1:
+[A 500-word analysis of every wire, pad, and component visible, plus generic troubleshooting steps]
+
+PHASE 2 — CLASSIFY THE IMAGE AND ASK TARGETED QUESTIONS:
+Determine what TYPE of image this is, then ask the right follow-ups:
+
+═══ WIRING / SOLDERING IMAGE ═══
+If you see PCBs with wires soldered to pads:
+→ "What flight controller is this?" (if you can't read it)
+→ "What peripherals are connected? (receiver type, VTX type, GPS?)"
+→ "Which pads did you solder the receiver to?"
+→ "What's the symptom? (won't arm, no video, no RX link?)"
+→ "Did this work before, or is this a fresh build?"
+
+═══ MOTOR / PROPULSION IMAGE ═══
+If you see motors, props, or motor mounts:
+Look for: bent shafts, damaged bells, debris in windings, bearing play, prop chips/cracks, wrong CW/CCW orientation, motor screws protruding through base
+→ "Which motor position is this? (front-left, back-right, etc.)"
+→ "What motor model and KV? (e.g., EMAX ECO II 2306 1700KV)"
+→ "What happened? (crash, desync, overheating, grinding noise?)"
+→ "What props are you running? (size and pitch, e.g., 5143 triblade)"
+
+═══ ESC IMAGE ═══
+If you see an ESC board (4-in-1 or individual):
+Look for: burnt MOSFETs, popped capacitors, scorch marks, bridged pads, swollen components, desoldered pads
+→ "What ESC is this? (model and amp rating)"
+→ "What's the symptom? (motor stuttering, magic smoke, won't spin, desync?)"
+→ "Does it affect one motor or all four?"
+→ "What battery voltage are you running? (4S, 6S?)"
+
+═══ FRAME / STRUCTURAL IMAGE ═══
+If you see a frame, arm, or structural component:
+Look for: cracked arms, delaminated carbon, stripped motor mount threads, cracked standoffs, impact damage at arm-body junction
+→ "What frame is this? (brand and size)"
+→ "Where did it crack / break?"
+→ "Was this from a crash or stress over time?"
+→ "Are you looking to repair or replace?"
+
+═══ FPV / VIDEO IMAGE ═══
+If you see a VTX, camera, or antenna:
+Look for: damaged antenna connector (UFL/MMCX popped off), burnt VTX (powered without antenna), camera lens crack, loose ribbon cable, damaged camera housing
+→ "What VTX system? (DJI, Walksnail, HDZero, analog?)"
+→ "What's the symptom? (no video, static, poor range, OSD missing?)"
+→ "Is the antenna securely connected?"
+→ "Did you power the VTX without an antenna at any point?"
+
+═══ BATTERY / POWER IMAGE ═══
+If you see batteries, XT60 connectors, or power distribution:
+Look for: puffy/swollen LiPo cells, damaged XT60 pins, burnt balance leads, corroded connectors, melted shrink wrap
+→ "How old is this battery? How many cycles?"
+→ "What's the cell voltage? (check with a cell checker)"
+→ "Is it physically puffy or swollen? (STOP USING if yes — fire hazard)"
+→ "What happened? (voltage sag, won't charge, hot after flight?)"
+
+═══ GPS / SENSOR IMAGE ═══
+If you see a GPS module, compass, barometer, or other sensor:
+Look for: module orientation (arrow direction), antenna facing up vs down, proximity to EMI sources (motors/ESC), damaged connectors
+→ "What GPS module? (e.g., BN-880, Matek M10Q)"
+→ "Which direction is the arrow on the GPS pointing?"
+→ "Is it mounted as far from the ESC/motors as possible?"
+→ "What's the symptom? (no fix, slow fix, toilet bowl, bad heading?)"
+
+═══ RECEIVER IMAGE ═══
+If you see a receiver module:
+Look for: antenna routing (inside vs outside carbon frame), antenna damage, solder joints on pads, correct orientation
+→ "What receiver? (ELRS EP1/EP2, TBS Crossfire, FrSky R-XSR?)"
+→ "Where is the antenna positioned relative to the carbon frame?"
+→ "What's the symptom? (won't bind, failsafe, poor range?)"
+
+═══ FULL BUILD / OVERVIEW IMAGE ═══
+If you see a complete or partially assembled drone:
+Look for: overall build quality, wire routing, zip tie/cable management, component placement, prop orientation, antenna positioning, battery mounting
+→ "What's the build list? (frame, FC, ESC, motors, RX, VTX)"
+→ "Is this a fresh build or troubleshooting an existing one?"
+→ "What firmware? (Betaflight, iNav, ArduPilot, PX4?)"
+→ "Does it fly? What's the issue?"
+
+═══ CRASH DAMAGE IMAGE ═══
+If you see obvious crash damage:
+Run through the post-crash checklist:
+→ "Any visible damage to frame arms? (flex each one)"
+→ "Do all motors spin freely by hand?"
+→ "Is the battery puffy at all?"
+→ "Did you lose video, control, or both before the crash?"
+→ "Check your blackbox log if you have one — it shows exactly what happened."
+
+PHASE 3 — ONCE YOU HAVE ENOUGH INFO:
+After the user responds with more details, provide a SPECIFIC diagnosis:
+
+1. If it's a board/component: SEARCH the web for that exact product's specs, pinout, or known issues
+2. Cross-reference what the user described against what's correct
+3. Identify EXACTLY what's wrong with specific references (pad names, part numbers, settings)
+4. Give the fix as a step-by-step procedure
+5. Provide any firmware/software configuration changes needed
+6. If it's a hardware problem: recommend specific replacement parts from the database
+
+REMEMBER — SAME TREE APPROACH FOR IMAGES:
+- Short first response (what you see + 1-2 questions)
+- Narrow down with each exchange
+- Give the specific fix only when you know enough
+- Reference exact pad names, part numbers, and config steps when you do
+
+USE THE WIRING REFERENCE below for wiring-specific analysis.
+${WIRING_KB}`;
+  }
+
+  return `You are Wingman AI — expert drone troubleshooter${mode === 'orqa' ? ' deployed by Orqa Inc.' : ''}. You talk like a knowledgeable friend in the shop, not a textbook.
+
+CONVERSATION STYLE — THIS IS CRITICAL:
+- Keep responses SHORT. 2-4 sentences max for your first reply. No walls of text.
+- Think like a decision tree: start broad, narrow down with questions.
+- Ask 1-2 follow-up questions to narrow the problem BEFORE giving a detailed answer.
+- When you have enough info, give the specific fix — exact part names, pad names, CLI commands.
+- Validate what's working: "OK so the receiver binds fine — that rules out the RX. Let's look at..."
+- Educate as you go, briefly: "TX goes to RX because TX means 'transmit from this device'."
+- Use code blocks only for actual commands. Use bold for key terms.
+- If you need to list steps, keep them short — one line each.
+- NEVER start with a long explanation. Start with a question or a quick observation.
+
+EXAMPLE GOOD RESPONSE:
+User: "My quad won't arm"
+You: "A few things can block arming. Is Betaflight giving you any flags in the OSD or the status bar? And are you getting stick inputs when you move the sticks in the Receiver tab?"
+
+EXAMPLE BAD RESPONSE:
+User: "My quad won't arm"  
+You: "There are many reasons a quad won't arm. First, check your accelerometer calibration. Then verify your receiver is bound. Then check your arming switch is configured..." [500 words of generic troubleshooting]
+
+THE TREE APPROACH:
+1. User describes problem → you ask 1-2 clarifying questions
+2. User answers → you narrow down and ask 1-2 more specific questions OR give the answer
+3. Repeat until you reach the specific fix
+4. Give the fix with exact references (pad names, CLI commands, menu paths)
+
+This should feel like a back-and-forth conversation where we work through it together, not a one-shot answer dump.
+
+You have live web search. Use it for firmware versions, spec sheets, Blue UAS list, pricing — search before guessing.
+${hasImages ? 'The user attached a photo. FOLLOW THE IMAGE TRIAGE PROTOCOL BELOW.' : ''}
+
+KNOWLEDGE BASE:
+${FALLBACK_KB}
+${kbData !== FALLBACK_KB ? kbData : ''}
+${validationCtx ? validationCtx : ''}
+${ragCtx ? '\nFROM DATABASE (matching query):' + ragCtx : ''}
+${imageInstructions}
+
+RULES:
+- Short first. Detailed only after you understand the problem.
+- Ask before you assume. One question narrows faster than ten guesses.
+- Exact references: pad names, part numbers, CLI commands, menu paths.
+- Search the web before guessing on specs or firmware versions.
+- Code blocks for commands only. Bold for key terms.
+- If uncertain, say "verify this" — never fabricate.
+${mode === 'orqa' ? '- Orqa product support: QuadCore H7 (ORQA_QUADCORE_H7), 3030 Lite F405, WingCore H7 (PX4), DTK APB, 3030 70A ESC, FPV.One, FPV.Connect, MRM2-10/MRM1-5, spiroNET antennas. You know every UART on every Orqa board.' : ''}`;
+}
+
+// ─── INIT ─────────────────────────────────────────────────────
+document.addEventListener('DOMContentLoaded', () => {
+  renderStarters();
+  renderFileList();
+  loadRAG(); // fire and forget — UI works immediately with fallback
+});
+
+function renderStarters() {
+  const el = document.getElementById('starters');
+  el.innerHTML = STARTERS.map(s =>
+    `<button class="starter-btn" onclick="useStarter(this.textContent)">${s}</button>`
+  ).join('');
+}
+
+// ─── MODEL CHIP ───────────────────────────────────────────────
+var MODEL_CYCLE = [
+  { label: 'gemini-2.0-flash', provider: 'gemini' },
+  { label: 'llama-3.3-70b',   provider: 'groq'   },
+  { label: 'gemini-2.0-flash', provider: 'gemini' },
+];
+// Claude available via Settings (BYOK) — not in public cycle
+var modelIdx = 0;
+function cycleModel() {
+  // Don't cycle if user has set Claude (private)
+  if (provider === 'anthropic') return;
+  modelIdx = (modelIdx + 1) % MODEL_CYCLE.length;
+  const m = MODEL_CYCLE[modelIdx];
+  const chip = document.getElementById('model-chip');
+  if (chip) chip.textContent = m.label;
+  setProvider(m.provider);
+}
+
+function renderFileList() {
+  const el = document.getElementById('file-list');
+  el.innerHTML = GH.files.map(f => {
+    const s = ghFiles.find(x => x.path === f);
+    const cls = s?.ok ? 'ok' : '';
+    const icon = s ? (s.ok ? '✓' : '✗') : '○';
+    const iconColor = s ? (s.ok ? 'var(--cyan)' : 'var(--red)') : 'var(--g3)';
+    const err = s?.err ? `<span class="fe">(${s.err})</span>` : '';
+    return `<div class="file-row ${cls}"><span class="fi" style="color:${iconColor}">${icon}</span><span class="fp">${f}</span>${err}</div>`;
+  }).join('');
+}
+
+function updateSourcePills() {
+  const el = document.getElementById('source-pills');
+  const pills = [];
+  pills.push({ src: 'fallback', label: 'fallback' });
+  if (ragStats.components > 0) pills.push({ src: 'parts-db', label: `parts-db (${ragStats.components})` });
+  if (ragStats.handbook > 0)   pills.push({ src: 'handbook', label: `handbook (${ragStats.handbook})` });
+  if (ragStats.platforms > 0)  pills.push({ src: 'platforms', label: `platforms (${ragStats.platforms})` });
+  if (ragStats.firmware > 0)   pills.push({ src: 'firmware', label: `fw-db (${ragStats.firmware})` });
+  if (ghFiles.some(f => f.ok)) kbSources.filter(s => s !== 'fallback').forEach(s => {
+    if (!pills.find(p => p.label.startsWith(s))) pills.push({ src: s, label: s });
+  });
+  el.innerHTML = pills.map(p =>
+    `<span class="source-pill${p.src === 'handbook' ? ' live' : ''}" data-src="${p.src}">${p.label}</span>`
+  ).join('');
+}
+
+// ─── MODE ─────────────────────────────────────────────────────
+function setMode(m) {
+  mode = m;
+  messages = [];
+  // mode toggle removed
+  document.getElementById('title-name').textContent = m === 'orqa' ? 'ORQA SUPPORT' : 'WINGMAN AI';
+  document.getElementById('welcome-name').textContent = m === 'orqa' ? 'Orqa Support' : 'Wingman AI';
+  renderMessages();
+}
+
+// ─── CONFIG ──────────────────────────────────────────────────
+function setProvider(p) {
+  provider = p;
+  localStorage.setItem('wingman_provider', p);
+  document.getElementById('anthropic-cfg').style.display = p === 'anthropic' ? '' : 'none';
+  document.getElementById('gemini-cfg').style.display    = p === 'gemini'     ? '' : 'none';
+  document.getElementById('groq-cfg').style.display      = p === 'groq'       ? '' : 'none';
+  // Update active button style
+  ['gemini','groq','anthropic'].forEach(id => {
+    const btn = document.getElementById('prov-'+id);
+    if (btn) btn.style.borderColor = id === p ? 'var(--cyan)' : 'var(--border)';
+    if (btn) btn.style.color = id === p ? 'var(--cyan)' : 'var(--g2)';
+  });
+  document.getElementById('prov-anthropic').style.borderColor = p === 'anthropic' ? 'var(--cyan)' : 'var(--border)';
+  document.getElementById('prov-anthropic').style.color = p === 'anthropic' ? 'var(--cyan)' : 'var(--g2)';
+  document.getElementById('prov-gemini').style.borderColor = p === 'gemini' ? 'var(--cyan)' : 'var(--border)';
+  document.getElementById('prov-gemini').style.color = p === 'gemini' ? 'var(--cyan)' : 'var(--g2)';
+}
+
+function openCfg() {
+  document.getElementById('api-key-input').value = apiKey;
+  document.getElementById('gemini-key-input').value = geminiKey;
+  document.getElementById('groq-key-input').value = groqKey;
+  document.getElementById('proxy-secret-input').value = proxySecret;
+  document.getElementById('sub-token-input').value = subToken;
+  // Show token status
+  const statusEl = document.getElementById('sub-token-status');
+  if (statusEl) {
+    if (subToken) {
+      try {
+        const p = JSON.parse(atob(subToken));
+        const daysLeft = p.exp ? Math.max(0, Math.ceil((p.exp - Date.now()) / 86400000)) : null;
+        const expired = p.exp && Date.now() > p.exp;
+        statusEl.textContent = expired
+          ? '⚠ Token expired — renew at /pro/'
+          : (daysLeft !== null ? `✓ Pro active · ${daysLeft} days remaining${p.demo ? ' (demo)' : ''}` : '✓ Token present');
+        statusEl.style.color = expired ? 'var(--amber)' : 'var(--cyan)';
+      } catch { statusEl.textContent = '✓ Token present'; statusEl.style.color = 'var(--cyan)'; }
+    } else {
+      statusEl.textContent = 'No token — get Pro at nvmillbuilditmyself.com/pro/';
+      statusEl.style.color = 'var(--g3)';
+    }
+  }
+  setProvider(provider);
+  document.getElementById('cfg-overlay').classList.add('open');
+}
+function closeCfg() {
+  document.getElementById('cfg-overlay').classList.remove('open');
+}
+function closeCfgOutside(e) {
+  if (e.target === document.getElementById('cfg-overlay')) closeCfg();
+}
+
+function saveCfgAndConnect() {
+  const newKey = document.getElementById('api-key-input').value.trim();
+  if (newKey) {
+    apiKey = newKey;
+    localStorage.setItem('wingman_api_key', apiKey);
+  }
+  const newGemini = document.getElementById('gemini-key-input').value.trim();
+  if (newGemini) {
+    geminiKey = newGemini;
+    localStorage.setItem('wingman_gemini_key', geminiKey);
+  }
+
+  // Save sub token
+  const newSubToken = document.getElementById('sub-token-input').value.trim();
+  if (newSubToken) {
+    subToken = newSubToken;
+    localStorage.setItem('wingman_sub_token', subToken);
+    // Switch to Claude automatically if token present
+    if (provider !== 'anthropic') {
+      setProvider('anthropic');
+    }
+  } else if (document.getElementById('sub-token-input').value === '') {
+    // User cleared it — remove
+    subToken = '';
+    localStorage.removeItem('wingman_sub_token');
+  }
+
+  // Also connect GH if PAT is provided
+  const pat = document.getElementById('pat-input').value.trim();
+  if (pat) {
+    closeCfg();
+    connectGH();
+  } else {
+    closeCfg();
+  }
+}
+
+async function connectGH() {
+  const token = document.getElementById('pat-input').value.trim();
+  if (!token) return;
+  closeCfg();
+  setGhStatus('loading');
+  ghFiles = [];
+  const sources = ['fallback'];
+  let combined = FALLBACK_KB;
+
+  for (const path of GH.files) {
+    try {
+      const res = await fetch(`https://api.github.com/repos/${GH.owner}/${GH.repo}/contents/${path}`, {
+        headers: { Authorization: `token ${token}`, Accept: 'application/vnd.github.v3.raw' }
+      });
+      if (!res.ok) throw new Error(res.status);
+      const content = await res.text();
+      ghFiles.push({ path, ok: true });
+      combined += `\n\n## REPO: ${path}\n${content}`;
+      sources.push(path.split('/').pop());
+    } catch (e) {
+      ghFiles.push({ path, ok: false, err: e.message });
+    }
+  }
+
+  kbData = combined;
+  kbSources = sources;
+  const anyOk = ghFiles.some(f => f.ok);
+  setGhStatus(anyOk ? 'ok' : 'error');
+  updateSourcePills();
+  renderFileList();
+}
+
+function setGhStatus(s) {
+  ghStatus = s;
+  const btn = document.getElementById('gh-btn');
+  const lbl = document.getElementById('gh-label');
+  btn.className = 'badge';
+  if (s === 'ok') {
+    btn.classList.add('gh-ok');
+    lbl.textContent = `Repo (${ghFiles.filter(f=>f.ok).length})`;
+  } else if (s === 'loading') {
+    btn.classList.add('gh-loading');
+    lbl.textContent = 'Fetching…';
+  } else if (s === 'error') {
+    btn.classList.add('gh-err');
+    lbl.textContent = 'Error';
+  } else {
+    lbl.textContent = 'GitHub';
+  }
+}
+
+// ─── IMAGES ───────────────────────────────────────────────────
+function handleFiles(files) {
+  Array.from(files).forEach(file => {
+    const r = new FileReader();
+    r.onload = ev => {
+      stagedImgs.push({ b64: ev.target.result.split(',')[1], preview: ev.target.result, name: file.name, mediaType: file.type || 'image/jpeg' });
+      renderStagedImages();
+      updateSendBtn();
+    };
+    r.readAsDataURL(file);
+  });
+  document.getElementById('file-input').value = '';
+}
+
+function removeStaged(i) {
+  stagedImgs.splice(i, 1);
+  renderStagedImages();
+  updateSendBtn();
+}
+
+function renderStagedImages() {
+  const el = document.getElementById('staged-images');
+  el.innerHTML = stagedImgs.map((img, i) => `
+    <div class="staged-img-wrap">
+      <img src="${img.preview}" alt=""/>
+      <button class="rm" onclick="removeStaged(${i})">×</button>
+    </div>
+  `).join('');
+  const camBtn = document.getElementById('cam-btn');
+  camBtn.classList.toggle('active', stagedImgs.length > 0);
+  
+  // Update hint text based on whether images are staged
+  const hint = document.getElementById('input-hint');
+  if (hint) {
+    if (stagedImgs.length > 0) {
+      hint.textContent = 'Tip: Tell me what FC this is, what you wired where, and what\'s not working — the more detail, the better I can diagnose.';
+      hint.style.color = 'var(--cyan)';
+    } else {
+      hint.textContent = 'Enter to send · Shift+Enter for newline · attach images for visual triage';
+      hint.style.color = '';
+    }
+  }
+}
+
+// ─── INPUT ────────────────────────────────────────────────────
+function autoResize(el) {
+  el.style.height = 'auto';
+  el.style.height = Math.min(el.scrollHeight, 120) + 'px';
+}
+
+function updateSendBtn() {
+  const txt = document.getElementById('text-input').value.trim();
+  const btn = document.getElementById('send-btn');
+  btn.classList.toggle('ready', (txt.length > 0 || stagedImgs.length > 0) && !loading);
+}
+
+function handleKey(e) {
+  if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send(); }
+}
+
+function useStarter(text) {
+  document.getElementById('text-input').value = text;
+  autoResize(document.getElementById('text-input'));
+  updateSendBtn();
+  document.getElementById('text-input').focus();
+}
+
+// ─── SEND ─────────────────────────────────────────────────────
+async function send() {
+  const txt = document.getElementById('text-input').value.trim();
+  if ((!txt && stagedImgs.length === 0) || loading) return;
+
+  loading = true;
+  updateSendBtn();
+  hideEmpty();
+
+  var hasImages = stagedImgs.length > 0;  // Capture BEFORE clearing
+
+  const userContent = [];
+  stagedImgs.forEach(img => userContent.push({ type: 'image', source: { type: 'base64', media_type: img.mediaType, data: img.b64 } }));
+  if (txt) userContent.push({ type: 'text', text: txt });
+
+  const msg = { role: 'user', content: userContent, text: txt, previews: stagedImgs.map(i => i.preview) };
+  messages.push(msg);
+
+  document.getElementById('text-input').value = '';
+  document.getElementById('text-input').style.height = 'auto';
+  stagedImgs = [];
+  renderStagedImages();
+  renderMessages();
+  showThinking();
+
+  // Keep last 6 turns to avoid token limits (especially Groq free tier)
+  const recentMessages = messages.slice(-6);
+  const apiMessages = recentMessages.map(m => ({ role: m.role, content: m.content }));
+
+  try {
+    const activeKey = provider === 'gemini' ? geminiKey : provider === 'groq' ? groqKey : apiKey;
+    const keyName = provider === 'gemini' ? 'Google Gemini' : provider === 'groq' ? 'Groq' : 'Anthropic';
+    const keyUrl  = provider === 'gemini' ? 'https://aistudio.google.com/apikey' : provider === 'groq' ? 'https://console.groq.com' : 'https://console.anthropic.com/settings/keys';
+
+    // Gemini + Groq work without key (server proxy)
+    // Anthropic works with BYOK key OR proxy secret
+    if (!activeKey && !proxySecret && provider !== 'gemini' && provider !== 'groq') {
+      messages.push({ role: 'assistant', content: [], text: `Please add your ${keyName} API key in Settings (gear button) to start chatting.\n\n[Get a free key →](${keyUrl})`, searched: false });
+      loading = false;
+      hideThinking();
+      renderMessages();
+      updateSendBtn();
+      scrollBottom();
+      return;
+    }
+
+    let text = '', searched = false;
+
+    if (provider === 'gemini') {
+      // ═══ GEMINI API ═══
+      const sysPrompt = buildPrompt(txt, hasImages);
+      const geminiMessages = [];
+      // Convert conversation history to Gemini format
+      for (const m of messages) {
+        const role = m.role === 'assistant' ? 'model' : 'user';
+        const parts = [];
+        if (Array.isArray(m.content)) {
+          for (const c of m.content) {
+            if (c.type === 'text') parts.push({ text: c.text });
+            else if (c.type === 'image') parts.push({ inlineData: { mimeType: c.source.media_type, data: c.source.data } });
+          }
+        }
+        if (parts.length) geminiMessages.push({ role, parts });
+      }
+
+      const geminiBody = {
+        systemInstruction: { parts: [{ text: sysPrompt.slice(0, 6000) }] },
+        contents: geminiMessages,
+        generationConfig: { maxOutputTokens: 4096, temperature: 0.7 },
+        _model: MODEL_CYCLE[modelIdx]?.label || 'gemini-2.0-flash',
+      };
+
+      // Use proxy (free) if no user key, direct API if BYOK
+      const modelName = MODEL_CYCLE[modelIdx]?.label || 'gemini-2.0-flash';
+      const geminiUrl = geminiKey
+        ? `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${geminiKey}`
+        : '/.netlify/functions/gemini-proxy';
+
+      const res = await fetch(geminiUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(geminiBody),
+      });
+      const data = await res.json();
+      if (data.error) {
+        text = `Gemini error: ${data.error.message || JSON.stringify(data.error)}`;
+      } else {
+        text = (data.candidates?.[0]?.content?.parts || []).map(p => p.text || '').join('');
+      }
+
+    } else if (provider === 'groq') {
+      // ═══ GROQ API (Llama 3.3 70B) ═══
+      const sysPrompt = buildPrompt(txt, hasImages);
+      const groqMessages = [{ role: 'system', content: sysPrompt.slice(0, 3000) }];
+      // Groq free tier: strict token limits — keep last 4 turns, truncate content
+      const groqHistory = messages.slice(-4);
+      for (const m of groqHistory) {
+        const role = m.role === 'assistant' ? 'assistant' : 'user';
+        let content = '';
+        if (Array.isArray(m.content)) {
+          content = m.content.filter(c => c.type === 'text').map(c => c.text).join('');
+        } else if (typeof m.content === 'string') {
+          content = m.content;
+        }
+        // Truncate each message to 800 chars to stay under TPM limit
+        if (content) groqMessages.push({ role, content: content.slice(0, 800) });
+      }
+      const groqBody = {
+        model: 'llama-3.3-70b-versatile',
+        messages: groqMessages,
+        max_tokens: 1024,  // Reduced from 4096 — Groq free TPM is tight
+        temperature: 0.7,
+      };
+      // Use BYOK if provided, otherwise server proxy
+      const groqUrl = groqKey
+        ? 'https://api.groq.com/openai/v1/chat/completions'
+        : '/.netlify/functions/groq-proxy';
+      const groqHeaders = { 'Content-Type': 'application/json' };
+      if (groqKey) groqHeaders['Authorization'] = `Bearer ${groqKey}`;
+      const res = await fetch(groqUrl, {
+        method: 'POST',
+        headers: groqHeaders,
+        body: JSON.stringify(groqBody),
+      });
+      const data = await res.json();
+      if (data.error) {
+        text = `Groq error: ${data.error.message || JSON.stringify(data.error)}`;
+      } else {
+        text = data.choices?.[0]?.message?.content || '';
+      }
+      searched = false;
+
+    } else {
+      // ═══ ANTHROPIC API ═══
+      // Use server proxy if proxy secret set and no BYOK key,
+      // or BYOK direct if user has their own key
+      const useProxy = (proxySecret || subToken) && !apiKey;
+      const claudeUrl = useProxy
+        ? '/.netlify/functions/claude-proxy'
+        : 'https://api.anthropic.com/v1/messages';
+      const claudeHeaders = { 'Content-Type': 'application/json' };
+      // Sub token from Pro subscription also authorizes proxy
+      const useSubProxy = subToken && !apiKey && !proxySecret;
+      if (useProxy || useSubProxy) {
+        if (proxySecret) claudeHeaders['x-proxy-secret'] = proxySecret;
+        if (subToken)    claudeHeaders['x-sub-token']    = subToken;
+      } else {
+        claudeHeaders['x-api-key'] = apiKey;
+        claudeHeaders['anthropic-version'] = '2023-06-01';
+        claudeHeaders['anthropic-dangerous-direct-browser-access'] = 'true';
+      }
+      const claudeBody = {
+        model: 'claude-sonnet-4-6',
+        max_tokens: 4096,
+        system: buildPrompt(txt, hasImages),
+        messages: apiMessages,
+      };
+      // Web search available for Pro proxy subscribers AND BYOK users
+      claudeBody.tools = [{ type: 'web_search_20250305', name: 'web_search' }];
+
+      const res = await fetch(claudeUrl, {
+        method: 'POST',
+        headers: claudeHeaders,
+        body: JSON.stringify(claudeBody),
+      });
+      const data = await res.json();
+      for (const b of (data.content || [])) {
+        if (b.type === 'text') text += b.text;
+        if (b.type === 'tool_use' && b.name === 'web_search') searched = true;
+      }
+    }
+
+    messages.push({ role: 'assistant', content: [], text: text || 'No response.', searched });
+    trackQuery(txt, hasImages, (text || '').length);
+  } catch (err) {
+    messages.push({ role: 'assistant', content: [], text: `Error: ${err.message}`, searched: false });
+    trackQuery(txt, hasImages, 0, 'error');
+  }
+
+  loading = false;
+  hideThinking();
+  renderMessages();
+  updateSendBtn();
+  scrollBottom();
+}
+
+// ─── RENDER ───────────────────────────────────────────────────
+function hideEmpty() {
+  const el = document.getElementById('empty-state');
+  if (el) el.style.display = 'none';
+}
+
+function showThinking() {
+  let t = document.getElementById('thinking-row');
+  if (!t) {
+    t = document.createElement('div');
+    t.id = 'thinking-row';
+    t.innerHTML = `
+      <div class="msg-meta">
+        <span class="slash">//</span>
+        <span>${mode === 'orqa' ? 'Orqa Support' : 'Wingman'}</span>
+      </div>
+      <div class="thinking">
+        <div class="dots"><span></span><span></span><span></span></div>
+        <span class="lbl">Searching + reasoning…</span>
+      </div>`;
+    document.getElementById('messages').appendChild(t);
+  }
+  scrollBottom();
+}
+
+function hideThinking() {
+  const t = document.getElementById('thinking-row');
+  if (t) t.remove();
+}
+
+function renderMessages() {
+  const container = document.getElementById('messages');
+  // remove all msg-rows
+  container.querySelectorAll('.msg-row').forEach(el => el.remove());
+
+  messages.forEach(msg => {
+    const row = document.createElement('div');
+    row.className = `msg-row ${msg.role}`;
+
+    const meta = document.createElement('div');
+    meta.className = 'msg-meta';
+    if (msg.role === 'assistant') meta.innerHTML += `<span class="slash">//</span>`;
+    meta.innerHTML += `<span>${msg.role === 'user' ? 'Operator' : mode === 'orqa' ? 'Orqa Support' : 'Wingman'}</span>`;
+    if (msg.searched) meta.innerHTML += `<span class="web-badge">web searched</span>`;
+    row.appendChild(meta);
+
+    // image previews
+    if (msg.previews?.length) {
+      const imgs = document.createElement('div');
+      imgs.className = 'img-previews';
+      msg.previews.forEach(p => {
+        const img = document.createElement('img');
+        img.src = p; img.alt = '';
+        imgs.appendChild(img);
+      });
+      row.appendChild(imgs);
+    }
+
+    // bubble
+    if (msg.text) {
+      const bubble = document.createElement('div');
+      bubble.className = `bubble ${msg.role}`;
+      if (msg.role === 'assistant') {
+        bubble.innerHTML = parseMarkdown(msg.text);
+      } else {
+        bubble.textContent = msg.text;
+      }
+      row.appendChild(bubble);
+
+      // Feedback buttons on assistant messages
+      if (msg.role === 'assistant' && msg.text.length > 50) {
+        const fb = document.createElement('div');
+        fb.className = 'msg-feedback';
+        fb.innerHTML = `
+          <button class="fb-btn fb-up ${msg.feedback === 'up' ? 'active' : ''}" title="This helped — save to troubleshooting DB" onclick="rateFeedback(${messages.indexOf(msg)}, 'up', this)"><i class="ph ph-thumbs-up"></i></button>
+          <button class="fb-btn fb-down ${msg.feedback === 'down' ? 'active' : ''}" title="Not helpful" onclick="rateFeedback(${messages.indexOf(msg)}, 'down', this)"><i class="ph ph-thumbs-down"></i></button>
+          <button class="fb-btn fb-save" title="Save this as a troubleshooting entry" onclick="saveIssue(${messages.indexOf(msg)})"><i class="ph ph-floppy-disk"></i> Save issue</button>
+        `;
+        row.appendChild(fb);
+      }
+    }
+
+    container.appendChild(row);
+  });
+
+  scrollBottom();
+}
+
+// ─── ISSUE TRACKER ──────────────────────────────────────────
+var savedIssues = JSON.parse(localStorage.getItem('wingman_issues') || '[]');
+updateIssueCount();
+
+function rateFeedback(msgIdx, rating, btn) {
+  if (msgIdx < 0 || msgIdx >= messages.length) return;
+  messages[msgIdx].feedback = rating;
+  // Update button states
+  var row = btn.closest('.msg-feedback');
+  row.querySelectorAll('.fb-btn').forEach(function(b) { b.classList.remove('active'); });
+  btn.classList.add('active');
+  
+  // If thumbs up, prompt to save
+  if (rating === 'up') {
+    var saveBtn = row.querySelector('.fb-save');
+    if (saveBtn) {
+      saveBtn.style.color = 'var(--cyan)';
+      saveBtn.style.borderColor = 'var(--cyan)';
+      setTimeout(function() { saveBtn.style.color = ''; saveBtn.style.borderColor = ''; }, 2000);
+    }
+  }
+}
+
+function saveIssue(msgIdx) {
+  if (msgIdx < 0 || msgIdx >= messages.length) return;
+  var assistantMsg = messages[msgIdx];
+  
+  // Find the preceding user message(s) for context
+  var userContext = '';
+  for (var i = msgIdx - 1; i >= 0; i--) {
+    if (messages[i].role === 'user') {
+      userContext = messages[i].text || '';
+      break;
+    }
+  }
+  
+  var issue = {
+    id: 'WM-' + Date.now(),
+    timestamp: new Date().toISOString(),
+    user_query: userContext,
+    assistant_response: assistantMsg.text,
+    had_image: !!(assistantMsg.previews && assistantMsg.previews.length > 0) || 
+               messages.slice(0, msgIdx).some(function(m) { return m.previews && m.previews.length > 0; }),
+    feedback: assistantMsg.feedback || 'up',
+    conversation_length: messages.length,
+    mode: mode,
+  };
+  
+  savedIssues.push(issue);
+  localStorage.setItem('wingman_issues', JSON.stringify(savedIssues));
+  updateIssueCount();
+  
+  // Visual feedback
+  var bubble = document.querySelectorAll('.msg-row.assistant')[Array.from(document.querySelectorAll('.msg-row')).filter(function(r) { return r.classList.contains('assistant'); }).length - 1];
+  if (bubble) {
+    var saveBtn = bubble.querySelector('.fb-save');
+    if (saveBtn) {
+      saveBtn.textContent = '✓ Saved';
+      saveBtn.classList.add('saved');
+    }
+  }
+}
+
+function updateIssueCount() {
+  var el = document.getElementById('issue-count');
+  if (!el) return;
+  el.textContent = savedIssues.length + ' saved issue' + (savedIssues.length !== 1 ? 's' : '');
+  el.classList.toggle('visible', savedIssues.length > 0);
+}
+
+function toggleIssuePanel() {
+  var panel = document.getElementById('issue-panel');
+  panel.classList.toggle('open');
+  if (panel.classList.contains('open')) renderIssueList();
+}
+
+function renderIssueList() {
+  var el = document.getElementById('issue-list');
+  if (!savedIssues.length) {
+    el.innerHTML = '<div style="padding:16px;text-align:center;color:var(--g3);font-size:12px;">No saved issues yet.<br>Use thumbs-up or save on helpful responses to save them.</div>';
+    return;
+  }
+  el.innerHTML = savedIssues.map(function(issue, i) {
+    var query = (issue.user_query || 'No query').substring(0, 80);
+    var response = (issue.assistant_response || '').substring(0, 120);
+    var date = new Date(issue.timestamp).toLocaleDateString();
+    return '<div class="issue-item">' +
+      '<div class="issue-item-title">' + escHtml(query) + (query.length >= 80 ? '...' : '') + '</div>' +
+      '<div class="issue-item-meta">' + date + ' · ' + (issue.had_image ? '[img] ' : '') + issue.mode + ' · ' + issue.feedback + '</div>' +
+      '<div style="margin-top:4px;color:var(--g2);font-size:10px;line-height:1.4;">' + escHtml(response) + (response.length >= 120 ? '...' : '') + '</div>' +
+      '<div class="issue-item-actions">' +
+        '<button onclick="removeIssue(' + i + ')">Remove</button>' +
+        '<button onclick="copyIssue(' + i + ')">Copy</button>' +
+      '</div>' +
+    '</div>';
+  }).reverse().join('');
+}
+
+function removeIssue(idx) {
+  savedIssues.splice(idx, 1);
+  localStorage.setItem('wingman_issues', JSON.stringify(savedIssues));
+  updateIssueCount();
+  renderIssueList();
+}
+
+function copyIssue(idx) {
+  var issue = savedIssues[idx];
+  var text = 'Q: ' + issue.user_query + '\nA: ' + issue.assistant_response;
+  navigator.clipboard.writeText(text);
+}
+
+function clearIssues() {
+  if (!confirm('Clear all ' + savedIssues.length + ' saved issues?')) return;
+  savedIssues = [];
+  localStorage.setItem('wingman_issues', '[]');
+  updateIssueCount();
+  renderIssueList();
+}
+
+function exportIssues() {
+  var blob = new Blob([JSON.stringify(savedIssues, null, 2)], { type: 'application/json' });
+  var a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'wingman_issues_' + new Date().toISOString().split('T')[0] + '.json';
+  a.click();
+}
+
+function exportAsTroubleshooting() {
+  // Convert saved issues into forge_troubleshooting.json format
+  var entries = savedIssues.map(function(issue, i) {
+    // Extract key info from the conversation
+    var query = issue.user_query || '';
+    var response = issue.assistant_response || '';
+    
+    // Try to auto-categorize from keywords
+    var category = 'general';
+    var categoryMap = {
+      'motor': 'motors', 'esc': 'escs', 'desync': 'escs',
+      'flight controller': 'flight_controllers', 'fc ': 'flight_controllers', 'betaflight': 'flight_controllers',
+      'video': 'video', 'vtx': 'video', 'fpv': 'video', 'osd': 'video', 'camera': 'video',
+      'receiver': 'radio_link', 'bind': 'radio_link', 'elrs': 'radio_link', 'crsf': 'radio_link', 'failsafe': 'radio_link',
+      'gps': 'gps', 'compass': 'gps', 'toilet bowl': 'gps',
+      'battery': 'power', 'voltage': 'power', 'lipo': 'power', 'puffy': 'power',
+      'arm': 'arming', 'won\'t arm': 'arming',
+      'pid': 'pid_tuning', 'oscillat': 'pid_tuning', 'tune': 'pid_tuning',
+      'frame': 'mechanical', 'crack': 'mechanical', 'prop': 'mechanical',
+      'firmware': 'firmware', 'flash': 'firmware', 'update': 'firmware',
+      'crash': 'crashes', 'broke': 'crashes',
+      'wire': 'wiring', 'solder': 'wiring', 'uart': 'wiring', 'pad': 'wiring',
+    };
+    var blob = (query + ' ' + response).toLowerCase();
+    for (var kw in categoryMap) {
+      if (blob.includes(kw)) { category = categoryMap[kw]; break; }
+    }
+    
+    // Extract symptoms from user query
+    var symptoms = [query];
+    
+    // Extract fixes from response — look for lines starting with -, •, or numbered
+    var fixes = [];
+    response.split('\n').forEach(function(line) {
+      line = line.trim();
+      if ((line.startsWith('- ') || line.startsWith('• ') || line.match(/^\d+\./)) && line.length > 15) {
+        fixes.push(line.replace(/^[-•]\s*/, '').replace(/^\d+\.\s*/, ''));
+      }
+    });
+    if (!fixes.length) fixes = [response.substring(0, 300)];
+    
+    return {
+      id: 'TS-WM-' + String(i + 1).padStart(3, '0'),
+      title: query.substring(0, 80) || 'Wingman conversation',
+      category: category,
+      severity: 'medium',
+      symptoms: symptoms,
+      causes: ['Identified via Wingman AI visual/conversational triage'],
+      diagnostics: issue.had_image ? ['Photo analysis by Wingman AI'] : ['Conversational diagnosis'],
+      fixes: fixes.slice(0, 8),
+      related_parts: [],
+      difficulty: 'intermediate',
+      tags: ['wingman-generated', issue.mode, issue.had_image ? 'photo-triage' : 'text-triage'],
+      source: {
+        wingman_id: issue.id,
+        timestamp: issue.timestamp,
+        mode: issue.mode,
+        had_image: issue.had_image,
+      }
+    };
+  });
+  
+  var output = {
+    meta: {
+      exported: new Date().toISOString(),
+      source: 'wingman-issue-tracker',
+      count: entries.length,
+      note: 'Review and edit before merging into forge_troubleshooting.json',
+    },
+    entries: entries,
+  };
+  
+  var blob = new Blob([JSON.stringify(output, null, 2)], { type: 'application/json' });
+  var a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'wingman_troubleshooting_export_' + new Date().toISOString().split('T')[0] + '.json';
+  a.click();
+}
+
+// ─── ANALYTICS TRACKER ──────────────────────────────────────
+// Silent logging of all interactions for pattern analysis
+// Stored in localStorage — you export it to review what people ask about
+
+var analytics = JSON.parse(localStorage.getItem('wingman_analytics') || '{"sessions":[],"queries":[]}');
+var currentSession = {
+  id: 'S-' + Date.now(),
+  started: new Date().toISOString(),
+  provider: provider,
+  mode: mode,
+  turns: 0,
+  queries: [],
+};
+
+function trackQuery(query, hasImage, responseLength, category) {
+  var entry = {
+    ts: new Date().toISOString(),
+    q: query.substring(0, 200),
+    img: !!hasImage,
+    mode: mode,
+    provider: provider,
+    respLen: responseLength,
+    cat: category || autoCategory(query),
+    session: currentSession.id,
+  };
+  analytics.queries.push(entry);
+  currentSession.turns++;
+  currentSession.queries.push(entry.q);
+  
+  // Keep last 500 queries max (prevent localStorage bloat)
+  if (analytics.queries.length > 500) {
+    analytics.queries = analytics.queries.slice(-500);
+  }
+  localStorage.setItem('wingman_analytics', JSON.stringify(analytics));
+
+  // Send to central analytics (fire and forget)
+  fetch('/.netlify/functions/analytics', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ type: 'query', ...entry }),
+  }).catch(function() {});
+}
+
+function autoCategory(text) {
+  var t = text.toLowerCase();
+  var cats = [
+    ['wiring', /wire|solder|uart|pad|tx|rx|connect/],
+    ['motors', /motor|prop|vibrat|desync|spin|thrust/],
+    ['escs', /esc|blheli|dshot|amp|mosfet/],
+    ['video', /vtx|video|fpv|camera|osd|antenna|signal|range/],
+    ['radio', /receiver|bind|elrs|crsf|crossfire|sbus|failsafe|radio|control link/],
+    ['gps', /gps|compass|heading|toilet.?bowl|position|rtk/],
+    ['battery', /battery|lipo|voltage|cell|puffy|charge|sag/],
+    ['firmware', /betaflight|inav|ardupilot|px4|flash|firmware|configurator|cli/],
+    ['compliance', /ndaa|blue.?uas|complian|itar|export|dod|defense|§848/],
+    ['frame', /frame|arm|crack|carbon|mount|standoff/],
+    ['pid', /pid|tune|oscil|wobble|filter|gyro/],
+    ['crash', /crash|broke|repair|damage|impact/],
+    ['build', /build|recommend|best|compare|which|choose|setup/],
+    ['platform', /platform|drone model|mavic|skydio|parrot|autel|inspire/],
+    ['orqa', /orqa|quadcore|wingcore|mrm|fpv\.one|fpv\.connect|3030/],
+  ];
+  for (var i = 0; i < cats.length; i++) {
+    if (cats[i][1].test(t)) return cats[i][0];
+  }
+  return 'general';
+}
+
+function endSession() {
+  if (currentSession.turns > 0) {
+    var sessionSummary = {
+      id: currentSession.id,
+      started: currentSession.started,
+      ended: new Date().toISOString(),
+      turns: currentSession.turns,
+      mode: currentSession.mode,
+      provider: currentSession.provider,
+      topQueries: currentSession.queries.slice(0, 5),
+    };
+    analytics.sessions.push(sessionSummary);
+    // Keep last 200 sessions
+    if (analytics.sessions.length > 200) {
+      analytics.sessions = analytics.sessions.slice(-200);
+    }
+    localStorage.setItem('wingman_analytics', JSON.stringify(analytics));
+
+    // Send to central analytics (use sendBeacon for page unload reliability)
+    var payload = JSON.stringify({
+      type: 'session',
+      turns: currentSession.turns,
+      mode: currentSession.mode,
+      provider: currentSession.provider,
+      duration: Math.round((Date.now() - new Date(currentSession.started).getTime()) / 1000),
+    });
+    if (navigator.sendBeacon) {
+      navigator.sendBeacon('/.netlify/functions/analytics', new Blob([payload], { type: 'application/json' }));
+    } else {
+      fetch('/.netlify/functions/analytics', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: payload,
+        keepalive: true,
+      }).catch(function() {});
+    }
+  }
+}
+
+// Save session on page unload
+window.addEventListener('beforeunload', endSession);
+
+function getAnalyticsSummary() {
+  var q = analytics.queries;
+  if (!q.length) return 'No analytics data yet.';
+
+  // Category breakdown
+  var catCounts = {};
+  var imgCount = 0;
+  var providerCounts = {};
+  var modeCounts = {};
+  var dailyCounts = {};
+  var recentQueries = q.slice(-20).map(function(e) { return e.q; });
+  
+  q.forEach(function(e) {
+    catCounts[e.cat] = (catCounts[e.cat] || 0) + 1;
+    if (e.img) imgCount++;
+    providerCounts[e.provider || 'unknown'] = (providerCounts[e.provider || 'unknown'] || 0) + 1;
+    modeCounts[e.mode || 'wingman'] = (modeCounts[e.mode || 'wingman'] || 0) + 1;
+    var day = (e.ts || '').split('T')[0];
+    if (day) dailyCounts[day] = (dailyCounts[day] || 0) + 1;
+  });
+  
+  // Sort categories by count
+  var sortedCats = Object.keys(catCounts).sort(function(a, b) { return catCounts[b] - catCounts[a]; });
+  
+  return {
+    totalQueries: q.length,
+    totalSessions: analytics.sessions.length,
+    imageQueries: imgCount,
+    imagePercent: Math.round(imgCount / q.length * 100),
+    topCategories: sortedCats.map(function(c) { return { cat: c, count: catCounts[c], pct: Math.round(catCounts[c] / q.length * 100) }; }),
+    providers: providerCounts,
+    modes: modeCounts,
+    dailyCounts: dailyCounts,
+    recentQueries: recentQueries,
+    avgTurnsPerSession: analytics.sessions.length ? Math.round(analytics.sessions.reduce(function(a, s) { return a + s.turns; }, 0) / analytics.sessions.length * 10) / 10 : 0,
+  };
+}
+
+function showAnalyticsDashboard() {
+  // Try central analytics first, fall back to local
+  var adminKey = prompt('Admin key for central analytics (or cancel for local-only):', '');
+  if (adminKey) {
+    fetch('/.netlify/functions/analytics?key=' + encodeURIComponent(adminKey) + '&range=30')
+      .then(function(r) { return r.json(); })
+      .then(function(data) {
+        if (data.error) { alert('Central: ' + data.error); showLocalDashboard(); return; }
+        var t = data.totals || {};
+        var cats = Object.entries(t.cats || {}).sort(function(a,b) { return b[1]-a[1]; });
+        var total = t.queries || 0;
+        var catStr = cats.map(function(c) { return c[0] + ': ' + c[1] + ' (' + Math.round(c[1]/total*100) + '%)'; }).join('\n  ');
+        var dailyStr = Object.keys(data.daily || {}).sort().reverse().slice(0, 14).map(function(d) {
+          return d + ': ' + data.daily[d].count + ' queries (' + data.daily[d].images + ' with images)';
+        }).join('\n  ');
+        var recentStr = (data.recentQueries || []).slice(0, 15).map(function(q, i) {
+          return (i+1) + '. [' + q.cat + '] ' + (q.img ? '[img] ' : '') + q.q;
+        }).join('\n  ');
+        var report = '═══ WINGMAN CENTRAL ANALYTICS ═══\n\n' +
+          'Total queries (all users): ' + total + '\n' +
+          'Total sessions: ' + (t.sessions || 0) + '\n' +
+          'Image queries: ' + (t.imageQueries || 0) + ' (' + (total ? Math.round((t.imageQueries||0)/total*100) : 0) + '%)\n' +
+          'This month sessions: ' + (data.thisMonth?.sessions || 0) + '\n' +
+          'Avg turns/session: ' + (data.thisMonth?.avgTurns || 0) + '\n\n' +
+          'TOP CATEGORIES (all time):\n  ' + catStr + '\n\n' +
+          'DAILY BREAKDOWN (last 14 days):\n  ' + dailyStr + '\n\n' +
+          'RECENT QUERIES (all users):\n  ' + recentStr + '\n\n' +
+          'Last updated: ' + (t.lastUpdated || 'never');
+        alert(report);
+      })
+      .catch(function(e) { alert('Central error: ' + e.message); showLocalDashboard(); });
+  } else {
+    showLocalDashboard();
+  }
+}
+
+function showLocalDashboard() {
+  var s = getAnalyticsSummary();
+  if (typeof s === 'string') { alert(s); return; }
+  
+  var cats = s.topCategories.map(function(c) { 
+    return c.cat + ': ' + c.count + ' (' + c.pct + '%)'; 
+  }).join('\n  ');
+  
+  var recent = s.recentQueries.slice(-10).reverse().map(function(q, i) {
+    return (i + 1) + '. ' + q;
+  }).join('\n  ');
+  
+  var days = Object.keys(s.dailyCounts).sort().slice(-7).map(function(d) {
+    return d + ': ' + s.dailyCounts[d] + ' queries';
+  }).join('\n  ');
+  
+  var report = '═══ WINGMAN LOCAL ANALYTICS ═══\n(this browser only)\n\n' +
+    'Total queries: ' + s.totalQueries + '\n' +
+    'Total sessions: ' + s.totalSessions + '\n' +
+    'Avg turns/session: ' + s.avgTurnsPerSession + '\n' +
+    'Image queries: ' + s.imageQueries + ' (' + s.imagePercent + '%)\n\n' +
+    'TOP CATEGORIES:\n  ' + cats + '\n\n' +
+    'LAST 7 DAYS:\n  ' + days + '\n\n' +
+    'RECENT QUERIES:\n  ' + recent + '\n\n' +
+    'Providers: ' + JSON.stringify(s.providers) + '\n' +
+    'Modes: ' + JSON.stringify(s.modes);
+  
+  alert(report);
+}
+
+function exportAnalytics() {
+  // Export central if admin key available, otherwise local
+  var adminKey = prompt('Admin key for central export (or cancel for local):', '');
+  if (adminKey) {
+    fetch('/.netlify/functions/analytics?key=' + encodeURIComponent(adminKey) + '&range=90')
+      .then(function(r) { return r.json(); })
+      .then(function(data) {
+        var blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+        var a = document.createElement('a');
+        a.href = URL.createObjectURL(blob);
+        a.download = 'wingman_central_analytics_' + new Date().toISOString().split('T')[0] + '.json';
+        a.click();
+      })
+      .catch(function(e) { alert('Error: ' + e.message); });
+  } else {
+    var s = getAnalyticsSummary();
+    var output = {
+      exported: new Date().toISOString(),
+      source: 'local',
+      summary: s,
+      raw_queries: analytics.queries,
+      sessions: analytics.sessions,
+    };
+    var blob = new Blob([JSON.stringify(output, null, 2)], { type: 'application/json' });
+    var a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = 'wingman_local_analytics_' + new Date().toISOString().split('T')[0] + '.json';
+    a.click();
+  }
+}
+
+function clearAnalytics() {
+  if (!confirm('Clear all analytics data? (' + analytics.queries.length + ' queries, ' + analytics.sessions.length + ' sessions)')) return;
+  analytics = { sessions: [], queries: [] };
+  localStorage.setItem('wingman_analytics', JSON.stringify(analytics));
+  alert('Analytics cleared.');
+}
+
+function scrollBottom() {
+  const el = document.getElementById('messages');
+  setTimeout(() => el.scrollTop = el.scrollHeight, 50);
+}
+
+// ─── MARKDOWN PARSER ──────────────────────────────────────────
+function parseMarkdown(text) {
+  const lines = text.split('\n');
+  let html = '';
+  let inCode = false, codeBuf = '';
+
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i];
+    if (line.startsWith('```')) {
+      if (inCode) {
+        html += `<pre><code>${escHtml(codeBuf.replace(/\n$/, ''))}</code></pre>`;
+        codeBuf = ''; inCode = false;
+      } else { inCode = true; }
+      continue;
+    }
+    if (inCode) { codeBuf += line + '\n'; continue; }
+
+    if (line.match(/^### /)) { html += `<h3>${inlineEsc(line.slice(4))}</h3>`; }
+    else if (line.match(/^## /))  { html += `<h2>${inlineEsc(line.slice(3))}</h2>`; }
+    else if (line.match(/^# /))   { html += `<h1>${inlineEsc(line.slice(2))}</h1>`; }
+    else if (line.startsWith('- ') || line.startsWith('• ')) {
+      html += `<ul><li>${inlineEsc(line.slice(2))}</li></ul>`;
+    } else if (line.match(/^\d+\. /)) {
+      html += `<ol><li>${inlineEsc(line.replace(/^\d+\. /, ''))}</li></ol>`;
+    } else if (line.trim() === '') { html += '<br>'; }
+    else { html += `<p>${inlineEsc(line)}</p>`; }
+  }
+  // merge adjacent ul/ol
+  html = html.replace(/<\/ul><ul>/g, '').replace(/<\/ol><ol>/g, '');
+  return html;
+}
+
+function escHtml(s) {
+  return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+function inlineEsc(s) {
+  s = escHtml(s);
+  s = s.replace(/`([^`]+)`/g, '<code>$1</code>');
+  s = s.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
+  return s;
+}
+// ─── GAP ANALYZER ─────────────────────────────────────────────────────────────
+
+var gapOpen = false;
+
+function toggleGapPanel() {
+  gapOpen = !gapOpen;
+  document.getElementById('gap-panel').classList.toggle('open', gapOpen);
+  document.getElementById('gap-btn').style.borderColor = gapOpen ? 'var(--cyan)' : '';
+  document.getElementById('gap-btn').style.color = gapOpen ? 'var(--cyan)' : '';
+  if (gapOpen) autoDetectGapEntities();
+}
+
+// Scan conversation messages for entity pairs
+function autoDetectGapEntities() {
+  if (!messages.length) return;
+  const allText = messages.map(m => m.text || '').join(' ');
+
+  // Patterns: model numbers, brand names, product names
+  const entityPattern = /\b([A-Z][A-Za-z0-9][-A-Za-z0-9]*(?:\s+[A-Z0-9][-A-Za-z0-9]*){0,2})\b/g;
+  const counts = {};
+  let m;
+  while ((m = entityPattern.exec(allText)) !== null) {
+    const e = m[1].trim();
+    if (e.length < 2 || /^(The|And|But|For|With|From|This|That|When|What|Which|How|Are|Was|Has|Have|Been|Will|Can|Should|Would|Could|Also|Note|More)$/.test(e)) continue;
+    counts[e] = (counts[e] || 0) + 1;
+  }
+
+  // Sort by frequency, take top 2
+  const sorted = Object.entries(counts).sort((a,b) => b[1]-a[1]).map(x=>x[0]);
+  const fieldA = document.getElementById('gap-a');
+  const fieldB = document.getElementById('gap-b');
+  const hint   = document.getElementById('gap-auto-hint');
+
+  if (sorted.length >= 2 && !fieldA.value && !fieldB.value) {
+    fieldA.value = sorted[0];
+    fieldB.value = sorted[1];
+    hint.textContent = `↑ Auto-detected from conversation`;
+    hint.classList.add('visible');
+  }
+}
+
+async function runGapAnalysis() {
+  const a = document.getElementById('gap-a').value.trim();
+  const b = document.getElementById('gap-b').value.trim();
+  if (!a || !b) { alert('Enter two entities to compare.'); return; }
+
+  // ── Pro gate — gap analyzer is a Pro feature ────────────────────────────────────────────────────
+  if (!subToken && !proxySecret) {
+    const results = document.getElementById('gap-results');
+    document.getElementById('gap-empty').style.display = 'none';
+    results.style.display = 'block';
+    results.innerHTML = `<div class="gap-empty" style="gap:10px">
+      <i class="ph ph-lock"></i>
+      <span style="color:var(--white);font-weight:600">Gap Analyzer is a Pro feature</span>
+      <span style="font-size:11px;color:var(--g2);line-height:1.5;max-width:260px;text-align:center">Full gap analysis with NDAA, supply chain, and spec comparisons requires a Pro subscription.</span>
+      <a href="/pro/" style="margin-top:4px;padding:8px 20px;background:var(--cyan);color:#0c0c0a;border-radius:6px;font-weight:600;font-size:12px;text-decoration:none">Upgrade to Pro →</a>
+    </div>`;
+    return;
+  }
+
+  const btn = document.getElementById('gap-run');
+  btn.disabled = true;
+  btn.textContent = 'Analyzing…';
+
+  document.getElementById('gap-empty').style.display = 'none';
+  const results = document.getElementById('gap-results');
+  results.style.display = 'block';
+  results.innerHTML = `<div class="gap-thinking"><div class="dots"><span></span><span></span><span></span></div>Comparing ${escHtml(a)} vs ${escHtml(b)}…</div>`;
+
+  try {
+    // Pull relevant DB context for both entities
+    const dbCtx = buildGapDbContext(a, b);
+
+    const prompt = `You are a drone systems intelligence analyst for the DroneClear platform.
+
+Compare these two entities and identify gaps across three dimensions:
+- SPEC GAPS: performance, range, frequency, packet rate, power, weight, latency differences
+- COMPLIANCE GAPS: NDAA/Blue UAS status, FCC coverage list, country of origin, supply chain risk
+- SUPPLY CHAIN GAPS: Chinese OEM dependency, sole-source risk, lead time, availability
+
+Entity A: ${a}
+Entity B: ${b}
+
+${dbCtx ? 'FORGE DATABASE CONTEXT:\n' + dbCtx : ''}
+
+Respond ONLY with a JSON array. Each item:
+{
+  "category": "spec" | "compliance" | "supply_chain",
+  "severity": "critical" | "warning" | "info",
+  "title": "short gap title",
+  "detail": "1-2 sentence explanation with specific numbers where known"
+}
+
+Maximum 8 gaps. Be specific and factual. If a gap favors one entity, say which.`;
+
+    const usedKey = (provider === 'anthropic' && apiKey) ? apiKey : null;
+    let gaps = [];
+
+    if (usedKey) {
+      // Claude API
+      const res = await fetch('https://api.anthropic.com/v1/messages', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'x-api-key': usedKey, 'anthropic-version': '2023-06-01' },
+        body: JSON.stringify({
+          model: 'claude-sonnet-4-20250514',
+          max_tokens: 1000,
+          messages: [{ role: 'user', content: prompt }]
+        })
+      });
+      const data = await res.json();
+      const raw = data.content?.[0]?.text || '[]';
+      gaps = JSON.parse(raw.replace(/```json|```/g, '').trim());
+    } else if (geminiKey) {
+      // Gemini API
+      const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${geminiKey}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          contents: [{ parts: [{ text: prompt }] }],
+          generationConfig: { temperature: 0.2, maxOutputTokens: 1000 }
+        })
+      });
+      const data = await res.json();
+      const raw = data.candidates?.[0]?.content?.parts?.[0]?.text || '[]';
+      gaps = JSON.parse(raw.replace(/```json|```/g, '').trim());
+    } else {
+      // No API key — show prompt to configure
+      results.innerHTML = `<div class="gap-empty"><i class="ph ph-key"></i><span>API key required</span><span style="font-size:10px;color:var(--g3);margin-top:2px;">Configure Claude or Gemini in Settings</span></div>`;
+      btn.disabled = false; btn.textContent = 'Run Gap Analysis';
+      return;
+    }
+
+    renderGapResults(a, b, gaps);
+
+    // Track gap analysis run
+    trackGapAnalysis(a, b, gaps);
+  } catch(e) {
+    results.innerHTML = `<div class="gap-empty"><i class="ph ph-warning"></i><span>Analysis failed</span><span style="font-size:10px;color:var(--g3);">${escHtml(String(e))}</span></div>`;
+  }
+
+  btn.disabled = false;
+  btn.textContent = 'Run Gap Analysis';
+}
+
+function buildGapDbContext(a, b) {
+  if (!window._forgeDb) return '';
+  const db = window._forgeDb;
+  const aLow = a.toLowerCase(), bLow = b.toLowerCase();
+  const lines = [];
+
+  // Search platforms
+  const platforms = db.drone_models || db.platforms || [];
+  for (const p of platforms) {
+    const name = (p.name || p.model || '').toLowerCase();
+    if (name.includes(aLow) || name.includes(bLow)) {
+      lines.push(`Platform: ${p.name || p.model} | ${JSON.stringify(p).slice(0,300)}`);
+    }
+  }
+
+  // Search components across all categories
+  const components = db.components || {};
+  for (const [cat, items] of Object.entries(components)) {
+    if (!Array.isArray(items)) continue;
+    for (const item of items) {
+      const name = (item.name || item.model || '').toLowerCase();
+      if (name.includes(aLow) || name.includes(bLow)) {
+        lines.push(`Component [${cat}]: ${item.name || item.model} | ${JSON.stringify(item).slice(0,300)}`);
+      }
+    }
+  }
+
+  return lines.slice(0, 10).join('\n');
+}
+
+function renderGapResults(a, b, gaps) {
+  const results = document.getElementById('gap-results');
+  if (!gaps.length) {
+    results.innerHTML = `<div class="gap-empty"><i class="ph ph-check-circle"></i><span>No significant gaps found</span></div>`;
+    return;
+  }
+
+  const byCategory = { spec: [], compliance: [], supply_chain: [] };
+  for (const g of gaps) byCategory[g.category]?.push(g);
+
+  const labels = { spec: 'Spec Gaps', compliance: 'Compliance Gaps', supply_chain: 'Supply Chain Gaps' };
+  let html = `<div style="font:600 10px var(--mono);color:var(--g2);margin-bottom:10px;padding-bottom:8px;border-bottom:1px solid var(--border);">${escHtml(a)} <span style="color:var(--g3)">vs</span> ${escHtml(b)}</div>`;
+
+  for (const [cat, items] of Object.entries(byCategory)) {
+    if (!items.length) continue;
+    html += `<div class="gap-section-lbl">${labels[cat]}</div>`;
+    for (const g of items) {
+      html += `<div class="gap-card ${g.severity}">
+        <div class="gap-card-title"><span class="gap-dot ${g.severity}"></span>${escHtml(g.title)}</div>
+        <div class="gap-card-body">${escHtml(g.detail)}</div>
+      </div>`;
+    }
+  }
+
+  html += `<div class="gap-cta">Ask Wingman to dive deeper — <a href="#" onclick="injectGapQuestion('${escHtml(a)}','${escHtml(b)}');return false;">open chat →</a></div>`;
+  results.innerHTML = html;
+}
+
+function injectGapQuestion(a, b) {
+  toggleGapPanel();
+  const ta = document.getElementById('text-input');
+  ta.value = `Tell me more about the compliance and supply chain differences between ${a} and ${b}`;
+  autoResize(ta);
+  updateSendBtn();
+  ta.focus();
+}
+
+function trackGapAnalysis(a, b, gaps) {
+  // Local analytics
+  if (window.analytics) {
+    const entry = {
+      ts: new Date().toISOString(),
+      action: 'gap_analysis_run',
+      entityA: a, entityB: b,
+      gapCount: gaps.length,
+      criticalCount: gaps.filter(g => g.severity === 'critical').length,
+      session: currentSession?.id || '',
+    };
+    if (!analytics.gapRuns) analytics.gapRuns = [];
+    analytics.gapRuns.push(entry);
+    if (analytics.gapRuns.length > 100) analytics.gapRuns = analytics.gapRuns.slice(-100);
+    localStorage.setItem('wingman_analytics', JSON.stringify(analytics));
+  }
+  // Central analytics — batch event format (matches ingest handler)
+  const batchPayload = {
+    type: 'batch',
+    events: [{
+      event_id: crypto.randomUUID(),
+      timestamp: new Date().toISOString(),
+      surface: 'forge',
+      event_type: 'gap_analysis',
+      event_action: 'gap_analysis_run',
+      context: {
+        session_id: currentSession?.id || '',
+        geo_region: (() => { try { const z = Intl.DateTimeFormat().resolvedOptions().timeZone; if(z.includes('America')) return 'Americas'; if(z.includes('Europe')) return 'Europe'; if(z.includes('Asia')||z.includes('Australia')) return 'Asia-Pacific'; } catch(e){} return 'Unknown'; })(),
+        platform: /Android|iPhone|iPad/i.test(navigator.userAgent) ? 'mobile' : 'web',
+      },
+      payload: {
+        entity_a: a, entity_b: b,
+        gap_count: gaps.length,
+        critical_count: gaps.filter(g => g.severity === 'critical').length,
+        warning_count: gaps.filter(g => g.severity === 'warning').length,
+        provider: provider,
+      },
+      data_policy: { collection_tier: 'anonymous' },
+    }]
+  };
+  fetch('/.netlify/functions/analytics', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(batchPayload),
+  }).catch(() => {});
+}
+
+// Store DB reference for gap analyzer context
+(function patchDbLoad() {
+  const origLoad = window.loadForgeDb || null;
+  // Hook into the forge DB fetch that already happens on page load
+  const _origFetch = window.fetch;
+  window.fetch = function(url, ...args) {
+    const p = _origFetch(url, ...args);
+    if (typeof url === 'string' && url.includes('forge_database')) {
+      p.then(r => r.clone().json().then(db => { window._forgeDb = db; }).catch(()=>{})).catch(()=>{});
+    }
+    return p;
+  };
+})();
+
+</script>
+
+<script>
+// Inline API key — syncs to provider-specific storage + hidden inputs
+document.addEventListener('DOMContentLoaded', function() {
+  var inlineKey = document.getElementById('inline-api-key');
+  if (!inlineKey) return;
+
+  function loadKey() {
+    var p = localStorage.getItem('wingman_provider') || 'gemini';
+    var key = p === 'gemini' ? (localStorage.getItem('wingman_gemini_key') || '') :
+              p === 'groq'   ? (localStorage.getItem('wingman_groq_key') || '') :
+                               (localStorage.getItem('wingman_api_key') || '');
+    inlineKey.value = key;
+    inlineKey.placeholder = p === 'anthropic' ? 'sk-ant-... (Claude BYOK)' :
+                            p === 'groq'      ? 'gsk_... (Groq, optional)' :
+                                               'AIzaSy... (Gemini, optional)';
+    // Sync hidden inputs so existing JS still works
+    var gemInput = document.getElementById('gemini-key-input');
+    var groqInput = document.getElementById('groq-key-input');
+    var antInput = document.getElementById('api-key-input');
+    if (gemInput)  gemInput.value  = localStorage.getItem('wingman_gemini_key') || '';
+    if (groqInput) groqInput.value = localStorage.getItem('wingman_groq_key') || '';
+    if (antInput)  antInput.value  = localStorage.getItem('wingman_api_key') || '';
+  }
+
+  function saveKey() {
+    var p = localStorage.getItem('wingman_provider') || 'gemini';
+    var k = inlineKey.value.trim();
+    if (p === 'gemini') {
+      localStorage.setItem('wingman_gemini_key', k);
+      if (typeof geminiKey !== 'undefined') geminiKey = k;
+      var el = document.getElementById('gemini-key-input');
+      if (el) el.value = k;
+    } else if (p === 'groq') {
+      localStorage.setItem('wingman_groq_key', k);
+      if (typeof groqKey !== 'undefined') groqKey = k;
+      var el2 = document.getElementById('groq-key-input');
+      if (el2) el2.value = k;
+    } else {
+      localStorage.setItem('wingman_api_key', k);
+      if (typeof apiKey !== 'undefined') apiKey = k;
+      var el3 = document.getElementById('api-key-input');
+      if (el3) el3.value = k;
+    }
+  }
+
+  loadKey();
+  inlineKey.addEventListener('input', saveKey);
+  inlineKey.addEventListener('change', saveKey);
+
+  // Refresh inline key when provider changes
+  var origSetProvider = window.setProvider;
+  window.setProvider = function(p) {
+    if (origSetProvider) origSetProvider(p);
+    setTimeout(loadKey, 50);
+  };
+});
+</script>
+</body>
+</html>

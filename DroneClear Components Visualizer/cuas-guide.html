@@ -1,0 +1,292 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Counter-UAS Integration Guide — Forge</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&family=Source+Serif+4:opsz,wght@8..60,400;8..60,600;8..60,700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="{% static 'base.css' %}?v=2">
+    <link rel="stylesheet" href="{% static 'layout.css' %}?v=4">
+    <link rel="stylesheet" href="{% static 'utilities.css' %}?v=2">
+    <script src="https://unpkg.com/@phosphor-icons/web"></script>
+    <script>(function(){const s=localStorage.getItem('dc-theme');document.documentElement.setAttribute('data-theme',s||'dark')})();</script>
+    <style>
+        .cu-container{max-width:900px;margin:0 auto;padding:32px 24px 80px}.cu-hero{text-align:center;margin-bottom:40px}.cu-hero h1{font-size:26px;font-weight:700;background:linear-gradient(135deg,var(--negative-red) 0%,#fbbf24 100%);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;margin:0 0 8px}.cu-hero p{color:var(--text-muted);font-size:14px;max-width:640px;margin:0 auto;line-height:1.6}
+        .cu-back{font-size:12px;color:var(--text-muted);text-decoration:none;display:inline-flex;align-items:center;gap:4px;margin-bottom:24px}.cu-back:hover{color:var(--negative-red)}
+        .cu-section{margin-bottom:32px}.cu-section-title{font-size:18px;font-weight:700;color:var(--text-main);margin:0 0 8px;display:flex;align-items:center;gap:8px}.cu-section-title i{color:var(--negative-red)}.cu-section-desc{font-size:13px;color:var(--text-muted);line-height:1.7;margin-bottom:16px}
+        .cu-code{background:#0d0d0d;border:1px solid var(--border-color);border-radius:var(--radius-sm);padding:16px;font-family:var(--font-family);font-size:12px;line-height:1.7;color:#a3e635;overflow-x:auto;margin-bottom:16px;white-space:pre;position:relative}.cu-code .c{color:#525252}.cu-code-label{position:absolute;top:8px;right:12px;font-size:9px;text-transform:uppercase;letter-spacing:0.1em;color:var(--text-faint);background:#0d0d0d;padding:2px 6px}
+        .cu-info{padding:14px 16px;border-radius:var(--radius-sm);font-size:13px;line-height:1.6;margin-bottom:16px;display:flex;gap:10px}.cu-info i{font-size:18px;flex-shrink:0;margin-top:1px}.cu-info-blue{background:rgba(34,211,238,0.06);border:1px solid rgba(34,211,238,0.15);color:var(--accent-cyan)}.cu-info-yellow{background:rgba(251,191,36,0.06);border:1px solid rgba(251,191,36,0.15);color:#fbbf24}.cu-info-green{background:rgba(74,222,128,0.06);border:1px solid rgba(74,222,128,0.15);color:var(--accent-green)}.cu-info-red{background:rgba(248,113,113,0.06);border:1px solid rgba(248,113,113,0.15);color:var(--negative-red)}
+        .cu-glossary{display:grid;grid-template-columns:repeat(auto-fit,minmax(250px,1fr));gap:12px;margin-bottom:20px}.cu-gloss-card{background:var(--bg-panel);border:1px solid var(--border-color);border-radius:var(--radius-sm);padding:14px}.cu-gloss-card h4{font-size:13px;font-weight:700;color:var(--negative-red);margin:0 0 4px}.cu-gloss-card p{font-size:12px;color:var(--text-muted);margin:0;line-height:1.5}
+        .cu-table{width:100%;border-collapse:collapse;margin-bottom:16px;font-size:12px}.cu-table th{text-align:left;padding:8px 12px;background:var(--bg-dark);color:var(--text-muted);border:1px solid var(--border-color);font-weight:600;text-transform:uppercase;letter-spacing:0.05em;font-size:10px}.cu-table td{padding:8px 12px;border:1px solid var(--border-color);color:var(--text-main)}
+        .cu-pipeline{display:flex;align-items:center;gap:4px;flex-wrap:wrap;margin-bottom:20px;padding:16px;background:var(--bg-panel);border:1px solid var(--border-color);border-radius:var(--radius-sm)}.cu-pipe-step{padding:8px 14px;border-radius:var(--radius-sm);font-size:11px;font-weight:600;font-family:var(--font-family)}.cu-pipe-detect{background:rgba(34,211,238,0.1);color:var(--accent-cyan);border:1px solid rgba(34,211,238,0.2)}.cu-pipe-track{background:rgba(167,139,250,0.1);color:var(--accent-purple);border:1px solid rgba(167,139,250,0.2)}.cu-pipe-classify{background:rgba(251,191,36,0.1);color:#fbbf24;border:1px solid rgba(251,191,36,0.2)}.cu-pipe-decide{background:rgba(248,113,113,0.1);color:var(--negative-red);border:1px solid rgba(248,113,113,0.2)}.cu-pipe-act{background:rgba(74,222,128,0.1);color:var(--accent-green);border:1px solid rgba(74,222,128,0.2)}.cu-pipe-arrow{color:var(--text-faint);font-size:16px}
+            /* Scroll fix — standalone guide page, not sidebar app layout */
+        body { overflow-y: auto !important; }
+        .app-container { height: auto !important; min-height: 100vh; overflow: visible !important; }
+    </style>
+<style>html,body{background:#0c0c0a!important;color:#f5f0e8}</style>
+</head>
+<body>
+<header style="display:flex;align-items:center;justify-content:space-between;gap:8px;padding:10px 16px;border-bottom:1px solid #2e2e26;background:#1c1c17;position:sticky;top:0;z-index:100;flex-shrink:0;">
+  <a href="/guides/" style="font:800 18px 'JetBrains Mono',monospace;color:#ff3b5c;letter-spacing:-0.03em;text-decoration:none;flex-shrink:0;">Forge</a>
+  <div style="display:flex;gap:5px;align-items:center;flex-wrap:nowrap;"><a href="/intel/" class="tp-pill">Intel</a><a href="/patterns/" class="tp-pill">Patterns</a><a href="/tools-home/" class="tp-pill">Tools</a><a href="/wingman/" class="tp-pill">Wingman</a></div>
+</header>
+<style>.tp-pill{font:500 10px 'DM Sans',system-ui,sans-serif;color:#6b6358;padding:4px 9px;border:1px solid #2e2e26;border-radius:20px;text-decoration:none;white-space:nowrap;transition:all .15s}.tp-pill:hover{border-color:#3e3e34;color:#b8b0a0}</style>
+<div class="app-container" style="flex-direction:column;">
+    <div class="cu-container">
+        <a href="/guides/" class="cu-back"><i class="ph ph-caret-left"></i> Implementation Guides</a>
+
+        <div class="cu-hero">
+            <h1><i class="ph ph-shield-warning"></i> Counter-UAS Integration</h1>
+            <p>Detect, track, classify, and respond to hostile drones. From RF sensors and radar to autonomous intercept — the full C-UAS pipeline for your platform.</p>
+        </div>
+
+        <!-- LEGAL WARNING -->
+        <div class="cu-info cu-info-red"><i class="ph ph-warning-circle"></i><div><strong>Legal notice:</strong> Active drone defeat (jamming, spoofing, kinetic intercept) is heavily regulated. In the US, only specific federal agencies (DoD, DHS, DOJ, DOE, Coast Guard) have legal authority to defeat UAS under 10 U.S.C. §130i and 6 U.S.C. §124n. This guide covers detection and integration architecture. Defeat methods are included for reference within authorized contexts only. Check your jurisdiction.</div></div>
+
+        <!-- JARGON -->
+        <div class="cu-section">
+            <div class="cu-section-title"><i class="ph ph-translate"></i> Jargon Buster</div>
+            <div class="cu-glossary">
+                <div class="cu-gloss-card"><h4>C-UAS / CUAS</h4><p>Counter-Unmanned Aircraft System. The full system that detects, tracks, identifies, and (optionally) defeats hostile drones. Can be a single sensor or a multi-layered defense.</p></div>
+                <div class="cu-gloss-card"><h4>RF Detection</h4><p>Listening for radio frequency emissions from a drone's controller, video transmitter, or telemetry link. Most commercial drones transmit on 2.4 GHz, 5.8 GHz, or 900 MHz. RF detection is passive — you're just listening, not transmitting.</p></div>
+                <div class="cu-gloss-card"><h4>Radar</h4><p>Active detection — sends electromagnetic pulses and listens for reflections. Can detect drones that aren't transmitting RF (autonomous drones, fiber-optic controlled). Harder to implement, more expensive, but catches what RF can't.</p></div>
+                <div class="cu-gloss-card"><h4>EO/IR (Electro-Optical / Infrared)</h4><p>Camera-based detection. Visible light cameras for day, thermal cameras for night. AI classifies objects in the feed. Good for confirmation and tracking, limited by range and weather.</p></div>
+                <div class="cu-gloss-card"><h4>Acoustic Detection</h4><p>Listening for drone motor/propeller sound signatures with microphone arrays. Short range (100-500m) but useful for confirming presence and direction. Works where RF is silent (autonomous drones).</p></div>
+                <div class="cu-gloss-card"><h4>RF Jamming</h4><p>Transmitting noise on the drone's control frequency to break the link between pilot and drone. The drone then follows its failsafe (usually RTH or land). Requires authorization. Affects all devices on that frequency — including your own.</p></div>
+                <div class="cu-gloss-card"><h4>GPS Spoofing</h4><p>Sending fake GPS signals to the drone, making it think it's somewhere else. Can redirect the drone to a capture zone or force a landing. Highly controlled — affects all GPS receivers in the area.</p></div>
+                <div class="cu-gloss-card"><h4>Kinetic Defeat</h4><p>Physically destroying or capturing the drone. Nets (from drones or launchers), projectiles, directed energy (lasers, HPM). The "last resort" layer.</p></div>
+                <div class="cu-gloss-card"><h4>SIGINT / Protocol Analysis</h4><p>Signals Intelligence. Decoding the actual data in the drone's RF emissions — identifying the protocol (DJI Aeroscope, Autel, MAVLink), extracting serial numbers, operator position, flight path. Much more useful than raw RF detection.</p></div>
+                <div class="cu-gloss-card"><h4>Remote ID</h4><p>FAA-mandated broadcast identification. As of 2024, most commercial drones broadcast operator ID, position, altitude, and serial number on Bluetooth 5 and Wi-Fi NaN. A free detection layer — but only catches compliant drones.</p></div>
+            </div>
+        </div>
+
+        <!-- THE PIPELINE -->
+        <div class="cu-section">
+            <div class="cu-section-title"><i class="ph ph-flow-arrow"></i> The C-UAS Kill Chain</div>
+            <div class="cu-section-desc">Every C-UAS system follows this pipeline. You don't need all layers — but more layers = fewer gaps.</div>
+
+            <div class="cu-pipeline">
+                <span class="cu-pipe-step cu-pipe-detect"><i class="ph ph-radio"></i> Detect</span>
+                <span class="cu-pipe-arrow">→</span>
+                <span class="cu-pipe-step cu-pipe-track"><i class="ph ph-crosshair-simple"></i> Track</span>
+                <span class="cu-pipe-arrow">→</span>
+                <span class="cu-pipe-step cu-pipe-classify"><i class="ph ph-tag"></i> Classify</span>
+                <span class="cu-pipe-arrow">→</span>
+                <span class="cu-pipe-step cu-pipe-decide"><i class="ph ph-brain"></i> Decide</span>
+                <span class="cu-pipe-arrow">→</span>
+                <span class="cu-pipe-step cu-pipe-act"><i class="ph ph-shield-check"></i> Act</span>
+            </div>
+
+            <table class="cu-table">
+                <tr><th>Layer</th><th>Sensors</th><th>Range</th><th>Catches</th><th>Misses</th></tr>
+                <tr><td style="color:var(--accent-cyan);font-weight:600;">RF Detection</td><td>SDR, spectrum analyzer, dedicated RF sensors</td><td>1-10 km</td><td>Any drone transmitting (controller, video, telemetry)</td><td>Autonomous drones, fiber-optic, GPS-only nav</td></tr>
+                <tr><td style="color:var(--accent-cyan);font-weight:600;">Remote ID</td><td>Bluetooth/WiFi receiver, smartphone</td><td>300m (BT5) / 1km (WiFi)</td><td>Compliant commercial drones</td><td>Anything non-compliant, DIY builds, military</td></tr>
+                <tr><td style="color:var(--accent-cyan);font-weight:600;">Radar</td><td>AESA, FMCW, phased array</td><td>2-20 km</td><td>Any flying object (including birds)</td><td>Very small drones (&lt;250g), clutter in urban environments</td></tr>
+                <tr><td style="color:var(--accent-cyan);font-weight:600;">EO/IR Camera</td><td>PTZ camera, thermal camera + AI</td><td>500m-5 km</td><td>Visual confirmation, classification</td><td>Bad weather, night (visible only), very small at distance</td></tr>
+                <tr><td style="color:var(--accent-cyan);font-weight:600;">Acoustic</td><td>Microphone arrays</td><td>100-500m</td><td>Close-range confirmation, direction</td><td>Noisy environments, long range</td></tr>
+            </table>
+        </div>
+
+        <!-- DETECTION: RF -->
+        <div class="cu-section">
+            <div class="cu-section-title"><i class="ph ph-radio"></i> RF Detection with SDR</div>
+            <div class="cu-section-desc">The cheapest entry point — a software-defined radio (SDR) can detect drone RF signatures for under $50.</div>
+
+            <div class="cu-code"><span class="c"># ═══ DETECT DRONE RF WITH RTL-SDR ($25) + GNU RADIO ═══</span>
+
+<span class="c"># Install RTL-SDR driver + GNU Radio</span>
+sudo apt install rtl-sdr gnuradio gr-osmosdr
+
+<span class="c"># Scan 2.4 GHz band (most drones) — needs an upconverter or</span>
+<span class="c"># a HackRF One ($300) since RTL-SDR maxes at 1.7 GHz</span>
+
+<span class="c"># With HackRF One — scan 2.4 GHz for drone video/control:</span>
+hackrf_sweep -f 2400:2500 -w 500000 -l 32 -g 30 | \
+  python3 detect_peaks.py
+
+<span class="c"># detect_peaks.py: look for strong signals at known drone freqs</span>
+<span class="c"># DJI:   2.400-2.4835 GHz (OcuSync/Lightbridge)</span>
+<span class="c"># FPV:   5.650-5.925 GHz (analog/digital video)</span>
+<span class="c"># ExpLRS: 2.400 GHz or 868/915 MHz</span>
+<span class="c"># Crossfire: 868 MHz (EU) / 915 MHz (US)</span><span class="cu-code-label">SDR Scan</span></div>
+
+            <div class="cu-code"><span class="c"># ═══ REMOTE ID RECEIVER (free detection layer) ═══</span>
+
+<span class="c"># Every compliant drone broadcasts ID on Bluetooth 5 + WiFi NaN</span>
+<span class="c"># Use any phone with OpenDroneID app, or build a receiver:</span>
+
+<span class="c"># ESP32-based Remote ID receiver (Arduino)</span>
+<span class="c"># https://github.com/sxjack/uav_electronic_ids</span>
+<span class="c"># or the official ASTM F3411 compatible:</span>
+<span class="c"># https://github.com/opendroneid/receiver-android</span>
+
+<span class="c"># Outputs: operator ID, drone serial, lat/lon/alt, speed, heading</span>
+<span class="c"># Range: ~300m Bluetooth, ~1km WiFi NaN</span>
+
+<span class="c"># Pipe to TAK via CoT for map display:</span>
+<span class="c"># Set type="a-h-A" (hostile air) or "a-u-A" (unknown air)</span><span class="cu-code-label">Remote ID</span></div>
+        </div>
+
+        <!-- DETECTION: RADAR -->
+        <div class="cu-section">
+            <div class="cu-section-title"><i class="ph ph-radar"></i> Radar Integration</div>
+            <div class="cu-section-desc">Radar catches what RF can't — autonomous drones, fiber-optic controlled drones, and anything not transmitting.</div>
+
+            <table class="cu-table">
+                <tr><th>Product</th><th>Type</th><th>Range</th><th>Approx Price</th><th>Integration</th></tr>
+                <tr><td>Echodyne EchoGuard</td><td>Metamaterial ESA (MESA)</td><td>3 km</td><td>$40K-$80K</td><td>REST API, NMEA, ASTERIX</td></tr>
+                <tr><td>Echodyne EchoGuard CR</td><td>360° continuous rotation</td><td>3 km (360°)</td><td>$80K-$120K</td><td>REST API, ASTERIX</td></tr>
+                <tr><td>Robin Radar ELVIRA</td><td>FMCW</td><td>5 km</td><td>$100K+</td><td>Proprietary API</td></tr>
+                <tr><td>SpotterRF</td><td>Compact FMCW</td><td>1.2 km</td><td>$15K-$30K</td><td>JSON API, SDK</td></tr>
+                <tr><td>Ainstein US-D1</td><td>Radar altimeter (self-protection)</td><td>50m</td><td>$300</td><td>Serial/UART, MAVLink</td></tr>
+            </table>
+
+            <div class="cu-code"><span class="c"># ═══ ECHODYNE ECHOGUARD API — TRACK DRONE ON MAP ═══</span>
+
+<span class="c"># EchoGuard exposes tracks via REST API</span>
+import requests, json
+
+def poll_radar(radar_ip="192.168.1.100"):
+    resp = requests.get(f"http://{radar_ip}:8080/api/v1/tracks")
+    tracks = resp.json()
+    
+    for track in tracks:
+        lat = track['latitude']
+        lon = track['longitude']
+        alt = track['altitude_msl']
+        rcs = track['rcs_dbsm']        <span class="c"># Radar cross section (small = drone)</span>
+        vel = track['velocity_mps']
+        track_id = track['id']
+        
+        <span class="c"># Filter: RCS < -10 dBsm = likely drone (not bird/aircraft)</span>
+        if rcs < -10:
+            <span class="c"># Send to TAK as hostile air track:</span>
+            send_cot(lat, lon, alt, uid=f"radar-{track_id}", 
+                     type="a-u-A")  <span class="c"># unknown air</span>
+
+<span class="c"># Poll at 1 Hz — radar updates faster but network is the bottleneck</span>
+import time
+while True:
+    poll_radar()
+    time.sleep(1)<span class="cu-code-label">Radar API</span></div>
+        </div>
+
+        <!-- DETECTION: EO/IR + AI -->
+        <div class="cu-section">
+            <div class="cu-section-title"><i class="ph ph-video-camera"></i> Camera + AI Detection</div>
+            <div class="cu-section-desc">Use your existing YOLO pipeline (see <a href="/ai-guide/" style="color:var(--accent-purple);">AI/CV Guide</a>) to detect drones in camera feeds. Train a custom model on drone silhouettes.</div>
+
+            <div class="cu-code"><span class="c"># ═══ YOLO DRONE DETECTION — CUSTOM TRAINED ═══</span>
+
+<span class="c"># Datasets for training drone detection models:</span>
+<span class="c"># - Drone-vs-Bird: https://github.com/wosdetc/drone-vs-bird</span>
+<span class="c"># - Anti-UAV: https://anti-uav.github.io/</span>
+<span class="c"># - DUT Anti-UAV: thermal + visible drone detection dataset</span>
+
+<span class="c"># Train on your desktop GPU:</span>
+yolo train model=yolov8s.pt data=drone_detection.yaml epochs=200 imgsz=640
+
+<span class="c"># Classes to train: drone, bird, aircraft, helicopter, noise</span>
+<span class="c"># The model learns to distinguish drones from birds at distance</span>
+
+<span class="c"># Deploy on a PTZ camera with Jetson:</span>
+<span class="c"># 1. Camera → GStreamer → YOLO inference</span>
+<span class="c"># 2. Detection → PTZ auto-track (keep drone centered)</span>
+<span class="c"># 3. Track data → TAK (hostile air icon on map)</span>
+
+<span class="c"># For thermal: train separate model on LWIR drone signatures</span>
+<span class="c"># Drones are hot (motors/batteries) against cold sky — easy detect</span><span class="cu-code-label">AI Detection</span></div>
+        </div>
+
+        <!-- SENSOR FUSION -->
+        <div class="cu-section">
+            <div class="cu-section-title"><i class="ph ph-intersect-three"></i> Sensor Fusion Architecture</div>
+            <div class="cu-section-desc">No single sensor is enough. Real C-UAS systems fuse multiple sensors for high-confidence detection.</div>
+
+            <div class="cu-code"><span class="c"># ═══ MULTI-SENSOR FUSION VIA ROS ═══</span>
+
+<span class="c"># Each sensor publishes to its own ROS topic:</span>
+<span class="c"># /cuas/rf_detections       — RF sensor (lat/lon/freq/signal strength)</span>
+<span class="c"># /cuas/radar_tracks        — Radar (lat/lon/alt/velocity/RCS)</span>
+<span class="c"># /cuas/camera_detections   — EO/IR AI (bounding box, class, confidence)</span>
+<span class="c"># /cuas/remote_id           — Remote ID (operator ID, serial, position)</span>
+<span class="c"># /cuas/acoustic_bearing    — Mic array (azimuth, elevation, confidence)</span>
+
+<span class="c"># Fusion node subscribes to all, correlates by:</span>
+<span class="c"># 1. Spatial proximity (detections within 50m = same target)</span>
+<span class="c"># 2. Temporal correlation (detections within 2s window)</span>
+<span class="c"># 3. Confidence weighting (radar > RF > camera > acoustic)</span>
+
+<span class="c"># Output: /cuas/fused_tracks — high-confidence tracks with threat level</span>
+<span class="c"># Publish to TAK for operator decision</span>
+
+<span class="c"># Architecture:</span>
+<span class="c"># ┌──────────┐  ┌──────────┐  ┌──────────┐</span>
+<span class="c"># │ RF Sensor│  │  Radar   │  │ Camera+AI│</span>
+<span class="c"># └────┬─────┘  └────┬─────┘  └────┬─────┘</span>
+<span class="c"># ┌────▼──────────────▼──────────────▼─────┐</span>
+<span class="c">#  │          ROS FUSION NODE               │</span>
+<span class="c"># └────────────────┬────────────────────────┘</span>
+<span class="c">#            ┌─────▼─────┐</span>
+<span class="c">#            │  TAK/ATAK  │</span>
+<span class="c">#            └───────────┘</span><span class="cu-code-label">Fusion</span></div>
+        </div>
+
+        <!-- DEFEAT METHODS -->
+        <div class="cu-section">
+            <div class="cu-section-title"><i class="ph ph-shield-warning"></i> Defeat Methods (Authorized Use Only)</div>
+
+            <div class="cu-info cu-info-red"><i class="ph ph-warning-circle"></i><div><strong>RESTRICTED.</strong> Active defeat is illegal for most entities in most jurisdictions. The following is for reference within authorized military, law enforcement, and critical infrastructure protection contexts only.</div></div>
+
+            <table class="cu-table">
+                <tr><th>Method</th><th>How It Works</th><th>Pros</th><th>Cons</th><th>Products</th></tr>
+                <tr><td style="color:var(--negative-red);font-weight:600;">RF Jamming</td><td>Overwhelm control/video freq with noise</td><td>Non-kinetic, instant effect, wide area</td><td>Affects all devices on freq, drone may not land (autonomous mode), collateral</td><td>DroneShield DroneGun, SRC Silent Archer, Blighter AUDS</td></tr>
+                <tr><td style="color:var(--negative-red);font-weight:600;">GPS Spoofing</td><td>Fake GPS signals redirect drone to capture zone</td><td>Precise control of drone path</td><td>Affects all GPS receivers in area, complex to implement</td><td>Citadel Defense Titan, Battelle DroneDefender (GPS component)</td></tr>
+                <tr><td style="color:var(--negative-red);font-weight:600;">Protocol Takeover</td><td>Exploit drone protocol vulnerabilities to take control</td><td>Full control of target drone</td><td>Protocol-specific (works on DJI, not on custom FC), cat-and-mouse with updates</td><td>Department 13 MESMER, Zignal</td></tr>
+                <tr><td style="color:var(--negative-red);font-weight:600;">Net Capture</td><td>Drone-mounted or ground-launched net entangles target</td><td>Physical capture preserves evidence</td><td>Short range, single shot, target must be tracked</td><td>Fortem DroneHunter, SkyWall Patrol</td></tr>
+                <tr><td style="color:var(--negative-red);font-weight:600;">Directed Energy</td><td>High-power microwave (HPM) or laser damages electronics</td><td>Speed of light, low cost per shot, magazine depth</td><td>Expensive system, line of sight, power requirements</td><td>Raytheon PHASER (HPM), HELWS (laser), BlueHalo LOCUST</td></tr>
+                <tr><td style="color:var(--negative-red);font-weight:600;">Kinetic Intercept</td><td>Drone-launched interceptor physically collides with target</td><td>Works against any target type</td><td>Risk of debris, single-use interceptor, needs tracking</td><td>Anduril Anvil, CACI SkyTracker + interceptor, Fortem SkyDome</td></tr>
+            </table>
+        </div>
+
+        <!-- DRONE-MOUNTED C-UAS -->
+        <div class="cu-section">
+            <div class="cu-section-title"><i class="ph ph-drone"></i> Drone-Mounted C-UAS (Interceptor Drones)</div>
+            <div class="cu-section-desc">Your Forge-built drone can BE the C-UAS system. An interceptor drone with AI tracking autonomously pursues and captures/defeats hostile drones.</div>
+
+            <div class="cu-code"><span class="c"># ═══ INTERCEPTOR DRONE ARCHITECTURE ═══</span>
+
+<span class="c"># Hardware: Fast FPV-class quad (7"+ for speed) + companion computer</span>
+<span class="c"># Sensors: Forward camera + AI (YOLO drone detection model)</span>
+<span class="c"># Payload: Net launcher, or direct kinetic intercept (Anduril Anvil style)</span>
+
+<span class="c"># Software stack on companion computer:</span>
+<span class="c"># 1. Camera → YOLO drone detection (trained on drone silhouettes)</span>
+<span class="c"># 2. Detection → visual servoing (keep target centered in frame)</span>
+<span class="c"># 3. Visual servoing → velocity commands to FC via MAVROS</span>
+<span class="c"># 4. Approach + capture/defeat at close range</span>
+
+<span class="c"># ROS architecture:</span>
+<span class="c"># /camera/image_raw → /yolo_detector → /target/bbox</span>
+<span class="c"># /target/bbox → /visual_servo → /mavros/setpoint_velocity/cmd_vel</span>
+
+<span class="c"># Key challenges:</span>
+<span class="c"># - Target drone is also moving (pursuit dynamics)</span>
+<span class="c"># - Need high FPS detection (30+ Hz) for tracking</span>
+<span class="c"># - Prop wash turbulence at close range</span>
+<span class="c"># - Legal authorization for kinetic intercept</span>
+
+<span class="c"># See: Anduril Anvil (production system)</span>
+<span class="c"># See: Fortem DroneHunter (net capture drone)</span><span class="cu-code-label">Interceptor</span></div>
+
+            <div class="cu-info cu-info-green"><i class="ph ph-lightbulb"></i><div><strong>Tying it all together:</strong> Ground C-UAS sensors (radar, RF, camera) detect and track the hostile drone. Track data goes to TAK. Operator authorizes intercept. Interceptor drone receives target coordinates via mesh network. AI visual servoing guides the final approach. The entire Forge guide ecosystem covers every piece of this pipeline: SLAM for navigation, mesh for comms, TAK for situational awareness, AI for targeting.</div></div>
+        </div>
+
+        <a href="/guides/" style="display:inline-flex;align-items:center;gap:6px;margin-top:24px;padding:10px 20px;background:var(--bg-panel);border:1px solid var(--border-color);border-radius:var(--radius-sm);color:var(--text-muted);text-decoration:none;font-size:13px;"><i class="ph ph-caret-left"></i> Back to Implementation Guides</a>
+    </div>
+</div>
+<script>document.getElementById('dark-mode-toggle')?.addEventListener('click',()=>{const c=document.documentElement.getAttribute('data-theme');const n=c==='dark'?'light':'dark';document.documentElement.setAttribute('data-theme',n);try{localStorage.setItem('dc-theme',n)}catch(e){}const i=document.getElementById('dark-mode-icon');if(i)i.className=n==='dark'?'ph ph-moon':'ph ph-sun';});</script>
+</body>
+</html>
