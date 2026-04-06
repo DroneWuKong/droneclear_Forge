@@ -77,9 +77,17 @@
 
     async function init() {
         try {
+            // Try relative path first (forgeprole), fallback to absolute
+            async function tryFetch(path) {
+                const urls = [path, 'https://forgeprole.netlify.app' + path];
+                for (const url of urls) {
+                    try { const r = await fetch(url); if (r.ok) return r; } catch(e) {}
+                }
+                return { ok: false };
+            }
             const [platRes, modelRes] = await Promise.all([
-                fetch('/static/intel_platforms.json'),
-                fetch('/static/forge_database.json'),
+                tryFetch('/static/intel_platforms.json'),
+                tryFetch('/static/forge_database.json'),
             ]);
 
             let industryPlatforms = [];
