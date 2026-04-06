@@ -5,12 +5,24 @@
 async function fetchAllCategories() {
     showLoader();
     try {
-        // Try the build-time static path first, fall back to local relative path
-        const urls = ['/static/forge_database.json', 'forge_database.json'];
+        // Try multiple paths with retry
+        const urls = ['/static/forge_database.json', './static/forge_database.json', '../static/forge_database.json', 'forge_database.json'];
         let db = null;
         for (const url of urls) {
-            const res = await fetch(url);
-            if (res.ok) { db = await res.json(); break; }
+            try {
+                const res = await fetch(url);
+                if (res.ok) { db = await res.json(); break; }
+            } catch(e) { continue; }
+        }
+        // Retry once after 1s if still null (deploy timing)
+        if (!db) {
+            await new Promise(r => setTimeout(r, 1000));
+            for (const url of urls) {
+                try {
+                    const res = await fetch(url);
+                    if (res.ok) { db = await res.json(); break; }
+                } catch(e) { continue; }
+            }
         }
         if (!db) throw new Error('forge_database.json not found');
 
