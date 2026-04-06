@@ -97,7 +97,9 @@ a{color:var(--blue);text-decoration:none}a:hover{text-decoration:underline}
 <style>.tp-pill{font:500 10px 'DM Sans',system-ui,sans-serif;color:#6b6358;padding:4px 9px;border:1px solid #2e2e26;border-radius:20px;text-decoration:none;white-space:nowrap;transition:all .15s}.tp-pill:hover{border-color:#3e3e34;color:#b8b0a0}</style>
 <div class="tabs">
   <button class="tab active" data-tab="feed" data-accent="feed"><i class="ph ph-newspaper"></i> Feed <span class="count" id="feed-count">—</span></button>
-  <button class="tab" data-tab="dfr" data-accent="dfr"><i class="ph ph-drone"></i> DFR <span class="count" id="dfr-count">—</span></button>
+  <button class="tab" data-tab="defense" data-accent="defense"><i class="ph ph-shield-star"></i> Defense <span class="count" id="defense-count">—</span></button>
+  <button class="tab" data-tab="dfr" data-accent="dfr"><i class="ph ph-siren"></i> DFR <span class="count" id="dfr-count">—</span></button>
+  <button class="tab" data-tab="commercial" data-accent="commercial"><i class="ph ph-drone"></i> Commercial <span class="count" id="commercial-count">—</span></button>
   <button class="tab" data-tab="programs" data-accent="prog"><i class="ph ph-flag-banner"></i> Programs</button>
   <button class="tab" data-tab="companies" data-accent="comp"><i class="ph ph-buildings"></i> Companies</button>
   <button class="tab" data-tab="regions" data-accent="reg"><i class="ph ph-globe-hemisphere-west"></i> Regions</button>
@@ -134,11 +136,23 @@ a{color:var(--blue);text-decoration:none}a:hover{text-decoration:underline}
     <div class="stats-bar" id="feed-stats">Loading...</div>
     <div id="feed-list">Loading...</div>
   </div>
+  <div class="panel" id="panel-defense">
+    <div class="stats-bar" id="defense-stats">Loading...</div>
+    <input class="search-bar" id="defense-search" placeholder="Search defense intel... (e.g. Blue UAS, Replicator, DDP, NDAA, Silvus, counter-UAS)" oninput="renderDefense()">
+    <div class="filter-row" style="margin-bottom:14px" id="defense-filters"></div>
+    <div id="defense-list">Loading...</div>
+  </div>
   <div class="panel" id="panel-dfr">
     <div class="stats-bar" id="dfr-stats">Loading...</div>
     <input class="search-bar" id="dfr-search" placeholder="Search DFR intel... (e.g. Wisconsin, BRINC, NASAO, FAA BEYOND, grant)" oninput="renderDFR()">
     <div class="filter-row" style="margin-bottom:14px" id="dfr-filters"></div>
     <div id="dfr-list">Loading...</div>
+  </div>
+  <div class="panel" id="panel-commercial">
+    <div class="stats-bar" id="commercial-stats">Loading...</div>
+    <input class="search-bar" id="commercial-search" placeholder="Search commercial intel... (e.g. DJI ban, Trimble, survey, mapping, Everdrone, NDAA transition)" oninput="renderCommercial()">
+    <div class="filter-row" style="margin-bottom:14px" id="commercial-filters"></div>
+    <div id="commercial-list">Loading...</div>
   </div>
   <div class="panel" id="panel-programs">
     <p style="font-size:11px;color:var(--text-d);margin-bottom:12px">Defense &amp; government programs tracked across intel articles · Cross-referenced with <a href="/patterns/" style="color:var(--amber)">PIE flags</a></p>
@@ -212,11 +226,13 @@ function renderDFR(){
   }).join('')+(a.length>60?`<div style="text-align:center;padding:20px;color:var(--text-d);font:11px var(--mono)">Showing 60 of ${a.length}</div>`:'');
 }
 
-document.querySelectorAll('.tab').forEach(t=>{t.addEventListener('click',()=>{document.querySelectorAll('.tab').forEach(x=>x.classList.remove('active'));document.querySelectorAll('.panel').forEach(x=>x.classList.remove('active'));t.classList.add('active');document.getElementById('panel-'+t.dataset.tab).classList.add('active');const acc=t.dataset.accent||'feed';document.documentElement.style.setProperty('--tab-accent',`var(--${acc})`);document.documentElement.style.setProperty('--tab-accent-d',`var(--${acc}-d)`);if(t.dataset.tab==='dfr')renderDFR();});});
+document.querySelectorAll('.tab').forEach(t=>{t.addEventListener('click',()=>{document.querySelectorAll('.tab').forEach(x=>x.classList.remove('active'));document.querySelectorAll('.panel').forEach(x=>x.classList.remove('active'));t.classList.add('active');document.getElementById('panel-'+t.dataset.tab).classList.add('active');const acc=t.dataset.accent||'feed';document.documentElement.style.setProperty('--tab-accent',`var(--${acc})`);document.documentElement.style.setProperty('--tab-accent-d',`var(--${acc}-d)`);if(t.dataset.tab==='dfr')renderDFR();if(t.dataset.tab==='defense')renderDefense();if(t.dataset.tab==='commercial')renderCommercial();});});
 function toggleFS(hdr){hdr.classList.toggle('open');const row=hdr.nextElementSibling;row.classList.toggle('open');}
 function rFi(){
   const cc={all:ALL.length,defense:0,financial:0,commercial:0,dfr:0};ALL.forEach(a=>cc[cat(a)]++);
   document.getElementById('dfr-count').textContent=cc.dfr;
+  document.getElementById('defense-count').textContent=(DEFENSE_DB.length||0)+cc.defense;
+  document.getElementById('commercial-count').textContent=(COMMERCIAL_DB.length||0)+cc.commercial;
   document.getElementById('cat-filters').innerHTML=['all','defense','financial','commercial','dfr'].map(c=>`<button class="fbtn${cC===c?' active':''}" onclick="cC='${c}';rFi();renderFeed()">${c==='all'?'All Types':c==='dfr'?'DFR':c.charAt(0).toUpperCase()+c.slice(1)} (${cc[c]})</button>`).join('');
   const sc={};ALL.forEach(a=>{const s=a.site||'other';sc[s]=(sc[s]||0)+1;});
   const ts=Object.entries(sc).sort((a,b)=>b[1]-a[1]);
@@ -269,6 +285,81 @@ function cr(){document.getElementById('ro').classList.remove('open');document.ge
 function oe(){if(ru)window.open(ru,'_blank');}
 document.addEventListener('keydown',e=>{if(e.key==='Escape'&&document.getElementById('ro').classList.contains('open'))cr();});
 
+// ── DEFENSE VERTICAL ──
+let defSubFilter='all';
+let DEFENSE_DB=[];
+function renderDefense(){
+  let a=[...DEFENSE_DB];
+  // also pull keyword-matched articles from main feed
+  const feedDef=ALL.filter(x=>cat(x)==='defense' && x.article_type!=='defense');
+  const allDef=[...a,...feedDef];
+  const q=(document.getElementById('defense-search')?.value||'').toLowerCase().trim();
+  let filtered=q?allDef.filter(x=>(x.title||'').toLowerCase().includes(q)||(x.summary||'').toLowerCase().includes(q)):allDef;
+  filtered.sort((x,y)=>(y.pub_date||'').localeCompare(x.pub_date||''));
+  const SUBS={all:'all',procurement:'procurement',regulatory:'regulatory',platform:'platform_intel',financial:'financial'};
+  document.getElementById('defense-filters').innerHTML=Object.entries(SUBS).map(([label,val])=>`<button class="fbtn${defSubFilter===val?' active':''}" onclick="defSubFilter='${val}';renderDefense()">${label.charAt(0).toUpperCase()+label.slice(1)}</button>`).join('');
+  if(defSubFilter!=='all') filtered=filtered.filter(x=>(x.data_category||cat(x))===defSubFilter);
+  document.getElementById('defense-count').textContent=filtered.length;
+  document.getElementById('defense-stats').innerHTML=`<span>Defense Feed · <b style="color:var(--defense)">${filtered.length}</b> articles · <b style="color:var(--green)">${DEFENSE_DB.length}</b> in Defense DB + <b style="color:var(--amber)">${feedDef.length}</b> from feed</span>`;
+  const l=document.getElementById('defense-list');
+  if(!filtered.length){l.innerHTML='<div style="text-align:center;padding:40px;color:var(--text-d)">No defense articles match.</div>';return;}
+  l.innerHTML=filtered.slice(0,80).map(x=>{
+    const en=x.entities||{},pr=(en.programs||[]).slice(0,2),co=(en.companies||[]).slice(0,2),u=x.url||'#';
+    const isPaid=x.paywall;
+    return`<div class="acard defense" onclick="or('${u.replace(/'/g,"\'")}','${(x.title||'').replace(/'/g,"\'").substring(0,80)}')">
+      <div style="display:flex;gap:6px;align-items:center;margin-bottom:4px;flex-wrap:wrap">
+        ${isPaid?'<span class="badge" style="background:var(--defense-d);color:var(--defense)">🔒 INTEL</span>':''}
+        <span class="badge" style="background:var(--defense-d);color:var(--defense)">DEFENSE</span>
+        <span class="badge" style="background:var(--surface);color:var(--text-d)">${x.source||x.site||'forge'}</span>
+        <span style="font:10px var(--mono);color:var(--text-xd);margin-left:auto">${(x.pub_date||'').slice(0,10)}</span>
+      </div>
+      <h3>${x.title||'Untitled'}</h3>
+      <div class="sum">${x.summary||(x.body_text||'').slice(0,200)||'—'}</div>
+      <div style="display:flex;gap:3px;flex-wrap:wrap;margin-top:6px">
+        ${pr.map(p=>`<span class="badge badge-red">${p}</span>`).join('')}
+        ${co.map(c=>`<span class="badge badge-blue">${c}</span>`).join('')}
+      </div>
+    </div>`;
+  }).join('')+(filtered.length>80?`<div style="text-align:center;padding:20px;color:var(--text-d);font:11px var(--mono)">Showing 80 of ${filtered.length}</div>`:'');
+}
+
+// ── COMMERCIAL VERTICAL ──
+let comSubFilter='all';
+let COMMERCIAL_DB=[];
+function renderCommercial(){
+  let a=[...COMMERCIAL_DB];
+  const feedCom=ALL.filter(x=>cat(x)==='commercial' && x.article_type!=='commercial');
+  const allCom=[...a,...feedCom];
+  const q=(document.getElementById('commercial-search')?.value||'').toLowerCase().trim();
+  let filtered=q?allCom.filter(x=>(x.title||'').toLowerCase().includes(q)||(x.summary||'').toLowerCase().includes(q)):allCom;
+  filtered.sort((x,y)=>(y.pub_date||'').localeCompare(x.pub_date||''));
+  const SUBS={all:'all',regulatory:'regulatory',platform:'platform_intel',market:'market_signal',vendor:'vendor_intel'};
+  document.getElementById('commercial-filters').innerHTML=Object.entries(SUBS).map(([label,val])=>`<button class="fbtn${comSubFilter===val?' active':''}" onclick="comSubFilter='${val}';renderCommercial()">${label.charAt(0).toUpperCase()+label.slice(1)}</button>`).join('');
+  if(comSubFilter!=='all') filtered=filtered.filter(x=>(x.data_category||cat(x))===comSubFilter);
+  document.getElementById('commercial-count').textContent=filtered.length;
+  document.getElementById('commercial-stats').innerHTML=`<span>Commercial Feed · <b style="color:var(--commercial)">${filtered.length}</b> articles · <b style="color:var(--green)">${COMMERCIAL_DB.length}</b> in Commercial DB + <b style="color:var(--amber)">${feedCom.length}</b> from feed</span>`;
+  const l=document.getElementById('commercial-list');
+  if(!filtered.length){l.innerHTML='<div style="text-align:center;padding:40px;color:var(--text-d)">No commercial articles match.</div>';return;}
+  l.innerHTML=filtered.slice(0,80).map(x=>{
+    const en=x.entities||{},pr=(en.programs||[]).slice(0,2),co=(en.companies||[]).slice(0,2),u=x.url||'#';
+    const isPaid=x.paywall;
+    return`<div class="acard commercial" onclick="or('${u.replace(/'/g,"\'")}','${(x.title||'').replace(/'/g,"\'").substring(0,80)}')">
+      <div style="display:flex;gap:6px;align-items:center;margin-bottom:4px;flex-wrap:wrap">
+        ${isPaid?'<span class="badge" style="background:var(--commercial-d);color:var(--commercial)">🔒 INTEL</span>':''}
+        <span class="badge" style="background:var(--commercial-d);color:var(--commercial)">COMMERCIAL</span>
+        <span class="badge" style="background:var(--surface);color:var(--text-d)">${x.source||x.site||'forge'}</span>
+        <span style="font:10px var(--mono);color:var(--text-xd);margin-left:auto">${(x.pub_date||'').slice(0,10)}</span>
+      </div>
+      <h3>${x.title||'Untitled'}</h3>
+      <div class="sum">${x.summary||(x.body_text||'').slice(0,200)||'—'}</div>
+      <div style="display:flex;gap:3px;flex-wrap:wrap;margin-top:6px">
+        ${pr.map(p=>`<span class="badge badge-red">${p}</span>`).join('')}
+        ${co.map(c=>`<span class="badge badge-blue">${c}</span>`).join('')}
+      </div>
+    </div>`;
+  }).join('')+(filtered.length>80?`<div style="text-align:center;padding:20px;color:var(--text-d);font:11px var(--mono)">Showing 80 of ${filtered.length}</div>`:'');
+}
+
 // Auto-open tab from URL param (?tab=dfr, ?cat=defense, etc.)
 (function(){
   const p=new URLSearchParams(location.search);
@@ -278,7 +369,16 @@ document.addEventListener('keydown',e=>{if(e.key==='Escape'&&document.getElement
     if(btn){btn.click();}
   }
 })();
-fetch('intel_articles.json').then(r=>r.ok?r.json():[]).catch(()=>[]).then(d=>{ALL=d;rFi();renderFeed();renderDFR();rP();rC();rR();}).catch(e=>{document.getElementById('feed-list').innerHTML=`<div style="text-align:center;padding:40px;color:var(--red)">Error: ${e.message}</div>`;});
+Promise.all([
+  fetch('intel_articles.json').then(r=>r.ok?r.json():[]).catch(()=>[]),
+  fetch('../data/defense/defense_master.json').then(r=>r.ok?r.json():{records:[]}).catch(()=>({records:[]})),
+  fetch('../data/commercial/commercial_master.json').then(r=>r.ok?r.json():{records:[]}).catch(()=>({records:[]})),
+]).then(([articles, defDB, comDB])=>{
+  ALL=articles;
+  DEFENSE_DB=defDB.records||[];
+  COMMERCIAL_DB=comDB.records||[];
+  rFi();renderFeed();renderDFR();renderDefense();renderCommercial();rP();rC();rR();
+}).catch(e=>{document.getElementById('feed-list').innerHTML=`<div style="text-align:center;padding:40px;color:var(--red)">Error: ${e.message}</div>`;});
 
 
 function fmtUpdated(iso) {
