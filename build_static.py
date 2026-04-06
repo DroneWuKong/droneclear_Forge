@@ -119,6 +119,17 @@ def fix_nav_links(html, depth=0):
 DATA_REPO = 'https://github.com/DroneWuKong/Ai-Project.git'
 DATA_CLONE_DIR = '_data_source'
 
+# All component categories supported by the Forge schema
+COMPONENT_CATEGORIES = [
+    'frames', 'motors', 'servos', 'stacks', 'flight_controllers', 'escs', 
+    'aio_boards', 'pdbs', 'voltage_regulators', 'batteries', 'battery_chargers', 
+    'propellers', 'fpv_cameras', 'digital_video_cameras', 'thermal_cameras', 
+    'action_cameras', 'video_transmitters', 'fpv_goggles', 'antennas', 
+    'ground_antennas', 'receivers', 'transmitters', 'rf_modules', 'gps_modules', 
+    'optical_flow_sensors', 'rangefinders', 'capacitors', 'buzzers', 'led_strips', 
+    'connector_adapters', 'wiring_hardware', 'tools', 'accessories'
+]
+
 
 def sync_handbook_data():
     """Clone the Ai-Project repo and assemble forge_database.json from its parts-db."""
