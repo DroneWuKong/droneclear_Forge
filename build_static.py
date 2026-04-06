@@ -591,6 +591,15 @@ def sync_handbook_data():
     else:
         print("  pie_trends.json: not found — trends panel will show empty state (appears after first PIE run)")
 
+    for pf in ['pie_predictions.json', 'llm_predictions.json']:
+        src = os.path.join(SRC_DIR, pf)
+        if os.path.exists(src):
+            with open(src) as f:
+                data = json.load(f)
+            print(f"  {pf}: {len(data)} predictions")
+        else:
+            print(f"  {pf}: not found (appears after first PIE+LLM run)")
+
     # Cleanup
     shutil.rmtree(DATA_CLONE_DIR, ignore_errors=True)
     print("  Data sync complete.\n")
