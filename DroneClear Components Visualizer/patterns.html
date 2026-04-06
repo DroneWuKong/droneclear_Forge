@@ -1111,16 +1111,8 @@ function renderFlags() {
       const card = e.target.closest(".flag-card[data-id]");
       if (card) {
         e.stopPropagation();
-        const newFlag2 = FLAGS.find(f => f.id === card.dataset.id);
-        if (!newFlag2) return;
-        const alreadyOpen2 = document.getElementById("flag-detail-container").style.display === "block";
-        selectedFlag = newFlag2;
-        if (alreadyOpen2) {
-          renderFlagDetailInPlace();
-        } else {
-          _flagScrollY = window.scrollY;
-          renderFlagDetail();
-        }
+        selectedFlag = FLAGS.find(function(f){ return f.id === card.dataset.id; });
+        if (selectedFlag) renderFlagDetail();
       }
     };
     return;
@@ -1152,18 +1144,9 @@ function renderFlags() {
   }).join("");
 
   list.querySelectorAll(".flag-card").forEach(card => {
-    card.addEventListener("click", () => {
-      const newFlag = FLAGS.find(f => f.id === card.dataset.id);
-      if (!newFlag) return;
-      const alreadyOpen = document.getElementById("flag-detail-container").style.display === "block";
-      selectedFlag = newFlag;
-      if (alreadyOpen) {
-        // Swap content directly — no scroll, no visibility toggle
-        renderFlagDetailInPlace();
-      } else {
-        _flagScrollY = window.scrollY;
-        renderFlagDetail();
-      }
+    card.addEventListener("click", function() {
+      selectedFlag = FLAGS.find(function(f){ return f.id === card.dataset.id; });
+      if (selectedFlag) renderFlagDetail();
     });
   });
 }
@@ -1398,31 +1381,61 @@ function renderComponents() {
 
 // ── Predictions ──
 function renderPredictions() {
-  const c = document.getElementById("prediction-list");
-  const impactColor = {critical:"--red",high:"--warning",medium:"--blue",low:"--text-d"};
-
-  c.innerHTML = PREDICTIONS.map(p => {
-    const ic = impactColor[p.impact] || "--text-d";
-    return `<div class="pred-card" style="border-left:3px solid var(${ic})">
-      <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px;margin-bottom:8px">
-        <div>
-          <div style="display:flex;gap:6px;align-items:center;margin-bottom:6px">
-            <span class="badge badge-purple">◎ ${p.timeframe}</span>
-            <span class="badge" style="background:var(${ic})18;color:var(${ic})">${p.impact} impact</span>
-          </div>
-          <div style="font-size:13px;font-weight:600;line-height:1.4">${p.event}</div>
-        </div>
-        <div style="text-align:center;min-width:60px">
-          <div style="font:700 22px var(--mono);color:${p.probability>0.7?"var(--amber)":"var(--text-s)"}">${Math.round(p.probability*100)}%</div>
-          <div style="font-size:9px;color:var(--text-d)">probability</div>
-        </div>
-      </div>
-      <div class="drivers">
-        <span style="font-size:10px;color:var(--text-d)">Drivers:</span>
-        ${p.drivers.map(d=>`<span class="driver">${d}</span>`).join("")}
-      </div>
-    </div>`;
+  var el = document.getElementById("prediction-list");
+  var impactColor = {critical:"--red",high:"--warning",medium:"--blue",low:"--text-d"};
+  el.innerHTML = PREDICTIONS.map(function(p,i) {
+    var ic = impactColor[p.impact] || "--text-d";
+    var pct = Math.round((p.probability||0)*100);
+    return '<div class="pred-card" data-pred-idx="'+i+'" style="border-left:3px solid var('+ic+')">'
+      +'<div style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px;margin-bottom:8px">'
+      +'<div><div style="display:flex;gap:6px;align-items:center;margin-bottom:6px">'
+      +'<span class="badge badge-purple">◎ '+p.timeframe+'</span>'
+      +'<span class="badge" style="background:var('+ic+')18;color:var('+ic+')">'+p.impact+' impact</span>'
+      +'</div><div style="font-size:13px;font-weight:600;line-height:1.4">'+p.event+'</div></div>'
+      +'<div style="text-align:center;min-width:60px">'
+      +'<div style="font:700 22px var(--mono);color:'+(pct>70?"var(--amber)":"var(--text-s)")+'">'+pct+'%</div>'
+      +'<div style="font-size:9px;color:var(--text-d)">probability</div></div></div>'
+      +'<div class="drivers"><span style="font-size:10px;color:var(--text-d)">Drivers:</span>'
+      +(p.drivers||[]).slice(0,3).map(function(d){return '<span class="driver">'+d+'</span>';}).join("")
+      +'</div></div>';
   }).join("");
+  el.querySelectorAll("[data-pred-idx]").forEach(function(card) {
+    card.addEventListener("click", function() {
+      var p = PREDICTIONS[+card.dataset.predIdx]; if (!p) return;
+      var ic = {critical:"var(--red)",high:"var(--warning)",medium:"var(--blue)",low:"var(--text-d)"}[p.impact]||"var(--text-d)";
+      var pct = Math.round((p.probability||0)*100);
+      var conf = Math.round((p.confidence||0)*100);
+      var body = "";
+      body += '<div style="background:var(--surface);border-radius:8px;padding:14px;margin-bottom:12px">';
+      body += '<div style="display:flex;justify-content:space-between;margin-bottom:6px">';
+      body += '<span style="font:600 11px var(--mono);color:var(--text-d)">PROBABILITY</span>';
+      body += '<span style="font:700 18px var(--mono);color:'+(pct>70?"var(--amber)":"var(--text-s)")+'">'+pct+'%</span></div>';
+      body += '<div style="height:6px;background:var(--border);border-radius:3px;margin-bottom:6px"><div style="width:'+pct+'%;height:100%;background:var(--amber);border-radius:3px"></div></div>';
+      body += '<div style="font:400 10px var(--sans);color:var(--text-d)">'+(p.model||"")+'</div></div>';
+      body += '<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px">';
+      body += '<span class="badge badge-purple">◎ '+p.timeframe+'</span>';
+      body += '<span class="badge" style="background:'+ic+'18;color:'+ic+'">'+p.impact+' impact</span>';
+      body += '<span class="badge" style="background:var(--surface);color:var(--text-d)">'+conf+'% confidence</span></div>';
+      if (p.model_outputs && p.model_outputs.length) {
+        body += '<div style="font:600 10px var(--mono);color:var(--text-d);text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px">Model Breakdown</div>';
+        p.model_outputs.forEach(function(m) {
+          var mp = Math.round((m.probability||0)*100);
+          body += '<div style="background:var(--surface);border-radius:8px;padding:10px;margin-bottom:6px;border-left:3px solid var(--purple)">';
+          body += '<div style="display:flex;justify-content:space-between;margin-bottom:3px">';
+          body += '<span style="font:600 10px var(--mono);color:var(--purple)">'+m.model+'</span>';
+          body += '<span style="font:700 13px var(--mono);color:var(--amber)">'+mp+'%</span></div>';
+          body += '<div style="height:4px;background:var(--border);border-radius:2px;margin-bottom:5px"><div style="width:'+mp+'%;height:100%;background:var(--purple);border-radius:2px"></div></div>';
+          (m.drivers||[]).forEach(function(d){ body += '<div style="font-size:10px;color:var(--text-s)">→ '+d+'</div>'; });
+          body += '</div>';
+        });
+      }
+      if (p.drivers && p.drivers.length) {
+        body += '<div style="font:600 10px var(--mono);color:var(--text-d);margin:10px 0 6px">All Drivers</div>';
+        p.drivers.forEach(function(d){ body += '<div style="font:400 11px var(--sans);color:var(--text-s);padding:4px 0;border-bottom:1px solid var(--border)">→ '+d+'</div>'; });
+      }
+      openDetailModal(p.event, p.timeframe+' · '+p.impact, body);
+    });
+  });
 }
 
 // ── Dashboard Visualizations ──
