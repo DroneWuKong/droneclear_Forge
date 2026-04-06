@@ -1,0 +1,352 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Wingman Pro — DroneClear Intelligence</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600;700&family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet"/>
+<style>
+  :root {
+    --bg:      #0c0c0a;
+    --card:    #1a1a14;
+    --border:  #2e2e26;
+    --cyan:    #22c55e;
+    --amber:   #c9a227;
+    --red:     #d62828;
+    --white:   #f5f0e8;
+    --g1:      #b8b0a0;
+    --g2:      #6b6358;
+    --g3:      #3d3830;
+    --mono:    'JetBrains Mono', monospace;
+    --sans:    'DM Sans', system-ui, sans-serif;
+  }
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { background: var(--bg); color: var(--g1); font-family: var(--sans); font-size: 14px; }
+
+  /* Nav */
+  nav { display: flex; align-items: center; justify-content: space-between; padding: 12px 24px; border-bottom: 1px solid var(--border); position: sticky; top: 0; background: var(--bg); z-index: 100; }
+  .nav-logo { font: 700 16px var(--mono); color: var(--cyan); text-decoration: none; }
+  .nav-links { display: flex; gap: 6px; }
+  .nav-pill { font: 500 11px var(--sans); color: var(--g2); padding: 4px 10px; border: 1px solid var(--border); border-radius: 20px; text-decoration: none; transition: all .15s; }
+  .nav-pill:hover { border-color: var(--g3); color: var(--g1); }
+
+  /* Hero */
+  .hero { max-width: 680px; margin: 0 auto; padding: 72px 24px 48px; text-align: center; }
+  .hero-eyebrow { font: 600 10px var(--mono); color: var(--cyan); letter-spacing: .12em; text-transform: uppercase; margin-bottom: 16px; }
+  .hero-title { font: 700 36px var(--sans); color: var(--white); line-height: 1.15; margin-bottom: 16px; }
+  .hero-title span { color: var(--cyan); }
+  .hero-sub { font-size: 15px; color: var(--g1); line-height: 1.6; max-width: 520px; margin: 0 auto 40px; }
+
+  /* Pricing cards */
+  .pricing { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; max-width: 760px; margin: 0 auto 64px; padding: 0 24px; }
+  .plan { background: var(--card); border: 1px solid var(--border); border-radius: 10px; padding: 28px 24px; position: relative; }
+  .plan.featured { border-color: var(--cyan); }
+  .plan-badge { position: absolute; top: -12px; left: 50%; transform: translateX(-50%); font: 600 9px var(--mono); padding: 3px 10px; background: var(--cyan); color: #0c0c0a; border-radius: 10px; text-transform: uppercase; letter-spacing: .08em; white-space: nowrap; }
+  .plan-name { font: 700 13px var(--mono); color: var(--white); margin-bottom: 4px; }
+  .plan-price { font: 700 32px var(--sans); color: var(--white); margin-bottom: 4px; }
+  .plan-price span { font-size: 14px; color: var(--g2); font-weight: 400; }
+  .plan-desc { font-size: 12px; color: var(--g2); margin-bottom: 20px; line-height: 1.5; }
+  .plan-features { list-style: none; margin-bottom: 24px; }
+  .plan-features li { font-size: 12px; color: var(--g1); padding: 5px 0; border-bottom: 1px solid var(--border); display: flex; gap: 8px; align-items: flex-start; }
+  .plan-features li:last-child { border-bottom: none; }
+  .plan-features li::before { content: '✓'; color: var(--cyan); font-weight: 700; flex-shrink: 0; margin-top: 1px; }
+  .plan-features li.no::before { content: '—'; color: var(--g3); }
+  .plan-cta { display: block; width: 100%; padding: 10px; border-radius: 6px; font: 600 13px var(--sans); cursor: pointer; text-align: center; text-decoration: none; transition: all .15s; border: 1px solid var(--border); background: none; color: var(--g1); }
+  .plan-cta.primary { background: var(--cyan); border-color: var(--cyan); color: #0c0c0a; }
+  .plan-cta.primary:hover { opacity: .88; }
+  .plan-cta:hover { border-color: var(--g1); color: var(--white); }
+
+  /* Already subscribed section */
+  #activate-section { max-width: 480px; margin: 0 auto 64px; padding: 0 24px; display: none; }
+  #activate-section.show { display: block; }
+  .activate-card { background: var(--card); border: 1px solid var(--cyan); border-radius: 10px; padding: 24px; text-align: center; }
+  .activate-card h3 { font: 700 14px var(--mono); color: var(--cyan); margin-bottom: 8px; }
+  .activate-card p { font-size: 12px; color: var(--g2); margin-bottom: 16px; line-height: 1.5; }
+  .activate-btn { display: inline-block; padding: 10px 24px; background: var(--cyan); color: #0c0c0a; border-radius: 6px; font: 600 13px var(--sans); cursor: pointer; border: none; }
+
+  /* Status / logged in state */
+  #status-bar { display: none; background: var(--card); border: 1px solid var(--cyan); border-radius: 8px; padding: 12px 16px; max-width: 680px; margin: 0 auto 32px; display: none; align-items: center; justify-content: space-between; gap: 12px; font-size: 12px; }
+  #status-bar.show { display: flex; }
+  #status-bar .status-left { color: var(--g1); }
+  #status-bar .status-tier { font: 600 10px var(--mono); padding: 2px 8px; background: rgba(34,197,94,.15); color: var(--cyan); border-radius: 10px; text-transform: uppercase; }
+  #status-bar .manage-btn { font: 500 11px var(--sans); color: var(--g2); padding: 4px 10px; border: 1px solid var(--border); border-radius: 5px; cursor: pointer; background: none; }
+
+  /* Features section */
+  .features { max-width: 760px; margin: 0 auto 64px; padding: 0 24px; }
+  .features-title { font: 700 11px var(--mono); color: var(--g2); text-transform: uppercase; letter-spacing: .1em; margin-bottom: 20px; text-align: center; }
+  .feature-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px; }
+  .feature-card { background: var(--card); border: 1px solid var(--border); border-radius: 8px; padding: 16px; }
+  .feature-icon { font-size: 20px; margin-bottom: 8px; }
+  .feature-name { font: 600 12px var(--sans); color: var(--white); margin-bottom: 4px; }
+  .feature-desc { font-size: 11px; color: var(--g2); line-height: 1.5; }
+
+  /* FAQ */
+  .faq { max-width: 600px; margin: 0 auto 64px; padding: 0 24px; }
+  .faq-title { font: 700 11px var(--mono); color: var(--g2); text-transform: uppercase; letter-spacing: .1em; margin-bottom: 20px; text-align: center; }
+  .faq-item { border-bottom: 1px solid var(--border); padding: 14px 0; }
+  .faq-q { font: 600 13px var(--sans); color: var(--white); margin-bottom: 6px; }
+  .faq-a { font-size: 12px; color: var(--g2); line-height: 1.6; }
+
+  @media (max-width: 600px) {
+    .pricing { grid-template-columns: 1fr; }
+    .feature-grid { grid-template-columns: 1fr 1fr; }
+    .hero-title { font-size: 26px; }
+    #status-bar { flex-direction: column; align-items: flex-start; }
+  }
+</style>
+</head>
+<body>
+
+<nav>
+  <a href="/" class="nav-logo">Wingman</a>
+  <div class="nav-links">
+    <a href="/" class="nav-pill">Forge</a>
+    <a href="/intel/" class="nav-pill">Intel</a>
+    <a href="/wingman/" class="nav-pill">Wingman AI</a>
+  </div>
+</nav>
+
+<!-- Status bar (shown when logged in) -->
+<div style="max-width:760px;margin:16px auto 0;padding:0 24px;">
+  <div id="status-bar">
+    <div class="status-left">
+      <span id="status-email"></span>
+      &nbsp;·&nbsp;
+      <span class="status-tier" id="status-tier">Pro</span>
+    </div>
+    <div style="display:flex;gap:8px;align-items:center;">
+      <span style="font-size:11px;color:var(--g2)" id="status-exp"></span>
+      <button class="manage-btn" onclick="manageSubscription()">Manage</button>
+      <button class="manage-btn" onclick="signOut()">Sign out</button>
+    </div>
+  </div>
+</div>
+
+<div class="hero">
+  <div class="hero-eyebrow">// DroneClear Pro</div>
+  <h1 class="hero-title">Intelligence that pays for itself<br>the first time you use it</h1>
+  <p class="hero-sub">Claude-powered Wingman AI, PIE predictions, gray zone alerts, and compliance reports — for operators and procurement officers who need answers, not guesses.</p>
+</div>
+
+<!-- Activate section (shown when ?session_id= in URL) -->
+<div id="activate-section">
+  <div class="activate-card">
+    <h3>// Activating your subscription</h3>
+    <p id="activate-msg">Verifying your payment with Stripe...</p>
+    <button class="activate-btn" id="activate-btn" style="display:none" onclick="goToWingman()">Open Wingman AI →</button>
+  </div>
+</div>
+
+<div class="pricing" id="pricing-section">
+
+  <div class="plan featured">
+    <div class="plan-badge">Most popular</div>
+    <div class="plan-name">// Pro</div>
+    <div class="plan-price">$49<span>/month</span></div>
+    <div class="plan-desc">For operators, integrators, and procurement-adjacent professionals.</div>
+    <ul class="plan-features">
+      <li>Claude Sonnet in Wingman AI (no key needed)</li>
+      <li>PIE predictions with confidence scores</li>
+      <li>Gray zone entity delta alerts</li>
+      <li>Gap Analyzer with full history</li>
+      <li>Compliance report PDF export</li>
+      <li>Procurement signal alerts</li>
+      <li>Priority support</li>
+    </ul>
+    <a id="pro-cta" href="#" class="plan-cta primary" onclick="startCheckout('pro')">Get Pro →</a>
+  </div>
+
+  <div class="plan">
+    <div class="plan-name">// Agency</div>
+    <div class="plan-price">$299<span>/month</span></div>
+    <div class="plan-desc">For government buyers, defense integrators, and Blue UAS program managers.</div>
+    <ul class="plan-features">
+      <li>Everything in Pro</li>
+      <li>Full gray zone scoring methodology + sourced evidence</li>
+      <li>NDAA compliance reports for contract vehicles</li>
+      <li>Component-level supply chain risk reports</li>
+      <li>Program tracking + award alerts</li>
+      <li>5 user seats</li>
+      <li>API access</li>
+    </ul>
+    <a href="mailto:Jeremiah@midwestniceuas.com?subject=Agency Plan" class="plan-cta">Contact for Agency →</a>
+  </div>
+
+</div>
+
+<div class="features">
+  <div class="features-title">// What Pro unlocks</div>
+  <div class="feature-grid">
+    <div class="feature-card">
+      <div class="feature-icon">🤖</div>
+      <div class="feature-name">Claude in Wingman</div>
+      <div class="feature-desc">Server-side Claude Sonnet — no API key needed. Works on every device automatically.</div>
+    </div>
+    <div class="feature-card">
+      <div class="feature-icon">📊</div>
+      <div class="feature-name">PIE Predictions</div>
+      <div class="feature-desc">30/60/90-day supply chain and regulatory predictions, cross-validated across 3 AI models.</div>
+    </div>
+    <div class="feature-card">
+      <div class="feature-icon">⚠️</div>
+      <div class="feature-name">Gray Zone Alerts</div>
+      <div class="feature-desc">Daily delta alerts when gray zone entity scores shift — FCC, procurement, legal developments.</div>
+    </div>
+    <div class="feature-card">
+      <div class="feature-icon">📄</div>
+      <div class="feature-name">Compliance Reports</div>
+      <div class="feature-desc">PDF reports formatted for procurement submissions. NDAA status, supply chain risk, sourced evidence.</div>
+    </div>
+    <div class="feature-card">
+      <div class="feature-icon">🔍</div>
+      <div class="feature-name">Gap Analyzer History</div>
+      <div class="feature-desc">Full comparison history across all entity pairs you've analyzed.</div>
+    </div>
+    <div class="feature-card">
+      <div class="feature-icon">📡</div>
+      <div class="feature-name">Procurement Signals</div>
+      <div class="feature-desc">Alerts when your tracked components feed into new contract awards or program changes.</div>
+    </div>
+  </div>
+</div>
+
+<div class="faq">
+  <div class="faq-title">// FAQ</div>
+  <div class="faq-item">
+    <div class="faq-q">Do I need my own Claude API key?</div>
+    <div class="faq-a">No. Pro includes server-side Claude — just enter your subscription token in Wingman Settings and Claude works on any device without a key.</div>
+  </div>
+  <div class="faq-item">
+    <div class="faq-q">What's the difference between the free tier and Pro?</div>
+    <div class="faq-a">Free gets Gemini and Groq in Wingman, public flags, and basic intel. Pro adds Claude, full PIE predictions with confidence scores, compliance report exports, and gray zone alerts.</div>
+  </div>
+  <div class="faq-item">
+    <div class="faq-q">Can I cancel anytime?</div>
+    <div class="faq-a">Yes — cancel from the Stripe customer portal, no questions asked. Your access continues until the end of the billing period.</div>
+  </div>
+  <div class="faq-item">
+    <div class="faq-q">Is the handbook still free?</div>
+    <div class="faq-a">Always. The handbook, Forge build planner, and Wingman with Gemini/Groq will always be free. Pro is for the operational intelligence layer on top.</div>
+  </div>
+  <div class="faq-item">
+    <div class="faq-q">What's the Agency plan for?</div>
+    <div class="faq-a">Government buyers and defense integrators who need sourced gray zone evidence, NDAA-formatted compliance reports, and multi-seat access. Contact us for a demo.</div>
+  </div>
+</div>
+
+<script>
+// ── State ──────────────────────────────────────────────────────────────────
+var SUB_TOKEN_KEY = 'wingman_sub_token';
+var SUB_DATA_KEY  = 'wingman_sub_data';
+
+function getStoredSub() {
+  try { return JSON.parse(localStorage.getItem(SUB_DATA_KEY) || 'null'); } catch { return null; }
+}
+
+// ── On load — check for existing subscription or activation ───────────────
+window.addEventListener('DOMContentLoaded', async function() {
+  const params = new URLSearchParams(location.search);
+  const sessionId = params.get('session_id');
+
+  // Check for existing valid token
+  const token = localStorage.getItem(SUB_TOKEN_KEY);
+  if (token && !sessionId) {
+    await verifyAndShowStatus(token);
+  }
+
+  // Activation flow — came back from Stripe
+  if (sessionId) {
+    document.getElementById('activate-section').classList.add('show');
+    document.getElementById('pricing-section').style.display = 'none';
+    await activateSubscription(sessionId);
+  }
+});
+
+async function verifyAndShowStatus(token) {
+  try {
+    const res = await fetch(`/.netlify/functions/subscription-check?action=verify&token=${encodeURIComponent(token)}`);
+    const data = await res.json();
+    if (data.valid) {
+      showLoggedIn(data);
+      return true;
+    }
+  } catch(e) {}
+  localStorage.removeItem(SUB_TOKEN_KEY);
+  localStorage.removeItem(SUB_DATA_KEY);
+  return false;
+}
+
+function showLoggedIn(data) {
+  const bar = document.getElementById('status-bar');
+  document.getElementById('status-email').textContent = data.email || 'Subscriber';
+  document.getElementById('status-tier').textContent  = (data.tier || 'pro').toUpperCase();
+  if (data.exp) {
+    const days = Math.ceil((data.exp - Date.now()) / 86400000);
+    document.getElementById('status-exp').textContent = `${days}d remaining`;
+  }
+  bar.classList.add('show');
+
+  // Update Pro CTA to manage instead
+  const cta = document.getElementById('pro-cta');
+  cta.textContent = '✓ Active — Open Wingman →';
+  cta.onclick = function(e) { e.preventDefault(); goToWingman(); };
+}
+
+async function activateSubscription(sessionId) {
+  const msg = document.getElementById('activate-msg');
+  const btn = document.getElementById('activate-btn');
+  try {
+    msg.textContent = 'Verifying payment with Stripe...';
+    const res = await fetch('/.netlify/functions/subscription-check?action=activate', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ session_id: sessionId }),
+    });
+    const data = await res.json();
+    if (data.token) {
+      localStorage.setItem(SUB_TOKEN_KEY, data.token);
+      localStorage.setItem(SUB_DATA_KEY, JSON.stringify({ email: data.email, tier: data.tier }));
+      // Also pre-fill wingman sub token
+      localStorage.setItem('wingman_sub_token', data.token);
+      msg.textContent = `✓ Subscription activated! Welcome, ${data.email || 'subscriber'}. Claude is now available in Wingman.`;
+      btn.style.display = 'inline-block';
+      // Clean URL
+      history.replaceState({}, '', '/pro/');
+    } else {
+      msg.textContent = `Activation failed: ${data.error || 'Unknown error'}. Contact Jeremiah@midwestniceuas.com`;
+    }
+  } catch(e) {
+    msg.textContent = `Error: ${e.message}. Contact Jeremiah@midwestniceuas.com`;
+  }
+}
+
+function startCheckout(tier) {
+  // Replace with your actual Stripe Payment Link URLs
+  const links = {
+    pro:    'https://buy.stripe.com/YOUR_PRO_LINK?success_url=' + encodeURIComponent(location.origin + '/pro/?session_id={CHECKOUT_SESSION_ID}'),
+    agency: 'mailto:Jeremiah@midwestniceuas.com?subject=Agency Plan',
+  };
+  window.location.href = links[tier] || links.pro;
+}
+
+function goToWingman() {
+  window.location.href = '/wingman/';
+}
+
+async function manageSubscription() {
+  const sub = getStoredSub();
+  // For full portal support, need customer_id — simplified: link to Stripe
+  window.open('https://billing.stripe.com/p/login/YOUR_PORTAL_LINK', '_blank');
+}
+
+function signOut() {
+  localStorage.removeItem(SUB_TOKEN_KEY);
+  localStorage.removeItem(SUB_DATA_KEY);
+  localStorage.removeItem('wingman_sub_token');
+  location.reload();
+}
+</script>
+
+</body>
+</html>

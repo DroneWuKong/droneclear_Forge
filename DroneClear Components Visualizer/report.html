@@ -1,0 +1,381 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Compliance Report — DroneClear</title>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600;700&family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet"/>
+<style>
+  :root {
+    --bg: #0c0c0a; --card: #1a1a14; --border: #2e2e26;
+    --cyan: #22c55e; --amber: #c9a227; --red: #d62828;
+    --white: #f5f0e8; --g1: #b8b0a0; --g2: #6b6358; --g3: #3d3830;
+    --mono: 'JetBrains Mono', monospace; --sans: 'DM Sans', system-ui, sans-serif;
+  }
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { background: var(--bg); color: var(--g1); font-family: var(--sans); font-size: 13px; }
+
+  nav { display: flex; align-items: center; justify-content: space-between; padding: 10px 20px; border-bottom: 1px solid var(--border); }
+  .nav-logo { font: 700 15px var(--mono); color: var(--cyan); text-decoration: none; }
+  .nav-pill { font: 500 10px var(--sans); color: var(--g2); padding: 3px 9px; border: 1px solid var(--border); border-radius: 20px; text-decoration: none; transition: all .12s; }
+  .nav-pill:hover { color: var(--g1); border-color: var(--g3); }
+
+  /* Generator UI */
+  #generator { max-width: 600px; margin: 40px auto; padding: 0 20px; }
+  .gen-title { font: 700 11px var(--mono); color: var(--g2); text-transform: uppercase; letter-spacing: .1em; margin-bottom: 20px; }
+  .gen-card { background: var(--card); border: 1px solid var(--border); border-radius: 10px; padding: 24px; }
+  .gen-card h2 { font: 700 16px var(--sans); color: var(--white); margin-bottom: 6px; }
+  .gen-card p { font-size: 12px; color: var(--g2); margin-bottom: 20px; line-height: 1.5; }
+  label { font: 600 10px var(--mono); text-transform: uppercase; letter-spacing: .08em; color: var(--g2); display: block; margin-bottom: 5px; }
+  input, select { width: 100%; padding: 8px 12px; background: var(--bg); border: 1px solid var(--border); border-radius: 5px; color: var(--white); font: 13px var(--sans); outline: none; margin-bottom: 14px; transition: border-color .15s; }
+  input:focus, select:focus { border-color: var(--cyan); }
+  input::placeholder { color: var(--g3); }
+  .gen-btn { width: 100%; padding: 10px; background: var(--cyan); border: none; border-radius: 6px; color: #0c0c0a; font: 600 13px var(--sans); cursor: pointer; transition: opacity .15s; }
+  .gen-btn:hover { opacity: .88; }
+  .gen-btn:disabled { opacity: .4; cursor: default; }
+  .gate-msg { background: rgba(201,162,39,.08); border: 1px solid rgba(201,162,39,.3); border-radius: 8px; padding: 14px 16px; text-align: center; font-size: 12px; color: var(--amber); margin-top: 16px; }
+  .gate-msg a { color: var(--cyan); }
+
+  /* Report preview */
+  #report-preview { display: none; max-width: 860px; margin: 0 auto 40px; padding: 0 20px; }
+  #report-preview.show { display: block; }
+  .preview-actions { display: flex; gap: 8px; margin-bottom: 16px; align-items: center; }
+  .action-btn { padding: 7px 16px; border-radius: 5px; font: 600 11px var(--sans); cursor: pointer; border: 1px solid var(--border); background: none; color: var(--g1); transition: all .15s; }
+  .action-btn.primary { background: var(--cyan); border-color: var(--cyan); color: #0c0c0a; }
+  .action-btn:hover { border-color: var(--g1); }
+  .action-btn.primary:hover { opacity: .88; }
+
+  /* ═══ PRINT STYLES — the actual PDF layout ═══ */
+  #report-doc {
+    background: #fff; color: #1a1a1a;
+    font-family: 'DM Sans', system-ui, sans-serif;
+    font-size: 11px; line-height: 1.5;
+    border: 1px solid var(--border); border-radius: 8px;
+    overflow: hidden;
+  }
+
+  .r-header { background: #0c0c0a; color: #f5f0e8; padding: 28px 36px; }
+  .r-logo { font: 700 18px 'JetBrains Mono', monospace; color: #22c55e; margin-bottom: 4px; }
+  .r-title { font: 700 20px 'DM Sans', sans-serif; color: #f5f0e8; margin-bottom: 4px; }
+  .r-subtitle { font-size: 13px; color: #b8b0a0; margin-bottom: 16px; }
+  .r-meta { display: flex; gap: 24px; flex-wrap: wrap; }
+  .r-meta-item { font-size: 10px; }
+  .r-meta-label { color: #6b6358; text-transform: uppercase; letter-spacing: .08em; }
+  .r-meta-value { color: #f5f0e8; font-weight: 600; }
+
+  .r-body { padding: 28px 36px; }
+  .r-section { margin-bottom: 28px; }
+  .r-section-title { font: 700 10px 'JetBrains Mono', monospace; text-transform: uppercase; letter-spacing: .1em; color: #6b6358; border-bottom: 1px solid #e5e5e5; padding-bottom: 6px; margin-bottom: 14px; }
+  .r-exec { background: #f8f8f6; border-left: 3px solid #22c55e; padding: 14px 16px; border-radius: 0 6px 6px 0; margin-bottom: 16px; }
+  .r-exec p { font-size: 12px; color: #2a2a2a; line-height: 1.6; margin-bottom: 8px; }
+  .r-exec p:last-child { margin-bottom: 0; }
+  .r-stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-bottom: 16px; }
+  .r-stat { background: #f8f8f6; padding: 10px 12px; border-radius: 6px; text-align: center; }
+  .r-stat-num { font: 700 22px 'JetBrains Mono', monospace; color: #1a1a1a; }
+  .r-stat-num.red { color: #d62828; }
+  .r-stat-num.amber { color: #c9a227; }
+  .r-stat-num.green { color: #16a34a; }
+  .r-stat-lbl { font-size: 9px; color: #6b6358; text-transform: uppercase; letter-spacing: .08em; margin-top: 2px; }
+  .r-risk-badge { display: inline-block; padding: 3px 10px; border-radius: 4px; font: 700 10px monospace; text-transform: uppercase; letter-spacing: .06em; }
+  .r-risk-badge.HIGH { background: #fef2f2; color: #d62828; border: 1px solid #fca5a5; }
+  .r-risk-badge.MEDIUM { background: #fffbeb; color: #c9a227; border: 1px solid #fde68a; }
+  .r-risk-badge.LOW { background: #f0fdf4; color: #16a34a; border: 1px solid #86efac; }
+  .r-risk-badge.CRITICAL { background: #d62828; color: #fff; }
+
+  .r-table { width: 100%; border-collapse: collapse; font-size: 11px; }
+  .r-table th { background: #f1f0ec; text-align: left; padding: 7px 10px; font: 600 9px monospace; text-transform: uppercase; letter-spacing: .07em; color: #6b6358; border-bottom: 1px solid #e5e5e5; }
+  .r-table td { padding: 8px 10px; border-bottom: 1px solid #f0f0ee; vertical-align: top; }
+  .r-table tr:last-child td { border-bottom: none; }
+  .r-table tr:nth-child(even) td { background: #fafaf8; }
+
+  .r-flag-row td:first-child { font-weight: 600; color: #2a2a2a; max-width: 260px; }
+  .sev-dot { display: inline-block; width: 7px; height: 7px; border-radius: 50%; margin-right: 5px; vertical-align: middle; }
+  .sev-dot.critical { background: #d62828; }
+  .sev-dot.warning  { background: #c9a227; }
+  .sev-dot.info     { background: #6b6358; }
+
+  .r-pred-row td:first-child { max-width: 280px; }
+  .prob-bar { display: flex; align-items: center; gap: 6px; }
+  .prob-fill { height: 6px; border-radius: 3px; background: #22c55e; }
+  .prob-fill.high { background: #d62828; }
+  .prob-fill.med  { background: #c9a227; }
+  .cv-badge { font: 600 8px monospace; padding: 1px 5px; background: #f0fdf4; color: #16a34a; border: 1px solid #86efac; border-radius: 3px; }
+
+  .r-methodology { background: #f8f8f6; border-radius: 6px; padding: 14px 16px; font-size: 10px; color: #6b6358; line-height: 1.7; }
+  .r-methodology strong { color: #2a2a2a; }
+
+  .r-footer { background: #f1f0ec; padding: 14px 36px; font-size: 9px; color: #9a9286; display: flex; justify-content: space-between; align-items: center; border-top: 1px solid #e5e5e5; }
+
+  @media print {
+    nav, #generator, .preview-actions { display: none !important; }
+    #report-preview { display: block !important; margin: 0; padding: 0; }
+    #report-doc { border: none; border-radius: 0; }
+    body { background: #fff; }
+    .r-header { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+    .r-exec { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  }
+</style>
+</head>
+<body>
+
+<nav>
+  <a href="/" class="nav-logo">Wingman</a>
+  <div style="display:flex;gap:6px;">
+    <a href="/wingman/" class="nav-pill">Wingman AI</a>
+    <a href="/pro/" class="nav-pill">Pro</a>
+    <a href="/" class="nav-pill">Forge</a>
+  </div>
+</nav>
+
+<!-- Generator UI -->
+<div id="generator">
+  <div class="gen-title">// Compliance Report Generator</div>
+  <div class="gen-card">
+    <h2>Generate a PIE Intelligence Report</h2>
+    <p>Produces a formatted PDF covering supply chain risk, gray zone entity analysis, NDAA compliance signals, and procurement predictions — ready to attach to a contract vehicle or procurement submission.</p>
+
+    <label>Subject (optional)</label>
+    <input id="subject-input" placeholder="e.g. Anzu Robotics, FLIR Boson 640, Blue UAS thermal cameras…" autocomplete="off"/>
+
+    <label>Report Type</label>
+    <select id="report-type">
+      <option value="full">Full Intelligence Report</option>
+      <option value="supply_chain">Supply Chain Focus</option>
+      <option value="grayzone">Gray Zone Focus</option>
+      <option value="procurement">Procurement Signals Focus</option>
+    </select>
+
+    <button class="gen-btn" id="gen-btn" onclick="generateReport()">Generate Report →</button>
+
+    <div id="gate-msg" style="display:none" class="gate-msg">
+      Pro subscription required to generate reports.
+      <br><br>
+      <a href="/pro/">Upgrade to Pro →</a> or enter your proxy secret below to use as owner.<br><br>
+      <input type="password" id="owner-secret" placeholder="Owner proxy secret" style="margin-bottom:0"/>
+    </div>
+  </div>
+</div>
+
+<!-- Report Preview -->
+<div id="report-preview">
+  <div class="preview-actions">
+    <button class="action-btn primary" onclick="window.print()">⬇ Save as PDF</button>
+    <button class="action-btn" onclick="generateReport()">↻ Regenerate</button>
+    <button class="action-btn" onclick="document.getElementById('report-preview').classList.remove('show'); document.getElementById('generator').style.display='block'">← New Report</button>
+    <span style="font-size:11px;color:var(--g2);margin-left:auto" id="report-id-display"></span>
+  </div>
+  <div id="report-doc"></div>
+</div>
+
+<script>
+var SUB_TOKEN_KEY = 'wingman_sub_token';
+var PROXY_SECRET_KEY = 'wingman_proxy_secret';
+
+function getAuth() {
+  return {
+    subToken:    localStorage.getItem(SUB_TOKEN_KEY) || '',
+    proxySecret: document.getElementById('owner-secret')?.value || localStorage.getItem(PROXY_SECRET_KEY) || '',
+  };
+}
+
+async function checkAccess() {
+  const { subToken, proxySecret } = getAuth();
+  if (proxySecret) return { ok: true, via: 'owner' };
+  if (subToken) {
+    // Quick token format check
+    try { JSON.parse(atob(subToken)); return { ok: true, via: 'sub' }; } catch {}
+  }
+  return { ok: false };
+}
+
+async function generateReport() {
+  const access = await checkAccess();
+  if (!access.ok) {
+    document.getElementById('gate-msg').style.display = 'block';
+    return;
+  }
+  document.getElementById('gate-msg').style.display = 'none';
+
+  const btn = document.getElementById('gen-btn');
+  btn.disabled = true;
+  btn.textContent = 'Generating…';
+
+  const { subToken, proxySecret } = getAuth();
+  const subject    = document.getElementById('subject-input').value.trim();
+  const reportType = document.getElementById('report-type').value;
+
+  try {
+    const headers = { 'Content-Type': 'application/json' };
+    if (proxySecret) headers['x-proxy-secret'] = proxySecret;
+
+    const res = await fetch('/.netlify/functions/compliance-report', {
+      method: 'POST',
+      headers,
+      body: JSON.stringify({ token: subToken, subject, report_type: reportType, proxy_secret: proxySecret }),
+    });
+
+    if (res.status === 401) {
+      document.getElementById('gate-msg').style.display = 'block';
+      btn.disabled = false; btn.textContent = 'Generate Report →';
+      return;
+    }
+
+    const data = await res.json();
+    renderReport(data);
+
+    document.getElementById('generator').style.display = 'none';
+    document.getElementById('report-preview').classList.add('show');
+    document.getElementById('report-id-display').textContent = data.meta?.report_id || '';
+
+  } catch(e) {
+    alert('Error generating report: ' + e.message);
+  }
+
+  btn.disabled = false;
+  btn.textContent = 'Generate Report →';
+}
+
+function renderReport(d) {
+  const m  = d.meta;
+  const ex = d.executive_summary;
+  const gz = d.gray_zone_entities || [];
+  const cf = d.critical_flags || [];
+  const sf = d.supply_chain_flags || [];
+  const pr = d.predictions || [];
+  const pf = d.procurement_flags || [];
+  const meth = d.methodology;
+
+  const riskColor = ex.risk_level === 'HIGH' ? 'red' : ex.risk_level === 'MEDIUM' ? 'amber' : 'green';
+
+  let html = `
+  <div class="r-header">
+    <div class="r-logo">DroneClear</div>
+    <div class="r-title">${esc(m.title)}</div>
+    <div class="r-subtitle">${esc(m.subtitle)}</div>
+    <div class="r-meta">
+      <div class="r-meta-item"><div class="r-meta-label">Report ID</div><div class="r-meta-value">${esc(m.report_id)}</div></div>
+      <div class="r-meta-item"><div class="r-meta-label">Generated</div><div class="r-meta-value">${esc(m.generated)}</div></div>
+      <div class="r-meta-item"><div class="r-meta-label">Pipeline</div><div class="r-meta-value">${esc(m.generated_by)}</div></div>
+      <div class="r-meta-item"><div class="r-meta-label">Classification</div><div class="r-meta-value">${esc(m.classification)}</div></div>
+    </div>
+  </div>
+  <div class="r-body">
+
+  <div class="r-section">
+    <div class="r-section-title">Executive Summary</div>
+    <div class="r-stats">
+      <div class="r-stat"><div class="r-stat-num ${riskColor}">${ex.total_flags}</div><div class="r-stat-lbl">Total Flags</div></div>
+      <div class="r-stat"><div class="r-stat-num red">${ex.critical_flags}</div><div class="r-stat-lbl">Critical</div></div>
+      <div class="r-stat"><div class="r-stat-num amber">${ex.gray_zone_entities}</div><div class="r-stat-lbl">Gray Zone Entities</div></div>
+      <div class="r-stat"><div class="r-stat-num">${ex.supply_flags}</div><div class="r-stat-lbl">Supply Flags</div></div>
+    </div>
+    <div class="r-exec">
+      <p><strong>Risk Level:</strong> <span class="r-risk-badge ${ex.risk_level}">${ex.risk_level}</span></p>
+      <p>${esc(ex.key_finding)}</p>
+    </div>
+  </div>`;
+
+  // Gray zone entities
+  if (gz.length > 0) {
+    html += `<div class="r-section"><div class="r-section-title">Gray Zone Entity Analysis</div>
+    <table class="r-table">
+      <tr><th>Entity</th><th>Score</th><th>Risk Tier</th><th>Country</th><th>NDAA Status</th><th>Key Signal</th></tr>
+      ${gz.map(e => `<tr class="r-flag-row">
+        <td>${esc(e.name)}</td>
+        <td><b>${(e.score*100).toFixed(0)}%</b></td>
+        <td><span class="r-risk-badge ${e.risk}">${e.risk}</span></td>
+        <td>${esc(e.country)}</td>
+        <td>${e.ndaa_status || 'Non-compliant'}</td>
+        <td style="color:#6b6358;font-size:10px">${esc((e.key_flag||'').slice(0,120))}</td>
+      </tr>`).join('')}
+    </table></div>`;
+  }
+
+  // Critical flags
+  if (cf.length > 0) {
+    html += `<div class="r-section"><div class="r-section-title">Critical Severity Flags</div>
+    <table class="r-table">
+      <tr><th>Flag</th><th>Detail</th><th>Confidence</th></tr>
+      ${cf.map(f => `<tr class="r-flag-row">
+        <td><span class="sev-dot critical"></span>${esc(f.title)}</td>
+        <td style="color:#6b6358;font-size:10px">${esc((f.detail||'').slice(0,200))}</td>
+        <td>${f.confidence ? Math.round(f.confidence*100)+'%' : '—'}</td>
+      </tr>`).join('')}
+    </table></div>`;
+  }
+
+  // Supply chain flags
+  if (sf.length > 0) {
+    html += `<div class="r-section"><div class="r-section-title">Supply Chain Risk Flags</div>
+    <table class="r-table">
+      <tr><th>Signal</th><th>Detail</th><th>Confidence</th></tr>
+      ${sf.map(f => `<tr>
+        <td><span class="sev-dot warning"></span>${esc(f.title)}</td>
+        <td style="color:#6b6358;font-size:10px">${esc((f.detail||'').slice(0,200))}</td>
+        <td>${f.confidence ? Math.round(f.confidence*100)+'%' : '—'}</td>
+      </tr>`).join('')}
+    </table></div>`;
+  }
+
+  // Predictions
+  if (pr.length > 0) {
+    html += `<div class="r-section"><div class="r-section-title">Intelligence Predictions (≥60% probability)</div>
+    <table class="r-table">
+      <tr><th>Event</th><th>Timeframe</th><th>Probability</th><th>Impact</th><th>Validated</th></tr>
+      ${pr.map(p => {
+        const pct = Math.round(p.probability * 100);
+        const cls = pct >= 75 ? 'high' : pct >= 60 ? 'med' : '';
+        return `<tr class="r-pred-row">
+          <td>${esc(p.event)}</td>
+          <td>${esc(p.timeframe)}</td>
+          <td>
+            <div class="prob-bar">
+              <div class="prob-fill ${cls}" style="width:${pct}px;max-width:60px"></div>
+              <span>${pct}%</span>
+            </div>
+          </td>
+          <td><span class="r-risk-badge ${p.impact?.toUpperCase()}">${(p.impact||'').toUpperCase()}</span></td>
+          <td>${p.cross_validated ? '<span class="cv-badge">✓ CV</span>' : '—'}</td>
+        </tr>`;
+      }).join('')}
+    </table></div>`;
+  }
+
+  // Procurement flags
+  if (pf.length > 0) {
+    html += `<div class="r-section"><div class="r-section-title">Procurement Signal Flags</div>
+    <table class="r-table">
+      <tr><th>Signal</th><th>Detail</th><th>Confidence</th></tr>
+      ${pf.map(f => `<tr>
+        <td>${esc(f.title)}</td>
+        <td style="color:#6b6358;font-size:10px">${esc((f.detail||'').slice(0,200))}</td>
+        <td>${f.confidence ? Math.round(f.confidence*100)+'%' : '—'}</td>
+      </tr>`).join('')}
+    </table></div>`;
+  }
+
+  // Methodology
+  html += `<div class="r-section"><div class="r-section-title">Methodology & Data Sources</div>
+  <div class="r-methodology">
+    <strong>Data Sources:</strong> ${meth.data_sources.join(' · ')}<br><br>
+    <strong>Gray Zone Scoring Dimensions:</strong><br>
+    ${meth.gray_zone_dimensions.map(d => '• ' + d).join('<br>')}<br><br>
+    <em>${esc(meth.disclaimer)}</em>
+  </div></div>
+
+  </div><!-- r-body -->
+  <div class="r-footer">
+    <span>DroneClear Intelligence · nvmillbuilditmyself.com · Jeremiah@midwestniceuas.com</span>
+    <span>${esc(m.report_id)} · ${esc(m.generated)}</span>
+  </div>`;
+
+  document.getElementById('report-doc').innerHTML = html;
+}
+
+function esc(s) {
+  if (!s) return '';
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+</script>
+</body>
+</html>

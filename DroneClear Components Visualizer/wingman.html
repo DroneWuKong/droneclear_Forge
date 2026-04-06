@@ -533,6 +533,11 @@
       <div style="font-size:10px;color:var(--g3);margin:-10px 0 16px;line-height:1.5;">
         Set <code>WINGMAN_PROXY_SECRET</code> in Netlify env vars. Enter the same value here to use server Claude without exposing your API key.
       </div>
+      <label class="cfg-label">Pro Subscription Token <span style="font-size:10px;color:var(--g3)">(from /pro/ after payment)</span></label>
+      <input type="password" id="sub-token-input" placeholder="Paste your subscription token"/>
+      <div style="font-size:10px;color:var(--g3);margin:-10px 0 16px;line-height:1.5;">
+        Subscribe at <a href="/pro/" target="_blank" style="color:var(--cyan)">/pro/</a> to get Claude on any device.
+      </div>
     </div>
 
     <div id="gemini-cfg" style="display:none;">
@@ -624,6 +629,7 @@ var provider   = localStorage.getItem('wingman_provider') || 'gemini'; // gemini
 var geminiKey  = localStorage.getItem('wingman_gemini_key') || '';
 var groqKey    = localStorage.getItem('wingman_groq_key') || '';
 var proxySecret = localStorage.getItem('wingman_proxy_secret') || '';
+var subToken    = localStorage.getItem('wingman_sub_token') || '';
 
 var GH_RAW = 'https://raw.githubusercontent.com/DroneWuKong';
 
@@ -2210,6 +2216,7 @@ function openCfg() {
   document.getElementById('gemini-key-input').value = geminiKey;
   document.getElementById('groq-key-input').value = groqKey;
   document.getElementById('proxy-secret-input').value = proxySecret;
+  document.getElementById('sub-token-input').value = subToken;
   setProvider(provider);
   document.getElementById('cfg-overlay').classList.add('open');
 }
@@ -2488,13 +2495,16 @@ async function send() {
       // ═══ ANTHROPIC API ═══
       // Use server proxy if proxy secret set and no BYOK key,
       // or BYOK direct if user has their own key
-      const useProxy = proxySecret && !apiKey;
+      const useProxy = (proxySecret || subToken) && !apiKey;
       const claudeUrl = useProxy
         ? '/.netlify/functions/claude-proxy'
         : 'https://api.anthropic.com/v1/messages';
       const claudeHeaders = { 'Content-Type': 'application/json' };
-      if (useProxy) {
-        claudeHeaders['x-proxy-secret'] = proxySecret;
+      // Sub token from Pro subscription also authorizes proxy
+      const useSubProxy = subToken && !apiKey && !proxySecret;
+      if (useProxy || useSubProxy) {
+        if (proxySecret) claudeHeaders['x-proxy-secret'] = proxySecret;
+        if (subToken)    claudeHeaders['x-sub-token']    = subToken;
       } else {
         claudeHeaders['x-api-key'] = apiKey;
         claudeHeaders['anthropic-version'] = '2023-06-01';

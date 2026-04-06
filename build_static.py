@@ -56,6 +56,8 @@ PAGES = {
     'intel-commercial.html': 'intel-commercial/index.html',
     'tools.html': 'tools/index.html',
     'wingman.html': 'wingman/index.html',
+    'pro.html': 'pro/index.html',
+    'report.html': 'report/index.html',
     'pid-tuning.html': 'pid-tuning/index.html',
     'patterns.html': 'patterns/index.html',
     'brief.html': 'brief/index.html',
