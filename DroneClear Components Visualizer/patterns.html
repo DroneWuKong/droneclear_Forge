@@ -506,6 +506,25 @@ a.brief-source-chip:hover{color:var(--text-s);border-color:var(--border-hi)}
 </div>
 
 <script>
+// ── Pro auth check ──────────────────────────────────────────────────
+function isProUser() {
+  var tok = localStorage.getItem('wingman_sub_token') || '';
+  var ps  = localStorage.getItem('wingman_proxy_secret') || '';
+  if (ps) return true;
+  if (!tok) return false;
+  try { var p = JSON.parse(atob(tok)); return !p.exp || Date.now() < p.exp; } catch { return false; }
+}
+
+function showProGate(containerId, featureName) {
+  var el = document.getElementById(containerId);
+  if (!el) return;
+  el.innerHTML = '<div style="display:flex;flex-direction:column;align-items:center;justify-content:center;padding:32px 20px;gap:10px;text-align:center">'
+    + '<span style="font-size:22px">🔒</span>'
+    + '<span style="font:600 13px var(--sans);color:var(--text)">' + featureName + ' is a Pro feature</span>'
+    + '<span style="font-size:11px;color:var(--text-d);line-height:1.5;max-width:280px">Get PIE predictions with confidence scores, gray zone delta alerts, and procurement signals with a Pro subscription.</span>'
+    + '<a href="/pro/" style="margin-top:6px;padding:8px 22px;background:var(--amber);color:#0c0c0a;border-radius:6px;font:600 12px var(--sans);text-decoration:none">Upgrade to Pro →</a>'
+    + '</div>';
+}
 // ── Detail modal ──
 function openDetailModal(title, subtitle, body) {
   var ov = document.getElementById('flag-modal-overlay');
@@ -1382,6 +1401,7 @@ function renderComponents() {
 // ── Predictions ──
 function renderPredictions() {
   var el = document.getElementById("prediction-list");
+  if (!isProUser()) { showProGate('prediction-list', 'PIE Predictions'); return; }
   var impactColor = {critical:"--red",high:"--warning",medium:"--blue",low:"--text-d"};
   el.innerHTML = PREDICTIONS.map(function(p,i) {
     var ic = impactColor[p.impact] || "--text-d";

@@ -71,9 +71,25 @@ export default async (req) => {
     if (!token) return json({ valid: false });
     const payload = await verifyToken(token, tokenSecret);
     if (!payload) return json({ valid: false });
+
+    // For demo tokens, check revocation registry in Blobs
+    if (payload.demo) {
+      try {
+        const { getStore } = await import('@netlify/blobs');
+        const store = getStore('wingman-demo-tokens');
+        const raw = await store.get('registry');
+        if (raw) {
+          const registry = JSON.parse(raw);
+          const entry = registry.find(r => r.email === payload.email);
+          if (entry && entry.revoked) return json({ valid: false, reason: 'revoked' });
+        }
+      } catch { /* blob unavailable, fall through */ }
+    }
+
     return json({
       valid: true,
       tier:  payload.tier,
+      demo:  payload.demo || false,
       email: payload.email,
       exp:   payload.exp,
     });
