@@ -502,46 +502,19 @@
     <div style="display:flex;gap:6px;margin-bottom:6px;">
       <button id="prov-gemini" onclick="setProvider('gemini')" style="flex:1;padding:8px;border-radius:6px;border:1px solid var(--border);background:var(--bg-card);color:var(--g2);font-family:system-ui;font-size:12px;cursor:pointer;font-weight:600;">Gemini <span style="font-size:9px;opacity:.6">free</span></button>
       <button id="prov-groq" onclick="setProvider('groq')" style="flex:1;padding:8px;border-radius:6px;border:1px solid var(--border);background:var(--bg-card);color:var(--g2);font-family:system-ui;font-size:12px;cursor:pointer;font-weight:600;">Groq / Llama <span style="font-size:9px;opacity:.6">free</span></button>
-      <button id="prov-anthropic" onclick="setProvider('anthropic')" style="flex:1;padding:8px;border-radius:6px;border:1px solid var(--border);background:var(--bg-card);color:var(--g2);font-family:system-ui;font-size:12px;cursor:pointer;font-weight:600;">Claude <span style="font-size:9px;opacity:.6">private</span></button>
+      <button id="prov-anthropic" onclick="setProvider('anthropic')" style="flex:1;padding:8px;border-radius:6px;border:1px solid var(--border);background:var(--bg-card);color:var(--g2);font-family:system-ui;font-size:12px;cursor:pointer;font-weight:600;">Claude <span style="font-size:9px;opacity:.6">BYOK</span></button>
     </div>
-    <div style="font-size:10px;color:var(--g3);margin-bottom:12px">Gemini and Groq work without a key (server proxy). Claude requires your own API key.</div>
+    <div style="font-size:10px;color:var(--g3);margin-bottom:16px">API key is set inline next to the model picker above the chat box.</div>
 
-    <div id="anthropic-cfg">
-      <label class="cfg-label">Anthropic API Key</label>
-      <input type="password" id="api-key-input" placeholder="sk-ant-api03-xxxxxxxxxxxx"/>
-      <div id="api-key-hint" style="font-size:10px;color:var(--g3);margin:-10px 0 16px;line-height:1.5;">
-        Your key — stored in browser only, calls go direct to Anthropic.<br>
-        Or leave blank and use the <strong style="color:var(--cyan)">server proxy</strong> below (your key stays on the server).
-        <a href="https://console.anthropic.com/settings/keys" target="_blank" style="color:var(--cyan);">Get a key →</a>
-      </div>
-      <label class="cfg-label">Proxy Secret <span style="font-size:10px;color:var(--g3)">(unlocks server-side Claude — private)</span></label>
-      <input type="password" id="proxy-secret-input" placeholder="your-proxy-secret"/>
-      <div style="font-size:10px;color:var(--g3);margin:-10px 0 16px;line-height:1.5;">
-        Set <code>WINGMAN_PROXY_SECRET</code> in Netlify env vars. Enter the same value here to use server Claude without exposing your API key.
-      </div>
-      <label class="cfg-label">Pro Subscription Token <span style="font-size:10px;color:var(--g3)">(from /pro/ after payment)</span></label>
-      <input type="password" id="sub-token-input" placeholder="Paste your subscription token"/>
-      <div style="font-size:10px;color:var(--g3);margin:-10px 0 16px;line-height:1.5;">
-        Subscribe at <a href="/pro/" target="_blank" style="color:var(--cyan)">/pro/</a> to get Claude on any device.
-      </div>
-    </div>
-
-    <div id="gemini-cfg" style="display:none;">
-      <label class="cfg-label">Google Gemini API Key <span style="font-size:10px;color:var(--g3)">(optional — uses server proxy if blank)</span></label>
-      <input type="password" id="gemini-key-input" placeholder="AIzaSy..."/>
-      <div style="font-size:10px;color:var(--g3);margin:-10px 0 16px;line-height:1.5;">
-        Free — no credit card. Stored in your browser only.
-        <a href="https://aistudio.google.com/apikey" target="_blank" style="color:var(--cyan);">Get a free key →</a>
-      </div>
-    </div>
-    <div id="groq-cfg" style="display:none;">
-      <label class="cfg-label">Groq API Key <span style="font-size:10px;color:var(--g3)">(optional — uses server proxy if blank)</span></label>
-      <input type="password" id="groq-key-input" placeholder="gsk_..."/>
-      <div style="font-size:10px;color:var(--g3);margin:-10px 0 16px;line-height:1.5;">
-        Free — 14,400 requests/day. Stored in your browser only.
-        <a href="https://console.groq.com" target="_blank" style="color:var(--cyan);">Get a free key →</a>
-      </div>
-    </div>
+    <!-- Hidden inputs kept for JS compatibility -->
+    <input type="hidden" id="api-key-input"/>
+    <input type="hidden" id="gemini-key-input"/>
+    <input type="hidden" id="groq-key-input"/>
+    <input type="hidden" id="proxy-secret-input"/>
+    <input type="hidden" id="sub-token-input"/>
+    <div id="anthropic-cfg" style="display:none;"></div>
+    <div id="gemini-cfg" style="display:none;"></div>
+    <div id="groq-cfg" style="display:none;"></div>
 
     <hr style="border:none;border-top:1px solid var(--border);margin:0 0 16px;"/>
 
@@ -3392,30 +3365,55 @@ function trackGapAnalysis(a, b, gaps) {
 </script>
 
 <script>
-// Inline API key — syncs to provider-specific storage
+// Inline API key — syncs to provider-specific storage + hidden inputs
 document.addEventListener('DOMContentLoaded', function() {
   var inlineKey = document.getElementById('inline-api-key');
   if (!inlineKey) return;
-  // Load current key on init
+
   function loadKey() {
     var p = localStorage.getItem('wingman_provider') || 'gemini';
-    var key = p === 'gemini' ? localStorage.getItem('wingman_gemini_key') :
-              p === 'groq'   ? localStorage.getItem('wingman_groq_key') :
-                               localStorage.getItem('wingman_api_key');
-    inlineKey.value = key || '';
-    inlineKey.placeholder = p === 'anthropic' ? 'sk-ant-... (Claude)' :
-                            p === 'groq'   ? 'gsk_... (Groq)' :
-                                             'AIzaSy... (Gemini)';
+    var key = p === 'gemini' ? (localStorage.getItem('wingman_gemini_key') || '') :
+              p === 'groq'   ? (localStorage.getItem('wingman_groq_key') || '') :
+                               (localStorage.getItem('wingman_api_key') || '');
+    inlineKey.value = key;
+    inlineKey.placeholder = p === 'anthropic' ? 'sk-ant-... (Claude BYOK)' :
+                            p === 'groq'      ? 'gsk_... (Groq, optional)' :
+                                               'AIzaSy... (Gemini, optional)';
+    // Sync hidden inputs so existing JS still works
+    var gemInput = document.getElementById('gemini-key-input');
+    var groqInput = document.getElementById('groq-key-input');
+    var antInput = document.getElementById('api-key-input');
+    if (gemInput)  gemInput.value  = localStorage.getItem('wingman_gemini_key') || '';
+    if (groqInput) groqInput.value = localStorage.getItem('wingman_groq_key') || '';
+    if (antInput)  antInput.value  = localStorage.getItem('wingman_api_key') || '';
   }
-  loadKey();
-  inlineKey.addEventListener('change', function() {
+
+  function saveKey() {
     var p = localStorage.getItem('wingman_provider') || 'gemini';
     var k = inlineKey.value.trim();
-    if (p === 'gemini') { localStorage.setItem('wingman_gemini_key', k); if(typeof geminiKey !== 'undefined') geminiKey = k; }
-    else if (p === 'groq') { localStorage.setItem('wingman_groq_key', k); if(typeof groqKey !== 'undefined') groqKey = k; }
-    else { localStorage.setItem('wingman_api_key', k); if(typeof apiKey !== 'undefined') apiKey = k; }
-  });
-  // Update placeholder when provider changes
+    if (p === 'gemini') {
+      localStorage.setItem('wingman_gemini_key', k);
+      if (typeof geminiKey !== 'undefined') geminiKey = k;
+      var el = document.getElementById('gemini-key-input');
+      if (el) el.value = k;
+    } else if (p === 'groq') {
+      localStorage.setItem('wingman_groq_key', k);
+      if (typeof groqKey !== 'undefined') groqKey = k;
+      var el2 = document.getElementById('groq-key-input');
+      if (el2) el2.value = k;
+    } else {
+      localStorage.setItem('wingman_api_key', k);
+      if (typeof apiKey !== 'undefined') apiKey = k;
+      var el3 = document.getElementById('api-key-input');
+      if (el3) el3.value = k;
+    }
+  }
+
+  loadKey();
+  inlineKey.addEventListener('input', saveKey);
+  inlineKey.addEventListener('change', saveKey);
+
+  // Refresh inline key when provider changes
   var origSetProvider = window.setProvider;
   window.setProvider = function(p) {
     if (origSetProvider) origSetProvider(p);
