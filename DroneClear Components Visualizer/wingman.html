@@ -2391,7 +2391,9 @@ async function send() {
   renderMessages();
   showThinking();
 
-  const apiMessages = messages.map(m => ({ role: m.role, content: m.content }));
+  // Keep last 6 turns to avoid token limits (especially Groq free tier)
+  const recentMessages = messages.slice(-6);
+  const apiMessages = recentMessages.map(m => ({ role: m.role, content: m.content }));
 
   try {
     const activeKey = provider === 'gemini' ? geminiKey : provider === 'groq' ? groqKey : apiKey;
@@ -2430,9 +2432,9 @@ async function send() {
       }
 
       const geminiBody = {
-        systemInstruction: { parts: [{ text: sysPrompt }] },
+        systemInstruction: { parts: [{ text: sysPrompt.slice(0, 6000) }] },
         contents: geminiMessages,
-        generationConfig: { maxOutputTokens: 8192, temperature: 0.7 },
+        generationConfig: { maxOutputTokens: 4096, temperature: 0.7 },
       };
 
       // Use proxy (free) if no user key, direct API if BYOK
@@ -2455,8 +2457,10 @@ async function send() {
     } else if (provider === 'groq') {
       // ═══ GROQ API (Llama 3.3 70B) ═══
       const sysPrompt = buildPrompt(txt, hasImages);
-      const groqMessages = [{ role: 'system', content: sysPrompt }];
-      for (const m of messages) {
+      const groqMessages = [{ role: 'system', content: sysPrompt.slice(0, 3000) }];
+      // Groq free tier: strict token limits — keep last 4 turns, truncate content
+      const groqHistory = messages.slice(-4);
+      for (const m of groqHistory) {
         const role = m.role === 'assistant' ? 'assistant' : 'user';
         let content = '';
         if (Array.isArray(m.content)) {
@@ -2464,12 +2468,13 @@ async function send() {
         } else if (typeof m.content === 'string') {
           content = m.content;
         }
-        if (content) groqMessages.push({ role, content });
+        // Truncate each message to 800 chars to stay under TPM limit
+        if (content) groqMessages.push({ role, content: content.slice(0, 800) });
       }
       const groqBody = {
         model: 'llama-3.3-70b-versatile',
         messages: groqMessages,
-        max_tokens: 4096,
+        max_tokens: 1024,  // Reduced from 4096 — Groq free TPM is tight
         temperature: 0.7,
       };
       // Use BYOK if provided, otherwise server proxy
