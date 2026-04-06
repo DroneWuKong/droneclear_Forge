@@ -1,5 +1,28 @@
 # Changelog
 
+## [Session — Analytics Overhaul + Gap Analyzer + Groq] - 2026-04-06
+
+### Added
+- **Gap Analyzer** — slide-in panel in Wingman AI; auto-detects entity pairs from conversation, compares spec/compliance/supply chain gaps via AI, color-coded gap cards with severity, "open chat" CTA
+- **Trends tab** on analytics.html — 30/60/90-day PIE projections, R² confidence, sparklines, anomaly detection; reads from pie_trends.json (no password gate)
+- **Usage tab** on analytics.html — page views, sessions, Wingman query categories, top gap entity pairs, surface breakdown, daily activity spark (behind admin gate)
+- **Admin gate** on User Signals + Usage tabs — password prompt (key: forge-admin-2026), session-persisted, auto-unlocks via ?key= param
+- **Groq/Llama proxy** (netlify/functions/groq-proxy.mjs) — rate-limited server-side proxy for Groq API; mirrors gemini-proxy pattern
+- **Groq provider in Wingman** — three-button provider selector: Gemini (free) · Groq/Llama (free) · Claude (private BYOK); model chip rotates between public providers; Groq BYOK optional
+- Page-level event tracking injected into patterns.html, intel.html, platforms.html, patterns-home.html
+- Gap analysis run events tracked (entity pairs, gap count, critical count, provider)
+- pie_trends.json + pie_predictions.json + llm_predictions.json reported in build
+
+### Changed
+- analytics.mjs batch event handler — was silently dropping all page_view/click/scroll events; now handles type:batch + type:gap_analysis
+- analytics.html GET response includes summary block (pageViews, searches, compares, gapRuns, bySurface)
+- Wingman model chip cycles gemini-2.5-flash ↔ llama-3.3-70b for public users (Claude excluded from cycle)
+- analytics.html DASH_FN added — fetches from analytics-dashboard function for richer usage data
+
+### Fixed
+- bluefairy.netlify.app analytics dashboard was fetching from forgeprole.netlify.app (wrong alias) — all 5 URLs updated to nvmillbuilditmyself.com
+
+
 ## [Military Firmware + DB Expansion] - 2026-04-05
 
 ### Added
