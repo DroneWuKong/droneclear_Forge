@@ -305,6 +305,73 @@
     #starters { grid-template-columns: 1fr; }
   }
 
+  /* ── GAP ANALYZER PANEL ── */
+  #gap-panel {
+    display: none; position: fixed; top: 0; right: 0; bottom: 0;
+    width: 360px; background: var(--bg-card); border-left: 1px solid var(--border);
+    z-index: 150; flex-direction: column; box-shadow: -4px 0 24px rgba(0,0,0,.5);
+  }
+  #gap-panel.open { display: flex; }
+  #gap-hdr {
+    padding: 11px 14px; border-bottom: 1px solid var(--border);
+    display: flex; align-items: center; justify-content: space-between; flex-shrink: 0;
+  }
+  #gap-hdr .title { font: 700 12px var(--mono); color: var(--cyan); letter-spacing: .06em; text-transform: uppercase; display: flex; align-items: center; gap: 6px; }
+  #gap-hdr .close { background: none; border: none; color: var(--g2); cursor: pointer; font-size: 18px; line-height: 1; padding: 0; }
+  #gap-hdr .close:hover { color: var(--white); }
+  #gap-inputs { padding: 12px 14px; border-bottom: 1px solid var(--border); flex-shrink: 0; }
+  #gap-inputs label { font: 600 9px var(--mono); text-transform: uppercase; letter-spacing: .1em; color: var(--g2); display: block; margin-bottom: 4px; }
+  .gap-input-row { display: flex; gap: 6px; margin-bottom: 8px; }
+  .gap-field {
+    flex: 1; background: var(--bg); border: 1px solid var(--border); border-radius: 5px;
+    padding: 6px 9px; color: var(--white); font: 12px var(--sans); outline: none;
+    transition: border-color .15s;
+  }
+  .gap-field:focus { border-color: var(--cyan); }
+  .gap-field::placeholder { color: var(--g3); }
+  #gap-run {
+    width: 100%; padding: 7px; border-radius: 5px; border: 1px solid var(--cyan);
+    background: rgba(34,197,94,.1); color: var(--cyan); font: 600 11px var(--sans);
+    cursor: pointer; transition: all .15s; letter-spacing: .03em;
+  }
+  #gap-run:hover { background: rgba(34,197,94,.2); }
+  #gap-run:disabled { opacity: .4; cursor: default; }
+  #gap-auto-hint { font: 500 10px var(--sans); color: var(--g2); margin-top: 6px; display: none; }
+  #gap-auto-hint.visible { display: block; }
+  #gap-body { flex: 1; overflow-y: auto; padding: 10px 14px; }
+  .gap-empty {
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    height: 100%; color: var(--g3); font: 500 11px var(--sans); text-align: center; gap: 8px;
+  }
+  .gap-empty i { font-size: 28px; }
+  .gap-section-lbl { font: 600 9px var(--mono); text-transform: uppercase; letter-spacing: .1em; color: var(--g2); margin: 12px 0 6px; display: flex; align-items: center; gap: 6px; }
+  .gap-section-lbl::after { content: ''; flex: 1; height: 1px; background: var(--border); }
+  .gap-card {
+    border: 1px solid var(--border); border-radius: 6px; padding: 9px 11px;
+    margin-bottom: 6px; font-size: 11px; line-height: 1.5;
+  }
+  .gap-card.critical { border-color: rgba(214,40,40,.4); background: rgba(214,40,40,.05); }
+  .gap-card.warning  { border-color: rgba(201,162,39,.35); background: rgba(201,162,39,.04); }
+  .gap-card.info     { border-color: rgba(34,197,94,.25); background: rgba(34,197,94,.03); }
+  .gap-card-title { font: 600 11px var(--sans); color: var(--white); margin-bottom: 3px; display: flex; align-items: center; gap: 6px; }
+  .gap-dot { width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0; }
+  .gap-dot.critical { background: var(--red); }
+  .gap-dot.warning  { background: var(--yellow); }
+  .gap-dot.info     { background: var(--cyan); }
+  .gap-card-body { color: var(--g1); }
+  .gap-card-body strong { color: var(--white); }
+  .gap-thinking { display: flex; align-items: center; gap: 8px; color: var(--g2); font: 500 11px var(--sans); padding: 12px 0; }
+  .gap-thinking .dots { display: flex; gap: 4px; }
+  .gap-thinking .dots span { width: 4px; height: 4px; border-radius: 50%; background: var(--cyan); animation: gapPulse 1.2s ease-in-out infinite; }
+  .gap-thinking .dots span:nth-child(2) { animation-delay: .2s; }
+  .gap-thinking .dots span:nth-child(3) { animation-delay: .4s; }
+  @keyframes gapPulse { 0%,80%,100%{opacity:.2} 40%{opacity:1} }
+  #gap-panel .gap-cta { font: 500 10px var(--sans); color: var(--g2); margin-top: 10px; text-align: center; }
+  #gap-panel .gap-cta a { color: var(--cyan); text-decoration: none; }
+  @media (max-width: 600px) {
+    #gap-panel { width: 100%; border-left: none; }
+  }
+
   /* ── CONFIG MODAL ── */
   #cfg-overlay {
     display: none; position: fixed; inset: 0; background: rgba(0,0,0,.75);
@@ -366,6 +433,10 @@
     </button>
     <button class="badge" onclick="openCfg()" title="Settings">
       <i class="ph ph-gear"></i>
+    </button>
+    <button class="badge" id="gap-btn" onclick="toggleGapPanel()" title="Gap Analyzer — compare two components or platforms">
+      <i class="ph ph-arrows-left-right"></i>
+      <span>Gap</span>
     </button>
     <div class="badge cyan">
       <div class="dot"></div>
@@ -474,6 +545,31 @@
       <button id="cfg-connect" onclick="saveCfgAndConnect()">Save & Connect</button>
       <button id="cfg-cancel" onclick="closeCfg()">Cancel</button>
     </div>
+  </div>
+</div>
+
+<!-- ── GAP ANALYZER PANEL ──────────────────────────────────── -->
+<div id="gap-panel">
+  <div id="gap-hdr">
+    <div class="title"><i class="ph ph-arrows-left-right"></i> Gap Analyzer</div>
+    <button class="close" onclick="toggleGapPanel()">×</button>
+  </div>
+  <div id="gap-inputs">
+    <label>Compare</label>
+    <div class="gap-input-row">
+      <input class="gap-field" id="gap-a" placeholder="Entity A — e.g. DBR4, Skydio X2…" autocomplete="off"/>
+      <input class="gap-field" id="gap-b" placeholder="Entity B — e.g. GX 12, SIYI…" autocomplete="off"/>
+    </div>
+    <button id="gap-run" onclick="runGapAnalysis()">Run Gap Analysis</button>
+    <div id="gap-auto-hint"></div>
+  </div>
+  <div id="gap-body">
+    <div class="gap-empty" id="gap-empty">
+      <i class="ph ph-arrows-left-right"></i>
+      <span>Run gap analyzer to populate</span>
+      <span style="font-size:10px;color:var(--g3);margin-top:2px;">Compares spec, compliance,<br>and supply chain gaps between two entities</span>
+    </div>
+    <div id="gap-results" style="display:none;"></div>
   </div>
 </div>
 
@@ -2815,6 +2911,214 @@ function inlineEsc(s) {
   s = s.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
   return s;
 }
+// ─── GAP ANALYZER ─────────────────────────────────────────────────────────────
+
+var gapOpen = false;
+
+function toggleGapPanel() {
+  gapOpen = !gapOpen;
+  document.getElementById('gap-panel').classList.toggle('open', gapOpen);
+  document.getElementById('gap-btn').style.borderColor = gapOpen ? 'var(--cyan)' : '';
+  document.getElementById('gap-btn').style.color = gapOpen ? 'var(--cyan)' : '';
+  if (gapOpen) autoDetectGapEntities();
+}
+
+// Scan conversation messages for entity pairs
+function autoDetectGapEntities() {
+  if (!messages.length) return;
+  const allText = messages.map(m => m.text || '').join(' ');
+
+  // Patterns: model numbers, brand names, product names
+  const entityPattern = /\b([A-Z][A-Za-z0-9][-A-Za-z0-9]*(?:\s+[A-Z0-9][-A-Za-z0-9]*){0,2})\b/g;
+  const counts = {};
+  let m;
+  while ((m = entityPattern.exec(allText)) !== null) {
+    const e = m[1].trim();
+    if (e.length < 2 || /^(The|And|But|For|With|From|This|That|When|What|Which|How|Are|Was|Has|Have|Been|Will|Can|Should|Would|Could|Also|Note|More)$/.test(e)) continue;
+    counts[e] = (counts[e] || 0) + 1;
+  }
+
+  // Sort by frequency, take top 2
+  const sorted = Object.entries(counts).sort((a,b) => b[1]-a[1]).map(x=>x[0]);
+  const fieldA = document.getElementById('gap-a');
+  const fieldB = document.getElementById('gap-b');
+  const hint   = document.getElementById('gap-auto-hint');
+
+  if (sorted.length >= 2 && !fieldA.value && !fieldB.value) {
+    fieldA.value = sorted[0];
+    fieldB.value = sorted[1];
+    hint.textContent = `↑ Auto-detected from conversation`;
+    hint.classList.add('visible');
+  }
+}
+
+async function runGapAnalysis() {
+  const a = document.getElementById('gap-a').value.trim();
+  const b = document.getElementById('gap-b').value.trim();
+  if (!a || !b) { alert('Enter two entities to compare.'); return; }
+
+  const btn = document.getElementById('gap-run');
+  btn.disabled = true;
+  btn.textContent = 'Analyzing…';
+
+  document.getElementById('gap-empty').style.display = 'none';
+  const results = document.getElementById('gap-results');
+  results.style.display = 'block';
+  results.innerHTML = `<div class="gap-thinking"><div class="dots"><span></span><span></span><span></span></div>Comparing ${escHtml(a)} vs ${escHtml(b)}…</div>`;
+
+  try {
+    // Pull relevant DB context for both entities
+    const dbCtx = buildGapDbContext(a, b);
+
+    const prompt = `You are a drone systems intelligence analyst for the DroneClear platform.
+
+Compare these two entities and identify gaps across three dimensions:
+- SPEC GAPS: performance, range, frequency, packet rate, power, weight, latency differences
+- COMPLIANCE GAPS: NDAA/Blue UAS status, FCC coverage list, country of origin, supply chain risk
+- SUPPLY CHAIN GAPS: Chinese OEM dependency, sole-source risk, lead time, availability
+
+Entity A: ${a}
+Entity B: ${b}
+
+${dbCtx ? 'FORGE DATABASE CONTEXT:\n' + dbCtx : ''}
+
+Respond ONLY with a JSON array. Each item:
+{
+  "category": "spec" | "compliance" | "supply_chain",
+  "severity": "critical" | "warning" | "info",
+  "title": "short gap title",
+  "detail": "1-2 sentence explanation with specific numbers where known"
+}
+
+Maximum 8 gaps. Be specific and factual. If a gap favors one entity, say which.`;
+
+    const usedKey = (provider === 'anthropic' && apiKey) ? apiKey : null;
+    let gaps = [];
+
+    if (usedKey) {
+      // Claude API
+      const res = await fetch('https://api.anthropic.com/v1/messages', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'x-api-key': usedKey, 'anthropic-version': '2023-06-01' },
+        body: JSON.stringify({
+          model: 'claude-sonnet-4-20250514',
+          max_tokens: 1000,
+          messages: [{ role: 'user', content: prompt }]
+        })
+      });
+      const data = await res.json();
+      const raw = data.content?.[0]?.text || '[]';
+      gaps = JSON.parse(raw.replace(/```json|```/g, '').trim());
+    } else if (geminiKey) {
+      // Gemini API
+      const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${geminiKey}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          contents: [{ parts: [{ text: prompt }] }],
+          generationConfig: { temperature: 0.2, maxOutputTokens: 1000 }
+        })
+      });
+      const data = await res.json();
+      const raw = data.candidates?.[0]?.content?.parts?.[0]?.text || '[]';
+      gaps = JSON.parse(raw.replace(/```json|```/g, '').trim());
+    } else {
+      // No API key — show prompt to configure
+      results.innerHTML = `<div class="gap-empty"><i class="ph ph-key"></i><span>API key required</span><span style="font-size:10px;color:var(--g3);margin-top:2px;">Configure Claude or Gemini in Settings</span></div>`;
+      btn.disabled = false; btn.textContent = 'Run Gap Analysis';
+      return;
+    }
+
+    renderGapResults(a, b, gaps);
+  } catch(e) {
+    results.innerHTML = `<div class="gap-empty"><i class="ph ph-warning"></i><span>Analysis failed</span><span style="font-size:10px;color:var(--g3);">${escHtml(String(e))}</span></div>`;
+  }
+
+  btn.disabled = false;
+  btn.textContent = 'Run Gap Analysis';
+}
+
+function buildGapDbContext(a, b) {
+  if (!window._forgeDb) return '';
+  const db = window._forgeDb;
+  const aLow = a.toLowerCase(), bLow = b.toLowerCase();
+  const lines = [];
+
+  // Search platforms
+  const platforms = db.drone_models || db.platforms || [];
+  for (const p of platforms) {
+    const name = (p.name || p.model || '').toLowerCase();
+    if (name.includes(aLow) || name.includes(bLow)) {
+      lines.push(`Platform: ${p.name || p.model} | ${JSON.stringify(p).slice(0,300)}`);
+    }
+  }
+
+  // Search components across all categories
+  const components = db.components || {};
+  for (const [cat, items] of Object.entries(components)) {
+    if (!Array.isArray(items)) continue;
+    for (const item of items) {
+      const name = (item.name || item.model || '').toLowerCase();
+      if (name.includes(aLow) || name.includes(bLow)) {
+        lines.push(`Component [${cat}]: ${item.name || item.model} | ${JSON.stringify(item).slice(0,300)}`);
+      }
+    }
+  }
+
+  return lines.slice(0, 10).join('\n');
+}
+
+function renderGapResults(a, b, gaps) {
+  const results = document.getElementById('gap-results');
+  if (!gaps.length) {
+    results.innerHTML = `<div class="gap-empty"><i class="ph ph-check-circle"></i><span>No significant gaps found</span></div>`;
+    return;
+  }
+
+  const byCategory = { spec: [], compliance: [], supply_chain: [] };
+  for (const g of gaps) byCategory[g.category]?.push(g);
+
+  const labels = { spec: 'Spec Gaps', compliance: 'Compliance Gaps', supply_chain: 'Supply Chain Gaps' };
+  let html = `<div style="font:600 10px var(--mono);color:var(--g2);margin-bottom:10px;padding-bottom:8px;border-bottom:1px solid var(--border);">${escHtml(a)} <span style="color:var(--g3)">vs</span> ${escHtml(b)}</div>`;
+
+  for (const [cat, items] of Object.entries(byCategory)) {
+    if (!items.length) continue;
+    html += `<div class="gap-section-lbl">${labels[cat]}</div>`;
+    for (const g of items) {
+      html += `<div class="gap-card ${g.severity}">
+        <div class="gap-card-title"><span class="gap-dot ${g.severity}"></span>${escHtml(g.title)}</div>
+        <div class="gap-card-body">${escHtml(g.detail)}</div>
+      </div>`;
+    }
+  }
+
+  html += `<div class="gap-cta">Ask Wingman to dive deeper — <a href="#" onclick="injectGapQuestion('${escHtml(a)}','${escHtml(b)}');return false;">open chat →</a></div>`;
+  results.innerHTML = html;
+}
+
+function injectGapQuestion(a, b) {
+  toggleGapPanel();
+  const ta = document.getElementById('text-input');
+  ta.value = `Tell me more about the compliance and supply chain differences between ${a} and ${b}`;
+  autoResize(ta);
+  updateSendBtn();
+  ta.focus();
+}
+
+// Store DB reference for gap analyzer context
+(function patchDbLoad() {
+  const origLoad = window.loadForgeDb || null;
+  // Hook into the forge DB fetch that already happens on page load
+  const _origFetch = window.fetch;
+  window.fetch = function(url, ...args) {
+    const p = _origFetch(url, ...args);
+    if (typeof url === 'string' && url.includes('forge_database')) {
+      p.then(r => r.clone().json().then(db => { window._forgeDb = db; }).catch(()=>{})).catch(()=>{});
+    }
+    return p;
+  };
+})();
+
 </script>
 </body>
 </html>
