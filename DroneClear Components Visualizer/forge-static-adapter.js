@@ -15,17 +15,27 @@
     let _ready = null; // Promise that resolves when data is loaded
 
     // ── Load static data on page load ──
-    _ready = window.__forgeAdapterReady = Promise.all([
-        fetch('/static/forge_database.json').then(r => r.json()),
-        fetch('/static/drone_parts_schema_v3.json').then(r => r.ok ? r.json() : null).catch(() => null),
-    ]).then(([db, schema]) => {
+    async function _loadDB() {
+        // Try multiple paths — works at any route depth
+        const paths = ['/static/forge_database.json', '../static/forge_database.json', 'forge_database.json'];
+        let db = null;
+        for (const p of paths) {
+            try { const r = await fetch(p); if (r.ok) { db = await r.json(); break; } } catch(e) {}
+        }
+        if (!db) throw new Error('forge_database.json not found at any path');
+        return db;
+    }
+
+    _ready = window.__forgeAdapterReady = _loadDB().then(db => {
         _db = db;
-        _schema = schema || db;  // Fallback: use forge_database as schema
-        // Populate schemaData global so components.js can use it without a separate fetch
+        _schema = db;
         if (typeof schemaData !== 'undefined' && _db.components) {
             Object.assign(schemaData, _db.components);
         }
-        console.log(`[Forge] Static DB loaded: ${Object.values(_db.components).reduce((a, b) => a + b.length, 0)} parts`);
+        console.log(`[Forge] Adapter loaded: ${Object.values(_db.components).reduce((a,b)=>a+b.length,0)} parts`);
+    }).catch(e => {
+        console.error('[Forge] Adapter failed to load DB:', e);
+        // Don't reject — let fetchAllCategories try its own paths
     });
 
     // ── Build synthetic category list from the database keys ──
