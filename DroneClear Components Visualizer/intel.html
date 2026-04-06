@@ -194,7 +194,11 @@ function ar(a){const t=(a.title||'')+' '+(a.summary||'')+' '+(a.body_text||'').s
 let ALL=[],cC='all',cS='all',cR='all';
 let dfrSubFilter='all';
 function renderDFR(){
-  const dfra=ALL.filter(a=>cat(a)==='dfr');
+  // Merge DFR_DB records with keyword-matched articles, dedup by id/url
+  const feedDfr=ALL.filter(a=>cat(a)==='dfr');
+  const dbIds=new Set((DFR_DB||[]).map(r=>r.id));
+  const merged=[...(DFR_DB||[]),...feedDfr.filter(a=>!dbIds.has(a.id))];
+  const dfra=merged;
   const q=(document.getElementById('dfr-search')?.value||'').toLowerCase().trim();
   let a=q?dfra.filter(x=>(x.title||'').toLowerCase().includes(q)||(x.summary||'').toLowerCase().includes(q)):dfra;
   a.sort((x,y)=>(y.pub_date||'').localeCompare(x.pub_date||''));
@@ -203,7 +207,7 @@ function renderDFR(){
   const SUBKW={regulatory:['fcc','ndaa','asda','omb','fhwa','waiver','part 108','regulation'],platform:['skydio','brinc','flock','parrot','autel','matrice','lemur','guardian'],market:['grounded','fleet','dealer','seiler','frontier','duncan','uvt','advexure'],grant:['cops','hsgp','grant','fema','funding','reimburs']};
   document.getElementById('dfr-filters').innerHTML=['all','regulatory','platform','market','grant'].map(s=>`<button class="fbtn${dfrSubFilter===s?' active':''}" onclick="dfrSubFilter='${s}';renderDFR()">${s.charAt(0).toUpperCase()+s.slice(1)}</button>`).join('');
   if(dfrSubFilter!=='all'){const kws=SUBKW[dfrSubFilter]||[];a=a.filter(x=>{const t=((x.title||'')+(x.summary||'')).toLowerCase();return kws.some(k=>t.includes(k));});}
-  document.getElementById('dfr-stats').innerHTML=`<span>DFR Feed · <b style="color:var(--dfr)">${a.length}</b> articles · <b style="color:var(--green)">${dfra.length}</b> total DFR in pipeline</span>`;
+  document.getElementById('dfr-stats').innerHTML=`<span>DFR Feed · <b style="color:var(--dfr)">${a.length}</b> articles · <b style="color:var(--green)">${(DFR_DB||[]).length}</b> in DFR DB + <b style="color:var(--amber)">${feedDfr.length}</b> from feed</span>`;
   const l=document.getElementById('dfr-list');
   if(!a.length){l.innerHTML='<div style="text-align:center;padding:40px;color:var(--text-d)">No DFR articles match.</div>';return;}
   l.innerHTML=a.slice(0,60).map(x=>{
@@ -285,9 +289,102 @@ function cr(){document.getElementById('ro').classList.remove('open');document.ge
 function oe(){if(ru)window.open(ru,'_blank');}
 document.addEventListener('keydown',e=>{if(e.key==='Escape'&&document.getElementById('ro').classList.contains('open'))cr();});
 
+// ── FORGE INTEL ADAPTERS ──
+// Convert forge_intel.json sections into normalized records for each vertical
+
+function forgeIntelToDefenseRecords(fi){
+  if(!fi||!fi.contracts) return [];
+  const records=[];
+  const TODAY=new Date().toISOString().slice(0,10);
+
+  // Contracts → defense records
+  (fi.contracts||[]).forEach((c,i)=>{
+    records.push({
+      id:'forge_contract_'+i,
+      title:(c.program||'Defense Contract')+' — '+(c.awardee||''),
+      summary:`${c.awardee||''} | ${c.value||'Undisclosed'} | ${c.type||''} | ${c.notes||''}`,
+      pub_date:c.date||TODAY, source:'forge_intel',
+      vertical_tag:'defense', data_category:'procurement',
+      paywall:false, url:c.url||'https://www.diu.mil',
+    });
+  });
+
+  // Funding rounds (defense-tagged) → defense records
+  (fi.funding||[]).filter(f=>f.type&&(f.type.toLowerCase().includes('defense')||f.type.toLowerCase().includes('series'))).forEach((f,i)=>{
+    records.push({
+      id:'forge_funding_def_'+i,
+      title:(f.company||'')+ ' raises '+(f.amount||'')+(f.type?' ('+f.type+')':''),
+      summary:`${f.company||''} | ${f.amount||''} | ${f.valuation?'Valuation: '+f.valuation+' | ':''} ${f.note||''}`,
+      pub_date:f.date||TODAY, source:'forge_intel',
+      vertical_tag:'defense', data_category:'financial',
+      paywall:false, url:f.url||'https://dronelife.com',
+    });
+  });
+
+  // Market stats → one summary record
+  if(fi.market_stats){
+    const ms=fi.market_stats;
+    records.push({
+      id:'forge_market_stats',
+      title:`Defense UAS Market — ${ms['2026_ytd_funding']||''} YTD, ${ms['2025_defense_share']||''} of 2025 funding`,
+      summary:`2025 total: ${ms['2025_total_funding']||''}. Defense share: ${ms['2025_defense_share']||''}. 2026 YTD: ${ms['2026_ytd_funding']||''}. Largest contract: ${ms['largest_contract_2026']||''}. ${ms['key_trend']||''}`,
+      pub_date:TODAY, source:'forge_intel',
+      vertical_tag:'defense', data_category:'financial',
+      paywall:false, url:'https://dronelife.com',
+    });
+  }
+
+  return records;
+}
+
+function forgeIntelToCommercialRecords(fi){
+  if(!fi) return [];
+  const records=[];
+  const TODAY=new Date().toISOString().slice(0,10);
+
+  // Funding rounds (non-defense) → commercial records
+  (fi.funding||[]).filter(f=>!f.type||!f.type.toLowerCase().includes('defense')).forEach((f,i)=>{
+    records.push({
+      id:'forge_funding_com_'+i,
+      title:(f.company||'')+' raises '+(f.amount||'')+(f.type?' ('+f.type+')':''),
+      summary:`${f.company||''} | ${f.amount||''} | ${f.valuation?'Valuation: '+f.valuation+' | ':''} ${f.note||''}`,
+      pub_date:f.date||TODAY, source:'forge_intel',
+      vertical_tag:'commercial', data_category:'financial',
+      paywall:false, url:f.url||'https://dronelife.com',
+    });
+  });
+
+  // Commercial sources → platform records
+  (fi.commercial_sources||[]).slice(0,10).forEach((s,i)=>{
+    records.push({
+      id:'forge_com_source_'+i,
+      title:(s.name||'')+(s.type?' — '+s.type:''),
+      summary:`${s.type||''} | ${s.parts?s.parts+' parts/products | ':''}${s.note||''}`,
+      pub_date:TODAY, source:'forge_intel',
+      vertical_tag:'commercial', data_category:'platform_intel',
+      paywall:false, url:s.url||'',
+    });
+  });
+
+  // Grants/awards that are commercial/DFR/program → commercial
+  (fi.grants_awards||[]).filter(g=>g.type&&!g.type.toLowerCase().includes('defense')&&!g.type.toLowerCase().includes('legislation')).forEach((g,i)=>{
+    records.push({
+      id:'forge_grant_com_'+i,
+      title:(g.program||'')+(g.date?' — '+g.date:''),
+      summary:`${g.type||''} | ${g.note||''} | ${g.amount||''}`,
+      pub_date:g.date||TODAY, source:'forge_intel',
+      vertical_tag:'commercial', data_category:'grant',
+      paywall:false, url:g.url||'',
+    });
+  });
+
+  return records;
+}
+
 // ── DEFENSE VERTICAL ──
 let defSubFilter='all';
 let DEFENSE_DB=[];
+let DFR_DB=[];
 function renderDefense(){
   let a=[...DEFENSE_DB];
   // also pull keyword-matched articles from main feed
@@ -373,10 +470,13 @@ Promise.all([
   fetch('intel_articles.json').then(r=>r.ok?r.json():[]).catch(()=>[]),
   fetch('../data/defense/defense_master.json').then(r=>r.ok?r.json():{records:[]}).catch(()=>({records:[]})),
   fetch('../data/commercial/commercial_master.json').then(r=>r.ok?r.json():{records:[]}).catch(()=>({records:[]})),
-]).then(([articles, defDB, comDB])=>{
+  fetch('../data/dfr/dfr_master.json').then(r=>r.ok?r.json():{records:[]}).catch(()=>({records:[]})),
+  fetch('forge_intel.json').then(r=>r.ok?r.json():{}).catch(()=>({})),
+]).then(([articles, defDB, comDB, dfrDB, forgeIntel])=>{
   ALL=articles;
-  DEFENSE_DB=defDB.records||[];
-  COMMERCIAL_DB=comDB.records||[];
+  DEFENSE_DB=[...(defDB.records||[]), ...forgeIntelToDefenseRecords(forgeIntel)];
+  COMMERCIAL_DB=[...(comDB.records||[]), ...forgeIntelToCommercialRecords(forgeIntel)];
+  DFR_DB=(dfrDB.records||[]).filter(r=>r.vertical_tag==='dfr');
   rFi();renderFeed();renderDFR();renderDefense();renderCommercial();rP();rC();rR();
 }).catch(e=>{document.getElementById('feed-list').innerHTML=`<div style="text-align:center;padding:40px;color:var(--red)">Error: ${e.message}</div>`;});
 
