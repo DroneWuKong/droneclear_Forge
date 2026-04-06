@@ -580,6 +580,17 @@ def sync_handbook_data():
         else:
             print(f"  WARNING: {fname} not found in repo — intel pages will be empty")
 
+    # pie_trends.json — synced by pie-pipeline workflow via sync-forge-data
+    trends_src = os.path.join(SRC_DIR, 'pie_trends.json')
+    if os.path.exists(trends_src):
+        with open(trends_src) as f:
+            trends_data = json.load(f)
+        n_trends = len(trends_data.get('trends', []))
+        n_proj   = len(trends_data.get('projections', []))
+        print(f"  pie_trends.json: {n_trends} trends, {n_proj} projections")
+    else:
+        print("  pie_trends.json: not found — trends panel will show empty state (appears after first PIE run)")
+
     # Cleanup
     shutil.rmtree(DATA_CLONE_DIR, ignore_errors=True)
     print("  Data sync complete.\n")

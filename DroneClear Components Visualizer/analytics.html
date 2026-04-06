@@ -151,6 +151,7 @@ a{color:var(--blue);text-decoration:none}a:hover{text-decoration:underline}
   <button class="tab" data-tab="users" data-locked="1">User Signals <i class="ph ph-lock-simple" style="font-size:10px;opacity:.5;margin-left:2px"></i></button>
   <button class="tab" data-tab="landscape">UAS Landscape</button>
   <button class="tab" data-tab="usage" data-locked="1">Usage <i class="ph ph-lock-simple" style="font-size:10px;opacity:.5;margin-left:2px"></i></button>
+  <button class="tab" data-tab="trends">Trends <span class="count" id="badge-trends">—</span></button>
 </div>
 
 <div class="content">
@@ -250,6 +251,33 @@ a{color:var(--blue);text-decoration:none}a:hover{text-decoration:underline}
                 </div>
 
 
+  <div class="panel" id="panel-trends">
+    <div class="an-stats" id="tr-stats"></div>
+    <div id="tr-insufficient" class="an-empty" style="display:none">
+      <i class="ph ph-chart-line-up" style="font-size:28px;margin-bottom:8px"></i>
+      <span>Trend engine needs ≥3 daily snapshots</span>
+      <span style="font-size:10px;color:var(--an-text-muted);margin-top:4px">Snapshots accumulate automatically each PIE pipeline run.<br>Check back after a few days.</span>
+    </div>
+    <div id="tr-body" style="display:none">
+      <div class="an-grid-2">
+        <div class="an-section">
+          <h3 class="an-section-title"><i class="ph ph-trend-up"></i> 30 / 60 / 90-Day Projections</h3>
+          <div id="tr-projections"></div>
+        </div>
+        <div class="an-section">
+          <h3 class="an-section-title"><i class="ph ph-warning-circle"></i> Anomalies Detected</h3>
+          <div id="tr-anomalies"></div>
+        </div>
+      </div>
+      <div class="an-section">
+        <h3 class="an-section-title"><i class="ph ph-chart-line"></i> Metric Sparklines</h3>
+        <p style="font-size:11px;color:var(--an-text-muted);margin:-8px 0 12px">All tracked metrics over the snapshot history window</p>
+        <div id="tr-sparklines"></div>
+      </div>
+    </div>
+  </div>
+
+
 <!-- Admin gate overlay -->
 <div id="admin-gate" style="display:none;position:fixed;inset:0;background:rgba(10,10,8,.92);z-index:500;align-items:center;justify-content:center;">
   <div style="background:#1a1a14;border:1px solid #2e2e26;border-radius:10px;padding:28px 32px;width:320px;text-align:center;">
@@ -299,7 +327,7 @@ a{color:var(--blue);text-decoration:none}a:hover{text-decoration:underline}
 
 <script>
 (function(){'use strict';
-var DB,INTEL=[],COS=[],PROGS=[],PLATS=[],LIVE,GAPS,TOPICMAP,DASH;
+var DB,INTEL=[],COS=[],PROGS=[],PLATS=[],LIVE,GAPS,TOPICMAP,DASH,TRENDS;
 var FN='/.netlify/functions/analytics';
 var DASH_FN='/.netlify/functions/analytics-dashboard';
 var KEY=new URLSearchParams(location.search).get('key')||'forge-admin-2026';
@@ -393,6 +421,8 @@ async function loadAll(){
     try{var r=await fetch(FN+'?key='+KEY+'&range=30');if(r.ok)LIVE=await r.json()}catch(e){}
     try{var d=await fetch(DASH_FN+'?surface=forge&days=30');if(d.ok)DASH=await d.json()}catch(e){}
     try{var g=await fetch('/static/gap_analysis_latest.json');if(g.ok)GAPS=await g.json()}catch(e){}
+    try{var tr=await fetch('/static/pie_trends.json');if(tr.ok)TRENDS=await tr.json()}catch(e){}
+    if(!TRENDS)try{var tr2=await fetch('/pie_trends.json');if(tr2.ok)TRENDS=await tr2.json()}catch(e){}
     $('an-btn').classList.remove('loading');
     $('an-ts').textContent=new Date().toLocaleString();
     renderAll();
@@ -419,7 +449,7 @@ function metrics(){
 }
 
 function renderAll(){if(!DB){$('panel-overview').innerHTML='<div class="an-empty">Failed to load database</div>';return}
-    var m=metrics();renderOverview(m);renderParts(m);renderIntel(m);renderUsers(m);renderLandscape(m);renderUsage();
+    var m=metrics();renderOverview(m);renderParts(m);renderIntel(m);renderUsers(m);renderLandscape(m);renderUsage();renderTrends();
     $('badge-parts').textContent=fmt(m.tp);$('badge-intel').textContent=fmt(INTEL.length);
 }
 
@@ -502,6 +532,103 @@ function renderUsers(){
     $('us-cats').innerHTML=sc2.length?sc2.map(function(e){return bar(e[0],e[1],mc,'teal')}).join(''):'<div class="an-empty">Category data builds as users interact</div>';
     var dk=Object.keys(daily).sort(),dv=dk.map(function(k){return daily[k]?daily[k].count||0:0}),dl=dk.map(function(k){return k.substring(5)});
     $('us-daily').innerHTML=dk.length?spark(dv,dl):'<div class="an-empty">Daily activity appears after sessions</div>';
+}
+
+function renderTrends(){
+  var $ = function(id){return document.getElementById(id);};
+  if(!TRENDS||TRENDS.status==='insufficient_data'||!TRENDS.trends){
+    $('tr-insufficient').style.display='flex';
+    $('tr-body').style.display='none';
+    $('tr-stats').innerHTML=sc('—','Snapshots','Need ≥3 for trends','');
+    $('badge-trends').textContent='—';
+    return;
+  }
+  var projs=TRENDS.projections||[];
+  var trs=TRENDS.trends||[];
+  var anoms=TRENDS.anomalies||[];
+  var span=TRENDS.history_span||'—';
+  var nsnaps=TRENDS.n_snapshots||0;
+
+  $('tr-insufficient').style.display='none';
+  $('tr-body').style.display='block';
+  $('badge-trends').textContent=projs.length;
+
+  // Stats bar
+  var sigStrong=trs.filter(function(t){return t.signal==='strong';}).length;
+  var sigMod=trs.filter(function(t){return t.signal==='moderate';}).length;
+  var rising=trs.filter(function(t){return t.direction==='rising';}).length;
+  var falling=trs.filter(function(t){return t.direction==='falling';}).length;
+  $('tr-stats').innerHTML=[
+    sc(nsnaps,'Snapshots',span,'accent-blue'),
+    sc(trs.length,'Metrics Tracked','','accent-green'),
+    sc(projs.length,'Projections','','accent-purple'),
+    sc(sigStrong+sigMod,'Reliable Signals','strong+moderate','accent-amber'),
+    sc(rising,'Rising','direction','accent-red'),
+    sc(falling,'Falling','direction',''),
+  ].join('');
+
+  // Projections table
+  var DIR_ICON={'rising':'<i class="ph ph-trend-up" style="color:var(--orange)"></i>',
+                'falling':'<i class="ph ph-trend-down" style="color:var(--teal)"></i>',
+                'stable':'<i class="ph ph-minus" style="color:var(--an-text-muted)"></i>'};
+  var SIG_COLOR={'strong':'accent-green','moderate':'accent-amber','weak':'','noisy':'','insufficient_data':''};
+  if(projs.length){
+    var rows=projs.map(function(p){
+      var dir=DIR_ICON[p.direction]||'';
+      var conf=p.confidence?Math.round(p.confidence*100)+'%':'—';
+      var u=p.unit||'';
+      return '<div class="an-bar" style="margin-bottom:10px">'+
+        '<div class="an-bar-header">'+
+          '<span class="an-bar-label">'+dir+' '+p.label+'</span>'+
+          '<span class="an-bar-value an-stat '+SIG_COLOR[p.signal||'']+'">R²='+conf+'</span>'+
+        '</div>'+
+        '<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:4px;margin-top:4px">'+
+          '<div style="background:var(--card);border:1px solid var(--border);border-radius:4px;padding:5px 8px;font-size:10px;text-align:center"><div style="color:var(--an-text-muted)">30d</div><div style="font:600 12px var(--mono);color:var(--white)">'+p.p30+' '+u+'</div></div>'+
+          '<div style="background:var(--card);border:1px solid var(--border);border-radius:4px;padding:5px 8px;font-size:10px;text-align:center"><div style="color:var(--an-text-muted)">60d</div><div style="font:600 12px var(--mono);color:var(--white)">'+p.p60+' '+u+'</div></div>'+
+          '<div style="background:var(--card);border:1px solid var(--border);border-radius:4px;padding:5px 8px;font-size:10px;text-align:center"><div style="color:var(--an-text-muted)">90d</div><div style="font:600 12px var(--mono);color:var(--white)">'+p.p90+' '+u+'</div></div>'+
+        '</div>'+
+        (p.interpretation?'<div style="font-size:10px;color:var(--an-text-muted);margin-top:4px;line-height:1.4">'+p.interpretation+'</div>':'')+
+      '</div>';
+    });
+    $('tr-projections').innerHTML=rows.join('');
+  } else {
+    $('tr-projections').innerHTML='<div class="an-empty">No projections yet</div>';
+  }
+
+  // Anomalies
+  if(anoms.length){
+    var SEV={'warning':'accent-amber','info':'accent-blue','critical':'accent-red'};
+    $('tr-anomalies').innerHTML=anoms.map(function(a){
+      return '<div class="an-bar an-stat '+SEV[a.severity||'info']+'">'+
+        '<div class="an-bar-header"><span class="an-bar-label">'+a.type.toUpperCase()+'</span><span class="an-bar-value">'+a.date+'</span></div>'+
+        '<div style="font-size:11px;color:var(--an-text-muted);margin-top:2px">'+a.message+'</div>'+
+      '</div>';
+    }).join('');
+  } else {
+    $('tr-anomalies').innerHTML='<div class="an-empty" style="color:var(--teal)"><i class="ph ph-check-circle"></i> No anomalies detected</div>';
+  }
+
+  // Sparklines for all tracked metrics
+  if(trs.length){
+    var sparksHtml=trs.map(function(t){
+      if(!t.values||t.values.length<2) return '';
+      var vals=t.values.map(Number);
+      var unit=t.unit||'';
+      var dir=DIR_ICON[t.direction]||'';
+      var cur=t.current!==undefined?t.current:'—';
+      return '<div style="margin-bottom:14px">'+
+        '<div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:3px">'+
+          '<span style="font-size:11px;color:var(--white);font-weight:600">'+dir+' '+t.label+'</span>'+
+          '<span style="font:600 12px var(--mono);color:var(--white)">'+cur+' '+unit+'</span>'+
+        '</div>'+
+        spark(vals, t.dates||[])+
+        '<div style="font-size:10px;color:var(--an-text-muted);margin-top:2px">'+
+          'Signal: '+(t.signal||'?')+' · R²='+(t.r2||0).toFixed(2)+' · slope='+(t.slope_per_day||0).toFixed(3)+'/day'+
+        '</div>'+
+      '</div>';
+    }).join('');
+    $('tr-sparklines').innerHTML=sparksHtml;
+  }
 }
 
 function renderUsage(){
