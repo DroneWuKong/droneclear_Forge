@@ -46,7 +46,8 @@ PAGES = {
     'compliance.html': 'compliance/index.html',
     'compare.html': 'compare/index.html',
     'cost.html': 'cost/index.html',
-    'intel.html': 'intel/index.html',
+    'intel-home.html': 'intel/index.html',
+    'intel.html': 'intel/feed/index.html',
     'vault.html': 'vault/index.html',
     'troubleshoot.html': 'troubleshoot/index.html',  # Unlisted — no nav links
     'industry.html': 'industry/index.html',
@@ -200,6 +201,11 @@ SEO_META = {
         'Drone Platform Compare — Side-by-Side Spec Comparison',
         'Compare 2-3 drone platforms side by side. Specs, compliance, flight time, payload, thermal cameras, and MAVLink support with best/worst highlighting.',
         'drone comparison tool, compare drone specs, platform comparison, UAS specifications',
+    ),
+    'intel-home.html': (
+        'Intel — UAS Intelligence Hub',
+        'Defense news, industry funding, platform intelligence and analytics across the UAS ecosystem.',
+        'drone intelligence, UAS news, defense drone news',
     ),
     'intel.html': (
         'Intel Feed — Live Defense & Drone Industry News',
