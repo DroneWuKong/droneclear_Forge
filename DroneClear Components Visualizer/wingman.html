@@ -464,7 +464,7 @@
       <div class="topper"></div>
       <div class="body">
         <h2>Welcome to <span id="welcome-name">Wingman AI</span></h2>
-        <p>Drone systems intelligence powered by the Forge KB and live web search. Just start typing — powered by Gemini AI. Switch to Claude in Settings with your own API key.</p>
+        <p>Drone systems intelligence powered by the Forge KB, 861 intel articles, and live web search. Just start typing — powered by Gemini AI. Switch to Claude in Settings with your own API key.</p>
       </div>
     </div>
     <div class="stat-grid">
@@ -473,6 +473,7 @@
       <div class="stat-card"><div class="num" id="stat-handbook">—</div><div class="lbl">Handbook Pages</div></div>
       <div class="stat-card"><div class="num" id="stat-categories">—</div><div class="lbl">Categories</div></div>
       <div class="stat-card"><div class="num" id="stat-firmware">—</div><div class="lbl">FW Targets</div></div>
+      <div class="stat-card"><div class="num" id="stat-intel">—</div><div class="lbl">Intel Articles</div></div>
     </div>
     <div class="starters-label">
       <span class="slash">//</span>
@@ -523,8 +524,14 @@
       <label class="cfg-label">Anthropic API Key</label>
       <input type="password" id="api-key-input" placeholder="sk-ant-api03-xxxxxxxxxxxx"/>
       <div id="api-key-hint" style="font-size:10px;color:var(--g3);margin:-10px 0 16px;line-height:1.5;">
-        Stored in your browser only — never sent to our server.
+        Your key — stored in browser only, calls go direct to Anthropic.<br>
+        Or leave blank and use the <strong style="color:var(--cyan)">server proxy</strong> below (your key stays on the server).
         <a href="https://console.anthropic.com/settings/keys" target="_blank" style="color:var(--cyan);">Get a key →</a>
+      </div>
+      <label class="cfg-label">Proxy Secret <span style="font-size:10px;color:var(--g3)">(unlocks server-side Claude — private)</span></label>
+      <input type="password" id="proxy-secret-input" placeholder="your-proxy-secret"/>
+      <div style="font-size:10px;color:var(--g3);margin:-10px 0 16px;line-height:1.5;">
+        Set <code>WINGMAN_PROXY_SECRET</code> in Netlify env vars. Enter the same value here to use server Claude without exposing your API key.
       </div>
     </div>
 
@@ -616,6 +623,7 @@ var apiKey     = localStorage.getItem('wingman_api_key') || '';
 var provider   = localStorage.getItem('wingman_provider') || 'gemini'; // gemini | groq | anthropic
 var geminiKey  = localStorage.getItem('wingman_gemini_key') || '';
 var groqKey    = localStorage.getItem('wingman_groq_key') || '';
+var proxySecret = localStorage.getItem('wingman_proxy_secret') || '';
 
 var GH_RAW = 'https://raw.githubusercontent.com/DroneWuKong';
 
@@ -879,6 +887,88 @@ async function loadRAG() {
     }
   } catch(e) { console.warn('Orqa configs load skipped:', e.message); }
 
+  // ── Intel DB — articles, companies, programs ──────────────────────────────
+  try {
+    const [artRes, cosRes, progRes] = await Promise.all([
+      fetch('intel_articles.json').catch(() => null),
+      fetch('intel_companies.json').catch(() => null),
+      fetch('intel_programs.json').catch(() => null),
+    ]);
+
+    let intelCount = 0;
+
+    // Articles — index by title + summary, prioritise recent
+    if (artRes?.ok) {
+      const articles = await artRes.json();
+      // Sort newest first, take top 300 (keeps RAG context fast)
+      const sorted = [...articles]
+        .filter(a => a.title)
+        .sort((a, b) => (b.pub_date || '').localeCompare(a.pub_date || ''));
+      const top = sorted.slice(0, 300);
+      for (const a of top) {
+        const tags  = a.entities?.tags || [];
+        const cos   = a.entities?.companies || [];
+        const text  = [
+          a.title,
+          tags.join(' '),
+          cos.join(' '),
+          (a.summary || a.body_text || '').slice(0, 400),
+        ].join(' ').toLowerCase();
+        ragIndex.push({
+          cat: 'intel_article',
+          name: a.title,
+          text,
+          data: {
+            title: a.title,
+            pub_date: a.pub_date || '',
+            site: a.site || '',
+            url: a.url || '',
+            tags,
+            companies: cos,
+            summary: a.summary || (a.body_text || '').slice(0, 300),
+          },
+        });
+        intelCount++;
+      }
+    }
+
+    // Companies — index name + tags + programs
+    if (cosRes?.ok) {
+      const companies = await cosRes.json();
+      for (const c of companies) {
+        const text = [c.name, ...(c.tags || []), ...(c.programs || [])].join(' ').toLowerCase();
+        ragIndex.push({
+          cat: 'intel_company',
+          name: c.name,
+          text,
+          data: c,
+        });
+        intelCount++;
+      }
+    }
+
+    // Programs — index name + tags + participants
+    if (progRes?.ok) {
+      const programs = await progRes.json();
+      for (const p of programs) {
+        const text = [p.name, ...(p.tags || []), ...(p.participants || [])].join(' ').toLowerCase();
+        ragIndex.push({
+          cat: 'intel_program',
+          name: p.name,
+          text,
+          data: p,
+        });
+        intelCount++;
+      }
+    }
+
+    if (intelCount > 0) {
+      ragStats.categories.add('intel');
+      if (!kbSources.includes('intel')) kbSources.push('intel');
+      console.log(`Intel DB loaded: ${intelCount} items (articles + companies + programs)`);
+    }
+  } catch(e) { console.warn('Intel DB load skipped:', e.message); }
+
   buildIDF(); // compute TF-IDF weights now that corpus is loaded
   buildComponentCache(); // build category lookup cache for validator
   updateStats();
@@ -928,6 +1018,7 @@ function updateStats() {
   el('stat-handbook', ragStats.handbook || '—');
   el('stat-categories', ragStats.categories.size || '—');
   el('stat-firmware', ragStats.firmware || '—');
+  el('stat-intel', ragIndex.filter(r => r.cat === 'intel_article').length || '—');
 }
 
 // ─── 1. QUERY EXPANSION — synonym/alias map ───────────────────
@@ -1114,7 +1205,7 @@ function intentToParams(intents) {
   if (primary === 'wiring')          { params.maxComp = 15; params.maxHb = 8;  params.lambdaMMR = 0.5; }
   if (primary === 'compliance')      { params.maxComp = 20; params.maxHb = 5;  params.lambdaMMR = 0.6; }
   if (primary === 'incompat')        { params.maxComp = 25; params.maxHb = 3;  params.lambdaMMR = 0.7; }
-  if (primary === 'intel')           { params.maxComp = 5;  params.maxHb = 3;  params.lambdaMMR = 0.7; }
+  if (primary === 'intel')           { params.maxComp = 5;  params.maxHb = 3;  params.lambdaMMR = 0.7; params.boostCats = ['intel_article','intel_company','intel_program']; }
   if (primary === 'firmware_version'){ params.maxComp = 10; params.maxHb = 6;  params.lambdaMMR = 0.8; }
   if (primary === 'validate')        { params.maxComp = 30; params.maxHb = 3;  params.lambdaMMR = 0.6; }
   return params;
@@ -1191,7 +1282,8 @@ function ragSearch(query, maxComponents, maxHandbook, contextHistory) {
   if (scored.length > 0) {
     const fwResults    = scored.filter(s => s.cat === 'firmware');
     const orqaResults  = scored.filter(s => s.cat === 'orqa_boards');
-    const compResults  = scored.filter(s => s.cat !== 'firmware' && s.cat !== 'orqa_boards');
+    const intelResults = scored.filter(s => ['intel_article','intel_company','intel_program'].includes(s.cat));
+    const compResults  = scored.filter(s => s.cat !== 'firmware' && s.cat !== 'orqa_boards' && !['intel_article','intel_company','intel_program'].includes(s.cat));
 
     // ── Firmware version matrix entries
     const fwvResults = scored.filter(s => s.cat === 'firmware_versions');
@@ -1333,6 +1425,50 @@ function ragSearch(query, maxComponents, maxHandbook, contextHistory) {
     ctx += '\n\n## RELEVANT HANDBOOK SECTIONS\n';
     for (const h of hScored) {
       ctx += `\n### ${h.title} (${h.src})\n${h.full.slice(0, 800)}\n`;
+    }
+  }
+
+  // ── Intel DB results: articles, companies, programs
+  if (intelResults.length > 0) {
+    const articles = intelResults.filter(s => s.cat === 'intel_article');
+    const companies = intelResults.filter(s => s.cat === 'intel_company');
+    const programs  = intelResults.filter(s => s.cat === 'intel_program');
+
+    if (articles.length > 0) {
+      ctx += '\n\n## RECENT INTEL ARTICLES\n';
+      ctx += `(From DroneClear intel feed — ${articles.length} relevant articles)\n`;
+      for (const s of articles.slice(0, 8)) {
+        const d = s.data;
+        const date  = d.pub_date ? `[${d.pub_date}]` : '';
+        const tags  = d.tags?.length ? ` | tags: ${d.tags.join(', ')}` : '';
+        const cos   = d.companies?.length ? ` | entities: ${d.companies.join(', ')}` : '';
+        ctx += `\n${date} ${d.site?.toUpperCase() || 'UNKNOWN'}: ${d.title}${tags}${cos}\n`;
+        if (d.summary) ctx += `  ${d.summary.slice(0, 300)}\n`;
+        if (d.url)     ctx += `  Source: ${d.url}\n`;
+      }
+    }
+
+    if (companies.length > 0) {
+      ctx += '\n\n## TRACKED COMPANIES (INTEL)\n';
+      for (const s of companies.slice(0, 5)) {
+        const d = s.data;
+        ctx += `\n${d.name}`;
+        if (d.tags?.length)     ctx += ` | ${d.tags.join(', ')}`;
+        if (d.programs?.length) ctx += ` | programs: ${d.programs.join(', ')}`;
+        ctx += '\n';
+        if (d.sources?.length)  ctx += `  Sources: ${d.sources.slice(0,3).map(s => s.url || s).join(' | ')}\n`;
+      }
+    }
+
+    if (programs.length > 0) {
+      ctx += '\n\n## TRACKED PROGRAMS (INTEL)\n';
+      for (const s of programs.slice(0, 4)) {
+        const d = s.data;
+        ctx += `\n${d.name}`;
+        if (d.tags?.length)         ctx += ` | ${d.tags.join(', ')}`;
+        if (d.participants?.length)  ctx += ` | participants: ${d.participants.join(', ')}`;
+        ctx += '\n';
+      }
     }
   }
 
@@ -2073,6 +2209,7 @@ function openCfg() {
   document.getElementById('api-key-input').value = apiKey;
   document.getElementById('gemini-key-input').value = geminiKey;
   document.getElementById('groq-key-input').value = groqKey;
+  document.getElementById('proxy-secret-input').value = proxySecret;
   setProvider(provider);
   document.getElementById('cfg-overlay').classList.add('open');
 }
@@ -2254,8 +2391,9 @@ async function send() {
     const keyName = provider === 'gemini' ? 'Google Gemini' : provider === 'groq' ? 'Groq' : 'Anthropic';
     const keyUrl  = provider === 'gemini' ? 'https://aistudio.google.com/apikey' : provider === 'groq' ? 'https://console.groq.com' : 'https://console.anthropic.com/settings/keys';
 
-    // Gemini + Groq work without key (server proxy), Anthropic requires BYOK
-    if (!activeKey && provider !== 'gemini' && provider !== 'groq') {
+    // Gemini + Groq work without key (server proxy)
+    // Anthropic works with BYOK key OR proxy secret
+    if (!activeKey && !proxySecret && provider !== 'gemini' && provider !== 'groq') {
       messages.push({ role: 'assistant', content: [], text: `Please add your ${keyName} API key in Settings (gear button) to start chatting.\n\n[Get a free key →](${keyUrl})`, searched: false });
       loading = false;
       hideThinking();
@@ -2348,21 +2486,33 @@ async function send() {
 
     } else {
       // ═══ ANTHROPIC API ═══
-      const res = await fetch('https://api.anthropic.com/v1/messages', {
+      // Use server proxy if proxy secret set and no BYOK key,
+      // or BYOK direct if user has their own key
+      const useProxy = proxySecret && !apiKey;
+      const claudeUrl = useProxy
+        ? '/.netlify/functions/claude-proxy'
+        : 'https://api.anthropic.com/v1/messages';
+      const claudeHeaders = { 'Content-Type': 'application/json' };
+      if (useProxy) {
+        claudeHeaders['x-proxy-secret'] = proxySecret;
+      } else {
+        claudeHeaders['x-api-key'] = apiKey;
+        claudeHeaders['anthropic-version'] = '2023-06-01';
+        claudeHeaders['anthropic-dangerous-direct-browser-access'] = 'true';
+      }
+      const claudeBody = {
+        model: 'claude-sonnet-4-5',
+        max_tokens: 4096,
+        system: buildPrompt(txt, hasImages),
+        messages: apiMessages,
+      };
+      // Web search only available on direct BYOK (not proxy, to avoid extra cost)
+      if (!useProxy) claudeBody.tools = [{ type: 'web_search_20250305', name: 'web_search' }];
+
+      const res = await fetch(claudeUrl, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'x-api-key': apiKey,
-          'anthropic-version': '2023-06-01',
-          'anthropic-dangerous-direct-browser-access': 'true',
-        },
-        body: JSON.stringify({
-          model: 'claude-sonnet-4-20250514',
-          max_tokens: 4096,
-          system: buildPrompt(txt, hasImages),
-          tools: [{ type: 'web_search_20250305', name: 'web_search' }],
-          messages: apiMessages,
-        }),
+        headers: claudeHeaders,
+        body: JSON.stringify(claudeBody),
       });
       const data = await res.json();
       for (const b of (data.content || [])) {
