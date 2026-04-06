@@ -15,12 +15,16 @@
     let _ready = null; // Promise that resolves when data is loaded
 
     // ── Load static data on page load ──
-    _ready = Promise.all([
+    _ready = window.__forgeAdapterReady = Promise.all([
         fetch('/static/forge_database.json').then(r => r.json()),
         fetch('/static/drone_parts_schema_v3.json').then(r => r.ok ? r.json() : null).catch(() => null),
     ]).then(([db, schema]) => {
         _db = db;
         _schema = schema || db;  // Fallback: use forge_database as schema
+        // Populate schemaData global so components.js can use it without a separate fetch
+        if (typeof schemaData !== 'undefined' && _db.components) {
+            Object.assign(schemaData, _db.components);
+        }
         console.log(`[Forge] Static DB loaded: ${Object.values(_db.components).reduce((a, b) => a + b.length, 0)} parts`);
     });
 

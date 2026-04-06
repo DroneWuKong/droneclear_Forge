@@ -12,6 +12,10 @@ async function initApp() {
     initBuildDrawer();
     injectShortcutsOverlay();
     initShortcuts();
+    // Wait for forge-static-adapter to finish loading DB before fetching schema/categories
+    if (window.__forgeAdapterReady) {
+        await window.__forgeAdapterReady;
+    }
     await fetchMasterSchema();
     await fetchAllCategories();
 }

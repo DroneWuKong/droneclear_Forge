@@ -5,18 +5,39 @@
 async function fetchAllCategories() {
     showLoader();
     try {
-        // Try multiple paths with retry
-        const urls = ['/static/forge_database.json', './static/forge_database.json', '../static/forge_database.json', 'forge_database.json'];
         let db = null;
+
+        // 1. If schemaData already populated by adapter, use it directly
+        if (schemaData && Object.keys(schemaData).length > 0) {
+            const categories = Object.keys(schemaData).map(cat => ({
+                slug: cat,
+                name: formatTitle(cat),
+                component_count: Array.isArray(schemaData[cat]) ? schemaData[cat].length : 0,
+            }));
+            if (categories.length > 0) {
+                renderSidebar(categories);
+                const params = new URLSearchParams(window.location.search);
+                const requestedCat = params.get('category');
+                if (requestedCat && categories.some(c => c.slug === requestedCat)) {
+                    selectCategory(requestedCat);
+                } else {
+                    selectCategory(categories[0].slug);
+                }
+                hideLoader();
+                return;
+            }
+        }
+
+        // 2. Direct fetch with multiple paths + retry
+        const urls = ['/static/forge_database.json', '../static/forge_database.json', 'forge_database.json'];
         for (const url of urls) {
             try {
                 const res = await fetch(url);
                 if (res.ok) { db = await res.json(); break; }
             } catch(e) { continue; }
         }
-        // Retry once after 1s if still null (deploy timing)
         if (!db) {
-            await new Promise(r => setTimeout(r, 1000));
+            await new Promise(r => setTimeout(r, 1500));
             for (const url of urls) {
                 try {
                     const res = await fetch(url);
