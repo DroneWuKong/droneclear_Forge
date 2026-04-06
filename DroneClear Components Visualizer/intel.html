@@ -51,10 +51,20 @@ a{color:var(--blue);text-decoration:none}a:hover{text-decoration:underline}
 .panel{display:none}.panel.active{display:block}
 .search-bar{width:100%;background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:10px 14px;font:12px var(--mono);color:var(--text);outline:none;margin-bottom:12px}
 .search-bar:focus{border-color:var(--tab-accent)}
-.filter-row{display:flex;gap:4px;flex-wrap:wrap;margin-bottom:8px}
-.fbtn{background:var(--surface);border:1px solid var(--border);border-radius:6px;padding:4px 10px;font:10px var(--mono);color:var(--text-d);cursor:pointer;transition:all .12s;white-space:nowrap;-webkit-appearance:none}
+.filter-row{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:14px}
+/* Patterns-style collapsible filter sections */
+.filter-section{margin-bottom:4px}
+.filter-header{display:flex;align-items:center;gap:6px;padding:6px 2px;cursor:pointer;font:600 11px var(--font);color:var(--text-d);user-select:none}
+.filter-header:hover{color:var(--text)}
+.filter-chevron{font-size:10px;transition:transform .15s;margin-left:auto}
+.filter-header.open .filter-chevron{transform:rotate(90deg)}
+.filter-hidden-count{font:10px var(--mono);color:var(--tab-accent);margin-left:2px}
+.filter-collapsible{max-height:0;overflow:hidden;transition:max-height .25s ease}
+.filter-collapsible.open{max-height:400px}
+/* filter buttons — match Patterns filter-btn */
+.fbtn{background:none;border:1px solid var(--border);color:var(--text-d);border-radius:6px;padding:4px 10px;font:10px var(--font);cursor:pointer;text-transform:capitalize;transition:all .15s;white-space:nowrap;-webkit-appearance:none}
 .fbtn:hover{border-color:var(--border-hi);color:var(--text-s)}
-.fbtn.active{background:var(--tab-accent-d);border-color:var(--tab-accent);color:var(--tab-accent);font-weight:600}
+.fbtn.active{border-color:var(--tab-accent);color:var(--text);background:var(--tab-accent-d);font-weight:600}
 .badge{display:inline-block;font:500 9px var(--mono);padding:2px 7px;border-radius:4px}
 .badge-red{background:var(--red-d);color:var(--red)}.badge-amber{background:var(--amber-d);color:var(--amber)}
 .badge-green{background:var(--green-d);color:var(--green)}.badge-blue{background:var(--blue-d);color:var(--blue)}
@@ -81,9 +91,9 @@ a{color:var(--blue);text-decoration:none}a:hover{text-decoration:underline}
 <body>
 <div class="topbar">
   <div class="topbar-left">
-    <a href="/patterns-home/" class="topbar-logo">Patterns</a>
+    <a href="/intel/" class="topbar-logo" style="color:#f59e0b">Intel</a>
     <span class="topbar-sep">/</span>
-    <span class="topbar-current">Intel Feed</span>
+    <span class="topbar-current">Feed</span>
   </div>
   <div class="topbar-links">
     <a href="https://nvmilldoitmyself.com" target="_blank" class="topbar-pill">Handbook</a>
@@ -101,9 +111,32 @@ a{color:var(--blue);text-decoration:none}a:hover{text-decoration:underline}
 <div class="content">
   <div class="panel active" id="panel-feed">
     <input class="search-bar" id="feed-search" placeholder="Search articles... (e.g. Replicator, Skydio, FCC, DJI ban)" oninput="renderFeed()">
-    <div class="filter-row" id="cat-filters"></div>
-    <div class="filter-row" id="src-filters"></div>
-    <div class="filter-row" id="region-filters"></div>
+    <div class="filter-section">
+      <div class="filter-header" onclick="toggleFS(this)">
+        <span>Type</span><span class="filter-hidden-count" id="cat-hidden-count"></span><span class="filter-chevron">▸</span>
+      </div>
+      <div class="filter-row filter-collapsible" id="cat-filters"></div>
+    </div>
+    <div class="filter-section">
+      <div class="filter-header" onclick="toggleFS(this)">
+        <span>Source</span><span class="filter-hidden-count" id="src-hidden-count"></span><span class="filter-chevron">▸</span>
+      </div>
+      <div class="filter-row filter-collapsible" id="src-filters"></div>
+    </div>
+    <div class="filter-section">
+      <div class="filter-header" onclick="toggleFS(this)">
+        <span>Region</span><span class="filter-hidden-count" id="region-hidden-count"></span><span class="filter-chevron">▸</span>
+      </div>
+      <div class="filter-row filter-collapsible" id="region-filters"></div>
+    </div>
+    <div style="display:flex;gap:8px;align-items:center;margin:10px 0 14px;flex-wrap:wrap">
+      <span style="font:10px var(--mono);color:var(--text-d)">Sort:</span>
+      <select id="feed-sort" onchange="renderFeed()" style="background:var(--surface);border:1px solid var(--border);border-radius:6px;padding:6px 10px;font:11px var(--mono);color:var(--text);outline:none;-webkit-appearance:menulist;appearance:menulist;min-height:32px">
+        <option value="date-desc" selected>Newest first</option>
+        <option value="date-asc">Oldest first</option>
+        <option value="type">Type A→Z</option>
+      </select>
+    </div>
     <div class="stats-bar" id="feed-stats">Loading...</div>
     <div id="feed-list">Loading...</div>
   </div>
@@ -134,6 +167,7 @@ function cat(a){const t=((a.title||'')+(a.summary||'')+(a.body_text||'')).toLowe
 function ar(a){const t=(a.title||'')+' '+(a.summary||'')+' '+(a.body_text||'').slice(0,500);return REGS.filter(r=>t.includes(r));}
 let ALL=[],cC='all',cS='all',cR='all';
 document.querySelectorAll('.tab').forEach(t=>{t.addEventListener('click',()=>{document.querySelectorAll('.tab').forEach(x=>x.classList.remove('active'));document.querySelectorAll('.panel').forEach(x=>x.classList.remove('active'));t.classList.add('active');document.getElementById('panel-'+t.dataset.tab).classList.add('active');const acc=t.dataset.accent||'feed';document.documentElement.style.setProperty('--tab-accent',`var(--${acc})`);document.documentElement.style.setProperty('--tab-accent-d',`var(--${acc}-d)`);});});
+function toggleFS(hdr){hdr.classList.toggle('open');const row=hdr.nextElementSibling;row.classList.toggle('open');}
 function rFi(){
   const cc={all:ALL.length,defense:0,financial:0,commercial:0};ALL.forEach(a=>cc[cat(a)]++);
   document.getElementById('cat-filters').innerHTML=['all','defense','financial','commercial'].map(c=>`<button class="fbtn${cC===c?' active':''}" onclick="cC='${c}';rFi();renderFeed()">${c==='all'?'All Types':c.charAt(0).toUpperCase()+c.slice(1)} (${cc[c]})</button>`).join('');
@@ -142,12 +176,19 @@ function rFi(){
   document.getElementById('src-filters').innerHTML=`<button class="fbtn${cS==='all'?' active':''}" onclick="cS='all';rFi();renderFeed()">All Sources</button>`+ts.map(([s,c])=>`<button class="fbtn${cS===s?' active':''}" onclick="cS='${s}';rFi();renderFeed()">${SL[s]||s} (${c})</button>`).join('');
   const rc={};ALL.forEach(a=>ar(a).forEach(r=>{rc[r]=(rc[r]||0)+1;}));
   const tr=Object.entries(rc).sort((a,b)=>b[1]-a[1]).slice(0,12);
+  // Update filter header counts
+  document.getElementById('cat-hidden-count').textContent = cC!=='all' ? cC : '';
+  document.getElementById('src-hidden-count').textContent = cS!=='all' ? (SL[cS]||cS) : '';
+  document.getElementById('region-hidden-count').textContent = cR!=='all' ? cR : '';
   document.getElementById('region-filters').innerHTML=`<button class="fbtn${cR==='all'?' active':''}" onclick="cR='all';rFi();renderFeed()">All Regions</button>`+tr.map(([r,c])=>`<button class="fbtn${cR===r?' active':''}" onclick="cR='${r}';rFi();renderFeed()">${r} (${c})</button>`).join('');
 }
 function renderFeed(){
   let a=ALL;if(cC!=='all')a=a.filter(x=>cat(x)===cC);if(cS!=='all')a=a.filter(x=>x.site===cS);if(cR!=='all')a=a.filter(x=>ar(x).includes(cR));
   const q=(document.getElementById('feed-search')?.value||'').toLowerCase().trim();if(q)a=a.filter(x=>(x.title||'').toLowerCase().includes(q)||(x.summary||'').toLowerCase().includes(q));
-  a.sort((x,y)=>(y.pub_date||'').localeCompare(x.pub_date||''));
+  const sortVal=(document.getElementById('feed-sort')?.value)||'date-desc';
+  if(sortVal==='date-desc')a.sort((x,y)=>(y.pub_date||'').localeCompare(x.pub_date||''));
+  else if(sortVal==='date-asc')a.sort((x,y)=>(x.pub_date||'').localeCompare(y.pub_date||''));
+  else if(sortVal==='type')a.sort((x,y)=>cat(x).localeCompare(cat(y)));
   document.getElementById('feed-count').textContent=a.length;
   const cs={defense:0,financial:0,commercial:0};a.forEach(x=>cs[cat(x)]++);
   document.getElementById('feed-stats').innerHTML=`<span>Showing <b style="color:var(--tab-accent)">${a.length}</b> of <b style="color:var(--tab-accent)">${ALL.length}</b> &nbsp;◆ <b style="color:var(--defense)">${cs.defense} defense</b> &nbsp;◆ <b style="color:var(--financial)">${cs.financial} financial</b></span><span style="color:var(--commercial)">◆ ${cs.commercial} commercial</span>`;
