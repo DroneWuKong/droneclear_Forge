@@ -286,25 +286,12 @@
                         <span class="plat-card-initials" style="color: ${vis.color};opacity:0.25;">${initials}</span>
                    </div>`;
 
-            const catLabel = esc((CAT_DISPLAY[p.category] || {}).label || p.category.replace(/_/g, ' '));
             return `
                 <div class="plat-card" data-id="${esc(p.id)}">
-                    <div class="plat-row">
-                        <div class="plat-row-icon" style="color:${vis.color};border-color:${vis.color}22;">
-                            ${hasImage
-                                ? `<img src="${esc(p.image_url)}" alt="" loading="lazy" style="width:100%;height:100%;object-fit:cover;border-radius:6px;" onerror="this.parentElement.innerHTML='<i class=\'ph ${vis.icon}\' style=\'font-size:18px;color:${vis.color};opacity:0.6;\'></i>';">`
-                                : `<i class="ph ${vis.icon}" style="font-size:18px;opacity:0.6;"></i>`
-                            }
-                        </div>
-                        <div class="plat-row-body">
-                            <div class="plat-row-name">${esc(p.platform_name)}</div>
-                            <div class="plat-row-meta">${esc(p.manufacturer)}${p.manufacturer_hq ? ' · ' + esc(p.manufacturer_hq) : ''}</div>
-                            <div class="plat-row-foot">
-                                <span class="plat-row-cat">${catLabel}</span>
-                                ${badges.join('')}
-                            </div>
-                        </div>
-                    </div>
+                    ${cardVisual}
+                    <div class="plat-card-name">${esc(p.platform_name)}</div>
+                    <div class="plat-card-cat">${esc((CAT_DISPLAY[p.category] || {}).label || p.category.replace(/_/g, ' '))}</div>
+                    ${badges.length ? '<div class="plat-card-badges" style="margin-top:4px;">' + badges.join('') + '</div>' : ''}
                 </div>`;
         }).join('');
     }
