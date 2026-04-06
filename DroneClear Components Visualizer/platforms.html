@@ -26,32 +26,57 @@
 <body>
     <div class="app-container" style="flex-direction: column;">
 
-        <!-- Topbar -->
-        <header class="topbar">
-            <div style="display: flex; justify-content: space-between; width: 100%; align-items: center;">
-                <div style="display: flex; align-items: center; gap: 12px;">
-                    <a href="/" style="text-decoration:none; display:flex; align-items:baseline; gap:8px;">
-                        <span style="font-size:20px; font-weight:700; background: linear-gradient(135deg, var(--accent-red) 0%, var(--accent-darkred) 100%); -webkit-background-clip:text; -webkit-text-fill-color:transparent; background-clip:text;">Forge</span>
-                        <span style="font-size:9px; font-weight:500; letter-spacing:0.12em; text-transform:uppercase; color:var(--text-faint);">Platforms</span>
-                    </a>
-                </div>
-                <div style="display: flex; align-items: center; gap: 12px;">
-                    <!-- Filter chips -->
-                    <div id="filter-bar" style="display:flex; gap:8px; flex-wrap:wrap;"></div>
+        <!-- Nav Drawer Overlay -->
+        <div class="nav-drawer-overlay" id="navOverlay"></div>
+        <nav class="nav-drawer" id="navDrawer">
+            <div class="nav-drawer-header">
+                <span class="logo-text" style="font-size:18px;">Forge</span>
+                <button class="nav-drawer-close" id="navDrawerClose"><i class="ph ph-x"></i></button>
+            </div>
+            <div class="nav-drawer-section">
+                <div class="nav-drawer-label">Database</div>
+                <a class="nav-drawer-item" href="/"><i class="ph ph-house"></i> Home</a>
+                <a class="nav-drawer-item" href="/browse/"><i class="ph ph-magnifying-glass"></i> Browse Parts</a>
+                <a class="nav-drawer-item active" href="/platforms/"><i class="ph ph-airplane-tilt"></i> Platforms</a>
+                <a class="nav-drawer-item" href="/compare/"><i class="ph ph-columns"></i> Compare</a>
+                <a class="nav-drawer-item" href="/cost/"><i class="ph ph-currency-dollar"></i> BOM Calculator</a>
+            </div>
+            <div class="nav-drawer-section">
+                <div class="nav-drawer-label">Tools</div>
+                <a class="nav-drawer-item" href="/tools-home/"><i class="ph ph-wrench"></i> Tools</a>
+                <a class="nav-drawer-item" href="/wingman/"><i class="ph ph-robot"></i> Wingman AI</a>
+            </div>
+            <div class="nav-drawer-section">
+                <div class="nav-drawer-label">Intelligence</div>
+                <a class="nav-drawer-item" href="/intel/"><i class="ph ph-newspaper"></i> Intel</a>
+                <a class="nav-drawer-item" href="/patterns-home/"><i class="ph ph-graph"></i> Patterns</a>
+                <a class="nav-drawer-item" href="/compliance/"><i class="ph ph-shield-check"></i> Compliance</a>
+            </div>
+            <div class="nav-drawer-section">
+                <div class="nav-drawer-label">Resources</div>
+                <a class="nav-drawer-item" href="https://nvmilldoitmyself.com" target="_blank"><i class="ph ph-book-open-text"></i> Handbook</a>
+            </div>
+        </nav>
 
-                    <div style="width: 1px; height: 24px; background: var(--border-color);"></div>
-                    <a href="https://nvmilldoitmyself.com" target="_blank" rel="noopener"
-                        class="dark-mode-toggle" title="Drone Integration Handbook" style="text-decoration: none;">
-                        <i class="ph ph-book-open-text"></i>
-                    </a>
-                    <button class="dark-mode-toggle" id="dark-mode-toggle" title="Toggle theme">
-                        <i class="ph ph-moon" id="dark-mode-icon"></i>
-                    </button>
-                </div>
+        <!-- Topbar -->
+        <header class="topbar" style="padding:10px 16px;display:flex;align-items:center;justify-content:space-between;gap:12px;border-bottom:1px solid var(--border-color);background:var(--bg-panel);position:sticky;top:0;z-index:100;">
+            <div style="display:flex;align-items:center;gap:10px;">
+                <button class="hamburger-btn" id="hamburgerBtn" title="Menu">
+                    <i class="ph ph-list" style="font-size:20px;"></i>
+                </button>
+                <a href="/" style="text-decoration:none;display:flex;align-items:baseline;gap:8px;">
+                    <span class="logo-text" style="font-size:18px;">Forge</span>
+                    <span style="font-size:9px;font-weight:500;letter-spacing:0.12em;text-transform:uppercase;color:var(--text-faint);">Platforms</span>
+                </a>
+            </div>
+            <div style="display:flex;align-items:center;gap:6px;">
+                <a href="/intel/" class="topbar-pill" style="font:500 10px var(--font-family);color:var(--text-muted);padding:4px 10px;border:1px solid var(--border-color);border-radius:20px;text-decoration:none;white-space:nowrap;">Intel</a>
+                <a href="/patterns-home/" class="topbar-pill" style="font:500 10px var(--font-family);color:var(--text-muted);padding:4px 10px;border:1px solid var(--border-color);border-radius:20px;text-decoration:none;white-space:nowrap;">Patterns</a>
+                <a href="/wingman/" class="topbar-pill" style="font:500 10px var(--font-family);color:var(--text-muted);padding:4px 10px;border:1px solid var(--border-color);border-radius:20px;text-decoration:none;white-space:nowrap;">Wingman</a>
             </div>
         </header>
 
-        <!-- Search & Stats Bar -->
+        <!-- Search + Filter Toolbar -->
         <div class="plat-toolbar">
             <div class="plat-search-wrap">
                 <i class="ph ph-magnifying-glass"></i>
@@ -65,6 +90,8 @@
                 <span class="plat-divider">·</span>
                 <span id="plat-ndaa-count">--</span> NDAA compliant
             </div>
+            <!-- Filter chips now BELOW search -->
+            <div id="filter-bar" style="display:flex;gap:6px;flex-wrap:wrap;width:100%;padding-top:4px;"></div>
         </div>
 
         <!-- Platform Grid -->
@@ -107,6 +134,21 @@
         })();
     </script>
 
+<script>
+(function(){
+    var hamburger = document.getElementById('hamburgerBtn');
+    var drawer = document.getElementById('navDrawer');
+    var overlay = document.getElementById('navOverlay');
+    var closeBtn = document.getElementById('navDrawerClose');
+    function open(){drawer.classList.add('open');overlay.classList.add('open');hamburger.classList.add('open');document.body.style.overflow='hidden';}
+    function close(){drawer.classList.remove('open');overlay.classList.remove('open');hamburger.classList.remove('open');document.body.style.overflow='';}
+    hamburger.addEventListener('click',open);
+    overlay.addEventListener('click',close);
+    closeBtn.addEventListener('click',close);
+    drawer.querySelectorAll('a').forEach(function(a){a.addEventListener('click',close);});
+    document.addEventListener('keydown',function(e){if(e.key==='Escape')close();});
+})();
+</script>
 <!-- AI Wingman Analytics v1.0 — Forge — No cookies, no PII -->
 <script>
 (function(){var E='https://nvmilldoitmyself.com/.netlify/functions/analytics-ingest',S='sess_'+crypto.randomUUID().replace(/-/g,'').slice(0,16),q=[],t=null,aid=null,ff=true;function r(){try{var z=Intl.DateTimeFormat().resolvedOptions().timeZone;if(z.includes('America'))return'Americas';if(z.includes('Europe'))return'Europe';if(z.includes('Asia')||z.includes('Australia')||z.includes('Pacific'))return'Asia-Pacific';if(z.includes('Africa'))return'Africa'}catch(e){}return'Unknown'}function ev(tp,ac,p,tier){q.push({event_id:crypto.randomUUID(),timestamp:new Date().toISOString(),surface:'forge',event_type:tp,event_action:ac,context:{session_id:S,account_id:aid,geo_region:r(),platform:/Android|iPhone|iPad/i.test(navigator.userAgent)?'mobile':'web',viewport:innerWidth+'x'+innerHeight},payload:p,data_policy:{collection_tier:tier||'anonymous',consent_version:'none',retention_days:tier==='account'?365:90,anonymized:tier!=='account'}});if(q.length>=20)fl();else if(!t)t=setTimeout(fl,5e3)}function fl(){if(t){clearTimeout(t);t=null}if(!q.length)return;var b=q.splice(0);fetch(E,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({events:b}),keepalive:true}).catch(function(){})}addEventListener('visibilitychange',function(){if(document.visibilityState==='hidden')fl()});addEventListener('pagehide',fl);ev('page_view','view',{path:location.pathname,title:document.title});window.__forgeAnalytics={search:function(query,cat,n){ev('search','component_search',{query:query.slice(0,200),category:cat,result_count:n,had_results:n>0});if(n===0)ev('search','no_results',{query:query.slice(0,200),category:cat})},filter:function(cat,f,n){ev('filter','apply_filter',{category:cat,filters:f,filter_names:Object.keys(f),first_filter:ff,result_count:n,zero_results:n===0});ff=false;if(n===0)ev('search','no_results',{query:'',category:cat,filters:f})},view:function(pid,cat,mfr,co,ndaa){ev('page_view','component_detail',{component_pid:pid,category:cat,manufacturer:mfr,country:co,ndaa_compliant:ndaa})},compare:function(a,b,cat){ev('compare','side_by_side',{component_a:a,component_b:b,category:cat})},save:function(pid,cat,ctx){ev('save','bookmark_component',{component_pid:pid,category:cat,save_context:ctx||'bookmark'},aid?'account':'pseudonymous')},setUser:function(id){aid=id},flush:fl}})();
