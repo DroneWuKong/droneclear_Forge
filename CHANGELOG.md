@@ -1,5 +1,19 @@
 # Changelog
 
+## [Unreleased] - 2026-04-06 — DFR Phase 2
+
+### Added
+- **DFR vertical — Phase 2**: Full drone-as-first-responder intelligence platform
+- **Data pipeline**: 9 miners (DRONERESPONDERS, Police1, DroneDJ, Commercial UAV, FAA BEYOND, DHS AEL, Grants.gov, Municipal RFP, NASAO White Paper), normalize.py, dfr_master.json canonical DB
+- **Platform DB**: dfr_platforms_v1.json — 8 platforms + 5 docks with NDAA/Blue UAS/AEL/CAD fields
+- **Grant intelligence**: COPS, HSGP/SHSP/UASI, Ohio DFR Pilot full program structures
+- **NASAO White Paper indexed**: 467 airframes grounded, Wisconsin 100% — market brief + dealer correlation
+- **Dealer ecosystem analysis**: Seiler, Frontier, Duncan-Parnell, UVT, Advexure, DSLRPros, DroneNerds, Airworx, SkyFireAI + balanced responsibility chain
+- **Source registry**: 62 US + global intel sources with miner status
+- **Forge UI**: DFRDashboard.jsx, DFRIntelFeed.jsx, dfrData.js — live-wired to data files with adapter layer + fallbacks
+- **GitHub Actions**: dfr_miners.yml — all 9 miners scheduled for automated pipeline
+
+
 ## [Claude Proxy + Intel RAG] - 2026-04-06
 
 ### Added
