@@ -166,6 +166,9 @@ a{color:var(--blue);text-decoration:none}a:hover{text-decoration:underline}
 <div class="content">
 
   <!-- FLAGS PANEL -->
+  <div class="panel active" id="panel-brief">
+    <div id="brief-inner"><div style="color:var(--text-d);font:400 11px var(--mono);padding:20px 0">Loading brief...</div></div>
+  </div>
   <div class="panel" id="panel-flags">
     <input class="search-bar" id="flag-search" placeholder="Search flags... (e.g. TrellisWare, Jetson, DRAM, SOF, mesh)" oninput="renderFlags()">
     <div class="filter-section">
@@ -612,6 +615,113 @@ async function loadData() {
   renderAll();
 }
 
+
+// ── Brief panel ──
+function pctColorB(p) {
+  if (p >= 0.8) return 'var(--red)';
+  if (p >= 0.65) return 'var(--warning,#f59e0b)';
+  return 'var(--text-s)';
+}
+function renderSrcs(sources) {
+  if (!sources || !sources.length) return '';
+  return '<div style="display:flex;flex-wrap:wrap;gap:3px;margin-top:6px">' +
+    sources.map(s => s.url
+      ? `<a href="${s.url}" target="_blank" rel="noopener" class="brief-source-chip">${s.name} ↗</a>`
+      : `<span class="brief-source-chip">${s.name}</span>`
+    ).join('') + '</div>';
+}
+function renderBriefPanel(b) {
+  const el = document.getElementById('brief-inner');
+  if (!el) return;
+  const sig = b.signal_summary || {};
+  const lead = b.lead_story || {};
+  let html = '';
+  html += `<div class="signal-bar">
+    <div class="signal-stat critical"><span class="num">${sig.critical||0}</span><span class="lbl">Critical</span></div>
+    <div class="signal-stat warning"><span class="num">${sig.warning||0}</span><span class="lbl">Warning</span></div>
+    <div class="signal-stat new"><span class="num">${sig.new_today||0}</span><span class="lbl">New</span></div>
+    <div class="signal-stat"><span class="num">${sig.total_flags||0}</span><span class="lbl">Total</span></div>
+  </div>`;
+  if (sig.top_concern) html += `<div class="concern-bar"><div class="dot"></div>${sig.top_concern}</div>`;
+  if (b.headline) html += `<div class="brief-headline">${b.headline}</div>`;
+  if (lead.title) {
+    html += `<div class="brief-section-label">🔴 Lead Story</div>
+    <div class="brief-card lead">
+      <div class="card-header"><span class="sev sev-critical"></span><span class="card-title">${lead.title}</span></div>
+      <div class="card-body">${lead.body||''}</div>
+      ${lead.action ? `<div class="action-box"><div class="action-label">→ Action</div><div class="action-text">${lead.action}</div></div>` : ''}
+      ${renderSrcs(lead.sources)}
+    </div>`;
+  }
+  for (const e of (b.gray_zone||[])) {
+    html += `<div class="brief-section-label">⚠ Gray Zone</div>
+    <div class="brief-card entity">
+      <div class="card-header"><span class="sev sev-warning"></span><span class="card-title">${e.entity||''}</span></div>
+      ${e.status ? `<div class="entity-status">${e.status}</div>` : ''}
+      <div class="card-body">${e.development||''}</div>
+      ${e.buyer_exposure ? `<div class="entity-exposure"><strong>Buyer exposure:</strong> ${e.buyer_exposure}</div>` : ''}
+      ${e.action ? `<div class="action-box"><div class="action-label">→ Action</div><div class="action-text">${e.action}</div></div>` : ''}
+      ${renderSrcs(e.sources)}
+    </div>`;
+  }
+  if ((b.supply_chain||[]).length) {
+    html += `<div class="brief-section-label">🔩 Supply Chain</div>`;
+    for (const s of b.supply_chain) {
+      html += `<div class="brief-card supply">
+        <div class="card-header"><span class="sev sev-info"></span><span class="card-title">${s.component||''}</span>${s.window ? `<span class="supply-window">⏱ ${s.window}</span>` : ''}</div>
+        <div class="supply-signal">${s.signal||''}</div>
+        ${s.action ? `<div class="action-box"><div class="action-label">→ Action</div><div class="action-text">${s.action}</div></div>` : ''}
+        ${renderSrcs(s.sources)}
+      </div>`;
+    }
+  }
+  if ((b.watch_list||[]).length) {
+    html += `<div class="brief-section-label">👁 Watch List</div><div class="watch-list">`;
+    for (const w of b.watch_list) {
+      html += `<div class="watch-item"><div class="watch-dot"></div><div>
+        <div class="watch-label">${w.item||''}</div>
+        ${w.why ? `<div class="watch-why">${w.why}</div>` : ''}
+        ${w.trigger ? `<div class="watch-trigger"><strong>Trigger:</strong> ${w.trigger}</div>` : ''}
+      </div></div>`;
+    }
+    html += '</div>';
+  }
+  if ((b.predictions||[]).length) {
+    html += `<div class="brief-section-label">🔮 Predictions</div>`;
+    for (const p of b.predictions) {
+      const pct = Math.round((p.probability||0)*100);
+      html += `<div class="brief-card pred">
+        <div class="pred-prob"><span class="pct" style="color:${pctColorB(p.probability)}">${pct}%</span><span class="pct-lbl">prob</span></div>
+        <div class="pred-body">
+          <div class="pred-event">${p.event||''}</div>
+          <div class="pred-timeframe"><span class="badge badge-purple">${p.timeframe||''}</span></div>
+          ${p.hedge ? `<div class="hedge-box"><div class="hedge-label">◎ Hedge</div><div class="hedge-text">${p.hedge}</div></div>` : ''}
+        </div>
+      </div>`;
+    }
+  }
+  const gen = b.generated_at ? new Date(b.generated_at).toLocaleString() : '';
+  html += `<div class="brief-footer">${b.pipeline_version||'PIE'} · ${gen}</div>`;
+  el.innerHTML = html;
+}
+
+async function loadBriefPanel() {
+  try {
+    const paths = ['../static/pie_brief.json', '/static/pie_brief.json'];
+    let b = null;
+    for (const p of paths) {
+      try { const r = await fetch(p); if (r.ok) { b = await r.json(); break; } } catch(e) {}
+    }
+    if (!b) throw new Error('No brief data found');
+    renderBriefPanel(b);
+  } catch(e) {
+    const el = document.getElementById('brief-inner');
+    if (el) el.innerHTML = `<div style="color:var(--text-d);font:400 11px var(--font);padding:20px 0;text-align:center">
+      <strong>No brief available yet</strong><br>
+      <span style="font-size:10px">PIE pipeline generates a fresh brief daily at 14:30 UTC</span>
+    </div>`;
+  }
+}
 // ── Tab switching ──
 document.querySelectorAll(".tab").forEach(t => {
   t.addEventListener("click", () => {
@@ -1646,6 +1756,7 @@ ${e.stack||e.message||e}</div>`;
   _safe("renderPlatforms",  renderPlatforms);
   _safe("renderComponents", renderComponents);
   _safe("renderPredictions",renderPredictions);
+  _safe("loadBriefPanel",loadBriefPanel);
   _safe("renderWhatIf",     renderWhatIf);
 
   // Handle hash routing for bookmarked regions
