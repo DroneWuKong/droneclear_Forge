@@ -114,6 +114,41 @@
     .r-header { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
     .r-exec { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
   }
+
+  /* ── Generator v2 ── */
+  #generator { max-width: 900px; margin: 0 auto; }
+  .stat-chip { font: 600 9px var(--mono); padding: 4px 10px; background: var(--card); border: 1px solid var(--border); border-radius: 20px; color: var(--g1); }
+  .stat-chip.cyan { color: var(--cyan); border-color: rgba(34,197,94,.3); }
+  .field-label { font: 700 9px var(--mono); text-transform: uppercase; letter-spacing: .1em; color: var(--g2); margin-bottom: 7px; display: block; }
+  .subject-chip { font: 600 11px var(--sans); padding: 6px 13px; background: var(--card); border: 1px solid var(--border); border-radius: 20px; color: var(--g2); cursor: pointer; transition: all .15s; }
+  .subject-chip:hover { color: var(--g1); border-color: var(--g2); }
+  .subject-chip.active { color: var(--cyan); border-color: var(--cyan); background: rgba(34,197,94,.08); }
+  .type-card { background: var(--card); border: 1px solid var(--border); border-radius: 8px; padding: 11px 13px; cursor: pointer; transition: all .15s; }
+  .type-card:hover { border-color: var(--g2); }
+  .type-card.active { border-color: var(--cyan); background: rgba(34,197,94,.06); }
+  .type-name { font: 600 12px var(--sans); color: var(--white); margin-bottom: 3px; }
+  .type-desc { font-size: 10px; color: var(--g2); line-height: 1.4; }
+
+  /* Preview panel */
+  .preview-entity { display: flex; gap: 8px; align-items: center; margin-bottom: 8px; }
+  .preview-entity:last-child { margin-bottom: 0; }
+  .pe-score { font: 700 12px var(--mono); min-width: 34px; }
+  .pe-score.red   { color: var(--red); }
+  .pe-score.amber { color: var(--amber); }
+  .pe-name  { font: 600 11px var(--sans); color: var(--white); margin-bottom: 1px; }
+  .pe-flags { font-size: 9px; color: var(--g2); line-height: 1.3; }
+  .preview-pred { display: flex; align-items: baseline; gap: 6px; margin-bottom: 5px; }
+  .preview-pred:last-child { margin-bottom: 0; }
+  .pp-pct   { font: 700 11px var(--mono); min-width: 32px; }
+  .pp-pct.amber { color: var(--amber); }
+  .pp-pct.red   { color: var(--red); }
+  .pp-event { font-size: 10px; color: var(--g1); flex: 1; line-height: 1.3; }
+  .pp-tf    { font: 500 9px var(--mono); color: var(--g2); white-space: nowrap; }
+  .include-item { font-size: 10px; color: var(--g1); padding: 3px 0; line-height: 1.4; }
+
+  @media (max-width: 700px) {
+    #generator > div:last-child { grid-template-columns: 1fr !important; }
+  }
 </style>
 </head>
 <body>
@@ -129,31 +164,136 @@
 
 <!-- Generator UI -->
 <div id="generator">
-  <div class="gen-title">// Compliance Report Generator</div>
-  <div class="gen-card">
-    <h2>Generate a PIE Intelligence Report</h2>
-    <p>Produces a formatted PDF covering supply chain risk, gray zone entity analysis, NDAA compliance signals, and procurement predictions — ready to attach to a contract vehicle or procurement submission.</p>
 
-    <label>Subject (optional)</label>
-    <input id="subject-input" placeholder="e.g. Anzu Robotics, FLIR Boson 640, Blue UAS thermal cameras…" autocomplete="off"/>
-
-    <label>Report Type</label>
-    <select id="report-type">
-      <option value="full">Full Intelligence Report</option>
-      <option value="supply_chain">Supply Chain Focus</option>
-      <option value="grayzone">Gray Zone Focus</option>
-      <option value="procurement">Procurement Signals Focus</option>
-    </select>
-
-    <button class="gen-btn" id="gen-btn" onclick="generateReport()">Generate Report →</button>
-
-    <div id="gate-msg" style="display:none" class="gate-msg">
-      Pro subscription required to generate reports.
-      <br><br>
-      <a href="/pro/">Upgrade to Pro →</a> or enter your proxy secret below to use as owner.<br><br>
-      <input type="password" id="owner-secret" placeholder="Owner proxy secret" style="margin-bottom:0"/>
+  <!-- Header bar -->
+  <div style="max-width:900px;margin:0 auto;padding:20px 20px 0;display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;">
+    <div>
+      <div style="font:700 9px var(--mono);color:var(--cyan);letter-spacing:.12em;text-transform:uppercase;margin-bottom:4px">// Compliance Report Generator</div>
+      <div style="font:700 18px var(--sans);color:var(--white)">PIE Intelligence Reports</div>
+    </div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;" id="db-stats">
+      <div class="stat-chip"><span id="sc-flags">251</span> flags</div>
+      <div class="stat-chip"><span id="sc-preds">10</span> predictions</div>
+      <div class="stat-chip"><span id="sc-entities">4</span> gray zone entities</div>
+      <div class="stat-chip cyan">AI synthesized · Claude Sonnet</div>
     </div>
   </div>
+
+  <!-- Two column layout -->
+  <div style="max-width:900px;margin:16px auto 0;padding:0 20px 40px;display:grid;grid-template-columns:1fr 320px;gap:16px;align-items:start;">
+
+    <!-- LEFT: form -->
+    <div>
+      <!-- Subject quick-select -->
+      <div style="margin-bottom:14px;">
+        <div class="field-label">Quick subject select</div>
+        <div style="display:flex;gap:6px;flex-wrap:wrap;">
+          <button class="subject-chip active" onclick="setSubject('')" id="chip-all">Full Brief</button>
+          <button class="subject-chip" onclick="setSubject('SkyRover')">SkyRover / Knowact</button>
+          <button class="subject-chip" onclick="setSubject('Cogito')">Cogito / SPECTA</button>
+          <button class="subject-chip" onclick="setSubject('Autel')">Autel Robotics</button>
+          <button class="subject-chip" onclick="setSubject('FLIR Boson')">FLIR Boson 640</button>
+          <button class="subject-chip" onclick="setSubject('Jetson Orin')">Jetson Orin NX</button>
+          <button class="subject-chip" onclick="setSubject('STM32')">STM32H7</button>
+        </div>
+      </div>
+
+      <!-- Custom subject input -->
+      <div style="margin-bottom:14px;">
+        <div class="field-label">Or enter custom subject</div>
+        <input id="subject-input" placeholder="e.g. Blue UAS thermal cameras, Silvus SC3822…" autocomplete="off"
+          oninput="clearChips()" style="width:100%"/>
+      </div>
+
+      <!-- Report type -->
+      <div style="margin-bottom:20px;">
+        <div class="field-label">Report type</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
+          <div class="type-card active" onclick="setType('full',this)">
+            <div class="type-name">Full Intelligence Report</div>
+            <div class="type-desc">Gray zone + supply chain + predictions + NDAA</div>
+          </div>
+          <div class="type-card" onclick="setType('grayzone',this)">
+            <div class="type-name">Gray Zone Focus</div>
+            <div class="type-desc">Adversary connections, entity scores, sourced evidence</div>
+          </div>
+          <div class="type-card" onclick="setType('supply_chain',this)">
+            <div class="type-name">Supply Chain Focus</div>
+            <div class="type-desc">Allocation risk, lead times, component concentration</div>
+          </div>
+          <div class="type-card" onclick="setType('procurement',this)">
+            <div class="type-name">Procurement Signals</div>
+            <div class="type-desc">Contract awards, program signals, demand spikes</div>
+          </div>
+        </div>
+        <input type="hidden" id="report-type" value="full"/>
+      </div>
+
+      <button class="gen-btn" id="gen-btn" onclick="generateReport()">
+        Generate Report →
+      </button>
+
+      <div id="gate-msg" style="display:none" class="gate-msg">
+        Pro subscription required.
+        <a href="/pro/" style="color:var(--cyan)">Upgrade to Pro →</a>
+        <br><br>
+        <input type="password" id="owner-secret" placeholder="Owner secret" style="margin-bottom:0;margin-top:8px;"/>
+      </div>
+    </div>
+
+    <!-- RIGHT: live preview of what's in the DB -->
+    <div>
+      <div style="background:var(--card);border:1px solid var(--border);border-radius:8px;overflow:hidden;">
+        <div style="padding:12px 14px;border-bottom:1px solid var(--border);font:700 9px var(--mono);color:var(--cyan);letter-spacing:.1em;text-transform:uppercase;">// What this report covers</div>
+
+        <!-- Gray zone entities -->
+        <div style="padding:12px 14px;border-bottom:1px solid var(--border);">
+          <div style="font:600 10px var(--sans);color:var(--white);margin-bottom:8px;">Gray Zone Entities</div>
+          <div id="preview-entities">
+            <div class="preview-entity">
+              <div class="pe-score red">0.68</div>
+              <div class="pe-body"><div class="pe-name">SkyRover / Knowact</div><div class="pe-flags">11 flags · 6 critical · Direct DJI cloud connection</div></div>
+            </div>
+            <div class="preview-entity">
+              <div class="pe-score red">0.64</div>
+              <div class="pe-body"><div class="pe-name">Anzu Robotics</div><div class="pe-flags">12 flags · 4 critical · TX AG lawsuit active</div></div>
+            </div>
+            <div class="preview-entity">
+              <div class="pe-score amber">0.40</div>
+              <div class="pe-body"><div class="pe-name">Cogito / SPECTA</div><div class="pe-flags">6 flags · 4 critical · Identical DJI Air 3 PCBs</div></div>
+            </div>
+            <div class="preview-entity">
+              <div class="pe-score amber">0.32</div>
+              <div class="pe-body"><div class="pe-name">Autel Robotics</div><div class="pe-flags">5 flags · 3 critical · FY2025 §1709 named</div></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Top predictions -->
+        <div style="padding:12px 14px;border-bottom:1px solid var(--border);">
+          <div style="font:600 10px var(--sans);color:var(--white);margin-bottom:8px;">Top PIE Predictions</div>
+          <div class="preview-pred"><span class="pp-pct amber">84%</span><span class="pp-event">FLIR Boson 640 allocation tightens</span><span class="pp-tf">H2 2026</span></div>
+          <div class="preview-pred"><span class="pp-pct red">82%</span><span class="pp-event">Jetson Orin NX allocation-only for defense</span><span class="pp-tf">Q3 2026</span></div>
+          <div class="preview-pred"><span class="pp-pct amber">81%</span><span class="pp-event">Mesh radio bottleneck — 5 of 29 NDAA-clean</span><span class="pp-tf">Q3–Q4</span></div>
+          <div class="preview-pred"><span class="pp-pct red">79%</span><span class="pp-event">FCC firmware cliff — 3 deadlines converge</span><span class="pp-tf">Jan 2027</span></div>
+          <div class="preview-pred"><span class="pp-pct red">77%</span><span class="pp-event">Federal enforcement against gray zone buyers</span><span class="pp-tf">H2 2026</span></div>
+        </div>
+
+        <!-- What's in the report -->
+        <div style="padding:12px 14px;">
+          <div style="font:600 10px var(--sans);color:var(--white);margin-bottom:8px;">Report includes</div>
+          <div class="include-item">✓ AI-written executive assessment (Claude)</div>
+          <div class="include-item">✓ Gray zone risk scores with sourced evidence</div>
+          <div class="include-item">✓ Critical and warning flag table (up to 12)</div>
+          <div class="include-item">✓ PIE predictions with model breakdown</div>
+          <div class="include-item">✓ NDAA + FCC compliance status per entity</div>
+          <div class="include-item">✓ Methodology and data source citations</div>
+          <div class="include-item">✓ PDF-ready for procurement submission</div>
+        </div>
+      </div>
+    </div>
+
+  </div><!-- /grid -->
 </div>
 
 <!-- Report Preview -->
@@ -168,6 +308,30 @@
 </div>
 
 <script>
+var currentType = 'full';
+
+function setSubject(val) {
+  document.getElementById('subject-input').value = val;
+  document.querySelectorAll('.subject-chip').forEach(c => c.classList.remove('active'));
+  // Find matching chip
+  document.querySelectorAll('.subject-chip').forEach(c => {
+    if (c.textContent.trim().toLowerCase().includes(val.toLowerCase()) || (val === '' && c.id === 'chip-all')) {
+      c.classList.add('active');
+    }
+  });
+}
+
+function clearChips() {
+  document.querySelectorAll('.subject-chip').forEach(c => c.classList.remove('active'));
+}
+
+function setType(val, el) {
+  currentType = val;
+  document.getElementById('report-type').value = val;
+  document.querySelectorAll('.type-card').forEach(c => c.classList.remove('active'));
+  if (el) el.classList.add('active');
+}
+
 var SUB_TOKEN_KEY = 'wingman_sub_token';
 var PROXY_SECRET_KEY = 'wingman_proxy_secret';
 
