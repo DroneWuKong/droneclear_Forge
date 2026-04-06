@@ -134,6 +134,7 @@ a{color:var(--blue);text-decoration:none}a:hover{text-decoration:underline}
       </select>
     </div>
     <div class="stats-bar" id="feed-stats">Loading...</div>
+    <div id="pie-sidebar" style="background:var(--surface);border:1px solid var(--border);border-left:2px solid var(--amber);padding:10px 12px;margin-bottom:12px;border-radius:6px;font-size:11px">Loading PIE…</div>
     <div id="feed-list">Loading...</div>
   </div>
   <div class="panel" id="panel-defense">
@@ -169,7 +170,7 @@ a{color:var(--blue);text-decoration:none}a:hover{text-decoration:underline}
 </div>
 <div class="ro" id="ro" onclick="if(event.target===this)cr()"><div class="rf"><div class="rb"><span class="rt" id="rt">Loading…</span><button onclick="oe()">↗</button><button onclick="cr()">✕</button></div><iframe class="ri" id="ri" sandbox="allow-scripts allow-same-origin allow-popups"></iframe></div></div>
 <div style="padding:16px 20px;border-top:1px solid var(--border);max-width:960px;margin:0 auto">
-  <div style="font-size:9px;color:var(--text-xd)">Pipeline: live scraper · Cross-referenced with <a href="/patterns/" style="color:var(--amber)">PIE (207 flags, 14 predictions)</a></div>
+  <div style="font-size:9px;color:var(--text-xd)">Pipeline: live scraper · Cross-referenced with <a href="/patterns/" style="color:var(--amber)" id="pie-footer-count">PIE (loading…)</a></div>
 </div>
 <script>
 const DKW=['pentagon','dod ','department of defense','military','army','navy','air force','marine corps','replicator','counter-uas','c-uas','jiatf','dawg','diu','ndaa','blue uas','combat','warfare','warfighter','deployed','tactical','darpa','socom','centcom','indopacom','program of record','weapon system','munition','loitering','fcc','covered list','drone dominance'];
@@ -213,6 +214,9 @@ function renderDFR(){
   l.innerHTML=a.slice(0,60).map(x=>{
     const en=x.entities||{},pr=(en.programs||[]).slice(0,2),co=(en.companies||[]).slice(0,2),u=x.url||'#';
     const isExcl=(x.source==='oregon_nasao'||x.site==='oregon_nasao')&&x.pub_date>='2026-04-01';
+    const isPaidDfr=x.paywall;
+    const flagsDfr=getPIEFlags(x);
+    if(isPaidDfr&&!isProUser()) return paywallGate(x.title);
     return`<div class="acard dfr" onclick="or('${u.replace(/'/g,"\'")}','${(x.title||'').replace(/'/g,"\'").substring(0,80)}')">
       <div style="display:flex;gap:6px;align-items:center;margin-bottom:4px;flex-wrap:wrap">
         ${isExcl?'<span class="badge" style="background:var(--dfr-d);color:var(--dfr)">EXCLUSIVE</span>':''}
@@ -223,8 +227,10 @@ function renderDFR(){
       <h3>${x.title||'Untitled'}</h3>
       <div class="sum">${x.summary||(x.body_text||'').slice(0,200)||'—'}</div>
       <div style="display:flex;gap:3px;flex-wrap:wrap;margin-top:6px">
+        ${isPaidDfr?'<span class="badge" style="background:var(--dfr-d);color:var(--dfr)">🔒 PRO</span>':''}
         ${pr.map(p=>`<span class="badge badge-red">${p}</span>`).join('')}
         ${co.map(c=>`<span class="badge badge-blue">${c}</span>`).join('')}
+        ${flagsDfr.map(f=>pieFlagBadge(f)).join('')}
       </div>
     </div>`;
   }).join('')+(a.length>60?`<div style="text-align:center;padding:20px;color:var(--text-d);font:11px var(--mono)">Showing 60 of ${a.length}</div>`:'');
@@ -288,6 +294,68 @@ let ru='';function or(u,t){ru=u;document.getElementById('rt').textContent=t||u;d
 function cr(){document.getElementById('ro').classList.remove('open');document.getElementById('ri').src='about:blank';ru='';}
 function oe(){if(ru)window.open(ru,'_blank');}
 document.addEventListener('keydown',e=>{if(e.key==='Escape'&&document.getElementById('ro').classList.contains('open'))cr();});
+
+// ── PIE + PAYWALL GLOBALS ──
+let PIE_FLAGS=[], PIE_PREDS=[], PIE_BRIEF={};
+
+function isProUser(){
+  var tok=localStorage.getItem('wingman_sub_token')||'';
+  var ps=localStorage.getItem('wingman_proxy_secret')||'';
+  if(ps)return true;
+  if(!tok)return false;
+  try{var p=JSON.parse(atob(tok));return!p.exp||Date.now()<p.exp;}catch{return false;}
+}
+
+function paywallGate(title){
+  return`<div style="display:flex;flex-direction:column;align-items:center;justify-content:center;padding:24px;gap:8px;text-align:center;background:var(--card-hi);border-radius:6px;margin:4px 0">
+    <span style="font-size:18px">🔒</span>
+    <span style="font:600 12px var(--font);color:var(--text)">${title||'Pro Intel'}</span>
+    <span style="font-size:10px;color:var(--text-d);max-width:260px;line-height:1.5">Dealer analysis, acquisition signals, and proprietary market intelligence require a Pro subscription.</span>
+    <a href="/pro/" style="margin-top:4px;padding:6px 18px;background:var(--amber);color:#0c0c0a;border-radius:6px;font:600 11px var(--font);text-decoration:none">Upgrade to Pro →</a>
+  </div>`;
+}
+
+// Get PIE flags relevant to a record's title/summary
+function getPIEFlags(record){
+  if(!PIE_FLAGS.length) return [];
+  const t=((record.title||'')+(record.summary||'')).toLowerCase();
+  return PIE_FLAGS.filter(f=>{
+    const ft=(f.title||'').toLowerCase();
+    const fd=(f.detail||'').toLowerCase();
+    // Match if any significant word from the record appears in the flag
+    const words=t.split(/\s+/).filter(w=>w.length>5);
+    return words.some(w=>ft.includes(w)||fd.includes(w));
+  }).slice(0,2);
+}
+
+function pieFlagBadge(flag){
+  const col=flag.severity==='critical'?'var(--red)':flag.severity==='warning'?'var(--amber)':'var(--blue)';
+  return`<span class="badge" style="background:${col}18;color:${col};cursor:pointer" title="${(flag.detail||'').slice(0,120)}" onclick="window.open('/patterns/','_blank')">⚡ ${(flag.title||'').slice(0,40)}</span>`;
+}
+
+// PIE sidebar widget — shows today's brief headline + top flags
+function renderPIESidebar(){
+  const el=document.getElementById('pie-sidebar');
+  if(!el) return;
+  const isPro=isProUser();
+  const critCount=PIE_FLAGS.filter(f=>f.severity==='critical').length;
+  const headline=PIE_BRIEF.headline||'PIE intelligence pipeline active';
+  const topFlags=PIE_FLAGS.filter(f=>f.severity==='critical').slice(0,3);
+
+  el.innerHTML=`
+    <div style="font:600 10px var(--mono);color:var(--text-d);letter-spacing:.1em;text-transform:uppercase;margin-bottom:8px">
+      ⚡ PIE · ${PIE_FLAGS.length} flags · ${PIE_PREDS.length} predictions
+    </div>
+    <div style="font-size:11px;color:var(--text);line-height:1.4;margin-bottom:10px">${headline.slice(0,120)}${headline.length>120?'…':''}</div>
+    ${isPro ? topFlags.map(f=>`
+      <div style="background:var(--card-hi);border-left:2px solid var(--red);padding:6px 8px;margin-bottom:6px;font-size:10px">
+        <div style="color:var(--red);font-weight:600;margin-bottom:2px">${f.title.slice(0,60)}</div>
+        <div style="color:var(--text-d)">${(f.detail||'').slice(0,80)}…</div>
+      </div>`).join('')
+    : `<div style="font-size:10px;color:var(--text-d);margin-bottom:6px">${critCount} critical flags — <a href="/pro/" style="color:var(--amber)">Pro to view →</a></div>`}
+    <a href="/patterns/" style="font:500 10px var(--mono);color:var(--amber);text-decoration:none">View all in Patterns →</a>
+  `;
+}
 
 // ── FORGE INTEL ADAPTERS ──
 // Convert forge_intel.json sections into normalized records for each vertical
@@ -403,9 +471,11 @@ function renderDefense(){
   l.innerHTML=filtered.slice(0,80).map(x=>{
     const en=x.entities||{},pr=(en.programs||[]).slice(0,2),co=(en.companies||[]).slice(0,2),u=x.url||'#';
     const isPaid=x.paywall;
+    const flags=getPIEFlags(x);
+    if(isPaid&&!isProUser()) return paywallGate(x.title);
     return`<div class="acard defense" onclick="or('${u.replace(/'/g,"\'")}','${(x.title||'').replace(/'/g,"\'").substring(0,80)}')">
       <div style="display:flex;gap:6px;align-items:center;margin-bottom:4px;flex-wrap:wrap">
-        ${isPaid?'<span class="badge" style="background:var(--defense-d);color:var(--defense)">🔒 INTEL</span>':''}
+        ${isPaid?'<span class="badge" style="background:var(--defense-d);color:var(--defense)">🔒 PRO</span>':''}
         <span class="badge" style="background:var(--defense-d);color:var(--defense)">DEFENSE</span>
         <span class="badge" style="background:var(--surface);color:var(--text-d)">${x.source||x.site||'forge'}</span>
         <span style="font:10px var(--mono);color:var(--text-xd);margin-left:auto">${(x.pub_date||'').slice(0,10)}</span>
@@ -415,6 +485,7 @@ function renderDefense(){
       <div style="display:flex;gap:3px;flex-wrap:wrap;margin-top:6px">
         ${pr.map(p=>`<span class="badge badge-red">${p}</span>`).join('')}
         ${co.map(c=>`<span class="badge badge-blue">${c}</span>`).join('')}
+        ${flags.map(f=>pieFlagBadge(f)).join('')}
       </div>
     </div>`;
   }).join('')+(filtered.length>80?`<div style="text-align:center;padding:20px;color:var(--text-d);font:11px var(--mono)">Showing 80 of ${filtered.length}</div>`:'');
@@ -440,9 +511,11 @@ function renderCommercial(){
   l.innerHTML=filtered.slice(0,80).map(x=>{
     const en=x.entities||{},pr=(en.programs||[]).slice(0,2),co=(en.companies||[]).slice(0,2),u=x.url||'#';
     const isPaid=x.paywall;
+    const flags=getPIEFlags(x);
+    if(isPaid&&!isProUser()) return paywallGate(x.title);
     return`<div class="acard commercial" onclick="or('${u.replace(/'/g,"\'")}','${(x.title||'').replace(/'/g,"\'").substring(0,80)}')">
       <div style="display:flex;gap:6px;align-items:center;margin-bottom:4px;flex-wrap:wrap">
-        ${isPaid?'<span class="badge" style="background:var(--commercial-d);color:var(--commercial)">🔒 INTEL</span>':''}
+        ${isPaid?'<span class="badge" style="background:var(--commercial-d);color:var(--commercial)">🔒 PRO</span>':''}
         <span class="badge" style="background:var(--commercial-d);color:var(--commercial)">COMMERCIAL</span>
         <span class="badge" style="background:var(--surface);color:var(--text-d)">${x.source||x.site||'forge'}</span>
         <span style="font:10px var(--mono);color:var(--text-xd);margin-left:auto">${(x.pub_date||'').slice(0,10)}</span>
@@ -452,6 +525,7 @@ function renderCommercial(){
       <div style="display:flex;gap:3px;flex-wrap:wrap;margin-top:6px">
         ${pr.map(p=>`<span class="badge badge-red">${p}</span>`).join('')}
         ${co.map(c=>`<span class="badge badge-blue">${c}</span>`).join('')}
+        ${flags.map(f=>pieFlagBadge(f)).join('')}
       </div>
     </div>`;
   }).join('')+(filtered.length>80?`<div style="text-align:center;padding:20px;color:var(--text-d);font:11px var(--mono)">Showing 80 of ${filtered.length}</div>`:'');
@@ -472,12 +546,19 @@ Promise.all([
   fetch('../data/commercial/commercial_master.json').then(r=>r.ok?r.json():{records:[]}).catch(()=>({records:[]})),
   fetch('../data/dfr/dfr_master.json').then(r=>r.ok?r.json():{records:[]}).catch(()=>({records:[]})),
   fetch('forge_intel.json').then(r=>r.ok?r.json():{}).catch(()=>({})),
-]).then(([articles, defDB, comDB, dfrDB, forgeIntel])=>{
+  fetch('pie_flags.json').then(r=>r.ok?r.json():[]).catch(()=>[]),
+  fetch('pie_predictions.json').then(r=>r.ok?r.json():[]).catch(()=>[]),
+  fetch('pie_brief.json').then(r=>r.ok?r.json():{}).catch(()=>({})),
+]).then(([articles, defDB, comDB, dfrDB, forgeIntel, pieFlags, piePreds, pieBrief])=>{
   ALL=articles;
   DEFENSE_DB=[...(defDB.records||[]), ...forgeIntelToDefenseRecords(forgeIntel)];
   COMMERCIAL_DB=[...(comDB.records||[]), ...forgeIntelToCommercialRecords(forgeIntel)];
   DFR_DB=(dfrDB.records||[]).filter(r=>r.vertical_tag==='dfr');
-  rFi();renderFeed();renderDFR();renderDefense();renderCommercial();rP();rC();rR();
+  PIE_FLAGS=pieFlags||[];
+  PIE_PREDS=piePreds||[];
+  PIE_BRIEF=pieBrief||{};
+  const pfc=document.getElementById('pie-footer-count');if(pfc)pfc.textContent=`PIE (${(pieFlags||[]).length} flags, ${(piePreds||[]).length} predictions)`;
+  rFi();renderFeed();renderDFR();renderDefense();renderCommercial();renderPIESidebar();rP();rC();rR();
 }).catch(e=>{document.getElementById('feed-list').innerHTML=`<div style="text-align:center;padding:40px;color:var(--red)">Error: ${e.message}</div>`;});
 
 
