@@ -874,6 +874,30 @@
 
 </div><!-- /pro-marketing -->
 
+
+<!-- Already have a token? -->
+<div id="token-entry-section" style="max-width:480px;margin:0 auto 48px;padding:0 24px;">
+  <div style="background:var(--card);border:1px solid var(--border);border-radius:10px;padding:24px;">
+    <div style="font:700 11px var(--mono);color:var(--cyan);letter-spacing:.1em;margin-bottom:8px;">// Already have a token?</div>
+    <p style="font-size:12px;color:var(--g2);margin-bottom:16px;line-height:1.5;">
+      If you subscribed or received a demo token, paste it here to activate Pro instantly — no account required.
+    </p>
+    <input type="password" id="inline-token-input"
+      placeholder="Paste your token here (starts with eyJ...)"
+      style="width:100%;padding:10px 12px;background:var(--bg);border:1px solid var(--border);border-radius:6px;color:var(--white);font:12px var(--mono);outline:none;margin-bottom:10px;transition:border-color .15s;"
+      onfocus="this.style.borderColor='var(--cyan)'"
+      onblur="this.style.borderColor='var(--border)'" onkeydown="if(event.key==='Enter')activateInlineToken()"
+    />
+    <div style="display:flex;gap:8px;align-items:center;">
+      <button onclick="activateInlineToken()" style="flex:1;padding:10px;background:var(--cyan);border:none;border-radius:6px;color:#0c0c0a;font:600 13px var(--sans);cursor:pointer;">
+        Activate Token →
+      </button>
+      <a href="/start/#activate" style="font-size:11px;color:var(--g2);text-decoration:none;white-space:nowrap;">Setup guide →</a>
+    </div>
+    <div id="inline-token-status" style="font-size:11px;margin-top:8px;min-height:16px;"></div>
+  </div>
+</div>
+
 <div class="faq">
   <div class="faq-title">// FAQ</div>
   <div class="faq-item">
@@ -1032,7 +1056,7 @@ function printSampleReport() {
   win.document.write('@media print{body{margin:0}.r-header{-webkit-print-color-adjust:exact;print-color-adjust:exact}}');
   win.document.write('</' + 'style></head><body>');
   win.document.write(doc.innerHTML);
-  win.document.write('</body></html>');
+  win.document.write('</' + 'body></' + 'html>');
   win.document.close();
   setTimeout(function(){ win.print(); }, 600);
 }
@@ -1060,7 +1084,62 @@ function goToWingman() {
 async function manageSubscription() {
   const sub = getStoredSub();
   // For full portal support, need customer_id — simplified: link to Stripe
-  window.open('https://billing.stripe.com/p/login/YOUR_PORTAL_LINK', '_blank');
+  // Open Stripe customer portal via function
+  fetch('/.netlify/functions/subscription-check?action=portal', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ customer_id: getStoredSub()?.customerId || '' }),
+  }).then(r => r.json()).then(d => {
+    if (d.url) window.open(d.url, '_blank');
+    else window.open('https://billing.stripe.com', '_blank');
+  }).catch(() => window.open('https://billing.stripe.com', '_blank'));
+}
+
+function activateInlineToken() {
+  var tok = document.getElementById('inline-token-input').value.trim();
+  var status = document.getElementById('inline-token-status');
+  if (!tok) { status.textContent = 'Paste your token first.'; status.style.color = 'var(--amber)'; return; }
+
+  try {
+    var decoded = JSON.parse(atob(tok));
+    var payload = decoded.payload;
+    if (!payload) throw new Error('bad');
+    var expired = payload.exp && Date.now() > payload.exp;
+    if (expired) {
+      status.textContent = 'Token expired. Renew at /pro/ or contact Jeremiah@midwestniceuas.com.';
+      status.style.color = 'var(--red)';
+      return;
+    }
+    // Valid — save it
+    localStorage.setItem(SUB_TOKEN_KEY, tok);
+    localStorage.setItem('wingman_sub_token', tok);
+    localStorage.setItem(SUB_DATA_KEY, JSON.stringify({ email: payload.email, tier: payload.tier }));
+    status.textContent = '✓ Activated! Loading your dashboard...';
+    status.style.color = 'var(--cyan)';
+    setTimeout(function() { location.reload(); }, 800);
+  } catch(e) {
+    // Try server verify
+    status.textContent = 'Verifying...';
+    status.style.color = 'var(--g2)';
+    fetch('/.netlify/functions/subscription-check?action=verify&token=' + encodeURIComponent(tok))
+      .then(function(r) { return r.json(); })
+      .then(function(d) {
+        if (d.valid) {
+          localStorage.setItem(SUB_TOKEN_KEY, tok);
+          localStorage.setItem('wingman_sub_token', tok);
+          status.textContent = '✓ Activated! Loading your dashboard...';
+          status.style.color = 'var(--cyan)';
+          setTimeout(function() { location.reload(); }, 800);
+        } else {
+          status.textContent = d.reason === 'revoked' ? 'Token revoked.' : 'Token not recognized. Check you copied it fully.';
+          status.style.color = 'var(--red)';
+        }
+      })
+      .catch(function() {
+        status.textContent = 'Could not verify. Check your connection.';
+        status.style.color = 'var(--red)';
+      });
+  }
 }
 
 function signOut() {
