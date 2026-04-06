@@ -20,6 +20,7 @@
   --defense:#f97316;--defense-d:#f9731618;
   --financial:#f59e0b;--financial-d:#f59e0b18;
   --commercial:#06b6d4;--commercial-d:#06b6d418;
+  --dfr:#ff6b35;--dfr-d:#ff6b3518;
   --amber:#f59e0b;--amber-d:#f59e0b18;
   --blue:#3b82f6;--blue-d:#3b82f618;
   --green:#22c55e;--green-d:#22c55e20;
@@ -71,7 +72,7 @@ a{color:var(--blue);text-decoration:none}a:hover{text-decoration:underline}
 .badge-cyan{background:var(--cyan-d);color:var(--cyan)}.badge-purple{background:var(--purple-d);color:var(--purple)}
 .acard{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:12px 14px;margin-bottom:8px;cursor:pointer;transition:all .15s;border-left:3px solid transparent}
 .acard:hover{background:var(--card-hi);border-color:var(--border-hi)}
-.acard.defense{border-left-color:var(--defense)}.acard.financial{border-left-color:var(--financial)}.acard.commercial{border-left-color:var(--commercial)}
+.acard.defense{border-left-color:var(--defense)}.acard.financial{border-left-color:var(--financial)}.acard.commercial{border-left-color:var(--commercial)}.acard.dfr{border-left-color:var(--dfr)}
 .acard h3{font-size:13px;font-weight:600;color:var(--text);line-height:1.4;margin-bottom:4px}
 .acard .sum{font-size:11px;color:var(--text-s);line-height:1.5;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}
 .ecard{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:12px 14px;margin-bottom:6px}
@@ -96,6 +97,7 @@ a{color:var(--blue);text-decoration:none}a:hover{text-decoration:underline}
 <style>.tp-pill{font:500 10px 'DM Sans',system-ui,sans-serif;color:#6b6358;padding:4px 9px;border:1px solid #2e2e26;border-radius:20px;text-decoration:none;white-space:nowrap;transition:all .15s}.tp-pill:hover{border-color:#3e3e34;color:#b8b0a0}</style>
 <div class="tabs">
   <button class="tab active" data-tab="feed" data-accent="feed"><i class="ph ph-newspaper"></i> Feed <span class="count" id="feed-count">—</span></button>
+  <button class="tab" data-tab="dfr" data-accent="dfr"><i class="ph ph-drone"></i> DFR <span class="count" id="dfr-count">—</span></button>
   <button class="tab" data-tab="programs" data-accent="prog"><i class="ph ph-flag-banner"></i> Programs</button>
   <button class="tab" data-tab="companies" data-accent="comp"><i class="ph ph-buildings"></i> Companies</button>
   <button class="tab" data-tab="regions" data-accent="reg"><i class="ph ph-globe-hemisphere-west"></i> Regions</button>
@@ -132,6 +134,12 @@ a{color:var(--blue);text-decoration:none}a:hover{text-decoration:underline}
     <div class="stats-bar" id="feed-stats">Loading...</div>
     <div id="feed-list">Loading...</div>
   </div>
+  <div class="panel" id="panel-dfr">
+    <div class="stats-bar" id="dfr-stats">Loading...</div>
+    <input class="search-bar" id="dfr-search" placeholder="Search DFR intel... (e.g. Wisconsin, BRINC, NASAO, FAA BEYOND, grant)" oninput="renderDFR()">
+    <div class="filter-row" style="margin-bottom:14px" id="dfr-filters"></div>
+    <div id="dfr-list">Loading...</div>
+  </div>
   <div class="panel" id="panel-programs">
     <p style="font-size:11px;color:var(--text-d);margin-bottom:12px">Defense &amp; government programs tracked across intel articles · Cross-referenced with <a href="/patterns/" style="color:var(--amber)">PIE flags</a></p>
     <div id="program-list"></div>
@@ -151,18 +159,65 @@ a{color:var(--blue);text-decoration:none}a:hover{text-decoration:underline}
 </div>
 <script>
 const DKW=['pentagon','dod ','department of defense','military','army','navy','air force','marine corps','replicator','counter-uas','c-uas','jiatf','dawg','diu','ndaa','blue uas','combat','warfare','warfighter','deployed','tactical','darpa','socom','centcom','indopacom','program of record','weapon system','munition','loitering','fcc','covered list','drone dominance'];
+const DFRKW=['first responder','dfr','drone as a first responder','911','dispatch','public safety','law enforcement','police','fire department','ems','search and rescue','sar','bvlos waiver','beyond visual line','part 108','droneresponders','skydio x10','brinc','flock','dronesense','cad integration','ng911','dji ban','dji grounded','fleet grounded','nasao','asda','omb m-26','cops technology','hsgp','cops grant','seiler','frontier precision','duncan-parnell','uvt ','unmanned vehicle tech'];
 const FKW=['billion','million','contract worth','contract valued','contract award','awarded a','funding','investment','raise','series a','series b','ipo','acquisition','merger','valuation','budget request','procurement','rfp ','fiscal year','fy2','fy3','defense budget','sbir','sttr','ota ','other transaction'];
 const REGS=['US','China','Russia','Ukraine','Turkey','Israel','NATO','Taiwan','Iran','North Korea','Japan','India','Australia','UK','France','Germany','EU'];
 const SL={militarnyi:'militarnyi',defensescoop:'DefenseScoop',defensenews:'Defense News',breakingdefense:'Breaking Defense',twz:'The War Zone',unmannedairspace:'unmannedairspace',dronedj:'DroneDJ',dronelife:'DroneLife',dronexl:'DroneXL',reuters:'Reuters',suasnews:'sUAS News'};
-const CC={defense:'var(--defense)',financial:'var(--financial)',commercial:'var(--commercial)'};
-function cat(a){const t=((a.title||'')+(a.summary||'')+(a.body_text||'')).toLowerCase();const d=DKW.filter(k=>t.includes(k)).length;const f=FKW.filter(k=>t.includes(k)).length;if(d>=4)return'defense';if(f>=2&&f>d)return'financial';if(d>=2)return'defense';return'commercial';}
+const CC={defense:'var(--defense)',financial:'var(--financial)',commercial:'var(--commercial)',dfr:'var(--dfr)'};
+function cat(a){
+  if(a.article_type==='dfr'||a.vertical==='dfr')return'dfr';
+  const t=((a.title||'')+(a.summary||'')+(a.body_text||'')).toLowerCase();
+  const df=DFRKW.filter(k=>t.includes(k)).length;
+  const d=DKW.filter(k=>t.includes(k)).length;
+  const f=FKW.filter(k=>t.includes(k)).length;
+  if(df>=3)return'dfr';
+  if(d>=4)return'defense';
+  if(f>=2&&f>d)return'financial';
+  if(d>=2)return'defense';
+  return'commercial';
+}
 function ar(a){const t=(a.title||'')+' '+(a.summary||'')+' '+(a.body_text||'').slice(0,500);return REGS.filter(r=>t.includes(r));}
 let ALL=[],cC='all',cS='all',cR='all';
-document.querySelectorAll('.tab').forEach(t=>{t.addEventListener('click',()=>{document.querySelectorAll('.tab').forEach(x=>x.classList.remove('active'));document.querySelectorAll('.panel').forEach(x=>x.classList.remove('active'));t.classList.add('active');document.getElementById('panel-'+t.dataset.tab).classList.add('active');const acc=t.dataset.accent||'feed';document.documentElement.style.setProperty('--tab-accent',`var(--${acc})`);document.documentElement.style.setProperty('--tab-accent-d',`var(--${acc}-d)`);});});
+let dfrSubFilter='all';
+function renderDFR(){
+  const dfra=ALL.filter(a=>cat(a)==='dfr');
+  const q=(document.getElementById('dfr-search')?.value||'').toLowerCase().trim();
+  let a=q?dfra.filter(x=>(x.title||'').toLowerCase().includes(q)||(x.summary||'').toLowerCase().includes(q)):dfra;
+  a.sort((x,y)=>(y.pub_date||'').localeCompare(x.pub_date||''));
+  // Sub-filters
+  const subs=['all','regulatory','platform','market','grant'];
+  const SUBKW={regulatory:['fcc','ndaa','asda','omb','fhwa','waiver','part 108','regulation'],platform:['skydio','brinc','flock','parrot','autel','matrice','lemur','guardian'],market:['grounded','fleet','dealer','seiler','frontier','duncan','uvt','advexure'],grant:['cops','hsgp','grant','fema','funding','reimburs']};
+  document.getElementById('dfr-filters').innerHTML=['all','regulatory','platform','market','grant'].map(s=>`<button class="fbtn${dfrSubFilter===s?' active':''}" onclick="dfrSubFilter='${s}';renderDFR()">${s.charAt(0).toUpperCase()+s.slice(1)}</button>`).join('');
+  if(dfrSubFilter!=='all'){const kws=SUBKW[dfrSubFilter]||[];a=a.filter(x=>{const t=((x.title||'')+(x.summary||'')).toLowerCase();return kws.some(k=>t.includes(k));});}
+  document.getElementById('dfr-stats').innerHTML=`<span>DFR Feed · <b style="color:var(--dfr)">${a.length}</b> articles · <b style="color:var(--green)">${dfra.length}</b> total DFR in pipeline</span>`;
+  const l=document.getElementById('dfr-list');
+  if(!a.length){l.innerHTML='<div style="text-align:center;padding:40px;color:var(--text-d)">No DFR articles match.</div>';return;}
+  l.innerHTML=a.slice(0,60).map(x=>{
+    const en=x.entities||{},pr=(en.programs||[]).slice(0,2),co=(en.companies||[]).slice(0,2),u=x.url||'#';
+    const isExcl=(x.source==='oregon_nasao'||x.site==='oregon_nasao')&&x.pub_date>='2026-04-01';
+    return`<div class="acard dfr" onclick="or('${u.replace(/'/g,"\'")}','${(x.title||'').replace(/'/g,"\'").substring(0,80)}')">
+      <div style="display:flex;gap:6px;align-items:center;margin-bottom:4px;flex-wrap:wrap">
+        ${isExcl?'<span class="badge" style="background:var(--dfr-d);color:var(--dfr)">EXCLUSIVE</span>':''}
+        <span class="badge" style="background:var(--dfr-d);color:var(--dfr)">DFR</span>
+        <span class="badge" style="background:var(--surface);color:var(--text-d)">${x.site||'forge'}</span>
+        <span style="font:10px var(--mono);color:var(--text-xd);margin-left:auto">${(x.pub_date||'').slice(0,10)}</span>
+      </div>
+      <h3>${x.title||'Untitled'}</h3>
+      <div class="sum">${x.summary||(x.body_text||'').slice(0,200)||'—'}</div>
+      <div style="display:flex;gap:3px;flex-wrap:wrap;margin-top:6px">
+        ${pr.map(p=>`<span class="badge badge-red">${p}</span>`).join('')}
+        ${co.map(c=>`<span class="badge badge-blue">${c}</span>`).join('')}
+      </div>
+    </div>`;
+  }).join('')+(a.length>60?`<div style="text-align:center;padding:20px;color:var(--text-d);font:11px var(--mono)">Showing 60 of ${a.length}</div>`:'');
+}
+
+document.querySelectorAll('.tab').forEach(t=>{t.addEventListener('click',()=>{document.querySelectorAll('.tab').forEach(x=>x.classList.remove('active'));document.querySelectorAll('.panel').forEach(x=>x.classList.remove('active'));t.classList.add('active');document.getElementById('panel-'+t.dataset.tab).classList.add('active');const acc=t.dataset.accent||'feed';document.documentElement.style.setProperty('--tab-accent',`var(--${acc})`);document.documentElement.style.setProperty('--tab-accent-d',`var(--${acc}-d)`);if(t.dataset.tab==='dfr')renderDFR();});});
 function toggleFS(hdr){hdr.classList.toggle('open');const row=hdr.nextElementSibling;row.classList.toggle('open');}
 function rFi(){
-  const cc={all:ALL.length,defense:0,financial:0,commercial:0};ALL.forEach(a=>cc[cat(a)]++);
-  document.getElementById('cat-filters').innerHTML=['all','defense','financial','commercial'].map(c=>`<button class="fbtn${cC===c?' active':''}" onclick="cC='${c}';rFi();renderFeed()">${c==='all'?'All Types':c.charAt(0).toUpperCase()+c.slice(1)} (${cc[c]})</button>`).join('');
+  const cc={all:ALL.length,defense:0,financial:0,commercial:0,dfr:0};ALL.forEach(a=>cc[cat(a)]++);
+  document.getElementById('dfr-count').textContent=cc.dfr;
+  document.getElementById('cat-filters').innerHTML=['all','defense','financial','commercial','dfr'].map(c=>`<button class="fbtn${cC===c?' active':''}" onclick="cC='${c}';rFi();renderFeed()">${c==='all'?'All Types':c==='dfr'?'DFR':c.charAt(0).toUpperCase()+c.slice(1)} (${cc[c]})</button>`).join('');
   const sc={};ALL.forEach(a=>{const s=a.site||'other';sc[s]=(sc[s]||0)+1;});
   const ts=Object.entries(sc).sort((a,b)=>b[1]-a[1]);
   document.getElementById('src-filters').innerHTML=`<button class="fbtn${cS==='all'?' active':''}" onclick="cS='all';rFi();renderFeed()">All Sources</button>`+ts.map(([s,c])=>`<button class="fbtn${cS===s?' active':''}" onclick="cS='${s}';rFi();renderFeed()">${SL[s]||s} (${c})</button>`).join('');
@@ -213,7 +268,17 @@ let ru='';function or(u,t){ru=u;document.getElementById('rt').textContent=t||u;d
 function cr(){document.getElementById('ro').classList.remove('open');document.getElementById('ri').src='about:blank';ru='';}
 function oe(){if(ru)window.open(ru,'_blank');}
 document.addEventListener('keydown',e=>{if(e.key==='Escape'&&document.getElementById('ro').classList.contains('open'))cr();});
-fetch('intel_articles.json').then(r=>r.ok?r.json():[]).catch(()=>[]).then(d=>{ALL=d;rFi();renderFeed();rP();rC();rR();}).catch(e=>{document.getElementById('feed-list').innerHTML=`<div style="text-align:center;padding:40px;color:var(--red)">Error: ${e.message}</div>`;});
+
+// Auto-open tab from URL param (?tab=dfr, ?cat=defense, etc.)
+(function(){
+  const p=new URLSearchParams(location.search);
+  const tab=p.get('tab')||p.get('cat');
+  if(tab){
+    const btn=document.querySelector(`.tab[data-tab="${tab}"]`);
+    if(btn){btn.click();}
+  }
+})();
+fetch('intel_articles.json').then(r=>r.ok?r.json():[]).catch(()=>[]).then(d=>{ALL=d;rFi();renderFeed();renderDFR();rP();rC();rR();}).catch(e=>{document.getElementById('feed-list').innerHTML=`<div style="text-align:center;padding:40px;color:var(--red)">Error: ${e.message}</div>`;});
 
 
 function fmtUpdated(iso) {
