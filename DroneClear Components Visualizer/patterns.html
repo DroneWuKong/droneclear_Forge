@@ -577,15 +577,15 @@ async function loadData() {
   const flagList = document.getElementById("flag-list");
   flagList.innerHTML = '<div style="color:var(--text-d);font-size:12px;padding:20px;text-align:center">Loading pipeline data...</div>';
 
+  // Dynamic platform count (fire-and-forget, outside Promise.all)
+  fetch("../static/forge_database.json").then(r=>r.json()).then(db=>{
+    const n = (db.drone_models||[]).length;
+    const el = document.getElementById('plat-count-blueuas');
+    if(el) el.textContent = n;
+  }).catch(()=>{});
+
   try {
     const [fRes, pRes] = await Promise.all([
-      // Dynamic platform count
-      fetch("../static/forge_database.json").then(r=>r.json()).then(db=>{
-        const n = (db.drone_models||[]).length;
-        const el = document.getElementById('plat-count-blueuas');
-        if(el) el.textContent = n;
-      }).catch(()=>{});
-
       fetch("../static/pie_flags.json").then(r => {
         if (!r.ok) throw new Error(`flags.json: HTTP ${r.status}`);
         return r.json();
