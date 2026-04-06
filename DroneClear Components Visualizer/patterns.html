@@ -1233,27 +1233,43 @@ function renderPlatforms() {
   ];
 
   const gzContainer = document.getElementById("grayzone-entities");
-  gzContainer.innerHTML = gzEntities.map(gz => {
-    const tierColor = gz.tier === 'CRITICAL' ? 'var(--red)' : 'var(--orange)';
-    return `<div style="background:var(--card);border:1px solid var(--border);border-radius:8px;padding:10px 12px;border-left:3px solid ${tierColor}">
-      <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px">
-        <div style="flex:1;min-width:0">
-          <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;margin-bottom:3px">
-            <span style="font-size:12px;font-weight:700;color:var(--text)">🔍 ${gz.name}</span>
-            <span style="font-size:8px;padding:1px 5px;border-radius:3px;background:${tierColor}20;color:${tierColor}">${gz.tier}</span>
-            <span style="font-size:8px;padding:1px 5px;border-radius:3px;background:var(--surface);color:var(--text-d)">${gz.flags} flags</span>
-          </div>
-          <div style="font-size:9px;color:var(--text-d);margin-bottom:3px">${gz.hq}</div>
-          <div style="font-size:10px;color:var(--text-s);line-height:1.4">${gz.finding}</div>
-          <div style="font-size:9px;color:var(--amber);margin-top:3px">${gz.status}</div>
-        </div>
-        <div style="text-align:center;min-width:50px">
-          <div style="font:700 18px var(--mono);color:${tierColor}">${gz.score.toFixed(2)}</div>
-          <div style="font-size:8px;color:var(--text-d)">risk score</div>
-        </div>
-      </div>
-    </div>`;
+  gzContainer.innerHTML = gzEntities.map(function(gz,gi) {
+    var tc = gz.tier==="CRITICAL"?"var(--red)":"var(--orange)";
+    return '<div style="background:var(--card);border:1px solid var(--border);border-radius:8px;padding:10px 12px;border-left:3px solid '+tc+';cursor:pointer" data-gz-idx="'+gi+'">'
+      +'<div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px">'
+      +'<div style="flex:1;min-width:0">'
+      +'<div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;margin-bottom:3px">'
+      +'<span style="font-size:12px;font-weight:700;color:var(--text)">🔍 '+gz.name+'</span>'
+      +'<span style="font-size:8px;padding:1px 5px;border-radius:3px;background:'+tc+'20;color:'+tc+'">'+gz.tier+'</span>'
+      +'<span style="font-size:8px;padding:1px 5px;border-radius:3px;background:var(--surface);color:var(--text-d)">'+gz.flags+' flags</span>'
+      +'</div>'
+      +'<div style="font-size:9px;color:var(--text-d);margin-bottom:3px">'+gz.hq+'</div>'
+      +'<div style="font-size:10px;color:var(--text-s);line-height:1.4">'+gz.finding+'</div>'
+      +'<div style="font-size:9px;color:var(--amber);margin-top:3px">'+gz.status+'</div>'
+      +'</div>'
+      +'<div style="text-align:center;min-width:50px">'
+      +'<div style="font:700 18px var(--mono);color:'+tc+'">'+gz.score.toFixed(2)+'</div>'
+      +'<div style="font-size:8px;color:var(--text-d)">risk score</div>'
+      +'</div></div></div>';
   }).join("");
+  gzContainer.querySelectorAll("[data-gz-idx]").forEach(function(el) {
+    el.addEventListener("click", function() {
+      var gz = gzEntities[+el.dataset.gzIdx]; if (!gz) return;
+      var tc = gz.tier==="CRITICAL"?"var(--red)":"var(--orange)";
+      var relFlags = FLAGS.filter(function(f){return (f.title||"").indexOf(gz.name.split(" ")[0])>-1;});
+      var body = "";
+      body += '<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px">';
+      body += '<span style="font-size:9px;padding:2px 7px;border-radius:4px;background:'+tc+'20;color:'+tc+';font-weight:700">'+gz.tier+'</span>';
+      body += '<span class="badge badge-amber">Risk: '+gz.score.toFixed(3)+'</span>';
+      body += '<span class="badge" style="background:var(--surface);color:var(--text-d)">'+gz.flags+' flags</span>';
+      body += '</div>';
+      body += '<div style="background:var(--surface);border-radius:6px;padding:8px 10px;margin-bottom:10px"><div style="font:500 9px var(--mono);color:var(--text-d);margin-bottom:2px">HQ</div><div style="font:400 11px var(--font);color:var(--text-s)">'+gz.hq+'</div></div>';
+      body += '<div style="background:var(--surface);border-radius:6px;padding:8px 10px;margin-bottom:10px"><div style="font:500 9px var(--mono);color:var(--text-d);margin-bottom:2px">KEY FINDING</div><div style="font:400 11px var(--font);color:var(--text-s);line-height:1.5">'+gz.finding+'</div></div>';
+      body += '<div style="background:'+tc+'12;border:1px solid '+tc+'30;border-radius:6px;padding:8px 10px;margin-bottom:10px;font:500 11px var(--font);color:'+tc+'">'+gz.status+'</div>';
+      if (relFlags.length) { body += '<div><div style="font:600 9px var(--mono);color:var(--text-d);margin-bottom:6px">Related PIE Flags ('+relFlags.length+')</div>'+relFlags.slice(0,5).map(function(f){return '<div style="background:var(--surface);border-radius:6px;padding:6px 9px;margin-bottom:4px;font:400 10px var(--font);color:var(--text-s)">'+f.title+'</div>';}).join("")+'</div>'; }
+      openDetailModal(gz.name, gz.hq, body);
+    });
+  });
 
   // Blue UAS Platforms
   const c = document.getElementById("platform-list");
@@ -1278,26 +1294,26 @@ function renderPlatforms() {
     <div class="tags"><span style="font-size:10px;color:var(--text-d);margin-right:4px">SBC:</span>${p.sbc.map(s=>`<span class="badge badge-cyan">${s}</span>`).join("")}</div>
     ${p.contracts.length?`<div class="tags"><span style="font-size:10px;color:var(--text-d);margin-right:4px">Contracts:</span>${p.contracts.map(cn=>`<span class="badge badge-amber">${cn}</span>`).join("")}</div>`:""}
   </div>`).join("");
-  c.querySelectorAll("[data-plat-idx]").forEach(el => {
-    el.addEventListener("click", () => {
-      const p = PLATFORMS[+el.dataset.platIdx]; if (!p) return;
-      const tColor = tierBadge[p.tier]==="badge-blue"?"var(--blue)":"var(--red)";
-      const relFlags = FLAGS.filter(f=>(f.title||"").toLowerCase().includes(p.name.split(" ")[0].toLowerCase()));
-      openDetailModal(p.name, p.mfr+" · "+p.country, `
-        <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px">
-          <span class="badge ${tierBadge[p.tier]}">${tierLabel[p.tier]}</span>
-          ${p.combat?"<span class='badge badge-red'>COMBAT</span>":""}
-          <span class="badge badge-green">${p.prod.toLocaleString()}/mo</span>
-          <span class="badge ${p.yoy>0?"badge-green":"badge-red"}">${p.yoy>0?"+":""}${p.yoy}% YoY</span>
-        </div>
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px">
-          <div style="background:var(--surface);border-radius:6px;padding:8px 10px"><div style="font:500 9px var(--mono);color:var(--text-d);margin-bottom:2px">MANUFACTURER</div><div style="font:600 11px var(--font)">${p.mfr}</div></div>
-          <div style="background:var(--surface);border-radius:6px;padding:8px 10px"><div style="font:500 9px var(--mono);color:var(--text-d);margin-bottom:2px">COUNTRY</div><div style="font:600 11px var(--font)">${p.country}</div></div>
-        </div>
-        ${p.sbc.length?`<div style="margin-bottom:10px"><div style="font:600 9px var(--mono);color:var(--text-d);margin-bottom:5px">SBC</div><div style="display:flex;gap:4px;flex-wrap:wrap">${p.sbc.map(s=>`<span class="badge badge-cyan">${s}</span>`).join("")}</div></div>`:""}
-        ${p.contracts.length?`<div style="margin-bottom:10px"><div style="font:600 9px var(--mono);color:var(--text-d);margin-bottom:5px">Contracts</div><div style="display:flex;gap:4px;flex-wrap:wrap">${p.contracts.map(cn=>`<span class="badge badge-amber">${cn}</span>`).join("")}</div></div>`:""}
-        ${relFlags.length?`<div><div style="font:600 9px var(--mono);color:var(--text-d);margin-bottom:6px">Related Flags (${relFlags.length})</div>${relFlags.slice(0,5).map(f=>`<div style="background:var(--surface);border-radius:6px;padding:6px 9px;margin-bottom:4px;font:400 10px var(--font);color:var(--text-s)">${f.title}</div>`).join("")}</div>`:""}
-      `, tColor);
+  c.querySelectorAll("[data-plat-idx]").forEach(function(el) {
+    el.addEventListener("click", function() {
+      var p = PLATFORMS[+el.dataset.platIdx]; if (!p) return;
+      var tb = {blue:"badge-blue",ndaa:"badge-green",commercial:"badge-amber",adversary:"badge-red"};
+      var tl = {blue:"Blue UAS",ndaa:"NDAA §848",commercial:"Commercial",adversary:"Adversary"};
+      var tColor = p.tier==="blue"?"var(--blue)":"var(--red)";
+      var relFlags = FLAGS.filter(function(f){return (f.title||"").toLowerCase().indexOf(p.name.split(" ")[0].toLowerCase())>-1;});
+      var body = "";
+      body += '<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px">';
+      body += '<span class="badge '+(tb[p.tier]||"badge-amber")+'">'+(tl[p.tier]||p.tier)+'</span>';
+      if (p.combat) body += '<span class="badge badge-red">COMBAT</span>';
+      body += '<span class="badge badge-green">'+p.prod.toLocaleString()+'/mo</span>';
+      body += '<span class="badge '+(p.yoy>0?"badge-green":"badge-red")+'">'+(p.yoy>0?"+":"")+p.yoy+'% YoY</span></div>';
+      body += '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px">';
+      body += '<div style="background:var(--surface);border-radius:6px;padding:8px 10px"><div style="font:500 9px var(--mono);color:var(--text-d);margin-bottom:2px">MANUFACTURER</div><div style="font:600 11px var(--font)">'+p.mfr+'</div></div>';
+      body += '<div style="background:var(--surface);border-radius:6px;padding:8px 10px"><div style="font:500 9px var(--mono);color:var(--text-d);margin-bottom:2px">COUNTRY</div><div style="font:600 11px var(--font)">'+p.country+'</div></div></div>';
+      if (p.sbc&&p.sbc.length){body+='<div style="margin-bottom:10px"><div style="font:600 9px var(--mono);color:var(--text-d);margin-bottom:5px">SBC</div><div style="display:flex;gap:4px;flex-wrap:wrap">'+p.sbc.map(function(s){return '<span class="badge badge-cyan">'+s+'</span>';}).join("")+'</div></div>';}
+      if (p.contracts&&p.contracts.length){body+='<div style="margin-bottom:10px"><div style="font:600 9px var(--mono);color:var(--text-d);margin-bottom:5px">Contracts</div><div style="display:flex;gap:4px;flex-wrap:wrap">'+p.contracts.map(function(cn){return '<span class="badge badge-amber">'+cn+'</span>';}).join("")+'</div></div>';}
+      if (relFlags.length){body+='<div><div style="font:600 9px var(--mono);color:var(--text-d);margin-bottom:6px">Related Flags ('+relFlags.length+')</div>'+relFlags.slice(0,5).map(function(f){return '<div style="background:var(--surface);border-radius:6px;padding:6px 9px;margin-bottom:4px;font:400 10px var(--font);color:var(--text-s)">'+f.title+'</div>';}).join("")+'</div>';}
+      openDetailModal(p.name, p.mfr+" · "+p.country, body);
     });
   });
 }
@@ -1354,25 +1370,28 @@ function renderComponents() {
   });
 
   w.innerHTML = html;
-  w.querySelectorAll("[data-comp-name]").forEach(el => {
-    el.addEventListener("click", () => {
-      const comp = COMPONENTS.find(x=>x.name===el.dataset.compName); if(!comp) return;
-      const rc = riskColors[comp.risk]||"var(--text-d)";
-      const rl = riskLabels[comp.risk]||comp.risk;
-      const delta = Math.round(((comp.price-comp.avg)/(comp.avg||1))*100);
-      openDetailModal(comp.name, comp.cat+" · "+comp.status, `
-        <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px">
-          <span style="font-size:9px;padding:2px 7px;border-radius:4px;background:${rc}20;color:${rc};font-weight:600">${rl}</span>
-          <span style="font-size:9px;padding:2px 7px;border-radius:4px;background:${statusColor[comp.status]}20;color:${statusColor[comp.status]};font-weight:600">${(comp.status||"").toUpperCase()}</span>
-          ${comp.lead?`<span class="badge" style="background:var(--surface);color:var(--text-d)">${comp.lead}wk lead</span>`:""}
-        </div>
-        ${comp.price?`<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px">
-          <div style="background:var(--surface);border-radius:6px;padding:8px 10px"><div style="font:500 9px var(--mono);color:var(--text-d);margin-bottom:2px">PRICE</div><div style="font:700 14px var(--mono)">$${comp.price.toLocaleString()}</div>${delta?`<div style="font:10px var(--mono);color:${delta>0?"var(--red)":"var(--green)"}">${delta>0?"+":""}${delta}% vs avg</div>`:""}</div>
-          ${comp.avg?`<div style="background:var(--surface);border-radius:6px;padding:8px 10px"><div style="font:500 9px var(--mono);color:var(--text-d);margin-bottom:2px">AVG</div><div style="font:700 14px var(--mono);color:var(--text-s)">$${comp.avg.toLocaleString()}</div></div>`:""}
-        </div>`:""}
-        ${comp.note?`<div style="background:var(--surface);border-radius:6px;padding:8px 10px;margin-bottom:10px;font:400 11px var(--font);color:var(--text-s);line-height:1.6">${comp.note}</div>`:""}
-        ${comp.users&&comp.users.length?`<div><div style="font:600 9px var(--mono);color:var(--text-d);margin-bottom:5px">Used By</div><div style="display:flex;gap:4px;flex-wrap:wrap">${comp.users.map(u=>`<span class="badge badge-blue">${u}</span>`).join("")}</div></div>`:""}
-      `, rc);
+  w.querySelectorAll("[data-comp-name]").forEach(function(el) {
+    el.addEventListener("click", function() {
+      var comp = COMPONENTS.find(function(x){return x.name===el.dataset.compName;}); if(!comp) return;
+      var rc = riskColors[comp.risk]||"var(--text-d)";
+      var rl = riskLabels[comp.risk]||comp.risk;
+      var sc = statusColor[comp.status]||"var(--text-d)";
+      var delta = Math.round(((comp.price-comp.avg)/(comp.avg||1))*100);
+      var body = "";
+      body += '<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px">';
+      body += '<span style="font-size:9px;padding:2px 7px;border-radius:4px;background:'+rc+'20;color:'+rc+';font-weight:600">'+rl+'</span>';
+      body += '<span style="font-size:9px;padding:2px 7px;border-radius:4px;background:'+sc+'20;color:'+sc+';font-weight:600">'+(comp.status||"").toUpperCase()+'</span>';
+      if (comp.lead) body += '<span class="badge" style="background:var(--surface);color:var(--text-d)">'+comp.lead+'wk lead</span>';
+      body += '</div>';
+      if (comp.price) {
+        body += '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px">';
+        body += '<div style="background:var(--surface);border-radius:6px;padding:8px 10px"><div style="font:500 9px var(--mono);color:var(--text-d);margin-bottom:2px">PRICE</div><div style="font:700 14px var(--mono)">$'+comp.price.toLocaleString()+'</div>'+(delta?'<div style="font:10px var(--mono);color:'+(delta>0?"var(--red)":"var(--green)")+'">'+(delta>0?"+":"")+delta+'% vs avg</div>':'')+'</div>';
+        if (comp.avg) body += '<div style="background:var(--surface);border-radius:6px;padding:8px 10px"><div style="font:500 9px var(--mono);color:var(--text-d);margin-bottom:2px">AVG</div><div style="font:700 14px var(--mono);color:var(--text-s)">$'+comp.avg.toLocaleString()+'</div></div>';
+        body += '</div>';
+      }
+      if (comp.note) body += '<div style="background:var(--surface);border-radius:6px;padding:8px 10px;margin-bottom:10px;font:400 11px var(--font);color:var(--text-s);line-height:1.6">'+comp.note+'</div>';
+      if (comp.users && comp.users.length) { body += '<div><div style="font:600 9px var(--mono);color:var(--text-d);margin-bottom:5px">Used By</div><div style="display:flex;gap:4px;flex-wrap:wrap">'+comp.users.map(function(u){return '<span class="badge badge-blue">'+u+'</span>';}).join("")+'</div></div>'; }
+      openDetailModal(comp.name, comp.cat+" · "+comp.status, body);
     });
   });
 }
