@@ -3030,6 +3030,9 @@ Maximum 8 gaps. Be specific and factual. If a gap favors one entity, say which.`
     }
 
     renderGapResults(a, b, gaps);
+
+    // Track gap analysis run
+    trackGapAnalysis(a, b, gaps);
   } catch(e) {
     results.innerHTML = `<div class="gap-empty"><i class="ph ph-warning"></i><span>Analysis failed</span><span style="font-size:10px;color:var(--g3);">${escHtml(String(e))}</span></div>`;
   }
@@ -3103,6 +3106,53 @@ function injectGapQuestion(a, b) {
   autoResize(ta);
   updateSendBtn();
   ta.focus();
+}
+
+function trackGapAnalysis(a, b, gaps) {
+  // Local analytics
+  if (window.analytics) {
+    const entry = {
+      ts: new Date().toISOString(),
+      action: 'gap_analysis_run',
+      entityA: a, entityB: b,
+      gapCount: gaps.length,
+      criticalCount: gaps.filter(g => g.severity === 'critical').length,
+      session: currentSession?.id || '',
+    };
+    if (!analytics.gapRuns) analytics.gapRuns = [];
+    analytics.gapRuns.push(entry);
+    if (analytics.gapRuns.length > 100) analytics.gapRuns = analytics.gapRuns.slice(-100);
+    localStorage.setItem('wingman_analytics', JSON.stringify(analytics));
+  }
+  // Central analytics — batch event format (matches ingest handler)
+  const batchPayload = {
+    type: 'batch',
+    events: [{
+      event_id: crypto.randomUUID(),
+      timestamp: new Date().toISOString(),
+      surface: 'forge',
+      event_type: 'gap_analysis',
+      event_action: 'gap_analysis_run',
+      context: {
+        session_id: currentSession?.id || '',
+        geo_region: (() => { try { const z = Intl.DateTimeFormat().resolvedOptions().timeZone; if(z.includes('America')) return 'Americas'; if(z.includes('Europe')) return 'Europe'; if(z.includes('Asia')||z.includes('Australia')) return 'Asia-Pacific'; } catch(e){} return 'Unknown'; })(),
+        platform: /Android|iPhone|iPad/i.test(navigator.userAgent) ? 'mobile' : 'web',
+      },
+      payload: {
+        entity_a: a, entity_b: b,
+        gap_count: gaps.length,
+        critical_count: gaps.filter(g => g.severity === 'critical').length,
+        warning_count: gaps.filter(g => g.severity === 'warning').length,
+        provider: provider,
+      },
+      data_policy: { collection_tier: 'anonymous' },
+    }]
+  };
+  fetch('/.netlify/functions/analytics', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(batchPayload),
+  }).catch(() => {});
 }
 
 // Store DB reference for gap analyzer context

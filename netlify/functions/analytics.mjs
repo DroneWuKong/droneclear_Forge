@@ -24,6 +24,48 @@ export default async (req, context) => {
       const body = await req.json();
       const { type } = body;
 
+      // ── batch handler (from analytics.html, patterns, intel, platforms) ──
+      if (type === 'batch') {
+        const events = body.events || [];
+        if (!Array.isArray(events) || events.length === 0) {
+          return new Response(JSON.stringify({ error: 'empty batch' }), { status: 400, headers: CORS });
+        }
+        const dayKey = `day-${new Date().toISOString().split('T')[0]}`;
+        let dayData = [];
+        try { const ex = await store.get(dayKey); if (ex) dayData = JSON.parse(ex); } catch(e) {}
+
+        let totals = {};
+        try { const ex = await store.get('totals'); if (ex) totals = JSON.parse(ex); } catch(e) {}
+        totals.batchEvents = (totals.batchEvents || 0) + events.length;
+        totals.pageViews   = (totals.pageViews || 0)   + events.filter(e => e.event_type === 'page_view').length;
+        totals.searches    = (totals.searches || 0)    + events.filter(e => e.event_action === 'component_search').length;
+        totals.compares    = (totals.compares || 0)    + events.filter(e => e.event_action === 'side_by_side').length;
+        totals.gapAnalyses = (totals.gapAnalyses || 0) + events.filter(e => e.event_action === 'gap_analysis_run').length;
+        totals.surfaces    = totals.surfaces || {};
+        for (const e of events) {
+          const s = e.surface || 'unknown';
+          totals.surfaces[s] = (totals.surfaces[s] || 0) + 1;
+        }
+        totals.lastUpdated = new Date().toISOString();
+
+        // Store sanitized batch
+        const sanitized = events.map(e => ({
+          ts: e.timestamp || new Date().toISOString(),
+          surface: (e.surface || 'forge').substring(0, 20),
+          type: (e.event_type || 'unknown').substring(0, 30),
+          action: (e.event_action || 'unknown').substring(0, 50),
+          session: (e.context?.session_id || '').substring(0, 30),
+          region: (e.context?.geo_region || '').substring(0, 30),
+          platform: (e.context?.platform || '').substring(0, 20),
+          payload: e.payload || {},
+        }));
+        dayData.push(...sanitized);
+        if (dayData.length > 5000) dayData = dayData.slice(-5000);
+        await store.set(dayKey, JSON.stringify(dayData));
+        await store.set('totals', JSON.stringify(totals));
+        return new Response(JSON.stringify({ ok: true, accepted: sanitized.length }), { status: 200, headers: CORS });
+      }
+
       if (type === 'query') {
         // Track a single query event
         const event = {
@@ -102,6 +144,29 @@ export default async (req, context) => {
         return new Response(JSON.stringify({ ok: true }), { status: 200, headers: CORS });
       }
 
+      } else if (type === 'gap_analysis') {
+        // Track gap analyzer runs
+        const event = {
+          ts: new Date().toISOString(),
+          entityA: (body.entityA || '').substring(0, 100),
+          entityB: (body.entityB || '').substring(0, 100),
+          gapCount: Math.min(body.gapCount || 0, 50),
+          criticalCount: Math.min(body.criticalCount || 0, 50),
+          session: (body.session || '').substring(0, 30),
+          provider: (body.provider || 'unknown').substring(0, 20),
+        };
+        let totals = {};
+        try { const ex = await store.get('totals'); if (ex) totals = JSON.parse(ex); } catch(e) {}
+        totals.gapAnalyses = (totals.gapAnalyses || 0) + 1;
+        totals.lastUpdated = new Date().toISOString();
+        await store.set('totals', JSON.stringify(totals));
+        const dayKey = `day-${new Date().toISOString().split('T')[0]}`;
+        let dayData = [];
+        try { const ex = await store.get(dayKey); if (ex) dayData = JSON.parse(ex); } catch(e) {}
+        dayData.push({ ...event, type: 'gap_analysis', action: 'gap_analysis_run', surface: 'forge' });
+        await store.set(dayKey, JSON.stringify(dayData));
+        return new Response(JSON.stringify({ ok: true }), { status: 200, headers: CORS });
+
       return new Response(JSON.stringify({ error: 'Unknown type' }), { status: 400, headers: CORS });
 
     } catch (err) {
@@ -178,6 +243,13 @@ export default async (req, context) => {
         thisMonth: {
           sessions: sessionData.length,
           avgTurns,
+        },
+        summary: {
+          totalPageViews: totals.pageViews || 0,
+          totalSearches:  totals.searches || 0,
+          totalCompares:  totals.compares || 0,
+          totalGapRuns:   totals.gapAnalyses || 0,
+          bySurface:      totals.surfaces || {},
         },
         generated: new Date().toISOString(),
       };
