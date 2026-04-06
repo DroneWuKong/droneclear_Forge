@@ -57,7 +57,7 @@
     const CAT_DISPLAY = {
         'enterprise':  { label: 'Enterprise',    icon: 'ph-buildings',      color: '#8b5cf6' },
         'blue_uas':    { label: 'Blue UAS',      icon: 'ph-shield-check',   color: '#3b82f6' },
-        'tactical':    { label: 'Tactical / FPV', icon: 'ph-crosshair',     color: '#ef4444' },
+        'tactical':    { label: 'Tactical / FPV', icon: 'ph-crosshair',     color: '#f87171' },
         'isr':         { label: 'ISR',           icon: 'ph-binoculars',     color: '#06b6d4' },
         'loitering':   { label: 'Loitering',     icon: 'ph-timer',          color: '#f59e0b' },
         'fixed_wing':  { label: 'Fixed Wing',    icon: 'ph-airplane-tilt',  color: '#0ea5e9' },
@@ -281,9 +281,9 @@
                 ? `<div class="plat-card-image" style="border-color: ${vis.color};">
                         <img src="${esc(p.image_url)}" alt="${esc(p.platform_name)}" loading="lazy" onerror="this.parentElement.innerHTML='<i class=\\'ph ${vis.icon}\\' style=\\'font-size:48px;color:${vis.color};opacity:0.4;\\'></i>';">
                    </div>`
-                : `<div class="plat-card-visual" style="border-color: ${vis.color};">
-                        <i class="ph ${vis.icon}" style="color: ${vis.color};"></i>
-                        <span class="plat-card-initials" style="color: ${vis.color};">${initials}</span>
+                : `<div class="plat-card-visual" style="border-color: ${vis.color}22;">
+                        <i class="ph ${vis.icon}" style="color: ${vis.color};opacity:0.6;"></i>
+                        <span class="plat-card-initials" style="color: ${vis.color};opacity:0.25;">${initials}</span>
                    </div>`;
 
             return `
