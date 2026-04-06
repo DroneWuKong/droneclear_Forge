@@ -270,8 +270,8 @@ function renderReport(d) {
       <div class="r-stat"><div class="r-stat-num">${ex.supply_flags}</div><div class="r-stat-lbl">Supply Flags</div></div>
     </div>
     <div class="r-exec">
-      <p><strong>Risk Level:</strong> <span class="r-risk-badge ${ex.risk_level}">${ex.risk_level}</span></p>
-      <p>${esc(ex.key_finding)}</p>
+      <p><strong>Risk Level:</strong> <span class="r-risk-badge ${ex.risk_level}">${ex.risk_level}</span>${ex.ai_synthesized ? '<span style="font:600 8px monospace;margin-left:8px;padding:1px 6px;background:#f0fdf4;color:#16a34a;border:1px solid #86efac;border-radius:3px;">AI SYNTHESIZED</span>' : ''}</p>
+      ${ex.key_finding.split('\n\n').map(para => '<p>' + esc(para) + '</p>').join('')}
     </div>
   </div>`;
 
@@ -319,14 +319,20 @@ function renderReport(d) {
 
   // Predictions
   if (pr.length > 0) {
-    html += `<div class="r-section"><div class="r-section-title">Intelligence Predictions (≥60% probability)</div>
+    html += `<div class="r-section"><div class="r-section-title">Intelligence Predictions — PIE Engine (≥60% probability, 3-model cross-validation)</div>
     <table class="r-table">
-      <tr><th>Event</th><th>Timeframe</th><th>Probability</th><th>Impact</th><th>Validated</th></tr>
+      <tr><th>Event</th><th>Timeframe</th><th>Probability</th><th>Confidence</th><th>Impact</th><th>CV</th></tr>
       ${pr.map(p => {
-        const pct = Math.round(p.probability * 100);
-        const cls = pct >= 75 ? 'high' : pct >= 60 ? 'med' : '';
+        const pct  = Math.round(p.probability * 100);
+        const conf = p.confidence ? Math.round(p.confidence * 100) : null;
+        const cls  = pct >= 80 ? 'high' : pct >= 65 ? 'med' : '';
+        const driverHtml = (p.drivers||[]).slice(0,3).map(d => `<div style="font-size:9px;color:#6b6358;margin-top:2px">→ ${esc(d)}</div>`).join('');
+        const modelsHtml = (p.model_outputs||[]).map(m => {
+          const mp = Math.round((m.probability||0)*100);
+          return `<span style="font:600 7px monospace;padding:1px 4px;background:#f1f0ec;border-radius:2px;margin-right:3px">${esc(m.model||'')} ${mp}%</span>`;
+        }).join('');
         return `<tr class="r-pred-row">
-          <td>${esc(p.event)}</td>
+          <td>${esc(p.event)}${driverHtml}</td>
           <td>${esc(p.timeframe)}</td>
           <td>
             <div class="prob-bar">
@@ -334,8 +340,9 @@ function renderReport(d) {
               <span>${pct}%</span>
             </div>
           </td>
+          <td style="font-size:10px;color:#6b6358">${conf !== null ? conf+'%' : '—'}</td>
           <td><span class="r-risk-badge ${p.impact?.toUpperCase()}">${(p.impact||'').toUpperCase()}</span></td>
-          <td>${p.cross_validated ? '<span class="cv-badge">✓ CV</span>' : '—'}</td>
+          <td>${p.cross_validated ? '<span class="cv-badge">✓ CV</span>' : '—'}${modelsHtml ? '<br/><span style="display:block;margin-top:3px">' + modelsHtml + '</span>' : ''}</td>
         </tr>`;
       }).join('')}
     </table></div>`;
