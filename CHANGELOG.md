@@ -1,5 +1,23 @@
 # Changelog
 
+## [Claude Proxy + Intel RAG] - 2026-04-06
+
+### Added
+- **Claude server proxy** (netlify/functions/claude-proxy.mjs) — password-protected
+  Netlify function; ANTHROPIC_API_KEY stays in env vars, never in browser.
+  Enter WINGMAN_PROXY_SECRET in Settings to get server-side Claude on any device.
+- **Intel DB in Wingman RAG** — loads intel_articles.json (300 most recent),
+  intel_companies.json, intel_programs.json into ragIndex on startup. Ask Wingman
+  about procurement news, companies, or DoD programs and it answers from the feed.
+- Intel stat card on Wingman welcome screen
+- RECENT INTEL ARTICLES, TRACKED COMPANIES, TRACKED PROGRAMS context sections
+
+### Changed
+- Wingman Claude flow: uses server proxy if proxy secret set + no BYOK key;
+  falls back to direct browser→Anthropic if BYOK key present
+- model string updated to claude-sonnet-4-5 throughout
+
+
 ## [Session — Analytics Overhaul + Gap Analyzer + Groq] - 2026-04-06
 
 ### Added
