@@ -453,7 +453,7 @@
   </div>
   <span class="source-pill web-pill" id="live-web-pill">+ live web</span>
   <div id="sources-spacer"></div>
-  <span class="model-chip" id="model-chip" onclick="cycleModel()" title="Click to switch model">gemini-2.5-flash</span>
+  <span class="model-chip" id="model-chip" onclick="cycleModel()" title="Click to switch model">gemini-2.0-flash</span>
   <span class="source-pill" id="analytics-pill" onclick="showAnalyticsDashboard()" style="cursor:pointer;" title="View analytics"><i class="ph ph-chart-bar"></i></span>
 </div>
 
@@ -2137,7 +2137,7 @@ function renderStarters() {
 
 // ─── MODEL CHIP ───────────────────────────────────────────────
 var MODEL_CYCLE = [
-  { label: 'gemini-2.5-flash', provider: 'gemini' },
+  { label: 'gemini-2.0-flash', provider: 'gemini' },
   { label: 'llama-3.3-70b',   provider: 'groq'   },
   { label: 'gemini-2.0-flash', provider: 'gemini' },
 ];
@@ -2435,11 +2435,13 @@ async function send() {
         systemInstruction: { parts: [{ text: sysPrompt.slice(0, 6000) }] },
         contents: geminiMessages,
         generationConfig: { maxOutputTokens: 4096, temperature: 0.7 },
+        _model: MODEL_CYCLE[modelIdx]?.label || 'gemini-2.0-flash',
       };
 
       // Use proxy (free) if no user key, direct API if BYOK
+      const modelName = MODEL_CYCLE[modelIdx]?.label || 'gemini-2.0-flash';
       const geminiUrl = geminiKey
-        ? `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${geminiKey}`
+        ? `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${geminiKey}`
         : '/.netlify/functions/gemini-proxy';
 
       const res = await fetch(geminiUrl, {

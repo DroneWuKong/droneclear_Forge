@@ -59,8 +59,12 @@ export default async (req) => {
       body.generationConfig.maxOutputTokens = Math.min(body.generationConfig.maxOutputTokens || 8192, 8192);
     }
 
+    // Use model from request, fallback to gemini-2.0-flash (stable)
+    const model = body._model || 'gemini-2.0-flash';
+    delete body._model; // don't send to Google
+
     const res = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`,
+      `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`,
       {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
