@@ -142,7 +142,6 @@ export default async (req, context) => {
         await store.set('totals', JSON.stringify(totals));
 
         return new Response(JSON.stringify({ ok: true }), { status: 200, headers: CORS });
-      }
 
       } else if (type === 'gap_analysis') {
         // Track gap analyzer runs
@@ -167,7 +166,9 @@ export default async (req, context) => {
         await store.set(dayKey, JSON.stringify(dayData));
         return new Response(JSON.stringify({ ok: true }), { status: 200, headers: CORS });
 
-      return new Response(JSON.stringify({ error: 'Unknown type' }), { status: 400, headers: CORS });
+      } else {
+        return new Response(JSON.stringify({ error: 'Unknown type' }), { status: 400, headers: CORS });
+      }
 
     } catch (err) {
       return new Response(JSON.stringify({ error: err.message }), { status: 500, headers: CORS });
