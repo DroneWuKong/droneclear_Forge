@@ -100,7 +100,7 @@ a{color:var(--blue);text-decoration:none}a:hover{text-decoration:underline}
 .flag-detail .info-card .label{font:500 8px var(--font);color:var(--text-d);text-transform:uppercase;letter-spacing:.06em;margin-bottom:2px}
 .flag-detail .prediction-box{background:var(--purple-d);border:1px solid #a78bfa22;border-radius:6px;padding:8px 10px;margin-bottom:8px}
 .flag-detail .prediction-box .label{font:600 8px var(--font);color:var(--purple);text-transform:uppercase;letter-spacing:.06em;margin-bottom:3px}
-.close-btn{background:none;border:none;color:var(--text-d);font-size:18px;cursor:pointer;padding:4px;line-height:1}
+.close-btn{display:flex;align-items:center;justify-content:center;width:32px;height:32px;background:var(--surface);border:1px solid var(--border);border-radius:8px;color:var(--text-s);font-size:20px;cursor:pointer;flex-shrink:0;transition:all .15s}.close-btn:hover{background:var(--card-hi);border-color:var(--border-hi);color:var(--text)}
 
 /* ── Prediction cards ── */
 .pred-card{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:16px 18px;margin-bottom:10px;cursor:pointer;transition:border-color .15s}.pred-card:hover{border-color:var(--border-hi)}
@@ -152,7 +152,8 @@ a{color:var(--blue);text-decoration:none}a:hover{text-decoration:underline}
 
 <!-- ═══ Tabs ═══ -->
 <div class="tabs" id="tabs">
-  <button class="tab active" data-tab="flags">🚩 Flags <span class="count" id="flag-count">—</span></button>
+  <button class="tab active" data-tab="brief">📋 Brief</button>
+  <button class="tab" data-tab="flags">🚩 Flags <span class="count" id="flag-count">—</span></button>
   <button class="tab" data-tab="dashboard">📊 Dashboard</button>
   <button class="tab" data-tab="regions">🌍 Regions</button>
   <button class="tab" data-tab="platforms">🛡 Blue UAS</button>
@@ -165,7 +166,7 @@ a{color:var(--blue);text-decoration:none}a:hover{text-decoration:underline}
 <div class="content">
 
   <!-- FLAGS PANEL -->
-  <div class="panel active" id="panel-flags">
+  <div class="panel" id="panel-flags">
     <input class="search-bar" id="flag-search" placeholder="Search flags... (e.g. TrellisWare, Jetson, DRAM, SOF, mesh)" oninput="renderFlags()">
     <div class="filter-section">
       <div class="filter-header" onclick="toggleFilterSection(this)">
@@ -895,8 +896,16 @@ function renderFlags() {
       const card = e.target.closest(".flag-card[data-id]");
       if (card) {
         e.stopPropagation();
-        selectedFlag = FLAGS.find(f => f.id === card.dataset.id);
-        if (selectedFlag) { _flagScrollY = window.scrollY; renderFlagDetail(); }
+        const newFlag2 = FLAGS.find(f => f.id === card.dataset.id);
+        if (!newFlag2) return;
+        const alreadyOpen2 = document.getElementById("flag-detail-container").style.display === "block";
+        selectedFlag = newFlag2;
+        if (alreadyOpen2) {
+          renderFlagDetailInPlace();
+        } else {
+          _flagScrollY = window.scrollY;
+          renderFlagDetail();
+        }
       }
     };
     return;
@@ -929,8 +938,17 @@ function renderFlags() {
 
   list.querySelectorAll(".flag-card").forEach(card => {
     card.addEventListener("click", () => {
-      selectedFlag = FLAGS.find(f => f.id === card.dataset.id);
-      _flagScrollY = window.scrollY; renderFlagDetail();
+      const newFlag = FLAGS.find(f => f.id === card.dataset.id);
+      if (!newFlag) return;
+      const alreadyOpen = document.getElementById("flag-detail-container").style.display === "block";
+      selectedFlag = newFlag;
+      if (alreadyOpen) {
+        // Swap content directly — no scroll, no visibility toggle
+        renderFlagDetailInPlace();
+      } else {
+        _flagScrollY = window.scrollY;
+        renderFlagDetail();
+      }
     });
   });
 }
@@ -1006,8 +1024,24 @@ function renderFlagDetail() {
     fl.style.visibility = "";
     fl.style.pointerEvents = "";
     selectedFlag = null;
-    requestAnimationFrame(() => window.scrollTo(0, _flagScrollY));
+    // Don't scroll — stay where user is
   });
+}
+
+// ── Flag detail in-place swap (no scroll, no visibility change) ──
+function renderFlagDetailInPlace() {
+  if (!selectedFlag) return;
+  const dc = document.getElementById("flag-detail-container");
+  // Re-use renderFlagDetail but suppress visibility toggling
+  const fl = document.getElementById("flag-list");
+  const wasHidden = fl.style.visibility === "hidden";
+  renderFlagDetail();
+  // renderFlagDetail already hides fl — that's fine, restore if it wasn't hidden
+  if (!wasHidden) {
+    // keep as-is — detail is already open replacing the list
+  }
+  // Scroll detail container into view smoothly without page jump
+  dc.scrollIntoView({ behavior: "smooth", block: "nearest" });
 }
 
 // ── Platforms ──
