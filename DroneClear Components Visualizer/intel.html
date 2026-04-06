@@ -87,6 +87,29 @@ a{color:var(--blue);text-decoration:none}a:hover{text-decoration:underline}
 .rb button:hover{border-color:var(--cyan);color:var(--cyan)}
 .ri{flex:1;border:none;width:100%;background:#fff}
 @media(max-width:600px){.rf{height:95vh;max-width:100%;border-radius:8px}.ro{padding:8px}}
+/* Rich detail modal */
+.dm-overlay{display:none;position:fixed;inset:0;z-index:400;background:rgba(0,0,0,.7);backdrop-filter:blur(6px);align-items:flex-end;justify-content:center;padding:0}
+.dm-overlay.open{display:flex}
+.dm-sheet{width:100%;max-width:680px;max-height:88vh;background:var(--card);border:1px solid var(--border);border-top-left-radius:14px;border-top-right-radius:14px;overflow-y:auto;padding:20px;display:flex;flex-direction:column;gap:12px}
+.dm-handle{width:36px;height:4px;background:var(--border-hi);border-radius:2px;margin:0 auto 4px}
+.dm-cat{font:600 9px var(--mono);letter-spacing:.1em;text-transform:uppercase;padding:2px 8px;border-radius:4px}
+.dm-title{font:700 15px var(--font);color:var(--text);line-height:1.4}
+.dm-meta{display:flex;gap:8px;flex-wrap:wrap;align-items:center;font:10px var(--mono);color:var(--text-d)}
+.dm-summary{font-size:12px;color:var(--text-s);line-height:1.6;border-left:2px solid var(--border-hi);padding-left:10px}
+.dm-facts{display:grid;grid-template-columns:1fr 1fr;gap:6px}
+.dm-fact{background:var(--surface);border-radius:6px;padding:8px 10px}
+.dm-fact-label{font:500 9px var(--mono);color:var(--text-d);text-transform:uppercase;letter-spacing:.08em;margin-bottom:2px}
+.dm-fact-val{font:600 12px var(--font);color:var(--text)}
+.dm-sources{display:flex;flex-direction:column;gap:6px}
+.dm-source{background:var(--surface);border-radius:6px;padding:8px 10px;font-size:11px}
+.dm-source a{color:var(--amber);text-decoration:none;font-weight:600}
+.dm-flags{display:flex;flex-direction:column;gap:4px}
+.dm-flag{background:var(--red-d);border-left:2px solid var(--red);padding:6px 8px;border-radius:4px;font-size:10px}
+.dm-cta{display:flex;gap:8px;margin-top:4px}
+.dm-btn{flex:1;padding:10px;border-radius:7px;font:600 12px var(--font);cursor:pointer;text-align:center;text-decoration:none;border:1px solid var(--border);color:var(--text-s);background:none;transition:all .15s}
+.dm-btn.primary{background:var(--amber);border-color:var(--amber);color:#0c0c0a}
+.dm-btn:hover{border-color:var(--border-hi);color:var(--text)}
+@media(min-width:600px){.dm-overlay{align-items:center;padding:16px}.dm-sheet{border-radius:14px;max-height:85vh}}
 </style>
 </head>
 <body>
@@ -169,6 +192,12 @@ a{color:var(--blue);text-decoration:none}a:hover{text-decoration:underline}
   </div>
 </div>
 <div class="ro" id="ro" onclick="if(event.target===this)cr()"><div class="rf"><div class="rb"><span class="rt" id="rt">Loading…</span><button onclick="oe()">↗</button><button onclick="cr()">✕</button></div><iframe class="ri" id="ri" sandbox="allow-scripts allow-same-origin allow-popups"></iframe></div></div>
+<div class="dm-overlay" id="dm-overlay" onclick="if(event.target===this)closeDM()">
+  <div class="dm-sheet" id="dm-sheet">
+    <div class="dm-handle"></div>
+    <div id="dm-content"></div>
+  </div>
+</div>
 <div style="padding:16px 20px;border-top:1px solid var(--border);max-width:960px;margin:0 auto">
   <div style="font-size:9px;color:var(--text-xd)">Pipeline: live scraper · Cross-referenced with <a href="/patterns/" style="color:var(--amber)" id="pie-footer-count">PIE (loading…)</a></div>
 </div>
@@ -217,7 +246,7 @@ function renderDFR(){
     const isPaidDfr=x.paywall;
     const flagsDfr=getPIEFlags(x);
     if(isPaidDfr&&!isProUser()) return paywallGate(x.title);
-    return`<div class="acard dfr" onclick="or('${u.replace(/'/g,"\'")}','${(x.title||'').replace(/'/g,"\'").substring(0,80)}')">
+    return`<div class="acard dfr" onclick="x.id&&RECORD_INDEX[x.id]?openDM(RECORD_INDEX['${x.id}']):or('${u.replace(/'/g,"\'")}','${(x.title||'').replace(/'/g,"\'").substring(0,80)}')">
       <div style="display:flex;gap:6px;align-items:center;margin-bottom:4px;flex-wrap:wrap">
         ${isExcl?'<span class="badge" style="background:var(--dfr-d);color:var(--dfr)">EXCLUSIVE</span>':''}
         <span class="badge" style="background:var(--dfr-d);color:var(--dfr)">DFR</span>
@@ -290,10 +319,84 @@ function rR(){
     return`<div class="ecard" style="border-left:3px solid ${cl};cursor:pointer" onclick="cR='${n}';rFi();renderFeed();document.querySelector('[data-tab=feed]').click()"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px"><span style="font:600 12px var(--font);color:var(--text)">${n}</span><span style="font:700 14px var(--mono);color:${cl}">${c}</span></div><div style="background:var(--surface);border-radius:3px;height:6px;overflow:hidden"><div style="width:${Math.round(c/mx*100)}%;height:100%;background:${cl};border-radius:3px"></div></div><div style="font-size:9px;color:var(--text-d);margin-top:4px">${c} articles · <a href="/patterns/#region-${n.toLowerCase().replace(/\s+/g,'-')}" style="color:var(--amber)">PIE region →</a></div></div>`;
   }).join('');
 }
-let ru='';function or(u,t){ru=u;document.getElementById('rt').textContent=t||u;document.getElementById('ri').src=u;document.getElementById('ro').classList.add('open');}
+let ru='';
+function or(u,t){ru=u;document.getElementById('rt').textContent=t||u;document.getElementById('ri').src=u;document.getElementById('ro').classList.add('open');}
 function cr(){document.getElementById('ro').classList.remove('open');document.getElementById('ri').src='about:blank';ru='';}
 function oe(){if(ru)window.open(ru,'_blank');}
-document.addEventListener('keydown',e=>{if(e.key==='Escape'&&document.getElementById('ro').classList.contains('open'))cr();});
+
+// Rich detail modal — used by DB records and PDF sources
+function openDM(record){
+  const isPro=isProUser();
+  const col=record.vertical_tag==='defense'?'var(--defense)':record.vertical_tag==='dfr'?'var(--dfr)':'var(--commercial)';
+  const colD=record.vertical_tag==='defense'?'var(--defense-d)':record.vertical_tag==='dfr'?'var(--dfr-d)':'var(--commercial-d)';
+  const flags=getPIEFlags(record);
+  const kf=record.key_facts||{};
+  const kfEntries=Object.entries(kf);
+  const sd=record.state_data||[];
+  const isPDF=(record.url||'').toLowerCase().includes('.pdf');
+  const conf=record.confidence?`${record.confidence}% confidence`:'';
+
+  let html=`
+    <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;margin-bottom:2px">
+      <span class="dm-cat" style="background:${colD};color:${col}">${(record.vertical_tag||'intel').toUpperCase()}</span>
+      <span class="dm-cat" style="background:var(--surface);color:var(--text-d)">${(record.data_category||'').replace(/_/g,' ')}</span>
+      ${record.paywall?`<span class="dm-cat" style="background:var(--amber-d);color:var(--amber)">🔒 PRO</span>`:''}
+      ${record.exclusive?`<span class="dm-cat" style="background:${colD};color:${col}">EXCLUSIVE</span>`:''}
+    </div>
+    <div class="dm-title">${record.title||'Untitled'}</div>
+    <div class="dm-meta">
+      <span>${record.source||''}</span>
+      ${record.pub_date?`<span>· ${record.pub_date.slice(0,10)}</span>`:''}
+      ${conf?`<span>· ${conf}</span>`:''}
+    </div>
+    <div class="dm-summary">${record.summary||'No summary available.'}</div>`;
+
+  // Key facts grid
+  if(kfEntries.length){
+    html+=`<div style="font:600 10px var(--mono);color:var(--text-d);text-transform:uppercase;letter-spacing:.1em">Key Data</div>
+    <div class="dm-facts">${kfEntries.map(([k,v])=>`<div class="dm-fact"><div class="dm-fact-label">${k.replace(/_/g,' ')}</div><div class="dm-fact-val">${v??'—'}</div></div>`).join('')}</div>`;
+  }
+
+  // State data table
+  if(sd.length&&isPro){
+    html+=`<div style="font:600 10px var(--mono);color:var(--text-d);text-transform:uppercase;letter-spacing:.1em">State-by-State Impact</div>
+    <div style="display:flex;flex-direction:column;gap:3px">`;
+    sd.forEach(s=>{
+      const sev=s.severity==='SEVERE'?'var(--red)':'var(--amber)';
+      html+=`<div style="display:flex;justify-content:space-between;align-items:center;background:var(--surface);padding:6px 10px;border-radius:5px;font-size:11px">
+        <span style="font-weight:600;color:var(--text)">${s.state}</span>
+        <span style="color:${sev}">${s.pct!=null?s.pct+'% grounded':s.severity}</span>
+        <span style="color:var(--text-d)">${s.investment||'—'}</span>
+      </div>`;
+    });
+    html+='</div>';
+  } else if(sd.length&&!isPro){
+    html+=`<div style="background:var(--surface);border-radius:8px;padding:12px;text-align:center">
+      <div style="font-size:11px;color:var(--text-d);margin-bottom:8px">🔒 State-by-state breakdown (14 states) — Pro feature</div>
+      <a href="/pro/" style="padding:6px 16px;background:var(--amber);color:#0c0c0a;border-radius:6px;font:600 11px var(--font);text-decoration:none">Upgrade to Pro →</a>
+    </div>`;
+  }
+
+  // PIE flags
+  if(flags.length){
+    html+=`<div style="font:600 10px var(--mono);color:var(--red);text-transform:uppercase;letter-spacing:.1em">⚡ PIE Flags</div>
+    <div class="dm-flags">${flags.map(f=>`<div class="dm-flag"><div style="font-weight:600;color:var(--red);margin-bottom:2px">${f.title}</div><div style="color:var(--text-s)">${(f.detail||'').slice(0,160)}…</div></div>`).join('')}</div>`;
+  }
+
+  // Source + CTA
+  html+=`<div class="dm-cta">
+    ${isPDF
+      ? `<a href="${record.url}" target="_blank" class="dm-btn primary">↗ Open PDF Source</a>`
+      : `<button class="dm-btn primary" onclick="closeDM();or('${(record.url||'').replace(/'/g,"\'")}','${(record.title||'').replace(/'/g,"\'").slice(0,60)}')">Open in Reader</button>
+         <a href="${record.url}" target="_blank" class="dm-btn">↗ Source</a>`
+    }
+    <button class="dm-btn" onclick="closeDM()">Close</button>
+  </div>`;
+
+  document.getElementById('dm-content').innerHTML=html;
+  document.getElementById('dm-overlay').classList.add('open');
+}
+function closeDM(){document.getElementById('dm-overlay').classList.remove('open');}document.addEventListener('keydown',e=>{if(e.key==='Escape'){if(document.getElementById('dm-overlay').classList.contains('open'))closeDM();else if(document.getElementById('ro').classList.contains('open'))cr();}});
 
 // ── PIE + PAYWALL GLOBALS ──
 let PIE_FLAGS=[], PIE_PREDS=[], PIE_BRIEF={};
@@ -473,7 +576,7 @@ function renderDefense(){
     const isPaid=x.paywall;
     const flags=getPIEFlags(x);
     if(isPaid&&!isProUser()) return paywallGate(x.title);
-    return`<div class="acard defense" onclick="or('${u.replace(/'/g,"\'")}','${(x.title||'').replace(/'/g,"\'").substring(0,80)}')">
+    return`<div class="acard defense" onclick="x.id&&RECORD_INDEX[x.id]?openDM(RECORD_INDEX['${x.id}']):or('${u.replace(/'/g,"\'")}','${(x.title||'').replace(/'/g,"\'").substring(0,80)}')">
       <div style="display:flex;gap:6px;align-items:center;margin-bottom:4px;flex-wrap:wrap">
         ${isPaid?'<span class="badge" style="background:var(--defense-d);color:var(--defense)">🔒 PRO</span>':''}
         <span class="badge" style="background:var(--defense-d);color:var(--defense)">DEFENSE</span>
@@ -513,7 +616,7 @@ function renderCommercial(){
     const isPaid=x.paywall;
     const flags=getPIEFlags(x);
     if(isPaid&&!isProUser()) return paywallGate(x.title);
-    return`<div class="acard commercial" onclick="or('${u.replace(/'/g,"\'")}','${(x.title||'').replace(/'/g,"\'").substring(0,80)}')">
+    return`<div class="acard commercial" onclick="x.id&&RECORD_INDEX[x.id]?openDM(RECORD_INDEX['${x.id}']):or('${u.replace(/'/g,"\'")}','${(x.title||'').replace(/'/g,"\'").substring(0,80)}')">
       <div style="display:flex;gap:6px;align-items:center;margin-bottom:4px;flex-wrap:wrap">
         ${isPaid?'<span class="badge" style="background:var(--commercial-d);color:var(--commercial)">🔒 PRO</span>':''}
         <span class="badge" style="background:var(--commercial-d);color:var(--commercial)">COMMERCIAL</span>
