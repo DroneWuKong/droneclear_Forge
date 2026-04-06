@@ -1,187 +1,574 @@
+
 <!DOCTYPE html>
 <html lang="en" data-theme="dark">
+
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Forge — Model Builder</title>
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="static/base.css">
-  <link rel="stylesheet" href="static/layout.css">
-  <link rel="stylesheet" href="static/components.css">
-  <link rel="stylesheet" href="static/utilities.css">
-  <script src="https://unpkg.com/@phosphor-icons/web"></script>
-  <script>(function(){document.documentElement.setAttribute("data-theme","dark");})();</script>
-  <style>
-    .forge-topbar{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:10px 16px;border-bottom:1px solid #2e2e26;background:#1c1c17;position:sticky;top:0;z-index:100;flex-shrink:0;}
-    .forge-topbar a.logo{font:800 18px 'JetBrains Mono',monospace;color:#ff3b5c;letter-spacing:-0.03em;text-decoration:none;}
-    .forge-topbar .pills{display:flex;gap:5px;}
-    .forge-topbar .pills a{font:500 10px 'DM Sans',sans-serif;color:#6b6358;padding:4px 9px;border:1px solid #2e2e26;border-radius:20px;text-decoration:none;white-space:nowrap;}
-    .forge-topbar .pills a:hover{border-color:#3e3e34;color:#b8b0a0;}
-  </style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Drone Models Builder</title>
+    <!-- Modern Typography: Inter -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&family=Source+Serif+4:opsz,wght@8..60,400;8..60,600;8..60,700&display=swap"
+        rel="stylesheet">
+    <!-- Main Stylesheet -->
+    <link rel="stylesheet" href="static/base.css">
+    <link rel="stylesheet" href="static/layout.css?v=4">
+    <link rel="stylesheet" href="static/components.css">
+    <link rel="stylesheet" href="static/utilities.css">
+    <!-- Phosphor Icons for premium SVG icons -->
+    <script src="https://unpkg.com/@phosphor-icons/web"></script>
+    <script>
+        (function(){
+            var saved = localStorage.getItem("dc-theme");
+            document.documentElement.setAttribute("data-theme", saved ? saved : "dark");
+        })();
+    </script>
 </head>
+
 <body>
-<div class="app-container" style="display:flex;flex-direction:column;min-height:100vh;">
+    <div class="app-container" style="display: flex; flex-direction: column; min-height: 100vh;">
+        <main class="main-content" style="display:flex;flex:1;overflow:hidden;">
+            <header class="topbar" style="padding: 10px 20px; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border-color); position: sticky; top: 0; z-index: 100; background: var(--bg-panel);">
+                <div style="display: flex; align-items: center; gap: 12px;">
+                    <button class="hamburger-btn" id="hamburger-btn" title="Menu">
+                        <i class="ph ph-list" id="hamburger-icon" style="font-size:22px;"></i>
+                    </button>
+                    <a href="/" style="text-decoration:none; display:flex; align-items:baseline; gap:8px;">
+                        <span class="logo-text" style="font-size:18px;">Forge</span>
+                        <span style="font-size:10px; font-weight:500; letter-spacing:0.1em; text-transform:uppercase; color:var(--text-faint);">Home</span>
+                    </a>
+                </div>
+                <div style="display: flex; align-items: center; gap: 8px;">
+                    <a href="/wingman/" class="topbar-pill"><i class="ph ph-robot"></i> Wingman AI</a>
+                    <div style="display: flex; align-items: center; gap: 8px;">
+                        <div class="search-bar" title="Search across tags, component names, or PIDs">
+                            <i class="ph ph-magnifying-glass search-icon"></i>
+                            <label for="search-input" class="sr-only">Search</label>
+                            <input type="text" id="search-input" placeholder="Search...">
+                        </div>
+                        <button class="dark-mode-toggle" id="dark-mode-toggle" title="Toggle dark mode"
+                            aria-label="Toggle dark mode">
+                            <i class="ph ph-moon" id="dark-mode-icon"></i>
+                        </button>
+                    </div>
+                </div>
+            </header>
 
-  <header class="forge-topbar">
-    <a href="/" class="logo">Forge</a>
-    <div class="pills">
-      <a href="/intel/">Intel</a>
-      <a href="/patterns-home/">Patterns</a>
-      <a href="/wingman/">Wingman</a>
-    </div>
-  </header>
-
-  <main class="main-content" style="flex:1;overflow-y:auto;">
-
-    <div class="wizard-banner hidden" id="wizard-banner">
-      <div class="wizard-banner-progress" id="wizard-banner-progress"></div>
-      <div class="wizard-banner-body">
-        <div class="wizard-banner-info">
-          <span class="wizard-banner-step" id="wizard-banner-step">Step 1 of 12</span>
-          <span class="wizard-banner-prompt" id="wizard-banner-prompt">Select a Frame</span>
-        </div>
-        <div class="wizard-banner-selection" id="wizard-banner-selection"></div>
-        <div class="wizard-banner-controls">
-          <button class="btn btn-outline btn-sm" id="wizard-banner-skip">Skip</button>
-          <button class="btn btn-outline btn-sm" id="wizard-banner-exit" style="border-color:var(--negative-red);color:var(--negative-red);">Exit Wizard</button>
-        </div>
-      </div>
-    </div>
-
-    <div class="filter-toolbar hidden" id="filter-toolbar">
-      <div class="filter-toolbar-controls">
-        <div class="filter-group">
-          <label class="filter-label">Sort by</label>
-          <select class="filter-select" id="sort-select">
-            <option value="default">Default</option>
-            <option value="name-asc">Name A→Z</option>
-            <option value="name-desc">Name Z→A</option>
-            <option value="weight-asc">Weight ↑</option>
-            <option value="weight-desc">Weight ↓</option>
-            <option value="price-asc">Price ↑</option>
-            <option value="price-desc">Price ↓</option>
-          </select>
-        </div>
-        <div class="filter-group">
-          <label class="filter-label">Manufacturer</label>
-          <select class="filter-select" id="manufacturer-select"><option value="">All</option></select>
-        </div>
-        <div class="filter-group filter-group--weight hidden" id="weight-filter-group">
-          <label class="filter-label">Weight (g)</label>
-          <div class="range-inputs">
-            <input type="number" class="filter-input" id="weight-min" placeholder="Min" min="0">
-            <span class="range-sep">–</span>
-            <input type="number" class="filter-input" id="weight-max" placeholder="Max" min="0">
+        <!-- Topbar -->
+        <header style="display:flex;align-items:center;justify-content:space-between;gap:8px;padding:10px 16px;border-bottom:1px solid #2e2e26;background:#1c1c17;position:sticky;top:0;z-index:100;">
+          <a href="/" style="font:800 18px 'JetBrains Mono',monospace;color:#ff3b5c;letter-spacing:-0.03em;text-decoration:none;">Forge</a>
+          <div style="display:flex;gap:5px;align-items:center;">
+            <input type="text" id="search-input" placeholder="Search parts..." style="font:400 12px 'DM Sans',sans-serif;background:#141410;border:1px solid #2e2e26;color:#f5f0e8;padding:5px 10px;border-radius:6px;width:140px;outline:none;">
+            <a href="/intel/" style="font:500 10px 'DM Sans',sans-serif;color:#6b6358;padding:4px 9px;border:1px solid #2e2e26;border-radius:20px;text-decoration:none;">Intel</a>
+            <a href="/patterns-home/" style="font:500 10px 'DM Sans',sans-serif;color:#6b6358;padding:4px 9px;border:1px solid #2e2e26;border-radius:20px;text-decoration:none;">Patterns</a>
+            <a href="/wingman/" style="font:500 10px 'DM Sans',sans-serif;color:#6b6358;padding:4px 9px;border:1px solid #2e2e26;border-radius:20px;text-decoration:none;">Wingman</a>
           </div>
+        </header>
+        <!-- Content layout: sidebar + main -->
+        <div style="display:flex;flex:1;overflow:hidden;">
+        <!-- Sidebar: category nav -->
+        <aside style="width:200px;min-width:160px;background:#1c1c17;border-right:1px solid #2e2e26;display:flex;flex-direction:column;overflow-y:auto;flex-shrink:0;">
+          <div style="padding:8px 0;">
+            <nav id="category-nav" style="display:flex;flex-direction:column;"></nav>
+          </div>
+          <div style="padding:10px 12px;border-top:1px solid #2e2e26;margin-top:auto;">
+            <div id="current-category-title" style="font:600 11px 'DM Sans',sans-serif;color:#b8b0a0;margin-bottom:6px;"></div>
+            <div id="total-parts-count" style="font:400 10px 'JetBrains Mono',monospace;color:#3d3830;"></div>
+            <label style="display:flex;align-items:center;gap:6px;margin-top:8px;cursor:pointer;font:400 10px 'DM Sans',sans-serif;color:#6b6358;">
+              <i class="ph ph-upload-simple"></i> Upload JSON
+              <input type="file" id="file-upload" accept=".json" style="display:none;">
+            </label>
+          </div>
+          <div style="display:none;"><button id="dark-mode-toggle"></button><i id="dark-mode-icon"></i><button id="btn-start-wizard"></button></div>
+        </aside>
+        <!-- Main content area -->
+        <div style="flex:1;display:flex;flex-direction:column;overflow:hidden;">
+            <!-- Wizard Banner — persistent guide bar above the parts grid -->
+            <div class="wizard-banner hidden" id="wizard-banner">
+                <div class="wizard-banner-progress" id="wizard-banner-progress">
+                    <!-- 12 step dots rendered by JS -->
+                </div>
+                <div class="wizard-banner-body">
+                    <div class="wizard-banner-info">
+                        <span class="wizard-banner-step" id="wizard-banner-step">Step 1 of 12</span>
+                        <span class="wizard-banner-prompt" id="wizard-banner-prompt">Select a Frame</span>
+                    </div>
+                    <div class="wizard-banner-selection" id="wizard-banner-selection">
+                        <!-- Shows currently selected component for this step, if any -->
+                    </div>
+                    <div class="wizard-banner-controls">
+                        <button class="btn btn-outline btn-sm" id="wizard-banner-skip">Skip</button>
+                        <button class="btn btn-outline btn-sm" id="wizard-banner-exit"
+                            style="border-color: var(--negative-red); color: var(--negative-red);">Exit Wizard</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Filter & Sort Toolbar -->
+            <div class="filter-toolbar hidden" id="filter-toolbar">
+                <div class="filter-toolbar-controls">
+                    <div class="filter-group">
+                        <label class="filter-label">Sort by</label>
+                        <select class="filter-select" id="sort-select">
+                            <option value="default">Default</option>
+                            <option value="name-asc">Name A→Z</option>
+                            <option value="name-desc">Name Z→A</option>
+                            <option value="weight-asc">Weight ↑</option>
+                            <option value="weight-desc">Weight ↓</option>
+                            <option value="price-asc">Price ↑</option>
+                            <option value="price-desc">Price ↓</option>
+                        </select>
+                    </div>
+                    <div class="filter-group">
+                        <label class="filter-label">Manufacturer</label>
+                        <select class="filter-select" id="manufacturer-select">
+                            <option value="">All</option>
+                        </select>
+                    </div>
+                    <div class="filter-group filter-group--weight hidden" id="weight-filter-group">
+                        <label class="filter-label">Weight (g)</label>
+                        <div class="range-inputs">
+                            <input type="number" class="filter-input" id="weight-min" placeholder="Min" min="0">
+                            <span class="range-sep">–</span>
+                            <input type="number" class="filter-input" id="weight-max" placeholder="Max" min="0">
+                        </div>
+                    </div>
+                    <div class="dynamic-filters-separator hidden" id="dynamic-filters-separator"></div>
+                    <div class="dynamic-filters-container" id="dynamic-filters-container">
+                        <!-- Dynamic attribute filters injected by JS per category -->
+                    </div>
+
+                    <button class="filter-clear-btn hidden" id="filter-clear-btn">
+                        <i class="ph ph-x-circle"></i> Clear filters
+                    </button>
+
+                    <!-- View Toggle -->
+                    <div class="view-toggle" id="view-toggle">
+                        <button class="view-toggle-btn active" id="btn-view-grid" title="Grid view">
+                            <i class="ph ph-squares-four"></i>
+                        </button>
+                        <button class="view-toggle-btn" id="btn-view-list" title="List view">
+                            <i class="ph ph-list-bullets"></i>
+                        </button>
+                    </div>
+                </div>
+                <div class="filter-chips" id="filter-chips"></div>
+            </div>
+
+            <div class="content-body">
+                <div class="loader-container" id="loader">
+                    <div class="spinner"></div>
+                    <p>Fetching schema...</p>
+                </div>
+
+                <div class="error-container hidden" id="error-screen">
+                    <i class="ph ph-warning-circle error-icon"></i>
+                    <h2 data-i18n="errLoadTitle">Failed to load components</h2>
+                    <p id="error-message">Could not load schema. Check server connection.</p>
+                    <p class="help-text" data-i18n="errLoadDesc">Please make sure the file is in the same directory, or
+                        use the 'Upload Custom
+                        JSON' button to load it manually.</p>
+                </div>
+
+                <div class="components-grid hidden" id="components-grid">
+                    <!-- Component cards will be injected here by JS -->
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- Component Detail Modal -->
+    <div class="modal-overlay hidden" role="dialog" aria-modal="true" id="detail-modal">
+        <div class="modal-content glass-panel" id="modal-body">
+            <button class="modal-close" id="modal-close-btn"><i class="ph ph-x"></i></button>
+            <div class="modal-header">
+                <div class="modal-image-placeholder" id="modal-image-container">
+                    <i class="ph ph-image"></i>
+                </div>
+                <div class="modal-title-area">
+                    <h2 id="modal-title">Component Name</h2>
+
+                    <div class="modal-info-slot">
+                        <span class="slot-label">Manufacturer</span>
+                        <span class="slot-value modal-manufacturer" id="modal-manufacturer">Unknown</span>
+                    </div>
+
+                    <div class="modal-info-slot">
+                        <span class="slot-label">PID</span>
+                        <span class="slot-value modal-pid" id="modal-pid">N/A</span>
+                    </div>
+
+                    <div class="modal-info-slot" style="margin-bottom: 16px;">
+                        <span class="slot-label">Description</span>
+                        <p class="slot-value modal-desc" id="modal-description">Description goes here.</p>
+                    </div>
+
+                    <a href="#" id="modal-link" target="_blank" style="display:none;"></a>
+                    <div id="modal-meta-row" style="display:flex; flex-wrap:wrap; gap:8px; margin-bottom:12px;"></div>
+
+                    <div class="modal-tags" id="modal-tags">
+                        <!-- Tags injected by JS -->
+                    </div>
+                </div>
+            </div>
+
+            <div class="modal-body-scroll">
+                <h3>
+                    Technical Specifications
+                    <i class="ph ph-info tooltip-icon"
+                        title="Generated from the component's underlying key-value pairs."></i>
+                </h3>
+                <div class="specs-grid" id="modal-specs">
+                    <!-- Specs injected by JS -->
+                </div>
+
+                <div class="compatibility-section hidden" id="modal-compat-section">
+                    <h3>
+                        Compatibility Constraints
+                        <i class="ph ph-info tooltip-icon"
+                            title="Physical or dimensional limits enforced by the build engine."></i>
+                    </h3>
+                    <div class="compat-grid" id="modal-compat">
+                        <!-- Compatibility rules injected by JS -->
+                    </div>
+                </div>
+
+                <div class="notes-section hidden" id="modal-notes-section">
+                    <h3>
+                        Schema Notes
+                        <i class="ph ph-info tooltip-icon"
+                            title="Internal notes and metadata starting with an underscore."></i>
+                    </h3>
+                    <div class="notes-list" id="modal-notes">
+                        <!-- Notes injected by JS -->
+                    </div>
+                </div>
+
+                <div class="similar-options-section hidden" id="modal-similar-section">
+                    <h3>
+                        <div style="display:flex; align-items:center; gap:6px;"><i class="ph ph-magic-wand"></i> Similar
+                            Alternatives</div>
+                        <i class="ph ph-info tooltip-icon"
+                            title="Alternative components with matching categorical properties."></i>
+                    </h3>
+                    <div class="similar-grid" id="modal-similar-grid">
+                        <!-- Similar items injected by JS -->
+                    </div>
+                </div>
+            </div>
+
+            <div class="modal-footer" id="modal-footer-actions">
+                <a href="#" class="btn btn-outline" id="modal-edit-btn"
+                    style="border-color: var(--accent-blue); color: var(--accent-blue); padding: 12px 24px;">
+                    <i class="ph ph-pencil-simple"></i>
+                    <span data-i18n="btnEditPart">Edit</span>
+                </a>
+                <button class="btn btn-primary" id="modal-add-btn"
+                    style="flex-grow: 1; padding: 12px 32px; font-size: 16px; font-weight: 700; justify-content: center; letter-spacing: 0.5px; text-transform: uppercase;">
+                    <i class="ph ph-plus-circle" style="font-size: 24px;"></i>
+                    <span data-i18n="btnAddBuild">Add to Build</span>
+                </button>
+            </div>
         </div>
-        <div class="dynamic-filters-separator hidden" id="dynamic-filters-separator"></div>
-        <div class="dynamic-filters-container" id="dynamic-filters-container"></div>
-        <button class="filter-clear-btn hidden" id="filter-clear-btn"><i class="ph ph-x-circle"></i> Clear filters</button>
-        <div class="view-toggle" id="view-toggle">
-          <button class="view-toggle-btn active" id="btn-view-grid" title="Grid view"><i class="ph ph-squares-four"></i></button>
-          <button class="view-toggle-btn" id="btn-view-list" title="List view"><i class="ph ph-list-bullets"></i></button>
+    </div>
+
         </div>
-      </div>
-      <div class="filter-chips" id="filter-chips"></div>
+        </div>
+    <!-- Floating Action Button for Build -->
+    <button class="build-fab" id="build-fab">
+        <i class="ph-fill ph-wrench"></i>
+        <span>Current Build</span>
+        <div class="build-badge" id="build-badge">0</div>
+    </button>
+
+    <!-- Build Drawer -->
+    <div class="build-drawer-overlay hidden" id="build-overlay"></div>
+    <div class="build-drawer closed" id="build-drawer">
+        <div class="drawer-header">
+            <h2>Your Drone Build</h2>
+            <button class="drawer-close" id="drawer-close-btn"><i class="ph ph-x"></i></button>
+        </div>
+
+        <!-- Wizard Completion Banner (shown briefly on finish) -->
+        <div class="wizard-complete-banner hidden" id="wizard-complete-banner">
+            <div class="wizard-complete-inner">
+                <i class="ph-fill ph-check-circle" style="font-size:36px; color:#16a34a;"></i>
+                <div>
+                    <strong>Build Complete!</strong>
+                    <p id="wizard-complete-summary"></p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Wizard Header injected here -->
+        <div class="wizard-header hidden" id="wizard-header"
+            style="padding: 15px 20px; background: rgba(34, 211, 238, 0.06); border-bottom: 1px solid rgba(34, 211, 238, 0.2);">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+                <h3 style="color: var(--accent-red); margin: 0; font-size: 14px;"><i class="ph ph-rocket"></i> Build
+                    Wizard</h3>
+                <span id="wizard-step-counter" style="color: var(--text-muted); font-size: 12px;">Step 1 of 8</span>
+            </div>
+            <p id="wizard-prompt" style="font-size: 13px; margin: 0; color: var(--text-main);">Select a Frame...</p>
+            <div style="display: flex; gap: 10px; margin-top: 15px;">
+                <button class="btn btn-outline" id="wizard-skip-btn" style="flex: 1; padding: 6px;">Skip Step</button>
+                <button class="btn btn-primary" id="wizard-next-btn" style="flex: 1; padding: 6px;">Next:
+                    Motors</button>
+            </div>
+            <button class="btn btn-outline" id="wizard-exit-btn"
+                style="width: 100%; margin-top: 10px; padding: 6px; border-color: var(--negative-red); color: var(--negative-red);">Exit
+                Wizard</button>
+        </div>
+
+        <div class="drawer-body" id="build-slots">
+            <!-- Slots will be injected here by JS -->
+        </div>
+
+        <div id="build-warnings-container" class="build-warnings-container">
+            <!-- Warnings injected here by JS -->
+        </div>
+
+        <div class="drawer-footer">
+            <div class="build-totals">
+                <div class="total-row">
+                    <span>Estimated Weight:</span>
+                    <span id="build-total-weight" class="total-value">0g</span>
+                </div>
+                <div class="total-row highlight">
+                    <span>Estimated Cost:</span>
+                    <span id="build-total-cost" class="total-value">$0.00</span>
+                </div>
+            </div>
+            <div class="build-action-buttons">
+                <button class="btn btn-primary" id="save-build-btn" style="flex:1;">
+                    <i class="ph ph-floppy-disk"></i> Save Build
+                </button>
+                <button class="btn btn-outline" id="load-build-btn" style="flex:1;">
+                    <i class="ph ph-folder-open"></i> Load Build
+                </button>
+            </div>
+            <button class="btn btn-outline" id="export-build-csv-btn"
+                style="width: 100%; margin-top: 8px;">
+                <i class="ph ph-file-csv"></i> Export CSV
+            </button>
+            <button class="btn btn-outline" id="clear-build-btn"
+                style="width: 100%; margin-top: 8px; border-color: rgba(239, 68, 68, 0.3); color: #ef4444;">
+                <i class="ph ph-trash"></i> Clear Build
+            </button>
+            <!-- Inline clear confirmation — replaces browser confirm() -->
+            <div id="clear-confirm-bar" class="hidden"
+                style="display:flex; align-items:center; gap:8px; margin-top:8px; background:rgba(220,38,38,0.08); border:1px solid rgba(220,38,38,0.3); border-radius:var(--radius-sm); padding:8px 12px;">
+                <span style="font-size:12px; color:#dc2626; font-weight:600; flex:1;"><i class="ph ph-warning"></i>
+                    Clear all slots?</span>
+                <button type="button" class="btn btn-danger" id="clear-confirm-yes"
+                    style="padding:4px 12px; font-size:12px;">Yes, Clear</button>
+                <button type="button" class="btn btn-outline" id="clear-confirm-no"
+                    style="padding:4px 12px; font-size:12px;">Cancel</button>
+            </div>
+        </div>
     </div>
 
-    <div class="content-body">
-      <div class="loader-container" id="loader">
-        <div class="spinner"></div>
-        <p>Loading parts database...</p>
-      </div>
-      <div class="error-container hidden" id="error-screen">
-        <i class="ph ph-warning-circle error-icon"></i>
-        <h2 data-i18n="errLoadTitle">Failed to load components</h2>
-        <p id="error-message">Could not load forge_database.json.</p>
-        <button class="btn btn-outline" onclick="location.reload()" style="margin-top:16px;"><i class="ph ph-arrow-clockwise"></i> Retry</button>
-      </div>
-      <div class="components-grid hidden" id="components-grid"></div>
+    <!-- Save Build Modal -->
+    <div class="modal-overlay hidden" role="dialog" aria-modal="true" id="save-build-modal">
+        <div class="modal-content glass-panel" style="max-width: 480px;">
+            <button class="modal-close" id="save-build-close-btn"><i class="ph ph-x"></i></button>
+            <div class="save-modal-header">
+                <div class="save-modal-icon"><i class="ph-fill ph-floppy-disk"></i></div>
+                <div>
+                    <h2>Save Build</h2>
+                    <p>Give this configuration a name to save it.</p>
+                </div>
+            </div>
+            <div class="save-modal-body">
+                <label class="filter-label" for="build-name-input">Build Name</label>
+                <input type="text" id="build-name-input" class="build-name-input" placeholder="e.g. 5" Racing Freestyle
+                    Build" maxlength="80">
+                <label class="filter-label" style="margin-top:12px;" for="build-desc-input">Description <span
+                        style="font-weight:400;text-transform:none;">(optional)</span></label>
+                <input type="text" id="build-desc-input" class="build-name-input"
+                    placeholder="Notes about this build..." maxlength="200">
+                <div id="save-build-summary" class="save-build-summary"></div>
+            </div>
+            <div class="save-modal-footer">
+                <button class="btn btn-outline" id="save-build-cancel-btn">Cancel</button>
+                <button class="btn btn-primary" id="save-build-confirm-btn">
+                    <i class="ph ph-floppy-disk"></i> Save
+                </button>
+            </div>
+        </div>
     </div>
 
-  </main>
-</div>
+    <!-- Load Build Modal -->
+    <div class="modal-overlay hidden" role="dialog" aria-modal="true" id="load-build-modal">
+        <div class="modal-content glass-panel" style="max-width: 560px;">
+            <button class="modal-close" id="load-build-close-btn"><i class="ph ph-x"></i></button>
+            <div class="save-modal-header">
+                <div class="save-modal-icon" style="background: var(--accent-blue);"><i
+                        class="ph-fill ph-folder-open"></i></div>
+                <div>
+                    <h2>Saved Builds</h2>
+                    <p>Load a previously saved configuration.</p>
+                </div>
+            </div>
+            <div id="saved-builds-list" class="saved-builds-list">
+                <div class="saved-builds-empty"><i class="ph ph-archive"></i>
+                    <p>No saved builds yet.</p>
+                </div>
+            </div>
+        </div>
+    </div>
 
-<!-- Detail Modal -->
-<div class="modal-overlay hidden" role="dialog" aria-modal="true" id="detail-modal">
-  <div class="modal-content glass-panel" id="modal-body">
-    <button class="modal-close" id="modal-close-btn"><i class="ph ph-x"></i></button>
-    <div class="modal-header">
-      <div class="modal-image-placeholder" id="modal-image-container"><i class="ph ph-image"></i></div>
-      <div class="modal-title-area">
-        <h2 id="modal-title">Component Name</h2>
-        <div class="modal-info-slot"><span class="slot-label">Manufacturer</span><span class="slot-value modal-manufacturer" id="modal-manufacturer">Unknown</span></div>
-        <div class="modal-info-slot"><span class="slot-label">PID</span><span class="slot-value modal-pid" id="modal-pid">N/A</span></div>
-        <div class="modal-info-slot" style="margin-bottom:16px;"><span class="slot-label">Description</span><p class="slot-value modal-desc" id="modal-description">—</p></div>
-        <div id="modal-meta-row" style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:12px;"></div>
-        <div class="modal-tags" id="modal-tags"></div>
-      </div>
-    </div>
-    <div class="modal-body-scroll">
-      <h3>Technical Specifications</h3>
-      <div class="specs-grid" id="modal-specs"></div>
-      <div class="compatibility-section hidden" id="modal-compat-section"><h3>Compatibility</h3><div class="compat-grid" id="modal-compat"></div></div>
-      <div class="notes-section hidden" id="modal-notes-section"><h3>Notes</h3><div class="notes-list" id="modal-notes"></div></div>
-      <div class="similar-options-section hidden" id="modal-similar-section"><h3><i class="ph ph-magic-wand"></i> Similar Alternatives</h3><div class="similar-grid" id="modal-similar-grid"></div></div>
-    </div>
-    <div class="modal-footer" id="modal-footer-actions">
-      <a href="#" class="btn btn-outline" id="modal-edit-btn" style="border-color:var(--accent-blue);color:var(--accent-blue);padding:12px 24px;"><i class="ph ph-pencil-simple"></i> Edit</a>
-      <button class="btn btn-primary" id="modal-add-btn" style="flex-grow:1;padding:12px 32px;font-size:16px;font-weight:700;justify-content:center;text-transform:uppercase;"><i class="ph ph-plus-circle" style="font-size:24px;"></i> Add to Build</button>
-    </div>
-  </div>
-</div>
+    <!-- Global Help Modal -->
+    <div class="modal-overlay hidden" role="dialog" aria-modal="true" id="help-modal">
+        <div class="modal-content glass-panel" style="max-width: 600px;">
+            <button class="modal-close" id="help-close-btn" style="top: 20px; right: 20px;"><i
+                    class="ph ph-x"></i></button>
+            <div class="modal-header"
+                style="background: linear-gradient(to right, rgba(34, 211, 238, 0.05), transparent); padding: 24px; border-bottom: 1px solid var(--border-color);">
+                <div style="display: flex; align-items: center; gap: 16px;">
+                    <div
+                        style="width: 48px; height: 48px; border-radius: 50%; background: var(--accent-red); color: white; display: flex; align-items: center; justify-content: center; font-size: 24px; box-shadow: var(--card-shadow);">
+                        <i class="ph-fill ph-question"></i>
+                    </div>
+                    <div>
+                        <h2 style="font-size: 20px; font-weight: 700; margin-bottom: 4px; color: var(--text-main);">How
+                            DroneCLEAR Works</h2>
+                        <p style="color: var(--text-muted); font-size: 13px;">A brief overview of the application
+                            architecture.</p>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-body-scroll"
+                style="padding: 24px; font-size: 14px; line-height: 1.6; color: var(--text-muted);">
+                <p style="margin-bottom: 20px;">This application is divided into <b>three main pillars</b>, accessible
+                    from the sidebar. Changes cascade from the top down.</p>
 
-<!-- Build FAB -->
-<button class="build-fab" id="build-fab">
-  <i class="ph-fill ph-wrench"></i>
-  <span>Current Build</span>
-  <div class="build-badge" id="build-badge">0</div>
-</button>
+                <div
+                    style="display: flex; gap: 16px; margin-bottom: 24px; background: var(--bg-dark); padding: 16px; border-radius: var(--radius-sm); border-left: 3px solid var(--accent-red); box-shadow: var(--inset-shadow);">
+                    <i class="ph ph-tree-structure" style="font-size: 24px; color: var(--accent-red);"></i>
+                    <div>
+                        <strong style="color: var(--text-main); display: block; margin-bottom: 4px;">1. Master
+                            Attributes</strong>
+                        The absolute source of truth. This JSON schema dictates exactly what fields every single drone
+                        component is allowed to have. Edit this template to change the structure of the database
+                        globally.
+                    </div>
+                </div>
 
-<!-- Build Drawer -->
-<div class="build-drawer-overlay hidden" id="build-overlay"></div>
-<div class="build-drawer closed" id="build-drawer">
-  <div class="build-drawer-header">
-    <h2 class="build-drawer-title"><i class="ph ph-wrench"></i> Current Build</h2>
-    <button class="build-drawer-close" id="build-drawer-close"><i class="ph ph-x"></i></button>
-  </div>
-  <div class="build-drawer-body">
-    <div class="build-empty-state" id="build-empty-state">
-      <i class="ph ph-stack"></i>
-      <p>Your build is empty</p>
-      <p style="font-size:12px;color:var(--text-faint);">Browse components and add them to start building.</p>
-    </div>
-    <div class="build-slots" id="build-slots"></div>
-  </div>
-  <div class="build-drawer-footer">
-    <div class="build-stats" id="build-stats">
-      <div class="build-stat"><span id="build-weight-val">0g</span><span>Weight</span></div>
-      <div class="build-stat"><span id="build-compat-val">—</span><span>Compat</span></div>
-    </div>
-    <div style="display:flex;gap:8px;">
-      <button class="btn btn-outline btn-sm" id="btn-clear-build">Clear</button>
-      <button class="btn btn-primary btn-sm" id="btn-wizard"><i class="ph ph-magic-wand"></i> Wizard</button>
-    </div>
-    <button class="btn btn-outline" id="btn-export-build" style="width:100%;margin-top:8px;"><i class="ph ph-export"></i> Export Build</button>
-    <label class="btn btn-outline" style="width:100%;margin-top:8px;cursor:pointer;">
-      <i class="ph ph-upload-simple"></i> Upload Custom JSON
-      <input type="file" id="json-upload" accept=".json" style="display:none;">
-    </label>
-  </div>
-</div>
+                <div
+                    style="display: flex; gap: 16px; margin-bottom: 24px; background: var(--bg-dark); padding: 16px; border-radius: var(--radius-sm); border-left: 3px solid var(--accent-blue); box-shadow: var(--inset-shadow);">
+                    <i class="ph ph-books" style="font-size: 24px; color: var(--accent-blue);"></i>
+                    <div>
+                        <strong style="color: var(--text-main); display: block; margin-bottom: 4px;">2. Parts Library
+                            Editor</strong>
+                        A tool to input new, physical parts into the database. The forms on this page are dynamically
+                        built directly from the Master Attributes template.
+                    </div>
+                </div>
 
-<!-- Scripts — adapter FIRST -->
-<script src="static/maintenance.js"></script>
-<script src="static/state.js"></script>
-<script src="static/utils.js"></script>
-<script src="static/filters.js"></script>
-<script src="static/components.js"></script>
-<script src="static/modal.js"></script>
-<script src="static/build.js"></script>
-<script src="static/wizard.js"></script>
-<script src="static/persist.js"></script>
-<script src="static/app.js"></script>
-<script src="static/shortcuts.js"></script>
+                <div
+                    style="display: flex; gap: 16px; margin-bottom: 24px; background: var(--bg-dark); padding: 16px; border-radius: var(--radius-sm); border-left: 3px solid #10b981; box-shadow: var(--inset-shadow);">
+                    <i class="ph ph-magic-wand" style="font-size: 24px; color: #10b981;"></i>
+                    <div>
+                        <strong style="color: var(--text-main); display: block; margin-bottom: 4px;">3. Drone Models
+                            Builder (Visualizer)</strong>
+                        The frontend store. Users can browse the library of parts and piece together drone models using
+                        the Build Wizard. The wizard checks compatibility across components.
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+
+
+    <!-- Bug Report Modal Structure -->
+    <div id="bug-report-modal" class="modal-overlay hidden" role="dialog" aria-modal="true" style="z-index: 9999;">
+        <div class="modal-content" style="max-width: 500px; padding: 24px; position: relative;">
+            <div class="modal-title-area" style="margin-bottom: 16px;">
+                <h2 style="font-size: 20px; color: var(--text-main); display:flex; align-items:center; gap:8px;">
+                    <i class="ph ph-bug" style="color: var(--accent-red);"></i> Submit Bug Report
+                </h2>
+                <p style="color: var(--text-muted); font-size: 13px; margin-top: 4px;">Found an issue? Let us know.</p>
+            </div>
+            <div style="display:flex; flex-direction:column; gap:12px;">
+                <input type="text" id="bug-title-input" placeholder="Brief issue description..."
+                    style="width:100%; padding:10px; background:var(--bg-dark); border:1px solid var(--border-color); color:var(--text-main); border-radius:var(--radius-sm);">
+                <textarea id="bug-desc-input" rows="4" placeholder="Steps to reproduce..."
+                    style="width:100%; padding:10px; background:var(--bg-dark); border:1px solid var(--border-color); color:var(--text-main); border-radius:var(--radius-sm); resize:vertical;"></textarea>
+            </div>
+            <div class="modal-footer" style="margin-top:20px; display:flex; gap:12px; justify-content:flex-end;">
+                <button class="btn btn-outline" id="btn-cancel-bug">Cancel</button>
+                <button class="btn btn-primary" id="btn-submit-bug">Submit</button>
+            </div>
+        </div>
+    </div>
+    <!-- DEBT-007: Maintenance logic extracted to maintenance.js -->
+    <script src="static/maintenance.js"></script>
+    <script src="static/state.js?v=2"></script>
+    <script src="static/utils.js?v=2"></script>
+    <script src="static/filters.js?v=2"></script>
+    <script src="static/components.js?v=2"></script>
+    <script src="static/modal.js?v=2"></script>
+    <script src="static/build.js?v=2"></script>
+    <script src="static/wizard.js?v=2"></script>
+    <script src="static/persist.js?v=2"></script>
+    <script src="static/app.js?v=2"></script>
+    <script src="static/shortcuts.js?v=2"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            // ── Hamburger drawer toggle ──
+            const hamburger = document.getElementById('hamburger-btn');
+            const hamburgerIcon = document.getElementById('hamburger-icon');
+            const drawer = document.getElementById('nav-drawer');
+            const overlay = document.getElementById('nav-drawer-overlay');
+            const closeBtn = document.getElementById('nav-drawer-close');
+
+            function openDrawer() {
+                drawer.classList.add('open');
+                overlay.classList.add('open');
+                hamburger.classList.add('open');
+                hamburgerIcon.className = 'ph ph-x';
+            }
+            function closeDrawer() {
+                drawer.classList.remove('open');
+                overlay.classList.remove('open');
+                hamburger.classList.remove('open');
+                hamburgerIcon.className = 'ph ph-list';
+            }
+
+            if (hamburger) {
+                hamburger.addEventListener('click', () => {
+                    drawer.classList.contains('open') ? closeDrawer() : openDrawer();
+                });
+            }
+            if (overlay) overlay.addEventListener('click', closeDrawer);
+            if (closeBtn) closeBtn.addEventListener('click', closeDrawer);
+            document.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeDrawer(); });
+
+            // Mobile filter toolbar toggle
+            const filterToolbar = document.querySelector('.filter-toolbar');
+            if (filterToolbar && window.innerWidth <= 768) {
+                const toggleBtn = document.createElement('button');
+                toggleBtn.className = 'filter-mobile-toggle';
+                toggleBtn.innerHTML = '<i class="ph ph-funnel"></i> Filters';
+                toggleBtn.style.cssText = 'background:none; border:1px solid var(--border-color); border-radius:6px; color:var(--text-muted); padding:6px 12px; font-family:var(--font-family); font-size:12px; cursor:pointer; display:flex; align-items:center; gap:6px;';
+                toggleBtn.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    filterToolbar.classList.toggle('filters-expanded');
+                    toggleBtn.innerHTML = filterToolbar.classList.contains('filters-expanded')
+                        ? '<i class="ph ph-x"></i> Close'
+                        : '<i class="ph ph-funnel"></i> Filters';
+                });
+                filterToolbar.insertBefore(toggleBtn, filterToolbar.firstChild);
+            }
+        });
+    </script>
+
+<!-- AI Wingman Analytics v1.0 — Forge — No cookies, no PII -->
+<script>
+(function(){var E='https://nvmilldoitmyself.com/.netlify/functions/analytics-ingest',S='sess_'+crypto.randomUUID().replace(/-/g,'').slice(0,16),q=[],t=null,aid=null,ff=true;function r(){try{var z=Intl.DateTimeFormat().resolvedOptions().timeZone;if(z.includes('America'))return'Americas';if(z.includes('Europe'))return'Europe';if(z.includes('Asia')||z.includes('Australia')||z.includes('Pacific'))return'Asia-Pacific';if(z.includes('Africa'))return'Africa'}catch(e){}return'Unknown'}function ev(tp,ac,p,tier){q.push({event_id:crypto.randomUUID(),timestamp:new Date().toISOString(),surface:'forge',event_type:tp,event_action:ac,context:{session_id:S,account_id:aid,geo_region:r(),platform:/Android|iPhone|iPad/i.test(navigator.userAgent)?'mobile':'web',viewport:innerWidth+'x'+innerHeight},payload:p,data_policy:{collection_tier:tier||'anonymous',consent_version:'none',retention_days:tier==='account'?365:90,anonymized:tier!=='account'}});if(q.length>=20)fl();else if(!t)t=setTimeout(fl,5e3)}function fl(){if(t){clearTimeout(t);t=null}if(!q.length)return;var b=q.splice(0);fetch(E,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({events:b}),keepalive:true}).catch(function(){})}addEventListener('visibilitychange',function(){if(document.visibilityState==='hidden')fl()});addEventListener('pagehide',fl);ev('page_view','view',{path:location.pathname,title:document.title});window.__forgeAnalytics={search:function(query,cat,n){ev('search','component_search',{query:query.slice(0,200),category:cat,result_count:n,had_results:n>0});if(n===0)ev('search','no_results',{query:query.slice(0,200),category:cat})},filter:function(cat,f,n){ev('filter','apply_filter',{category:cat,filters:f,filter_names:Object.keys(f),first_filter:ff,result_count:n,zero_results:n===0});ff=false;if(n===0)ev('search','no_results',{query:'',category:cat,filters:f})},view:function(pid,cat,mfr,co,ndaa){ev('page_view','component_detail',{component_pid:pid,category:cat,manufacturer:mfr,country:co,ndaa_compliant:ndaa})},compare:function(a,b,cat){ev('compare','side_by_side',{component_a:a,component_b:b,category:cat})},save:function(pid,cat,ctx){ev('save','bookmark_component',{component_pid:pid,category:cat,save_context:ctx||'bookmark'},aid?'account':'pseudonymous')},setUser:function(id){aid=id},flush:fl}})();
+</script>
 </body>
+
 </html>
