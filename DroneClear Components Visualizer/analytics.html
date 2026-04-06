@@ -148,8 +148,9 @@ a{color:var(--blue);text-decoration:none}a:hover{text-decoration:underline}
   <button class="tab active" data-tab="overview">Overview</button>
   <button class="tab" data-tab="parts">Parts DB <span class="count" id="badge-parts">—</span></button>
   <button class="tab" data-tab="intel">Intel <span class="count" id="badge-intel">—</span></button>
-  <button class="tab" data-tab="users">User Signals <span class="count" id="badge-users"><span class="an-pulse"></span></span></button>
+  <button class="tab" data-tab="users" data-locked="1">User Signals <i class="ph ph-lock-simple" style="font-size:10px;opacity:.5;margin-left:2px"></i></button>
   <button class="tab" data-tab="landscape">UAS Landscape</button>
+  <button class="tab" data-tab="usage" data-locked="1">Usage <i class="ph ph-lock-simple" style="font-size:10px;opacity:.5;margin-left:2px"></i></button>
 </div>
 
 <div class="content">
@@ -248,13 +249,59 @@ a{color:var(--blue);text-decoration:none}a:hover{text-decoration:underline}
                     <div class="an-section"><h3 class="an-section-title"><i class="ph ph-map-trifold"></i> Market Intelligence</h3><div id="ls-market"></div></div>
                 </div>
 
+
+<!-- Admin gate overlay -->
+<div id="admin-gate" style="display:none;position:fixed;inset:0;background:rgba(10,10,8,.92);z-index:500;align-items:center;justify-content:center;">
+  <div style="background:#1a1a14;border:1px solid #2e2e26;border-radius:10px;padding:28px 32px;width:320px;text-align:center;">
+    <div style="font:700 13px 'JetBrains Mono',monospace;color:#22c55e;letter-spacing:.08em;margin-bottom:6px">// ADMIN ACCESS</div>
+    <div style="font-size:11px;color:#6b6358;margin-bottom:20px">User Signals and Usage data are restricted</div>
+    <input id="gate-input" type="password" placeholder="Admin key" autocomplete="off"
+      style="width:100%;padding:8px 12px;border-radius:5px;border:1px solid #2e2e26;background:#0c0c0a;color:#f5f0e8;font:12px 'DM Sans',system-ui;outline:none;margin-bottom:10px;box-sizing:border-box;"
+      onkeydown="if(event.key==='Enter')checkGate();if(event.key==='Escape')closeGate();"/>
+    <div id="gate-err" style="font-size:11px;color:#d62828;min-height:16px;margin-bottom:10px"></div>
+    <div style="display:flex;gap:8px;">
+      <button onclick="closeGate()" style="flex:1;padding:7px;border-radius:5px;border:1px solid #2e2e26;background:none;color:#6b6358;font:600 11px 'DM Sans',system-ui;cursor:pointer;">Cancel</button>
+      <button onclick="checkGate()" style="flex:1;padding:7px;border-radius:5px;border:1px solid #22c55e;background:rgba(34,197,94,.1);color:#22c55e;font:600 11px 'DM Sans',system-ui;cursor:pointer;">Unlock</button>
+    </div>
+  </div>
+</div>
   <div class="an-footer">Mission Control · No cookies · No PII · No fingerprinting · <span class="teal">DroneClear Intelligence</span></div>
 </div>
 
+  <div class="panel" id="panel-usage">
+    <div class="an-stats" id="ug-stats"></div>
+    <div class="an-grid-2">
+      <div class="an-section">
+        <h3 class="an-section-title"><i class="ph ph-chart-bar"></i> Daily Activity</h3>
+        <div id="ug-daily"></div>
+      </div>
+      <div class="an-section">
+        <h3 class="an-section-title"><i class="ph ph-robot"></i> Wingman Query Categories</h3>
+        <div id="ug-wingman-cats"></div>
+      </div>
+    </div>
+    <div class="an-grid-2">
+      <div class="an-section">
+        <h3 class="an-section-title"><i class="ph ph-arrows-left-right"></i> Top Gap Pairs</h3>
+        <p style="font-size:11px;color:var(--an-text-muted);margin:-8px 0 12px">Most compared entity pairs in Gap Analyzer</p>
+        <div id="ug-gap-pairs"></div>
+      </div>
+      <div class="an-section">
+        <h3 class="an-section-title"><i class="ph ph-map-pin-area"></i> Traffic by Surface</h3>
+        <div id="ug-surfaces"></div>
+      </div>
+    </div>
+    <div class="an-section">
+      <h3 class="an-section-title"><i class="ph ph-clock-countdown"></i> Recent Page Views</h3>
+      <div id="ug-pages"></div>
+    </div>
+  </div>
+
 <script>
 (function(){'use strict';
-var DB,INTEL=[],COS=[],PROGS=[],PLATS=[],LIVE,GAPS,TOPICMAP;
+var DB,INTEL=[],COS=[],PROGS=[],PLATS=[],LIVE,GAPS,TOPICMAP,DASH;
 var FN='/.netlify/functions/analytics';
+var DASH_FN='/.netlify/functions/analytics-dashboard';
 var KEY=new URLSearchParams(location.search).get('key')||'forge-admin-2026';
 var $=function(id){return document.getElementById(id)};
 var fmt=function(n){return n>=1e6?(n/1e6).toFixed(1)+'M':n>=1e3?(n/1e3).toFixed(1).replace(/\.0$/,'')+'k':String(n)};
@@ -265,14 +312,70 @@ function spark(d,lb){var mx=Math.max.apply(null,d.concat([1]));var h=d.map(funct
 function sortObj(o,n){return Object.entries(o).sort(function(a,b){return b[1]-a[1]}).slice(0,n||999);}
 function daysSince(s){try{return Math.floor((new Date()-new Date(s))/864e5)}catch(e){return 999}}
 
-// PIE-style tab switching
-document.querySelectorAll('#tabs .tab').forEach(function(tab){tab.addEventListener('click',function(){
-    document.querySelectorAll('#tabs .tab').forEach(function(t){t.classList.remove('active')});
-    document.querySelectorAll('.content .panel').forEach(function(p){p.classList.remove('active')});
-    tab.classList.add('active');
-    var panel = document.getElementById('panel-'+tab.dataset.tab);
-    if(panel) panel.classList.add('active');
-});});
+
+// ── Admin gate for restricted tabs ───────────────────────────────────────────
+var ADMIN_KEY = 'forge-admin-2026';
+var GATE_SESSION_KEY = 'forge_admin_unlocked';
+var pendingTab = null;
+
+function isUnlocked(){
+  return sessionStorage.getItem(GATE_SESSION_KEY) === '1';
+}
+
+function openGate(tab){
+  if(isUnlocked()){activateTab(tab);return;}
+  pendingTab = tab;
+  var overlay = document.getElementById('admin-gate');
+  overlay.style.display = 'flex';
+  setTimeout(function(){document.getElementById('gate-input').focus();},50);
+}
+
+function closeGate(){
+  document.getElementById('admin-gate').style.display = 'none';
+  document.getElementById('gate-input').value = '';
+  document.getElementById('gate-err').textContent = '';
+  pendingTab = null;
+}
+
+function checkGate(){
+  var val = document.getElementById('gate-input').value.trim();
+  // Also accept the URL key param
+  var urlKey = new URLSearchParams(location.search).get('key') || '';
+  if(val === ADMIN_KEY || val === urlKey && urlKey){
+    sessionStorage.setItem(GATE_SESSION_KEY, '1');
+    closeGate();
+    if(pendingTab) activateTab(pendingTab);
+  } else {
+    document.getElementById('gate-err').textContent = 'Incorrect key';
+    document.getElementById('gate-input').select();
+  }
+}
+
+function activateTab(tab){
+  document.querySelectorAll('#tabs .tab').forEach(function(t){t.classList.remove('active');});
+  document.querySelectorAll('.content .panel').forEach(function(p){p.classList.remove('active');});
+  tab.classList.add('active');
+  var panel = document.getElementById('panel-'+tab.dataset.tab);
+  if(panel) panel.classList.add('active');
+}
+
+// Override tab click handler to intercept locked tabs
+document.querySelectorAll('#tabs .tab').forEach(function(tab){
+  tab.addEventListener('click',function(){
+    if(tab.dataset.locked && !isUnlocked()){
+      openGate(tab);
+    } else {
+      activateTab(tab);
+    }
+  });
+});
+
+// Auto-unlock if ?key= param matches
+(function(){
+  var urlKey = new URLSearchParams(location.search).get('key');
+  if(urlKey === ADMIN_KEY) sessionStorage.setItem(GATE_SESSION_KEY,'1');
+})();
+
 
 async function loadJSON(u){try{var r=await fetch(u);if(!r.ok)throw r.status;return await r.json()}catch(e){return null}}
 
@@ -288,6 +391,7 @@ async function loadAll(){
     ]);
     DB=results[0];INTEL=results[1]||[];COS=results[2]||[];PROGS=results[3]||[];PLATS=results[4]||[];TOPICMAP=results[5];
     try{var r=await fetch(FN+'?key='+KEY+'&range=30');if(r.ok)LIVE=await r.json()}catch(e){}
+    try{var d=await fetch(DASH_FN+'?surface=forge&days=30');if(d.ok)DASH=await d.json()}catch(e){}
     try{var g=await fetch('/static/gap_analysis_latest.json');if(g.ok)GAPS=await g.json()}catch(e){}
     $('an-btn').classList.remove('loading');
     $('an-ts').textContent=new Date().toLocaleString();
@@ -315,7 +419,7 @@ function metrics(){
 }
 
 function renderAll(){if(!DB){$('panel-overview').innerHTML='<div class="an-empty">Failed to load database</div>';return}
-    var m=metrics();renderOverview(m);renderParts(m);renderIntel(m);renderUsers(m);renderLandscape(m);
+    var m=metrics();renderOverview(m);renderParts(m);renderIntel(m);renderUsers(m);renderLandscape(m);renderUsage();
     $('badge-parts').textContent=fmt(m.tp);$('badge-intel').textContent=fmt(INTEL.length);
 }
 
@@ -398,6 +502,58 @@ function renderUsers(){
     $('us-cats').innerHTML=sc2.length?sc2.map(function(e){return bar(e[0],e[1],mc,'teal')}).join(''):'<div class="an-empty">Category data builds as users interact</div>';
     var dk=Object.keys(daily).sort(),dv=dk.map(function(k){return daily[k]?daily[k].count||0:0}),dl=dk.map(function(k){return k.substring(5)});
     $('us-daily').innerHTML=dk.length?spark(dv,dl):'<div class="an-empty">Daily activity appears after sessions</div>';
+}
+
+function renderUsage(){
+  var ov=DASH?DASH.overview:{};
+  var daily=DASH?DASH.daily_activity||[]:[]; 
+  var gapPairs=DASH?DASH.top_gap_pairs||[]:[]; 
+  var wingCats=DASH?DASH.wingman_categories||[]:[]; 
+  var liveT=LIVE?LIVE.totals||{}:{};
+  var liveSurf=liveT.surfaces||{};
+  var hasData=DASH||LIVE;
+  if(!hasData){
+    document.getElementById('ug-stats').innerHTML='<div class="an-empty" style="grid-column:1/-1">Usage data not yet available</div>';
+    ['ug-daily','ug-wingman-cats','ug-gap-pairs','ug-surfaces','ug-pages'].forEach(function(id){document.getElementById(id).innerHTML='<div class="an-empty">No data yet</div>';});
+    return;
+  }
+  var $=function(id){return document.getElementById(id);};
+  var totalViews=ov.total_views||liveT.pageViews||0;
+  var totalGaps=ov.total_gap_analyses||liveT.gapAnalyses||0;
+  var totalWingman=ov.total_wingman_queries||liveT.queries||0;
+  var totalSess=ov.unique_sessions||liveT.sessions||0;
+  var totalCritical=ov.total_critical_gaps_found||0;
+  $('ug-stats').innerHTML=[
+    sc(fmt(totalViews),'Page Views','30 days','accent-blue'),
+    sc(fmt(totalSess),'Sessions','','accent-green'),
+    sc(fmt(totalWingman),'Wingman Queries','','accent-purple'),
+    sc(fmt(totalGaps),'Gap Analyses','','accent-amber'),
+    sc(fmt(totalCritical),'Critical Gaps Found','across all runs','accent-red'),
+    sc(ov.days_with_data||0,'Days w/ Data','',''),
+  ].join('');
+  $('badge-usage').textContent=fmt(totalViews+totalWingman+totalGaps);
+  // Daily spark
+  if(daily.length){
+    var dk=daily.map(function(d){return(d.date||'').substring(5);});
+    var dv=daily.map(function(d){return(d.views||0)+(d.wingman_queries||0)+(d.gap_analyses||0);});
+    $('ug-daily').innerHTML=spark(dv,dk)+'<div style="font-size:10px;color:var(--an-text-muted);margin-top:6px">Views + Wingman + Gap runs per day</div>';
+  } else { $('ug-daily').innerHTML='<div class="an-empty">Builds over time</div>'; }
+  // Wingman categories
+  var cats2=wingCats.length?wingCats.map(function(c){return[c.cat,c.count];}):sortObj(liveT.cats||{},12);
+  if(cats2.length){var mc=cats2[0][1];$('ug-wingman-cats').innerHTML=cats2.slice(0,12).map(function(e){return bar(e[0],e[1],mc,'teal');}).join('');}
+  else{$('ug-wingman-cats').innerHTML='<div class="an-empty">Builds as Wingman is used</div>';}
+  // Gap pairs
+  if(gapPairs.length){var mg=gapPairs[0].count;$('ug-gap-pairs').innerHTML=gapPairs.slice(0,10).map(function(p){return bar(p.pair,p.count,mg,'orange');}).join('');}
+  else{$('ug-gap-pairs').innerHTML='<div class="an-empty">Top entity pairs appear after gap runs</div>';}
+  // Surface breakdown
+  var surfEntries=Object.entries(liveSurf);
+  if(surfEntries.length){var ms=Math.max.apply(null,surfEntries.map(function(e){return e[1];}));$('ug-surfaces').innerHTML=surfEntries.sort(function(a,b){return b[1]-a[1];}).map(function(e){return bar(e[0],e[1],ms,'blue');}).join('');}
+  else{$('ug-surfaces').innerHTML='<div class="an-empty">Forge · Patterns · Intel · Platforms · Wingman</div>';}
+  // Recent pages from LIVE daily
+  var recentPages=[];
+  if(LIVE&&LIVE.daily){Object.values(LIVE.daily).forEach(function(day){if(day&&day.cats)Object.entries(day.cats).forEach(function(e){recentPages.push({path:e[0],count:e[1]});});});}
+  if(recentPages.length){recentPages.sort(function(a,b){return b.count-a.count;});var mp=recentPages[0].count;$('ug-pages').innerHTML=recentPages.slice(0,15).map(function(p){return bar(p.path,p.count,mp,'blue');}).join('');}
+  else{$('ug-pages').innerHTML='<div class="an-empty">Page breakdown populates as traffic accumulates</div>';}
 }
 
 function renderLandscape(m){
