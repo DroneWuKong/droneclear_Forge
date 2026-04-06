@@ -353,7 +353,7 @@ a{color:var(--blue);text-decoration:none}a:hover{text-decoration:underline}
   <!-- PLATFORMS PANEL -->
   <div class="panel" id="panel-platforms">
     <p style="font-size:11px;color:var(--text-d);margin-bottom:12px">
-      Blue UAS & tracked platforms from <a href="https://nvmillbuilditmyself.com/platforms/">Forge DB (219 platforms)</a> ·
+      Blue UAS & tracked platforms from <a href="/platforms/">Forge DB (<span id="plat-count-blueuas">237</span> platforms)</a> ·
       Compliance from <a href="https://nvmillbuilditmyself.com/compliance/">Compliance Dashboard</a>
     </p>
 
@@ -579,6 +579,13 @@ async function loadData() {
 
   try {
     const [fRes, pRes] = await Promise.all([
+      // Dynamic platform count
+      fetch("../static/forge_database.json").then(r=>r.json()).then(db=>{
+        const n = (db.drone_models||[]).length;
+        const el = document.getElementById('plat-count-blueuas');
+        if(el) el.textContent = n;
+      }).catch(()=>{});
+
       fetch("../static/pie_flags.json").then(r => {
         if (!r.ok) throw new Error(`flags.json: HTTP ${r.status}`);
         return r.json();
