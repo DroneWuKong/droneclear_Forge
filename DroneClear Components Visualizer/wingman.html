@@ -504,10 +504,20 @@
     <input type="hidden" id="gemini-key-input"/>
     <input type="hidden" id="groq-key-input"/>
     <input type="hidden" id="proxy-secret-input"/>
-    <input type="hidden" id="sub-token-input"/>
     <div id="anthropic-cfg" style="display:none;"></div>
     <div id="gemini-cfg" style="display:none;"></div>
     <div id="groq-cfg" style="display:none;"></div>
+
+    <hr style="border:none;border-top:1px solid var(--border);margin:0 0 16px;"/>
+
+    <div style="margin-bottom:16px;">
+      <label class="cfg-label" style="display:flex;align-items:center;gap:6px;margin-bottom:6px;">
+        <span style="display:inline-block;width:7px;height:7px;border-radius:50%;background:var(--cyan);flex-shrink:0"></span>
+        Subscription Token <span style="font-size:9px;color:var(--g3);font-weight:400;text-transform:none;letter-spacing:0">(Pro — unlocks Claude, Gap Analyzer, PIE)</span>
+      </label>
+      <input type="password" id="sub-token-input" placeholder="Paste your Pro token here…" style="font-size:11px;letter-spacing:.03em"/>
+      <div id="sub-token-status" style="font-size:10px;margin-top:5px;min-height:14px;"></div>
+    </div>
 
     <hr style="border:none;border-top:1px solid var(--border);margin:0 0 16px;"/>
 
@@ -2168,6 +2178,24 @@ function openCfg() {
   document.getElementById('groq-key-input').value = groqKey;
   document.getElementById('proxy-secret-input').value = proxySecret;
   document.getElementById('sub-token-input').value = subToken;
+  // Show token status
+  const statusEl = document.getElementById('sub-token-status');
+  if (statusEl) {
+    if (subToken) {
+      try {
+        const p = JSON.parse(atob(subToken));
+        const daysLeft = p.exp ? Math.max(0, Math.ceil((p.exp - Date.now()) / 86400000)) : null;
+        const expired = p.exp && Date.now() > p.exp;
+        statusEl.textContent = expired
+          ? '⚠ Token expired — renew at /pro/'
+          : (daysLeft !== null ? `✓ Pro active · ${daysLeft} days remaining${p.demo ? ' (demo)' : ''}` : '✓ Token present');
+        statusEl.style.color = expired ? 'var(--amber)' : 'var(--cyan)';
+      } catch { statusEl.textContent = '✓ Token present'; statusEl.style.color = 'var(--cyan)'; }
+    } else {
+      statusEl.textContent = 'No token — get Pro at nvmillbuilditmyself.com/pro/';
+      statusEl.style.color = 'var(--g3)';
+    }
+  }
   setProvider(provider);
   document.getElementById('cfg-overlay').classList.add('open');
 }
@@ -2189,6 +2217,22 @@ function saveCfgAndConnect() {
     geminiKey = newGemini;
     localStorage.setItem('wingman_gemini_key', geminiKey);
   }
+
+  // Save sub token
+  const newSubToken = document.getElementById('sub-token-input').value.trim();
+  if (newSubToken) {
+    subToken = newSubToken;
+    localStorage.setItem('wingman_sub_token', subToken);
+    // Switch to Claude automatically if token present
+    if (provider !== 'anthropic') {
+      setProvider('anthropic');
+    }
+  } else if (document.getElementById('sub-token-input').value === '') {
+    // User cleared it — remove
+    subToken = '';
+    localStorage.removeItem('wingman_sub_token');
+  }
+
   // Also connect GH if PAT is provided
   const pat = document.getElementById('pat-input').value.trim();
   if (pat) {
