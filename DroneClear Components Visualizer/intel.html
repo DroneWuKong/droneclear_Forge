@@ -20,7 +20,7 @@
   --defense:#f97316;--defense-d:#f9731618;
   --financial:#f59e0b;--financial-d:#f59e0b18;
   --commercial:#06b6d4;--commercial-d:#06b6d418;
-  --dfr:#ff6b35;--dfr-d:#ff6b3518;
+  --dfr:#e53e3e;--dfr-d:#e53e3e18;
   --amber:#f59e0b;--amber-d:#f59e0b18;
   --blue:#3b82f6;--blue-d:#3b82f618;
   --green:#22c55e;--green-d:#22c55e20;
@@ -246,7 +246,7 @@ function renderDFR(){
     const isPaidDfr=x.paywall;
     const flagsDfr=getPIEFlags(x);
     if(isPaidDfr&&!isProUser()) return paywallGate(x.title);
-    return`<div class="acard dfr" onclick="x.id&&RECORD_INDEX[x.id]?openDM(RECORD_INDEX['${x.id}']):or('${u.replace(/'/g,"\'")}','${(x.title||'').replace(/'/g,"\'").substring(0,80)}')">
+    return`<div class="acard dfr" onclick="handleCardClick(this)" data-rid="${x.id||''}" data-url="${(u||'').replace(/"/g,'&quot;')}" data-title="${(x.title||'').substring(0,80).replace(/"/g,'&quot;')}">
       <div style="display:flex;gap:6px;align-items:center;margin-bottom:4px;flex-wrap:wrap">
         ${isExcl?'<span class="badge" style="background:var(--dfr-d);color:var(--dfr)">EXCLUSIVE</span>':''}
         <span class="badge" style="background:var(--dfr-d);color:var(--dfr)">DFR</span>
@@ -576,7 +576,7 @@ function renderDefense(){
     const isPaid=x.paywall;
     const flags=getPIEFlags(x);
     if(isPaid&&!isProUser()) return paywallGate(x.title);
-    return`<div class="acard defense" onclick="x.id&&RECORD_INDEX[x.id]?openDM(RECORD_INDEX['${x.id}']):or('${u.replace(/'/g,"\'")}','${(x.title||'').replace(/'/g,"\'").substring(0,80)}')">
+    return`<div class="acard defense" onclick="handleCardClick(this)" data-rid="${x.id||''}" data-url="${(u||'').replace(/"/g,'&quot;')}" data-title="${(x.title||'').substring(0,80).replace(/"/g,'&quot;')}">
       <div style="display:flex;gap:6px;align-items:center;margin-bottom:4px;flex-wrap:wrap">
         ${isPaid?'<span class="badge" style="background:var(--defense-d);color:var(--defense)">🔒 PRO</span>':''}
         <span class="badge" style="background:var(--defense-d);color:var(--defense)">DEFENSE</span>
@@ -616,7 +616,7 @@ function renderCommercial(){
     const isPaid=x.paywall;
     const flags=getPIEFlags(x);
     if(isPaid&&!isProUser()) return paywallGate(x.title);
-    return`<div class="acard commercial" onclick="x.id&&RECORD_INDEX[x.id]?openDM(RECORD_INDEX['${x.id}']):or('${u.replace(/'/g,"\'")}','${(x.title||'').replace(/'/g,"\'").substring(0,80)}')">
+    return`<div class="acard commercial" onclick="handleCardClick(this)" data-rid="${x.id||''}" data-url="${(u||'').replace(/"/g,'&quot;')}" data-title="${(x.title||'').substring(0,80).replace(/"/g,'&quot;')}">
       <div style="display:flex;gap:6px;align-items:center;margin-bottom:4px;flex-wrap:wrap">
         ${isPaid?'<span class="badge" style="background:var(--commercial-d);color:var(--commercial)">🔒 PRO</span>':''}
         <span class="badge" style="background:var(--commercial-d);color:var(--commercial)">COMMERCIAL</span>
@@ -632,6 +632,13 @@ function renderCommercial(){
       </div>
     </div>`;
   }).join('')+(filtered.length>80?`<div style="text-align:center;padding:20px;color:var(--text-d);font:11px var(--mono)">Showing 80 of ${filtered.length}</div>`:'');
+}
+
+function handleCardClick(el){
+  const rid=el.dataset.rid;
+  if(rid && RECORD_INDEX[rid]){ openDM(RECORD_INDEX[rid]); return; }
+  const u=el.dataset.url, t=el.dataset.title;
+  if(u) or(u, t);
 }
 
 // Auto-open tab from URL param (?tab=dfr, ?cat=defense, etc.)
