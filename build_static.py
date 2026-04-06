@@ -58,6 +58,8 @@ PAGES = {
     'wingman.html': 'wingman/index.html',
     'pro.html': 'pro/index.html',
     'report.html': 'report/index.html',
+    'terms.html': 'terms/index.html',
+    'privacy.html': 'privacy/index.html',
     'pid-tuning.html': 'pid-tuning/index.html',
     'patterns.html': 'patterns/index.html',
     'brief.html': 'brief/index.html',
