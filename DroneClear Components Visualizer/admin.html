@@ -1,0 +1,742 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>// ADMIN — Wingman Token Console</title>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet"/>
+<style>
+  :root {
+    --bg:      #080809;
+    --surface: #0f0f11;
+    --card:    #141416;
+    --border:  #1e1e22;
+    --border2: #2a2a30;
+    --cyan:    #00ffe0;
+    --cyan-d:  #00bfa8;
+    --amber:   #f0a500;
+    --red:     #ff3b3b;
+    --green:   #00e676;
+    --white:   #e8e8f0;
+    --g1:      #9090a0;
+    --g2:      #505060;
+    --g3:      #282830;
+    --mono:    'JetBrains Mono', monospace;
+  }
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { background: var(--bg); color: var(--g1); font-family: var(--mono); font-size: 13px; min-height: 100vh; }
+
+  /* ── LOCK SCREEN ─────────────────────────────────────────────────────────── */
+  #lock {
+    position: fixed; inset: 0; background: var(--bg);
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    z-index: 100; gap: 0;
+  }
+  .lock-glyph {
+    font-size: 11px; color: var(--g2); letter-spacing: 2px;
+    margin-bottom: 32px; text-align: center; line-height: 1.8;
+    animation: fadeIn .6s ease;
+  }
+  .lock-glyph span { color: var(--cyan); }
+  .lock-box {
+    background: var(--card); border: 1px solid var(--border2);
+    border-radius: 2px; padding: 32px 36px; width: 320px;
+    animation: slideUp .4s ease;
+  }
+  .lock-label {
+    font-size: 9px; color: var(--g2); letter-spacing: 3px;
+    text-transform: uppercase; margin-bottom: 10px; display: block;
+  }
+  .lock-input {
+    width: 100%; background: var(--bg); border: 1px solid var(--border2);
+    color: var(--white); font-family: var(--mono); font-size: 13px;
+    padding: 10px 12px; border-radius: 1px; outline: none;
+    letter-spacing: 2px; transition: border-color .2s;
+  }
+  .lock-input:focus { border-color: var(--cyan); }
+  .lock-input::placeholder { letter-spacing: 0; color: var(--g3); }
+  .lock-btn {
+    width: 100%; margin-top: 14px; padding: 11px;
+    background: var(--cyan); color: #000; font-family: var(--mono);
+    font-size: 11px; font-weight: 700; letter-spacing: 2px;
+    border: none; border-radius: 1px; cursor: pointer;
+    text-transform: uppercase; transition: opacity .15s;
+  }
+  .lock-btn:hover { opacity: .85; }
+  .lock-err {
+    margin-top: 10px; font-size: 10px; color: var(--red);
+    text-align: center; min-height: 14px; letter-spacing: 1px;
+  }
+
+  /* ── MAIN CONSOLE ────────────────────────────────────────────────────────── */
+  #app { display: none; min-height: 100vh; }
+
+  /* Scanline overlay */
+  #app::before {
+    content: ''; position: fixed; inset: 0; pointer-events: none; z-index: 50;
+    background: repeating-linear-gradient(0deg,
+      transparent, transparent 2px,
+      rgba(0,255,224,.012) 2px, rgba(0,255,224,.012) 4px);
+  }
+
+  /* Top bar */
+  .topbar {
+    position: sticky; top: 0; z-index: 40;
+    background: rgba(8,8,9,.95); backdrop-filter: blur(8px);
+    border-bottom: 1px solid var(--border);
+    padding: 0 24px; height: 44px;
+    display: flex; align-items: center; gap: 16px;
+  }
+  .topbar-logo { font-size: 11px; font-weight: 700; color: var(--cyan); letter-spacing: 2px; }
+  .topbar-sep  { color: var(--border2); }
+  .topbar-sub  { font-size: 9px; color: var(--g2); letter-spacing: 2px; text-transform: uppercase; }
+  .topbar-right { margin-left: auto; display: flex; align-items: center; gap: 12px; }
+  .status-dot  { width: 6px; height: 6px; border-radius: 50%; background: var(--green); box-shadow: 0 0 6px var(--green); }
+  .topbar-lock {
+    font-size: 9px; color: var(--g2); letter-spacing: 1px; cursor: pointer;
+    padding: 4px 10px; border: 1px solid var(--border); border-radius: 1px;
+    transition: all .15s; text-transform: uppercase;
+  }
+  .topbar-lock:hover { color: var(--red); border-color: var(--red); }
+
+  /* Layout */
+  .layout { display: grid; grid-template-columns: 260px 1fr; min-height: calc(100vh - 44px); }
+
+  /* Sidebar */
+  .sidebar {
+    border-right: 1px solid var(--border); padding: 24px 0;
+    background: var(--surface);
+  }
+  .sidebar-section {
+    font-size: 8px; color: var(--g2); letter-spacing: 3px; text-transform: uppercase;
+    padding: 0 20px; margin-bottom: 6px; margin-top: 20px;
+  }
+  .sidebar-section:first-child { margin-top: 0; }
+  .nav-item {
+    display: flex; align-items: center; gap: 10px;
+    padding: 9px 20px; cursor: pointer; font-size: 11px;
+    color: var(--g1); letter-spacing: 1px; transition: all .15s;
+    border-left: 2px solid transparent;
+  }
+  .nav-item:hover { color: var(--white); background: var(--card); }
+  .nav-item.active { color: var(--cyan); border-left-color: var(--cyan); background: rgba(0,255,224,.04); }
+  .nav-dot { width: 5px; height: 5px; border-radius: 50%; background: var(--g2); flex-shrink: 0; }
+  .nav-item.active .nav-dot { background: var(--cyan); box-shadow: 0 0 5px var(--cyan); }
+
+  .sidebar-stats { padding: 16px 20px; margin-top: 20px; border-top: 1px solid var(--border); }
+  .stat-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
+  .stat-label { font-size: 9px; color: var(--g2); letter-spacing: 1px; }
+  .stat-val   { font-size: 13px; font-weight: 700; color: var(--white); }
+  .stat-val.cyan   { color: var(--cyan); }
+  .stat-val.amber  { color: var(--amber); }
+  .stat-val.green  { color: var(--green); }
+
+  /* Main content */
+  .main { padding: 28px 32px; }
+
+  /* Panel header */
+  .panel-header {
+    display: flex; align-items: baseline; gap: 12px; margin-bottom: 24px;
+    padding-bottom: 14px; border-bottom: 1px solid var(--border);
+  }
+  .panel-title { font-size: 13px; font-weight: 700; color: var(--white); letter-spacing: 1px; }
+  .panel-title::before { content: '// '; color: var(--cyan); }
+  .panel-subtitle { font-size: 10px; color: var(--g2); }
+
+  /* Issue form */
+  .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-bottom: 14px; }
+  .form-full  { grid-column: 1 / -1; }
+  .field { display: flex; flex-direction: column; gap: 5px; }
+  .field label { font-size: 9px; color: var(--g2); letter-spacing: 2px; text-transform: uppercase; }
+  .field input, .field select, .field textarea {
+    background: var(--surface); border: 1px solid var(--border2);
+    color: var(--white); font-family: var(--mono); font-size: 12px;
+    padding: 9px 12px; border-radius: 1px; outline: none;
+    transition: border-color .2s; resize: none;
+  }
+  .field input:focus, .field select:focus, .field textarea:focus { border-color: var(--cyan); }
+  .field input::placeholder, .field textarea::placeholder { color: var(--g3); }
+  .field select option { background: var(--card); }
+
+  .btn {
+    padding: 10px 22px; font-family: var(--mono); font-size: 11px; font-weight: 700;
+    letter-spacing: 2px; text-transform: uppercase; border: none; cursor: pointer;
+    border-radius: 1px; transition: all .15s;
+  }
+  .btn-primary { background: var(--cyan); color: #000; }
+  .btn-primary:hover { opacity: .85; }
+  .btn-primary:disabled { opacity: .4; cursor: default; }
+  .btn-danger  { background: transparent; color: var(--red); border: 1px solid var(--red); font-size: 9px; padding: 5px 12px; }
+  .btn-danger:hover { background: rgba(255,59,59,.1); }
+  .btn-ghost   { background: transparent; color: var(--g1); border: 1px solid var(--border2); }
+  .btn-ghost:hover { border-color: var(--g1); color: var(--white); }
+
+  /* Token output */
+  .token-out {
+    margin-top: 16px; background: var(--surface); border: 1px solid var(--cyan);
+    border-radius: 1px; padding: 16px; display: none;
+  }
+  .token-out.show { display: block; animation: fadeIn .3s ease; }
+  .token-out-label { font-size: 9px; color: var(--cyan); letter-spacing: 2px; margin-bottom: 8px; }
+  .token-val {
+    font-size: 9px; color: var(--g1); word-break: break-all; line-height: 1.6;
+    background: var(--bg); padding: 10px; border: 1px solid var(--border);
+    border-radius: 1px; margin-bottom: 10px; max-height: 80px; overflow-y: auto;
+  }
+  .token-meta { display: flex; gap: 20px; flex-wrap: wrap; margin-bottom: 10px; }
+  .token-meta-item { font-size: 10px; }
+  .token-meta-item span { color: var(--g2); }
+  .token-meta-item strong { color: var(--white); }
+  .copy-btn {
+    font-size: 10px; padding: 6px 14px; background: var(--g3);
+    color: var(--white); border: none; cursor: pointer; font-family: var(--mono);
+    border-radius: 1px; letter-spacing: 1px; transition: background .15s;
+  }
+  .copy-btn:hover { background: var(--border2); }
+  .copy-btn.copied { background: var(--green); color: #000; }
+
+  /* Token list */
+  .list-controls {
+    display: flex; gap: 10px; margin-bottom: 16px; align-items: center;
+  }
+  .search-input {
+    background: var(--surface); border: 1px solid var(--border2);
+    color: var(--white); font-family: var(--mono); font-size: 11px;
+    padding: 7px 12px; border-radius: 1px; outline: none; flex: 1;
+    transition: border-color .2s;
+  }
+  .search-input:focus { border-color: var(--cyan); }
+  .search-input::placeholder { color: var(--g3); }
+
+  .token-row {
+    background: var(--card); border: 1px solid var(--border);
+    border-radius: 1px; padding: 14px 16px; margin-bottom: 8px;
+    display: grid; grid-template-columns: 1fr auto;
+    gap: 12px; align-items: start;
+    animation: fadeIn .2s ease;
+    transition: border-color .15s;
+  }
+  .token-row:hover { border-color: var(--border2); }
+  .token-row.active  { border-left: 2px solid var(--green); }
+  .token-row.expired { border-left: 2px solid var(--g2); opacity: .6; }
+  .token-row.revoked { border-left: 2px solid var(--red); opacity: .5; }
+
+  .tr-name   { font-size: 12px; font-weight: 700; color: var(--white); margin-bottom: 3px; }
+  .tr-email  { font-size: 10px; color: var(--g2); margin-bottom: 6px; }
+  .tr-note   { font-size: 10px; color: var(--amber); margin-bottom: 6px; font-style: italic; }
+  .tr-meta   { display: flex; gap: 12px; flex-wrap: wrap; }
+  .tr-badge  {
+    font-size: 8px; letter-spacing: 1px; padding: 2px 7px;
+    border-radius: 1px; font-weight: 700; text-transform: uppercase;
+  }
+  .badge-active  { background: rgba(0,230,118,.12); color: var(--green); border: 1px solid rgba(0,230,118,.2); }
+  .badge-expired { background: rgba(80,80,96,.12);  color: var(--g2);    border: 1px solid var(--border); }
+  .badge-revoked { background: rgba(255,59,59,.1);  color: var(--red);   border: 1px solid rgba(255,59,59,.2); }
+  .tr-days   { font-size: 10px; color: var(--g1); }
+  .tr-days strong { color: var(--cyan); }
+  .tr-issued { font-size: 9px; color: var(--g2); }
+
+  .tr-actions { display: flex; flex-direction: column; gap: 6px; align-items: flex-end; }
+
+  /* Empty state */
+  .empty-state {
+    text-align: center; padding: 60px 20px; color: var(--g2);
+  }
+  .empty-state .glyph { font-size: 28px; margin-bottom: 12px; opacity: .4; }
+  .empty-state p { font-size: 10px; letter-spacing: 1px; }
+
+  /* Toast */
+  #toast {
+    position: fixed; bottom: 24px; right: 24px; z-index: 200;
+    background: var(--card); border: 1px solid var(--border2);
+    padding: 12px 18px; border-radius: 1px; font-size: 11px;
+    color: var(--white); letter-spacing: 1px;
+    transform: translateY(10px); opacity: 0;
+    transition: all .25s ease; pointer-events: none;
+  }
+  #toast.show { transform: translateY(0); opacity: 1; }
+  #toast.success { border-left: 3px solid var(--green); }
+  #toast.error   { border-left: 3px solid var(--red); }
+  #toast.info    { border-left: 3px solid var(--cyan); }
+
+  /* Panels */
+  .panel { display: none; }
+  .panel.active { display: block; }
+
+  /* Animations */
+  @keyframes fadeIn  { from { opacity: 0; } to { opacity: 1; } }
+  @keyframes slideUp { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: translateY(0); } }
+
+  /* Confirm dialog */
+  .confirm-overlay {
+    position: fixed; inset: 0; background: rgba(8,8,9,.85);
+    display: flex; align-items: center; justify-content: center; z-index: 300;
+    display: none;
+  }
+  .confirm-overlay.show { display: flex; animation: fadeIn .2s ease; }
+  .confirm-box {
+    background: var(--card); border: 1px solid var(--red);
+    border-radius: 1px; padding: 28px 32px; max-width: 360px; width: 90%;
+  }
+  .confirm-title { font-size: 12px; color: var(--red); font-weight: 700; margin-bottom: 8px; letter-spacing: 1px; }
+  .confirm-body  { font-size: 11px; color: var(--g1); line-height: 1.6; margin-bottom: 20px; }
+  .confirm-actions { display: flex; gap: 10px; justify-content: flex-end; }
+
+  /* Loading spinner */
+  .spin {
+    display: inline-block; width: 10px; height: 10px;
+    border: 1.5px solid var(--border2); border-top-color: var(--cyan);
+    border-radius: 50%; animation: spin .6s linear infinite;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+</style>
+</head>
+<body>
+
+<!-- ── LOCK SCREEN ─────────────────────────────────────────────────────────── -->
+<div id="lock">
+  <div class="lock-glyph">
+    <span>MIDWEST NICE ADVISORY LLC</span><br>
+    WINGMAN PRO · TOKEN CONSOLE<br>
+    RESTRICTED ACCESS
+  </div>
+  <div class="lock-box">
+    <label class="lock-label">Owner Secret</label>
+    <input class="lock-input" type="password" id="secret-input"
+           placeholder="Enter WINGMAN_PROXY_SECRET"
+           autocomplete="off" spellcheck="false"/>
+    <button class="lock-btn" onclick="unlock()">AUTHENTICATE →</button>
+    <div class="lock-err" id="lock-err"></div>
+  </div>
+</div>
+
+<!-- ── CONFIRM DIALOG ──────────────────────────────────────────────────────── -->
+<div class="confirm-overlay" id="confirm-overlay">
+  <div class="confirm-box">
+    <div class="confirm-title">⚠ CONFIRM REVOCATION</div>
+    <div class="confirm-body" id="confirm-body"></div>
+    <div class="confirm-actions">
+      <button class="btn btn-ghost" onclick="closeConfirm()">Cancel</button>
+      <button class="btn btn-danger" id="confirm-yes" onclick="doRevoke()">Revoke Token</button>
+    </div>
+  </div>
+</div>
+
+<!-- ── TOAST ───────────────────────────────────────────────────────────────── -->
+<div id="toast"></div>
+
+<!-- ── MAIN APP ────────────────────────────────────────────────────────────── -->
+<div id="app">
+  <div class="topbar">
+    <div class="topbar-logo">// ADMIN</div>
+    <div class="topbar-sep">|</div>
+    <div class="topbar-sub">Token Console</div>
+    <div class="topbar-right">
+      <div class="status-dot"></div>
+      <span style="font-size:9px;color:var(--g2);letter-spacing:1px">CONNECTED</span>
+      <div class="topbar-lock" onclick="lockOut()">LOCK</div>
+    </div>
+  </div>
+
+  <div class="layout">
+    <!-- Sidebar -->
+    <div class="sidebar">
+      <div class="sidebar-section">Actions</div>
+      <div class="nav-item active" onclick="showPanel('issue')" id="nav-issue">
+        <div class="nav-dot"></div> Issue Token
+      </div>
+      <div class="nav-item" onclick="showPanel('list')" id="nav-list">
+        <div class="nav-dot"></div> Token Registry
+      </div>
+
+      <div class="sidebar-section">Status</div>
+      <div class="sidebar-stats">
+        <div class="stat-row">
+          <div class="stat-label">TOTAL ISSUED</div>
+          <div class="stat-val cyan" id="stat-total">—</div>
+        </div>
+        <div class="stat-row">
+          <div class="stat-label">ACTIVE</div>
+          <div class="stat-val green" id="stat-active">—</div>
+        </div>
+        <div class="stat-row">
+          <div class="stat-label">EXPIRED</div>
+          <div class="stat-val" id="stat-expired">—</div>
+        </div>
+        <div class="stat-row">
+          <div class="stat-label">REVOKED</div>
+          <div class="stat-val amber" id="stat-revoked">—</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Main -->
+    <div class="main">
+
+      <!-- ISSUE PANEL -->
+      <div class="panel active" id="panel-issue">
+        <div class="panel-header">
+          <div class="panel-title">Issue Demo Token</div>
+          <div class="panel-subtitle">Mint a Pro access token for a contact</div>
+        </div>
+
+        <div class="form-grid">
+          <div class="field">
+            <label>Email *</label>
+            <input type="email" id="f-email" placeholder="contact@orqa.eu" spellcheck="false"/>
+          </div>
+          <div class="field">
+            <label>Name / Org</label>
+            <input type="text" id="f-name" placeholder="Petar / Orqa HQ" spellcheck="false"/>
+          </div>
+          <div class="field">
+            <label>Duration (days)</label>
+            <select id="f-days">
+              <option value="7">7 days</option>
+              <option value="14">14 days</option>
+              <option value="30" selected>30 days</option>
+              <option value="60">60 days</option>
+              <option value="90">90 days</option>
+              <option value="365">1 year</option>
+            </select>
+          </div>
+          <div class="field">
+            <label>Note / Context</label>
+            <input type="text" id="f-note" placeholder="DDP eval · Camp Blanding" spellcheck="false"/>
+          </div>
+        </div>
+
+        <button class="btn btn-primary" id="issue-btn" onclick="issueToken()">
+          GENERATE TOKEN →
+        </button>
+
+        <!-- Token output -->
+        <div class="token-out" id="token-out">
+          <div class="token-out-label">// TOKEN ISSUED</div>
+          <div class="token-meta" id="token-meta"></div>
+          <div class="token-val" id="token-val"></div>
+          <div style="display:flex;gap:8px;flex-wrap:wrap">
+            <button class="copy-btn" id="copy-btn" onclick="copyToken()">COPY TOKEN</button>
+            <button class="copy-btn" onclick="copyEmail()" id="copy-email-btn">COPY EMAIL DRAFT</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- LIST PANEL -->
+      <div class="panel" id="panel-list">
+        <div class="panel-header">
+          <div class="panel-title">Token Registry</div>
+          <div class="panel-subtitle">All issued demo tokens</div>
+        </div>
+
+        <div class="list-controls">
+          <input class="search-input" type="text" id="list-search"
+                 placeholder="Search by name, email, or note…"
+                 oninput="filterList()"/>
+          <button class="btn btn-ghost" onclick="loadList()" style="white-space:nowrap">
+            ↻ REFRESH
+          </button>
+        </div>
+
+        <div id="list-container">
+          <div class="empty-state">
+            <div class="glyph">◎</div>
+            <p>Loading registry…</p>
+          </div>
+        </div>
+      </div>
+
+    </div><!-- /main -->
+  </div><!-- /layout -->
+</div><!-- /app -->
+
+<script>
+var SECRET = '';
+var lastToken = '';
+var lastEmail = '';
+var lastName  = '';
+var revokeTarget = '';
+var allEntries = [];
+
+// ── Lock / unlock ─────────────────────────────────────────────────────────────
+function unlock() {
+  var s = document.getElementById('secret-input').value.trim();
+  if (!s) { document.getElementById('lock-err').textContent = 'Enter your owner secret.'; return; }
+
+  // Verify by calling list endpoint — if 401 it's wrong
+  document.getElementById('lock-err').textContent = 'Verifying…';
+  fetch('/.netlify/functions/issue-demo?action=list', {
+    headers: { 'X-Owner-Secret': s }
+  }).then(function(r) {
+    if (r.status === 401) {
+      document.getElementById('lock-err').textContent = 'Invalid secret. Try again.';
+      document.getElementById('secret-input').value = '';
+      document.getElementById('secret-input').focus();
+      return;
+    }
+    SECRET = s;
+    document.getElementById('lock').style.display = 'none';
+    document.getElementById('app').style.display = 'block';
+    r.json().then(updateStats);
+  }).catch(function() {
+    document.getElementById('lock-err').textContent = 'Connection error. Is the site deployed?';
+  });
+}
+
+document.getElementById('secret-input').addEventListener('keydown', function(e) {
+  if (e.key === 'Enter') unlock();
+});
+
+function lockOut() {
+  SECRET = '';
+  document.getElementById('app').style.display = 'none';
+  document.getElementById('lock').style.display = 'flex';
+  document.getElementById('secret-input').value = '';
+  document.getElementById('lock-err').textContent = '';
+}
+
+// ── Panel nav ─────────────────────────────────────────────────────────────────
+function showPanel(name) {
+  document.querySelectorAll('.panel').forEach(function(p) { p.classList.remove('active'); });
+  document.querySelectorAll('.nav-item').forEach(function(n) { n.classList.remove('active'); });
+  document.getElementById('panel-' + name).classList.add('active');
+  document.getElementById('nav-' + name).classList.add('active');
+  if (name === 'list') loadList();
+}
+
+// ── Issue token ───────────────────────────────────────────────────────────────
+function issueToken() {
+  var email = document.getElementById('f-email').value.trim();
+  var name  = document.getElementById('f-name').value.trim();
+  var days  = parseInt(document.getElementById('f-days').value);
+  var note  = document.getElementById('f-note').value.trim();
+
+  if (!email) { toast('Email is required', 'error'); return; }
+
+  var btn = document.getElementById('issue-btn');
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spin"></span> GENERATING…';
+
+  fetch('/.netlify/functions/issue-demo?action=issue', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'X-Owner-Secret': SECRET },
+    body: JSON.stringify({ email: email, name: name, days: days, note: note }),
+  })
+  .then(function(r) { return r.json(); })
+  .then(function(data) {
+    btn.disabled = false;
+    btn.textContent = 'GENERATE TOKEN →';
+
+    if (data.error) { toast(data.error, 'error'); return; }
+
+    lastToken = data.token;
+    lastEmail = email;
+    lastName  = name || email;
+
+    var out = document.getElementById('token-out');
+    out.classList.add('show');
+
+    document.getElementById('token-meta').innerHTML =
+      '<div class="token-meta-item"><span>Email: </span><strong>' + escHtml(email) + '</strong></div>' +
+      (name ? '<div class="token-meta-item"><span>Name: </span><strong>' + escHtml(name) + '</strong></div>' : '') +
+      '<div class="token-meta-item"><span>Expires: </span><strong>' + new Date(data.expires).toLocaleDateString('en-US', {month:'short',day:'numeric',year:'numeric'}) + '</strong></div>' +
+      (note ? '<div class="token-meta-item"><span>Note: </span><strong>' + escHtml(note) + '</strong></div>' : '');
+
+    document.getElementById('token-val').textContent = data.token;
+    document.getElementById('copy-btn').textContent = 'COPY TOKEN';
+    document.getElementById('copy-btn').classList.remove('copied');
+    toast('Token issued for ' + (name || email), 'success');
+
+    // Reset stats
+    loadStats();
+  })
+  .catch(function(e) {
+    btn.disabled = false;
+    btn.textContent = 'GENERATE TOKEN →';
+    toast('Error: ' + e.message, 'error');
+  });
+}
+
+function copyToken() {
+  navigator.clipboard.writeText(lastToken).then(function() {
+    var btn = document.getElementById('copy-btn');
+    btn.textContent = '✓ COPIED';
+    btn.classList.add('copied');
+    setTimeout(function() {
+      btn.textContent = 'COPY TOKEN';
+      btn.classList.remove('copied');
+    }, 2000);
+  });
+}
+
+function copyEmail() {
+  var days = document.getElementById('f-days').value;
+  var expires = new Date(Date.now() + days * 86400000).toLocaleDateString('en-US', {month:'long',day:'numeric',year:'numeric'});
+  var draft =
+    'Subject: Your Wingman Pro Access — ' + lastName + '\n\n' +
+    'Hi ' + (lastName || 'there') + ',\n\n' +
+    'Here\'s your Wingman Pro access token. This gives you full Pro access — Claude AI, PIE predictions, gap analyzer, and compliance reports — through ' + expires + '.\n\n' +
+    'To activate:\n' +
+    '1. Go to nvmillbuilditmyself.com/wingman/\n' +
+    '2. Open Settings (gear icon, top right)\n' +
+    '3. Paste this token under "Subscription Token"\n' +
+    '4. Claude will activate automatically\n\n' +
+    'TOKEN:\n' + lastToken + '\n\n' +
+    'Let me know if you have any questions.\n\n' +
+    '— Jeremiah\n' +
+    'Midwest Nice Advisory LLC\n' +
+    'Jeremiah@midwestniceuas.com';
+
+  navigator.clipboard.writeText(draft).then(function() {
+    var btn = document.getElementById('copy-email-btn');
+    btn.textContent = '✓ COPIED';
+    btn.classList.add('copied');
+    setTimeout(function() { btn.textContent = 'COPY EMAIL DRAFT'; btn.classList.remove('copied'); }, 2500);
+    toast('Email draft copied to clipboard', 'info');
+  });
+}
+
+// ── Token list ────────────────────────────────────────────────────────────────
+function loadList() {
+  document.getElementById('list-container').innerHTML =
+    '<div class="empty-state"><div class="spin" style="width:16px;height:16px;margin:0 auto 12px"></div><p>Loading…</p></div>';
+
+  fetch('/.netlify/functions/issue-demo?action=list', {
+    headers: { 'X-Owner-Secret': SECRET }
+  })
+  .then(function(r) { return r.json(); })
+  .then(function(data) {
+    allEntries = data.entries || [];
+    updateStats(data);
+    renderList(allEntries);
+  })
+  .catch(function(e) {
+    document.getElementById('list-container').innerHTML =
+      '<div class="empty-state"><div class="glyph">⚠</div><p>' + e.message + '</p></div>';
+  });
+}
+
+function loadStats() {
+  fetch('/.netlify/functions/issue-demo?action=list', {
+    headers: { 'X-Owner-Secret': SECRET }
+  }).then(function(r) { return r.json(); }).then(updateStats).catch(function(){});
+}
+
+function updateStats(data) {
+  if (!data || !data.entries) return;
+  var entries = data.entries;
+  var active  = entries.filter(function(e) { return e.status === 'active'; }).length;
+  var expired = entries.filter(function(e) { return e.status === 'expired'; }).length;
+  var revoked = entries.filter(function(e) { return e.status === 'revoked'; }).length;
+  document.getElementById('stat-total').textContent   = entries.length;
+  document.getElementById('stat-active').textContent  = active;
+  document.getElementById('stat-expired').textContent = expired;
+  document.getElementById('stat-revoked').textContent = revoked;
+}
+
+function filterList() {
+  var q = document.getElementById('list-search').value.toLowerCase();
+  var filtered = allEntries.filter(function(e) {
+    return (e.email || '').toLowerCase().includes(q) ||
+           (e.name  || '').toLowerCase().includes(q) ||
+           (e.note  || '').toLowerCase().includes(q);
+  });
+  renderList(filtered);
+}
+
+function renderList(entries) {
+  if (!entries || entries.length === 0) {
+    document.getElementById('list-container').innerHTML =
+      '<div class="empty-state"><div class="glyph">◎</div><p>No tokens found.</p></div>';
+    return;
+  }
+
+  // Sort: active first, then expired, then revoked
+  var sorted = entries.slice().sort(function(a, b) {
+    var order = { active: 0, expired: 1, revoked: 2 };
+    return (order[a.status] || 0) - (order[b.status] || 0);
+  });
+
+  var html = sorted.map(function(e) {
+    var badgeClass = 'badge-' + e.status;
+    var daysStr = e.status === 'active'
+      ? '<strong>' + e.daysLeft + '</strong> days left'
+      : e.status === 'expired' ? 'Expired' : 'Revoked';
+    var issuedStr = e.iat ? new Date(e.iat).toLocaleDateString('en-US', {month:'short',day:'numeric',year:'numeric'}) : '—';
+    var expStr    = e.exp ? new Date(e.exp).toLocaleDateString('en-US', {month:'short',day:'numeric',year:'numeric'}) : '—';
+
+    return '<div class="token-row ' + e.status + '">' +
+      '<div>' +
+        '<div class="tr-name">' + escHtml(e.name || e.email) + '</div>' +
+        '<div class="tr-email">' + escHtml(e.email) + '</div>' +
+        (e.note ? '<div class="tr-note">' + escHtml(e.note) + '</div>' : '') +
+        '<div class="tr-meta">' +
+          '<span class="tr-badge ' + badgeClass + '">' + e.status.toUpperCase() + '</span>' +
+          '<span class="tr-days">' + daysStr + '</span>' +
+          '<span class="tr-issued">Issued: ' + issuedStr + ' · Expires: ' + expStr + '</span>' +
+        '</div>' +
+      '</div>' +
+      '<div class="tr-actions">' +
+        (e.status === 'active'
+          ? '<button class="btn btn-danger" onclick="confirmRevoke(\'' + escAttr(e.email) + '\',\'' + escAttr(e.name||e.email) + '\')">REVOKE</button>'
+          : '<span style="font-size:9px;color:var(--g2);letter-spacing:1px">' + e.status.toUpperCase() + '</span>') +
+      '</div>' +
+    '</div>';
+  }).join('');
+
+  document.getElementById('list-container').innerHTML = html;
+}
+
+// ── Revoke ────────────────────────────────────────────────────────────────────
+function confirmRevoke(email, name) {
+  revokeTarget = email;
+  document.getElementById('confirm-body').textContent =
+    'Revoke Pro access for ' + name + ' (' + email + ')? This takes effect immediately.';
+  document.getElementById('confirm-overlay').classList.add('show');
+}
+
+function closeConfirm() {
+  document.getElementById('confirm-overlay').classList.remove('show');
+  revokeTarget = '';
+}
+
+function doRevoke() {
+  if (!revokeTarget) return;
+  var email = revokeTarget;
+  closeConfirm();
+
+  fetch('/.netlify/functions/issue-demo?action=revoke', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'X-Owner-Secret': SECRET },
+    body: JSON.stringify({ email: email }),
+  })
+  .then(function(r) { return r.json(); })
+  .then(function(data) {
+    if (data.error) { toast(data.error, 'error'); return; }
+    toast('Revoked access for ' + email, 'success');
+    loadList();
+  })
+  .catch(function(e) { toast('Error: ' + e.message, 'error'); });
+}
+
+// ── Toast ─────────────────────────────────────────────────────────────────────
+var toastTimer;
+function toast(msg, type) {
+  var el = document.getElementById('toast');
+  el.textContent = msg;
+  el.className = 'show ' + (type || 'info');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(function() { el.className = ''; }, 3000);
+}
+
+// ── Utils ─────────────────────────────────────────────────────────────────────
+function escHtml(s) {
+  return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+function escAttr(s) {
+  return String(s||'').replace(/'/g,"\\'").replace(/"/g,'&quot;');
+}
+</script>
+</body>
+</html>

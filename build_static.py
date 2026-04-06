@@ -57,6 +57,7 @@ PAGES = {
     'tools.html': 'tools/index.html',
     'wingman.html': 'wingman/index.html',
     'pro.html': 'pro/index.html',
+    'admin.html': 'admin/index.html',
     'report.html': 'report/index.html',
     'terms.html': 'terms/index.html',
     'privacy.html': 'privacy/index.html',
