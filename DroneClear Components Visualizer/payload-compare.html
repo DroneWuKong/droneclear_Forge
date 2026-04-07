@@ -1,0 +1,580 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Payload Comparator — DroneClear</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://unpkg.com/@phosphor-icons/web@2.1.1/src/regular/style.css"/>
+<style>
+:root{
+  --bg:#0a0b10;--surface:#12131a;--card:#1a1b24;--border:#2a2b35;
+  --text:#e8e8f0;--text-s:#b0b0c0;--text-d:#666680;--text-xd:#3a3a50;
+  --cyan:#00d4ff;--green:#22c55e;--amber:#f59e0b;--red:#ef4444;--blue:#3b82f6;--purple:#a855f7;
+  --font:'DM Sans',sans-serif;--mono:'JetBrains Mono',monospace;--radius:10px;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--bg);color:var(--text);font-family:var(--font);min-height:100vh;overflow-x:hidden}
+.topbar{display:flex;align-items:center;gap:10px;padding:14px 20px;border-bottom:1px solid var(--border);position:sticky;top:0;background:var(--bg);z-index:100}
+.topbar-logo{font:800 16px var(--font);color:var(--red);text-decoration:none}
+.pill{font:500 11px var(--font);padding:5px 12px;border:1px solid var(--border);border-radius:20px;color:var(--text-s);text-decoration:none;transition:all .15s}
+.pill:hover{border-color:var(--text-d);color:var(--text)}
+.pill.active{border-color:var(--cyan);color:var(--cyan)}
+.page{max-width:960px;margin:0 auto;padding:24px 16px 80px}
+.eyebrow{font:700 10px var(--mono);letter-spacing:.14em;text-transform:uppercase;color:var(--cyan);margin-bottom:8px}
+h1{font:800 22px var(--font);color:var(--text);line-height:1.2;margin-bottom:6px}
+.sub{font-size:12px;color:var(--text-d);margin-bottom:20px;line-height:1.5}
+
+/* Filter bar */
+.filter-bar{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:16px;padding-bottom:16px;border-bottom:1px solid var(--border)}
+.fchip{font:600 10px var(--mono);padding:5px 12px;border:1px solid var(--border);border-radius:20px;color:var(--text-d);cursor:pointer;transition:all .15s;background:none;letter-spacing:.04em}
+.fchip:hover{border-color:var(--text-d);color:var(--text-s)}
+.fchip.active{color:#fff}
+.fchip.lidar.active{border-color:var(--cyan);background:rgba(0,212,255,.12);color:var(--cyan)}
+.fchip.camera.active{border-color:var(--purple);background:rgba(168,85,247,.12);color:var(--purple)}
+.fchip.gimbal.active{border-color:var(--green);background:rgba(34,197,94,.12);color:var(--green)}
+.fchip.all.active{border-color:var(--text-s);background:rgba(255,255,255,.06);color:var(--text-s)}
+
+/* Selector row */
+.selector-row{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:20px}
+.selector-col{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:12px}
+.selector-label{font:700 9px var(--mono);letter-spacing:.1em;text-transform:uppercase;color:var(--text-d);margin-bottom:8px}
+.selector-btn{width:100%;text-align:left;padding:8px 10px;background:var(--surface);border:1px solid var(--border);border-radius:6px;color:var(--text-s);font:500 11px var(--font);cursor:pointer;transition:all .15s;display:flex;justify-content:space-between;align-items:center;margin-bottom:4px}
+.selector-btn:hover{border-color:var(--text-d);color:var(--text)}
+.selector-btn.selected{border-color:var(--cyan);background:rgba(0,212,255,.08);color:var(--text)}
+.selector-btn .type-dot{width:6px;height:6px;border-radius:50%;flex-shrink:0}
+.td-lidar{background:var(--cyan)}
+.td-camera{background:var(--purple)}
+.td-gimbal{background:var(--green)}
+.selector-placeholder{font:500 11px var(--font);color:var(--text-xd);padding:8px 10px;text-align:center;border:1px dashed var(--border);border-radius:6px;margin-top:4px}
+.clear-btn{font:600 9px var(--mono);color:var(--text-d);background:none;border:none;cursor:pointer;padding:4px 0;text-transform:uppercase;letter-spacing:.06em;margin-top:4px;display:block}
+.clear-btn:hover{color:var(--red)}
+
+/* Compare table */
+#compare-area{display:none}
+#compare-area.visible{display:block}
+.compare-table-wrap{overflow-x:auto;-webkit-overflow-scrolling:touch;margin-bottom:20px}
+.compare-table{width:100%;border-collapse:collapse;min-width:500px}
+.compare-table th{font:700 9px var(--mono);letter-spacing:.1em;text-transform:uppercase;color:var(--text-d);padding:10px 12px;border-bottom:1px solid var(--border);text-align:left;background:var(--surface);position:sticky;top:0}
+.compare-table th:first-child{width:140px;min-width:120px}
+.compare-table td{padding:10px 12px;border-bottom:1px solid rgba(42,43,53,.6);font-size:11px;vertical-align:top;line-height:1.5}
+.compare-table tr:last-child td{border-bottom:none}
+.compare-table .row-label{font:700 9px var(--mono);color:var(--text-d);text-transform:uppercase;letter-spacing:.08em;background:var(--surface);padding-left:12px}
+.compare-table .col-head{font:700 12px var(--font);color:var(--text)}
+.compare-table .col-sub{font:500 9px var(--mono);color:var(--text-d);margin-top:2px}
+.val-good{color:var(--green)}
+.val-warn{color:var(--amber)}
+.val-bad{color:var(--red)}
+.val-na{color:var(--text-xd)}
+.badge-sm{display:inline-block;font:700 8px var(--mono);padding:1px 5px;border-radius:3px;letter-spacing:.04em}
+.b-ndaa{background:rgba(34,197,94,.1);color:var(--green);border:1px solid rgba(34,197,94,.2)}
+.b-foreign{background:rgba(239,68,68,.08);color:var(--red);border:1px solid rgba(239,68,68,.15)}
+.b-caution{background:rgba(245,158,11,.08);color:var(--amber);border:1px solid rgba(245,158,11,.2)}
+.highlight-col{background:rgba(0,212,255,.03)}
+
+/* Payload picker modal */
+.modal-bg{position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:200;display:none;align-items:flex-end}
+.modal-bg.open{display:flex}
+.modal{background:var(--surface);border:1px solid var(--border);border-radius:16px 16px 0 0;width:100%;max-height:75vh;overflow-y:auto;padding:20px 16px 32px}
+.modal-title{font:700 14px var(--font);color:var(--text);margin-bottom:4px}
+.modal-sub{font-size:10px;color:var(--text-d);margin-bottom:14px}
+.modal-item{display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid var(--border);cursor:pointer}
+.modal-item:last-child{border-bottom:none}
+.modal-item:hover .modal-item-name{color:var(--cyan)}
+.modal-type{font:700 8px var(--mono);padding:2px 6px;border-radius:3px;flex-shrink:0;width:52px;text-align:center}
+.mt-lidar{background:rgba(0,212,255,.12);color:var(--cyan)}
+.mt-camera{background:rgba(168,85,247,.12);color:var(--purple)}
+.mt-multi{background:rgba(245,158,11,.1);color:var(--amber)}
+.mt-gimbal{background:rgba(34,197,94,.12);color:var(--green)}
+.modal-item-info{flex:1;min-width:0}
+.modal-item-name{font:600 12px var(--font);color:var(--text-s);transition:color .15s}
+.modal-item-meta{font:500 9px var(--mono);color:var(--text-d);margin-top:1px}
+.modal-close{font:600 11px var(--mono);color:var(--text-d);background:none;border:none;cursor:pointer;padding:4px;float:right}
+
+/* Empty state */
+.empty-state{text-align:center;padding:40px 20px;color:var(--text-d)}
+.empty-state i{font-size:32px;margin-bottom:12px;display:block;color:var(--text-xd)}
+.empty-state p{font-size:12px;line-height:1.6}
+</style>
+</head>
+<body>
+<header class="topbar">
+  <a href="/" class="topbar-logo">DroneClear</a>
+  <a href="/intel-commercial/" class="pill">Commercial Intel</a>
+  <a href="/browse/" class="pill">Browse</a>
+  <a href="/compare/" class="pill">Platforms</a>
+  <a href="/payload-compare/" class="pill active">Payloads</a>
+</header>
+
+<div class="page">
+  <div class="eyebrow">// Commercial Payload Intelligence</div>
+  <h1>Payload Comparator</h1>
+  <p class="sub">Select up to 3 payloads to compare side-by-side. Weight, range, accuracy, NDAA status, price, and platform compatibility.</p>
+
+  <!-- Filter bar -->
+  <div class="filter-bar">
+    <button class="fchip all active" onclick="setFilter('all',this)">All (28)</button>
+    <button class="fchip lidar" onclick="setFilter('lidar',this)">LiDAR (12)</button>
+    <button class="fchip camera" onclick="setFilter('camera',this)">Cameras (4)</button>
+    <button class="fchip gimbal" onclick="setFilter('gimbal',this)">Gimbals (6)</button>
+  </div>
+
+  <!-- Slot selector -->
+  <div class="selector-row" id="selector-row">
+    <div class="selector-col" id="col-0">
+      <div class="selector-label">Slot 1</div>
+      <div id="slot-0-content"></div>
+    </div>
+    <div class="selector-col" id="col-1">
+      <div class="selector-label">Slot 2</div>
+      <div id="slot-1-content"></div>
+    </div>
+    <div class="selector-col" id="col-2">
+      <div class="selector-label">Slot 3</div>
+      <div id="slot-2-content"></div>
+    </div>
+  </div>
+
+  <!-- Compare area -->
+  <div id="compare-area">
+    <div class="compare-table-wrap">
+      <table class="compare-table" id="compare-table"></table>
+    </div>
+  </div>
+
+  <div id="empty-state" class="empty-state">
+    <i class="ph ph-scales"></i>
+    <p>Select at least 2 payloads above to compare.<br>Mix and match LiDAR, cameras, and gimbals.</p>
+  </div>
+</div>
+
+<!-- Picker modal -->
+<div class="modal-bg" id="modal-bg" onclick="closeModal(event)">
+  <div class="modal" id="modal">
+    <button class="modal-close" onclick="closeModalDirect()">✕ Close</button>
+    <div class="modal-title">Select Payload</div>
+    <div class="modal-sub">Tap to add to comparison slot</div>
+    <div id="modal-list"></div>
+  </div>
+</div>
+
+<script>
+// ── Payload database ─────────────────────────────────────────────────────────
+const PAYLOADS = [
+  // ── LiDAR ─────────────────────────────────────────────────────────────────
+  {
+    id:'ys-mapper-plus', type:'lidar', name:'YellowScan Mapper+',
+    mfr:'YellowScan', country:'France', ndaa:'non-compliant',
+    price_tier:'$40–50K', price_sort:45000,
+    weight_g:1300, max_agl_m:70, pts_sec:'300K', range_m:null,
+    accuracy_cm:'2–3', echoes:'3', scanner:'Livox AVIA',
+    cameras:'Optional RGB', software:'CloudStation',
+    platforms:['M350 RTK','IF800','WingtraONE'],
+    best_for:'General topo, forestry, corridors', notes:'Gremsy + DJI Skyport mounts'
+  },
+  {
+    id:'ys-venturer', type:'lidar', name:'YellowScan Venturer',
+    mfr:'YellowScan', country:'France', ndaa:'non-compliant',
+    price_tier:'~$55K', price_sort:55000,
+    weight_g:1700, max_agl_m:120, pts_sec:'300K', range_m:null,
+    accuracy_cm:'2–3', echoes:'3', scanner:'Livox AVIA',
+    cameras:'Optional', software:'CloudStation',
+    platforms:['M350 RTK','IF800'],
+    best_for:'Powerline inspection, mid-range', notes:'NDAA-compliant version available'
+  },
+  {
+    id:'ys-voyager', type:'lidar', name:'YellowScan Voyager',
+    mfr:'YellowScan', country:'France', ndaa:'non-compliant',
+    price_tier:'$70–90K', price_sort:80000,
+    weight_g:2200, max_agl_m:440, pts_sec:'2M', range_m:440,
+    accuracy_cm:'<1', echoes:'32', scanner:'Custom 100° FOV',
+    cameras:'Optional 20MP/60MP', software:'CloudStation',
+    platforms:['IF1200A','Alta-X','Fixed-wing'],
+    best_for:'Dense canopy, powerlines, high-altitude', notes:'Best vegetation penetration'
+  },
+  {
+    id:'ys-navigator', type:'lidar', name:'YellowScan Navigator',
+    mfr:'YellowScan', country:'France', ndaa:'non-compliant',
+    price_tier:'$80K+', price_sort:90000,
+    weight_g:null, max_agl_m:null, pts_sec:null, range_m:null,
+    accuracy_cm:'Topo-bathy', echoes:null, scanner:'Dual wavelength 900nm+532nm',
+    cameras:'Included', software:'CloudStation',
+    platforms:['Heavy-lift multirotor'],
+    best_for:'Shallow water bathymetric (<10m depth)', notes:'Only integrated UAV bathy LiDAR'
+  },
+  {
+    id:'gc-tv1-lite', type:'lidar', name:'GeoCue TrueView 1 Lite',
+    mfr:'GeoCue', country:'USA', ndaa:'compliant',
+    price_tier:'$18,990', price_sort:18990,
+    weight_g:1400, max_agl_m:null, pts_sec:'640K', range_m:null,
+    accuracy_cm:'2–3', echoes:'2', scanner:'Hesai XT-32',
+    cameras:'FLIR 5MP global shutter', software:'LP360 Drone (1yr incl, $3.5K/yr)',
+    platforms:['IF800','Freefly Astro Max','M350 RTK','M300 RTK'],
+    best_for:'Entry-level survey, topo, infrastructure', notes:'US-assembled; 2-day Huntsville training incl'
+  },
+  {
+    id:'gc-tv1', type:'lidar', name:'GeoCue TrueView 1 (TV1)',
+    mfr:'GeoCue', country:'USA', ndaa:'compliant',
+    price_tier:'$30–45K', price_sort:37000,
+    weight_g:1600, max_agl_m:null, pts_sec:'640K', range_m:null,
+    accuracy_cm:'2–3', echoes:'2', scanner:'Hesai XT-32',
+    cameras:'26MP / 45MP / 61MP options', software:'LP360 Drone + PP-RTX option',
+    platforms:['M400 RTK','M350 RTK','IF800'],
+    best_for:'Survey without base station (PP-RTX)', notes:'Trimble PP-RTX = no base station needed'
+  },
+  {
+    id:'gc-tv615', type:'lidar', name:'GeoCue TrueView 615/620',
+    mfr:'GeoCue', country:'USA', ndaa:'compliant',
+    price_tier:'$80–120K', price_sort:100000,
+    weight_g:3250, max_agl_m:null, pts_sec:'200K', range_m:120,
+    accuracy_cm:'<2', echoes:'5', scanner:'Riegl miniVUX-2UAV',
+    cameras:'Dual 20MP Sony IMX-183', software:'LP360 Drone',
+    platforms:['Heavy-lift multirotor'],
+    best_for:'Utility corridors, wire detection, true 3D color', notes:'Applanix APX-15/20 POS'
+  },
+  {
+    id:'gc-tv680', type:'lidar', name:'GeoCue TrueView 680',
+    mfr:'GeoCue', country:'USA', ndaa:'compliant',
+    price_tier:'$150K+', price_sort:160000,
+    weight_g:null, max_agl_m:null, pts_sec:null, range_m:null,
+    accuracy_cm:'Survey grade', echoes:null, scanner:'Riegl VUX-1LR 360°',
+    cameras:'Included', software:'LP360 Drone + mobile mode',
+    platforms:['Heavy-lift','Manned aircraft'],
+    best_for:'Engineering-grade deliverables, mobile dual mode', notes:'360° FOV; drone + vehicle same unit'
+  },
+  {
+    id:'il-ultra-lite', type:'lidar', name:'Inertial Labs RESEPI Ultra LITE',
+    mfr:'Inertial Labs', country:'USA', ndaa:'compliant',
+    price_tier:'$19,550–21,050', price_sort:20000,
+    weight_g:null, max_agl_m:null, pts_sec:null, range_m:null,
+    accuracy_cm:'2–3', echoes:'2', scanner:'Hesai XT-32 (swappable)',
+    cameras:'Included', software:'PCMaster ($3K/yr)',
+    platforms:['Freefly','WISPR','DJI','Sony Airpeak'],
+    best_for:'Modular / white-label builds', notes:'Lightest complete LiDAR+cam; SnapFit adapters'
+  },
+  {
+    id:'il-gen2', type:'lidar', name:'Inertial Labs RESEPI GEN-II',
+    mfr:'Inertial Labs', country:'USA', ndaa:'compliant',
+    price_tier:'$41,325', price_sort:41325,
+    weight_g:null, max_agl_m:null, pts_sec:null, range_m:null,
+    accuracy_cm:'2–3', echoes:null, scanner:'Ouster OS1-ILX',
+    cameras:'Included', software:'PCMasterPro',
+    platforms:['Sony Airpeak','Multi-platform'],
+    best_for:'Tactical-grade INS, real-time output, OEM builds', notes:'Kernel-210 tactical IMU; 175% more compute vs Gen-I'
+  },
+  {
+    id:'ph-recon-xt', type:'lidar', name:'Phoenix Recon-XT',
+    mfr:'Phoenix LiDAR', country:'USA', ndaa:'compliant',
+    price_tier:'$25–35K', price_sort:30000,
+    weight_g:1800, max_agl_m:80, pts_sec:null, range_m:80,
+    accuracy_cm:'2–5', echoes:null, scanner:'Integrated',
+    cameras:'24MP', software:'SpatialExplorer + LiDARMill',
+    platforms:['DJI M350','IF800','Freefly Astro'],
+    best_for:'Smaller areas, budget teams, DJI M300/M350 replacement', notes:'Smart Dovetail for quick swap'
+  },
+  {
+    id:'ph-mini3', type:'lidar', name:'Phoenix miniRANGER-3 LITE',
+    mfr:'Phoenix LiDAR', country:'USA', ndaa:'compliant',
+    price_tier:'$45–60K', price_sort:52000,
+    weight_g:2500, max_agl_m:100, pts_sec:'300K', range_m:290,
+    accuracy_cm:'2–3', echoes:null, scanner:'100–300 kHz PRR',
+    cameras:'61MP RTK optional', software:'LiDARMill cloud',
+    platforms:['M350','IF800','Alta-X'],
+    best_for:'Survey-grade mid-tier + simultaneous 61MP photogrammetry', notes:'AIR NavBox 450g; 3× density vs Gen-2'
+  },
+  // ── Cameras ───────────────────────────────────────────────────────────────
+  {
+    id:'sony-ilx-lr1', type:'camera', name:'Sony ILX-LR1',
+    mfr:'Sony', country:'Japan', ndaa:'non-compliant',
+    price_tier:'~$3,500', price_sort:3500,
+    weight_g:327, max_agl_m:null, pts_sec:null, range_m:null,
+    accuracy_cm:null, echoes:null, scanner:null,
+    cameras:'61MP full-frame E-mount', software:'Compatible with capture software',
+    platforms:['Gremsy T3','WingtraRAY RGB61','Phoenix miniRANGER'],
+    best_for:'Drone-optimized mapping sensor, low weight', notes:'No EVF/LCD; purpose-built industrial; Inertial Labs partner'
+  },
+  {
+    id:'sony-a7rv', type:'camera', name:'Sony a7R V',
+    mfr:'Sony', country:'Japan', ndaa:'non-compliant',
+    price_tier:'~$3,900', price_sort:3900,
+    weight_g:723, max_agl_m:null, pts_sec:null, range_m:null,
+    accuracy_cm:null, echoes:null, scanner:null,
+    cameras:'61MP BSI CMOS, 8K RAW, 10fps', software:'n/a',
+    platforms:['Gremsy T7','Alta-X cinema rig'],
+    best_for:'Cinema, broadcast, oblique mapping rigs', notes:'Consumer-origin; heavier than ILX-LR1; better dynamic range'
+  },
+  {
+    id:'mica-rededge-p', type:'camera', name:'MicaSense RedEdge-P',
+    mfr:'MicaSense (AgEagle)', country:'USA', ndaa:'compliant',
+    price_tier:'$8–10K', price_sort:9000,
+    weight_g:325, max_agl_m:null, pts_sec:null, range_m:null,
+    accuracy_cm:null, echoes:null, scanner:null,
+    cameras:'5-band MS + 12.4MP panchromatic', software:'Atlas / Pix4Dfields',
+    platforms:['M400','M350','IF800','IF1200'],
+    best_for:'Precision agriculture, NDVI/NDRE vegetation indices', notes:'Industry standard; DLS2 irradiance sensor'
+  },
+  {
+    id:'mica-altum-pt', type:'camera', name:'MicaSense Altum-PT',
+    mfr:'MicaSense (AgEagle)', country:'USA', ndaa:'compliant',
+    price_tier:'$12–15K', price_sort:13500,
+    weight_g:577, max_agl_m:null, pts_sec:null, range_m:null,
+    accuracy_cm:null, echoes:null, scanner:null,
+    cameras:'5-band MS + 12.4MP pan + LWIR thermal', software:'Atlas / Pix4Dfields',
+    platforms:['M400','M350','IF800','IF1200'],
+    best_for:'Thermal + multispectral in single flight', notes:'Pixel-aligned MS+thermal; water stress, irrigation'
+  },
+  // ── Gimbals ───────────────────────────────────────────────────────────────
+  {
+    id:'gremsy-mio', type:'gimbal', name:'Gremsy Mio',
+    mfr:'Gremsy', country:'Vietnam', ndaa:'non-compliant',
+    price_tier:'$800–1,200', price_sort:1000,
+    weight_g:290, max_agl_m:null, pts_sec:null, range_m:null,
+    accuracy_cm:null, echoes:null, scanner:null,
+    cameras:'Max payload 400g', software:'Gremsy app',
+    platforms:['Lightweight UAS'],
+    best_for:'Sony mapping sensors, FLIR, MicaSense on light platforms', notes:'MAVLink (fw pending bug fix); top/bottom/front mount'
+  },
+  {
+    id:'gremsy-pixy-u', type:'gimbal', name:'Gremsy Pixy U',
+    mfr:'Gremsy', country:'Vietnam', ndaa:'non-compliant',
+    price_tier:'$1,500–2,000', price_sort:1750,
+    weight_g:440, max_agl_m:null, pts_sec:null, range_m:null,
+    accuracy_cm:null, echoes:null, scanner:null,
+    cameras:'Max payload 600g', software:'Gremsy app',
+    platforms:['Mid-size UAS'],
+    best_for:'FLIR, MicaSense RedEdge, Sony mapping — universal fit', notes:'Replaces S1v3 (EOL Apr 2025); Pixy quick-release'
+  },
+  {
+    id:'gremsy-t3v3', type:'gimbal', name:'Gremsy T3 v3',
+    mfr:'Gremsy', country:'Vietnam', ndaa:'non-compliant',
+    price_tier:'$2,500–3,500', price_sort:3000,
+    weight_g:1200, max_agl_m:null, pts_sec:null, range_m:null,
+    accuracy_cm:null, echoes:null, scanner:null,
+    cameras:'Max payload 1.7 kg', software:'Gremsy app',
+    platforms:['Mid to heavy UAS'],
+    best_for:'Sony ILX-LR1, a7R V, Wiris cameras, YellowScan Mapper+', notes:'HDMI Hyper QR; hot-swap T series; MAVLink fw 7.7.3+'
+  },
+  {
+    id:'gremsy-t7', type:'gimbal', name:'Gremsy T7',
+    mfr:'Gremsy', country:'Vietnam', ndaa:'non-compliant',
+    price_tier:'$4,000–5,000', price_sort:4500,
+    weight_g:1700, max_agl_m:null, pts_sec:null, range_m:null,
+    accuracy_cm:null, echoes:null, scanner:null,
+    cameras:'Max payload 3.2 kg', software:'Gremsy app',
+    platforms:['Alta-X','IF1200A','Heavy-lift'],
+    best_for:'Cinema rigs, RED Komodo, Sony a7R V, multi-sensor', notes:'Heavy-lift flagship; multiple camera mounts'
+  },
+  {
+    id:'gremsy-t3pe', type:'gimbal', name:'Gremsy T3 PE',
+    mfr:'Gremsy', country:'Vietnam', ndaa:'non-compliant',
+    price_tier:'$2,800–3,800', price_sort:3300,
+    weight_g:1200, max_agl_m:null, pts_sec:null, range_m:null,
+    accuracy_cm:null, echoes:null, scanner:null,
+    cameras:'Max payload 1.7 kg', software:'gSDK + MAVSDK open',
+    platforms:['Auterion Skynode','Pixhawk Bus'],
+    best_for:'Auterion ecosystem, Pixhawk Payload Bus builds', notes:'Ethernet+USB-C on PE Hub; custom app development'
+  },
+  {
+    id:'freefly-movi', type:'gimbal', name:'Freefly Mōvi Cinema Robot',
+    mfr:'Freefly Systems', country:'USA', ndaa:'compliant',
+    price_tier:'$5,000–8,000', price_sort:6500,
+    weight_g:null, max_agl_m:null, pts_sec:null, range_m:null,
+    accuracy_cm:null, echoes:null, scanner:null,
+    cameras:'Max payload 4.5 kg', software:'Mimic controller',
+    platforms:['Alta-X','Heavy-lift'],
+    best_for:'Broadcast, film, creative aerial cinematography', notes:'Not a mapping gimbal; Arc Shot autopilot moves'
+  },
+];
+
+// ── State ─────────────────────────────────────────────────────────────────────
+let slots = [null, null, null];
+let currentSlot = 0;
+let currentFilter = 'all';
+
+// ── Render slot selectors ─────────────────────────────────────────────────────
+function renderSlots() {
+  for (let i = 0; i < 3; i++) {
+    const el = document.getElementById(`slot-${i}-content`);
+    if (slots[i]) {
+      const p = slots[i];
+      const typeColor = {lidar:'var(--cyan)',camera:'var(--purple)',gimbal:'var(--green)'}[p.type]||'var(--text-d)';
+      el.innerHTML = `
+        <div style="font:600 12px var(--font);color:var(--text);margin-bottom:3px">${p.name}</div>
+        <div style="font:500 9px var(--mono);color:var(--text-d);margin-bottom:6px">${p.mfr}</div>
+        <div style="display:flex;gap:5px;flex-wrap:wrap;margin-bottom:8px">
+          <span style="font:700 8px var(--mono);padding:1px 5px;border-radius:3px;background:rgba(255,255,255,.05);color:${typeColor}">${p.type.toUpperCase()}</span>
+          <span class="badge-sm ${p.ndaa==='compliant'?'b-ndaa':p.ndaa==='non-compliant'?'b-foreign':'b-caution'}">${p.ndaa==='compliant'?'NDAA':'Non-NDAA'}</span>
+          <span style="font:600 9px var(--mono);color:var(--amber)">${p.price_tier}</span>
+        </div>
+        <button class="clear-btn" onclick="clearSlot(${i})">✕ Remove</button>
+        <button class="selector-btn" style="margin-top:4px" onclick="openModal(${i})">Change ↓</button>`;
+    } else {
+      el.innerHTML = `
+        <button class="selector-btn" onclick="openModal(${i})">
+          <span style="color:var(--text-d)">+ Add payload</span>
+          <span class="type-dot" style="background:var(--text-xd)"></span>
+        </button>
+        <div class="selector-placeholder">Pick any type</div>`;
+    }
+  }
+  renderCompare();
+}
+
+// ── Modal ──────────────────────────────────────────────────────────────────────
+function openModal(slot) {
+  currentSlot = slot;
+  const list = document.getElementById('modal-list');
+  const filtered = currentFilter === 'all' ? PAYLOADS : PAYLOADS.filter(p => p.type === currentFilter);
+  const typeLabels = {lidar:'LiDAR',camera:'Camera',multi:'Multi-spec',gimbal:'Gimbal'};
+  const typeClass = {lidar:'mt-lidar',camera:'mt-camera',multi:'mt-multi',gimbal:'mt-gimbal'};
+  list.innerHTML = filtered.map(p => `
+    <div class="modal-item" onclick="selectPayload('${p.id}')">
+      <span class="modal-type ${typeClass[p.type]||'mt-lidar'}">${(typeLabels[p.type]||p.type).toUpperCase()}</span>
+      <div class="modal-item-info">
+        <div class="modal-item-name">${p.name}</div>
+        <div class="modal-item-meta">${p.mfr} · ${p.price_tier} · ${p.ndaa==='compliant'?'✓ NDAA':'✗ Non-NDAA'}</div>
+      </div>
+    </div>`).join('');
+  document.getElementById('modal-bg').classList.add('open');
+}
+
+function closeModal(e) {
+  if (e.target === document.getElementById('modal-bg')) closeModalDirect();
+}
+function closeModalDirect() {
+  document.getElementById('modal-bg').classList.remove('open');
+}
+
+function selectPayload(id) {
+  const p = PAYLOADS.find(x => x.id === id);
+  slots[currentSlot] = p;
+  closeModalDirect();
+  renderSlots();
+}
+
+function clearSlot(i) {
+  slots[i] = null;
+  renderSlots();
+}
+
+// ── Filter ────────────────────────────────────────────────────────────────────
+function setFilter(f, btn) {
+  currentFilter = f;
+  document.querySelectorAll('.fchip').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+}
+
+// ── Compare table ──────────────────────────────────────────────────────────────
+function renderCompare() {
+  const active = slots.filter(Boolean);
+  const area = document.getElementById('compare-area');
+  const empty = document.getElementById('empty-state');
+  if (active.length < 2) {
+    area.classList.remove('visible');
+    empty.style.display = 'block';
+    return;
+  }
+  area.classList.add('visible');
+  empty.style.display = 'none';
+
+  // Determine rows to show based on types present
+  const hasLidar = active.some(p => p.type === 'lidar');
+  const hasCamera = active.some(p => ['camera','multi'].includes(p.type));
+  const hasGimbal = active.some(p => p.type === 'gimbal');
+
+  const rows = [
+    {key:'_head', label:''},
+    {key:'type', label:'Type'},
+    {key:'mfr', label:'Manufacturer'},
+    {key:'country', label:'Country'},
+    {key:'ndaa', label:'NDAA Status'},
+    {key:'price_tier', label:'Price'},
+    {key:'weight_g', label:'Weight'},
+    ...(hasLidar ? [
+      {key:'max_agl_m', label:'Max AGL'},
+      {key:'pts_sec', label:'Pts / sec'},
+      {key:'range_m', label:'Range'},
+      {key:'accuracy_cm', label:'Accuracy'},
+      {key:'echoes', label:'Returns'},
+      {key:'scanner', label:'Scanner'},
+    ] : []),
+    {key:'cameras', label:hasGimbal?'Payload Cap / Sensor':'Sensor'},
+    {key:'software', label:'Software'},
+    {key:'platforms', label:'Platforms'},
+    {key:'best_for', label:'Best For'},
+    {key:'notes', label:'Notes'},
+  ];
+
+  function fmtVal(p, key) {
+    const v = p[key];
+    if (v === null || v === undefined) return '<span class="val-na">—</span>';
+    if (key === 'ndaa') {
+      if (v==='compliant') return '<span class="badge-sm b-ndaa">NDAA ✓</span>';
+      if (v==='non-compliant') return '<span class="badge-sm b-foreign">Non-NDAA</span>';
+      return `<span class="badge-sm b-caution">${v}</span>`;
+    }
+    if (key === 'type') {
+      const tc = {lidar:['LiDAR','var(--cyan)'],camera:['Camera','var(--purple)'],multi:['Multi-spec','var(--amber)'],gimbal:['Gimbal','var(--green)']};
+      const [label,color] = tc[v]||[v,'var(--text-s)'];
+      return `<span style="color:${color};font-weight:600">${label}</span>`;
+    }
+    if (key === 'weight_g' && v) return `${v}g`;
+    if (key === 'max_agl_m' && v) return `${v}m`;
+    if (key === 'range_m' && v) return `${v}m`;
+    if (key === 'accuracy_cm' && v) return `${v} cm`;
+    if (key === 'platforms' && Array.isArray(v)) return v.join('<br>');
+    if (key === 'price_tier') return `<span style="color:var(--amber);font:600 11px var(--mono)">${v}</span>`;
+    if (key === 'country') {
+      const flags = {USA:'🇺🇸',France:'🇫🇷',Japan:'🇯🇵',Vietnam:'🇻🇳'};
+      return `${flags[v]||''} ${v}`;
+    }
+    return v;
+  }
+
+  let html = '<thead><tr>';
+  html += `<th></th>`;
+  active.forEach((p,i) => {
+    const typeColor = {lidar:'var(--cyan)',camera:'var(--purple)',gimbal:'var(--green)'}[p.type]||'var(--text-d)';
+    html += `<th style="border-top:2px solid ${typeColor}">
+      <div class="col-head">${p.name}</div>
+      <div class="col-sub">${p.mfr}</div>
+    </th>`;
+  });
+  html += '</tr></thead><tbody>';
+
+  rows.forEach(row => {
+    if (row.key === '_head') return;
+    html += `<tr><td class="row-label">${row.label}</td>`;
+    active.forEach(p => {
+      html += `<td>${fmtVal(p, row.key)}</td>`;
+    });
+    html += '</tr>';
+  });
+
+  html += '</tbody>';
+  document.getElementById('compare-table').innerHTML = html;
+}
+
+// ── Init ──────────────────────────────────────────────────────────────────────
+renderSlots();
+
+// Pre-load TV1 Lite vs miniRANGER-3 as a helpful default
+const urlParams = new URLSearchParams(window.location.search);
+const preload = urlParams.get('compare');
+if (preload) {
+  const ids = preload.split(',').slice(0,3);
+  ids.forEach((id,i) => {
+    const p = PAYLOADS.find(x => x.id === id);
+    if (p) slots[i] = p;
+  });
+  renderSlots();
+} else {
+  // Default: show two popular LiDAR for instant context
+  slots[0] = PAYLOADS.find(p => p.id === 'gc-tv1-lite');
+  slots[1] = PAYLOADS.find(p => p.id === 'ph-mini3');
+  renderSlots();
+}
+</script>
+</body>
+</html>
