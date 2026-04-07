@@ -225,6 +225,7 @@ let ALL=[],cC='all',cS='all',cR='all';
 let dfrSubFilter='all';
 function renderDFR(){
   // Merge DFR_DB records with keyword-matched articles, dedup by id/url
+  window.CARD_STORE=[];
   const feedDfr=ALL.filter(a=>cat(a)==='dfr');
   const dbIds=new Set((DFR_DB||[]).map(r=>r.id));
   const merged=[...(DFR_DB||[]),...feedDfr.filter(a=>!dbIds.has(a.id))];
@@ -246,9 +247,8 @@ function renderDFR(){
     const isPaidDfr=x.paywall;
     const flagsDfr=getPIEFlags(x);
     if(isPaidDfr&&!isProUser()) return paywallGate(x.title);
-    const dfrKey=x.id||('dfr_'+Math.random().toString(36).slice(2,8));
-    if(!x.id) window.RENDER_CACHE[dfrKey]=x;
-    return`<div class="acard dfr" onclick="handleCardClick(this)" data-rid="${dfrKey}">
+    const di=window.CARD_STORE.push(x)-1;
+    return`<div class="acard dfr" onclick="window.cardClick(${di})">
       <div style="display:flex;gap:6px;align-items:center;margin-bottom:4px;flex-wrap:wrap">
         ${isExcl?'<span class="badge" style="background:var(--dfr-d);color:var(--dfr)">EXCLUSIVE</span>':''}
         <span class="badge" style="background:var(--dfr-d);color:var(--dfr)">DFR</span>
@@ -560,6 +560,7 @@ let DEFENSE_DB=[];
 let DFR_DB=[];
 window.RECORD_INDEX={};
 function renderDefense(){
+  window.CARD_STORE=[];
   let a=[...DEFENSE_DB];
   // also pull keyword-matched articles from main feed
   const feedDef=ALL.filter(x=>cat(x)==='defense' && x.article_type!=='defense');
@@ -579,9 +580,8 @@ function renderDefense(){
     const isPaid=x.paywall;
     const flags=getPIEFlags(x);
     if(isPaid&&!isProUser()) return paywallGate(x.title);
-    const defKey=x.id||('def_'+Math.random().toString(36).slice(2,8));
-    if(!x.id) window.RENDER_CACHE[defKey]=x;
-    return`<div class="acard defense" onclick="handleCardClick(this)" data-rid="${defKey}">
+    const dfi=window.CARD_STORE.push(x)-1;
+    return`<div class="acard defense" onclick="window.cardClick(${dfi})">
       <div style="display:flex;gap:6px;align-items:center;margin-bottom:4px;flex-wrap:wrap">
         ${isPaid?'<span class="badge" style="background:var(--defense-d);color:var(--defense)">🔒 PRO</span>':''}
         <span class="badge" style="background:var(--defense-d);color:var(--defense)">DEFENSE</span>
@@ -603,6 +603,7 @@ function renderDefense(){
 let comSubFilter='all';
 let COMMERCIAL_DB=[];
 function renderCommercial(){
+  window.CARD_STORE=[];
   let a=[...COMMERCIAL_DB];
   const feedCom=ALL.filter(x=>cat(x)==='commercial' && x.article_type!=='commercial');
   const allCom=[...a,...feedCom];
@@ -621,9 +622,8 @@ function renderCommercial(){
     const isPaid=x.paywall;
     const flags=getPIEFlags(x);
     if(isPaid&&!isProUser()) return paywallGate(x.title);
-    const comKey=x.id||('com_'+Math.random().toString(36).slice(2,8));
-    if(!x.id) window.RENDER_CACHE[comKey]=x;
-    return`<div class="acard commercial" onclick="handleCardClick(this)" data-rid="${comKey}">
+    const coi=window.CARD_STORE.push(x)-1;
+    return`<div class="acard commercial" onclick="window.cardClick(${coi})">
       <div style="display:flex;gap:6px;align-items:center;margin-bottom:4px;flex-wrap:wrap">
         ${isPaid?'<span class="badge" style="background:var(--commercial-d);color:var(--commercial)">🔒 PRO</span>':''}
         <span class="badge" style="background:var(--commercial-d);color:var(--commercial)">COMMERCIAL</span>
@@ -641,19 +641,13 @@ function renderCommercial(){
   }).join('')+(filtered.length>80?`<div style="text-align:center;padding:20px;color:var(--text-d);font:11px var(--mono)">Showing 80 of ${filtered.length}</div>`:'');
 }
 
-window.RENDER_CACHE={};
-window.handleCardClick=function(el){
-  const rid=el.dataset.rid;
-  // DB record — open rich modal
-  if(rid && window.RECORD_INDEX[rid]){ window.openDM(window.RECORD_INDEX[rid]); return; }
-  if(rid && window.RENDER_CACHE[rid]){
-    const x=window.RENDER_CACHE[rid];
-    or(x.url||'#', x.title||'');
-    return;
-  }
-  // Fallback — shouldn't happen
-  console.warn('handleCardClick: no record for rid', rid);
-}
+window.CARD_STORE=[];
+window.cardClick=function(i){
+  var r=window.CARD_STORE[i];
+  if(!r) return;
+  if(r.id && window.RECORD_INDEX && window.RECORD_INDEX[r.id]){ window.openDM(window.RECORD_INDEX[r.id]); return; }
+  if(r.url && r.url!=='#') { or(r.url, r.title||''); return; }
+};
 
 // Auto-open tab from URL param (?tab=dfr, ?cat=defense, etc.)
 (function(){
