@@ -99,8 +99,16 @@ export default async (req, context) => {
 
   // ── POST ?action=issue — mint a demo token ──────────────────────────────────
   if (action === 'issue') {
-    const { email, name, days = 30, note = '' } = body;
+    const { email, name, days = 30, note = '', tier = 'pro', scope = [] } = body;
     if (!email) return json({ error: 'email required' }, 400);
+
+    // Resolve tier + scope
+    // tier: 'pro' | 'full'
+    // scope: [] means tier defaults; ['dfr','vault','wingman','pie','compliance'] means explicit
+    const resolvedTier  = tier === 'full' ? 'full' : 'pro';
+    const resolvedScope = resolvedTier === 'full'
+      ? ['dfr', 'vault', 'wingman', 'pie', 'compliance', 'intel', 'command']
+      : (scope.length ? scope : ['wingman', 'pie', 'compliance']);
 
     const exp   = Date.now() + days * 24 * 60 * 60 * 1000;
     const iat   = Date.now();
@@ -108,7 +116,8 @@ export default async (req, context) => {
     const token = await signToken({
       email,
       name:       name || email,
-      tier:       'pro',
+      tier:       resolvedTier,
+      scope:      resolvedScope,
       demo:       true,
       note,
       iat,
@@ -129,10 +138,12 @@ export default async (req, context) => {
       name:    name || email,
       note,
       days,
+      tier:    resolvedTier,
+      scope:   resolvedScope,
       exp,
       iat,
       revoked: false,
-      token,   // store token so you can re-send it
+      token,
     });
 
     await store.set('registry', JSON.stringify(registry));
@@ -142,10 +153,12 @@ export default async (req, context) => {
       email,
       name:    name || email,
       days,
+      tier:    resolvedTier,
+      scope:   resolvedScope,
       expires: new Date(exp).toISOString(),
       note,
-      token,   // give this to the recipient — they paste it in Wingman Settings
-      instructions: `Share this token with ${name || email}. They paste it under Wingman Settings → Subscription Token. Expires in ${days} days.`,
+      token,
+      instructions: `Share this token with ${name || email}. They paste it under Wingman Settings → Subscription Token. Expires in ${days} days. Tier: ${resolvedTier}. Scope: ${resolvedScope.join(', ')}.`,
     });
   }
 
