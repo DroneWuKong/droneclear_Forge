@@ -103,12 +103,12 @@ export default async (req, context) => {
     if (!email) return json({ error: 'email required' }, 400);
 
     // Resolve tier + scope
-    // tier: 'commercial' | 'dfr' | 'defense' | 'full'
+    // tier: 'commercial' | 'dfr' | 'agency' | 'full'
     // scope: [] means tier defaults; ['dfr','vault','wingman','pie','compliance'] means explicit
-    const resolvedTier  = tier === 'full' ? 'full' : ['dfr','defense','commercial'].includes(tier) ? tier : 'commercial';
+    const resolvedTier  = tier === 'full' ? 'full' : ['dfr','agency','commercial'].includes(tier) ? tier : 'commercial';
     const resolvedScope = resolvedTier === 'full'
       ? ['dfr', 'vault', 'wingman', 'pie', 'compliance', 'intel', 'command']
-      : resolvedTier === 'defense'
+      : resolvedTier === 'agency'
       ? ['dfr', 'vault', 'wingman', 'pie', 'compliance', 'intel', 'command']
       : resolvedTier === 'dfr'
       ? ['dfr', 'wingman', 'pie', 'compliance', 'intel']
