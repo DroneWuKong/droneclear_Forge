@@ -87,12 +87,16 @@ export default async (req) => {
       } catch { /* blob unavailable, fall through */ }
     }
 
+    // Backwards compat: old tokens with tier:'pro' map to 'dfr'
+    const tier = payload.tier === 'pro' ? 'dfr' : (payload.tier || 'commercial');
+
     return json({
       valid: true,
-      tier:  payload.tier,
+      tier,
       demo:  payload.demo || false,
       email: payload.email,
       exp:   payload.exp,
+      scope: payload.scope || [],
     });
   }
 

@@ -468,7 +468,14 @@ function getTier(){
   const ps=localStorage.getItem('wingman_proxy_secret')||'';
   if(ps) return 'agency';
   if(!tok) return 'free';
-  try{const p=JSON.parse(atob(tok));if(p.exp&&Date.now()>p.exp)return'free';return p.tier||'commercial';}catch{return'free';}
+  try{
+    const p=JSON.parse(atob(tok));
+    if(p.exp&&Date.now()>p.exp)return'free';
+    const t=p.tier||'commercial';
+    // backwards compat: old 'pro' tokens map to 'dfr', old 'agency' tokens stay
+    if(t==='pro') return 'dfr';
+    return t;
+  }catch{return'free';}
 }
 function canUse(docType){
   const t=getTier();
