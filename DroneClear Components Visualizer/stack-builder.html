@@ -98,6 +98,15 @@ select option{background:var(--surface)}
 .assumptions{background:var(--surface);border-radius:6px;padding:10px 12px;font-size:10px;color:var(--text-d);line-height:1.6;margin:0 16px 14px}
 .assumptions strong{color:var(--text-d);font-weight:700}
 
+/* Unit toggle */
+.unit-bar{display:flex;align-items:center;justify-content:flex-end;gap:8px;margin-bottom:16px}
+.unit-bar-label{font:700 8px var(--mono);color:var(--text-d);text-transform:uppercase;letter-spacing:.1em}
+.unit-toggle{display:inline-flex;border:1px solid var(--border);border-radius:6px;overflow:hidden}
+.unit-btn{font:700 9px var(--mono);padding:5px 9px;background:none;border:none;color:var(--text-d);cursor:pointer;transition:all .15s;letter-spacing:.04em;white-space:nowrap;border-right:1px solid var(--border)}
+.unit-btn:last-child{border-right:none}
+.unit-btn:hover{color:var(--text-s)}
+.unit-btn.active{background:rgba(0,212,255,.12);color:var(--cyan)}
+
 /* Empty state */
 .empty{text-align:center;padding:48px 20px;color:var(--text-d)}
 .empty i{font-size:36px;margin-bottom:12px;display:block;color:var(--text-xd)}
@@ -115,6 +124,16 @@ select option{background:var(--surface)}
   <div class="eyebrow">// Mission Planning</div>
   <h1>Stack Builder</h1>
   <p class="sub">Pick a platform and a payload. Get a real-world estimate of flight time under load, area coverage per flight, and whether the combination is physically viable.</p>
+  <div class="unit-bar">
+    <span class="unit-bar-label">Units</span>
+    <div class="unit-toggle">
+      <button class="unit-btn active" id="btn-si"    onclick="setUnits('si')"    title="SI: metres · kg · m/s · ha">SI</button>
+      <button class="unit-btn"        id="btn-us"    onclick="setUnits('us')"    title="US: international feet · lb · mph · acres">US</button>
+      <button class="unit-btn"        id="btn-ussf"  onclick="setUnits('ussf')"  title="US Survey: US survey feet (FGDC) · lb · mph · acres">US SF</button>
+      <button class="unit-btn"        id="btn-uk"    onclick="setUnits('uk')"    title="UK survey: metres · kg · m/s · acres">UK</button>
+      <button class="unit-btn"        id="btn-intl"  onclick="setUnits('intl')"  title="International ft: intl feet · lb · mph · acres">INT ft</button>
+    </div>
+  </div>
 
   <!-- Pickers -->
   <div class="picker-row">
@@ -171,6 +190,73 @@ select option{background:var(--surface)}
 </div>
 
 <script>
+// ── Unit system ──────────────────────────────────────────────────────────────
+// si    — metres, kg, m/s, hectares
+// us    — international feet (0.3048 m), lb, mph, acres
+// ussf  — US survey feet (0.3048006096 m, FGDC/NGS standard), lb, mph, acres
+// uk    — metres, kg, m/s, acres  (British survey: metric distances, acreage)
+// intl  — international feet, lb, mph, acres (alias for clarity)
+var SYS = 'si';
+
+// Conversion constants
+var M_PER_FT_INTL = 0.3048;          // international foot (exact, ISO 31-1)
+var M_PER_FT_USSF = 0.3048006096;    // US survey foot (1200/3937 m, FGDC standard)
+var HA_TO_ACRE    = 2.47105381;       // 1 ha = 2.47105381 ac (international acre)
+var KG_TO_LB      = 2.20462262;
+var MS_TO_MPH     = 2.23693629;
+
+function ftFactor() {
+  // Returns metres-per-foot for current system
+  return SYS === 'ussf' ? M_PER_FT_USSF : M_PER_FT_INTL;
+}
+function usesFeet()  { return SYS === 'us' || SYS === 'ussf' || SYS === 'intl'; }
+function usesAcres() { return SYS !== 'si'; }
+function usesLb()    { return SYS === 'us' || SYS === 'ussf' || SYS === 'intl'; }
+function usesMph()   { return SYS === 'us' || SYS === 'ussf' || SYS === 'intl'; }
+
+var U = {
+  // Area ─────────────────────────────────────────────────────────────────────
+  areaVal:   function(ha)  { return usesAcres() ? ha * HA_TO_ACRE : ha; },
+  areaUnit:  function()    { return usesAcres() ? 'ac' : 'ha'; },
+  areaLabel: function()    { return usesAcres() ? 'Acres' : 'Hectares'; },
+  areaFmt:   function(ha)  { return U.areaVal(ha).toFixed(1) + ' ' + U.areaUnit(); },
+
+  // Distance (AGL, swath, range) — stored internally in metres ──────────────
+  distVal:   function(m)   { return usesFeet() ? m / ftFactor() : m; },
+  distUnit:  function()    {
+    if (SYS === 'ussf')  return 'USft';
+    if (usesFeet())      return 'ft';
+    return 'm';
+  },
+  distFmt:   function(m)   { return Math.round(U.distVal(m)) + ' ' + U.distUnit(); },
+  // Convert a display value back to metres (for when sliders might be in ft)
+  distToM:   function(v)   { return usesFeet() ? v * ftFactor() : v; },
+
+  // Weight ───────────────────────────────────────────────────────────────────
+  wtVal:     function(kg)  { return usesLb() ? kg * KG_TO_LB : kg; },
+  wtUnit:    function()    { return usesLb() ? 'lb' : 'kg'; },
+  wtFmt:     function(kg)  {
+    var v = U.wtVal(kg);
+    return v.toFixed(v < 10 ? 2 : 1) + ' ' + U.wtUnit();
+  },
+
+  // Speed ────────────────────────────────────────────────────────────────────
+  spdVal:    function(ms)  { return usesMph() ? ms * MS_TO_MPH : ms; },
+  spdUnit:   function()    { return usesMph() ? 'mph' : 'm/s'; },
+  spdFmt:    function(ms)  { return U.spdVal(ms).toFixed(1) + ' ' + U.spdUnit(); },
+};
+
+function setUnits(sys) {
+  SYS = sys;
+  ['si','us','ussf','uk','intl'].forEach(function(s) {
+    var el = document.getElementById('btn-' + s);
+    if (el) el.classList.toggle('active', s === sys);
+  });
+  updateSliders();
+  if (selPlatform && selPayload) calculate();
+  else renderSlots();
+}
+
 // ── Platform data ─────────────────────────────────────────────────────────────
 // max_payload_kg = max payload the platform can carry
 // base_flight_min = flight time with no payload
@@ -498,14 +584,14 @@ PAYLOADS.forEach(p => {
 
 // ── Sliders ───────────────────────────────────────────────────────────────────
 function updateSliders() {
-  agl    = +document.getElementById('agl-slider').value;
-  speed  = +document.getElementById('speed-slider').value;
+  agl     = +document.getElementById('agl-slider').value;   // stored as metres
+  speed   = +document.getElementById('speed-slider').value; // stored as m/s
   overlap = +document.getElementById('overlap-slider').value / 100;
   reserve = +document.getElementById('reserve-slider').value / 100;
-  document.getElementById('agl-val').textContent    = agl + 'm';
-  document.getElementById('speed-val').textContent  = speed + ' m/s';
-  document.getElementById('overlap-val').textContent= (overlap*100) + '%';
-  document.getElementById('reserve-val').textContent= (reserve*100) + '%';
+  document.getElementById('agl-val').textContent     = U.distFmt(agl);
+  document.getElementById('speed-val').textContent   = U.spdFmt(speed);
+  document.getElementById('overlap-val').textContent = Math.round(overlap * 100) + '%';
+  document.getElementById('reserve-val').textContent = Math.round(reserve * 100) + '%';
   calculate();
 }
 
@@ -562,8 +648,7 @@ function update() {
   // Platform info
   const pInfo = document.getElementById('platform-info');
   if (selPlatform) {
-    pInfo.innerHTML = `<span class="spec">Max payload <span>${selPlatform.max_payload_kg}kg</span> · Base flight <span>${selPlatform.base_flight_min}min</span></span><br>
-    <span style="color:${selPlatform.ndaa?'var(--green)':'var(--red)'};font:700 8px var(--mono)">${selPlatform.ndaa?'NDAA ✓':'⚠ Non-NDAA'}</span>`;
+    pInfo.innerHTML = '<span class="spec">Max payload <span>' + U.wtFmt(selPlatform.max_payload_kg) + '</span> · Base flight <span>' + selPlatform.base_flight_min + ' min</span></span><br><span style="color:' + (selPlatform.ndaa ? 'var(--green)' : 'var(--red)') + ';font:700 8px var(--mono)">' + (selPlatform.ndaa ? 'NDAA ✓' : '⚠ Non-NDAA') + '</span>';
   } else { pInfo.innerHTML = ''; }
 
   // Payload info
@@ -632,10 +717,10 @@ function calculate() {
   const warnings = [];
   const errors = [];
 
-  if (overweight) errors.push(`Payload ${pl.weight_kg}kg exceeds platform max ${p.max_payload_kg}kg — this combination cannot fly.`);
+  if (overweight) errors.push('Payload ' + U.wtFmt(pl.weight_kg) + ' exceeds platform max ' + U.wtFmt(p.max_payload_kg) + ' — this combination cannot fly.');
   if (!overweight && tooHeavyWarn) warnings.push(`Payload is ${Math.round(pl.weight_kg/p.max_payload_kg*100)}% of max capacity — leaves minimal margin for accessories and vibration isolators. Add 200–400g for mounts.`);
-  if (aglExceeded) errors.push(`AGL ${agl}m exceeds payload's ${pl.max_agl_m}m operating ceiling — reduce altitude.`);
-  if (aglTooLow) errors.push(`AGL ${agl}m below payload's ${pl.min_agl_m}m minimum — increase altitude.`);
+  if (aglExceeded) errors.push('AGL ' + U.distFmt(agl) + ' exceeds payload ceiling of ' + U.distFmt(pl.max_agl_m) + ' — reduce altitude.');
+  if (aglTooLow) errors.push('AGL ' + U.distFmt(agl) + ' is below payload minimum of ' + U.distFmt(pl.min_agl_m) + ' — increase altitude.');
   if (compat === 'mount required') warnings.push(`No factory integration documented for ${p.name} + ${pl.name}. Third-party mount or Gremsy adapter required — platform can physically carry this payload.`);
   if (ndaaMismatch && !overweight && !incompatible) {
     if (!p.ndaa) warnings.push(`${p.name} is on the FCC Covered List — not eligible for federal contracts.`);
@@ -664,14 +749,14 @@ function calculate() {
         <div class="metric-sub">under load w/ ${Math.round(reserve*100)}% reserve</div>
       </div>
       <div class="metric">
-        <div class="metric-val ${areaColor}">${overweight||incompatible ? '—' : area_ha.toFixed(1)}</div>
-        <div class="metric-lbl">Hectares</div>
-        <div class="metric-sub">per flight at ${agl}m AGL</div>
+        <div class="metric-val ${areaColor}">${overweight ? '—' : U.areaFmt(area_ha)}</div>
+        <div class="metric-lbl" id="res-area-lbl">Hectares</div>
+        <div class="metric-sub">per flight at ${U.distFmt(agl)} AGL</div>
       </div>
       <div class="metric">
-        <div class="metric-val" style="color:var(--amber)">${overweight||incompatible ? '—' : swath_m}</div>
-        <div class="metric-lbl">Swath (m)</div>
-        <div class="metric-sub">effective at ${agl}m</div>
+        <div class="metric-val" style="color:var(--amber)">${overweight ? '—' : U.distFmt(+swath_m)}</div>
+        <div class="metric-lbl" id="res-swath-lbl">Swath</div>
+        <div class="metric-sub">effective at ${U.distFmt(agl)}</div>
       </div>
     </div>`;
 
@@ -680,32 +765,36 @@ function calculate() {
 
   if (!overweight && !incompatible) {
     html += `<div class="detail-rows">
-      <div class="detail-row"><span class="dr-label">Payload weight</span><span class="dr-val ${tooHeavyWarn?'warn':'good'}">${pl.weight_kg} kg (${Math.round(pl.weight_kg/p.max_payload_kg*100)}% of max)</span></div>
-      <div class="detail-row"><span class="dr-label">Platform max payload</span><span class="dr-val">${p.max_payload_kg} kg</span></div>
-      <div class="detail-row"><span class="dr-label">Weight margin</span><span class="dr-val ${tooHeavyWarn?'warn':'good'}">${(p.max_payload_kg - pl.weight_kg).toFixed(2)} kg remaining</span></div>
+      <div class="detail-row"><span class="dr-label">Payload weight</span><span class="dr-val ${tooHeavyWarn?'warn':'good'}">${U.wtFmt(pl.weight_kg)} (${Math.round(pl.weight_kg/p.max_payload_kg*100)}% of max)</span></div>
+      <div class="detail-row"><span class="dr-label">Platform max payload</span><span class="dr-val">${U.wtFmt(p.max_payload_kg)}</span></div>
+      <div class="detail-row"><span class="dr-label">Weight margin</span><span class="dr-val ${tooHeavyWarn?'warn':'good'}">${U.wtFmt(p.max_payload_kg - pl.weight_kg)} remaining</span></div>
       <div class="detail-row"><span class="dr-label">Base flight time (no load)</span><span class="dr-val">${p.base_flight_min} min</span></div>
       <div class="detail-row"><span class="dr-label">Est. flight time under load</span><span class="dr-val ${ftColor}">${flight_min.toFixed(0)} min</span></div>
       <div class="detail-row"><span class="dr-label">Flights per 8hr day</span><span class="dr-val info">~${surveysPerDay} flights (15 min turnaround)</span></div>
-      <div class="detail-row"><span class="dr-label">Total daily coverage</span><span class="dr-val info">~${totalDayHa.toFixed(0)} ha/day</span></div>
-      <div class="detail-row"><span class="dr-label">Context</span><span class="dr-val" style="color:var(--text-d)">~${footballFields} football fields/flight</span></div>
+      <div class="detail-row"><span class="dr-label">Total daily coverage</span><span class="dr-val info">~${U.areaFmt(totalDayHa)}/day</span></div>
+      <div class="detail-row"><span class="dr-label">Context</span><span class="dr-val" style="color:var(--text-d)">~${U.areaFmt(area_ha)} = ~${footballFields} football fields</span></div>
       ${pl.pts_sec ? `<div class="detail-row"><span class="dr-label">Point rate</span><span class="dr-val">${pl.pts_sec} pts/sec</span></div>` : ''}
-      ${pl.accuracy_cm ? `<div class="detail-row"><span class="dr-label">Accuracy (spec)</span><span class="dr-val good">±${pl.accuracy_cm} cm</span></div>` : ''}
+      ${pl.accuracy_cm ? '<div class="detail-row"><span class="dr-label">Accuracy (spec)</span><span class="dr-val good">±' + (usesFeet() ? (pl.accuracy_cm / 30.48).toFixed(3) + '\u00a0ft' : pl.accuracy_cm + '\u00a0cm') + '</span></div>' : ''}
       <div class="detail-row"><span class="dr-label">Integration</span><span class="dr-val ${compat==='mount required'?'warn':compat&&(compat.includes('Gremsy')||compat.includes('Skyport')||compat.includes('native')||compat.includes('SnapFit'))?'good':'warn'}">${compat||'Verify mount'}</span></div>
       <div class="detail-row"><span class="dr-label">Platform NDAA</span><span class="dr-val ${p.ndaa?'good':'bad'}">${p.ndaa?'✓ Compliant':'✗ Non-compliant (FCC Covered List)'}</span></div>
       <div class="detail-row"><span class="dr-label">Payload NDAA</span><span class="dr-val ${pl.ndaa?'good':'warn'}">${pl.ndaa?'✓ Compliant':'⚠ Non-compliant ('+pl.mfr+')'}</span></div>
     </div>`;
 
     // Coverage bar (relative to 100 ha as "excellent")
-    const barPct = Math.min(100, area_ha / 100 * 100);
+    const barMax = usesAcres() ? 247 : 100; // 100 ha ≈ 247 ac
+  const barPct = Math.min(100, U.areaVal(area_ha) / barMax * 100);
     const barColor = area_ha < 5 ? 'var(--amber)' : 'var(--cyan)';
-    html += `<div class="coverage-vis">
+    var covMax = usesAcres() ? 247 : 100;
+  var covSteps = [0, covMax*0.25, covMax*0.5, covMax*0.75, covMax].map(function(v){return v < 10 ? v.toFixed(1) : Math.round(v);});
+  var covLegend = covSteps.map(function(v,i){return '<span>' + (i===4 ? v+'+' : v) + '\u00a0' + U.areaUnit() + '</span>';}).join('');
+  html += `<div class="coverage-vis">
       <div class="cov-label">Coverage per flight vs. typical benchmarks</div>
       <div class="cov-bar-wrap"><div class="cov-bar" style="width:${barPct}%;background:linear-gradient(90deg,${barColor},var(--green))"></div></div>
-      <div class="cov-legend"><span>0 ha</span><span>25 ha</span><span>50 ha</span><span>75 ha</span><span>100 ha+</span></div>
+      <div class="cov-legend" id="cov-legend"></div>
     </div>`;
 
     html += `<div class="assumptions">
-      <strong>Assumptions:</strong> ${Math.round(reserve*100)}% battery reserve · ${speed} m/s ground speed · ${agl}m AGL · ${Math.round(overlap*100)}% side overlap · 
+      <strong>Assumptions:</strong> ${Math.round(reserve*100)}% battery reserve · ${U.spdFmt(speed)} ground speed · ${U.distFmt(agl)} AGL · ${Math.round(overlap*100)}% side overlap · 
       flight time penalty ~${p.payload_penalty_min_per_kg} min/kg · swath based on ${pl.swath_factor}× AGL factor.
       Actual results vary by wind, temperature, and battery state. Always verify with manufacturer data.
     </div>`;
