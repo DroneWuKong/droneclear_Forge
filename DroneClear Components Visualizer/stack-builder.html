@@ -262,6 +262,30 @@ const PLATFORMS = [
     part107_payload_kg:2.5
   },
   {
+    id:'m30t', name:'DJI Matrice 30T',
+    mfr:'DJI', ndaa:false, integrated_payload:true,
+    max_payload_kg:0, base_flight_min:41, payload_penalty_min_per_kg:0,
+    speed_max_ms:23, weight_kg:3.77,
+    notes:'Integrated H20T thermal+zoom. Not a swappable-payload platform. 41 min. FCC Covered List.',
+    part107_payload_kg:0
+  },
+  {
+    id:'mavic3e', name:'DJI Mavic 3 Enterprise',
+    mfr:'DJI', ndaa:false, integrated_payload:true,
+    max_payload_kg:0, base_flight_min:45, payload_penalty_min_per_kg:0,
+    speed_max_ms:21, weight_kg:0.915,
+    notes:'Integrated 4/3 CMOS + telephoto + thermal. Inspection/mapping at prosumer level. 45 min. FCC Covered List.',
+    part107_payload_kg:0
+  },
+  {
+    id:'mavic3m', name:'DJI Mavic 3 Multispectral',
+    mfr:'DJI', ndaa:false, integrated_payload:true,
+    max_payload_kg:0, base_flight_min:43, payload_penalty_min_per_kg:0,
+    speed_max_ms:21, weight_kg:0.951,
+    notes:'Integrated RGB + 5-band MS. The prosumer precision ag benchmark. 43 min. FCC Covered List.',
+    part107_payload_kg:0
+  },
+    {
     id:'acsl-soten', name:'ACSL SOTEN',
     mfr:'ACSL', ndaa:true,
     max_payload_kg:1.0, base_flight_min:30, payload_penalty_min_per_kg:5.0,
@@ -280,7 +304,45 @@ const PLATFORMS = [
 // ndaa = true/false
 // platform_notes = compatibility notes per platform ID
 const PAYLOADS = [
-  // LiDAR
+  // ── DJI Zenmuse (industry benchmark — FCC Covered List / non-NDAA) ─────────
+  { id:'dji-l3', type:'lidar', name:'DJI Zenmuse L3',
+    mfr:'DJI', country:'China', ndaa:false,
+    weight_kg:1.6, swath_factor:1.3, min_agl_m:50, max_agl_m:500,
+    price:'~$17,400', pts_sec:'2M max', accuracy_cm:3,
+    compat:{'m400-rtk':'native'},
+    notes:'M400 RTK ONLY. 950m range. Dual 100MP cameras. Up to 100 km2/day. The LiDAR benchmark. FCC Covered List.' },
+  { id:'dji-l2', type:'lidar', name:'DJI Zenmuse L2',
+    mfr:'DJI', country:'China', ndaa:false,
+    weight_kg:0.905, swath_factor:1.1, min_agl_m:30, max_agl_m:120,
+    price:'~$9,000', pts_sec:'1.2M', accuracy_cm:4,
+    compat:{'m400-rtk':'native','m350-rtk':'native','m300-rtk':'native'},
+    notes:'M300/M350/M400. 450m range. 5 returns. 20MP RGB. Prior-gen benchmark. FCC Covered List.' },
+  { id:'dji-p1', type:'photogrammetry', name:'DJI Zenmuse P1',
+    mfr:'DJI', country:'China', ndaa:false,
+    weight_kg:0.8, swath_factor:1.0, min_agl_m:60, max_agl_m:300,
+    price:'~$8,000', pts_sec:null, accuracy_cm:3,
+    compat:{'m400-rtk':'native','m350-rtk':'native','m300-rtk':'native'},
+    notes:'45MP full-frame. 3 km2/flight at 100m. 3cm H / 5cm V without GCPs. Smart Oblique. The photogrammetry benchmark. FCC Covered List.' },
+  // ── Photogrammetry — non-DJI ────────────────────────────────────────────────
+  { id:'sony-ilx-photo', type:'photogrammetry', name:'Sony ILX-LR1 (61MP mapping)',
+    mfr:'Sony', country:'Japan', ndaa:false,
+    weight_kg:0.327, swath_factor:0.55, min_agl_m:40, max_agl_m:200,
+    price:'~$3,500', pts_sec:null, accuracy_cm:null,
+    compat:{'if800':'Gremsy T3','if1200a':'Gremsy T3','m350-rtk':'Gremsy T3','alta-x':'Gremsy T7','wingtra-gen2':'WingtraRAY RGB61'},
+    notes:'61MP full-frame. Purpose-built industrial sensor. No LCD/EVF. Native WingtraRAY. Gremsy T3 on Matrice platforms.' },
+  { id:'mica-rededge-photo', type:'photogrammetry', name:'MicaSense RedEdge-P',
+    mfr:'MicaSense (AgEagle)', country:'USA', ndaa:true,
+    weight_kg:0.325, swath_factor:0.45, min_agl_m:60, max_agl_m:200,
+    price:'$8-10K', pts_sec:null, accuracy_cm:null,
+    compat:{'m400-rtk':'native','m350-rtk':'native','if800':'native','if1200a':'native'},
+    notes:'5-band MS + 12.4MP panchromatic. DLS 2. NDVI/NDRE. Precision ag standard. NDAA compliant.' },
+  { id:'mica-altum-photo', type:'photogrammetry', name:'MicaSense Altum-PT',
+    mfr:'MicaSense (AgEagle)', country:'USA', ndaa:true,
+    weight_kg:0.577, swath_factor:0.45, min_agl_m:60, max_agl_m:200,
+    price:'$12-15K', pts_sec:null, accuracy_cm:null,
+    compat:{'m400-rtk':'native','m350-rtk':'native','if800':'native','if1200a':'native'},
+    notes:'5-band MS + 12.4MP pan + thermal LWIR combined. Single flight captures both datasets. NDAA compliant.' },
+    // LiDAR
   { id:'ys-mapper-plus', name:'YellowScan Mapper+', mfr:'YellowScan', type:'lidar', ndaa:false,
     weight_kg:1.3, swath_factor:0.8, min_agl_m:30, max_agl_m:70,
     price:'$40–50K', pts_sec:'300K', accuracy_cm:3,
@@ -525,6 +587,19 @@ function calculate() {
   const p  = selPlatform;
   const pl = selPayload;
 
+  // Integrated payload platforms can't carry external payloads
+  if (p.integrated_payload) {
+    document.getElementById('result').innerHTML =
+      '<div class="result-header"><div class="result-title">' + p.name + '</div>' +
+      '<span class="compat-badge cb-caution">INTEGRATED</span></div>' +
+      '<div style="padding:20px 16px;font-size:12px;color:var(--text-d);line-height:1.8">' +
+      '<i class="ph ph-info" style="color:var(--amber);margin-right:6px"></i>' +
+      '<strong style="color:var(--text-s)">' + p.name + '</strong> has a fixed integrated payload — it cannot carry external LiDAR or camera payloads.<br><br>' +
+      '<strong style="color:var(--text-s)">Note: </strong>' + p.notes + '</div>';
+    document.getElementById('result').classList.add('visible');
+    document.getElementById('empty-state').style.display = 'none';
+    return;
+  }
   const flight_min = calcFlightTime(p, pl.weight_kg);
   const area_ha    = calcAreaHa(p, pl, flight_min, agl, speed, overlap);
   const compat     = compatStatus(p, pl);
