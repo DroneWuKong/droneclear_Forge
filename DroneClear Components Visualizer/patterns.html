@@ -248,13 +248,16 @@ a.brief-source-chip:hover{color:var(--text-s);border-color:var(--border-hi)}
 <!-- ═══ Content ═══ -->
 <div class="content">
 
-  <!-- FLAGS PANEL -->
+  <!-- BRIEF PANEL -->
   <div class="panel active" id="panel-brief">
+    <div style="display:flex;gap:6px;margin-bottom:12px">
+      <button id="brief-tab-daily" onclick="switchBriefTab('daily')" style="font:600 10px var(--mono);padding:5px 14px;border-radius:20px;border:1px solid var(--cyan);background:rgba(0,212,255,.1);color:var(--cyan);cursor:pointer">Daily</button>
+      <button id="brief-tab-weekly" onclick="switchBriefTab('weekly')" style="font:600 10px var(--mono);padding:5px 14px;border-radius:20px;border:1px solid var(--border);background:none;color:var(--text-d);cursor:pointer">Weekly</button>
+    </div>
     <div id="brief-inner"><div style="color:var(--text-d);font:400 11px var(--mono);padding:20px 0">Loading brief...</div></div>
+    <div id="brief-weekly-inner" style="display:none"></div>
   </div>
-  <div class="panel active" id="panel-brief">
-    <div id="brief-inner"><div style="color:var(--text-d);font:400 11px var(--mono);padding:20px 0">Loading brief...</div></div>
-  </div>
+  <div class="panel" id="panel-brief-dup" style="display:none"></div>
   <div class="panel" id="panel-flags">
     <input class="search-bar" id="flag-search" placeholder="Search flags... (e.g. TrellisWare, Jetson, DRAM, SOF, mesh)" oninput="renderFlags()">
     <div class="filter-section">
@@ -858,6 +861,11 @@ function renderBriefPanel(b){
       ${hasRes ? `<span style="color:var(--cyan)">${ds.resolved_flags} resolved</span>` : ''}
     </div>`;
   }
+
+  // Tier-personalized section
+  const _tier = getTier();
+  const _personalized = buildPersonalizedSection(_tier);
+  if (_personalized) html += _personalized;
 
   // FCC countdown (always fresh)
   const fcc = b.fcc_countdown||{};
@@ -2439,6 +2447,381 @@ function renderManufacturers() {
       ${m.programs.length ? `<div style="margin-top:8px;display:flex;gap:3px;flex-wrap:wrap">${m.programs.map(p => `<span style="font:500 9px var(--mono);padding:2px 5px;border-radius:3px;background:rgba(245,158,11,.08);color:var(--amber)">${p}</span>`).join('')}</div>` : ''}
     </div>`;
   }).join('') || '<div style="text-align:center;padding:32px;color:var(--text-d);font-size:12px">No manufacturers match this filter.</div>';
+}
+// ─────────────────────────────────────────────────────────────────────────────
+
+// ═══ WEEKLY BRIEF ════════════════════════════════════════════════════════════
+let _weeklyData = null;
+let _activeBriefTab = 'daily';
+
+function switchBriefTab(tab) {
+  _activeBriefTab = tab;
+  const daily  = document.getElementById('brief-inner');
+  const weekly = document.getElementById('brief-weekly-inner');
+  const btnD   = document.getElementById('brief-tab-daily');
+  const btnW   = document.getElementById('brief-tab-weekly');
+  if (!daily || !weekly) return;
+
+  if (tab === 'daily') {
+    daily.style.display = '';
+    weekly.style.display = 'none';
+    btnD.style.borderColor = 'var(--cyan)';
+    btnD.style.background  = 'rgba(0,212,255,.1)';
+    btnD.style.color       = 'var(--cyan)';
+    btnW.style.borderColor = 'var(--border)';
+    btnW.style.background  = 'none';
+    btnW.style.color       = 'var(--text-d)';
+  } else {
+    daily.style.display  = 'none';
+    weekly.style.display = '';
+    btnW.style.borderColor = 'var(--amber)';
+    btnW.style.background  = 'rgba(245,158,11,.1)';
+    btnW.style.color       = 'var(--amber)';
+    btnD.style.borderColor = 'var(--border)';
+    btnD.style.background  = 'none';
+    btnD.style.color       = 'var(--text-d)';
+    if (!_weeklyData) loadWeeklyBrief();
+  }
+}
+
+async function loadWeeklyBrief() {
+  const el = document.getElementById('brief-weekly-inner');
+  if (!el) return;
+  el.innerHTML = '<div style="color:var(--text-d);font:400 11px var(--mono);padding:20px 0;text-align:center">Loading weekly summary...</div>';
+  try {
+    let w = null;
+    for (const p of ['../static/pie_weekly.json', '/static/pie_weekly.json']) {
+      try { const r = await fetch(p); if (r.ok) { w = await r.json(); break; } } catch(e) {}
+    }
+    if (!w) throw new Error('no data');
+    _weeklyData = w;
+    renderWeeklyPanel(w);
+  } catch(e) {
+    el.innerHTML = '<div style="color:var(--text-d);font:400 11px var(--font);padding:20px 0;text-align:center"><strong>Weekly summary not available yet</strong><br><span style="font-size:10px">Generated every Sunday — check back then</span></div>';
+  }
+}
+
+function renderWeeklyPanel(w) {
+  const el = document.getElementById('brief-weekly-inner');
+  if (!el) return;
+  const s = w.stats || {};
+  let html = '';
+
+  // Header
+  html += `<div style="font:700 9px var(--mono);color:var(--amber);letter-spacing:.12em;text-transform:uppercase;margin-bottom:4px">// Week in Review</div>`;
+  html += `<div style="font-size:10px;color:var(--text-d);margin-bottom:14px">${w.week_start||''} → ${w.week_end||''}</div>`;
+
+  // Headline
+  if (w.headline) html += `<div class="brief-headline" style="border-left-color:var(--amber)">${w.headline}</div>`;
+
+  // Stats grid
+  const critDelta = s.critical_delta || 0;
+  const critColor = critDelta > 0 ? 'var(--red)' : critDelta < 0 ? 'var(--green)' : 'var(--text-s)';
+  html += `<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(70px,1fr));gap:6px;margin-bottom:14px">
+    <div style="background:var(--card);border:1px solid var(--border);border-radius:8px;padding:10px 8px;text-align:center">
+      <div style="font:800 18px var(--mono);color:var(--green)">${s.new_flags||0}</div>
+      <div style="font:500 8px var(--font);color:var(--text-d);margin-top:2px">New flags</div>
+    </div>
+    <div style="background:var(--card);border:1px solid var(--border);border-radius:8px;padding:10px 8px;text-align:center">
+      <div style="font:800 18px var(--mono);color:var(--red)">${s.escalated_flags||0}</div>
+      <div style="font:500 8px var(--font);color:var(--text-d);margin-top:2px">Escalated</div>
+    </div>
+    <div style="background:var(--card);border:1px solid var(--border);border-radius:8px;padding:10px 8px;text-align:center">
+      <div style="font:800 18px var(--mono);color:var(--cyan)">${s.resolved_flags||0}</div>
+      <div style="font:500 8px var(--font);color:var(--text-d);margin-top:2px">Resolved</div>
+    </div>
+    <div style="background:var(--card);border:1px solid var(--border);border-radius:8px;padding:10px 8px;text-align:center">
+      <div style="font:800 18px var(--mono);color:${critColor}">${critDelta >= 0 ? '+' : ''}${critDelta}</div>
+      <div style="font:500 8px var(--font);color:var(--text-d);margin-top:2px">Critical Δ</div>
+    </div>
+  </div>`;
+
+  // Critical trend sparkline (text-based)
+  const trend = w.critical_trend || [];
+  if (trend.length > 1) {
+    const max = Math.max(...trend.map(t => t.critical), 1);
+    html += `<div style="margin-bottom:14px">
+      <div style="font:700 9px var(--mono);color:var(--text-d);text-transform:uppercase;letter-spacing:.08em;margin-bottom:6px">Critical Flags — 7 Day Trend</div>
+      <div style="display:flex;align-items:flex-end;gap:3px;height:32px">
+        ${trend.map(t => {
+          const h = Math.max(4, Math.round((t.critical / max) * 32));
+          const color = t.critical > (trend[0]?.critical||0) ? 'var(--red)' : 'var(--green)';
+          return `<div style="flex:1;height:${h}px;background:${color};border-radius:2px;opacity:.7" title="${t.date}: ${t.critical} critical"></div>`;
+        }).join('')}
+      </div>
+      <div style="display:flex;justify-content:space-between;font:400 8px var(--mono);color:var(--text-d);margin-top:3px">
+        <span>${trend[0]?.date?.slice(5)||''}</span><span>${trend[trend.length-1]?.date?.slice(5)||''}</span>
+      </div>
+    </div>`;
+  }
+
+  // New flags this week
+  if ((w.new_flags||[]).length) {
+    html += `<div class="brief-section-label">🆕 New This Week</div>`;
+    for (const f of w.new_flags) {
+      const sevColor = f.severity === 'critical' ? 'var(--red)' : 'var(--amber)';
+      html += `<div style="background:var(--card);border:1px solid var(--border);border-left:3px solid ${sevColor};border-radius:8px;padding:10px 12px;margin-bottom:6px">
+        <div style="font:700 11px var(--font);color:var(--text);margin-bottom:3px">${f.title}</div>
+        <div style="font-size:10px;color:var(--text-d)">${f.detail||''}</div>
+        <div style="margin-top:4px"><span style="font:500 8px var(--mono);padding:2px 5px;border-radius:3px;background:${sevColor}18;color:${sevColor}">${f.type||''}</span></div>
+      </div>`;
+    }
+  }
+
+  // Escalated flags
+  if ((w.escalated_flags||[]).length) {
+    html += `<div class="brief-section-label">⬆ Escalated (Warning → Critical)</div>`;
+    for (const f of w.escalated_flags) {
+      html += `<div style="background:var(--card);border:1px solid var(--border);border-left:3px solid var(--red);border-radius:8px;padding:10px 12px;margin-bottom:6px">
+        <div style="font:700 11px var(--font);color:var(--text);margin-bottom:3px">${f.title}</div>
+        <div style="font-size:10px;color:var(--text-d)">${f.detail||''}</div>
+      </div>`;
+    }
+  }
+
+  // Predictions with delta
+  if ((w.predictions||[]).length) {
+    html += `<div class="brief-section-label">🔮 Predictions — Week Δ</div>`;
+    for (const p of w.predictions) {
+      const pct = Math.round((p.probability||0)*100);
+      const delta = p.delta_pct || 0;
+      const deltaStr = delta !== 0 ? `<span style="font:700 9px var(--mono);color:${delta > 0 ? 'var(--red)' : 'var(--green)'}"> ${delta > 0 ? '+' : ''}${delta}pp</span>` : '';
+      html += `<div class="brief-card pred">
+        <div class="pred-prob"><span class="pct" style="color:${pctColorB(p.probability)}">${pct}%</span>${deltaStr}<span class="pct-lbl">prob</span></div>
+        <div class="pred-body">
+          <div class="pred-event">${p.event||''}</div>
+          <div class="pred-timeframe"><span class="badge badge-purple">${p.timeframe||''}</span></div>
+          ${p.hedge ? `<div class="hedge-box"><div class="hedge-label">◎ Hedge</div><div class="hedge-text">${p.hedge}</div></div>` : ''}
+        </div>
+      </div>`;
+    }
+  }
+
+  // News by category
+  const newsByCat = w.news_by_category || {};
+  const catLabels = {grant: '💰 Grant Intelligence', regulatory: '⚖️ Regulatory', platform_intel: '🛡 Platform Intel', market_signal: '📊 Market Signals'};
+  for (const [cat, items] of Object.entries(newsByCat)) {
+    if (!items || !items.length) continue;
+    html += `<div class="brief-section-label">${catLabels[cat]||cat}</div>`;
+    for (const n of items) {
+      html += `<div style="background:var(--card);border:1px solid var(--border);border-radius:8px;padding:10px 12px;margin-bottom:6px">
+        <div style="display:flex;justify-content:space-between;gap:8px;margin-bottom:3px">
+          <a href="${n.url||'#'}" target="_blank" rel="noopener" style="font:600 11px var(--font);color:var(--text);text-decoration:none;flex:1;line-height:1.3">${n.title}</a>
+          <span style="font:500 8px var(--mono);color:var(--text-d);white-space:nowrap">${n.pub_date||''}</span>
+        </div>
+        ${n.summary ? `<div style="font-size:10px;color:var(--text-d);line-height:1.5">${n.summary}</div>` : ''}
+        <div style="margin-top:3px;font:500 8px var(--mono);color:var(--text-d)">${n.source||''}</div>
+      </div>`;
+    }
+  }
+
+  const gen = w.generated_at ? new Date(w.generated_at).toLocaleString() : '';
+  html += `<div class="brief-footer">${w.pipeline_version||'PIE Weekly'} · ${gen}</div>`;
+  el.innerHTML = html;
+}
+// ─────────────────────────────────────────────────────────────────────────────
+
+// ═══ TIER PERSONALIZATION ═════════════════════════════════════════════════════
+function getTier() {
+  try {
+    var ps = localStorage.getItem('wingman_proxy_secret') || '';
+    if (ps) return 'full';
+    var tok = localStorage.getItem('wingman_sub_token') || '';
+    if (!tok) return 'free';
+    var outer = JSON.parse(atob(tok));
+    var p = outer.payload || outer;
+    if (p.exp && Date.now() > p.exp) return 'free';
+    var tier = p.tier || 'free';
+    if (tier === 'pro') tier = 'dfr'; // backwards compat
+    return tier;
+  } catch(e) { return 'free'; }
+}
+
+function getScope() {
+  try {
+    var tok = localStorage.getItem('wingman_sub_token') || '';
+    if (!tok) return [];
+    var outer = JSON.parse(atob(tok));
+    var p = outer.payload || outer;
+    return p.scope || [];
+  } catch(e) { return []; }
+}
+
+function getTrackerData() {
+  try { return JSON.parse(localStorage.getItem('dc_tracker_v1')) || {}; } catch(e) { return {}; }
+}
+
+function daysUntil(dateStr) {
+  if (!dateStr) return null;
+  const diff = new Date(dateStr) - new Date();
+  return Math.ceil(diff / 86400000);
+}
+
+function buildPersonalizedSection(tier) {
+  if (tier === 'free') return '';
+  let html = '';
+  const tracker = getTrackerData();
+  const certs = tracker.cert || [];
+  const waivers = tracker.waiver || [];
+  const aircraft = tracker.aircraft || [];
+
+  // ── Urgency items (all tiers) ─────────────────────────────────────────────
+  const urgent = [];
+
+  // Check cert recurrency (24-month requirement)
+  for (const cert of certs) {
+    if (!cert.issue_date) continue;
+    const renewBy = new Date(cert.issue_date);
+    renewBy.setMonth(renewBy.getMonth() + 24);
+    const days = daysUntil(renewBy.toISOString().slice(0,10));
+    if (days !== null && days <= 60) {
+      urgent.push({
+        color: days <= 14 ? 'var(--red)' : days <= 30 ? 'var(--amber)' : 'var(--cyan)',
+        icon: '📋',
+        label: `Part 107 recurrency due in ${days}d`,
+        sub: `${cert.name||'Cert'} — knowledge test required before ${renewBy.toLocaleDateString()}`,
+        link: '/tracker/',
+        linkText: 'View tracker →'
+      });
+    }
+  }
+
+  // Check waiver expirations (COW = 4 years)
+  for (const w of waivers) {
+    if (!w.approved_date) continue;
+    const expiresAt = new Date(w.approved_date);
+    expiresAt.setFullYear(expiresAt.getFullYear() + 4);
+    const days = daysUntil(expiresAt.toISOString().slice(0,10));
+    if (days !== null && days <= 90) {
+      urgent.push({
+        color: days <= 30 ? 'var(--red)' : 'var(--amber)',
+        icon: '📄',
+        label: `COW waiver expires in ${days}d`,
+        sub: `${w.name||'Waiver'} — renewal takes 2–4 weeks`,
+        link: '/waiver/',
+        linkText: 'Start renewal →'
+      });
+    }
+  }
+
+  // Aircraft registration expiration (3 years)
+  for (const a of aircraft) {
+    if (!a.reg_date) continue;
+    const expiresAt = new Date(a.reg_date);
+    expiresAt.setFullYear(expiresAt.getFullYear() + 3);
+    const days = daysUntil(expiresAt.toISOString().slice(0,10));
+    if (days !== null && days <= 60) {
+      urgent.push({
+        color: days <= 14 ? 'var(--red)' : 'var(--amber)',
+        icon: '✈️',
+        label: `Aircraft registration expires in ${days}d`,
+        sub: `${a.tail_number||a.name||'Aircraft'} — renew at faa.gov/uas`,
+        link: '/tracker/',
+        linkText: 'View tracker →'
+      });
+    }
+  }
+
+  if (urgent.length) {
+    html += `<div style="margin-bottom:14px">
+      <div style="font:700 9px var(--mono);color:var(--text-d);text-transform:uppercase;letter-spacing:.1em;margin-bottom:6px">⚠ Your Compliance</div>`;
+    for (const u of urgent) {
+      html += `<div style="display:flex;align-items:flex-start;gap:10px;background:var(--card);border:1px solid ${u.color}30;border-left:3px solid ${u.color};border-radius:8px;padding:10px 12px;margin-bottom:6px">
+        <span style="font-size:16px;flex-shrink:0">${u.icon}</span>
+        <div style="flex:1;min-width:0">
+          <div style="font:700 11px var(--font);color:${u.color}">${u.label}</div>
+          <div style="font-size:10px;color:var(--text-d);margin-top:2px">${u.sub}</div>
+        </div>
+        <a href="${u.link}" style="font:600 9px var(--mono);color:${u.color};text-decoration:none;white-space:nowrap;flex-shrink:0">${u.linkText}</a>
+      </div>`;
+    }
+    html += `</div>`;
+  }
+
+  // ── DFR / Agency: Grant countdowns ────────────────────────────────────────
+  if (tier === 'dfr' || tier === 'agency' || tier === 'full') {
+    const GRANT_WINDOWS = [
+      { name: 'COPS Technology Program', close: '2026-05-30', url: '/grants/', fit: 'Excellent DFR fit' },
+      { name: 'HSGP / SHSP', close: '2026-06-30', url: '/grants/', fit: 'Good — frame around critical infrastructure' },
+      { name: 'UASI', close: '2026-06-30', url: '/grants/', fit: 'High-risk metros only' },
+      { name: 'Byrne-JAG', close: '2026-07-31', url: '/grants/', fit: 'Good for training + equipment' },
+    ];
+    const openGrants = GRANT_WINDOWS
+      .map(g => ({ ...g, days: daysUntil(g.close) }))
+      .filter(g => g.days !== null && g.days > 0 && g.days <= 120)
+      .sort((a,b) => a.days - b.days);
+
+    if (openGrants.length) {
+      html += `<div style="margin-bottom:14px">
+        <div style="font:700 9px var(--mono);color:var(--text-d);text-transform:uppercase;letter-spacing:.1em;margin-bottom:6px">💰 Grant Windows Closing</div>`;
+      for (const g of openGrants.slice(0,3)) {
+        const color = g.days <= 30 ? 'var(--red)' : g.days <= 60 ? 'var(--amber)' : 'var(--green)';
+        const pct = Math.max(4, Math.min(96, Math.round((1 - g.days/120)*100)));
+        html += `<div style="background:var(--card);border:1px solid var(--border);border-radius:8px;padding:10px 12px;margin-bottom:6px">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">
+            <span style="font:700 11px var(--font);color:var(--text)">${g.name}</span>
+            <span style="font:800 12px var(--mono);color:${color}">${g.days}d</span>
+          </div>
+          <div style="height:3px;background:var(--border);border-radius:2px;margin-bottom:5px;overflow:hidden">
+            <div style="width:${pct}%;height:100%;background:${color};border-radius:2px"></div>
+          </div>
+          <div style="display:flex;justify-content:space-between;align-items:center">
+            <span style="font-size:10px;color:var(--text-d)">${g.fit}</span>
+            <a href="${g.url}" style="font:600 9px var(--mono);color:var(--cyan);text-decoration:none">Apply →</a>
+          </div>
+        </div>`;
+      }
+      html += `</div>`;
+    }
+  }
+
+  // ── Commercial: Platform compliance check ─────────────────────────────────
+  if (tier === 'commercial') {
+    html += `<div style="margin-bottom:14px">
+      <div style="font:700 9px var(--mono);color:var(--text-d);text-transform:uppercase;letter-spacing:.1em;margin-bottom:6px">📋 Commercial Checklist</div>
+      <div style="background:var(--card);border:1px solid var(--border);border-radius:8px;padding:10px 12px">
+        <div style="font-size:10px;color:var(--text-d);line-height:1.8">
+          <div style="display:flex;justify-content:space-between">
+            <span>FCC cliff (DJI/Autel fleets)</span>
+            <span style="font:700 10px var(--mono);color:var(--amber)">268d</span>
+          </div>
+          <div style="display:flex;justify-content:space-between">
+            <span>Part 107 recurrency window</span>
+            <a href="/tracker/" style="font:600 9px var(--mono);color:var(--cyan);text-decoration:none">Track →</a>
+          </div>
+          <div style="display:flex;justify-content:space-between">
+            <span>Client docs up to date?</span>
+            <a href="/waiver/" style="font:600 9px var(--mono);color:var(--cyan);text-decoration:none">Builder →</a>
+          </div>
+        </div>
+      </div>
+    </div>`;
+  }
+
+  // ── Agency: NDAA procurement signals ─────────────────────────────────────
+  if (tier === 'agency' || tier === 'full') {
+    html += `<div style="margin-bottom:14px">
+      <div style="font:700 9px var(--mono);color:var(--text-d);text-transform:uppercase;letter-spacing:.1em;margin-bottom:6px">🏛 Agency Intel</div>
+      <div style="background:var(--card);border:1px solid var(--border);border-radius:8px;padding:10px 12px">
+        <div style="font-size:10px;color:var(--text-d);line-height:1.8">
+          <div style="display:flex;justify-content:space-between;margin-bottom:3px">
+            <span>Active Blue UAS platforms</span><span style="font:700 10px var(--mono);color:var(--cyan)">14</span>
+          </div>
+          <div style="display:flex;justify-content:space-between;margin-bottom:3px">
+            <span>NDAA §848 pending review</span><span style="font:700 10px var(--mono);color:var(--amber)">3</span>
+          </div>
+          <div style="display:flex;justify-content:space-between">
+            <span>Replicator / DoD programs</span>
+            <a href="/patterns/" style="font:600 9px var(--mono);color:var(--cyan);text-decoration:none">PIE →</a>
+          </div>
+        </div>
+      </div>
+    </div>`;
+  }
+
+  if (!html) return '';
+
+  return `<div id="brief-personalized" style="margin-bottom:2px">${html}</div>`;
 }
 // ─────────────────────────────────────────────────────────────────────────────
 

@@ -260,11 +260,20 @@ jobs:
       - run: pip install requests
       - name: Generate daily brief
         run: python3 scripts/dfr/generate_brief.py
+      - name: Generate weekly brief (Sundays)
+        run: |
+          DOW=$(date +%u)
+          if [ "$DOW" = "7" ]; then
+            echo "Sunday — generating weekly brief"
+            python3 scripts/dfr/generate_brief.py --weekly
+          else
+            echo "Not Sunday (day $DOW) — skipping weekly"
+          fi
       - name: Commit and push
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add "DroneClear Components Visualizer/pie_brief.json" "DroneClear Components Visualizer/pie_brief_history.json"
+          git add "DroneClear Components Visualizer/pie_brief.json" "DroneClear Components Visualizer/pie_brief_history.json" "DroneClear Components Visualizer/pie_weekly.json"
           git diff --staged --quiet || git commit -m "chore(brief): regenerate daily brief $(date +%Y-%m-%d)"
           git pull --rebase origin master
           git push

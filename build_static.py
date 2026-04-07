@@ -143,6 +143,7 @@ def fix_paths(html, depth=0):
         html = html.replace("fetch('pie_flags.json')", f"fetch('{prefix}static/pie_flags.json')")
         html = html.replace("fetch('pie_predictions.json')", f"fetch('{prefix}static/pie_predictions.json')")
         html = html.replace("fetch('pie_brief.json')", f"fetch('{prefix}static/pie_brief.json')")
+        html = html.replace("fetch('pie_weekly.json')", f"fetch('{prefix}static/pie_weekly.json')")
         html = html.replace("fetch('forge_firmware_configs.json')", f"fetch('{prefix}static/forge_firmware_configs.json')")
     
     # Fix nav links to use clean URLs

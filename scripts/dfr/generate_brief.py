@@ -390,3 +390,168 @@ def generate_brief():
 
 if __name__ == "__main__":
     generate_brief()
+
+
+# ── Weekly summary generator ──────────────────────────────────────────────────
+WEEKLY_PATH = ROOT / "DroneClear Components Visualizer" / "pie_weekly.json"
+
+def generate_weekly():
+    """
+    Generate a weekly intelligence summary — runs Sunday, covers Mon-Sun.
+    Compares current state vs 7 days ago using history archive.
+    Writes pie_weekly.json.
+    """
+    flags     = load_json(FLAGS_PATH, [])
+    history   = load_json(HISTORY_PATH, {"days": []})
+    dfr_master = load_json(DFR_MASTER, {"records": []})
+    prev_weekly = load_json(WEEKLY_PATH, {})
+
+    days = history.get("days", [])
+    cutoff = (datetime.now(timezone.utc) - timedelta(days=7)).strftime("%Y-%m-%d")
+
+    # Get the oldest day in our 7-day window as baseline
+    week_days = [d for d in days if d.get("date","") >= cutoff]
+    baseline  = week_days[0] if week_days else {}
+    baseline_ids  = set(baseline.get("flag_ids", []))
+    baseline_sevs = baseline.get("flag_severities", {})
+
+    current_ids  = {f["id"] for f in flags}
+    current_sevs = {f["id"]: f.get("severity","info") for f in flags}
+
+    # --- What changed this week ---
+    new_this_week      = current_ids - baseline_ids
+    resolved_this_week = baseline_ids - current_ids
+    escalated_this_week = {
+        fid for fid in current_ids & baseline_ids
+        if baseline_sevs.get(fid) == "warning" and current_sevs.get(fid) == "critical"
+    }
+    deescalated_this_week = {
+        fid for fid in current_ids & baseline_ids
+        if baseline_sevs.get(fid) == "critical" and current_sevs.get(fid) == "warning"
+    }
+
+    # Trend: critical count over week
+    critical_trend = [
+        {"date": d["date"], "critical": d["critical"], "total": d["total"]}
+        for d in sorted(week_days, key=lambda x: x["date"])
+    ]
+
+    # --- Top new flags this week ---
+    new_flags = sorted(
+        [f for f in flags if f["id"] in new_this_week],
+        key=flag_priority, reverse=True
+    )[:5]
+
+    # --- Top escalated flags ---
+    esc_flags = sorted(
+        [f for f in flags if f["id"] in escalated_this_week],
+        key=flag_priority, reverse=True
+    )[:3]
+
+    # --- Resolved flags ---
+    resolved_list = sorted(resolved_this_week)[:5]
+
+    # --- Prediction movement ---
+    prev_preds = {p.get("event",""): p.get("probability",0) for p in prev_weekly.get("predictions", [])}
+    pred_flags = sorted(
+        [f for f in flags if f.get("prediction") and float(f.get("confidence",0)) >= 0.55],
+        key=lambda f: float(f.get("confidence",0)), reverse=True
+    )[:6]
+    predictions_with_delta = []
+    for f in pred_flags:
+        conf = float(f.get("confidence", 0.5))
+        prev_conf = prev_preds.get(f.get("title",""), conf)
+        delta = round((conf - prev_conf) * 100, 1)
+        predictions_with_delta.append({
+            "event":       f.get("title",""),
+            "probability": conf,
+            "timeframe":   "30-60 days" if conf >= 0.7 else "60-90 days",
+            "delta_pct":   delta,
+            "hedge":       f.get("prediction","")[:140],
+        })
+
+    # --- News this week ---
+    week_news = [
+        r for r in dfr_master.get("records",[])
+        if (r.get("pub_date","") or "") >= cutoff
+        and r.get("title") and len(r.get("title","")) > 10
+    ]
+    week_news.sort(key=lambda r: r.get("pub_date",""), reverse=True)
+
+    # Categorize news
+    news_by_cat = {"grant": [], "regulatory": [], "platform_intel": [], "market_signal": []}
+    for r in week_news[:20]:
+        cat = r.get("data_category","market_signal")
+        bucket = news_by_cat.get(cat, news_by_cat["market_signal"])
+        if len(bucket) < 3:
+            bucket.append({
+                "title":    r.get("title",""),
+                "source":   r.get("source",""),
+                "url":      r.get("url",""),
+                "pub_date": r.get("pub_date",""),
+                "summary":  (r.get("summary","") or "")[:180],
+            })
+
+    # --- Week-over-week summary stats ---
+    baseline_critical = baseline.get("critical", 0)
+    current_critical  = sum(1 for f in flags if f.get("severity")=="critical")
+    critical_delta    = current_critical - baseline_critical
+
+    # --- Headline ---
+    if escalated_this_week:
+        esc_f = next((f for f in flags if f["id"] in escalated_this_week), None)
+        headline = f"Week in Review: {len(escalated_this_week)} escalation{'s' if len(escalated_this_week)>1 else ''} — {esc_f.get('title','').split('—')[0].strip() if esc_f else ''} led critical movement."
+    elif new_this_week:
+        headline = f"Week in Review: {len(new_this_week)} new signal{'s' if len(new_this_week)>1 else ''} entered the pipeline. {len(resolved_this_week)} resolved. Net change: {len(new_this_week)-len(resolved_this_week):+d}."
+    elif critical_delta > 0:
+        headline = f"Week in Review: Critical flags rose by {critical_delta} ({baseline_critical}→{current_critical}). {DAYS_TO_FCC} days to FCC cliff."
+    elif critical_delta < 0:
+        headline = f"Week in Review: Critical flags down {abs(critical_delta)} ({baseline_critical}→{current_critical}). {len(resolved_this_week)} signals resolved."
+    else:
+        headline = f"Week in Review: Stable signal environment. {current_critical} critical flags persistent. {DAYS_TO_FCC} days to FCC cliff."
+
+    # --- Build weekly object ---
+    week_start = cutoff
+    week_end   = TODAY
+
+    weekly = {
+        "week_start":    week_start,
+        "week_end":      week_end,
+        "generated_at":  NOW,
+        "pipeline_version": f"PIE v0.8 Weekly · {TODAY}",
+        "headline":      headline,
+        "stats": {
+            "new_flags":          len(new_this_week),
+            "resolved_flags":     len(resolved_this_week),
+            "escalated_flags":    len(escalated_this_week),
+            "deescalated_flags":  len(deescalated_this_week),
+            "net_change":         len(new_this_week) - len(resolved_this_week),
+            "critical_start":     baseline_critical,
+            "critical_end":       current_critical,
+            "critical_delta":     critical_delta,
+            "fcc_days_remaining": DAYS_TO_FCC,
+        },
+        "critical_trend":      critical_trend,
+        "new_flags":           [{"title": f.get("title",""), "severity": f.get("severity",""), "type": f.get("flag_type",""), "detail": f.get("detail","")[:120]} for f in new_flags],
+        "escalated_flags":     [{"title": f.get("title",""), "detail": f.get("detail","")[:120]} for f in esc_flags],
+        "resolved_flag_ids":   resolved_list,
+        "predictions":         predictions_with_delta,
+        "news_by_category":    news_by_cat,
+        "total_news_this_week": len(week_news),
+    }
+
+    WEEKLY_PATH.write_text(json.dumps(weekly, indent=2))
+    print(f"[DONE] pie_weekly.json written — {len(new_this_week)} new, {len(escalated_this_week)} escalated, {len(week_news)} news items")
+    return weekly
+
+
+if __name__ == "__main__":
+    import sys
+    if "--weekly" in sys.argv:
+        generate_weekly()
+    else:
+        generate_brief()
+        # Also regenerate weekly on Sundays
+        if datetime.now(timezone.utc).weekday() == 6:  # Sunday
+            print("[INFO] Sunday — also generating weekly summary")
+            generate_weekly()
