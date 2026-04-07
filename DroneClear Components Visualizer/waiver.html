@@ -538,6 +538,39 @@ const DOC_CONFIGS={
     title:'City Council Approval Memo',
     fields:'agency_fields,platform_fields,budget_fields,impact_fields,privacy_fields',
   },
+  // Commercial tier
+  client_services:{
+    title:'Drone Services Agreement',
+    fields:'commercial_op_fields,agency_fields,platform_fields',
+  },
+  site_safety:{
+    title:'Site Safety & Risk Assessment',
+    fields:'commercial_op_fields,agency_fields,platform_fields,area_fields,pilot_fields',
+  },
+  data_delivery:{
+    title:'Drone Data Delivery Agreement',
+    fields:'commercial_op_fields,agency_fields,platform_fields',
+  },
+  insurance_requirements:{
+    title:'Commercial Ops Insurance Requirements',
+    fields:'commercial_op_fields,agency_fields,platform_fields',
+  },
+  part107_bvlos:{
+    title:'Part 107 BVLOS Waiver (§107.31)',
+    fields:'commercial_op_fields,agency_fields,platform_fields,area_fields,pilot_fields',
+  },
+  contractor_compliance:{
+    title:'Contractor UAS Compliance Agreement',
+    fields:'agency_fields,contractor_fields',
+  },
+  data_privacy:{
+    title:'Data Collection & Privacy Policy',
+    fields:'agency_fields,platform_fields',
+  },
+  incident_response:{
+    title:'Incident Response Plan',
+    fields:'agency_fields,platform_fields,pilot_fields',
+  },
   // Free tier
   ndaa_checklist:{title:'NDAA Compliance Checklist',fields:'agency_fields,platform_fields'},
   part107_night:{title:'Part 107 Night Waiver (§107.29)',fields:'agency_fields,platform_fields,area_fields,pilot_fields'},
@@ -552,6 +585,14 @@ const DOC_CONFIGS={
     title:'DFR Program SOP Template',
     fields:'agency_fields,platform_fields,pilot_fields,procedure_fields',
   },
+  ndaa_procurement:{
+    title:'NDAA Procurement Justification Memo',
+    fields:'agency_fields,platform_fields',
+  },
+  blue_uas_comparison:{
+    title:'Blue UAS Platform Comparison Report',
+    fields:'agency_fields,platform_fields',
+  },
 };
 
 function selectDoc(el){
@@ -565,6 +606,7 @@ function selectDoc(el){
   el.classList.add('selected');
 
   const cfg=DOC_CONFIGS[docType];
+  if(!cfg){console.error('No DOC_CONFIGS for:',docType);return;}
   document.getElementById('wizard-title').textContent=cfg.title;
   document.getElementById('wizard-body').innerHTML=buildForm(docType,cfg);
   document.getElementById('wizard').classList.add('show');
@@ -790,7 +832,62 @@ function buildForm(docType,cfg){
       </select>
     </div>`;
   }
-  if(docType==='part107_bvlos'){
+  // Commercial operator context fields
+  if(cfg.fields.includes('commercial_op_fields')){
+    html+=`
+    <div class="field-group">
+      <label class="field-label">Your Business / Operator Name</label>
+      <input type="text" id="f_operator_biz" placeholder="e.g. Apex Aerial LLC">
+    </div>
+    <div class="field-row">
+      <div class="field-group">
+        <label class="field-label">Operation Type</label>
+        <select id="f_commercial_op">
+          <option value="photography">Photography / Real Estate</option>
+          <option value="inspection">Infrastructure Inspection</option>
+          <option value="mapping">Mapping / Survey / Photogrammetry</option>
+          <option value="construction">Construction Documentation</option>
+          <option value="events">Event Coverage</option>
+          <option value="agriculture">Agriculture / Precision Ag</option>
+          <option value="media">Film / Commercial Media</option>
+          <option value="delivery">Delivery Operations</option>
+        </select>
+      </div>
+      <div class="field-group">
+        <label class="field-label">Project / Site Name</label>
+        <input type="text" id="f_area_name" placeholder="e.g. 1420 Commerce St Inspection">
+      </div>
+    </div>
+    <div class="field-row">
+      <div class="field-group">
+        <label class="field-label">Client Name</label>
+        <input type="text" id="f_client_name" placeholder="e.g. Heartland Construction Group">
+      </div>
+      <div class="field-group">
+        <label class="field-label">Estimated Flight Days</label>
+        <input type="text" id="f_flight_days" placeholder="e.g. 2">
+      </div>
+    </div>
+    <div class="field-group">
+      <label class="field-label">Key Deliverables</label>
+      <input type="text" id="f_deliverables" placeholder="e.g. 4K video, 20 edited photos, inspection report PDF">
+    </div>`;
+  }
+
+  // Contractor-specific fields
+  if(cfg.fields.includes('contractor_fields')){
+    html+=`
+    <div class="field-group">
+      <label class="field-label">Contractor / Vendor Name</label>
+      <input type="text" id="f_contractor" placeholder="e.g. Skyfire Consulting LLC">
+    </div>
+    <div class="field-group">
+      <label class="field-label">Services Being Contracted</label>
+      <input type="text" id="f_services" placeholder="e.g. DFR program standup, pilot training, waiver consulting">
+    </div>`;
+  }
+
+  if(docType==='part107_bvlos'&&!cfg.fields.includes('commercial_op_fields')){
     html+=`
     <div class="field-group">
       <label class="field-label">Commercial Operation Type</label>
@@ -803,7 +900,7 @@ function buildForm(docType,cfg){
       </select>
     </div>`;
   }
-  if(docType==='contractor_compliance'){
+  if(docType==='contractor_compliance'&&!cfg.fields.includes('contractor_fields')){
     html+=`
     <div class="field-group">
       <label class="field-label">Contractor / Vendor Name</label>
@@ -871,11 +968,25 @@ async function generateDoc(){
     privacy: get('f_privacy'),
     official: get('f_official'),
     dispatch: get('f_dispatch'),
+    // Commercial fields
+    operator_biz: get('f_operator_biz'),
+    commercial_op: get('f_commercial_op'),
+    area_name: get('f_area_name'),
+    client_name: get('f_client_name'),
+    flight_days: get('f_flight_days'),
+    deliverables: get('f_deliverables'),
+    contractor: get('f_contractor'),
+    services: get('f_services'),
     notes: get('f_notes'),
   };
 
-  // Validate
-  if(!data.agency){alert('Agency name is required.');btn.disabled=false;return;}
+  // Validate — commercial docs only need operator_biz OR agency
+  const commercialOnlyDocs=['client_services','site_safety','data_delivery','insurance_requirements'];
+  if(commercialOnlyDocs.includes(data.doc_type)){
+    if(!data.operator_biz&&!data.agency){alert('Business or agency name is required.');btn.disabled=false;return;}
+  } else {
+    if(!data.agency){alert('Agency name is required.');btn.disabled=false;return;}
+  }
 
   // Show output area
   document.getElementById('output').classList.add('show');
