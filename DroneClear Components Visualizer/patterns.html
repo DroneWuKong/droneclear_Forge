@@ -2395,50 +2395,36 @@ function renderManufacturers() {
   const signalIcon = {positive: '▲', neutral: '◆', negative: '▼'};
   const signalColor = {positive: 'var(--green)', neutral: 'var(--text-d)', negative: 'var(--red)'};
 
-  el.innerHTML = filtered.map((m,idx) => {
-    const sc = statusColor[m.status] || 'var(--text-d)';
-    const countryFlag = {US:'🇺🇸',CN:'🇨🇳',FR:'🇫🇷','US (shell)':'🇺🇸'}[m.country] || '🌐';
-
-    return `<div class="flag-card" data-mfr-idx="${idx}" style="border-left:3px solid ${sc};margin-bottom:10px;cursor:pointer">
-      <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:8px;margin-bottom:8px">
-        <div>
-          <div style="display:flex;align-items:center;gap:6px">
-            <span style="font-size:14px">${countryFlag}</span>
-            <span style="font:700 13px var(--font);color:var(--text)">${m.name}</span>
-            <span style="font:700 9px var(--mono);color:${signalColor[m.signal]}">${signalIcon[m.signal]}</span>
-          </div>
-          <div style="font:500 10px var(--font);color:var(--text-d);margin-top:1px">${m.hq}</div>
-        </div>
-        <span style="font:700 9px var(--mono);padding:2px 7px;border-radius:4px;background:${sc}18;color:${sc};white-space:nowrap;flex-shrink:0">${m.status_label}</span>
-      </div>
-
-      <div style="display:flex;gap:4px;flex-wrap:wrap;margin-bottom:8px">
-        ${m.tags.map(t => `<span style="font:500 9px var(--mono);padding:2px 6px;border-radius:3px;background:rgba(59,130,246,.08);color:var(--blue)">${t}</span>`).join('')}
-        <span style="font:500 9px var(--mono);padding:2px 6px;border-radius:3px;background:rgba(0,0,0,.2);color:var(--text-d)">${m.ndaa_status}</span>
-      </div>
-
-      <div style="font-size:11px;color:var(--text-d);line-height:1.6;margin-bottom:8px">${m.key_risk}</div>
-      <div style="font-size:11px;color:var(--text-d);line-height:1.5;padding:7px 10px;background:var(--surface);border-radius:6px;margin-bottom:8px">
-        <span style="font:700 9px var(--mono);color:var(--text-d);text-transform:uppercase;letter-spacing:.06em">Supply chain note: </span>${m.dependency_note}
-      </div>
-
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;font-size:10px;min-width:0">
-        <div style="background:var(--surface);border-radius:5px;padding:7px 9px">
-          <div style="font:700 8px var(--mono);color:var(--text-d);text-transform:uppercase;letter-spacing:.06em;margin-bottom:3px">Funding</div>
-          <div style="color:var(--text-s)">${m.funding}</div>
-          ${m.last_round !== 'N/A' ? `<div style="color:var(--text-d);margin-top:1px">${m.last_round}</div>` : ''}
-        </div>
-        <div style="background:var(--surface);border-radius:5px;padding:7px 9px">
-          <div style="font:700 8px var(--mono);color:var(--text-d);text-transform:uppercase;letter-spacing:.06em;margin-bottom:3px">Acquisition risk</div>
-          <div style="color:${m.acquisition_probability >= 50 ? 'var(--amber)' : m.acquisition_probability >= 20 ? 'var(--text-s)' : 'var(--text-d)'}">${m.acquisition_probability}% probability</div>
-          ${m.acquirers[0] !== 'N/A — geopolitical barrier' && m.acquirers[0] !== 'N/A — FCC bar' && m.acquirers[0] !== 'N/A — product line dead' && m.acquirers[0] !== 'Too large — IPO or stays private' && m.acquirers[0] !== 'Already acquired by Red Cat'
-            ? `<div style="color:var(--text-d);margin-top:1px">${m.acquirers.slice(0,2).join(', ')}</div>` : ''}
-        </div>
-      </div>
-
-      ${m.programs.length ? `<div style="margin-top:8px;display:flex;gap:3px;flex-wrap:wrap">${m.programs.map(p => `<span style="font:500 9px var(--mono);padding:2px 5px;border-radius:3px;background:rgba(245,158,11,.08);color:var(--amber)">${p}</span>`).join('')}</div>` : ''}
-    </div>`;
-  }).join('') || '<div style="text-align:center;padding:32px;color:var(--text-d);font-size:12px">No manufacturers match this filter.</div>';
+  el.innerHTML = filtered.map(function(m, idx) {
+    var sc = statusColor[m.status] || 'var(--text-d)';
+    var flag = {US:'🇺🇸',CN:'🇨🇳',FR:'🇫🇷'}[m.country] || '🌐';
+    var si = (signalIcon[m.signal]||'');
+    var siCol = (signalColor[m.signal]||'var(--text-d)');
+    var tags = (m.tags||[]).map(function(t){ return '<span style="font:500 9px var(--mono);padding:1px 5px;border-radius:3px;background:rgba(59,130,246,.1);color:var(--blue)">'+t+'</span>'; }).join(' ');
+    var acq = '';
+    if (m.acquirers && m.acquirers.length && m.acquirers[0] && m.acquirers[0].indexOf('N/A')<0 && m.acquirers[0].indexOf('Too large')<0 && m.acquirers[0].indexOf('Already')<0) {
+      acq = m.acquirers.slice(0,2).join(', ');
+    }
+    var progs = (m.programs||[]).length ? '<div style="margin-top:6px;display:flex;gap:3px;flex-wrap:wrap">'+(m.programs||[]).map(function(p){return '<span style="font:500 9px var(--mono);padding:1px 5px;border-radius:3px;background:rgba(245,158,11,.08);color:var(--amber)">'+p+'</span>';}).join('')+'</div>' : '';
+    return '<div class="flag-card" data-mfr-idx="'+idx+'" style="border-left:3px solid '+sc+';margin-bottom:8px;cursor:pointer;padding:10px 12px">'
+      +'<div style="display:flex;align-items:flex-start;justify-content:space-between;gap:8px;margin-bottom:6px">'
+      +'<div><div style="display:flex;align-items:center;gap:5px">'
+      +'<span>'+flag+'</span>'
+      +'<span style="font:700 12px var(--font);color:var(--text)">'+m.name+'</span>'
+      +'<span style="font:700 9px var(--mono);color:'+siCol+'">'+si+'</span>'
+      +'</div><div style="font:400 10px var(--font);color:var(--text-d);margin-top:1px">'+m.hq+'</div></div>'
+      +'<span style="font:700 9px var(--mono);padding:2px 6px;border-radius:4px;background:'+sc+'18;color:'+sc+';white-space:nowrap;flex-shrink:0">'+(m.status_label||m.status)+'</span>'
+      +'</div>'
+      +'<div style="display:flex;gap:3px;flex-wrap:wrap;margin-bottom:6px">'+tags
+      +'<span style="font:500 9px var(--mono);padding:1px 5px;border-radius:3px;background:var(--surface);color:var(--text-d)">'+(m.ndaa_status||'')+'</span></div>'
+      +'<div style="font-size:10px;color:var(--text-s);line-height:1.5;margin-bottom:4px">'+m.key_risk+'</div>'
+      +'<div style="display:flex;justify-content:space-between;align-items:center;font-size:10px;color:var(--text-d)">'
+      +'<span>'+(m.funding||'')+'</span>'
+      +'<span style="color:'+(m.acquisition_probability>=50?'var(--amber)':'var(--text-d)')+'">'+m.acquisition_probability+'% acq risk'+(acq?' · '+acq:'')+'</span>'
+      +'</div>'
+      +progs
+      +'</div>';
+  }).join('') || '<div style="text-align:center;padding:24px;color:var(--text-d);font-size:12px">No manufacturers match.</div>';
 
   el.querySelectorAll("[data-mfr-idx]").forEach(function(card) {
     card.addEventListener("click", function() {
