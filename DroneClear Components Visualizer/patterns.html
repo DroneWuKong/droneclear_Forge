@@ -827,19 +827,151 @@ async function loadBriefPanel() {
 
 // ── Brief panel ──
 function pctColorB(p){return p>=0.8?"var(--red)":p>=0.65?"var(--warning,#f59e0b)":"var(--text-s)";}
+function deltaBadge(badge, days) {
+  if (!badge) return '';
+  const color = badge.includes('NEW') ? 'var(--green)' : badge.includes('ESCAL') ? 'var(--red)' : 'var(--text-d)';
+  return `<span style="font:700 8px var(--mono);padding:2px 5px;border-radius:3px;background:${color}18;color:${color};margin-left:6px;vertical-align:middle">${badge}</span>`;
+}
+
 function renderBriefPanel(b){
   const el=document.getElementById("brief-inner");if(!el)return;
   const sig=b.signal_summary||{};const lead=b.lead_story||{};let html="";
-  html+=`<div class="signal-bar"><div class="signal-stat critical"><span class="num">${sig.critical||0}</span><span class="lbl">Critical</span></div><div class="signal-stat warning"><span class="num">${sig.warning||0}</span><span class="lbl">Warning</span></div><div class="signal-stat new"><span class="num">${sig.new_today||0}</span><span class="lbl">New</span></div><div class="signal-stat"><span class="num">${sig.total_flags||0}</span><span class="lbl">Total</span></div></div>`;
-  if(sig.top_concern)html+=`<div class="concern-bar"><div class="dot"></div>${sig.top_concern}</div>`;
-  if(b.headline)html+=`<div class="brief-headline">${b.headline}</div>`;
-  if(lead.title){html+=`<div class="brief-section-label">🔴 Lead Story</div><div class="brief-card lead"><div class="card-header"><span class="sev sev-critical"></span><span class="card-title">${lead.title}</span></div><div class="card-body">${lead.body||""}</div>${lead.action?`<div class="action-box"><div class="action-label">→ Action</div><div class="action-text">${lead.action}</div></div>`:""}</div>`;}
-  for(const e of(b.gray_zone||[])){html+=`<div class="brief-section-label">⚠ Gray Zone</div><div class="brief-card entity"><div class="card-header"><span class="sev sev-warning"></span><span class="card-title">${e.entity||""}</span></div>${e.status?`<div class="entity-status">${e.status}</div>`:""}<div class="card-body">${e.development||""}</div>${e.action?`<div class="action-box"><div class="action-label">→ Action</div><div class="action-text">${e.action}</div></div>`:""}</div>`;}
-  if((b.supply_chain||[]).length){html+=`<div class="brief-section-label">🔩 Supply Chain</div>`;for(const s of b.supply_chain){html+=`<div class="brief-card supply"><div class="card-header"><span class="sev sev-info"></span><span class="card-title">${s.component||""}</span>${s.window?`<span class="supply-window">⏱ ${s.window}</span>`:""}</div><div class="supply-signal">${s.signal||""}</div>${s.action?`<div class="action-box"><div class="action-label">→ Action</div><div class="action-text">${s.action}</div></div>`:""}</div>`;}}
-  if((b.watch_list||[]).length){html+=`<div class="brief-section-label">👁 Watch List</div><div class="watch-list">`;for(const w of b.watch_list){html+=`<div class="watch-item"><div class="watch-dot"></div><div><div class="watch-label">${w.item||""}</div>${w.why?`<div class="watch-why">${w.why}</div>`:""}</div></div>`;}html+=`</div>`;}
-  if((b.predictions||[]).length){html+=`<div class="brief-section-label">🔮 Predictions</div>`;for(const p of b.predictions){const pct=Math.round((p.probability||0)*100);html+=`<div class="brief-card pred"><div class="pred-prob"><span class="pct" style="color:${pctColorB(p.probability)}">${pct}%</span><span class="pct-lbl">prob</span></div><div class="pred-body"><div class="pred-event">${p.event||""}</div><div class="pred-timeframe"><span class="badge badge-purple">${p.timeframe||""}</span></div>${p.hedge?`<div class="hedge-box"><div class="hedge-label">◎ Hedge</div><div class="hedge-text">${p.hedge}</div></div>`:""}</div></div>`;}}
+
+  // Signal bar
+  html+=`<div class="signal-bar">
+    <div class="signal-stat critical"><span class="num">${sig.critical||0}</span><span class="lbl">Critical</span></div>
+    <div class="signal-stat warning"><span class="num">${sig.warning||0}</span><span class="lbl">Warning</span></div>
+    <div class="signal-stat new"><span class="num">${sig.new_today||0}</span><span class="lbl">New</span></div>
+    <div class="signal-stat"><span class="num">${sig.total_flags||0}</span><span class="lbl">Total</span></div>
+  </div>`;
+
+  // Delta summary bar
+  const ds = b.delta_summary||{};
+  if (ds.vs_yesterday) {
+    const hasNew = (ds.new_flags||0) > 0;
+    const hasEsc = (ds.escalated_flags||0) > 0;
+    const hasRes = (ds.resolved_flags||0) > 0;
+    html += `<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px;padding:7px 10px;background:var(--surface);border-radius:6px;font:500 10px var(--mono)">
+      <span style="color:var(--text-d)">vs yesterday:</span>
+      ${hasNew ? `<span style="color:var(--green)">+${ds.new_flags} new</span>` : '<span style="color:var(--text-d)">no new flags</span>'}
+      ${hasEsc ? `<span style="color:var(--red)">⬆ ${ds.escalated_flags} escalated</span>` : ''}
+      ${hasRes ? `<span style="color:var(--cyan)">${ds.resolved_flags} resolved</span>` : ''}
+    </div>`;
+  }
+
+  // FCC countdown (always fresh)
+  const fcc = b.fcc_countdown||{};
+  if (fcc.days_remaining) {
+    const fccColor = fcc.days_remaining < 90 ? 'var(--red)' : fcc.days_remaining < 180 ? 'var(--amber)' : 'var(--text-d)';
+    const fccPct = Math.round((1 - fcc.days_remaining/365)*100);
+    html += `<div style="margin-bottom:12px;background:var(--surface);border-radius:8px;padding:10px 12px;border-left:3px solid ${fccColor}">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
+        <span style="font:700 9px var(--mono);color:${fccColor};text-transform:uppercase;letter-spacing:.08em">FCC Blue UAS Exemption</span>
+        <span style="font:800 16px var(--mono);color:${fccColor}">${fcc.days_remaining}d</span>
+      </div>
+      <div style="height:4px;background:var(--border);border-radius:2px;overflow:hidden;margin-bottom:6px">
+        <div style="width:${fccPct}%;height:100%;background:${fccColor};border-radius:2px"></div>
+      </div>
+      <div style="font-size:10px;color:var(--text-d)">Jan 1, 2027 · ${fccPct}% elapsed · DJI/Autel agencies must complete transition</div>
+    </div>`;
+  }
+
+  if(sig.top_concern) html+=`<div class="concern-bar"><div class="dot"></div>${sig.top_concern}</div>`;
+  if(b.headline) html+=`<div class="brief-headline">${b.headline}</div>`;
+
+  // Lead story
+  if(lead.title){
+    const badge = deltaBadge(lead.delta_badge, lead.persistence_days);
+    const persist = lead.persistence_days >= 3 ? `<span style="font:500 9px var(--mono);color:var(--text-d);margin-left:6px">Day ${lead.persistence_days}</span>` : '';
+    html+=`<div class="brief-section-label">🔴 Lead Story</div>
+    <div class="brief-card lead">
+      <div class="card-header"><span class="sev sev-critical"></span><span class="card-title">${lead.title}</span>${badge}${persist}</div>
+      <div class="card-body">${lead.body||""}</div>
+      ${lead.action?`<div class="action-box"><div class="action-label">→ Action</div><div class="action-text">${lead.action}</div></div>`:""}
+    </div>`;
+  }
+
+  // Gray zone
+  for(const e of(b.gray_zone||[])){
+    const badge = deltaBadge(e.delta_badge, e.persistence_days);
+    const persist = (e.persistence_days||0) >= 3 ? `<span style="font:500 9px var(--mono);color:var(--text-d);margin-left:6px">Day ${e.persistence_days}</span>` : '';
+    html+=`<div class="brief-section-label">⚠ Gray Zone</div>
+    <div class="brief-card entity">
+      <div class="card-header"><span class="sev sev-warning"></span><span class="card-title">${e.entity||""}</span>${badge}${persist}</div>
+      ${e.status?`<div class="entity-status">${e.status}</div>`:""}
+      <div class="card-body">${e.development||""}</div>
+      ${e.buyer_exposure?`<div class="entity-exposure"><strong>Buyer exposure:</strong> ${e.buyer_exposure}</div>`:""}
+      ${e.action?`<div class="action-box"><div class="action-label">→ Action</div><div class="action-text">${e.action}</div></div>`:""}
+    </div>`;
+  }
+
+  // Supply chain
+  if((b.supply_chain||[]).length){
+    html+=`<div class="brief-section-label">🔩 Supply Chain</div>`;
+    for(const s of b.supply_chain){
+      const badge = deltaBadge(s.delta_badge, s.persistence_days);
+      const persist = (s.persistence_days||0) >= 3 ? `<span style="font:500 9px var(--mono);color:var(--text-d);margin-left:6px">Day ${s.persistence_days}</span>` : '';
+      html+=`<div class="brief-card supply">
+        <div class="card-header"><span class="sev sev-info"></span><span class="card-title">${s.component||""}</span>${badge}${persist}${s.window?`<span class="supply-window">⏱ ${s.window}</span>`:""}</div>
+        <div class="supply-signal">${s.signal||""}</div>
+        ${s.action?`<div class="action-box"><div class="action-label">→ Action</div><div class="action-text">${s.action}</div></div>`:""}
+      </div>`;
+    }
+  }
+
+  // Watch list
+  if((b.watch_list||[]).length){
+    html+=`<div class="brief-section-label">👁 Watch List</div><div class="watch-list">`;
+    for(const w of b.watch_list){
+      const badge = deltaBadge(w.delta_badge, 0);
+      html+=`<div class="watch-item"><div class="watch-dot"></div><div>
+        <div class="watch-label">${w.item||""}${badge}</div>
+        ${w.why?`<div class="watch-why">${w.why}</div>`:""}
+        ${w.trigger?`<div class="watch-trigger"><strong>Trigger:</strong> ${w.trigger}</div>`:""}
+      </div></div>`;
+    }
+    html+=`</div>`;
+  }
+
+  // Intelligence feed (news injection)
+  if((b.intel_feed||[]).length){
+    html+=`<div class="brief-section-label">📡 Intelligence Feed</div>`;
+    for(const n of b.intel_feed){
+      const age = n.pub_date ? n.pub_date : '';
+      html+=`<div style="background:var(--card);border:1px solid var(--border);border-radius:8px;padding:10px 12px;margin-bottom:6px">
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px;margin-bottom:4px">
+          <a href="${n.url||'#'}" target="_blank" rel="noopener" style="font:600 11px var(--font);color:var(--text);text-decoration:none;flex:1;line-height:1.3">${n.title}</a>
+          <span style="font:500 9px var(--mono);color:var(--text-d);white-space:nowrap;flex-shrink:0">${age}</span>
+        </div>
+        ${n.summary?`<div style="font-size:10px;color:var(--text-d);line-height:1.5">${n.summary}</div>`:''}
+        <div style="margin-top:4px"><span style="font:500 8px var(--mono);color:var(--text-d)">${n.source||''}</span></div>
+      </div>`;
+    }
+  }
+
+  // Resolved note
+  if(b.resolved_note){
+    html+=`<div style="font:400 10px var(--mono);color:var(--green);padding:6px 10px;background:rgba(34,197,94,.06);border-radius:6px;margin-bottom:8px">${b.resolved_note}</div>`;
+  }
+
+  // Predictions
+  if((b.predictions||[]).length){
+    html+=`<div class="brief-section-label">🔮 Predictions</div>`;
+    for(const p of b.predictions){
+      const pct=Math.round((p.probability||0)*100);
+      html+=`<div class="brief-card pred">
+        <div class="pred-prob"><span class="pct" style="color:${pctColorB(p.probability)}">${pct}%</span><span class="pct-lbl">prob</span></div>
+        <div class="pred-body">
+          <div class="pred-event">${p.event||""}</div>
+          <div class="pred-timeframe"><span class="badge badge-purple">${p.timeframe||""}</span></div>
+          ${p.hedge?`<div class="hedge-box"><div class="hedge-label">◎ Hedge</div><div class="hedge-text">${p.hedge}</div></div>`:""}
+        </div>
+      </div>`;
+    }
+  }
+
   const gen=b.generated_at?new Date(b.generated_at).toLocaleString():"";
-  html+=`<div class="brief-footer">${b.pipeline_version||"PIE"} · ${gen}</div>`;
+  html+=`<div class="brief-footer">${b.pipeline_version||"PIE"} · Generated ${gen}</div>`;
   el.innerHTML=html;
 }
 async function loadBriefPanel(){
