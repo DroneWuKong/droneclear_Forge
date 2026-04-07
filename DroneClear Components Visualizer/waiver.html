@@ -1,0 +1,831 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>DFR Document Builder — DroneClear</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://unpkg.com/@phosphor-icons/web@2.0.3/src/regular/style.css">
+<style>
+:root{
+  --bg:#0a0a08;--surface:#111110;--card:#1a1a15;--card-hi:#222220;
+  --border:#2a2a24;--border-hi:#3a3a32;
+  --dfr:#e53e3e;--dfr-d:#e53e3e14;
+  --amber:#f59e0b;--amber-d:#f59e0b14;
+  --green:#22c55e;--green-d:#22c55e14;
+  --blue:#3b82f6;--blue-d:#3b82f614;
+  --cyan:#06b6d4;--cyan-d:#06b6d414;
+  --text:#f0ebe0;--text-s:#a8a098;--text-d:#605a50;--text-xd:#353028;
+  --font:'DM Sans',system-ui,sans-serif;
+  --mono:'JetBrains Mono',monospace;
+  --radius:10px;
+}
+*{margin:0;padding:0;box-sizing:border-box}
+html,body{background:var(--bg);color:var(--text);font-family:var(--font);min-height:100vh;-webkit-font-smoothing:antialiased}
+a{color:inherit;text-decoration:none}
+
+/* ── TOPBAR ── */
+.topbar{display:flex;align-items:center;justify-content:space-between;padding:10px 20px;border-bottom:1px solid var(--border);background:var(--bg);position:sticky;top:0;z-index:100}
+.topbar-logo{font:700 14px var(--mono);color:var(--dfr);letter-spacing:-.02em}
+.topbar-pills{display:flex;gap:4px}
+.pill{font:500 11px var(--font);color:var(--text-d);padding:4px 10px;border:1px solid var(--border);border-radius:20px;transition:all .15s}
+.pill:hover{border-color:var(--border-hi);color:var(--text-s)}
+.pill.pro{color:var(--green);border-color:rgba(34,197,94,.3)}
+
+/* ── LAYOUT ── */
+.page{max-width:800px;margin:0 auto;padding:32px 20px 80px}
+
+/* ── HERO ── */
+.hero{text-align:center;margin-bottom:40px}
+.hero-eyebrow{font:600 10px var(--mono);letter-spacing:.14em;text-transform:uppercase;color:var(--dfr);margin-bottom:12px}
+.hero-title{font:800 28px var(--font);color:var(--text);line-height:1.2;margin-bottom:10px}
+.hero-sub{font-size:13px;color:var(--text-s);line-height:1.6;max-width:520px;margin:0 auto}
+
+/* ── DOC TYPE GRID ── */
+.doc-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:32px}
+@media(max-width:540px){.doc-grid{grid-template-columns:1fr}}
+.doc-card{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:16px;cursor:pointer;transition:all .2s;position:relative;overflow:hidden}
+.doc-card::before{content:'';position:absolute;inset:0;background:var(--dfr);opacity:0;transition:opacity .2s}
+.doc-card:hover{border-color:var(--border-hi);transform:translateY(-1px)}
+.doc-card.selected{border-color:var(--dfr);background:var(--dfr-d)}
+.doc-card-icon{font-size:22px;margin-bottom:8px}
+.doc-card-name{font:700 13px var(--font);color:var(--text);margin-bottom:4px}
+.doc-card-desc{font-size:11px;color:var(--text-d);line-height:1.5}
+.doc-card-badge{position:absolute;top:10px;right:10px;font:600 8px var(--mono);letter-spacing:.08em;padding:2px 7px;border-radius:4px;text-transform:uppercase}
+.badge-dfr{background:var(--dfr-d);color:var(--dfr)}
+.badge-pro{background:var(--amber-d);color:var(--amber)}
+.doc-card-time{font:500 9px var(--mono);color:var(--text-d);margin-top:6px}
+
+/* ── WIZARD FORM ── */
+.wizard{display:none;background:var(--card);border:1px solid var(--border);border-radius:var(--radius);overflow:hidden}
+.wizard.show{display:block}
+.wizard-header{padding:16px 20px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:12px}
+.wizard-back{background:none;border:none;color:var(--text-d);cursor:pointer;font:500 11px var(--font);padding:4px 0;display:flex;align-items:center;gap:4px;transition:color .15s}
+.wizard-back:hover{color:var(--text)}
+.wizard-title{font:700 14px var(--font);color:var(--text)}
+.wizard-body{padding:24px 20px}
+.field-group{margin-bottom:18px}
+.field-label{font:600 10px var(--mono);letter-spacing:.1em;text-transform:uppercase;color:var(--text-d);margin-bottom:6px;display:block}
+.field-hint{font:400 10px var(--font);color:var(--text-d);margin-top:3px;line-height:1.4}
+input[type=text],input[type=email],select,textarea{
+  width:100%;background:var(--surface);border:1px solid var(--border);border-radius:7px;
+  padding:10px 12px;font:13px var(--font);color:var(--text);outline:none;
+  transition:border-color .15s;resize:vertical
+}
+input:focus,select:focus,textarea:focus{border-color:var(--dfr)}
+input::placeholder,textarea::placeholder{color:var(--text-d)}
+select{-webkit-appearance:none;appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%23605a50'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 12px center}
+.field-row{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+@media(max-width:480px){.field-row{grid-template-columns:1fr}}
+
+/* ── PLATFORM SELECTOR ── */
+.platform-chips{display:flex;gap:6px;flex-wrap:wrap;margin-top:6px}
+.platform-chip{font:500 11px var(--font);padding:5px 12px;border:1px solid var(--border);border-radius:20px;cursor:pointer;transition:all .15s;color:var(--text-d)}
+.platform-chip:hover{border-color:var(--border-hi);color:var(--text)}
+.platform-chip.selected{border-color:var(--dfr);color:var(--dfr);background:var(--dfr-d)}
+
+/* ── GENERATE BUTTON ── */
+.gen-btn{width:100%;padding:13px;background:var(--dfr);border:none;border-radius:8px;color:#fff;font:700 14px var(--font);cursor:pointer;transition:opacity .15s;margin-top:8px;display:flex;align-items:center;justify-content:center;gap:8px}
+.gen-btn:hover{opacity:.88}
+.gen-btn:disabled{opacity:.4;cursor:default}
+
+/* ── OUTPUT ── */
+.output{display:none;margin-top:24px}
+.output.show{display:block}
+.output-toolbar{display:flex;gap:8px;margin-bottom:16px;align-items:center;flex-wrap:wrap}
+.output-title{font:700 13px var(--font);color:var(--text);flex:1}
+.action-btn{padding:7px 14px;border-radius:6px;font:600 11px var(--font);cursor:pointer;border:1px solid var(--border);background:none;color:var(--text-s);transition:all .15s;display:flex;align-items:center;gap:5px}
+.action-btn:hover{border-color:var(--border-hi);color:var(--text)}
+.action-btn.primary{background:var(--dfr);border-color:var(--dfr);color:#fff}
+.action-btn.primary:hover{opacity:.88}
+
+/* ── DOC PREVIEW ── */
+.doc-preview{background:#fff;color:#1a1a1a;border-radius:8px;overflow:hidden;border:1px solid var(--border)}
+.doc-preview-inner{padding:36px;font-family:'DM Sans',system-ui,sans-serif;font-size:12px;line-height:1.7;max-height:600px;overflow-y:auto}
+.doc-preview-inner h1{font:700 20px 'DM Sans',sans-serif;color:#111;margin-bottom:4px}
+.doc-preview-inner h2{font:700 13px 'JetBrains Mono',monospace;text-transform:uppercase;letter-spacing:.08em;color:#6b6358;border-bottom:1px solid #e5e5e5;padding-bottom:5px;margin:24px 0 10px}
+.doc-preview-inner h3{font:700 12px 'DM Sans',sans-serif;color:#1a1a1a;margin:14px 0 4px}
+.doc-preview-inner p{margin-bottom:10px;color:#2a2a2a}
+.doc-preview-inner ul{margin:6px 0 10px 18px}
+.doc-preview-inner li{margin-bottom:4px;color:#2a2a2a}
+.doc-preview-inner .meta-row{display:flex;gap:20px;flex-wrap:wrap;margin-bottom:20px;padding:12px 0;border-top:1px solid #e5e5e5;border-bottom:1px solid #e5e5e5}
+.doc-preview-inner .meta-item{font-size:10px}
+.doc-preview-inner .meta-label{color:#6b6358;text-transform:uppercase;letter-spacing:.06em;font-weight:600}
+.doc-preview-inner .meta-value{color:#1a1a1a;font-weight:600;margin-top:1px}
+.doc-preview-inner .doc-header{border-bottom:3px solid #e53e3e;padding-bottom:16px;margin-bottom:20px}
+.doc-preview-inner .doc-header .agency{font:700 16px 'DM Sans',sans-serif;color:#111}
+.doc-preview-inner .doc-header .doc-type{font:600 10px 'JetBrains Mono',monospace;text-transform:uppercase;letter-spacing:.1em;color:#e53e3e;margin-bottom:6px}
+.doc-preview-inner .footer{margin-top:32px;padding-top:12px;border-top:1px solid #e5e5e5;font-size:10px;color:#9a9a9a;display:flex;justify-content:space-between}
+.doc-preview-inner .highlight-box{background:#f8f8f6;border-left:3px solid #e53e3e;padding:12px 14px;margin:12px 0;border-radius:0 6px 6px 0}
+
+/* ── STATUS / LOADING ── */
+.status{font:500 12px var(--mono);color:var(--text-d);text-align:center;padding:24px;display:none}
+.status.show{display:block}
+.spinner{display:inline-block;width:14px;height:14px;border:2px solid var(--border);border-top-color:var(--dfr);border-radius:50%;animation:spin .8s linear infinite;margin-right:8px;vertical-align:middle}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+/* ── GATE ── */
+.gate{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:32px;text-align:center;display:none}
+.gate.show{display:block}
+.gate-icon{font-size:32px;margin-bottom:12px}
+.gate-title{font:700 16px var(--font);color:var(--text);margin-bottom:6px}
+.gate-sub{font-size:12px;color:var(--text-d);line-height:1.5;max-width:300px;margin:0 auto 20px}
+.gate-btn{display:inline-block;padding:10px 24px;background:var(--dfr);color:#fff;border-radius:7px;font:700 13px var(--font);cursor:pointer}
+
+/* ── PRINT ── */
+@media print{
+  .topbar,.hero,.doc-grid,.wizard-header,.wizard .wizard-body>.field-group,.gen-btn,.output-toolbar,.gate{display:none!important}
+  .doc-preview{border:none;border-radius:0}
+  .doc-preview-inner{max-height:none;padding:24px}
+}
+</style>
+</head>
+<body>
+
+<header class="topbar">
+  <a href="/" class="topbar-logo">DroneClear</a>
+  <div class="topbar-pills">
+    <a href="/intel/feed/?tab=dfr" class="pill">DFR Intel</a>
+    <a href="/patterns/" class="pill">Patterns</a>
+    <a href="/pro/" class="pill pro">Pro</a>
+  </div>
+</header>
+
+<div class="page">
+
+  <div class="hero">
+    <div class="hero-eyebrow">// DFR Document Builder</div>
+    <h1 class="hero-title">From intake to submission<br>in under 10 minutes</h1>
+    <p class="hero-sub">Generate FAA waiver applications, grant narratives, council memos, and program documents — pre-filled with your agency data, ready to submit.</p>
+  </div>
+
+  <!-- Gate (shown when not logged in) -->
+  <div class="gate" id="gate">
+    <div class="gate-icon">🔒</div>
+    <div class="gate-title">DFR Intel Tier Required</div>
+    <div class="gate-sub">Document generation requires a DFR ($29/mo) or Pro ($49/mo) subscription. Generate FAA waivers, grant narratives, and program documents in minutes.</div>
+    <a href="/pro/" class="gate-btn">Unlock Document Builder →</a>
+  </div>
+
+  <!-- Doc type selector -->
+  <div id="doc-selector">
+    <div class="doc-grid" id="doc-grid">
+
+      <div class="doc-card" data-doc="cow_shielded" onclick="selectDoc(this)">
+        <div class="doc-card-badge badge-dfr">Most Common</div>
+        <div class="doc-card-icon">🛡️</div>
+        <div class="doc-card-name">Part 91 BVLOS COW — Shielded 200'</div>
+        <div class="doc-card-desc">Certificate of Waiver for jurisdiction-wide DFR ops at or below 200ft AGL. No DAA hardware required. Fastest approval path.</div>
+        <div class="doc-card-time">⏱ Approval: 1-14 days · Valid 4 years</div>
+      </div>
+
+      <div class="doc-card" data-doc="cow_nonshielded" onclick="selectDoc(this)">
+        <div class="doc-card-badge badge-dfr">Advanced</div>
+        <div class="doc-card-icon">📡</div>
+        <div class="doc-card-name">Part 91 BVLOS COW — Non-Shielded 400'</div>
+        <div class="doc-card-desc">Certificate of Waiver for operations up to 400ft AGL. Requires electronic detect-and-avoid (DAA) — radar or acoustic sensors.</div>
+        <div class="doc-card-time">⏱ Approval: 2-4 weeks · Valid 4 years</div>
+      </div>
+
+      <div class="doc-card" data-doc="conops" onclick="selectDoc(this)">
+        <div class="doc-card-badge badge-dfr">Required</div>
+        <div class="doc-card-icon">📋</div>
+        <div class="doc-card-name">CONOPS Document</div>
+        <div class="doc-card-desc">Concept of Operations — required for all COW applications. Describes mission profiles, airspace, equipment, and procedures.</div>
+        <div class="doc-card-time">⏱ Required for both COW types</div>
+      </div>
+
+      <div class="doc-card" data-doc="pso_letter" onclick="selectDoc(this)">
+        <div class="doc-card-badge badge-dfr">Required</div>
+        <div class="doc-card-icon">🏛️</div>
+        <div class="doc-card-name">PSO Certification Letter</div>
+        <div class="doc-card-desc">Public Safety Organization letter certifying agency status per PL 118-63 Section 926(e). Required for Part 91 pathway.</div>
+        <div class="doc-card-time">⏱ One-time · Sign and submit with COW</div>
+      </div>
+
+      <div class="doc-card" data-doc="cops_grant" onclick="selectDoc(this)">
+        <div class="doc-card-badge badge-dfr">$50K–$750K</div>
+        <div class="doc-card-icon">💰</div>
+        <div class="doc-card-name">COPS Technology Grant Narrative</div>
+        <div class="doc-card-desc">DOJ COPS Technology program narrative for DFR drone procurement. Covers platform justification, NDAA compliance, and community impact.</div>
+        <div class="doc-card-time">⏱ Annual window: Q1-Q2 · Awards $50K-$750K+</div>
+      </div>
+
+      <div class="doc-card" data-doc="hsgp_grant" onclick="selectDoc(this)">
+        <div class="doc-card-badge badge-dfr">$100K–$500K</div>
+        <div class="doc-card-icon">🛡️</div>
+        <div class="doc-card-name">HSGP/SHSP Grant Narrative</div>
+        <div class="doc-card-desc">Homeland Security Grant Program narrative for DFR systems. State-administered via FEMA. Stack with COPS for larger programs.</div>
+        <div class="doc-card-time">⏱ State-administered · Annual cycle</div>
+      </div>
+
+      <div class="doc-card" data-doc="council_memo" onclick="selectDoc(this)">
+        <div class="doc-card-badge badge-dfr">Political</div>
+        <div class="doc-card-icon">🗳️</div>
+        <div class="doc-card-name">City Council Approval Memo</div>
+        <div class="doc-card-desc">Formal memo requesting council authorization for a DFR program. Includes cost-benefit, safety case, privacy safeguards, and budget request.</div>
+        <div class="doc-card-time">⏱ Required before program launch in most jurisdictions</div>
+      </div>
+
+      <div class="doc-card" data-doc="sop" onclick="selectDoc(this)">
+        <div class="doc-card-badge badge-pro">Pro</div>
+        <div class="doc-card-icon">📖</div>
+        <div class="doc-card-name">DFR Program SOP Template</div>
+        <div class="doc-card-desc">Standard Operating Procedures for a DFR program. Covers dispatch triggers, pilot qualifications, flight rules, incident reporting, and data management.</div>
+        <div class="doc-card-time">⏱ Required for FAA audit readiness</div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- Wizard -->
+  <div class="wizard" id="wizard">
+    <div class="wizard-header">
+      <button class="wizard-back" onclick="resetWizard()"><i class="ph ph-arrow-left"></i> Back</button>
+      <div class="wizard-title" id="wizard-title">Configure Document</div>
+    </div>
+    <div class="wizard-body" id="wizard-body">
+      <!-- Injected per doc type -->
+    </div>
+  </div>
+
+  <!-- Output -->
+  <div class="output" id="output">
+    <div class="output-toolbar">
+      <div class="output-title" id="output-title">Generated Document</div>
+      <button class="action-btn" onclick="copyDoc()"><i class="ph ph-copy"></i> Copy Text</button>
+      <button class="action-btn primary" onclick="window.print()"><i class="ph ph-printer"></i> Print / PDF</button>
+    </div>
+    <div class="status" id="gen-status"><span class="spinner"></span><span id="status-text">Generating…</span></div>
+    <div class="doc-preview" id="doc-preview">
+      <div class="doc-preview-inner" id="doc-content"></div>
+    </div>
+  </div>
+
+</div><!-- /page -->
+
+<script>
+// ── Auth ──────────────────────────────────────────────────────────────────────
+function getTier(){
+  const tok=localStorage.getItem('wingman_sub_token')||'';
+  const ps=localStorage.getItem('wingman_proxy_secret')||'';
+  if(ps) return 'pro';
+  if(!tok) return 'free';
+  try{const p=JSON.parse(atob(tok));if(p.exp&&Date.now()>p.exp)return'free';return p.tier||'pro';}catch{return'free';}
+}
+function canUse(docType){
+  const t=getTier();
+  if(t==='free') return false;
+  if(docType==='sop') return t==='pro'||t==='agency';
+  return true; // dfr, pro, agency all get everything else
+}
+
+// ── Init ─────────────────────────────────────────────────────────────────────
+window.addEventListener('DOMContentLoaded',()=>{
+  const tier=getTier();
+  if(tier==='free'){
+    document.getElementById('gate').classList.add('show');
+    document.getElementById('doc-selector').style.display='none';
+  }
+});
+
+// ── Doc type selection ────────────────────────────────────────────────────────
+let currentDoc=null;
+const DOC_CONFIGS={
+  cow_shielded:{
+    title:'Part 91 BVLOS COW — Shielded 200\'',
+    email:'9-AVS-AFS-750-91.113Waivers@faa.gov',
+    fields:'agency_fields,platform_fields,area_fields,pilot_fields',
+  },
+  cow_nonshielded:{
+    title:'Part 91 BVLOS COW — Non-Shielded 400\'',
+    email:'9-AVS-AFS-750-91.113Waivers@faa.gov',
+    fields:'agency_fields,platform_fields,area_fields,pilot_fields,daa_fields',
+  },
+  conops:{
+    title:'Concept of Operations (CONOPS)',
+    fields:'agency_fields,platform_fields,area_fields,mission_fields',
+  },
+  pso_letter:{
+    title:'PSO Certification Letter',
+    fields:'agency_fields,official_fields',
+  },
+  cops_grant:{
+    title:'COPS Technology Grant Narrative',
+    fields:'agency_fields,platform_fields,budget_fields,impact_fields',
+  },
+  hsgp_grant:{
+    title:'HSGP/SHSP Grant Narrative',
+    fields:'agency_fields,platform_fields,budget_fields,threat_fields',
+  },
+  council_memo:{
+    title:'City Council Approval Memo',
+    fields:'agency_fields,platform_fields,budget_fields,impact_fields,privacy_fields',
+  },
+  sop:{
+    title:'DFR Program SOP Template',
+    fields:'agency_fields,platform_fields,pilot_fields,procedure_fields',
+  },
+};
+
+function selectDoc(el){
+  const docType=el.dataset.doc;
+  if(!canUse(docType)){
+    window.location='/pro/';
+    return;
+  }
+  currentDoc=docType;
+  document.querySelectorAll('.doc-card').forEach(c=>c.classList.remove('selected'));
+  el.classList.add('selected');
+
+  const cfg=DOC_CONFIGS[docType];
+  document.getElementById('wizard-title').textContent=cfg.title;
+  document.getElementById('wizard-body').innerHTML=buildForm(docType,cfg);
+  document.getElementById('wizard').classList.add('show');
+  document.getElementById('wizard').scrollIntoView({behavior:'smooth',block:'start'});
+}
+
+function resetWizard(){
+  currentDoc=null;
+  document.querySelectorAll('.doc-card').forEach(c=>c.classList.remove('selected'));
+  document.getElementById('wizard').classList.remove('show');
+  document.getElementById('output').classList.remove('show');
+  document.getElementById('gen-status').classList.remove('show');
+}
+
+// ── Form builder ──────────────────────────────────────────────────────────────
+const PLATFORMS=[
+  'Skydio X10','Skydio X10D','BRINC Lemur 2','BRINC Guardian',
+  'Parrot ANAFI USA','Flock Alpha','ACSL SOTEN','Inspired Flight IF800',
+  'Freefly Astro','Other'
+];
+
+function buildForm(docType,cfg){
+  let html='';
+
+  // Always: agency fields
+  html+=`
+    <div class="field-group">
+      <label class="field-label">Agency Name</label>
+      <input type="text" id="f_agency" placeholder="e.g. City of Madison Police Department">
+    </div>
+    <div class="field-row">
+      <div class="field-group">
+        <label class="field-label">State</label>
+        <input type="text" id="f_state" placeholder="e.g. Wisconsin">
+      </div>
+      <div class="field-group">
+        <label class="field-label">City / County</label>
+        <input type="text" id="f_city" placeholder="e.g. Madison">
+      </div>
+    </div>
+    <div class="field-group">
+      <label class="field-label">Responsible Person (Name + Title)</label>
+      <input type="text" id="f_responsible" placeholder="e.g. Sgt. James Rhoads, UAS Program Manager">
+    </div>
+    <div class="field-group">
+      <label class="field-label">Contact Email</label>
+      <input type="email" id="f_email" placeholder="e.g. jrhoads@madison.gov">
+    </div>`;
+
+  // Platform selection
+  if(cfg.fields.includes('platform')){
+    html+=`
+    <div class="field-group">
+      <label class="field-label">Primary Platform(s)</label>
+      <div class="platform-chips" id="platform-chips">
+        ${PLATFORMS.map(p=>`<div class="platform-chip" onclick="toggleChip(this)" data-val="${p}">${p}</div>`).join('')}
+      </div>
+    </div>
+    <div class="field-group">
+      <label class="field-label">Number of Aircraft</label>
+      <input type="text" id="f_aircraft_count" placeholder="e.g. 3">
+    </div>`;
+  }
+
+  // Area of operations
+  if(cfg.fields.includes('area')){
+    html+=`
+    <div class="field-group">
+      <label class="field-label">Area of Operations</label>
+      <input type="text" id="f_area" placeholder="e.g. City of Madison — 77 square miles, Class G and Class D airspace">
+      <div class="field-hint">Include airspace classification and any controlled airspace in your jurisdiction</div>
+    </div>`;
+  }
+
+  // Pilot info
+  if(cfg.fields.includes('pilot')){
+    html+=`
+    <div class="field-row">
+      <div class="field-group">
+        <label class="field-label">Number of Pilots</label>
+        <input type="text" id="f_pilots" placeholder="e.g. 6">
+      </div>
+      <div class="field-group">
+        <label class="field-label">Pilot Certification</label>
+        <select id="f_cert">
+          <option value="part107">Part 107 Remote Pilot Certificate</option>
+          <option value="self">Agency Self-Certified (Part 91)</option>
+          <option value="both">Both Part 107 and Self-Certified</option>
+        </select>
+      </div>
+    </div>`;
+  }
+
+  // DAA for non-shielded
+  if(docType==='cow_nonshielded'){
+    html+=`
+    <div class="field-group">
+      <label class="field-label">Detect-and-Avoid (DAA) System</label>
+      <select id="f_daa">
+        <option value="echodyne">Echodyne MESA Radar</option>
+        <option value="adsbonly">ADS-B In only (Skydio X10 built-in)</option>
+        <option value="acoustic">Acoustic detection system</option>
+        <option value="other">Other (specify in notes)</option>
+      </select>
+    </div>`;
+  }
+
+  // Mission types
+  if(cfg.fields.includes('mission')){
+    html+=`
+    <div class="field-group">
+      <label class="field-label">Primary Mission Types</label>
+      <div class="platform-chips" id="mission-chips">
+        ${['911 Response','Crime in Progress','Search & Rescue','Traffic Accidents','Missing Persons','SWAT Support','Infrastructure Inspection','Crowd Monitoring','Other'].map(m=>`<div class="platform-chip" onclick="toggleChip(this)" data-val="${m}">${m}</div>`).join('')}
+      </div>
+    </div>`;
+  }
+
+  // Budget
+  if(cfg.fields.includes('budget')){
+    html+=`
+    <div class="field-row">
+      <div class="field-group">
+        <label class="field-label">Total Budget Requested</label>
+        <input type="text" id="f_budget" placeholder="e.g. $245,000">
+      </div>
+      <div class="field-group">
+        <label class="field-label">Grant Program</label>
+        <select id="f_grant_type">
+          <option value="cops">COPS Technology</option>
+          <option value="hsgp">HSGP / SHSP</option>
+          <option value="uasi">UASI</option>
+          <option value="fema">FEMA BRIC</option>
+        </select>
+      </div>
+    </div>`;
+  }
+
+  // Impact stats
+  if(cfg.fields.includes('impact')){
+    html+=`
+    <div class="field-group">
+      <label class="field-label">Jurisdiction Population</label>
+      <input type="text" id="f_population" placeholder="e.g. 269,000">
+    </div>
+    <div class="field-group">
+      <label class="field-label">Annual 911 Calls (approx)</label>
+      <input type="text" id="f_calls" placeholder="e.g. 85,000">
+    </div>`;
+  }
+
+  // Threat/hazard for HSGP
+  if(cfg.fields.includes('threat')){
+    html+=`
+    <div class="field-group">
+      <label class="field-label">Primary Threat / Hazard Context</label>
+      <textarea id="f_threat" rows="2" placeholder="e.g. Regional critical infrastructure, sporting events, chemical plants, flooding risk..."></textarea>
+    </div>`;
+  }
+
+  // Privacy safeguards
+  if(cfg.fields.includes('privacy')){
+    html+=`
+    <div class="field-group">
+      <label class="field-label">Privacy Safeguards (briefly)</label>
+      <textarea id="f_privacy" rows="2" placeholder="e.g. Public transparency dashboard, no facial recognition, data retention policy, council oversight..."></textarea>
+    </div>`;
+  }
+
+  // Official for PSO letter
+  if(cfg.fields.includes('official')){
+    html+=`
+    <div class="field-group">
+      <label class="field-label">Signing Authority (Name + Title)</label>
+      <input type="text" id="f_official" placeholder="e.g. Chief Michael Torres, Madison Police Department">
+    </div>`;
+  }
+
+  // Procedure specifics for SOP
+  if(cfg.fields.includes('procedure')){
+    html+=`
+    <div class="field-group">
+      <label class="field-label">Dispatch Integration</label>
+      <select id="f_dispatch">
+        <option value="911">NG911 / CAD auto-dispatch</option>
+        <option value="manual">Manual dispatch by watch commander</option>
+        <option value="hybrid">Hybrid — auto for priority calls, manual otherwise</option>
+      </select>
+    </div>`;
+  }
+
+  // Notes
+  html+=`
+    <div class="field-group">
+      <label class="field-label">Additional Context (optional)</label>
+      <textarea id="f_notes" rows="2" placeholder="Anything specific about your jurisdiction, program history, or special requirements..."></textarea>
+    </div>
+    <button class="gen-btn" id="gen-btn" onclick="generateDoc()">
+      <i class="ph ph-magic-wand"></i> Generate Document
+    </button>`;
+
+  return html;
+}
+
+function toggleChip(el){
+  el.classList.toggle('selected');
+}
+function getChips(id){
+  return Array.from(document.querySelectorAll(`#${id} .platform-chip.selected`)).map(c=>c.dataset.val).join(', ');
+}
+
+// ── Generation ────────────────────────────────────────────────────────────────
+async function generateDoc(){
+  const btn=document.getElementById('gen-btn');
+  btn.disabled=true;
+
+  // Collect form data
+  const get=id=>(document.getElementById(id)?.value||'').trim();
+  const data={
+    doc_type: currentDoc,
+    agency: get('f_agency'),
+    state: get('f_state'),
+    city: get('f_city'),
+    responsible: get('f_responsible'),
+    email: get('f_email'),
+    platforms: getChips('platform-chips')||get('f_platform_other'),
+    aircraft_count: get('f_aircraft_count'),
+    area: get('f_area'),
+    pilots: get('f_pilots'),
+    cert: get('f_cert'),
+    daa: get('f_daa'),
+    missions: getChips('mission-chips'),
+    budget: get('f_budget'),
+    grant_type: get('f_grant_type'),
+    population: get('f_population'),
+    calls: get('f_calls'),
+    threat: get('f_threat'),
+    privacy: get('f_privacy'),
+    official: get('f_official'),
+    dispatch: get('f_dispatch'),
+    notes: get('f_notes'),
+  };
+
+  // Validate
+  if(!data.agency){alert('Agency name is required.');btn.disabled=false;return;}
+
+  // Show output area
+  document.getElementById('output').classList.add('show');
+  document.getElementById('output-title').textContent=DOC_CONFIGS[currentDoc].title;
+  document.getElementById('gen-status').classList.add('show');
+  document.getElementById('doc-preview').style.display='none';
+  document.getElementById('status-text').textContent='Generating document…';
+  document.getElementById('output').scrollIntoView({behavior:'smooth',block:'start'});
+
+  // Build the prompt
+  const prompt=buildPrompt(data);
+
+  try{
+    const tok=localStorage.getItem('wingman_sub_token')||'';
+    const ps=localStorage.getItem('wingman_proxy_secret')||'';
+    const res=await fetch('/.netlify/functions/claude-proxy',{
+      method:'POST',
+      headers:{'Content-Type':'application/json','X-Sub-Token':tok,'X-Proxy-Secret':ps},
+      body:JSON.stringify({
+        model:'claude-sonnet-4-5',
+        max_tokens:4000,
+        system:`You are a DFR program advisor specializing in FAA regulatory documents, federal grant applications, and public safety drone program documentation. 
+Generate complete, professional documents that are ready to submit or present. 
+Use specific regulatory citations. Be thorough and detailed.
+Format output as clean HTML using only these tags: h1, h2, h3, p, ul, li, div.
+Use class="doc-header" for the document header section.
+Use class="meta-row" and class="meta-item" for metadata rows.
+Use class="meta-label" and class="meta-value" for label/value pairs.
+Use class="highlight-box" for important callout sections.
+Use class="footer" for the document footer.
+Do NOT use markdown. Do NOT use backticks. Output pure HTML only.`,
+        messages:[{role:'user',content:prompt}],
+      }),
+    });
+    const result=await res.json();
+    if(result.error){throw new Error(result.error);}
+    const text=result.content?.[0]?.text||'';
+    showDoc(text);
+  }catch(err){
+    document.getElementById('status-text').textContent='Error: '+err.message;
+    document.getElementById('gen-status').style.color='var(--dfr)';
+  }finally{
+    btn.disabled=false;
+  }
+}
+
+function buildPrompt(d){
+  const today=new Date().toLocaleDateString('en-US',{year:'numeric',month:'long',day:'numeric'});
+  const cfg=DOC_CONFIGS[d.doc_type];
+
+  const base=`
+Agency: ${d.agency}
+Location: ${d.city}, ${d.state}
+Responsible Person: ${d.responsible||'[Name, Title]'}
+Contact Email: ${d.email||'[email]'}
+Platform(s): ${d.platforms||'Skydio X10'}
+Number of Aircraft: ${d.aircraft_count||'3'}
+Area of Operations: ${d.area||d.city+', '+d.state+' — full jurisdiction'}
+Number of Pilots: ${d.pilots||'4'}
+Pilot Certification: ${d.cert||'Part 107'}
+Date: ${today}
+${d.notes?'Additional context: '+d.notes:''}
+`;
+
+  const prompts={
+    cow_shielded:`Generate a complete Part 91 BVLOS Certificate of Waiver (COW) application for Shielded Operations at or below 200 feet AGL. This is for DFR (Drone as First Responder) operations.
+
+${base}
+
+The document must include:
+1. Document header with agency name, document type "Part 91 BVLOS COW Application — Shielded Operations (≤200' AGL)", date, submission email (${cfg.email})
+2. Agency Information section — full agency details, PAO/PSO status per PL 118-63 Section 926(e)
+3. Requested Authorizations — specific waiver from 14 CFR §91.113, jurisdiction-wide geographic scope
+4. Aircraft Description — platform specs, FAA registration, Remote ID compliance
+5. Operational Description — DFR mission types, dispatch integration, response procedures
+6. Shielded Operations Methodology — how natural/manmade structures mitigate airspace risk at ≤200' AGL
+7. Risk Mitigation — lost link procedures, weather minimums, restricted areas avoidance
+8. Pilot Qualifications — training requirements, self-certification process
+9. Monthly Reporting — commitment to FAA monthly data reporting
+10. Certification statement — responsible person signature block
+Include regulatory citations: 14 CFR Part 91, PL 118-63 §926(e), FAA Order JO 7200.23A`,
+
+    cow_nonshielded:`Generate a complete Part 91 BVLOS Certificate of Waiver (COW) application for Non-Shielded Operations up to 400 feet AGL. This requires electronic detect-and-avoid (DAA) technology.
+
+${base}
+DAA System: ${d.daa||'Echodyne MESA Radar'}
+
+The document must include:
+1. Document header — agency, "Part 91 BVLOS COW Application — Non-Shielded Operations (≤400' AGL)", date, submission email
+2. Agency/PSO status — PL 118-63 Section 926(e) certification
+3. Requested Authorizations — specific waivers, geographic scope
+4. Aircraft Description — platform specs, ADS-B receiver confirmation
+5. DAA System Description — technical specs of detect-and-avoid system, detection range, alert procedures
+6. Operational Description — mission types, altitudes, airspace integration
+7. Non-Cooperative DAA Methodology — how system detects non-ADS-B aircraft
+8. Airspace Coordination — controlled airspace notification procedures, CAPS/Zero Grid authorization
+9. Risk Mitigation — DAA failure procedures, weather minimums
+10. Pilot Training — DAA system operation training requirements
+11. Monthly Reporting commitment
+12. Signature/certification block`,
+
+    conops:`Generate a comprehensive Concept of Operations (CONOPS) document for a DFR drone program.
+
+${base}
+Mission Types: ${d.missions||'911 response, crime in progress, missing persons'}
+
+Include:
+1. Document header — "Concept of Operations: Drone as First Responder Program"
+2. Purpose and Scope
+3. Agency Overview and Mission
+4. UAS System Description — platform capabilities, sensors, communications
+5. Operational Environment — airspace, geography, jurisdictional boundaries
+6. Mission Profiles — detailed scenarios for each mission type with step-by-step procedures
+7. Command and Control — dispatch triggers, pilot roles, supervisor authority
+8. Airspace Integration — coordination with manned aircraft, ATC communication
+9. Emergency Procedures — lost link, lost GPS, aircraft malfunction
+10. Data Management — recording, storage, retention, evidence handling
+11. Training Requirements
+12. Maintenance and Readiness
+13. Performance Metrics — response time targets, operational availability`,
+
+    pso_letter:`Generate a formal Public Safety Organization (PSO) certification letter per PL 118-63 Section 926(e).
+
+${base}
+Signing Authority: ${d.official||d.responsible||'[Chief/Sheriff/Director Name, Title]'}
+
+This letter certifies the agency qualifies as a Public Safety Organization under FAA Reauthorization Act of 2024 (PL 118-63, Section 926(e)) for Part 91 BVLOS operations.
+
+Include:
+1. Official letterhead format — agency name, address, date
+2. Addressed to: FAA Flight Standards District Office
+3. Certification statement — agency is a governmental entity responsible for public safety
+4. Citation of specific statutory authority: PL 118-63, Section 926(e)
+5. Statement of Part 91 self-certification authority — agency can self-certify aircraft and flight crewmembers
+6. Pilot self-certification statement
+7. Agency legal authority statement
+8. Commitment to FAA reporting requirements
+9. Official signature block with title, date, contact information
+10. Make it formal, authoritative, and legally precise`,
+
+    cops_grant:`Generate a complete COPS Technology grant application narrative for DFR drone program funding.
+
+${base}
+Requested Amount: ${d.budget||'$245,000'}
+Jurisdiction Population: ${d.population||'unknown'}
+Annual 911 Calls: ${d.calls||'unknown'}
+
+Include:
+1. Project Summary — concise overview of DFR program and funding request
+2. Statement of Need — crime statistics, response time data, officer safety incidents
+3. Project Description — DFR program structure, platforms, operations
+4. NDAA Compliance Statement — Blue UAS/NDAA compliance of selected platforms, AEL item 03OE-07-SUAS
+5. Technology Solution — platform capabilities, CAD integration, evidence chain
+6. Implementation Plan — 90-day timeline with milestones
+7. Budget Narrative — detailed breakdown (platforms, docks, software, training, admin)
+8. Performance Metrics — measurable outcomes, response time improvement targets
+9. Sustainability Plan — ongoing funding after grant period
+10. Community Benefit — public safety impact, transparency measures
+Cite: AEL item 03OE-07-SUAS, NDAA §848, Blue UAS framework`,
+
+    hsgp_grant:`Generate a HSGP/SHSP grant narrative for DFR drone program funding through state homeland security administration.
+
+${base}
+Requested Amount: ${d.budget||'$180,000'}
+Threat Context: ${d.threat||'regional critical infrastructure protection, natural disaster response'}
+Jurisdiction Population: ${d.population||'unknown'}
+
+Include:
+1. Project Summary
+2. Threat and Hazard Identification — how DFR addresses specific THIRA hazards
+3. Core Capabilities Addressed — cite FEMA National Preparedness Goal core capabilities
+4. Project Description — DFR system, platforms, operations
+5. NDAA/AEL Compliance — 03OE-07-SUAS eligibility, platform compliance documentation
+6. Regional Coordination — how program supports regional mutual aid
+7. Budget Narrative — HSGP-allowable costs breakdown
+8. Implementation Timeline
+9. Performance Measures — FEMA-aligned outcomes
+10. Sustainability
+Cite: FEMA AEL 03OE-07-SUAS, HSGP FY2026 Notice of Funding Opportunity, National Preparedness Goal`,
+
+    council_memo:`Generate a formal city council memo requesting authorization and funding for a DFR program.
+
+${base}
+Budget Requested: ${d.budget||'$245,000'}
+Jurisdiction Population: ${d.population||'unknown'}
+Annual 911 Calls: ${d.calls||'unknown'}
+Privacy Safeguards: ${d.privacy||'public transparency dashboard, council oversight, data retention policy'}
+
+Include:
+1. Formal memo header — TO: Mayor/City Council, FROM: Chief/Department Head, DATE, RE: DFR Authorization
+2. Executive Summary — 3-sentence overview
+3. Program Overview — what DFR is, how it works
+4. Public Safety Case — response time improvement, officer safety, crime deterrence with cited statistics
+5. Cost-Benefit Analysis — $8.40 DFR vs $43 patrol per call (Skydio study), ROI calculation
+6. Budget Request — detailed breakdown, grant funding available (COPS, HSGP)
+7. Privacy and Civil Liberties Framework — transparency dashboard, oversight, data policy
+8. NDAA Compliance — why selected platforms are federally compliant
+9. Implementation Timeline
+10. Recommendation — specific motion language for council vote
+11. Supporting exhibits reference list`,
+
+    sop:`Generate a comprehensive Standard Operating Procedures document for a DFR drone program.
+
+${base}
+Dispatch Integration: ${d.dispatch||'911/CAD auto-dispatch'}
+Mission Types: ${d.missions||'911 response, crime in progress, search and rescue'}
+
+Include all sections:
+1. Purpose, Scope, and Applicability
+2. Definitions and Acronyms
+3. Roles and Responsibilities — Pilot in Command, Watch Commander, UAS Program Manager
+4. Equipment Standards — approved platforms, required equipment checks
+5. Pilot Qualification and Currency Requirements — training, recurrency flights, medical
+6. Dispatch Procedures — trigger criteria, CAD integration, notification chain
+7. Pre-Flight Procedures — checklist, weather minimums, airspace check, NOTAM review
+8. Flight Operations — altitude limits, speed limits, lost link procedures, emergency descent
+9. Mission-Specific Procedures — separate sections for each mission type
+10. Post-Flight Procedures — landing, battery swap, data offload, incident log
+11. Data Management — recording policy, chain of custody, retention schedule, CJIS compliance
+12. Incident Reporting — what requires a report, timeline, supervisor notification
+13. Maintenance and Airworthiness — inspection intervals, grounding criteria
+14. Record Keeping — flight logs, pilot logs, maintenance records
+15. Policy Review — annual review requirement, amendment process`,
+  };
+
+  return prompts[d.doc_type]||'Generate the requested document with full professional detail.';
+}
+
+function showDoc(html){
+  document.getElementById('gen-status').classList.remove('show');
+  document.getElementById('doc-preview').style.display='block';
+  document.getElementById('doc-content').innerHTML=html;
+}
+
+function copyDoc(){
+  const text=document.getElementById('doc-content').innerText;
+  navigator.clipboard.writeText(text).then(()=>{
+    const btn=event.target.closest('.action-btn');
+    btn.textContent='✓ Copied';
+    setTimeout(()=>{btn.innerHTML='<i class="ph ph-copy"></i> Copy Text';},2000);
+  });
+}
+</script>
+</body>
+</html>

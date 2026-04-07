@@ -61,6 +61,7 @@ PAGES = {
     'admin.html': 'admin/index.html',
     'start.html': 'start/index.html',
     'report.html': 'report/index.html',
+    'waiver.html': 'waiver/index.html',
     'terms.html': 'terms/index.html',
     'privacy.html': 'privacy/index.html',
     'pid-tuning.html': 'pid-tuning/index.html',
