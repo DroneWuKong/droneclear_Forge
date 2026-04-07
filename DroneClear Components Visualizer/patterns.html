@@ -486,7 +486,7 @@ a.brief-source-chip:hover{color:var(--text-s);border-color:var(--border-hi)}
 
   <!-- MANUFACTURERS PANEL -->
   <div class="panel" id="panel-manufacturers">
-    <div style="font:700 9px var(--mono);color:var(--text-d);letter-spacing:.12em;text-transform:uppercase;margin-bottom:4px">Manufacturer Viability Intelligence</div>
+    <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:4px"><div style="font:700 9px var(--mono);color:var(--text-d);letter-spacing:.12em;text-transform:uppercase">Manufacturer Viability Intelligence</div><div style="font:500 9px var(--mono);color:var(--text-xd)">Ranked by acq. risk ↓</div></div>
     <p style="font-size:11px;color:var(--text-d);margin-bottom:14px;line-height:1.5">Key UAS manufacturers tracked by financial health, program dependency, and acquisition risk. Viability events directly impact platform supply chains.</p>
     <div class="filter-section" style="margin-bottom:14px">
       <div class="filter-row">
@@ -3169,10 +3169,17 @@ function renderManufacturers() {
   const el = document.getElementById('mfr-list');
   if (!el) return;
 
+  const statusRank = {critical:0, restricted:0, watch:1, stable:2, strong:3};
   const filtered = MANUFACTURERS.filter(m => {
     if (activeMfrFilter === 'all') return true;
     if (activeMfrFilter === 'watch') return m.status === 'watch' || m.status === 'critical' || m.status === 'restricted';
     return m.tags.includes(activeMfrFilter);
+  }).sort(function(a, b) {
+    // Primary: acquisition_probability desc (higher risk first)
+    var ap = (b.acquisition_probability || 0) - (a.acquisition_probability || 0);
+    if (ap !== 0) return ap;
+    // Secondary: status rank (watch/critical before stable/strong)
+    return (statusRank[a.status] ?? 1) - (statusRank[b.status] ?? 1);
   });
 
   const statusColor = {
@@ -3198,7 +3205,7 @@ function renderManufacturers() {
       +'<div style="display:flex;align-items:flex-start;justify-content:space-between;gap:8px;margin-bottom:6px">'
       +'<div><div style="display:flex;align-items:center;gap:5px">'
       +'<span>'+flag+'</span>'
-      +'<span style="font:700 12px var(--font);color:var(--text)">'+m.name+'</span>'
+      +'<span style="font:700 10px var(--mono);color:var(--text-xd);background:var(--surface);padding:1px 5px;border-radius:3px;flex-shrink:0">#'+(idx+1)+'</span>'+'<span style="font:700 12px var(--font);color:var(--text)">'+m.name+'</span>'
       +'<span style="font:700 9px var(--mono);color:'+siCol+'">'+si+'</span>'
       +'</div><div style="font:400 10px var(--font);color:var(--text-d);margin-top:1px">'+m.hq+'</div></div>'
       +'<span style="font:700 9px var(--mono);padding:2px 6px;border-radius:4px;background:'+sc+'18;color:'+sc+';white-space:nowrap;flex-shrink:0">'+(m.status_label||m.status)+'</span>'
