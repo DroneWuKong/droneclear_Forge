@@ -2819,6 +2819,45 @@ function buildPersonalizedSection(tier) {
     </div>`;
   }
 
+
+  // ── Manufacturer viability alerts (all subscriber tiers) ─────────────────
+  const watchMfrs = (typeof MANUFACTURERS !== 'undefined' ? MANUFACTURERS : [])
+    .filter(m => m.status === 'watch' || m.status === 'critical' || m.status === 'restricted');
+
+  if (watchMfrs.length && tier !== 'free') {
+    // Only show if there are watch/critical ones the user should know about
+    const alertMfrs = watchMfrs.filter(m => {
+      // Commercial: skip gray zone (they probably know)
+      if (tier === 'commercial' && m.status === 'restricted') return false;
+      return true;
+    }).slice(0, 3);
+
+    if (alertMfrs.length) {
+      html += `<div style="margin-bottom:14px">
+        <div style="font:700 9px var(--mono);color:var(--text-d);text-transform:uppercase;letter-spacing:.1em;margin-bottom:6px">🏭 Manufacturer Watch</div>`;
+      for (const m of alertMfrs) {
+        const sc = m.status === 'critical' ? 'var(--red)' : m.status === 'restricted' ? 'var(--red)' : 'var(--amber)';
+        const icon = m.signal === 'negative' ? '▼' : m.signal === 'positive' ? '▲' : '◆';
+        const iconColor = m.signal === 'negative' ? 'var(--red)' : m.signal === 'positive' ? 'var(--green)' : 'var(--text-d)';
+        html += `<div style="background:var(--card);border:1px solid ${sc}20;border-left:3px solid ${sc};border-radius:8px;padding:10px 12px;margin-bottom:6px">
+          <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px;margin-bottom:4px">
+            <div>
+              <span style="font:700 11px var(--font);color:var(--text)">${m.name}</span>
+              <span style="font:700 9px var(--mono);color:${iconColor};margin-left:5px">${icon}</span>
+            </div>
+            <span style="font:700 8px var(--mono);padding:2px 6px;border-radius:3px;background:${sc}18;color:${sc};white-space:nowrap;flex-shrink:0">${m.status_label.split('—')[0].trim()}</span>
+          </div>
+          <div style="font-size:10px;color:var(--text-d);line-height:1.5">${m.key_risk.slice(0,120)}${m.key_risk.length>120?'…':''}</div>
+          <div style="margin-top:6px;display:flex;gap:6px;flex-wrap:wrap">
+            ${m.programs.slice(0,3).map(p=>`<span style="font:500 8px var(--mono);padding:2px 5px;border-radius:3px;background:rgba(245,158,11,.08);color:var(--amber)">${p}</span>`).join('')}
+          </div>
+        </div>`;
+      }
+      html += `<div style="text-align:right;margin-top:4px"><a href="/patterns/#manufacturers" style="font:600 9px var(--mono);color:var(--cyan);text-decoration:none">Full analysis →</a></div>`;
+      html += `</div>`;
+    }
+  }
+
   if (!html) return '';
 
   return `<div id="brief-personalized" style="margin-bottom:2px">${html}</div>`;

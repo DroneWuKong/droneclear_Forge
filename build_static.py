@@ -72,6 +72,7 @@ PAGES = {
     'tracker.html': 'tracker/index.html',
     'grants.html': 'grants/index.html',
     'regs.html': 'regs/index.html',
+    'verify.html': 'verify/index.html',
 }
 
 # Static assets to copy (JS, CSS, JSON, images)

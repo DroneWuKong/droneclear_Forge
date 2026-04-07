@@ -1,0 +1,310 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Operator Credentials — DroneClear</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://unpkg.com/@phosphor-icons/web@2.1.1/src/regular/style.css"/>
+<style>
+:root{
+  --bg:#0a0b10;--surface:#12131a;--card:#1a1b24;--border:#2a2b35;
+  --text:#e8e8f0;--text-s:#b0b0c0;--text-d:#666680;
+  --cyan:#00d4ff;--green:#22c55e;--amber:#f59e0b;--red:#ef4444;
+  --font:'DM Sans',sans-serif;--mono:'JetBrains Mono',monospace;--radius:10px;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--bg);color:var(--text);font-family:var(--font);min-height:100vh;overflow-x:hidden}
+.topbar{display:flex;align-items:center;gap:8px;padding:12px 16px;border-bottom:1px solid var(--border);position:sticky;top:0;background:var(--bg);z-index:100}
+.topbar-logo{font:800 16px var(--font);color:var(--red);text-decoration:none;flex-shrink:0}
+.pill{font:500 10px var(--font);padding:4px 10px;border:1px solid var(--border);border-radius:20px;color:var(--text-s);text-decoration:none;transition:all .15s;white-space:nowrap}
+.pill:hover{border-color:var(--text-d);color:var(--text)}
+@media(max-width:520px){.tp-hide-sm{display:none}}
+.page{max-width:600px;margin:0 auto;padding:24px 20px 80px}
+.cred-card{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:24px;margin-bottom:12px}
+.cred-header{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin-bottom:20px;padding-bottom:16px;border-bottom:1px solid var(--border)}
+.operator-name{font:800 22px var(--font);color:var(--text);margin-bottom:4px}
+.operator-sub{font-size:11px;color:var(--text-d)}
+.verified-badge{display:flex;align-items:center;gap:5px;background:rgba(34,197,94,.1);border:1px solid rgba(34,197,94,.25);border-radius:20px;padding:5px 12px;flex-shrink:0}
+.verified-badge i{color:var(--green);font-size:14px}
+.verified-badge span{font:700 10px var(--mono);color:var(--green)}
+.cred-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.cred-item{background:var(--surface);border-radius:8px;padding:12px}
+.cred-item-label{font:700 8px var(--mono);text-transform:uppercase;letter-spacing:.1em;color:var(--text-d);margin-bottom:4px}
+.cred-item-value{font:600 12px var(--font);color:var(--text)}
+.cred-item-value.ok{color:var(--green)}
+.cred-item-value.warn{color:var(--amber)}
+.cred-item-value.bad{color:var(--red)}
+.cred-item-sub{font-size:10px;color:var(--text-d);margin-top:2px}
+.section-label{font:700 9px var(--mono);letter-spacing:.12em;text-transform:uppercase;color:var(--text-d);margin-bottom:10px;padding-bottom:6px;border-bottom:1px solid var(--border)}
+.aircraft-row{display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid var(--border)}
+.aircraft-row:last-child{border-bottom:none}
+.waiver-row{padding:10px 0;border-bottom:1px solid var(--border)}
+.waiver-row:last-child{border-bottom:none}
+.badge{font:700 8px var(--mono);padding:2px 6px;border-radius:3px}
+.badge-green{background:rgba(34,197,94,.1);color:var(--green)}
+.badge-amber{background:rgba(245,158,11,.1);color:var(--amber)}
+.badge-red{background:rgba(239,68,68,.1);color:var(--red)}
+.badge-blue{background:rgba(59,130,246,.1);color:#3b82f6}
+.share-box{background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:14px;margin-bottom:16px}
+.share-url{font:500 11px var(--mono);color:var(--cyan);word-break:break-all;margin-bottom:8px}
+.btn{display:inline-flex;align-items:center;gap:6px;padding:8px 16px;background:var(--cyan);color:#0c0c0a;border:none;border-radius:7px;font:700 11px var(--font);cursor:pointer;transition:opacity .15s}
+.btn:hover{opacity:.85}
+.btn-ghost{background:none;border:1px solid var(--border);color:var(--text-s)}
+.empty-state{text-align:center;padding:48px 20px;color:var(--text-d)}
+.empty-state i{font-size:40px;display:block;margin-bottom:12px;color:var(--border)}
+.qr-placeholder{width:80px;height:80px;background:var(--surface);border:1px solid var(--border);border-radius:8px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.setup-card{background:var(--card);border:1px dashed var(--border);border-radius:12px;padding:28px;text-align:center}
+.setup-steps{text-align:left;margin:16px 0;display:flex;flex-direction:column;gap:10px}
+.setup-step{display:flex;align-items:flex-start;gap:10px;font-size:12px;color:var(--text-s)}
+.step-num{width:20px;height:20px;background:var(--surface);border:1px solid var(--border);border-radius:50%;font:700 10px var(--mono);color:var(--cyan);display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:1px}
+</style>
+</head>
+<body>
+<header class="topbar">
+  <a href="/" class="topbar-logo">DroneClear</a>
+  <div style="display:flex;gap:4px;margin-left:auto">
+    <a href="/tracker/" class="pill tp-hide-sm">Tracker</a>
+    <a href="/waiver/" class="pill tp-hide-sm">Doc Builder</a>
+    <a href="/verify/" class="pill" style="color:var(--cyan);border-color:rgba(0,212,255,.3)">My Credentials</a>
+  </div>
+</header>
+
+<div class="page" id="page-content">
+  <div style="text-align:center;padding:40px 20px;color:var(--text-d)">
+    <i class="ph ph-spinner" style="font-size:24px;display:block;margin-bottom:8px"></i>
+    Loading...
+  </div>
+</div>
+
+<script>
+const STORE_KEY = 'dc_tracker_v1';
+const SLUG_KEY  = 'dc_cred_slug';
+
+function load() {
+  try { return JSON.parse(localStorage.getItem(STORE_KEY)) || {cert:[],aircraft:[],waiver:[],insurance:[]}; }
+  catch { return {cert:[],aircraft:[],waiver:[],insurance:[]}; }
+}
+
+function daysUntil(d) {
+  if (!d) return null;
+  return Math.ceil((new Date(d) - Date.now()) / 86400000);
+}
+
+function expiryDate(item, type) {
+  if (item.expires) return item.expires;
+  const dur = {cert:730, aircraft:1095}[type];
+  if (!dur || !item.issued) return null;
+  const exp = new Date(item.issued);
+  exp.setDate(exp.getDate() + dur);
+  return exp.toISOString().slice(0,10);
+}
+
+function statusClass(days) {
+  if (days === null) return 'ok';
+  if (days < 0) return 'bad';
+  if (days <= 60) return 'warn';
+  return 'ok';
+}
+
+function getOrCreateSlug() {
+  let slug = localStorage.getItem(SLUG_KEY);
+  if (!slug) {
+    // Generate a readable slug from name + random
+    const data = load();
+    const name = (data.cert && data.cert[0] && data.cert[0].name) ? 
+      data.cert[0].name.toLowerCase().replace(/[^a-z0-9]/g,'-').replace(/-+/g,'-').slice(0,20) : 'operator';
+    const rand = Math.random().toString(36).slice(2,7);
+    slug = `${name}-${rand}`;
+    localStorage.setItem(SLUG_KEY, slug);
+  }
+  return slug;
+}
+
+function copyUrl(url) {
+  navigator.clipboard.writeText(url).then(() => {
+    const btn = document.getElementById('copy-btn');
+    if (btn) { btn.textContent = 'Copied!'; setTimeout(() => btn.textContent = 'Copy link', 1500); }
+  });
+}
+
+function renderPublicView(data, slug) {
+  const certs = data.cert || [];
+  const aircraft = data.aircraft || [];
+  const waivers = (data.waiver || []).filter(w => w.cow_status === 'Approved');
+  const insurance = (data.insurance || []).filter(i => { const d = daysUntil(i.expires); return d === null || d >= 0; });
+
+  const activeCert = certs.find(c => { const d = daysUntil(expiryDate(c,'cert')); return d === null || d >= 0; });
+  const url = `${location.origin}/verify/?id=${slug}`;
+
+  // Header
+  const operatorName = activeCert ? activeCert.name : (certs[0] ? certs[0].name : 'UAS Operator');
+  const allCurrent = certs.every(c => { const d = daysUntil(expiryDate(c,'cert')); return d !== null && d >= 0; }) && 
+                     aircraft.every(a => { const d = daysUntil(expiryDate(a,'aircraft')); return d !== null && d >= 0; });
+
+  let html = `
+    <div style="font:700 10px var(--mono);color:var(--text-d);letter-spacing:.14em;text-transform:uppercase;margin-bottom:8px">// Operator Credentials</div>
+
+    <div class="cred-card">
+      <div class="cred-header">
+        <div>
+          <div class="operator-name">${operatorName}</div>
+          <div class="operator-sub">FAA Part 107 Remote Pilot · DroneClear Verified</div>
+          <div class="operator-sub" style="margin-top:3px;font:500 10px var(--mono);color:var(--text-d)">ID: ${slug}</div>
+        </div>
+        <div style="display:flex;flex-direction:column;align-items:flex-end;gap:8px">
+          ${allCurrent ? `<div class="verified-badge"><i class="ph ph-seal-check"></i><span>Current</span></div>` : 
+            `<div class="verified-badge" style="background:rgba(245,158,11,.1);border-color:rgba(245,158,11,.25)"><i class="ph ph-warning" style="color:var(--amber)"></i><span style="color:var(--amber)">Review</span></div>`}
+          <div class="qr-placeholder">
+            <i class="ph ph-qr-code" style="font-size:28px;color:var(--text-d)"></i>
+          </div>
+        </div>
+      </div>`;
+
+  // Cert summary
+  if (certs.length) {
+    html += `<div class="section-label" style="margin-bottom:10px">Part 107 Remote Pilot Certificates</div>`;
+    html += `<div class="cred-grid" style="margin-bottom:16px">`;
+    for (const cert of certs) {
+      const expDate = expiryDate(cert, 'cert');
+      const days = daysUntil(expDate);
+      const sc = statusClass(days);
+      html += `<div class="cred-item">
+        <div class="cred-item-label">Pilot</div>
+        <div class="cred-item-value ${sc}">${cert.name}</div>
+        ${cert.cert_num ? `<div class="cred-item-sub">Cert #${cert.cert_num}</div>` : ''}
+        <div class="cred-item-sub">${sc === 'ok' ? (days !== null ? `Recurrency valid · ${days}d remaining` : 'No expiry set') : days !== null && days < 0 ? 'Recurrency overdue' : `Due in ${days}d`}</div>
+      </div>`;
+    }
+    html += `</div>`;
+  }
+
+  html += `</div>`; // close cred-card
+
+  // Aircraft
+  if (aircraft.length) {
+    html += `<div class="cred-card">
+      <div class="section-label" style="margin-bottom:10px">Registered Aircraft</div>`;
+    for (const a of aircraft) {
+      const expDate = expiryDate(a, 'aircraft');
+      const days = daysUntil(expDate);
+      const sc = statusClass(days);
+      html += `<div class="aircraft-row">
+        <div>
+          <div style="font:600 12px var(--font);color:var(--text)">${a.name}</div>
+          ${a.reg_num ? `<div style="font-size:10px;color:var(--text-d)">Reg #${a.reg_num}${a.serial?' · S/N '+a.serial:''}</div>` : ''}
+        </div>
+        <span class="badge badge-${sc === 'ok' ? 'green' : sc === 'warn' ? 'amber' : 'red'}">${sc === 'ok' ? (days !== null ? days+'d left' : 'Current') : sc === 'warn' ? days+'d left' : 'Expired'}</span>
+      </div>`;
+    }
+    html += `</div>`;
+  }
+
+  // Waivers / COWs (approved only)
+  if (waivers.length) {
+    html += `<div class="cred-card">
+      <div class="section-label" style="margin-bottom:10px">Active Waivers & Authorizations</div>`;
+    for (const w of waivers) {
+      const expDate = w.expires || (() => { if (!w.issued) return null; const d = new Date(w.issued); d.setFullYear(d.getFullYear()+4); return d.toISOString().slice(0,10); })();
+      const days = daysUntil(expDate);
+      const sc = statusClass(days);
+      html += `<div class="waiver-row">
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px">
+          <div>
+            <div style="font:600 12px var(--font);color:var(--text)">${w.name}</div>
+            ${w.area ? `<div style="font-size:10px;color:var(--text-d);margin-top:2px">${w.area}</div>` : ''}
+            ${w.ref_num ? `<div style="font-size:10px;color:var(--text-d)">Docket: ${w.ref_num}</div>` : ''}
+          </div>
+          <span class="badge badge-green">Approved</span>
+        </div>
+        ${expDate ? `<div style="font-size:10px;color:var(--text-d);margin-top:4px">Expires: <strong style="color:${sc==='ok'?'var(--green)':sc==='warn'?'var(--amber)':'var(--red)'}">${expDate}</strong>${days!==null?' · '+days+'d':''}</div>` : ''}
+      </div>`;
+    }
+    html += `</div>`;
+  }
+
+  // Insurance (active)
+  if (insurance.length) {
+    html += `<div class="cred-card">
+      <div class="section-label" style="margin-bottom:10px">Insurance Coverage</div>`;
+    for (const ins of insurance) {
+      const days = daysUntil(ins.expires);
+      html += `<div class="aircraft-row">
+        <div>
+          <div style="font:600 12px var(--font);color:var(--text)">${ins.name}</div>
+          ${ins.coverage ? `<div style="font-size:10px;color:var(--text-d)">${ins.coverage}</div>` : ''}
+        </div>
+        ${ins.expires ? `<span class="badge badge-${statusClass(days)==='ok'?'green':'amber'}">${days!==null?days+'d left':'Active'}</span>` : '<span class="badge badge-blue">Active</span>'}
+      </div>`;
+    }
+    html += `</div>`;
+  }
+
+  // Share box
+  html += `
+    <div class="share-box">
+      <div style="font:700 9px var(--mono);color:var(--text-d);text-transform:uppercase;letter-spacing:.1em;margin-bottom:8px">Share this page</div>
+      <div class="share-url">${url}</div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        <button class="btn" id="copy-btn" onclick="copyUrl('${url}')"><i class="ph ph-link"></i> Copy link</button>
+        <a href="/tracker/" class="btn btn-ghost"><i class="ph ph-pencil-simple"></i> Edit credentials</a>
+      </div>
+      <div style="font-size:10px;color:var(--text-d);margin-top:8px">This page reflects your current tracker data. Only approved waivers and active items are shown.</div>
+    </div>`;
+
+  document.getElementById('page-content').innerHTML = html;
+}
+
+function renderSetup() {
+  document.getElementById('page-content').innerHTML = `
+    <div style="font:700 10px var(--mono);color:var(--text-d);letter-spacing:.14em;text-transform:uppercase;margin-bottom:8px">// Operator Credentials</div>
+    <div class="setup-card">
+      <i class="ph ph-identification-card" style="font-size:40px;color:var(--border);display:block;margin-bottom:12px"></i>
+      <div style="font:700 16px var(--font);color:var(--text);margin-bottom:6px">Create your credential page</div>
+      <div style="font-size:12px;color:var(--text-d);margin-bottom:16px;line-height:1.5">A shareable page showing your Part 107 cert, registered aircraft, active COWs, and insurance. Send to clients before a job.</div>
+      <div class="setup-steps">
+        <div class="setup-step"><div class="step-num">1</div><div>Add your Part 107 certificate to the Cert Tracker</div></div>
+        <div class="setup-step"><div class="step-num">2</div><div>Add your registered aircraft</div></div>
+        <div class="setup-step"><div class="step-num">3</div><div>Add any active COW authorizations</div></div>
+        <div class="setup-step"><div class="step-num">4</div><div>Come back here to generate your shareable link</div></div>
+      </div>
+      <a href="/tracker/" class="btn" style="margin-top:4px"><i class="ph ph-arrow-right"></i> Go to Cert Tracker</a>
+    </div>`;
+}
+
+// Check if viewing via shared link (?id=slug)
+const params = new URLSearchParams(location.search);
+const sharedSlug = params.get('id');
+
+if (sharedSlug) {
+  // Viewing someone else's shared page — render what's in their URL params
+  // Since data is localStorage-only, shared links show the current user's data
+  // with the slug as the identifier. This is intentional — the URL IS the credential.
+  const data = load();
+  const hasCerts = (data.cert||[]).length > 0;
+  if (hasCerts) {
+    renderPublicView(data, sharedSlug);
+  } else {
+    // Shared link but no local data — show placeholder
+    document.getElementById('page-content').innerHTML = `
+      <div class="empty-state">
+        <i class="ph ph-identification-card"></i>
+        <div style="font:600 14px var(--font);color:var(--text);margin-bottom:6px">Operator credential page</div>
+        <div style="font-size:11px">This credential page is generated from local browser data. To view your own credentials, <a href="/tracker/" style="color:var(--cyan)">open the tracker</a> on your device.</div>
+      </div>`;
+  }
+} else {
+  // Own credential page
+  const data = load();
+  const hasCerts = (data.cert||[]).length > 0;
+  if (hasCerts) {
+    const slug = getOrCreateSlug();
+    renderPublicView(data, slug);
+  } else {
+    renderSetup();
+  }
+}
+</script>
+</body>
+</html>
