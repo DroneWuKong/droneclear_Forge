@@ -246,7 +246,9 @@ function renderDFR(){
     const isPaidDfr=x.paywall;
     const flagsDfr=getPIEFlags(x);
     if(isPaidDfr&&!isProUser()) return paywallGate(x.title);
-    return`<div class="acard dfr" onclick="handleCardClick(this)" data-rid="${x.id||''}" data-url="${(u||'').replace(/"/g,'&quot;')}" data-title="${(x.title||'').substring(0,80).replace(/"/g,'&quot;')}">
+    const dfrKey=x.id||('dfr_'+Math.random().toString(36).slice(2,8));
+    if(!x.id) RENDER_CACHE[dfrKey]=x;
+    return`<div class="acard dfr" onclick="handleCardClick(this)" data-rid="${dfrKey}">
       <div style="display:flex;gap:6px;align-items:center;margin-bottom:4px;flex-wrap:wrap">
         ${isExcl?'<span class="badge" style="background:var(--dfr-d);color:var(--dfr)">EXCLUSIVE</span>':''}
         <span class="badge" style="background:var(--dfr-d);color:var(--dfr)">DFR</span>
@@ -556,6 +558,7 @@ function forgeIntelToCommercialRecords(fi){
 let defSubFilter='all';
 let DEFENSE_DB=[];
 let DFR_DB=[];
+let RECORD_INDEX={};
 function renderDefense(){
   let a=[...DEFENSE_DB];
   // also pull keyword-matched articles from main feed
@@ -576,7 +579,9 @@ function renderDefense(){
     const isPaid=x.paywall;
     const flags=getPIEFlags(x);
     if(isPaid&&!isProUser()) return paywallGate(x.title);
-    return`<div class="acard defense" onclick="handleCardClick(this)" data-rid="${x.id||''}" data-url="${(u||'').replace(/"/g,'&quot;')}" data-title="${(x.title||'').substring(0,80).replace(/"/g,'&quot;')}">
+    const defKey=x.id||('def_'+Math.random().toString(36).slice(2,8));
+    if(!x.id) RENDER_CACHE[defKey]=x;
+    return`<div class="acard defense" onclick="handleCardClick(this)" data-rid="${defKey}">
       <div style="display:flex;gap:6px;align-items:center;margin-bottom:4px;flex-wrap:wrap">
         ${isPaid?'<span class="badge" style="background:var(--defense-d);color:var(--defense)">🔒 PRO</span>':''}
         <span class="badge" style="background:var(--defense-d);color:var(--defense)">DEFENSE</span>
@@ -616,7 +621,9 @@ function renderCommercial(){
     const isPaid=x.paywall;
     const flags=getPIEFlags(x);
     if(isPaid&&!isProUser()) return paywallGate(x.title);
-    return`<div class="acard commercial" onclick="handleCardClick(this)" data-rid="${x.id||''}" data-url="${(u||'').replace(/"/g,'&quot;')}" data-title="${(x.title||'').substring(0,80).replace(/"/g,'&quot;')}">
+    const comKey=x.id||('com_'+Math.random().toString(36).slice(2,8));
+    if(!x.id) RENDER_CACHE[comKey]=x;
+    return`<div class="acard commercial" onclick="handleCardClick(this)" data-rid="${comKey}">
       <div style="display:flex;gap:6px;align-items:center;margin-bottom:4px;flex-wrap:wrap">
         ${isPaid?'<span class="badge" style="background:var(--commercial-d);color:var(--commercial)">🔒 PRO</span>':''}
         <span class="badge" style="background:var(--commercial-d);color:var(--commercial)">COMMERCIAL</span>
@@ -634,11 +641,19 @@ function renderCommercial(){
   }).join('')+(filtered.length>80?`<div style="text-align:center;padding:20px;color:var(--text-d);font:11px var(--mono)">Showing 80 of ${filtered.length}</div>`:'');
 }
 
+let RENDER_CACHE={};
 function handleCardClick(el){
   const rid=el.dataset.rid;
+  // DB record — open rich modal
   if(rid && RECORD_INDEX[rid]){ openDM(RECORD_INDEX[rid]); return; }
-  const u=el.dataset.url, t=el.dataset.title;
-  if(u) or(u, t);
+  // Feed article cached during render
+  if(rid && RENDER_CACHE[rid]){
+    const x=RENDER_CACHE[rid];
+    or(x.url||'#', x.title||'');
+    return;
+  }
+  // Fallback — shouldn't happen
+  console.warn('handleCardClick: no record for rid', rid);
 }
 
 // Auto-open tab from URL param (?tab=dfr, ?cat=defense, etc.)
@@ -664,6 +679,8 @@ Promise.all([
   DEFENSE_DB=[...(defDB.records||[]), ...forgeIntelToDefenseRecords(forgeIntel)];
   COMMERCIAL_DB=[...(comDB.records||[]), ...forgeIntelToCommercialRecords(forgeIntel)];
   DFR_DB=(dfrDB.records||[]).filter(r=>r.vertical_tag==='dfr');
+  RECORD_INDEX={};
+  [...DEFENSE_DB,...COMMERCIAL_DB,...DFR_DB].forEach(r=>{if(r.id)RECORD_INDEX[r.id]=r;});
   PIE_FLAGS=pieFlags||[];
   PIE_PREDS=piePreds||[];
   PIE_BRIEF=pieBrief||{};
