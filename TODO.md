@@ -10,7 +10,7 @@
 ## DFR
 - [ ] Add 5 compliance KB entries to forge_troubleshooting.json (from DFR Regulatory Brief)
 - [ ] Run mine_pilotinstitute.py and merge output into dfr_master.json
-- [ ] Stripe: rename STRIPE_PRO_PRICE_ID → STRIPE_DFR_PRICE_ID and create STRIPE_COMMERCIAL_PRICE_ID in Netlify env vars
+- [x] Stripe: rename STRIPE_PRO_PRICE_ID → STRIPE_DFR_PRICE_ID and create STRIPE_COMMERCIAL_PRICE_ID in Netlify env vars
 - [ ] Set GITHUB_PAT in Forge Netlify env (required for Ai-Project build-time clone)
 - [ ] Verify /intel-dfr/ page live and correctly displays 14-platform DB
 - [ ] Add Percepto Sparrow NDAA status — verify with vendor before enabling for federal procurement recommendations
