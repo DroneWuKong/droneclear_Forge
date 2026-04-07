@@ -13,6 +13,7 @@ jobs:
   mine-police1-dfr:
     name: "M-02 | Police1 / PoliceMag DFR"
     runs-on: ubuntu-latest
+    continue-on-error: true
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -28,6 +29,7 @@ jobs:
   mine-dronedj-dfr:
     name: "M-03 | DroneDJ DFR Tag"
     runs-on: ubuntu-latest
+    continue-on-error: true
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -43,6 +45,7 @@ jobs:
   mine-commercialuav-dfr:
     name: "M-04 | Commercial UAV News DFR"
     runs-on: ubuntu-latest
+    continue-on-error: true
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -58,6 +61,7 @@ jobs:
   mine-faa-beyond:
     name: "R-01 | FAA BEYOND Waiver Tracker"
     runs-on: ubuntu-latest
+    continue-on-error: true
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -73,6 +77,7 @@ jobs:
   mine-dhs-ael:
     name: "R-03 | DHS AEL Reference"
     runs-on: ubuntu-latest
+    continue-on-error: true
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -88,6 +93,7 @@ jobs:
   mine-nasao-whitepaper:
     name: "NASAO | White Paper Monitor"
     runs-on: ubuntu-latest
+    continue-on-error: true
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -103,6 +109,7 @@ jobs:
   mine-municipal-rfp:
     name: "G-06 | Municipal RFP / Known Programs"
     runs-on: ubuntu-latest
+    continue-on-error: true
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -120,6 +127,7 @@ jobs:
   mine-droneresponders:
     name: "M-01 | DRONERESPONDERS"
     runs-on: ubuntu-latest
+    continue-on-error: true
     if: github.event.schedule == '0 7 * * 0' || github.event_name == 'workflow_dispatch'
     steps:
       - uses: actions/checkout@v4
@@ -136,6 +144,7 @@ jobs:
   mine-grants-gov-dfr:
     name: "G-01 | Grants.gov DFR Monitor"
     runs-on: ubuntu-latest
+    continue-on-error: true
     if: github.event.schedule == '0 7 * * 0' || github.event_name == 'workflow_dispatch'
     steps:
       - uses: actions/checkout@v4
@@ -152,6 +161,7 @@ jobs:
   mine-route-fifty:
     name: "M-06 | Route Fifty / GovTech"
     runs-on: ubuntu-latest
+    continue-on-error: true
     if: github.event.schedule == '0 7 * * 0' || github.event_name == 'workflow_dispatch'
     steps:
       - uses: actions/checkout@v4
@@ -189,12 +199,13 @@ jobs:
         with:
           path: artifact-staging/
           merge-multiple: true
+        continue-on-error: true
       - name: Copy artifacts into raw dir
         run: |
           mkdir -p data/dfr/raw
           find artifact-staging/ -name "*.json" -exec cp {} data/dfr/raw/ \; 2>/dev/null || true
           echo "Raw files after merge:"
-          ls data/dfr/raw/
+          ls data/dfr/raw/ || echo "(none)"
       - name: Normalize and update master DB
         run: python scripts/dfr/normalize.py
       - name: Commit and push
