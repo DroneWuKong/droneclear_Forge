@@ -376,7 +376,7 @@ select{-webkit-appearance:none;appearance:none;background-image:url("data:image/
     <div class="doc-grid">
 
       <div class="doc-card" data-doc="sop" onclick="selectDoc(this)">
-        <div class="doc-card-badge badge-agency">Defense</div>
+        <div class="doc-card-badge badge-agency">Agency/div>
         <div class="doc-card-icon">📖</div>
         <div class="doc-card-name">DFR Program SOP Template</div>
         <div class="doc-card-desc">Standard Operating Procedures for a DFR program. Covers dispatch triggers, pilot qualifications, flight rules, incident reporting, and data management.</div>
@@ -384,7 +384,7 @@ select{-webkit-appearance:none;appearance:none;background-image:url("data:image/
       </div>
 
       <div class="doc-card" data-doc="ndaa_procurement" onclick="selectDoc(this)">
-        <div class="doc-card-badge badge-agency">Defense</div>
+        <div class="doc-card-badge badge-agency">Agency/div>
         <div class="doc-card-icon">📑</div>
         <div class="doc-card-name">NDAA Procurement Justification Memo</div>
         <div class="doc-card-desc">Formal memo for contracting officers justifying NDAA-compliant drone procurement. Covers §848 compliance, Blue UAS status, and exception documentation.</div>
@@ -392,7 +392,7 @@ select{-webkit-appearance:none;appearance:none;background-image:url("data:image/
       </div>
 
       <div class="doc-card" data-doc="blue_uas_comparison" onclick="selectDoc(this)">
-        <div class="doc-card-badge badge-agency">Defense</div>
+        <div class="doc-card-badge badge-agency">Agency/div>
         <div class="doc-card-icon">⚖️</div>
         <div class="doc-card-name">Blue UAS Platform Comparison Report</div>
         <div class="doc-card-desc">Structured vendor evaluation comparing Blue UAS cleared platforms on mission fit, cost, support, and compliance. Ready for source selection documentation.</div>
@@ -400,7 +400,7 @@ select{-webkit-appearance:none;appearance:none;background-image:url("data:image/
       </div>
 
       <div class="doc-card" data-doc="part107_bvlos" onclick="selectDoc(this)">
-        <div class="doc-card-badge badge-agency">Defense</div>
+        <div class="doc-card-badge badge-agency">Agency/div>
         <div class="doc-card-icon">✈️</div>
         <div class="doc-card-name">Part 107 BVLOS Waiver</div>
         <div class="doc-card-desc">Commercial operator waiver of 14 CFR §107.31 for beyond visual line of sight operations. For survey, inspection, mapping, and delivery operators.</div>
@@ -408,7 +408,7 @@ select{-webkit-appearance:none;appearance:none;background-image:url("data:image/
       </div>
 
       <div class="doc-card" data-doc="data_privacy" onclick="selectDoc(this)">
-        <div class="doc-card-badge badge-agency">Defense</div>
+        <div class="doc-card-badge badge-agency">Agency/div>
         <div class="doc-card-icon">🔒</div>
         <div class="doc-card-name">Data Collection & Privacy Policy</div>
         <div class="doc-card-desc">Comprehensive drone data policy covering CJIS compliance, data sovereignty, retention schedules, third-party sharing restrictions, and breach response.</div>
@@ -416,7 +416,7 @@ select{-webkit-appearance:none;appearance:none;background-image:url("data:image/
       </div>
 
       <div class="doc-card" data-doc="contractor_compliance" onclick="selectDoc(this)">
-        <div class="doc-card-badge badge-agency">Defense</div>
+        <div class="doc-card-badge badge-agency">Agency/div>
         <div class="doc-card-icon">📝</div>
         <div class="doc-card-name">Contractor UAS Compliance Agreement</div>
         <div class="doc-card-desc">Agreement for agencies hiring drone contractors. Covers NDAA compliance, pilot certification, insurance, data handling, and liability allocation.</div>
@@ -424,7 +424,7 @@ select{-webkit-appearance:none;appearance:none;background-image:url("data:image/
       </div>
 
       <div class="doc-card" data-doc="incident_response" onclick="selectDoc(this)">
-        <div class="doc-card-badge badge-agency">Defense</div>
+        <div class="doc-card-badge badge-agency">Agency/div>
         <div class="doc-card-icon">🚑</div>
         <div class="doc-card-name">Incident Response Plan</div>
         <div class="doc-card-desc">Post-incident procedures for drone accidents, security incidents, data breaches, and unauthorized operations. Covers FAA reporting, public comms, and review process.</div>
@@ -469,10 +469,12 @@ function getTier(){
   if(ps) return 'agency';
   if(!tok) return 'free';
   try{
-    const p=JSON.parse(atob(tok));
+    const outer=JSON.parse(atob(tok));
+    // Token structure: { payload: { tier, exp, ... }, sig: "..." }
+    const p=outer.payload||outer;
     if(p.exp&&Date.now()>p.exp)return'free';
     const t=p.tier||'commercial';
-    // backwards compat: old 'pro' tokens map to 'dfr', old 'agency' tokens stay
+    // backwards compat: old 'pro' tokens map to 'dfr'
     if(t==='pro') return 'dfr';
     return t;
   }catch{return'free';}
