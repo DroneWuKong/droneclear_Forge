@@ -69,6 +69,9 @@ PAGES = {
     'brief.html': 'brief/index.html',
     'patterns-home.html': 'patterns-home/index.html',
     'tools-home.html': 'tools-home/index.html',
+    'tracker.html': 'tracker/index.html',
+    'grants.html': 'grants/index.html',
+    'regs.html': 'regs/index.html',
 }
 
 # Static assets to copy (JS, CSS, JSON, images)
