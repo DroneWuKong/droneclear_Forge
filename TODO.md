@@ -21,7 +21,7 @@
 - [ ] Consider adding Subpart D category compliance guide (over-people ops) as free doc
 
 ## Admin / Token Console
-- [ ] Rotate PAT exposed in chat session ([REVOKED-PAT] — revoke immediately)
+- [x] Rotate PAT — revoke old token, set new GITHUB_PAT in Netlify env vars
 - [ ] Add token count by tier to admin sidebar stats (Commercial: N / DFR: N / Agency: N)
 
 ## Analytics
