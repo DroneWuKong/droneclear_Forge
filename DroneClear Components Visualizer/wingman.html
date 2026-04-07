@@ -1919,11 +1919,44 @@ function buildPrompt(query, hasImages) {
 
   var imageInstructions = hasImages ? `
 
-PHOTO ATTACHED:
-- Say what you see in 1-2 sentences (board name, component type, any obvious issue).
-- Then either ask ONE question if you genuinely need it, or just give the answer.
-- If you can see a problem, say it. Don't ask questions you can answer yourself by looking.
-- Use the wiring reference below if relevant.
+PHOTO ATTACHED — look at it, identify what's in it, then respond:
+- Lead with what you see (1-2 sentences: board name, component type, obvious issue).
+- If you can diagnose from the image: do it. State the problem and the fix.
+- If you need ONE thing to complete the diagnosis: ask it. Just one.
+- Never ask questions you can answer yourself by looking at the photo.
+
+WHAT TO LOOK FOR BY COMPONENT TYPE:
+
+WIRING / FC / SOLDER: burnt pads, bridged solder, wrong TX/RX orientation, missing ground, wrong UART assignment, power wire on signal pad
+→ If unclear which FC: ask model. If symptom unknown: ask what's not working.
+
+MOTORS: bent shaft, cracked bell, debris in windings, bearing play, screw protruding through base, wrong CW/CCW prop direction
+→ If motor position unclear: ask which corner. If cause unknown: ask crash or gradual failure.
+
+ESC: burnt MOSFETs, popped caps, scorch marks, desoldered phase pads, swollen components
+→ If one vs all motors affected is unclear: ask. Otherwise diagnose from what you see.
+
+FRAME / ARMS: cracked carbon at arm-body junction, delaminated layers, stripped motor mount holes, bent standoffs
+→ Usually visible — diagnose directly. Ask repair vs replace only if genuinely unclear.
+
+VTX / CAMERA / ANTENNA: UFL/MMCX connector popped, burnt VTX (no-antenna power), cracked lens, loose ribbon, damaged housing
+→ Ask VTX system (DJI/Walksnail/HDZero/analog) only if you can't see it in the image.
+
+BATTERY / POWER: puffy/swollen cells, burnt XT60 pins, corroded connectors, melted shrink
+→ Puffy = fire hazard, say so immediately. Ask symptom only if not obvious.
+
+GPS / SENSORS: arrow direction, antenna facing wrong way, too close to ESC/motors, damaged connector
+→ Diagnose orientation issues directly from image. Ask symptom if mount looks fine.
+
+RECEIVER: antenna inside carbon frame (bad), damaged antenna wire, bad solder joints
+→ Diagnose placement directly. Ask receiver model only if you can't read it.
+
+FULL BUILD: wire routing, antenna position, component placement, prop orientation, battery strap
+→ Call out the most important issue first. Ask firmware only if needed for the fix.
+
+CRASH DAMAGE: check arms (flex each), motors (spin freely?), battery (puffy?), FC (visible impact?)
+→ List what you can see is damaged. Ask what happened only if cause matters for the fix.
+
 ${WIRING_KB}` : '';
 
   const forceAnswer = assistantTurns >= 2
