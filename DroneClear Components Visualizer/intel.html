@@ -225,6 +225,7 @@ let ALL=[],cC='all',cS='all',cR='all';
 let dfrSubFilter='all';
 function renderDFR(){
   // Merge DFR_DB records with keyword-matched articles, dedup by id/url
+  window.DC=[];
   const feedDfr=ALL.filter(a=>cat(a)==='dfr');
   const dbIds=new Set((DFR_DB||[]).map(r=>r.id));
   const merged=[...(DFR_DB||[]),...feedDfr.filter(a=>!dbIds.has(a.id))];
@@ -246,10 +247,8 @@ function renderDFR(){
     const isPaidDfr=x.paywall;
     const flagsDfr=getPIEFlags(x);
     if(isPaidDfr&&!isDFRUser()) return paywallGate(x.title,'dfr');
-    const dfrOnclick=x.url&&x.url!=='#'
-      ? `or('${(x.url||'').replace(/'/g,"\\'")}','${(x.title||'').replace(/'/g,"\\'").substring(0,60)}')`
-      : ``;
-    return`<div class="acard dfr" onclick="${dfrOnclick}">
+    var di=window.DC.push(x)-1;
+    return`<div class="acard dfr" onclick="window.dc(${di})">
       <div style="display:flex;gap:6px;align-items:center;margin-bottom:4px;flex-wrap:wrap">
         ${isExcl?'<span class="badge" style="background:var(--dfr-d);color:var(--dfr)">EXCLUSIVE</span>':''}
         <span class="badge" style="background:var(--dfr-d);color:var(--dfr)">DFR</span>
@@ -414,6 +413,12 @@ function getTier(){
 function isProUser(){ var t=getTier();return t==='pro'||t==='agency'; }
 function isDFRUser(){ var t=getTier();return t==='dfr'||t==='pro'||t==='agency'; }
 
+window.DC=[];
+window.dc=function(i){
+  var r=window.DC[i];if(!r)return;
+  if(r.url&&r.url!=='#'){or(r.url,r.title||'');}
+};
+
 function paywallGate(title, vertical){
   const isDFR=vertical==='dfr';
   const minTier=isDFR?'DFR ($29/mo)':'Pro ($49/mo)';
@@ -566,6 +571,7 @@ let DEFENSE_DB=[];
 let DFR_DB=[];
 window.RECORD_INDEX={};
 function renderDefense(){
+  window.DC=[];
   let a=[...DEFENSE_DB];
   // also pull keyword-matched articles from main feed
   const feedDef=ALL.filter(x=>cat(x)==='defense' && x.article_type!=='defense');
@@ -585,10 +591,8 @@ function renderDefense(){
     const isPaid=x.paywall;
     const flags=getPIEFlags(x);
     if(isPaid&&!isProUser()) return paywallGate(x.title);
-    const defOnclick=x.url&&x.url!=='#'
-      ? `or('${(x.url||'').replace(/'/g,"\\'")}','${(x.title||'').replace(/'/g,"\\'").substring(0,60)}')`
-      : ``;
-    return`<div class="acard defense" onclick="${defOnclick}">
+    var dfi=window.DC.push(x)-1;
+    return`<div class="acard defense" onclick="window.dc(${dfi})">
       <div style="display:flex;gap:6px;align-items:center;margin-bottom:4px;flex-wrap:wrap">
         ${isPaid?'<span class="badge" style="background:var(--defense-d);color:var(--defense)">🔒 PRO</span>':''}
         <span class="badge" style="background:var(--defense-d);color:var(--defense)">DEFENSE</span>
@@ -610,6 +614,7 @@ function renderDefense(){
 let comSubFilter='all';
 let COMMERCIAL_DB=[];
 function renderCommercial(){
+  window.DC=[];
   let a=[...COMMERCIAL_DB];
   const feedCom=ALL.filter(x=>cat(x)==='commercial' && x.article_type!=='commercial');
   const allCom=[...a,...feedCom];
@@ -628,10 +633,8 @@ function renderCommercial(){
     const isPaid=x.paywall;
     const flags=getPIEFlags(x);
     if(isPaid&&!isProUser()) return paywallGate(x.title);
-    const comOnclick=x.url&&x.url!=='#'
-      ? `or('${(x.url||'').replace(/'/g,"\\'")}','${(x.title||'').replace(/'/g,"\\'").substring(0,60)}')`
-      : ``;
-    return`<div class="acard commercial" onclick="${comOnclick}">
+    var coi=window.DC.push(x)-1;
+    return`<div class="acard commercial" onclick="window.dc(${coi})">
       <div style="display:flex;gap:6px;align-items:center;margin-bottom:4px;flex-wrap:wrap">
         ${isPaid?'<span class="badge" style="background:var(--commercial-d);color:var(--commercial)">🔒 PRO</span>':''}
         <span class="badge" style="background:var(--commercial-d);color:var(--commercial)">COMMERCIAL</span>
