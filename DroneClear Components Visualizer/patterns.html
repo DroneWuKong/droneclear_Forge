@@ -2395,11 +2395,11 @@ function renderManufacturers() {
   const signalIcon = {positive: '▲', neutral: '◆', negative: '▼'};
   const signalColor = {positive: 'var(--green)', neutral: 'var(--text-d)', negative: 'var(--red)'};
 
-  el.innerHTML = filtered.map(m => {
+  el.innerHTML = filtered.map((m,idx) => {
     const sc = statusColor[m.status] || 'var(--text-d)';
     const countryFlag = {US:'🇺🇸',CN:'🇨🇳',FR:'🇫🇷','US (shell)':'🇺🇸'}[m.country] || '🌐';
 
-    return `<div class="flag-card" style="border-left:3px solid ${sc};margin-bottom:10px">
+    return `<div class="flag-card" data-mfr-idx="${idx}" style="border-left:3px solid ${sc};margin-bottom:10px;cursor:pointer">
       <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:8px;margin-bottom:8px">
         <div>
           <div style="display:flex;align-items:center;gap:6px">
@@ -2439,6 +2439,28 @@ function renderManufacturers() {
       ${m.programs.length ? `<div style="margin-top:8px;display:flex;gap:3px;flex-wrap:wrap">${m.programs.map(p => `<span style="font:500 9px var(--mono);padding:2px 5px;border-radius:3px;background:rgba(245,158,11,.08);color:var(--amber)">${p}</span>`).join('')}</div>` : ''}
     </div>`;
   }).join('') || '<div style="text-align:center;padding:32px;color:var(--text-d);font-size:12px">No manufacturers match this filter.</div>';
+
+  el.querySelectorAll("[data-mfr-idx]").forEach(function(card) {
+    card.addEventListener("click", function() {
+      var m = filtered[+card.dataset.mfrIdx]; if (!m) return;
+      var sc = {strong:"var(--green)",stable:"var(--cyan)",watch:"var(--amber)",restricted:"var(--red)",critical:"var(--red)"}[m.status]||"var(--text-d)";
+      var body = "";
+      body += '<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px">';
+      (m.tags||[]).forEach(function(t){ body += '<span style="font:500 9px var(--mono);padding:2px 6px;border-radius:3px;background:rgba(59,130,246,.1);color:var(--blue)">'+t+'</span>'; });
+      body += '<span style="font:500 9px var(--mono);padding:2px 6px;border-radius:3px;background:var(--surface);color:var(--text-d)">'+(m.ndaa_status||"")+'</span></div>';
+      body += '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px">';
+      body += '<div style="background:var(--surface);border-radius:6px;padding:8px 10px"><div style="font:500 9px var(--mono);color:var(--text-d);margin-bottom:2px">STATUS</div><div style="font:600 11px var(--font);color:'+sc+'">'+(m.status_label||m.status)+'</div></div>';
+      body += '<div style="background:var(--surface);border-radius:6px;padding:8px 10px"><div style="font:500 9px var(--mono);color:var(--text-d);margin-bottom:2px">COUNTRY</div><div style="font:600 11px var(--font);color:var(--text)">'+(m.country||"")+'</div></div>';
+      body += '</div>';
+      if (m.key_risk) body += '<div style="background:var(--surface);border-radius:6px;padding:8px 10px;margin-bottom:8px"><div style="font:500 9px var(--mono);color:var(--text-d);margin-bottom:2px">KEY RISK</div><div style="font:400 11px var(--font);color:var(--text-s);line-height:1.5">'+m.key_risk+'</div></div>';
+      if (m.dependency_note) body += '<div style="background:var(--surface);border-radius:6px;padding:8px 10px;margin-bottom:8px"><div style="font:500 9px var(--mono);color:var(--text-d);margin-bottom:2px">SUPPLY CHAIN</div><div style="font:400 11px var(--font);color:var(--text-s);line-height:1.5">'+m.dependency_note+'</div></div>';
+      if (m.funding) body += '<div style="background:var(--surface);border-radius:6px;padding:8px 10px;margin-bottom:8px"><div style="font:500 9px var(--mono);color:var(--text-d);margin-bottom:2px">FUNDING</div><div style="font:600 11px var(--font);color:var(--text)">'+m.funding+'</div>'+(m.last_round&&m.last_round!='none'?'<div style="font:400 10px var(--font);color:var(--text-d);margin-top:2px">Last round: '+m.last_round+'</div>':'')+'</div>';
+      var relFlags = FLAGS.filter(function(f){return (f.title||"").toLowerCase().indexOf((m.name||"").split(" ")[0].toLowerCase())>-1;});
+      if (relFlags.length) { body += '<div><div style="font:600 9px var(--mono);color:var(--text-d);margin-bottom:6px">Related Flags ('+relFlags.length+')</div>'+relFlags.slice(0,5).map(function(f){return '<div style="background:var(--surface);border-radius:6px;padding:6px 9px;margin-bottom:4px;font:400 10px var(--font);color:var(--text-s)">'+f.title+'</div>';}).join("")+'</div>'; }
+      openDetailModal(m.name, (m.hq||"")+" · "+(m.status_label||m.status), body);
+    });
+  });
+
 }
 // ─────────────────────────────────────────────────────────────────────────────
 
