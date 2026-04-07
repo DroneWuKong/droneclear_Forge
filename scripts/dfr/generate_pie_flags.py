@@ -427,16 +427,21 @@ def main():
     master = json.loads(DFR_MASTER.read_text())
     new_flags = build_flags(master)
 
-    # Load existing flags, strip old DFR flags, merge new ones
+    # Load existing flags
     existing = json.loads(PIE_FLAGS.read_text()) if PIE_FLAGS.exists() else []
-    non_dfr  = [f for f in existing if not f.get("id","").startswith("dfr_")]
-    merged   = non_dfr + new_flags
+    
+    # Preserve manually-curated DFR flags (those not generated from master DB)
+    # Generator owns flags whose IDs match generated flag IDs; others are preserved
+    generated_ids = {f["id"] for f in new_flags}
+    non_dfr = [f for f in existing if not f.get("id","").startswith("dfr_")]
+    manual_dfr = [f for f in existing if f.get("id","").startswith("dfr_") and f["id"] not in generated_ids]
+    merged = non_dfr + manual_dfr + new_flags
 
     PIE_FLAGS.write_text(json.dumps(merged, indent=2))
 
     dfr_count = len(new_flags)
     total     = len(merged)
-    print(f"[DONE] Generated {dfr_count} DFR flags → pie_flags.json ({total} total)")
+    print(f"[DONE] Generated {dfr_count} master-DB flags + {len(manual_dfr)} curated flags → {total} total DFR in pie_flags.json")
     print()
     by_sev = {}
     for f in new_flags:
