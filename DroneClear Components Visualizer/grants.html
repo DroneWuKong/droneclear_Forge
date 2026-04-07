@@ -1,0 +1,316 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Grant Calendar — DroneClear DFR</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://unpkg.com/@phosphor-icons/web@2.1.1/src/regular/style.css"/>
+<style>
+:root{
+  --bg:#0a0b10;--surface:#12131a;--card:#1a1b24;--border:#2a2b35;
+  --text:#e8e8f0;--text-s:#b0b0c0;--text-d:#666680;
+  --cyan:#00d4ff;--green:#22c55e;--amber:#f59e0b;--red:#ef4444;--blue:#3b82f6;--dfr:#f0a500;
+  --font:'DM Sans',sans-serif;--mono:'JetBrains Mono',monospace;--radius:10px;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--bg);color:var(--text);font-family:var(--font);min-height:100vh}
+.topbar{display:flex;align-items:center;gap:10px;padding:14px 20px;border-bottom:1px solid var(--border);position:sticky;top:0;background:var(--bg);z-index:100}
+.topbar-logo{font:800 16px var(--font);color:var(--red);text-decoration:none}
+.pill{font:500 11px var(--font);padding:5px 12px;border:1px solid var(--border);border-radius:20px;color:var(--text-s);text-decoration:none;transition:all .15s}
+.pill.active{border-color:var(--dfr);color:var(--dfr)}
+.page{max-width:680px;margin:0 auto;padding:24px 20px 80px}
+.eyebrow{font:700 10px var(--mono);letter-spacing:.14em;text-transform:uppercase;color:var(--dfr);margin-bottom:8px}
+h1{font:800 24px var(--font);color:var(--text);line-height:1.2;margin-bottom:6px}
+.sub{font-size:12px;color:var(--text-d);margin-bottom:24px;line-height:1.5}
+.filter-row{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:20px}
+.filter-btn{font:600 10px var(--mono);padding:5px 12px;border:1px solid var(--border);border-radius:20px;background:none;color:var(--text-d);cursor:pointer;transition:all .15s}
+.filter-btn.active{border-color:var(--dfr);color:var(--dfr);background:rgba(240,165,0,.08)}
+.grant-card{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:16px;margin-bottom:10px;position:relative;overflow:hidden}
+.grant-card.open{border-left:3px solid var(--green)}
+.grant-card.upcoming{border-left:3px solid var(--amber)}
+.grant-card.closed{border-left:3px solid var(--border);opacity:.6}
+.grant-card.urgent{border-left:3px solid var(--red)}
+.grant-header{display:flex;align-items:flex-start;justify-content:space-between;gap:10px;margin-bottom:8px}
+.grant-name{font:700 13px var(--font);color:var(--text)}
+.grant-amount{font:700 11px var(--mono);color:var(--text-s)}
+.badge{font:700 9px var(--mono);padding:2px 7px;border-radius:4px;white-space:nowrap}
+.badge-open{background:rgba(34,197,94,.1);color:var(--green)}
+.badge-upcoming{background:rgba(245,158,11,.1);color:var(--amber)}
+.badge-closed{background:rgba(102,102,128,.1);color:var(--text-d)}
+.badge-urgent{background:rgba(239,68,68,.1);color:var(--red)}
+.grant-meta{font-size:11px;color:var(--text-d);line-height:1.6;margin-bottom:8px}
+.grant-meta strong{color:var(--text-s)}
+.grant-tags{display:flex;gap:4px;flex-wrap:wrap;margin-bottom:8px}
+.tag{font:500 9px var(--mono);padding:2px 6px;border-radius:3px;background:rgba(59,130,246,.1);color:var(--blue)}
+.tag.public-safety{background:rgba(240,165,0,.08);color:var(--dfr)}
+.tag.equipment{background:rgba(34,197,94,.08);color:var(--green)}
+.tag.federal{background:rgba(0,212,255,.08);color:var(--cyan)}
+.deadline-bar{background:var(--surface);border-radius:6px;padding:8px 10px;display:flex;align-items:center;justify-content:space-between;margin-top:8px}
+.deadline-label{font:600 9px var(--mono);color:var(--text-d);text-transform:uppercase;letter-spacing:.08em}
+.deadline-val{font:700 11px var(--mono)}
+.deadline-val.urgent{color:var(--red)}
+.deadline-val.soon{color:var(--amber)}
+.deadline-val.open{color:var(--green)}
+.action-link{display:inline-flex;align-items:center;gap:4px;font:600 11px var(--font);color:var(--cyan);text-decoration:none;margin-top:8px}
+.action-link:hover{text-decoration:underline}
+.section-divider{font:700 9px var(--mono);letter-spacing:.12em;text-transform:uppercase;color:var(--text-d);margin:20px 0 10px;padding-bottom:6px;border-bottom:1px solid var(--border)}
+.alert-box{background:rgba(245,158,11,.08);border:1px solid rgba(245,158,11,.2);border-radius:8px;padding:12px 14px;margin-bottom:16px;font-size:11px;color:var(--amber);display:flex;gap:8px;align-items:flex-start}
+.stats-row{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:20px}
+.stat{background:var(--card);border:1px solid var(--border);border-radius:8px;padding:10px;text-align:center}
+.stat-num{font:800 18px var(--mono);color:var(--text)}
+.stat-lbl{font:500 9px var(--font);color:var(--text-d);margin-top:2px}
+</style>
+</head>
+<body>
+<header class="topbar">
+  <a href="/" class="topbar-logo">DroneClear</a>
+  <a href="/pro/" class="pill">Dashboard</a>
+  <a href="/intel-dfr/" class="pill">DFR Intel</a>
+  <a href="/grants/" class="pill active">Grant Calendar</a>
+</header>
+
+<div class="page">
+  <div class="eyebrow">// DFR Grant Intelligence</div>
+  <h1>Public Safety Grant Calendar</h1>
+  <p class="sub">Federal grant programs funding drone first responder programs. Application windows, award amounts, and direct links to apply. Updated quarterly.</p>
+
+  <div class="stats-row">
+    <div class="stat"><div class="stat-num" id="stat-open" style="color:var(--green)">—</div><div class="stat-lbl">Open Now</div></div>
+    <div class="stat"><div class="stat-num" id="stat-upcoming" style="color:var(--amber)">—</div><div class="stat-lbl">Opening Soon</div></div>
+    <div class="stat"><div class="stat-num" id="stat-total">$1.5B+</div><div class="stat-lbl">Total Funding</div></div>
+  </div>
+
+  <div id="urgent-box" class="alert-box" style="display:none">
+    <i class="ph ph-warning" style="font-size:16px;flex-shrink:0;margin-top:1px"></i>
+    <span id="urgent-text"></span>
+  </div>
+
+  <div class="filter-row">
+    <button class="filter-btn active" onclick="setFilter('all',this)">All Programs</button>
+    <button class="filter-btn" onclick="setFilter('open',this)">Open Now</button>
+    <button class="filter-btn" onclick="setFilter('equipment',this)">Equipment</button>
+    <button class="filter-btn" onclick="setFilter('federal',this)">Federal</button>
+    <button class="filter-btn" onclick="setFilter('public-safety',this)">Public Safety</button>
+  </div>
+
+  <div id="grant-list"></div>
+</div>
+
+<script>
+const TODAY = new Date();
+
+const GRANTS = [
+  {
+    id: 'cops',
+    name: 'COPS Technology Program',
+    agency: 'Department of Justice / COPS Office',
+    amount: '$700K max per agency',
+    total: '$300M FY2026',
+    window_open: '2026-03-01',
+    window_close: '2026-05-30',
+    status: 'open',
+    tags: ['public-safety','equipment','federal'],
+    description: 'Funds law enforcement technology including drone procurement, docking systems, software, and pilot training. Strongest fit for DFR programs. Match requirement typically 25%.',
+    eligibility: 'Municipal police departments, sheriff offices, tribal law enforcement. Population under 150K preferred but not required.',
+    drone_fit: 'Excellent. Has funded Skydio, BRINC, and dock procurement at dozens of agencies.',
+    apply_url: 'https://cops.usdoj.gov/grants',
+    notes: 'Application typically opens March–April. Awards announced by September.'
+  },
+  {
+    id: 'hsgp',
+    name: 'Homeland Security Grant Program (HSGP / SHSP)',
+    agency: 'FEMA / State Administrative Agency',
+    amount: '$100K–$500K typical drone allocation',
+    total: '$1.07B FY2026',
+    window_open: '2025-09-01',
+    window_close: '2026-06-30',
+    status: 'open',
+    tags: ['public-safety','equipment','federal'],
+    description: 'State Homeland Security Program funds flow through SAA to local agencies. Can fund drone equipment, training, COW consulting, and dock installation. Threat-based justification required.',
+    eligibility: 'Apply through your State Administrative Agency (SAA). Check your state homeland security office.',
+    drone_fit: 'Good. Works best when framed around critical infrastructure protection or mass casualty events.',
+    apply_url: 'https://www.fema.gov/grants/preparedness/homeland-security',
+    notes: 'Contact your SAA for state-specific deadlines — varies by state. Many have March–April windows.'
+  },
+  {
+    id: 'uasi',
+    name: 'Urban Area Security Initiative (UASI)',
+    agency: 'FEMA',
+    amount: '$250K–$2M for high-risk metros',
+    total: '$615M FY2026',
+    window_open: '2025-09-01',
+    window_close: '2026-06-30',
+    status: 'open',
+    tags: ['public-safety','equipment','federal'],
+    description: 'For high-threat urban areas. Larger awards than SHSP. Can fund regional DFR networks, C-UAS detection systems, and multi-agency drone programs.',
+    eligibility: 'UASI-designated urban areas only (currently 31 metros). Check if your city is designated.',
+    drone_fit: 'Excellent for large metro DFR programs and multi-agency swarm coordination.',
+    apply_url: 'https://www.fema.gov/grants/preparedness/urban-area-security-initiative',
+    notes: 'Flows through state. Work with your Urban Area Security Initiative working group.'
+  },
+  {
+    id: 'cuas',
+    name: 'C-UAS Grant Program',
+    agency: 'DHS / CISA',
+    amount: '$2M–$10M per award',
+    total: '$500M total (FIFA host states priority)',
+    window_open: '2026-04-01',
+    window_close: '2026-07-15',
+    status: 'upcoming',
+    tags: ['public-safety','equipment','federal'],
+    description: 'Counter-UAS detection and interdiction for critical infrastructure and major events. FIFA World Cup 2026 host states are priority. Funds radar, RF detection, and drone-in-a-box response.',
+    eligibility: 'State and local law enforcement, port authorities, critical infrastructure operators in FIFA host cities or critical infrastructure zones.',
+    drone_fit: 'Strong for C-UAS response drones. DroneShield, D-Fend, and Flex Force systems are fundable.',
+    apply_url: 'https://www.cisa.gov/resources-tools/programs/counter-unmanned-aircraft-systems',
+    notes: 'New program. Watch CISA for NOFO release. FIFA host cities: NYC, LA, Dallas, SF, Miami, Atlanta, Seattle, Boston, Philadelphia, Kansas City, Houston.'
+  },
+  {
+    id: 'byrne',
+    name: 'Byrne Justice Assistance Grant (JAG)',
+    agency: 'Department of Justice / BJA',
+    amount: 'Formula-based, $5K–$300K',
+    total: '$311M FY2026',
+    window_open: '2026-02-01',
+    window_close: '2026-09-30',
+    status: 'open',
+    tags: ['public-safety','equipment','federal'],
+    description: 'Formula grant to states and localities. Flexible — can fund drone equipment as part of a broader tech modernization or crime reduction program. Low barrier, no match required.',
+    eligibility: 'All state and local law enforcement. Allocated by formula based on population and crime statistics.',
+    drone_fit: 'Moderate. Works when framed as crime reduction technology. Best for smaller purchases under $50K.',
+    apply_url: 'https://bja.ojp.gov/program/jag/overview',
+    notes: 'Direct allocations to states (60%) and locals (40%). Check your state JAG allocation at BJA website.'
+  },
+  {
+    id: 'afg',
+    name: 'Assistance to Firefighters Grant (AFG)',
+    agency: 'FEMA',
+    amount: '$75K–$1.5M',
+    total: '$360M FY2026',
+    window_open: '2026-01-06',
+    window_close: '2026-02-28',
+    status: 'closed',
+    tags: ['public-safety','equipment','federal'],
+    description: 'Fire department equipment grants. Drones fundable as rescue and aerial reconnaissance equipment. Strong fit for wildland-urban interface agencies and SAR missions.',
+    eligibility: 'Fire departments, EMS organizations. Must be primary provider for jurisdiction.',
+    drone_fit: 'Good for fire/EMS DFR programs. Thermal imaging drones and SAR platforms score well.',
+    apply_url: 'https://www.fema.gov/grants/preparedness/firefighters',
+    notes: 'FY2026 window closed. FY2027 window typically opens January. Start preparing now.'
+  },
+  {
+    id: 'safer',
+    name: 'SAFER Grant (Staffing for Adequate Fire and Emergency Response)',
+    agency: 'FEMA',
+    amount: 'Primarily staffing, up to $1.2M',
+    total: '$360M combined with AFG',
+    window_open: '2026-03-01',
+    window_close: '2026-04-30',
+    status: 'upcoming',
+    tags: ['public-safety','federal'],
+    description: 'Primarily funds firefighter hiring. Can be paired with AFG for drone-enabled staffing efficiency arguments — fewer calls need physical response when drones pre-scout.',
+    eligibility: 'Fire departments with documented staffing shortages.',
+    drone_fit: 'Indirect. Use DFR response time data to justify staffing efficiency in narrative.',
+    apply_url: 'https://www.fema.gov/grants/preparedness/safer',
+    notes: 'Best paired with AFG application. Mention DFR data in staffing efficiency section.'
+  },
+  {
+    id: 'bric',
+    name: 'Building Resilient Infrastructure and Communities (BRIC)',
+    agency: 'FEMA',
+    amount: '$1M–$50M',
+    total: '$1B+ annually',
+    window_open: '2025-09-30',
+    window_close: '2026-01-31',
+    status: 'closed',
+    tags: ['public-safety','equipment','federal'],
+    description: 'Pre-disaster mitigation. Drone programs fundable as early warning and situational awareness infrastructure for natural disasters. Strong for wildfire, flood, and hurricane-prone jurisdictions.',
+    eligibility: 'State and local governments. Must align with State Hazard Mitigation Plan.',
+    drone_fit: 'Moderate. Best for permanent DFR infrastructure (docks, telemetry networks) framed as resilience.',
+    apply_url: 'https://www.fema.gov/grants/mitigation/building-resilient-infrastructure-communities',
+    notes: 'FY2026 window closed Jan 31. FY2027 opens September 2026.'
+  },
+];
+
+let activeFilter = 'all';
+
+function setFilter(f, btn) {
+  activeFilter = f;
+  document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  renderGrants();
+}
+
+function daysUntil(dateStr) {
+  return Math.ceil((new Date(dateStr) - TODAY) / 86400000);
+}
+
+function deadlineStatus(g) {
+  if (g.status === 'closed') return { label: 'Closed', cls: 'closed', days: null };
+  const d = daysUntil(g.window_close);
+  if (d < 0) return { label: 'Closed', cls: 'closed', days: d };
+  if (d <= 30) return { label: `${d} days left`, cls: 'urgent', days: d };
+  if (d <= 90) return { label: `${d} days left`, cls: 'soon', days: d };
+  return { label: new Date(g.window_close).toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'}), cls: 'open', days: d };
+}
+
+function renderGrants() {
+  const filtered = GRANTS.filter(g => {
+    if (activeFilter === 'all') return true;
+    if (activeFilter === 'open') return g.status === 'open' && daysUntil(g.window_close) > 0;
+    return g.tags.includes(activeFilter);
+  });
+
+  const open = GRANTS.filter(g => g.status === 'open' && daysUntil(g.window_close) > 0).length;
+  const upcoming = GRANTS.filter(g => g.status === 'upcoming').length;
+  document.getElementById('stat-open').textContent = open;
+  document.getElementById('stat-upcoming').textContent = upcoming;
+
+  // Urgent alerts
+  const urgent = GRANTS.filter(g => g.status === 'open' && daysUntil(g.window_close) <= 30 && daysUntil(g.window_close) > 0);
+  if (urgent.length) {
+    document.getElementById('urgent-text').textContent = `Deadline approaching: ${urgent.map(g=>`${g.name} closes in ${daysUntil(g.window_close)} days`).join(' · ')}`;
+    document.getElementById('urgent-box').style.display = 'flex';
+  }
+
+  document.getElementById('grant-list').innerHTML = filtered.map(g => {
+    const dl = deadlineStatus(g);
+    const cardClass = dl.days !== null && dl.days <= 30 ? 'urgent' : g.status === 'open' && (dl.days||0) > 0 ? 'open' : g.status === 'upcoming' ? 'upcoming' : 'closed';
+    const badge = dl.days !== null && dl.days <= 30 && dl.days > 0 ? `<span class="badge badge-urgent">CLOSING SOON</span>` :
+      g.status === 'open' && (dl.days||0) > 0 ? `<span class="badge badge-open">OPEN</span>` :
+      g.status === 'upcoming' ? `<span class="badge badge-upcoming">UPCOMING</span>` :
+      `<span class="badge badge-closed">CLOSED</span>`;
+
+    return `<div class="grant-card ${cardClass}">
+      <div class="grant-header">
+        <div>
+          <div class="grant-name">${g.name}</div>
+          <div class="grant-meta" style="margin-top:2px"><strong>${g.agency}</strong></div>
+        </div>
+        ${badge}
+      </div>
+      <div class="grant-tags">${g.tags.map(t=>`<span class="tag ${t}">${t.replace('-',' ')}</span>`).join('')}</div>
+      <div class="grant-meta">${g.description}</div>
+      <div class="grant-meta" style="margin-top:6px"><strong>Eligibility:</strong> ${g.eligibility}</div>
+      <div class="grant-meta"><strong>Drone fit:</strong> ${g.drone_fit}</div>
+      ${g.notes ? `<div class="grant-meta" style="margin-top:4px;color:var(--text-d)"><i class="ph ph-info"></i> ${g.notes}</div>` : ''}
+      <div class="deadline-bar">
+        <div>
+          <div class="deadline-label">Award Amount</div>
+          <div style="font:600 11px var(--mono);color:var(--text-s);margin-top:1px">${g.amount}</div>
+        </div>
+        <div style="text-align:right">
+          <div class="deadline-label">Application Deadline</div>
+          <div class="deadline-val ${dl.cls}" style="margin-top:1px">${dl.label}</div>
+        </div>
+      </div>
+      <a href="${g.apply_url}" target="_blank" rel="noopener" class="action-link"><i class="ph ph-arrow-square-out"></i> Apply / Learn more</a>
+      <a href="/waiver/" class="action-link" style="margin-left:16px;color:var(--dfr)"><i class="ph ph-file-text"></i> Generate grant narrative</a>
+    </div>`;
+  }).join('') || `<div style="text-align:center;padding:40px;color:var(--text-d);font-size:12px">No grants match this filter.</div>`;
+}
+
+renderGrants();
+</script>
+</body>
+</html>

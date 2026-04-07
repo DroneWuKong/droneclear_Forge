@@ -1,0 +1,257 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Regulatory Watch — DroneClear</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://unpkg.com/@phosphor-icons/web@2.1.1/src/regular/style.css"/>
+<style>
+:root{
+  --bg:#0a0b10;--surface:#12131a;--card:#1a1b24;--border:#2a2b35;
+  --text:#e8e8f0;--text-s:#b0b0c0;--text-d:#666680;
+  --cyan:#00d4ff;--green:#22c55e;--amber:#f59e0b;--red:#ef4444;--blue:#3b82f6;
+  --font:'DM Sans',sans-serif;--mono:'JetBrains Mono',monospace;--radius:10px;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--bg);color:var(--text);font-family:var(--font);min-height:100vh}
+.topbar{display:flex;align-items:center;gap:10px;padding:14px 20px;border-bottom:1px solid var(--border);position:sticky;top:0;background:var(--bg);z-index:100}
+.topbar-logo{font:800 16px var(--font);color:var(--red);text-decoration:none}
+.pill{font:500 11px var(--font);padding:5px 12px;border:1px solid var(--border);border-radius:20px;color:var(--text-s);text-decoration:none;transition:all .15s}
+.pill.active{border-color:var(--cyan);color:var(--cyan)}
+.page{max-width:680px;margin:0 auto;padding:24px 20px 80px}
+.eyebrow{font:700 10px var(--mono);letter-spacing:.14em;text-transform:uppercase;color:var(--cyan);margin-bottom:8px}
+h1{font:800 24px var(--font);color:var(--text);line-height:1.2;margin-bottom:6px}
+.sub{font-size:12px;color:var(--text-d);margin-bottom:24px;line-height:1.5}
+.filter-row{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:20px}
+.filter-btn{font:600 10px var(--mono);padding:5px 12px;border:1px solid var(--border);border-radius:20px;background:none;color:var(--text-d);cursor:pointer;transition:all .15s}
+.filter-btn.active{border-color:var(--cyan);color:var(--cyan);background:rgba(0,212,255,.08)}
+.reg-card{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:16px;margin-bottom:10px}
+.reg-card.critical{border-left:3px solid var(--red)}
+.reg-card.active{border-left:3px solid var(--amber)}
+.reg-card.monitor{border-left:3px solid var(--cyan)}
+.reg-card.done{border-left:3px solid var(--green);opacity:.7}
+.reg-header{display:flex;align-items:flex-start;gap:10px;margin-bottom:8px;justify-content:space-between}
+.reg-title{font:700 13px var(--font);color:var(--text);flex:1}
+.badge{font:700 9px var(--mono);padding:2px 7px;border-radius:4px;white-space:nowrap;flex-shrink:0}
+.badge-critical{background:rgba(239,68,68,.1);color:var(--red)}
+.badge-active{background:rgba(245,158,11,.1);color:var(--amber)}
+.badge-monitor{background:rgba(0,212,255,.1);color:var(--cyan)}
+.badge-done{background:rgba(34,197,94,.1);color:var(--green)}
+.reg-meta{font-size:11px;color:var(--text-d);line-height:1.6}
+.reg-meta strong{color:var(--text-s)}
+.impact-row{margin-top:8px;background:var(--surface);border-radius:6px;padding:8px 10px}
+.impact-label{font:700 9px var(--mono);color:var(--text-d);text-transform:uppercase;letter-spacing:.08em;margin-bottom:4px}
+.impact-chips{display:flex;gap:4px;flex-wrap:wrap}
+.chip{font:500 9px var(--mono);padding:2px 6px;border-radius:3px;background:rgba(59,130,246,.08);color:var(--blue);border:1px solid rgba(59,130,246,.15)}
+.chip.commercial{background:rgba(59,130,246,.08);color:var(--blue)}
+.chip.dfr{background:rgba(240,165,0,.08);color:var(--amber)}
+.chip.agency{background:rgba(139,92,246,.08);color:#a78bfa}
+.chip.all{background:rgba(34,197,94,.08);color:var(--green)}
+.deadline-pill{display:inline-flex;align-items:center;gap:4px;font:600 10px var(--mono);padding:3px 8px;border-radius:4px;margin-top:6px}
+.deadline-pill.critical{background:rgba(239,68,68,.1);color:var(--red)}
+.deadline-pill.warn{background:rgba(245,158,11,.1);color:var(--amber)}
+.deadline-pill.neutral{background:var(--surface);color:var(--text-d)}
+a.action{font:600 11px var(--font);color:var(--cyan);text-decoration:none;display:inline-flex;align-items:center;gap:4px;margin-top:8px}
+a.action:hover{text-decoration:underline}
+.countdown-bar{margin-top:10px;padding-top:10px;border-top:1px solid var(--border);display:flex;align-items:center;justify-content:space-between}
+.countdown-num{font:800 20px var(--mono)}
+.countdown-lbl{font:500 9px var(--font);color:var(--text-d);margin-top:1px}
+.sticky-banner{background:rgba(239,68,68,.08);border:1px solid rgba(239,68,68,.25);border-radius:8px;padding:12px 14px;margin-bottom:20px;font-size:11px;color:var(--red);display:flex;gap:8px;align-items:flex-start}
+</style>
+</head>
+<body>
+<header class="topbar">
+  <a href="/" class="topbar-logo">DroneClear</a>
+  <a href="/pro/" class="pill">Dashboard</a>
+  <a href="/patterns/" class="pill">PIE</a>
+  <a href="/regs/" class="pill active">Reg Watch</a>
+</header>
+
+<div class="page">
+  <div class="eyebrow">// Regulatory Intelligence</div>
+  <h1>Regulatory Change Watch</h1>
+  <p class="sub">Active rulemakings, compliance deadlines, and policy shifts that affect your operations — translated from FAA legalese into plain language. Updated as changes occur.</p>
+
+  <div class="sticky-banner">
+    <i class="ph ph-warning" style="font-size:16px;flex-shrink:0;margin-top:1px"></i>
+    <span><strong>FCC Blue UAS Exemption expires January 1, 2027</strong> — DJI and Autel devices currently operating under a temporary exemption. 270 days remaining. All agencies must complete fleet transition or apply for individual exemption.</span>
+  </div>
+
+  <div class="filter-row">
+    <button class="filter-btn active" onclick="setFilter('all',this)">All</button>
+    <button class="filter-btn" onclick="setFilter('critical',this)">Critical</button>
+    <button class="filter-btn" onclick="setFilter('commercial',this)">Commercial</button>
+    <button class="filter-btn" onclick="setFilter('dfr',this)">DFR / Public Safety</button>
+    <button class="filter-btn" onclick="setFilter('agency',this)">Agency / DoD</button>
+  </div>
+
+  <div id="reg-list"></div>
+</div>
+
+<script>
+const TODAY = new Date();
+
+const REGS = [
+  {
+    id: 'fcc-cliff',
+    title: 'FCC Blue UAS Exemption Expiration',
+    status: 'critical',
+    date: '2027-01-01',
+    date_label: 'Exemption Expires',
+    agency: 'FCC / DHS',
+    summary: 'DJI and Autel devices are currently allowed under a temporary FCC exemption from the Covered Equipment List. That exemption expires January 1, 2027. After that date, agencies cannot legally acquire new DJI/Autel hardware, and existing hardware may face operational restrictions.',
+    what_to_do: 'Inventory your DJI/Autel fleet now. Begin Blue UAS transition planning. If you plan to keep existing hardware past 2027, contact FCC for individual exemption guidance.',
+    impacts: ['commercial','dfr','agency'],
+    source_url: 'https://docs.fcc.gov/public/attachments/DOC-417528A1.pdf',
+    source_label: 'FCC Fact Sheet'
+  },
+  {
+    id: 'part108',
+    title: 'Part 108 BVLOS NPRM',
+    status: 'active',
+    date: '2026-12-31',
+    date_label: 'Estimated Final Rule',
+    agency: 'FAA',
+    summary: 'The FAA published the Part 108 NPRM in August 2025, creating a formal regulatory pathway for scalable BVLOS operations. Public comments closed October 2025. Final rule expected late 2026 or early 2027. This will normalize COW approval for DFR programs and create a declaration-based compliance pathway.',
+    what_to_do: 'If you operate a DFR program, start documenting your current COW operations as a compliance baseline. The final rule will likely credit agencies with existing COW experience.',
+    impacts: ['dfr','agency'],
+    source_url: 'https://www.faa.gov/uas/resources/policy_library',
+    source_label: 'FAA UAS Policy Library'
+  },
+  {
+    id: 'ai-waivers',
+    title: 'FAA AI-Assisted Waiver Review',
+    status: 'active',
+    date: '2026-06-06',
+    date_label: 'EO Implementation Deadline',
+    agency: 'FAA / White House',
+    summary: 'June 2025 executive order directed the FAA to implement AI-based tools for evaluating Part 107 waiver applications. Implementation underway. Expected to significantly reduce COW approval time from 1–14 days to potentially same-day for standard shielded operations.',
+    what_to_do: 'Watch FAA DroneZone for updated application interface. Ensure your COW applications include complete data — the AI system rewards well-documented submissions.',
+    impacts: ['dfr','commercial'],
+    source_url: 'https://www.whitehouse.gov',
+    source_label: 'White House EO'
+  },
+  {
+    id: 'remote-id-enforce',
+    title: 'Remote ID Enforcement Expansion',
+    status: 'active',
+    date: '2026-03-01',
+    date_label: 'Expanded Enforcement Active',
+    agency: 'FAA',
+    summary: 'FAA expanded Remote ID enforcement in early 2026 to include all drones over 250g, including agency-operated platforms. Violations now triggering certificate actions, not just warnings. Custom-built drones require Standard Remote ID broadcast module or FRIA operation.',
+    what_to_do: 'Verify Remote ID compliance for every aircraft in your fleet. Check FAA DroneZone registration to confirm RID serial numbers are recorded correctly.',
+    impacts: ['all'],
+    source_url: 'https://www.faa.gov/uas/getting_started/remote_id',
+    source_label: 'FAA Remote ID'
+  },
+  {
+    id: 'ndaa-asda',
+    title: 'American Security Drone Act (ASDA) Expansion',
+    status: 'active',
+    date: '2026-10-01',
+    date_label: 'Next Annual Review',
+    agency: 'DHS / Congress',
+    summary: 'ASDA prohibits federal agency procurement of drones from covered foreign entities. The covered entity list expands annually. Current covered entities include DJI, Autel, Yuneec, Parrot (some models), and their parent companies. State/local agencies using federal funds are also subject.',
+    what_to_do: 'Run NDAA compliance check on any drone you plan to procure with federal funds. Use the DroneClear NDAA Compliance Checklist tool.',
+    impacts: ['dfr','agency'],
+    source_url: 'https://www.congress.gov',
+    source_label: 'ASDA Text'
+  },
+  {
+    id: 'cow-streamline',
+    title: 'FAA COW Process Streamlining (Completed)',
+    status: 'done',
+    date: '2025-01-01',
+    date_label: 'Implemented',
+    agency: 'FAA',
+    summary: 'FAA significantly simplified the Certificate of Waiver application process for public safety agencies in 2024–2025. Shielded 200\' COW applications now routinely approved in 1–14 days. This was the primary catalyst for the DFR program growth wave currently underway.',
+    what_to_do: 'If you haven\'t applied for a COW yet, now is the time. The streamlined process means most standard DFR programs can get approved within two weeks.',
+    impacts: ['dfr'],
+    source_url: 'https://www.faa.gov/uas/public_safety_gov',
+    source_label: 'FAA Public Safety'
+  },
+  {
+    id: 'state-privacy',
+    title: 'State UAS Privacy Laws — Patchwork Expanding',
+    status: 'monitor',
+    date: null,
+    date_label: 'Ongoing — check your state',
+    agency: 'Multiple States',
+    summary: 'California, New York, Florida, Texas, and 20+ other states have enacted or are actively considering drone-specific privacy laws covering facial recognition, data retention, warrant requirements, and public notice. These layer on top of FAA rules and apply to both commercial and public safety operators.',
+    what_to_do: 'Review your state\'s current UAS privacy statute before deploying. Key states with active laws: CA (SB 807), NY (A4781), FL (Ch. 934), TX (HB 1424). Use DroneClear Document Builder to generate a Transparency Policy for public agencies.',
+    impacts: ['commercial','dfr','agency'],
+    source_url: 'https://www.ncsl.org/transportation/current-unmanned-aircraft-state-law-landscape',
+    source_label: 'NCSL State Law Tracker'
+  },
+  {
+    id: 'part107-recurrency',
+    title: 'Part 107 Recurrent Training Requirement',
+    status: 'monitor',
+    date: null,
+    date_label: 'Ongoing — every 24 months',
+    agency: 'FAA',
+    summary: 'All Part 107 remote pilots must complete FAA recurrent training every 24 months via FAA Safety (FAAST) online course ALC-677. Failure to complete invalidates Part 107 privileges. FAA has increased enforcement focus on certificate currency.',
+    what_to_do: 'Track your team\'s recurrency dates using the DroneClear Cert Tracker. Set reminders 60 days before expiration. Course takes approximately 2 hours and is free at FAASafety.gov.',
+    impacts: ['all'],
+    source_url: 'https://www.faasafety.gov',
+    source_label: 'FAA Safety (FAAST)'
+  },
+];
+
+let activeFilter = 'all';
+
+function setFilter(f, btn) {
+  activeFilter = f;
+  document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  render();
+}
+
+function daysUntil(d) { return Math.ceil((new Date(d) - TODAY) / 86400000); }
+
+function render() {
+  const filtered = REGS.filter(r => {
+    if (activeFilter === 'all') return true;
+    if (activeFilter === 'critical') return r.status === 'critical';
+    return r.impacts.includes(activeFilter) || r.impacts.includes('all');
+  });
+
+  document.getElementById('reg-list').innerHTML = filtered.map(r => {
+    const days = r.date ? daysUntil(r.date) : null;
+    const badgeMap = {critical:'badge-critical',active:'badge-active',monitor:'badge-monitor',done:'badge-done'};
+    const badgeText = {critical:'CRITICAL',active:'ACTIVE',monitor:'MONITOR',done:'COMPLETED'};
+    const impactChips = r.impacts.map(i => `<span class="chip ${i}">${i === 'all' ? 'All Tiers' : i.toUpperCase()}</span>`).join('');
+
+    let deadlinePill = '';
+    if (days !== null) {
+      const cls = days <= 90 ? 'critical' : days <= 365 ? 'warn' : 'neutral';
+      const label = days < 0 ? `${Math.abs(days)} days ago` : `${days} days`;
+      deadlinePill = `<div class="deadline-pill ${cls}"><i class="ph ph-calendar"></i> ${r.date_label}: ${label}</div>`;
+    } else {
+      deadlinePill = `<div class="deadline-pill neutral"><i class="ph ph-calendar"></i> ${r.date_label}</div>`;
+    }
+
+    return `<div class="reg-card ${r.status}">
+      <div class="reg-header">
+        <div class="reg-title">${r.title}</div>
+        <span class="badge ${badgeMap[r.status]}">${badgeText[r.status]}</span>
+      </div>
+      <div class="reg-meta"><strong>${r.agency}</strong></div>
+      <div class="reg-meta" style="margin-top:6px">${r.summary}</div>
+      ${r.what_to_do ? `<div class="reg-meta" style="margin-top:8px;padding:8px 10px;background:var(--surface);border-radius:6px"><strong>What to do:</strong> ${r.what_to_do}</div>` : ''}
+      <div class="impact-row">
+        <div class="impact-label">Affects</div>
+        <div class="impact-chips">${impactChips}</div>
+      </div>
+      ${deadlinePill}
+      <a href="${r.source_url}" target="_blank" rel="noopener" class="action"><i class="ph ph-arrow-square-out"></i> ${r.source_label}</a>
+    </div>`;
+  }).join('') || `<div style="text-align:center;padding:40px;color:var(--text-d);font-size:12px">No items match this filter.</div>`;
+}
+
+render();
+</script>
+</body>
+</html>

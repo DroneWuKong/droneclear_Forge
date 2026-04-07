@@ -1,0 +1,360 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Cert & Compliance Tracker — DroneClear</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://unpkg.com/@phosphor-icons/web@2.1.1/src/regular/style.css"/>
+<style>
+:root{
+  --bg:#0a0b10;--surface:#12131a;--card:#1a1b24;--border:#2a2b35;
+  --text:#e8e8f0;--text-s:#b0b0c0;--text-d:#666680;
+  --cyan:#00d4ff;--green:#22c55e;--amber:#f59e0b;--red:#ef4444;--blue:#3b82f6;
+  --cyan-d:rgba(0,212,255,.1);--green-d:rgba(34,197,94,.1);
+  --amber-d:rgba(245,158,11,.1);--red-d:rgba(239,68,68,.1);
+  --font:'DM Sans',sans-serif;--mono:'JetBrains Mono',monospace;--radius:10px;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--bg);color:var(--text);font-family:var(--font);min-height:100vh}
+.topbar{display:flex;align-items:center;gap:10px;padding:14px 20px;border-bottom:1px solid var(--border);position:sticky;top:0;background:var(--bg);z-index:100}
+.topbar-logo{font:800 16px var(--font);color:var(--red);text-decoration:none}
+.pill{font:500 11px var(--font);padding:5px 12px;border:1px solid var(--border);border-radius:20px;color:var(--text-s);text-decoration:none;transition:all .15s}
+.pill:hover{border-color:var(--text-d);color:var(--text)}
+.pill.active{border-color:var(--green);color:var(--green)}
+.page{max-width:680px;margin:0 auto;padding:24px 20px 80px}
+.eyebrow{font:700 10px var(--mono);letter-spacing:.14em;text-transform:uppercase;color:var(--cyan);margin-bottom:8px}
+h1{font:800 24px var(--font);color:var(--text);line-height:1.2;margin-bottom:6px}
+.sub{font-size:12px;color:var(--text-d);margin-bottom:24px;line-height:1.5}
+.section{margin-bottom:20px}
+.section-label{font:700 9px var(--mono);letter-spacing:.12em;text-transform:uppercase;color:var(--text-d);margin-bottom:10px;padding-bottom:6px;border-bottom:1px solid var(--border)}
+.card{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:16px;margin-bottom:10px}
+.card.ok{border-left:3px solid var(--green)}
+.card.warn{border-left:3px solid var(--amber)}
+.card.expired{border-left:3px solid var(--red)}
+.card.info{border-left:3px solid var(--cyan)}
+.card-header{display:flex;align-items:flex-start;justify-content:space-between;gap:10px;margin-bottom:8px}
+.card-title{font:600 13px var(--font);color:var(--text)}
+.card-badge{font:700 9px var(--mono);padding:2px 7px;border-radius:4px;white-space:nowrap;flex-shrink:0}
+.badge-ok{background:var(--green-d);color:var(--green)}
+.badge-warn{background:var(--amber-d);color:var(--amber)}
+.badge-expired{background:var(--red-d);color:var(--red)}
+.badge-info{background:var(--cyan-d);color:var(--cyan)}
+.card-meta{font-size:11px;color:var(--text-d);line-height:1.5}
+.card-meta strong{color:var(--text-s)}
+.progress-bar{height:6px;background:var(--border);border-radius:3px;margin-top:8px;overflow:hidden}
+.progress-fill{height:100%;border-radius:3px;transition:width .3s}
+.input-row{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px}
+.field{display:flex;flex-direction:column;gap:4px}
+.field label{font:600 10px var(--mono);letter-spacing:.08em;text-transform:uppercase;color:var(--text-d)}
+.field input,.field select{background:var(--surface);border:1px solid var(--border);border-radius:6px;padding:9px 12px;color:var(--text);font:500 12px var(--font);outline:none;transition:border-color .15s;width:100%}
+.field input:focus,.field select:focus{border-color:var(--cyan)}
+.btn{display:inline-flex;align-items:center;gap:6px;padding:10px 20px;background:var(--cyan);color:#0c0c0a;border:none;border-radius:7px;font:700 12px var(--font);cursor:pointer;transition:opacity .15s}
+.btn:hover{opacity:.85}
+.btn-ghost{background:none;border:1px solid var(--border);color:var(--text-s)}
+.btn-ghost:hover{border-color:var(--text-d);opacity:1}
+.btn-sm{padding:6px 14px;font-size:11px}
+.empty-state{text-align:center;padding:32px 20px;color:var(--text-d);font-size:12px}
+.empty-state i{font-size:32px;display:block;margin-bottom:8px;color:var(--border)}
+.alert{background:var(--amber-d);border:1px solid rgba(245,158,11,.25);border-radius:8px;padding:12px 14px;font-size:11px;color:var(--amber);margin-bottom:16px;display:none}
+.alert.show{display:block}
+.days-big{font:800 28px var(--mono);line-height:1}
+.days-label{font:500 10px var(--font);color:var(--text-d)}
+.summary-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:20px}
+.summary-cell{background:var(--card);border:1px solid var(--border);border-radius:8px;padding:12px;text-align:center}
+.summary-num{font:800 20px var(--mono);color:var(--text)}
+.summary-num.ok{color:var(--green)}
+.summary-num.warn{color:var(--amber)}
+.summary-num.bad{color:var(--red)}
+.summary-lbl{font:500 9px var(--font);color:var(--text-d);margin-top:2px}
+a.action-link{font:600 11px var(--font);color:var(--cyan);text-decoration:none}
+a.action-link:hover{text-decoration:underline}
+.modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:200;align-items:center;justify-content:center;padding:20px}
+.modal-overlay.show{display:flex}
+.modal{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:24px;width:100%;max-width:440px}
+.modal h3{font:700 15px var(--font);color:var(--text);margin-bottom:4px}
+.modal-sub{font-size:11px;color:var(--text-d);margin-bottom:20px}
+.modal-actions{display:flex;gap:8px;justify-content:flex-end;margin-top:20px}
+</style>
+</head>
+<body>
+<header class="topbar">
+  <a href="/" class="topbar-logo">DroneClear</a>
+  <a href="/pro/" class="pill">Dashboard</a>
+  <a href="/wingman/" class="pill">Wingman AI</a>
+  <a href="/tracker/" class="pill active">Tracker</a>
+</header>
+
+<div class="page">
+  <div class="eyebrow">// Compliance Tracker</div>
+  <h1>Cert & Currency Dashboard</h1>
+  <p class="sub">Track Part 107 recurrency, aircraft registration, waiver validity, and insurance — all in one place. Data stored locally in your browser.</p>
+
+  <div id="urgent-alert" class="alert">
+    <strong>Action required:</strong> <span id="urgent-text"></span>
+  </div>
+
+  <div class="summary-grid" id="summary-grid">
+    <div class="summary-cell"><div class="summary-num" id="sum-ok">—</div><div class="summary-lbl">Current</div></div>
+    <div class="summary-cell"><div class="summary-num warn" id="sum-warn">—</div><div class="summary-lbl">Expiring Soon</div></div>
+    <div class="summary-cell"><div class="summary-num bad" id="sum-exp">—</div><div class="summary-lbl">Expired</div></div>
+  </div>
+
+  <div class="section">
+    <div class="section-label">Part 107 Certificates</div>
+    <div id="cert-list"></div>
+    <button class="btn btn-ghost btn-sm" onclick="openModal('cert')"><i class="ph ph-plus"></i> Add Certificate</button>
+  </div>
+
+  <div class="section">
+    <div class="section-label">Aircraft Registrations</div>
+    <div id="aircraft-list"></div>
+    <button class="btn btn-ghost btn-sm" onclick="openModal('aircraft')"><i class="ph ph-plus"></i> Add Aircraft</button>
+  </div>
+
+  <div class="section">
+    <div class="section-label">Waivers & Authorizations</div>
+    <div id="waiver-list"></div>
+    <button class="btn btn-ghost btn-sm" onclick="openModal('waiver')"><i class="ph ph-plus"></i> Add Waiver / COW</button>
+  </div>
+
+  <div class="section">
+    <div class="section-label">Insurance Policies</div>
+    <div id="insurance-list"></div>
+    <button class="btn btn-ghost btn-sm" onclick="openModal('insurance')"><i class="ph ph-plus"></i> Add Insurance Policy</button>
+  </div>
+</div>
+
+<!-- Add Item Modal -->
+<div class="modal-overlay" id="modal">
+  <div class="modal">
+    <h3 id="modal-title">Add Item</h3>
+    <p class="modal-sub" id="modal-sub"></p>
+    <div id="modal-fields"></div>
+    <div class="modal-actions">
+      <button class="btn btn-ghost btn-sm" onclick="closeModal()">Cancel</button>
+      <button class="btn btn-sm" onclick="saveItem()">Save</button>
+    </div>
+  </div>
+</div>
+
+<script>
+const STORE_KEY = 'dc_tracker_v1';
+let currentType = null;
+let editIndex = null;
+
+const MODAL_CONFIGS = {
+  cert: {
+    title: 'Add Part 107 Certificate',
+    sub: 'Recurrency training required every 24 months.',
+    fields: [
+      {id:'name', label:'Pilot Name', type:'text', placeholder:'e.g. Marcus Webb'},
+      {id:'cert_num', label:'Certificate #', type:'text', placeholder:'e.g. 4716889'},
+      {id:'issued', label:'Last Recurrency Date', type:'date'},
+      {id:'notes', label:'Notes (optional)', type:'text', placeholder:'e.g. ALC-677 online course'},
+    ]
+  },
+  aircraft: {
+    title: 'Add Aircraft Registration',
+    sub: 'FAA registration valid 3 years. Must be displayed on aircraft.',
+    fields: [
+      {id:'name', label:'Aircraft / Model', type:'text', placeholder:'e.g. Skydio X10'},
+      {id:'reg_num', label:'FAA Registration #', type:'text', placeholder:'e.g. FA3X91872'},
+      {id:'issued', label:'Registration Date', type:'date'},
+      {id:'serial', label:'Serial Number (optional)', type:'text', placeholder:'e.g. SX10-00441'},
+    ]
+  },
+  waiver: {
+    title: 'Add Waiver / Authorization',
+    sub: 'COW, night waiver, over-people, or BVLOS authorization.',
+    fields: [
+      {id:'name', label:'Waiver Type', type:'select', options:['Part 91 COW — Shielded 200\'','Part 91 COW — Non-Shielded 400\'','Part 107 Night Waiver','Part 107 Over People','Part 107 BVLOS','LAANC Authorization','Other']},
+      {id:'ref_num', label:'FAA Reference / Docket #', type:'text', placeholder:'e.g. 2024-COW-04412'},
+      {id:'issued', label:'Approval Date', type:'date'},
+      {id:'expires', label:'Expiration Date', type:'date'},
+      {id:'area', label:'Area of Operations', type:'text', placeholder:'e.g. City of Madison — full jurisdiction'},
+    ]
+  },
+  insurance: {
+    title: 'Add Insurance Policy',
+    sub: 'Track hull, liability, and payload coverage expiration.',
+    fields: [
+      {id:'name', label:'Policy / Provider', type:'text', placeholder:'e.g. SkyWatch Annual Liability'},
+      {id:'policy_num', label:'Policy Number', type:'text', placeholder:'e.g. UAS-2026-00441'},
+      {id:'coverage', label:'Coverage Amount', type:'text', placeholder:'e.g. $1M liability + $8,500 hull'},
+      {id:'issued', label:'Policy Start Date', type:'date'},
+      {id:'expires', label:'Policy Expiration', type:'date'},
+    ]
+  }
+};
+
+const DURATIONS = { cert: 730, aircraft: 1095, waiver: null, insurance: null };
+
+function load() {
+  try { return JSON.parse(localStorage.getItem(STORE_KEY)) || {cert:[],aircraft:[],waiver:[],insurance:[]}; }
+  catch { return {cert:[],aircraft:[],waiver:[],insurance:[]}; }
+}
+function save(data) { localStorage.setItem(STORE_KEY, JSON.stringify(data)); }
+
+function daysUntil(dateStr) {
+  if (!dateStr) return null;
+  const d = new Date(dateStr);
+  return Math.ceil((d - Date.now()) / 86400000);
+}
+function daysUntilExpiry(item, type) {
+  if (item.expires) return daysUntil(item.expires);
+  const dur = DURATIONS[type];
+  if (!dur || !item.issued) return null;
+  const exp = new Date(item.issued);
+  exp.setDate(exp.getDate() + dur);
+  return Math.ceil((exp - Date.now()) / 86400000);
+}
+function expiryDate(item, type) {
+  if (item.expires) return item.expires;
+  const dur = DURATIONS[type];
+  if (!dur || !item.issued) return null;
+  const exp = new Date(item.issued);
+  exp.setDate(exp.getDate() + dur);
+  return exp.toISOString().slice(0,10);
+}
+function statusOf(days) {
+  if (days === null) return 'info';
+  if (days < 0) return 'expired';
+  if (days <= 60) return 'warn';
+  return 'ok';
+}
+function badgeLabel(days) {
+  if (days === null) return 'No expiry';
+  if (days < 0) return `Expired ${Math.abs(days)}d ago`;
+  if (days === 0) return 'Expires today';
+  return `${days} days left`;
+}
+
+function renderAll() {
+  const data = load();
+  let ok=0, warn=0, exp=0;
+  const urgents = [];
+
+  ['cert','aircraft','waiver','insurance'].forEach(type => {
+    const listEl = document.getElementById(`${type}-list`);
+    const items = data[type] || [];
+
+    if (!items.length) {
+      const labels = {cert:'certificates',aircraft:'aircraft',waiver:'waivers',insurance:'policies'};
+      listEl.innerHTML = `<div class="empty-state"><i class="ph ph-clipboard"></i>No ${labels[type]} added yet</div>`;
+      return;
+    }
+
+    listEl.innerHTML = items.map((item, i) => {
+      const days = daysUntilExpiry(item, type);
+      const status = statusOf(days);
+      const expDate = expiryDate(item, type);
+      const pct = days !== null && DURATIONS[type] ? Math.max(0, Math.min(100, (days / DURATIONS[type]) * 100)) : null;
+
+      if (status === 'ok') ok++;
+      else if (status === 'warn') { warn++; urgents.push(`${item.name} expires in ${days} days`); }
+      else if (status === 'expired') { exp++; urgents.push(`${item.name} is expired`); }
+
+      const typeLabel = {cert:'Part 107 — 24mo recurrency',aircraft:'FAA Registration — 3yr',waiver:'Authorization',insurance:'Insurance Policy'}[type];
+      const detailLine = {
+        cert: item.cert_num ? `Cert #${item.cert_num}` : '',
+        aircraft: item.reg_num ? `Reg #${item.reg_num}${item.serial?' · S/N '+item.serial:''}` : '',
+        waiver: item.ref_num ? `Ref #${item.ref_num}${item.area?' · '+item.area:''}` : '',
+        insurance: item.policy_num ? `Policy #${item.policy_num}${item.coverage?' · '+item.coverage:''}` : '',
+      }[type];
+
+      return `<div class="card ${status}" style="margin-bottom:8px">
+        <div class="card-header">
+          <div>
+            <div class="card-title">${item.name}</div>
+            <div class="card-meta" style="margin-top:2px">${typeLabel}${detailLine?'<br><strong>'+detailLine+'</strong>':''}</div>
+          </div>
+          <div style="display:flex;flex-direction:column;align-items:flex-end;gap:4px">
+            <span class="card-badge badge-${status}">${badgeLabel(days)}</span>
+            <div style="display:flex;gap:6px">
+              <a href="#" class="action-link" style="font-size:10px" onclick="editItem('${type}',${i});return false">Edit</a>
+              <a href="#" class="action-link" style="font-size:10px;color:var(--text-d)" onclick="deleteItem('${type}',${i});return false">Remove</a>
+            </div>
+          </div>
+        </div>
+        ${expDate ? `<div class="card-meta">Expires: <strong>${expDate}</strong>${item.issued?'  ·  Issued: '+item.issued:''}</div>` : item.issued ? `<div class="card-meta">Issued: <strong>${item.issued}</strong></div>` : ''}
+        ${item.notes ? `<div class="card-meta" style="margin-top:4px">${item.notes}</div>` : ''}
+        ${pct !== null ? `<div class="progress-bar"><div class="progress-fill" style="width:${pct}%;background:${status==='ok'?'var(--green)':status==='warn'?'var(--amber)':'var(--red)'}"></div></div>` : ''}
+        ${status !== 'ok' && type === 'cert' ? `<div style="margin-top:8px"><a href="https://www.faasafety.gov/login/secure/login.aspx" target="_blank" class="action-link"><i class="ph ph-arrow-square-out"></i> Complete recurrency training →</a></div>` : ''}
+        ${status !== 'ok' && type === 'aircraft' ? `<div style="margin-top:8px"><a href="https://faadronezone.faa.gov" target="_blank" class="action-link"><i class="ph ph-arrow-square-out"></i> Renew at FAA DroneZone →</a></div>` : ''}
+        ${status !== 'ok' && type === 'insurance' ? `<div style="margin-top:8px"><a href="https://www.skywatch.ai" target="_blank" class="action-link"><i class="ph ph-arrow-square-out"></i> Get a quote →</a></div>` : ''}
+      </div>`;
+    }).join('');
+  });
+
+  document.getElementById('sum-ok').textContent = ok;
+  document.getElementById('sum-warn').textContent = warn;
+  document.getElementById('sum-exp').textContent = exp;
+  document.getElementById('sum-ok').className = 'summary-num' + (ok > 0 ? ' ok' : '');
+
+  if (urgents.length) {
+    document.getElementById('urgent-text').textContent = urgents.slice(0,2).join(' · ') + (urgents.length > 2 ? ` and ${urgents.length-2} more` : '');
+    document.getElementById('urgent-alert').classList.add('show');
+  }
+}
+
+function openModal(type, idx) {
+  currentType = type;
+  editIndex = idx !== undefined ? idx : null;
+  const cfg = MODAL_CONFIGS[type];
+  document.getElementById('modal-title').textContent = editIndex !== null ? cfg.title.replace('Add','Edit') : cfg.title;
+  document.getElementById('modal-sub').textContent = cfg.sub;
+
+  const data = load();
+  const existing = editIndex !== null ? (data[type]||[])[editIndex] : null;
+
+  document.getElementById('modal-fields').innerHTML = cfg.fields.map(f => {
+    const val = existing ? (existing[f.id]||'') : '';
+    if (f.type === 'select') {
+      return `<div class="field" style="margin-bottom:12px"><label>${f.label}</label>
+        <select id="mf_${f.id}">${f.options.map(o=>`<option${val===o?' selected':''}>${o}</option>`).join('')}</select></div>`;
+    }
+    return `<div class="field" style="margin-bottom:12px"><label>${f.label}</label>
+      <input type="${f.type}" id="mf_${f.id}" value="${val}" placeholder="${f.placeholder||''}"></div>`;
+  }).join('');
+
+  document.getElementById('modal').classList.add('show');
+}
+
+function closeModal() {
+  document.getElementById('modal').classList.remove('show');
+  currentType = null; editIndex = null;
+}
+
+function saveItem() {
+  const cfg = MODAL_CONFIGS[currentType];
+  const item = {};
+  cfg.fields.forEach(f => {
+    const el = document.getElementById('mf_'+f.id);
+    if (el) item[f.id] = el.value.trim();
+  });
+  if (!item.name) { alert('Name is required.'); return; }
+
+  const data = load();
+  if (!data[currentType]) data[currentType] = [];
+  if (editIndex !== null) data[currentType][editIndex] = item;
+  else data[currentType].push(item);
+  save(data);
+  closeModal();
+  renderAll();
+}
+
+function editItem(type, idx) { openModal(type, idx); }
+function deleteItem(type, idx) {
+  if (!confirm('Remove this item?')) return;
+  const data = load();
+  data[type].splice(idx, 1);
+  save(data);
+  renderAll();
+}
+
+renderAll();
+</script>
+</body>
+</html>
