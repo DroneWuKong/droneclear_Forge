@@ -70,10 +70,17 @@ def normalize_record(raw: dict, source_file: str) -> dict | None:
     date_slug = raw.get("pub_date", TODAY)[:10].replace("-", "")
     canonical_id = f"{source_slug}_{title_slug}_{date_slug}"
 
-    # Normalize pub_date
+    # Normalize pub_date — handle ISO, RFC 2822, and truncated formats
     pub_date = raw.get("pub_date", "")
-    if pub_date and len(pub_date) > 10:
-        pub_date = pub_date[:10]
+    if pub_date:
+        if not re.match(r"^\d{4}-\d{2}-\d{2}$", pub_date):
+            try:
+                from email.utils import parsedate_to_datetime
+                pub_fixed = re.sub(r"\+000\b", "+0000", pub_date.strip())
+                pub_date = parsedate_to_datetime(pub_fixed).strftime("%Y-%m-%d")
+            except Exception:
+                m = re.search(r"(\d{4}-\d{2}-\d{2})", pub_date)
+                pub_date = m.group(1) if m else ""
 
     record = {
         "id": canonical_id,
