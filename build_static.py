@@ -52,6 +52,7 @@ PAGES = {
     'troubleshoot.html': 'troubleshoot/index.html',  # Unlisted — no nav links
     'industry.html': 'industry/index.html',
     'intel-defense.html': 'intel-defense/index.html',
+    'intel-dfr.html': 'intel-dfr/index.html',
     'intel-financial.html': 'intel-financial/index.html',
     'intel-commercial.html': 'intel-commercial/index.html',
     'tools.html': 'tools/index.html',
@@ -130,6 +131,14 @@ def fix_paths(html, depth=0):
         html = html.replace("fetch('intel_platforms.json')", f"fetch('{prefix}static/intel_platforms.json')")
         html = html.replace("fetch('intel_programs.json')", f"fetch('{prefix}static/intel_programs.json')")
         html = html.replace("fetch('drone_parts_schema_v3.json')", f"fetch('{prefix}static/forge_database.json')")
+        # Master DB files
+        html = html.replace("fetch('../data/defense/defense_master.json')", f"fetch('{prefix}static/defense_master.json')")
+        html = html.replace("fetch('../data/commercial/commercial_master.json')", f"fetch('{prefix}static/commercial_master.json')")
+        html = html.replace("fetch('../data/dfr/dfr_master.json')", f"fetch('{prefix}static/dfr_master.json')")
+        # PIE files
+        html = html.replace("fetch('pie_flags.json')", f"fetch('{prefix}static/pie_flags.json')")
+        html = html.replace("fetch('pie_predictions.json')", f"fetch('{prefix}static/pie_predictions.json')")
+        html = html.replace("fetch('pie_brief.json')", f"fetch('{prefix}static/pie_brief.json')")
         html = html.replace("fetch('forge_firmware_configs.json')", f"fetch('{prefix}static/forge_firmware_configs.json')")
     
     # Fix nav links to use clean URLs
@@ -633,6 +642,19 @@ def build():
             shutil.copy2(src, dst)
     
     print(f"Copied static assets to {BUILD_DIR}/static/")
+
+    # Copy master DB JSON files from data/ dirs into static/
+    master_dbs = [
+        ('data/defense/defense_master.json', 'defense_master.json'),
+        ('data/commercial/commercial_master.json', 'commercial_master.json'),
+        ('data/dfr/dfr_master.json', 'dfr_master.json'),
+    ]
+    for src_rel, dst_name in master_dbs:
+        if os.path.exists(src_rel):
+            shutil.copy2(src_rel, os.path.join(BUILD_DIR, 'static', dst_name))
+            print(f"  Copied {src_rel} -> static/{dst_name}")
+        else:
+            print(f"  WARNING: {src_rel} not found - {dst_name} missing from build")
     
     # Process HTML pages
     for src_name, dst_path in PAGES.items():
