@@ -492,6 +492,35 @@ body { font-family:var(--sans); background:var(--bg); color:var(--text); -webkit
         html += '<div class="browse-list" id="list-items"></div>';
 
         content.innerHTML = html;
+
+        // Inject NDAA quick-filter pills above the toolbar
+        const toolbar = content.querySelector('.browse-toolbar');
+        if (toolbar) {
+            const ndaaOk  = parts.filter(p => p.ndaa_compliant === true).length;
+            const ndaaBad = parts.filter(p => p.ndaa_compliant === false).length;
+            const china   = parts.filter(p => (p.manufacturer_country || '').toLowerCase().includes('china')).length;
+            const usa     = parts.filter(p => ['usa','united states'].includes((p.manufacturer_country || '').toLowerCase())).length;
+            if (ndaaOk + ndaaBad > 0) {
+                const pillsDiv = document.createElement('div');
+                pillsDiv.className = 'ndaa-pills';
+                pillsDiv.id = 'ndaa-pills';
+                pillsDiv.innerHTML =
+                    `<button class="ndaa-pill active-all" data-ndaa="all">All (${parts.length})</button>` +
+                    (ndaaOk  ? `<button class="ndaa-pill" data-ndaa="ndaa">NDAA ✓ (${ndaaOk})</button>` : '') +
+                    (ndaaBad ? `<button class="ndaa-pill" data-ndaa="non-ndaa">Non-NDAA ✗ (${ndaaBad})</button>` : '') +
+                    (china   ? `<button class="ndaa-pill" data-ndaa="china">China (${china})</button>` : '') +
+                    (usa     ? `<button class="ndaa-pill" data-ndaa="usa">USA (${usa})</button>` : '');
+                toolbar.parentNode.insertBefore(pillsDiv, toolbar);
+                pillsDiv.querySelectorAll('.ndaa-pill').forEach(btn => btn.addEventListener('click', function() {
+                    pillsDiv.querySelectorAll('.ndaa-pill').forEach(b => b.className = 'ndaa-pill');
+                    const mode = this.dataset.ndaa;
+                    this.classList.add('active-' + (mode === 'all' ? 'all' : mode === 'ndaa' ? 'ndaa' : mode === 'non-ndaa' ? 'non' : mode === 'china' ? 'cn' : 'us'));
+                    ndaaFilter = mode;
+                    applyListFilters();
+                }));
+            }
+        }
+        ndaaFilter = 'all';
         renderList(parts);
 
         // Wire up all filters
@@ -508,6 +537,11 @@ body { font-family:var(--sans); background:var(--bg); color:var(--text); -webkit
 
         let filtered = currentParts;
         if (q) filtered = filtered.filter(p => (p.name + ' ' + p.manufacturer + ' ' + p.description).toLowerCase().includes(q));
+        // NDAA quick-filter
+        if (ndaaFilter === 'ndaa')     filtered = filtered.filter(p => p.ndaa_compliant === true);
+        else if (ndaaFilter === 'non-ndaa') filtered = filtered.filter(p => p.ndaa_compliant === false);
+        else if (ndaaFilter === 'china')    filtered = filtered.filter(p => (p.manufacturer_country||'').toLowerCase().includes('china'));
+        else if (ndaaFilter === 'usa')      filtered = filtered.filter(p => ['usa','united states'].includes((p.manufacturer_country||'').toLowerCase()));
         if (mfr) filtered = filtered.filter(p => p.manufacturer === mfr);
 
         // Apply smart filters
