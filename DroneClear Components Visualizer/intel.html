@@ -110,6 +110,38 @@ a{color:var(--blue);text-decoration:none}a:hover{text-decoration:underline}
 .dm-btn.primary{background:var(--amber);border-color:var(--amber);color:#0c0c0a}
 .dm-btn:hover{border-color:var(--border-hi);color:var(--text)}
 @media(min-width:600px){.dm-overlay{align-items:center;padding:16px}.dm-sheet{border-radius:14px;max-height:85vh}}
+
+/* ── Card detail sheet ── */
+.cs-overlay{display:none;position:fixed;inset:0;z-index:500;background:rgba(0,0,0,.75);backdrop-filter:blur(8px);align-items:flex-end;justify-content:center}
+.cs-overlay.open{display:flex}
+.cs-sheet{width:100%;max-width:680px;max-height:85vh;background:#1c1c17;border:1px solid #3e3e34;border-bottom:none;border-radius:16px 16px 0 0;overflow-y:auto;display:flex;flex-direction:column;animation:slideUp .22s cubic-bezier(.16,1,.3,1)}
+@keyframes slideUp{from{transform:translateY(40px);opacity:0}to{transform:translateY(0);opacity:1}}
+.cs-handle{width:40px;height:4px;background:#3e3e34;border-radius:2px;margin:12px auto 0;flex-shrink:0}
+.cs-body{padding:16px 20px 32px;display:flex;flex-direction:column;gap:14px}
+.cs-badges{display:flex;gap:6px;flex-wrap:wrap;align-items:center}
+.cs-badge{font:600 9px 'JetBrains Mono',monospace;letter-spacing:.1em;text-transform:uppercase;padding:3px 8px;border-radius:4px}
+.cs-title{font:700 17px 'DM Sans',system-ui,sans-serif;color:#f5f0e8;line-height:1.35}
+.cs-meta{font:500 10px 'JetBrains Mono',monospace;color:#6b6358;display:flex;gap:10px;flex-wrap:wrap}
+.cs-divider{height:1px;background:#2e2e26}
+.cs-summary{font-size:13px;color:#b8b0a0;line-height:1.65;border-left:2px solid #3e3e34;padding-left:12px}
+.cs-section-label{font:700 9px 'JetBrains Mono',monospace;letter-spacing:.12em;text-transform:uppercase;color:#6b6358;margin-bottom:6px}
+.cs-facts{display:grid;grid-template-columns:1fr 1fr;gap:6px}
+.cs-fact{background:#141410;border:1px solid #2e2e26;border-radius:7px;padding:10px 12px}
+.cs-fact-label{font:500 9px 'JetBrains Mono',monospace;text-transform:uppercase;letter-spacing:.08em;color:#6b6358;margin-bottom:3px}
+.cs-fact-val{font:600 13px 'DM Sans',system-ui,sans-serif;color:#f5f0e8}
+.cs-states{display:flex;flex-direction:column;gap:4px}
+.cs-state-row{display:flex;justify-content:space-between;align-items:center;background:#141410;border-radius:6px;padding:7px 10px;font-size:11px}
+.cs-pie-flags{display:flex;flex-direction:column;gap:6px}
+.cs-pie-flag{border-left:2px solid var(--red,#ef4444);background:#ef444410;padding:8px 10px;border-radius:0 6px 6px 0}
+.cs-pie-flag-title{font:600 11px 'DM Sans',system-ui,sans-serif;color:#ef4444;margin-bottom:2px}
+.cs-pie-flag-detail{font-size:10px;color:#b8b0a0;line-height:1.5}
+.cs-actions{display:flex;gap:8px;padding-top:4px}
+.cs-btn{flex:1;padding:11px 0;border-radius:8px;font:600 12px 'DM Sans',system-ui,sans-serif;cursor:pointer;text-align:center;text-decoration:none;display:flex;align-items:center;justify-content:center;gap:6px;border:1px solid #3e3e34;background:none;color:#b8b0a0;transition:all .15s}
+.cs-btn:hover{border-color:#6b6358;color:#f5f0e8}
+.cs-btn.primary{background:#f59e0b;border-color:#f59e0b;color:#0c0c0a}
+.cs-btn.primary:hover{opacity:.88}
+.cs-paywall{display:flex;flex-direction:column;align-items:center;padding:24px;gap:10px;text-align:center;background:#141410;border-radius:8px;border:1px dashed #3e3e34}
+@media(min-width:600px){.cs-overlay{align-items:center}.cs-sheet{border-radius:16px;border:1px solid #3e3e34;max-height:80vh}}
 </style>
 </head>
 <body>
@@ -287,6 +319,7 @@ function rFi(){
   document.getElementById('region-filters').innerHTML=`<button class="fbtn${cR==='all'?' active':''}" onclick="cR='all';rFi();renderFeed()">All Regions</button>`+tr.map(([r,c])=>`<button class="fbtn${cR===r?' active':''}" onclick="cR='${r}';rFi();renderFeed()">${r} (${c})</button>`).join('');
 }
 function renderFeed(){
+  window.DC=[];
   let a=ALL;if(cC!=='all')a=a.filter(x=>cat(x)===cC);if(cS!=='all')a=a.filter(x=>x.site===cS);if(cR!=='all')a=a.filter(x=>ar(x).includes(cR));
   const q=(document.getElementById('feed-search')?.value||'').toLowerCase().trim();if(q)a=a.filter(x=>(x.title||'').toLowerCase().includes(q)||(x.summary||'').toLowerCase().includes(q));
   const sortVal=(document.getElementById('feed-sort')?.value)||'date-desc';
@@ -300,7 +333,8 @@ function renderFeed(){
   if(!a.length){l.innerHTML='<div style="text-align:center;padding:40px;color:var(--text-d)">No articles match.</div>';return;}
   l.innerHTML=a.slice(0,100).map(x=>{
     const c=cat(x),rg=ar(x),en=x.entities||{},pr=(en.programs||[]).slice(0,2),co=(en.companies||[]).slice(0,2),u=x.url||'#';
-    return`<div class="acard ${c}" onclick="or('${u.replace(/'/g,"\\'")}','${(x.title||'').replace(/'/g,"\\'").substring(0,80)}')"><div style="display:flex;gap:6px;align-items:center;margin-bottom:4px;flex-wrap:wrap"><span class="badge" style="background:${CC[c]}18;color:${CC[c]}">${c}</span><span class="badge" style="background:var(--surface);color:var(--text-d)">${SL[x.site]||x.site}</span><span style="font:10px var(--mono);color:var(--text-xd);margin-left:auto">${(x.pub_date||'').slice(0,10)}</span></div><h3>${x.title||'Untitled'}</h3><div class="sum">${x.summary||(x.body_text||'').slice(0,200)||'—'}</div><div style="display:flex;gap:3px;flex-wrap:wrap;margin-top:6px">${pr.map(p=>`<span class="badge badge-red">${p}</span>`).join('')}${co.map(c=>`<span class="badge badge-blue">${c}</span>`).join('')}${rg.slice(0,2).map(r=>`<span class="badge badge-cyan">${r}</span>`).join('')}</div></div>`;
+        var fi=window.DC.push(x)-1;
+    return`<div class="acard ${c}" onclick="window.dc(${fi})"><div style="display:flex;gap:6px;align-items:center;margin-bottom:4px;flex-wrap:wrap"><span class="badge" style="background:${CC[c]}18;color:${CC[c]}">${c}</span><span class="badge" style="background:var(--surface);color:var(--text-d)">${SL[x.site]||x.site}</span><span style="font:10px var(--mono);color:var(--text-xd);margin-left:auto">${(x.pub_date||'').slice(0,10)}</span></div><h3>${x.title||'Untitled'}</h3><div class="sum">${x.summary||(x.body_text||'').slice(0,200)||'—'}</div><div style="display:flex;gap:3px;flex-wrap:wrap;margin-top:6px">${pr.map(p=>`<span class="badge badge-red">${p}</span>`).join('')}${co.map(c=>`<span class="badge badge-blue">${c}</span>`).join('')}${rg.slice(0,2).map(r=>`<span class="badge badge-cyan">${r}</span>`).join('')}</div></div>`;
   }).join('')+(a.length>100?`<div style="text-align:center;padding:20px;color:var(--text-d);font:11px var(--mono)">Showing 100 of ${a.length}</div>`:'');
 }
 function rP(){
@@ -398,7 +432,7 @@ window.openDM=function(record){
   document.getElementById('dm-content').innerHTML=html;
   document.getElementById('dm-overlay').classList.add('open');
 }
-window.closeDM=function(){document.getElementById('dm-overlay').classList.remove('open');};document.addEventListener('keydown',e=>{if(e.key==='Escape'){if(document.getElementById('dm-overlay').classList.contains('open'))closeDM();else if(document.getElementById('ro').classList.contains('open'))cr();}});
+window.closeDM=function(){document.getElementById('dm-overlay').classList.remove('open');};document.addEventListener('keydown',e=>{if(e.key==='Escape'){if(document.getElementById('cs-overlay').classList.contains('open'))closeCard();else if(document.getElementById('ro').classList.contains('open'))cr();}});
 
 // ── PIE + PAYWALL GLOBALS ──
 let PIE_FLAGS=[], PIE_PREDS=[], PIE_BRIEF={};
@@ -416,7 +450,7 @@ function isDFRUser(){ var t=getTier();return t==='dfr'||t==='pro'||t==='agency';
 window.DC=[];
 window.dc=function(i){
   var r=window.DC[i];if(!r)return;
-  if(r.url&&r.url!=='#'){or(r.url,r.title||'');}
+  showCard(r);
 };
 
 function paywallGate(title, vertical){
@@ -654,6 +688,111 @@ function renderCommercial(){
 
 
 
+function closeCard(){document.getElementById('cs-overlay').classList.remove('open');}
+
+function showCard(r){
+  const col = r.vertical_tag==='defense'?'#f97316':r.vertical_tag==='dfr'?'#e53e3e':'#06b6d4';
+  const colBg = col+'20';
+  const isPro = isProUser();
+  const isDFR = isDFRUser();
+  const canSee = r.paywall ? (r.vertical_tag==='dfr' ? isDFR : isPro) : true;
+  const flags = getPIEFlags(r);
+  const kf = r.key_facts||{};
+  const sd = r.state_data||[];
+
+  let html = '';
+
+  // Badges
+  html += '<div class="cs-badges">';
+  html += `<span class="cs-badge" style="background:${colBg};color:${col}">${(r.vertical_tag||'intel').toUpperCase()}</span>`;
+  if(r.data_category) html += `<span class="cs-badge" style="background:#2e2e26;color:#6b6358">${r.data_category.replace(/_/g,' ')}</span>`;
+  if(r.paywall) html += `<span class="cs-badge" style="background:#f59e0b20;color:#f59e0b">🔒 ${r.vertical_tag==='dfr'?'DFR':'PRO'}</span>`;
+  if(r.exclusive) html += `<span class="cs-badge" style="background:${colBg};color:${col}">EXCLUSIVE</span>`;
+  html += '</div>';
+
+  // Title + meta
+  html += `<div class="cs-title">${r.title||'Untitled'}</div>`;
+  html += '<div class="cs-meta">';
+  if(r.source) html += `<span>${r.source}</span>`;
+  if(r.pub_date) html += `<span>· ${r.pub_date.slice(0,10)}</span>`;
+  if(r.confidence) html += `<span>· ${r.confidence}% confidence</span>`;
+  html += '</div>';
+  html += '<div class="cs-divider"></div>';
+
+  if(!canSee){
+    // Paywall
+    const tier = r.vertical_tag==='dfr'?'DFR — $29/mo':'Pro — $49/mo';
+    html += `<div class="cs-paywall">
+      <span style="font-size:28px">🔒</span>
+      <span style="font:700 14px 'DM Sans',sans-serif;color:#f5f0e8">${r.title||'Pro Intel'}</span>
+      <span style="font-size:11px;color:#6b6358;max-width:280px;line-height:1.5">This record requires a ${tier} subscription to view.</span>
+      <a href="/pro/" class="cs-btn primary" style="margin-top:4px;max-width:200px;text-decoration:none">Upgrade → ${tier}</a>
+    </div>`;
+  } else {
+    // Summary
+    if(r.summary){
+      html += '<div>';
+      html += '<div class="cs-section-label">Summary</div>';
+      html += `<div class="cs-summary">${r.summary}</div>`;
+      html += '</div>';
+    }
+
+    // Key facts grid
+    const kfEntries = Object.entries(kf);
+    if(kfEntries.length){
+      html += '<div>';
+      html += '<div class="cs-section-label">Key Data</div>';
+      html += '<div class="cs-facts">';
+      kfEntries.forEach(([k,v])=>{
+        html += `<div class="cs-fact"><div class="cs-fact-label">${k.replace(/_/g,' ')}</div><div class="cs-fact-val">${v??'—'}</div></div>`;
+      });
+      html += '</div></div>';
+    }
+
+    // State data table
+    if(sd.length){
+      html += '<div>';
+      html += '<div class="cs-section-label">State Impact</div>';
+      html += '<div class="cs-states">';
+      sd.forEach(s=>{
+        const sev = s.severity==='SEVERE'?'#ef4444':'#f59e0b';
+        html += `<div class="cs-state-row">
+          <span style="font-weight:600;color:#f5f0e8;min-width:80px">${s.state}</span>
+          <span style="color:${sev};font:600 11px 'JetBrains Mono',monospace">${s.pct!=null?s.pct+'% grounded':s.severity}</span>
+          <span style="color:#6b6358;font-size:10px;text-align:right">${s.investment||'—'}</span>
+        </div>`;
+      });
+      html += '</div></div>';
+    }
+
+    // PIE flags
+    if(flags.length){
+      html += '<div>';
+      html += '<div class="cs-section-label" style="color:#ef4444">⚡ PIE Flags</div>';
+      html += '<div class="cs-pie-flags">';
+      flags.forEach(f=>{
+        html += `<div class="cs-pie-flag">
+          <div class="cs-pie-flag-title">${f.title}</div>
+          <div class="cs-pie-flag-detail">${(f.detail||'').slice(0,180)}${(f.detail||'').length>180?'…':''}</div>
+        </div>`;
+      });
+      html += '</div></div>';
+    }
+  }
+
+  // Actions
+  html += '<div class="cs-actions">';
+  if(r.url && r.url!=='#'){
+    const isPDF = (r.url||'').toLowerCase().endsWith('.pdf');
+    html += `<a href="${r.url}" target="_blank" rel="noopener" class="cs-btn primary">${isPDF?'📄 Open PDF':'↗ Read Source'}</a>`;
+  }
+  html += `<button class="cs-btn" onclick="closeCard()">Close</button>`;
+  html += '</div>';
+
+  document.getElementById('cs-body').innerHTML = html;
+  document.getElementById('cs-overlay').classList.add('open');
+}
+
 // Auto-open tab from URL param (?tab=dfr, ?cat=defense, etc.)
 (function(){
   const p=new URLSearchParams(location.search);
@@ -737,5 +876,12 @@ fetch('../static/intel_articles.json').then(r=>r.json()).then(arts=>{
   window.__pageAnalytics={ev:ev,flush:fl,session:S};
 })();
 </script>
+
+<div class="cs-overlay" id="cs-overlay" onclick="if(event.target===this)closeCard()">
+  <div class="cs-sheet" id="cs-sheet">
+    <div class="cs-handle"></div>
+    <div class="cs-body" id="cs-body"></div>
+  </div>
+</div>
 </body>
 </html>
