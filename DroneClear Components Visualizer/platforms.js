@@ -160,7 +160,41 @@
             allPlatforms = [...normalizedModels, ...industryDeduped];
             renderStats();
             buildFilters();
-            renderGrid(allPlatforms);
+
+            // ── URL param filter (?filter=survey, ?filter=mapping, etc.) ──
+            const FILTER_ALIASES = {
+                'survey':     'mapping',
+                'surveying':  'mapping',
+                'inspection': '__inspection__',
+                'enterprise': 'enterprise',
+                'tactical':   'tactical',
+                'isr':        'isr',
+                'fixed_wing': 'fixed_wing',
+                'fixedwing':  'fixed_wing',
+                'blue_uas':   '__blue_uas__',
+                'blueuas':    '__blue_uas__',
+                'ndaa':       '__ndaa__',
+                'agriculture':'agriculture',
+                'mapping':    'mapping',
+                'tethered':   'tethered',
+                'loitering':  'loitering',
+                'ucav':       'ucav',
+                'specialty':  'specialty',
+            };
+            const urlFilter = new URLSearchParams(window.location.search).get('filter');
+            if (urlFilter) {
+                const resolved = FILTER_ALIASES[urlFilter.toLowerCase()] || urlFilter.toLowerCase();
+                activeFilter = resolved;
+                // Activate matching chip; deactivate All chip
+                document.querySelectorAll('.plat-chip').forEach(c => {
+                    c.classList.remove('active');
+                    if (c._filterValue === resolved) c.classList.add('active');
+                });
+                // If no chip matched (e.g. __inspection__ has no dedicated chip), leave All deactivated
+                // so the filter label still makes semantic sense
+            }
+
+            applyFilters();
             setupSearch();
             setupModal();
         } catch (e) {
@@ -208,10 +242,19 @@
         const el = document.createElement('button');
         el.className = 'plat-chip' + (active ? ' active' : '');
         el.textContent = label;
+        el._filterValue = value;
         el.addEventListener('click', () => {
             document.querySelectorAll('.plat-chip').forEach(c => c.classList.remove('active'));
             el.classList.add('active');
             activeFilter = value;
+            // Update URL param without reload
+            const url = new URL(window.location);
+            if (value) {
+                url.searchParams.set('filter', value.replace(/^__(.+)__$/, '$1'));
+            } else {
+                url.searchParams.delete('filter');
+            }
+            history.replaceState(null, '', url);
             applyFilters();
         });
         return el;
@@ -235,6 +278,14 @@
             filtered = filtered.filter(p => p.compliance?.blue_uas);
         } else if (activeFilter === '__ndaa__') {
             filtered = filtered.filter(p => p.compliance?.ndaa_compliant);
+        } else if (activeFilter === '__inspection__') {
+            // Inspection: enterprise/specialty platforms with inspection-related tags or categories
+            const INSPECTION_KEYWORDS = ['inspect', 'indoor', 'confined', 'perimeter', 'tether', 'lemur', 'sentaero', 'vector', 'skyfront', 'brinc', 'censys', 'quantum', 'skydio'];
+            filtered = filtered.filter(p => {
+                const hay = [p.platform_name, p._description, p._raw_category, ...(p.tags||[])].join(' ').toLowerCase();
+                return INSPECTION_KEYWORDS.some(kw => hay.includes(kw)) ||
+                       ['enterprise','specialty','tethered'].includes(p.category);
+            });
         } else if (activeFilter) {
             filtered = filtered.filter(p => p.category === activeFilter);
         }
