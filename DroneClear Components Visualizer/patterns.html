@@ -246,6 +246,7 @@ a.brief-source-chip:hover{color:var(--text-s);border-color:var(--border-hi)}
   <button class="tab" data-tab="predictions">🔮 Predictions</button>
   <button class="tab" data-tab="whatif">⚡ What-If</button>
   <button class="tab" data-tab="manufacturers">🏭 Manufacturers</button>
+  <button class="tab" data-tab="vars">🏪 VARs</button>
 </div>
 
 <!-- ═══ Content ═══ -->
@@ -499,6 +500,28 @@ a.brief-source-chip:hover{color:var(--text-s);border-color:var(--border-hi)}
       </div>
     </div>
     <div id="mfr-list"></div>
+  </div>
+
+  <!-- VAR PANEL -->
+  <div class="panel" id="panel-vars">
+    <div style="font:700 9px var(--mono);color:var(--text-d);letter-spacing:.1em;margin-bottom:4px">VAR / DEALER INTELLIGENCE</div>
+    <p style="font-size:11px;color:var(--text-d);margin-bottom:12px;line-height:1.5">US drone value-added resellers ranked by revenue, NDAA posture, and DJI exposure risk. <strong style="color:var(--amber)">FCC Dec 2025 ban on new foreign drone authorizations</strong> is reshaping every VAR's book of business.</p>
+
+    <!-- Summary bar -->
+    <div id="var-summary-bar" style="display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-bottom:12px"></div>
+
+    <!-- Filter chips -->
+    <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px">
+      <button class="filter-chip active" onclick="setVarFilter('all',this)">All</button>
+      <button class="filter-chip" onclick="setVarFilter('national',this)">National</button>
+      <button class="filter-chip" onclick="setVarFilter('regional',this)">Regional</button>
+      <button class="filter-chip" onclick="setVarFilter('defense',this)">Defense</button>
+      <button class="filter-chip" onclick="setVarFilter('dfr',this)">DFR</button>
+      <button class="filter-chip" onclick="setVarFilter('dji-risk',this)">⚠ DJI Risk</button>
+    </div>
+
+    <!-- VAR list -->
+    <div id="var-list"></div>
   </div>
 
   <div class="footer">
@@ -1008,6 +1031,8 @@ document.querySelectorAll(".tab").forEach(t => {
     selectedFlag = null;
     document.getElementById("flag-detail-container").style.display = "none";
     document.getElementById("flag-list").style.display = "";
+    if (activeTab === 'manufacturers') renderManufacturers();
+    if (activeTab === 'vars') { renderVarSummary(); renderVars(); }
   });
 });
 
@@ -2777,6 +2802,330 @@ function setMfrFilter(f, btn) {
   document.querySelectorAll('.filter-chip').forEach(b => b.classList.remove('active'));
   btn.classList.add('active');
   renderManufacturers();
+}
+
+
+// ═══════════════════════════════════════════
+// VAR INTELLIGENCE DATA
+// ═══════════════════════════════════════════
+const VARS_DATA = [
+  {
+    id: "drone-nerds", name: "Drone Nerds (XTI Aerospace)", hq: "Miami, FL", founded: 2014,
+    type: ["national","dji-risk"],
+    revenue: "$100M+ (2024)", revenue_num: 100,
+    employees: "~135", yoy_growth: "+10% (pre-acquisition)",
+    dji_exposure: "critical", ndaa_posture: "pivoting",
+    acquisition: "Acquired by XTI Aerospace Nov 2025 — $25M Unusual Machines investment",
+    status: "acquired", status_label: "Acquired — XTI/UMAC",
+    signal: "negative",
+    brands: ["DJI","Autel","Skydio","Parrot","Teledyne FLIR"],
+    key_brands_ndaa: ["Skydio","Parrot","Autel"],
+    intel: "Largest DJI dealer in US by own claim. $100M+ 2024 revenue, 10yr profitability streak. XTI Aerospace (XTIA) acquisition Nov 2025 + $25M Unusual Machines (UMAC) strategic investment. DJI new-model ban forces portfolio pivot. Repair + training + enterprise sales. National online presence.",
+    post_freq: "high", web_traffic: "high",
+    geofootprint: "National (online) + Miami HQ",
+    contracts: "Large DJI Enterprise fleet sales to law enforcement, fire, SAR nationally"
+  },
+  {
+    id: "advexure", name: "Advexure", hq: "Los Angeles (Irvine), CA", founded: 2012,
+    type: ["national","defense"],
+    revenue: "Est. $15-30M", revenue_num: 22,
+    employees: "~30-50", yoy_growth: "Stable",
+    dji_exposure: "moderate", ndaa_posture: "agnostic — expanding compliant",
+    acquisition: "None — private; CFO has IPO experience (watching)",
+    status: "stable", status_label: "Stable — agnostic VAR",
+    signal: "positive",
+    brands: ["DJI","ACSL","Anzu","Autel","Freefly","Harris Aerial","Inspired Flight","Parrot","Red Cat","WingtraRAY","Counterdrone","Hextronics","GeoCue","Phoenix LiDAR"],
+    key_brands_ndaa: ["ACSL","Anzu","Inspired Flight","Parrot","Freefly","Harris Aerial"],
+    intel: "Founded 2012 in Sheboygan WI, now LA HQ + Dallas office. 22k+ satisfied pilots. Broadest NDAA-compliant portfolio of any national VAR. Feb 2025 MatrixSpace radar partnership. CFO background includes taking companies public — potential M&A path. DJI authorized + agnostic posture is strategic hedge.",
+    post_freq: "high", web_traffic: "high",
+    geofootprint: "National (online) + LA + Dallas offices",
+    contracts: "Public safety, utilities, agriculture, construction enterprise programs"
+  },
+  {
+    id: "frontier-precision", name: "Frontier Precision Unmanned", hq: "Fargo, ND", founded: 1988,
+    type: ["regional","defense"],
+    revenue: "$45M total org (~$10-15M UAS div est.)", revenue_num: 12,
+    employees: "100+ (22 states)", yoy_growth: "Growing — UAS div expanding",
+    dji_exposure: "moderate", ndaa_posture: "actively adding compliant brands",
+    acquisition: "ESOP — employee-owned, limits M&A",
+    status: "stable", status_label: "Stable — ESOP VAR",
+    signal: "positive",
+    brands: ["ACSL","Autel","Censys","DJI","Freefly","Hylio","Inspired Flight","Quantum-Systems","Skydio","Skyfront","Vision Aerial","WISPR","XAG","YellowScan","Emesent","Sentera"],
+    key_brands_ndaa: ["ACSL","Inspired Flight","Skydio","Freefly","Censys","Skyfront","WISPR","Vision Aerial","Quantum-Systems"],
+    intel: "37yr survey/geo firm with mature UAS division. 100+ employees across 22 states. ESOP structure = stable but acquisition-resistant. Broadest NDAA brand mix of any regional VAR. Skyfront P8 Blue UAS partnership Apr 2025. ACSL authorized dealer. Regular webinar/event presence (XPONENTIAL, Energy Drone Summit). Upper Midwest + Mountain West + West Coast.",
+    post_freq: "high", web_traffic: "medium",
+    geofootprint: "Upper Midwest, Mountain West, West Coast (22 states)",
+    contracts: "Agriculture, survey/mapping, utility, LiDAR, public safety"
+  },
+  {
+    id: "duncan-parnell", name: "Duncan-Parnell", hq: "Charlotte, NC", founded: 1946,
+    type: ["regional"],
+    revenue: "Est. $100-200M total (~$20-40M UAS div est.)", revenue_num: 30,
+    employees: "~500+ total org", yoy_growth: "Steady",
+    dji_exposure: "moderate", ndaa_posture: "actively adding compliant brands",
+    acquisition: "ESOP — employee-owned since ~2000s",
+    status: "stable", status_label: "Stable — legacy survey",
+    signal: "neutral",
+    brands: ["DJI","Wingtra","Quantum-Systems","Parrot","Inspired Flight","Anzu Robotics","WISPR","Harris Aerial","Freefly","YellowScan","ACSL","Emesent"],
+    key_brands_ndaa: ["Wingtra","Quantum-Systems","Inspired Flight","Parrot","ACSL","Harris Aerial","WISPR"],
+    intel: "78yr survey equipment company with 18 Southeast US locations. GSA-approved Wingtra sales. Strong AEC/construction vertical. DJI still dominant in product mix but aggressively adding Blue UAS. WingtraRAY + IF1200A NDAA flagship products. ESOP = stable. Southeast US footprint is relatively uncovered by competing national VARs.",
+    post_freq: "medium", web_traffic: "medium",
+    geofootprint: "Southeast US (18 locations across NC, SC, VA, MD, DC, TN)",
+    contracts: "AEC/construction, land survey, utility mapping, DOT programs, government"
+  },
+  {
+    id: "dronefly", name: "Dronefly", hq: "Simi Valley, CA", founded: 2013,
+    type: ["national","dji-risk"],
+    revenue: "Est. $20-40M", revenue_num: 30,
+    employees: "~50-100", yoy_growth: "Flat-declining (DJI headwind)",
+    dji_exposure: "high", ndaa_posture: "adding compliant — slow",
+    acquisition: "None — private; potential acquisition target as DJI revenue erodes",
+    status: "watch", status_label: "Watch — DJI headwind",
+    signal: "negative",
+    brands: ["DJI Enterprise","senseFly (AgEagle)","Teledyne FLIR","Skydio","Autel","Parrot"],
+    key_brands_ndaa: ["Teledyne FLIR SIRAS","Skydio","Parrot"],
+    intel: "DJI Enterprise Gold Partner + senseFly Authorized Distributor + FLIR Premium Partner. 10yr+ operation, 'thousands of government agencies' served. FCC ban on new DJI models hits core revenue. Jan 2026 FCC Covered List update adds limited DJI exceptions — tracking closely. senseFly (AgEagle) relationship is key NDAA bridge. National online model.",
+    post_freq: "medium", web_traffic: "medium",
+    geofootprint: "National (online) + Simi Valley CA",
+    contracts: "Government agencies, commercial inspection, agriculture, law enforcement"
+  },
+  {
+    id: "dslrpros", name: "DSLRPros / Hazon Solutions", hq: "Los Angeles, CA", founded: 2012,
+    type: ["national","dji-risk"],
+    revenue: "Est. $10-25M", revenue_num: 17,
+    employees: "~30-60", yoy_growth: "Declining — DJI revenue erosion",
+    dji_exposure: "critical", ndaa_posture: "rebranding — early stage",
+    acquisition: "None — private; rebranding to Hazon signals existential concern",
+    status: "watch", status_label: "Watch — rebranding",
+    signal: "negative",
+    brands: ["DJI Enterprise","Teledyne FLIR","senseFly (AgEagle)","Autel","Parrot","Skydio"],
+    key_brands_ndaa: ["Parrot Anafi USA","Teledyne FLIR SIRAS","Skydio X10"],
+    intel: "Founded 2012 as master DJI/FLIR/senseFly distributor. Active rebranding to 'Hazon Solutions' suggests leadership awareness of DJI risk. Police, fire, SAR, agriculture, inspection training arm. Competing with B&H/Amazon online. LA base = entertainment + public safety vertical access. Rebranding incomplete — still heavy DJI revenue.",
+    post_freq: "low", web_traffic: "medium",
+    geofootprint: "National (online) + LA HQ",
+    contracts: "Public safety, agriculture, commercial inspection, entertainment"
+  },
+  {
+    id: "uvt", name: "Unmanned Vehicle Technologies (UVT)", hq: "Columbia, MD", founded: 2015,
+    type: ["defense","national"],
+    revenue: "Est. $10-20M", revenue_num: 15,
+    employees: "~20-40", yoy_growth: "Growing — NDAA wave",
+    dji_exposure: "low", ndaa_posture: "NDAA-only focus",
+    acquisition: "None — prime acquisition target for defense SI",
+    status: "stable", status_label: "Stable — defense VAR",
+    signal: "positive",
+    brands: ["Skydio","Teal/Red Cat","Teledyne FLIR","Percepto","Autel"],
+    key_brands_ndaa: ["Skydio","Teal 2","Teledyne FLIR Black Hornet","Percepto"],
+    intel: "Defense-focused VAR with GSA schedule. Mid-Atlantic government footprint near DC/Pentagon corridor. NDAA-only product mix is a competitive moat as agencies consolidate vendors. BRINC partnership via SkyfireAI network. Prime candidate for acquisition by Leidos, SAIC, or defense SI looking for UAS distribution capability.",
+    post_freq: "low", web_traffic: "low",
+    geofootprint: "East Coast / Mid-Atlantic — federal government focus",
+    contracts: "DOD, DHS, federal law enforcement, intelligence community adjacent"
+  },
+  {
+    id: "volatus-drones", name: "Volatus Aerospace / Volatus Drones", hq: "Kelowna, BC + US ops", founded: 2021,
+    type: ["national","defense"],
+    revenue: "$34.2M total FY2025 (+26% YoY)", revenue_num: 34,
+    employees: "~200+", yoy_growth: "+26% FY2025; equipment rev +106%",
+    dji_exposure: "moderate", ndaa_posture: "expanding — NATO defense pivot",
+    acquisition: "Public (TSX: FLT / OTCQX: TAKOF) — graduated TSX 2026",
+    status: "stable", status_label: "Stable — NATO pivot",
+    signal: "positive",
+    brands: ["DJI","ACSL","Autel","Skydio","Freefly","Draganfly","Percepto","Wingtra","YellowScan"],
+    key_brands_ndaa: ["ACSL","Skydio","Percepto","Freefly","Wingtra"],
+    intel: "Public company (TSX: FLT). FY2025: $34.2M revenue +26% YoY. Equipment revenue +106% from NATO ISR drone system deliveries. Europe/UK +150% revenue. Merged with Drone Delivery Canada Aug 2024. US pilot network 1,200+ certified. SKYDRA system launch post-FY2025. Largest UAV distributor Canada + major US service provider. NATO defense pivot is key differentiator vs other VARs.",
+    post_freq: "medium", web_traffic: "medium",
+    geofootprint: "Canada HQ + North America + Europe/NATO",
+    contracts: "NATO member ISR systems, energy inspection, utilities, construction"
+  },
+  {
+    id: "skyfireai", name: "SkyfireAI (fka Skyfire Consulting)", hq: "Huntsville, AL", founded: 2016,
+    type: ["defense","dfr"],
+    revenue: "Est. $5-15M (pre-AI Fund)", revenue_num: 10,
+    employees: "~30-60", yoy_growth: "Growing — AI Fund backing",
+    dji_exposure: "low", ndaa_posture: "NDAA-only — public safety context",
+    acquisition: "Acquired by Echelon AI (Andrew Ng's AI Fund) Sept 2024",
+    status: "strong", status_label: "Strong — AI Fund backed",
+    signal: "positive",
+    brands: ["Parrot","BRINC","Autel","Skydio","DJI","Ondas/American Robotics"],
+    key_brands_ndaa: ["Parrot Anafi USA","BRINC LEMUR","Skydio X10","American Robotics Scout"],
+    intel: "Pivotal company: was pure consulting/training, now SaaS + hardware + SI via Echelon AI acquisition. Andrew Ng's AI Fund backing. Manages Ohio statewide DFR pilot program (9 agencies). Skyfire SF2 US-made drone in production. Huntsville AL base = Army Redstone Arsenal proximity. FBI training contract. DFR program implementation = recurring revenue model. Hardware commoditization play to software+SI.",
+    post_freq: "high", web_traffic: "medium",
+    geofootprint: "National — Huntsville AL + Atlanta GA HQs",
+    contracts: "Ohio DFR statewide program, DOD training, FBI, Super Bowl security, Vantis/Thales"
+  },
+  {
+    id: "drone-arrival", name: "Drone Arrival", hq: "Minneapolis, MN", founded: 2017,
+    type: ["regional","defense"],
+    revenue: "Est. $5-15M", revenue_num: 10,
+    employees: "~15-30", yoy_growth: "Stable",
+    dji_exposure: "moderate", ndaa_posture: "NDAA-emphasis in pitch",
+    acquisition: "None — private",
+    status: "stable", status_label: "Stable — NDAA VAR",
+    signal: "positive",
+    brands: ["Aurelia","Autel","DJI","Harris Aerial","Inspired Flight","Parrot","Skyfront","WISPR","Elistair","Unitree","SPH Engineering","Routescene LiDAR","Sentera"],
+    key_brands_ndaa: ["Harris Aerial","Inspired Flight","Skyfront P8","WISPR","Parrot","Aurelia"],
+    intel: "Minneapolis-based multi-brand VAR with notable NDAA focus in marketing. Carries Elistair tethered systems (unique vs other VARs). Aurelia heavy-lift NDAA compliant. Unitree ground robots = adjacent robotics. SPH Engineering/UgCS = software differentiation. Moderate online presence, niche Midwest + national brand.",
+    post_freq: "low", web_traffic: "low",
+    geofootprint: "Upper Midwest + national online",
+    contracts: "Survey/mapping, agriculture, inspection, public safety, defense adjacent"
+  },
+  {
+    id: "uas-nexus-syndicate", name: "UAS Nexus Syndicate / Platform One", hq: "Midwest US", founded: 2020,
+    type: ["regional","dfr","defense"],
+    revenue: "Est. <$5M", revenue_num: 3,
+    employees: "~5-15", yoy_growth: "Growing — DFR wave",
+    dji_exposure: "none", ndaa_posture: "NDAA-only",
+    acquisition: "None — small private",
+    status: "stable", status_label: "Stable — niche DFR",
+    signal: "positive",
+    brands: ["Paladin/Knighthawk MDL-2044"],
+    key_brands_ndaa: ["Paladin Knighthawk"],
+    intel: "Niche DFR-focused dealer. Paladin Knighthawk MDL-2044 authorized dealer — one of the primary distribution channels for this Blue UAS DFR platform. Small but growing on DFR demand wave. Platform One relationship. 100% NDAA-compliant product mix. Strategic relationship with Orqa ecosystem (Jeremiah's employer).",
+    post_freq: "low", web_traffic: "low",
+    geofootprint: "Midwest US",
+    contracts: "DFR, public safety, Platform One MDL-2044 deployment"
+  }
+];
+
+let activeVarFilter = 'all';
+
+function setVarFilter(f, btn) {
+  activeVarFilter = f;
+  document.querySelectorAll('#panel-vars .filter-chip').forEach(function(b) {
+    b.classList.toggle('active', b === btn);
+  });
+  renderVars();
+}
+
+function renderVarSummary() {
+  var el = document.getElementById('var-summary-bar');
+  if (!el) return;
+  var totalRev = VARS_DATA.reduce(function(s,v){ return s + (v.revenue_num||0); }, 0);
+  var djiHigh = VARS_DATA.filter(function(v){ return v.dji_exposure === 'critical' || v.dji_exposure === 'high'; }).length;
+  var ndaaOnly = VARS_DATA.filter(function(v){ return v.ndaa_posture === 'NDAA-only focus' || v.ndaa_posture === 'NDAA-only'; }).length;
+  var acquired = VARS_DATA.filter(function(v){ return v.status === 'acquired' || v.acquisition.indexOf('Acquired') === 0; }).length;
+  el.innerHTML = [
+    {label:'VARs tracked', val: VARS_DATA.length, color:'var(--cyan)'},
+    {label:'Est. total rev', val: '~$'+totalRev+'M+', color:'var(--green)'},
+    {label:'High DJI risk', val: djiHigh, color:'var(--red)'},
+    {label:'NDAA-only', val: ndaaOnly, color:'var(--green)'}
+  ].map(function(s){
+    return '<div style="background:var(--surface);border-radius:8px;padding:8px 10px;border:1px solid var(--border)">'
+      +'<div style="font:700 14px var(--font);color:'+s.color+'">'+s.val+'</div>'
+      +'<div style="font:500 9px var(--mono);color:var(--text-d);margin-top:2px">'+s.label+'</div></div>';
+  }).join('');
+}
+
+function renderVars() {
+  var el = document.getElementById('var-list');
+  if (!el) return;
+
+  var filtered = VARS_DATA.filter(function(v) {
+    if (activeVarFilter === 'all') return true;
+    if (activeVarFilter === 'dji-risk') return v.dji_exposure === 'critical' || v.dji_exposure === 'high';
+    return v.type.indexOf(activeVarFilter) > -1;
+  }).sort(function(a,b){ return b.revenue_num - a.revenue_num; });
+
+  var djiColors = {critical:'var(--red)', high:'var(--amber)', moderate:'var(--amber)', low:'var(--green)', none:'var(--green)'};
+  var signalIcon = {positive:'▲', negative:'▼', neutral:'◆'};
+  var signalColor = {positive:'var(--green)', negative:'var(--red)', neutral:'var(--text-d)'};
+
+  el.innerHTML = filtered.map(function(v, idx) {
+    var djiCol = djiColors[v.dji_exposure] || 'var(--text-d)';
+    var si = signalIcon[v.signal] || '◆';
+    var sc = signalColor[v.signal] || 'var(--text-d)';
+    var rankNum = idx + 1;
+    var ndaaCount = v.key_brands_ndaa.length;
+    var totalBrands = v.brands.length;
+
+    return '<div class="mfr-card" data-var-idx="'+idx+'" style="border-left:3px solid '+sc+';margin-bottom:8px;cursor:pointer;padding:10px 12px">'
+
+      // Header row
+      +'<div style="display:flex;align-items:flex-start;justify-content:space-between;gap:6px;margin-bottom:6px">'
+        +'<div style="display:flex;align-items:center;gap:6px;min-width:0">'
+          +'<span style="font:700 10px var(--mono);color:var(--text-xd);background:var(--surface);padding:1px 5px;border-radius:3px;flex-shrink:0">#'+rankNum+'</span>'
+          +'<div style="min-width:0">'
+            +'<div style="font:700 12px var(--font);color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+v.name+' <span style="color:'+sc+'">'+si+'</span></div>'
+            +'<div style="font:400 10px var(--font);color:var(--text-d)">'+v.hq+' · Est. '+v.founded+'</div>'
+          +'</div>'
+        +'</div>'
+        +'<span style="font:700 9px var(--mono);padding:2px 6px;border-radius:4px;white-space:nowrap;flex-shrink:0;background:var(--surface);color:var(--text-s)">'+v.status_label+'</span>'
+      +'</div>'
+
+      // Revenue + DJI exposure row
+      +'<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">'
+        +'<span style="font:600 11px var(--font);color:var(--green)">'+v.revenue+'</span>'
+        +'<span style="font:500 9px var(--mono);color:'+djiCol+'">DJI exposure: '+v.dji_exposure.toUpperCase()+'</span>'
+      +'</div>'
+
+      // NDAA brand count bar
+      +'<div style="margin-bottom:6px">'
+        +'<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:3px">'
+          +'<span style="font:500 9px var(--mono);color:var(--text-d)">NDAA-compliant brands</span>'
+          +'<span style="font:600 9px var(--mono);color:var(--cyan)">'+ndaaCount+' / '+totalBrands+'</span>'
+        +'</div>'
+        +'<div style="background:var(--surface);border-radius:3px;height:4px;overflow:hidden">'
+          +'<div style="width:'+(Math.round(ndaaCount/totalBrands*100))+'%;height:100%;background:var(--cyan);border-radius:3px"></div>'
+        +'</div>'
+      +'</div>'
+
+      // Intel snippet
+      +'<div style="font:400 10px var(--font);color:var(--text-s);line-height:1.5;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden">'+v.intel+'</div>'
+
+      +'</div>';
+  }).join('') || '<div style="text-align:center;padding:24px;color:var(--text-d);font-size:12px">No VARs match this filter.</div>';
+
+  // Click handlers
+  el.querySelectorAll('[data-var-idx]').forEach(function(card) {
+    card.addEventListener('click', function() {
+      var filteredList = VARS_DATA.filter(function(v) {
+        if (activeVarFilter === 'all') return true;
+        if (activeVarFilter === 'dji-risk') return v.dji_exposure === 'critical' || v.dji_exposure === 'high';
+        return v.type.indexOf(activeVarFilter) > -1;
+      }).sort(function(a,b){ return b.revenue_num - a.revenue_num; });
+      var v = filteredList[+card.dataset.varIdx];
+      if (!v) return;
+
+      var ndaaPct = Math.round(v.key_brands_ndaa.length / v.brands.length * 100);
+      var djiColors = {critical:'var(--red)', high:'var(--amber)', moderate:'var(--amber)', low:'var(--green)', none:'var(--green)'};
+      var djiCol = djiColors[v.dji_exposure] || 'var(--text-d)';
+
+      var body = ''
+        +'<div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:10px">'
+          +'<div style="background:var(--surface);border-radius:6px;padding:8px 10px"><div style="font:500 9px var(--mono);color:var(--text-d);margin-bottom:2px">REVENUE</div><div style="font:600 12px var(--font);color:var(--green)">'+v.revenue+'</div><div style="font:400 9px var(--font);color:var(--text-d)">'+v.yoy_growth+'</div></div>'
+          +'<div style="background:var(--surface);border-radius:6px;padding:8px 10px"><div style="font:500 9px var(--mono);color:var(--text-d);margin-bottom:2px">EMPLOYEES</div><div style="font:600 11px var(--font);color:var(--text)">'+v.employees+'</div></div>'
+        +'</div>'
+        +'<div style="background:var(--surface);border-radius:6px;padding:8px 10px;margin-bottom:8px">'
+          +'<div style="font:500 9px var(--mono);color:var(--text-d);margin-bottom:4px">DJI EXPOSURE: <span style="color:'+djiCol+'">'+v.dji_exposure.toUpperCase()+'</span></div>'
+          +'<div style="font:500 9px var(--mono);color:var(--text-d);margin-bottom:2px">NDAA POSTURE</div>'
+          +'<div style="font:400 10px var(--font);color:var(--text-s)">'+v.ndaa_posture+'</div>'
+        +'</div>'
+        +'<div style="background:var(--surface);border-radius:6px;padding:8px 10px;margin-bottom:8px">'
+          +'<div style="font:500 9px var(--mono);color:var(--text-d);margin-bottom:6px">BRANDS CARRIED ('+v.brands.length+' total — '+ndaaPct+'% NDAA-capable)</div>'
+          +'<div style="display:flex;gap:3px;flex-wrap:wrap">'
+          +v.brands.map(function(b){
+            var isNdaa = v.key_brands_ndaa.indexOf(b) > -1;
+            return '<span style="font:500 9px var(--mono);padding:2px 6px;border-radius:3px;background:'+(isNdaa?'rgba(34,197,94,.1)':'rgba(255,59,92,.08)')+';color:'+(isNdaa?'var(--green)':'var(--text-d)')+'">'+b+'</span>';
+          }).join('')
+          +'</div>'
+        +'</div>'
+        +'<div style="background:var(--surface);border-radius:6px;padding:8px 10px;margin-bottom:8px">'
+          +'<div style="font:500 9px var(--mono);color:var(--text-d);margin-bottom:4px">GEOFOOTPRINT</div>'
+          +'<div style="font:400 10px var(--font);color:var(--text-s)">'+v.geofootprint+'</div>'
+        +'</div>'
+        +'<div style="background:var(--surface);border-radius:6px;padding:8px 10px;margin-bottom:8px">'
+          +'<div style="font:500 9px var(--mono);color:var(--text-d);margin-bottom:4px">TYPICAL CONTRACTS</div>'
+          +'<div style="font:400 10px var(--font);color:var(--text-s)">'+v.contracts+'</div>'
+        +'</div>'
+        +'<div style="background:var(--surface);border-radius:6px;padding:8px 10px;margin-bottom:8px">'
+          +'<div style="font:500 9px var(--mono);color:var(--text-d);margin-bottom:4px">ACQUISITION STATUS</div>'
+          +'<div style="font:400 10px var(--font);color:var(--text-s)">'+v.acquisition+'</div>'
+        +'</div>'
+        +'<div style="font:400 10px var(--font);color:var(--text-s);line-height:1.6">'+v.intel+'</div>';
+
+      openDetailModal(v.name, v.hq + ' · ' + v.revenue, body);
+    });
+  });
 }
 
 function renderManufacturers() {
