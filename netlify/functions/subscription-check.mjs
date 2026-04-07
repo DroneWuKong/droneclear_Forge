@@ -56,6 +56,7 @@ export default async (req) => {
   const stripeKey   = process.env.STRIPE_SECRET_KEY;
   const tokenSecret = process.env.PRO_TOKEN_SECRET;
   const proPriceId  = process.env.STRIPE_PRO_PRICE_ID;
+  const dfrPriceId  = process.env.STRIPE_DFR_PRICE_ID;
 
   if (!stripeKey || !tokenSecret) {
     return json({ error: 'Subscription service not configured' }, 500);
@@ -120,7 +121,9 @@ export default async (req) => {
 
     // Determine tier from price ID
     const priceId = sub?.items?.data?.[0]?.price?.id || '';
-    const tier = priceId === proPriceId ? 'pro' : 'agency';
+    const tier = priceId === proPriceId ? 'pro'
+               : priceId === dfrPriceId ? 'dfr'
+               : 'agency';
 
     // Issue 30-day token
     const token = await signToken({

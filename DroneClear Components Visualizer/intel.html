@@ -245,7 +245,7 @@ function renderDFR(){
     const isExcl=(x.source==='oregon_nasao'||x.site==='oregon_nasao')&&x.pub_date>='2026-04-01';
     const isPaidDfr=x.paywall;
     const flagsDfr=getPIEFlags(x);
-    if(isPaidDfr&&!isProUser()) return paywallGate(x.title);
+    if(isPaidDfr&&!isDFRUser()) return paywallGate(x.title,'dfr');
     const dfrOnclick=x.url&&x.url!=='#'
       ? `or('${(x.url||'').replace(/'/g,"\\'")}','${(x.title||'').replace(/'/g,"\\'").substring(0,60)}')`
       : ``;
@@ -404,20 +404,25 @@ window.closeDM=function(){document.getElementById('dm-overlay').classList.remove
 // ── PIE + PAYWALL GLOBALS ──
 let PIE_FLAGS=[], PIE_PREDS=[], PIE_BRIEF={};
 
-function isProUser(){
+function getTier(){
   var tok=localStorage.getItem('wingman_sub_token')||'';
   var ps=localStorage.getItem('wingman_proxy_secret')||'';
-  if(ps)return true;
-  if(!tok)return false;
-  try{var p=JSON.parse(atob(tok));return!p.exp||Date.now()<p.exp;}catch{return false;}
+  if(ps)return'pro';
+  if(!tok)return'free';
+  try{var p=JSON.parse(atob(tok));if(p.exp&&Date.now()>p.exp)return'free';return p.tier||'pro';}catch{return'free';}
 }
+function isProUser(){ var t=getTier();return t==='pro'||t==='agency'; }
+function isDFRUser(){ var t=getTier();return t==='dfr'||t==='pro'||t==='agency'; }
 
-function paywallGate(title){
+function paywallGate(title, vertical){
+  const isDFR=vertical==='dfr';
+  const minTier=isDFR?'DFR ($29/mo)':'Pro ($49/mo)';
+  const checkoutTier=isDFR?'dfr':'pro';
   return`<div style="display:flex;flex-direction:column;align-items:center;justify-content:center;padding:24px;gap:8px;text-align:center;background:var(--card-hi);border-radius:6px;margin:4px 0">
     <span style="font-size:18px">🔒</span>
-    <span style="font:600 12px var(--font);color:var(--text)">${title||'Pro Intel'}</span>
-    <span style="font-size:10px;color:var(--text-d);max-width:260px;line-height:1.5">Dealer analysis, acquisition signals, and proprietary market intelligence require a Pro subscription.</span>
-    <a href="/pro/" style="margin-top:4px;padding:6px 18px;background:var(--amber);color:#0c0c0a;border-radius:6px;font:600 11px var(--font);text-decoration:none">Upgrade to Pro →</a>
+    <span style="font:600 12px var(--font);color:var(--text)">${title||'Intel'}</span>
+    <span style="font-size:10px;color:var(--text-d);max-width:260px;line-height:1.5">This record requires a ${minTier} subscription.</span>
+    <a href="/pro/" style="margin-top:4px;padding:6px 18px;background:var(--amber);color:#0c0c0a;border-radius:6px;font:600 11px var(--font);text-decoration:none">Upgrade — ${minTier} →</a>
   </div>`;
 }
 
