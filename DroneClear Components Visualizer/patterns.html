@@ -6,6 +6,7 @@
 <title>Pattern Intelligence — Forge Module</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css"/>
 <style>
 :root {
   --bg:#0c0c0a;--surface:#141410;--card:#1c1c17;--card-hi:#242420;
@@ -64,6 +65,8 @@ a{color:var(--blue);text-decoration:none}a:hover{text-decoration:underline}
 .filter-collapsible.open{max-height:300px}
 .map-region path{transition:fill-opacity .2s,stroke-width .2s}
 .map-region:hover path{fill-opacity:0.35;stroke-width:2.5}
+.leaflet-dark-tip{background:#111115;border:1px solid #2a2a30;color:#e8e8f0;padding:4px 8px;border-radius:4px;font-family:'DM Sans',sans-serif;box-shadow:none}
+.leaflet-dark-tip::before{display:none}
 
 /* ── Badges ── */
 .badge{padding:2px 8px;border-radius:5px;font:600 10px var(--mono);white-space:nowrap;letter-spacing:.03em;display:inline-block}
@@ -352,79 +355,21 @@ a.brief-source-chip:hover{color:var(--text-s);border-color:var(--border-hi)}
         Global UAS supply chain intelligence across 42 countries. Tap a region to drill in. Bookmark any region: <span style="font:10px var(--mono);color:var(--text-xd)">/patterns/#region-europe</span>
       </p>
 
-      <!-- SVG World Map -->
-      <div style="background:var(--surface);border-radius:10px;padding:16px;margin-bottom:16px;overflow:hidden">
-        <svg viewBox="0 0 1000 500" style="width:100%;height:auto" id="region-map">
-          <!-- Grid lines for map feel -->
-          <line x1="0" y1="250" x2="1000" y2="250" stroke="var(--border)" stroke-width="0.5" stroke-dasharray="4"/>
-          <line x1="500" y1="0" x2="500" y2="500" stroke="var(--border)" stroke-width="0.5" stroke-dasharray="4"/>
-
-          <!-- North America -->
-          <g onclick="selectRegion('north-america')" style="cursor:pointer" class="map-region">
-            <path d="M50,80 L120,45 L200,40 L250,55 L270,90 L260,130 L240,160 L200,200 L180,220 L150,210 L120,180 L80,150 L55,120 Z" fill="var(--blue)" fill-opacity="0.15" stroke="var(--blue)" stroke-width="1.5"/>
-            <path d="M130,160 L150,180 L165,210 L160,235 L140,225 L125,200 L120,175 Z" fill="var(--blue)" fill-opacity="0.1" stroke="var(--blue)" stroke-width="1"/>
-            <text x="165" y="115" fill="var(--blue)" font-size="13" font-weight="700" text-anchor="middle" font-family="var(--font)">N. AMERICA</text>
-            <text x="165" y="133" fill="var(--text-d)" font-size="10" text-anchor="middle" font-family="var(--mono)" id="map-count-north-america"></text>
-          </g>
-
-          <!-- South America -->
-          <g onclick="selectRegion('south-america')" style="cursor:pointer" class="map-region">
-            <path d="M200,260 L240,250 L265,270 L275,310 L270,360 L250,400 L220,430 L195,420 L180,380 L175,330 L180,290 Z" fill="var(--green)" fill-opacity="0.15" stroke="var(--green)" stroke-width="1.5"/>
-            <text x="225" y="340" fill="var(--green)" font-size="12" font-weight="700" text-anchor="middle" font-family="var(--font)">S. AMERICA</text>
-            <text x="225" y="358" fill="var(--text-d)" font-size="10" text-anchor="middle" font-family="var(--mono)" id="map-count-south-america"></text>
-          </g>
-
-          <!-- Europe -->
-          <g onclick="selectRegion('europe')" style="cursor:pointer" class="map-region">
-            <path d="M430,65 L460,50 L510,55 L530,70 L535,100 L520,130 L500,140 L470,135 L445,120 L435,95 Z" fill="var(--cyan)" fill-opacity="0.2" stroke="var(--cyan)" stroke-width="1.5"/>
-            <text x="480" y="95" fill="var(--cyan)" font-size="12" font-weight="700" text-anchor="middle" font-family="var(--font)">EUROPE</text>
-            <text x="480" y="112" fill="var(--text-d)" font-size="10" text-anchor="middle" font-family="var(--mono)" id="map-count-europe"></text>
-          </g>
-
-          <!-- Ukraine -->
-          <g onclick="selectRegion('ukraine')" style="cursor:pointer" class="map-region">
-            <path d="M535,75 L570,70 L585,85 L575,105 L550,110 L535,95 Z" fill="var(--amber)" fill-opacity="0.25" stroke="var(--amber)" stroke-width="2"/>
-            <text x="558" y="93" fill="var(--amber)" font-size="10" font-weight="700" text-anchor="middle" font-family="var(--font)">UA</text>
-          </g>
-
-          <!-- Russia -->
-          <g onclick="selectRegion('russia')" style="cursor:pointer" class="map-region">
-            <path d="M560,30 L650,20 L780,25 L870,40 L880,70 L850,90 L750,85 L660,80 L590,75 L560,55 Z" fill="var(--red)" fill-opacity="0.12" stroke="var(--red)" stroke-width="1.5"/>
-            <text x="720" y="55" fill="var(--red)" font-size="13" font-weight="700" text-anchor="middle" font-family="var(--font)">RUSSIA</text>
-            <text x="720" y="73" fill="var(--text-d)" font-size="10" text-anchor="middle" font-family="var(--mono)" id="map-count-russia"></text>
-          </g>
-
-          <!-- Middle East -->
-          <g onclick="selectRegion('middle-east')" style="cursor:pointer" class="map-region">
-            <path d="M540,140 L590,130 L620,150 L615,190 L590,210 L555,200 L535,175 Z" fill="var(--orange)" fill-opacity="0.2" stroke="var(--orange)" stroke-width="1.5"/>
-            <text x="575" y="170" fill="var(--orange)" font-size="11" font-weight="700" text-anchor="middle" font-family="var(--font)">MID EAST</text>
-            <text x="575" y="187" fill="var(--text-d)" font-size="10" text-anchor="middle" font-family="var(--mono)" id="map-count-middle-east"></text>
-          </g>
-
-          <!-- Africa -->
-          <g onclick="selectRegion('africa')" style="cursor:pointer" class="map-region">
-            <path d="M440,165 L510,155 L540,185 L545,240 L530,310 L510,370 L470,400 L440,380 L420,330 L415,270 L420,220 L430,185 Z" fill="var(--purple)" fill-opacity="0.12" stroke="var(--purple)" stroke-width="1.5"/>
-            <text x="478" y="280" fill="var(--purple)" font-size="13" font-weight="700" text-anchor="middle" font-family="var(--font)">AFRICA</text>
-            <text x="478" y="298" fill="var(--text-d)" font-size="10" text-anchor="middle" font-family="var(--mono)" id="map-count-africa"></text>
-          </g>
-
-          <!-- Asia-Pacific -->
-          <g onclick="selectRegion('asia-pacific')" style="cursor:pointer" class="map-region">
-            <path d="M650,95 L750,90 L830,100 L880,130 L900,170 L890,220 L850,260 L780,270 L720,250 L670,220 L640,180 L635,140 Z" fill="var(--red)" fill-opacity="0.12" stroke="var(--red)" stroke-width="1.5"/>
-            <path d="M830,180 L870,175 L900,200 L910,240 L890,270 L860,260 L840,230 L835,200 Z" fill="var(--red)" fill-opacity="0.08" stroke="var(--red)" stroke-width="1"/>
-            <text x="770" y="175" fill="var(--red)" font-size="13" font-weight="700" text-anchor="middle" font-family="var(--font)">ASIA-PACIFIC</text>
-            <text x="770" y="195" fill="var(--text-d)" font-size="10" text-anchor="middle" font-family="var(--mono)" id="map-count-asia-pacific"></text>
-          </g>
-
-          <!-- Oceania -->
-          <g onclick="selectRegion('oceania')" style="cursor:pointer" class="map-region">
-            <path d="M830,320 L880,310 L920,330 L930,360 L910,390 L870,400 L840,380 L825,350 Z" fill="var(--green)" fill-opacity="0.15" stroke="var(--green)" stroke-width="1.5"/>
-            <path d="M910,350 L940,345 L950,370 L935,385 L915,375 Z" fill="var(--green)" fill-opacity="0.1" stroke="var(--green)" stroke-width="1"/>
-            <text x="880" y="358" fill="var(--green)" font-size="11" font-weight="700" text-anchor="middle" font-family="var(--font)">OCEANIA</text>
-            <text x="880" y="375" fill="var(--text-d)" font-size="10" text-anchor="middle" font-family="var(--mono)" id="map-count-oceania"></text>
-          </g>
-        </svg>
+      <!-- Interactive World Map -->
+      <div style="background:var(--surface);border-radius:10px;overflow:hidden;margin-bottom:16px;border:1px solid var(--border)">
+        <div id="region-map-leaflet" style="width:100%;height:280px"></div>
       </div>
+
+      <!-- Hidden count update targets (JS compatibility) -->
+      <span id="map-count-north-america" style="display:none"></span>
+      <span id="map-count-south-america" style="display:none"></span>
+      <span id="map-count-europe" style="display:none"></span>
+      <span id="map-count-ukraine" style="display:none"></span>
+      <span id="map-count-russia" style="display:none"></span>
+      <span id="map-count-middle-east" style="display:none"></span>
+      <span id="map-count-africa" style="display:none"></span>
+      <span id="map-count-asia-pacific" style="display:none"></span>
+      <span id="map-count-oceania" style="display:none"></span>
 
       <!-- Region list below map -->
       <div id="region-list"></div>
@@ -1790,14 +1735,141 @@ const REGION_DATA = {
 };
 
 function renderRegionMap() {
-  // Update map labels with flag counts
+  // Compute flag counts per region
+  const regionCounts = {};
   for (const [slug, data] of Object.entries(REGION_DATA)) {
     const count = FLAGS.filter(f => {
       const text = ((f.title||'')+(f.detail||'')).toLowerCase();
       return data.countries.some(c => text.includes(c));
     }).length;
+    regionCounts[slug] = count;
     const el = document.getElementById(`map-count-${slug}`);
     if (el) el.textContent = count ? `${count} flags` : '';
+  }
+
+  // ── Leaflet choropleth map ─────────────────────────────────────────────────
+  if (!window._leafletMapInit) {
+    window._leafletMapInit = true;
+
+    const script = document.createElement('script');
+    script.src = 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js';
+    script.onload = () => {
+      const mapEl = document.getElementById('region-map-leaflet');
+      if (!mapEl) return;
+
+      const map = L.map('region-map-leaflet', {
+        zoomControl: false,
+        attributionControl: false,
+        scrollWheelZoom: false,
+        doubleClickZoom: false,
+        dragging: false,
+        touchZoom: false,
+      }).setView([20, 10], 1.4);
+
+      // Dark base tile
+      L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_nolabels/{z}/{x}/{y}{r}.png', {
+        maxZoom: 5
+      }).addTo(map);
+
+      // Country ISO → region slug mapping
+      const countryRegion = {
+        // North America
+        'USA':'north-america','CAN':'north-america','MEX':'north-america',
+        // South America
+        'BRA':'south-america','ARG':'south-america','COL':'south-america',
+        'CHL':'south-america','PER':'south-america','VEN':'south-america',
+        'ECU':'south-america','BOL':'south-america','URY':'south-america',
+        'PRY':'south-america','GUY':'south-america','SUR':'south-america',
+        // Europe (NATO)
+        'GBR':'europe','FRA':'europe','DEU':'europe','ITA':'europe','ESP':'europe',
+        'POL':'europe','NLD':'europe','BEL':'europe','SWE':'europe','NOR':'europe',
+        'DNK':'europe','FIN':'europe','CHE':'europe','AUT':'europe','CZE':'europe',
+        'PRT':'europe','GRC':'europe','HUN':'europe','ROU':'europe','BGR':'europe',
+        'HRV':'europe','SVK':'europe','SVN':'europe','LTU':'europe','LVA':'europe',
+        'EST':'europe','LUX':'europe','ISL':'europe','ALB':'europe','MKD':'europe',
+        'MNE':'europe','SRB':'europe','BIH':'europe','IRL':'europe',
+        // Ukraine
+        'UKR':'ukraine',
+        // Russia
+        'RUS':'russia','BLR':'russia','KAZ':'russia','AZE':'russia','ARM':'russia',
+        'GEO':'russia','MDA':'russia',
+        // Middle East
+        'ISR':'middle-east','SAU':'middle-east','IRN':'middle-east','TUR':'middle-east',
+        'ARE':'middle-east','QAT':'middle-east','IRQ':'middle-east','SYR':'middle-east',
+        'JOR':'middle-east','KWT':'middle-east','OMN':'middle-east','YEM':'middle-east',
+        'LBN':'middle-east','BHR':'middle-east','PSE':'middle-east',
+        // Africa
+        'ZAF':'africa','NGA':'africa','EGY':'africa','KEN':'africa','ETH':'africa',
+        'GHA':'africa','MAR':'africa','TZA':'africa','DZA':'africa','TUN':'africa',
+        'LBY':'africa','SDN':'africa','SOM':'africa','COD':'africa','CMR':'africa',
+        'MOZ':'africa','ZWE':'africa','ZMB':'africa','UGA':'africa','SEN':'africa',
+        // Asia-Pacific
+        'CHN':'asia-pacific','JPN':'asia-pacific','KOR':'asia-pacific','IND':'asia-pacific',
+        'TWN':'asia-pacific','SGP':'asia-pacific','MYS':'asia-pacific','IDN':'asia-pacific',
+        'THA':'asia-pacific','VNM':'asia-pacific','PHL':'asia-pacific','PAK':'asia-pacific',
+        'BGD':'asia-pacific','MMR':'asia-pacific','NPL':'asia-pacific','LKA':'asia-pacific',
+        'KHM':'asia-pacific','PRK':'asia-pacific','MNG':'asia-pacific','HKG':'asia-pacific',
+        'AFG':'asia-pacific','UZB':'asia-pacific','KGZ':'asia-pacific','TJK':'asia-pacific',
+        // Oceania
+        'AUS':'oceania','NZL':'oceania','PNG':'oceania','FJI':'oceania',
+      };
+
+      const regionColors = {
+        'north-america': '#3b82f6',
+        'south-america': '#22c55e',
+        'europe':        '#06b6d4',
+        'ukraine':       '#f59e0b',
+        'russia':        '#ef4444',
+        'middle-east':   '#f97316',
+        'africa':        '#a855f7',
+        'asia-pacific':  '#ef4444',
+        'oceania':       '#22c55e',
+      };
+
+      const maxCount = Math.max(...Object.values(regionCounts), 1);
+
+      function styleFeature(feature) {
+        const iso = feature.properties.ISO_A3 || feature.properties.iso_a3 || '';
+        const slug = countryRegion[iso];
+        if (!slug) return { fillOpacity: 0, stroke: false };
+        const count = regionCounts[slug] || 0;
+        const intensity = 0.1 + (count / maxCount) * 0.55;
+        return {
+          fillColor: regionColors[slug] || '#888',
+          fillOpacity: intensity,
+          color: regionColors[slug] || '#888',
+          weight: 0.5,
+          opacity: 0.6,
+        };
+      }
+
+      fetch('https://raw.githubusercontent.com/nvkelso/natural-earth-vector/master/geojson/ne_110m_admin_0_countries.geojson')
+        .then(r => r.json())
+        .then(geo => {
+          L.geoJSON(geo, {
+            style: styleFeature,
+            onEachFeature(feature, layer) {
+              const iso = feature.properties.ISO_A3 || feature.properties.iso_a3 || '';
+              const slug = countryRegion[iso];
+              if (!slug) return;
+              const name = REGION_DATA[slug]?.name || slug;
+              const count = regionCounts[slug] || 0;
+              layer.bindTooltip(`<b style="font-size:11px">${name}</b><br><span style="font-size:10px">${count} flags</span>`, {
+                className: 'leaflet-dark-tip',
+                sticky: true,
+              });
+              layer.on('click', () => selectRegion(slug));
+              layer.on('mouseover', function() { this.setStyle({ fillOpacity: Math.min(styleFeature(feature).fillOpacity + 0.25, 0.9), weight: 1.5 }); });
+              layer.on('mouseout', function() { this.setStyle(styleFeature(feature)); });
+            }
+          }).addTo(map);
+        })
+        .catch(() => {
+          // Fallback: hide map container gracefully
+          mapEl.style.display = 'none';
+        });
+    };
+    document.head.appendChild(script);
   }
 
   // Render region list below map
