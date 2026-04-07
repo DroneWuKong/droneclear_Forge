@@ -504,7 +504,7 @@ a.brief-source-chip:hover{color:var(--text-s);border-color:var(--border-hi)}
 
   <!-- VAR PANEL -->
   <div class="panel" id="panel-vars">
-    <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:4px"><div style="font:700 9px var(--mono);color:var(--text-d);letter-spacing:.1em">VAR / DEALER INTELLIGENCE</div><div style="font:500 9px var(--mono);color:var(--text-xd)">Ranked by est. revenue ↓</div></div>
+    <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:4px"><div style="font:700 9px var(--mono);color:var(--text-d);letter-spacing:.1em">VAR / DEALER INTELLIGENCE</div><div style="display:flex;gap:8px"><span id="var-audit-age" style="font:500 9px var(--mono)"></span><span style="font:500 9px var(--mono);color:var(--text-xd)">Ranked by est. revenue ↓</span></div></div>
     <p style="font-size:11px;color:var(--text-d);margin-bottom:12px;line-height:1.5">US drone value-added resellers ranked by revenue, NDAA posture, and DJI exposure risk. <strong style="color:var(--amber)">FCC Dec 2025 ban on new foreign drone authorizations</strong> is reshaping every VAR's book of business.</p>
 
     <!-- Summary bar -->
@@ -611,7 +611,7 @@ const FLAG_META = {
   dfr_grounding:     {label:"Fleet Grounding",badge:"badge-red",sev:"critical",icon:"🚨"},
   dfr_dealer:        {label:"Dealer Signal",badge:"badge-warning",sev:"warning",icon:"🏪"},
   dfr_grant:         {label:"Grant Signal",badge:"badge-blue",sev:"info",icon:"💰"},
-  dfr_platform:      {label:"Platform Signal",badge:"badge-cyan",sev:"warning",icon:"🚁"},
+  dfr_platform:      {label:"Platform Signal",badge:"badge-cyan",sev:"warning",icon:"🚁"}
 };
 
 // ── Simulated platform + component data (in production: fetched from Forge API) ──
@@ -1037,7 +1037,19 @@ document.querySelectorAll(".tab").forEach(t => {
     selectedFlag = null;
     document.getElementById("flag-detail-container").style.display = "none";
     document.getElementById("flag-list").style.display = "";
-    if (activeTab === 'manufacturers') renderManufacturers();
+    if (activeTab === 'manufacturers') {
+    renderManufacturers();
+    var mfrAuditEl = document.getElementById('mfr-audit-age');
+    if (mfrAuditEl) {
+      var latestMfr = MANUFACTURERS.reduce(function(latest, m) {
+        return (!m.last_audited || m.last_audited < latest) ? latest : m.last_audited;
+      }, '2000-01-01');
+      var daysMfr = Math.floor((Date.now() - new Date(latestMfr)) / 86400000);
+      var colMfr = daysMfr > 90 ? 'var(--red)' : daysMfr > 30 ? 'var(--amber)' : 'var(--text-xd)';
+      mfrAuditEl.textContent = 'Audited ' + daysMfr + 'd ago';
+      mfrAuditEl.style.color = colMfr;
+    }
+  }
     if (activeTab === 'vars') { renderVarSummary(); renderVars(); }
   });
 });
@@ -1189,7 +1201,7 @@ function getGroupKey(f) {
         'dfr-cost-premium':           'DFR: Cost Premium',
         'grant-procurement-correlation': 'DFR: Grant → Procurement',
         'nlc-brinc-rollout':          'DFR: NLC / BRINC',
-        'dfr-grayzone-platforms':     'DFR: Gray Zone Platforms',
+        'dfr-grayzone-platforms':     'DFR: Gray Zone Platforms'
       };
       if (dfr_entities[f.entity_id]) return dfr_entities[f.entity_id];
       if (f.entity_id.startsWith('state-grounding-')) {
@@ -1878,64 +1890,64 @@ const REGION_DATA = {
     countries: ["usa", "united states", "canada", "north america"],
     keyPlayers: "Skydio, Shield AI, Anduril, AeroVironment, ModalAI, Neros, L3Harris, Raytheon, Freefly, Red Cat/Teal",
     programs: "Drone Dominance (200K drones/$1.4B), Army SRR (5,880 systems), CCA ($5.8B), Replicator/DAWG, USMC FPV ($47M), Blue UAS list (50+ platforms)",
-    supplyNote: "Primary demand driver. Blue UAS ecosystem centered here. Industrial base scaling under Drone Dominance EO.",
+    supplyNote: "Primary demand driver. Blue UAS ecosystem centered here. Industrial base scaling under Drone Dominance EO."
   },
   "europe": {
     name: "Europe (NATO)", emoji: "🇪🇺", color: "var(--cyan)",
     countries: ["france", "germany", "uk", "united kingdom", "netherlands", "poland", "croatia", "estonia", "belgium", "spain", "italy", "sweden", "czech", "latvia", "lithuania", "slovenia", "austria", "slovakia", "bulgaria", "switzerland", "eu", "nato", "europe"],
     keyPlayers: "Parrot (France), Quantum Systems (Germany), Orqa (Croatia), WB Group (Poland), Helsing (Germany), Safran, Thales, STMicroelectronics",
     programs: "FCAS (€100B+), EuroDrone (MALE RPAS), NATO interop standards, Polish €2B anti-drone barrier, NanoXplore FPGAs",
-    supplyNote: "STMicroelectronics fabs (STM32), u-blox GNSS (Swiss), NanoXplore FPGAs. Building sovereign supply chain to reduce US/Chinese dependency.",
+    supplyNote: "STMicroelectronics fabs (STM32), u-blox GNSS (Swiss), NanoXplore FPGAs. Building sovereign supply chain to reduce US/Chinese dependency."
   },
   "ukraine": {
     name: "Ukraine", emoji: "🇺🇦", color: "var(--amber)",
     countries: ["ukraine"],
     keyPlayers: "TAF Industries, Vyriy Drone, Wild Hornets, Brave1 accelerator, Iron Belly + Shield AI Hivemind, Swarmer",
     programs: "10K+ FPV/month production. Hivemind autonomy integration. Fastest-iterating drone ecosystem in the world.",
-    supplyNote: "Competes with US Drone Dominance for same FPV components (STM32, ELRS, Caddx). Combat experience drives global doctrine. 23 platforms in Forge DB.",
+    supplyNote: "Competes with US Drone Dominance for same FPV components (STM32, ELRS, Caddx). Combat experience drives global doctrine. 23 platforms in Forge DB."
   },
   "middle-east": {
     name: "Middle East", emoji: "🇹🇷", color: "var(--orange)",
     countries: ["turkey", "israel", "uae", "iran", "saudi"],
     keyPlayers: "Baykar (Turkey — TB2/TB3/Akıncı/Kızılelma), Elbit Systems (Israel), IAI (Israel), D-Fend (Israel), EDGE Group (UAE), HESA/Iran",
     programs: "Baykar: 35+ export customers. Shahed mass production (Iran→Russia). Elbit Skylark/Lanius. D-Fend EnforceAir (C-UAS).",
-    supplyNote: "Turkey building indigenous supply chain after Canada sensor embargo. Iran drives gray market component diversion for Russian drones.",
+    supplyNote: "Turkey building indigenous supply chain after Canada sensor embargo. Iran drives gray market component diversion for Russian drones."
   },
   "asia-pacific": {
     name: "Asia-Pacific", emoji: "🌏", color: "var(--red)",
     countries: ["china", "india", "south korea", "taiwan", "japan", "singapore"],
     keyPlayers: "DJI (80% global share), CATL/BYD (batteries), TSMC (chip fab), Samsung/SK Hynix (DRAM), ideaForge (India), ST Engineering (Singapore)",
     programs: "PLA drone swarms (China), KAI stealth UCAV (S.Korea), Taiwan NCSIST + Hivemind, ideaForge SWITCH (India), Shield AI + ST Engineering (Singapore)",
-    supplyNote: "TSMC is upstream of ALL Blue UAS compute (Jetson + QRB5165). China manufactures majority of drone motors, ESCs, LiPo cells. Samsung/SK Hynix: global DRAM.",
+    supplyNote: "TSMC is upstream of ALL Blue UAS compute (Jetson + QRB5165). China manufactures majority of drone motors, ESCs, LiPo cells. Samsung/SK Hynix: global DRAM."
   },
   "russia": {
     name: "Russia", emoji: "🇷🇺", color: "var(--red)",
     countries: ["russia"],
     keyPlayers: "Alabuga factory (Yelabuga), ZALA Aero (Lancet), Orlan (ISR), diverted Western components, Iranian airframe technology",
     programs: "Mass drone production using gray market parts. GUR tracks 5,534 foreign components in 190 weapon systems. Geran/Shahed production at scale.",
-    supplyNote: "Primary driver of component diversion. 40K+ RPi units diverted. STM32, Western MCUs flowing through China/UAE gray market channels.",
+    supplyNote: "Primary driver of component diversion. 40K+ RPi units diverted. STM32, Western MCUs flowing through China/UAE gray market channels."
   },
   "oceania": {
     name: "Oceania", emoji: "🇦🇺", color: "var(--green)",
     countries: ["australia", "new zealand"],
     keyPlayers: "SYPAQ (Corvo cardboard drone), DroneShield (C-UAS), Boeing Australia (MQ-28 Ghost Bat)",
     programs: "SYPAQ Corvo used in Ukraine. MQ-28 Ghost Bat is Australia's CCA testbed. DroneShield: A$1.2B European pipeline.",
-    supplyNote: "Five Eyes ally. MQ-28 feeds CCA concepts into US/UK programs. DroneShield is largest C-UAS customer base globally.",
+    supplyNote: "Five Eyes ally. MQ-28 feeds CCA concepts into US/UK programs. DroneShield is largest C-UAS customer base globally."
   },
   "south-america": {
     name: "South America", emoji: "🌎", color: "var(--green)",
     countries: ["brazil", "argentina", "colombia", "chile", "mexico"],
     keyPlayers: "Emerging military drone programs, commercial agriculture UAS adoption",
     programs: "Growing adoption of ISR and agricultural UAS. Brazil military drone procurement expanding.",
-    supplyNote: "Expanding market creating additional global component demand. Mostly importing platforms, not manufacturing.",
+    supplyNote: "Expanding market creating additional global component demand. Mostly importing platforms, not manufacturing."
   },
   "africa": {
     name: "Africa", emoji: "🌍", color: "var(--purple)",
     countries: ["south africa", "nigeria", "ethiopia", "morocco", "egypt", "kenya", "libya"],
     keyPlayers: "Baykar exports (multiple African nations), Chinese drone exports, emerging local manufacturers",
     programs: "Turkey/Baykar expanding across North/Sub-Saharan Africa. Chinese drone exports growing. Counter-terrorism ISR.",
-    supplyNote: "Import-driven market. Turkish and Chinese drones dominating. Limited indigenous manufacturing capability.",
-  },
+    supplyNote: "Import-driven market. Turkish and Chinese drones dominating. Limited indigenous manufacturing capability."
+  }
 };
 
 function renderRegionMap() {
@@ -2006,7 +2018,7 @@ function renderRegionMap() {
         'KHM':'asia-pacific','PRK':'asia-pacific','MNG':'asia-pacific','HKG':'asia-pacific',
         'AFG':'asia-pacific','UZB':'asia-pacific','KGZ':'asia-pacific','TJK':'asia-pacific',
         // Oceania
-        'AUS':'oceania','NZL':'oceania','PNG':'oceania','FJI':'oceania',
+        'AUS':'oceania','NZL':'oceania','PNG':'oceania','FJI':'oceania'
       };
 
       const regionColors = {
@@ -2018,7 +2030,7 @@ function renderRegionMap() {
         'middle-east':   '#f97316',
         'africa':        '#a855f7',
         'asia-pacific':  '#ef4444',
-        'oceania':       '#22c55e',
+        'oceania':       '#22c55e'
       };
 
       const maxCount = Math.max(...Object.values(regionCounts), 1);
@@ -2034,7 +2046,7 @@ function renderRegionMap() {
           fillOpacity: intensity,
           color: regionColors[slug] || '#888',
           weight: 0.5,
-          opacity: 0.6,
+          opacity: 0.6
         };
       }
 
@@ -2244,6 +2256,7 @@ const MANUFACTURERS = [
     acquirers: ["L3Harris", "Textron", "General Atomics"],
     ndaa_status: "stable",
     signal: "positive",
+    last_audited: "2026-04-07"
   },
   {
     id: "brinc", name: "BRINC Drones", country: "US", hq: "Seattle, WA",
@@ -2258,6 +2271,7 @@ const MANUFACTURERS = [
     acquirers: ["Axon", "Motorola Solutions", "Flock Safety"],
     ndaa_status: "Blue UAS cleared",
     signal: "positive",
+    last_audited: "2026-04-07"
   },
   {
     id: "shield-ai", name: "Shield AI", country: "US", hq: "San Diego, CA",
@@ -2271,7 +2285,7 @@ const MANUFACTURERS = [
     acquisition_probability: 20,
     acquirers: ["IPO likely before acquisition", "Northrop Grumman", "L3Harris"],
     ndaa_status: "Blue UAS cleared",
-    signal: "positive",
+    signal: "positive"
   },
   {
     id: "anduril", name: "Anduril Industries", country: "US", hq: "Costa Mesa, CA",
@@ -2285,7 +2299,7 @@ const MANUFACTURERS = [
     acquisition_probability: 5,
     acquirers: ["Too large — IPO or stays private"],
     ndaa_status: "NDAA compliant",
-    signal: "positive",
+    signal: "positive"
   },
   {
     id: "aerovironment", name: "AeroVironment", country: "US", hq: "Arlington, VA",
@@ -2299,7 +2313,7 @@ const MANUFACTURERS = [
     acquisition_probability: 15,
     acquirers: ["L3Harris", "General Dynamics", "Textron"],
     ndaa_status: "NDAA compliant",
-    signal: "neutral",
+    signal: "neutral"
   },
   {
     id: "freefly", name: "Freefly Systems", country: "US", hq: "Woodinville, WA",
@@ -2313,7 +2327,7 @@ const MANUFACTURERS = [
     acquisition_probability: 50,
     acquirers: ["Teledyne", "Trimble", "Hexagon"],
     ndaa_status: "Blue UAS cleared",
-    signal: "neutral",
+    signal: "neutral"
   },
   {
     id: "teal", name: "Teal Drones / Red Cat Holdings (RCAT)", country: "US", hq: "Salt Lake City, UT",
@@ -2328,6 +2342,7 @@ const MANUFACTURERS = [
     acquirers: ["Already acquired by Red Cat"],
     ndaa_status: "strong",
     signal: "positive",
+    last_audited: "2026-04-07"
   },
   // ── Gray Zone / Adversary ──
   {
@@ -2342,7 +2357,7 @@ const MANUFACTURERS = [
     acquisition_probability: 0,
     acquirers: ["N/A — geopolitical barrier"],
     ndaa_status: "NDAA non-compliant — Covered Entity",
-    signal: "negative",
+    signal: "negative"
   },
   {
     id: "autel", name: "Autel Robotics", country: "CN", hq: "Shenzhen (US ops: Bothell, WA)",
@@ -2356,7 +2371,7 @@ const MANUFACTURERS = [
     acquisition_probability: 0,
     acquirers: ["N/A — FCC bar"],
     ndaa_status: "NDAA non-compliant — Covered List",
-    signal: "negative",
+    signal: "negative"
   },
   {
     id: "anzu", name: "Anzu Robotics", country: "US (shell)", hq: "Austin, TX → XTI Aerospace (NASDAQ: XTIA)",
@@ -2370,7 +2385,7 @@ const MANUFACTURERS = [
     acquisition_probability: 0,
     acquirers: ["N/A — product line dead"],
     ndaa_status: "Non-compliant — DJI derivative",
-    signal: "negative",
+    signal: "negative"
   },
   {
     id: "parrot", name: "Parrot SA", country: "FR", hq: "Paris, France",
@@ -2385,6 +2400,7 @@ const MANUFACTURERS = [
     acquirers: ["Thales", "Safran", "US defense prime via French government deal"],
     ndaa_status: "stable",
     signal: "positive",
+    last_audited: "2026-04-07"
   },
   {
     id: "inspired-flight", name: "Inspired Flight", country: "US", hq: "San Luis Obispo, CA",
@@ -2398,7 +2414,7 @@ const MANUFACTURERS = [
     acquisition_probability: 55,
     acquirers: ["Trimble", "Hexagon", "senseFly/AgEagle"],
     ndaa_status: "Blue UAS cleared",
-    signal: "neutral",
+    signal: "neutral"
   },
   // ── More Blue UAS / Domestic ──
   {
@@ -2449,7 +2465,8 @@ const MANUFACTURERS = [
     dependency_note: "NYSE: UAVS.BC (below compliance Jul 2025). $5.7M stockholders deficit. Going concern. NYSE compliance plan accepted — must fix by Oct 23 2026 or delist. eBee X still sold, MicaSense sensors operational, AgEagle/Wingtra camera partnership.",
     funding: "Public (UAVS)", last_round: "Multiple dilutive raises",
     acquisition_probability: 75, acquirers: ["Liquidation risk if revenue stagnates"],
-    ndaa_status: "critical", programs: ["Agriculture", "BVLOS mapping", "DOD survey"]
+    ndaa_status: "critical", programs: ["Agriculture", "BVLOS mapping", "DOD survey"],
+    last_audited: "2026-04-07"
   },
   {
     id: "kratos-defense", name: "Kratos Defense (Valkyrie/Mako)", country: "US", hq: "San Diego, CA",
@@ -2489,7 +2506,8 @@ const MANUFACTURERS = [
     dependency_note: "Swiss-made Zurich. WingtraRAY launched Jul 2025: Blue UAS cleared, AUVSI Green, Cat 3 OOP parachute, 250 acres in 10 min. WingtraGROUND + WingtraCLOUD ecosystem. $25M Series B1 raised. Still independent. Duncan-Parnell + Frontier Precision GSA resellers.",
     funding: "Private", last_round: "Series B ~2021",
     acquisition_probability: 35, acquirers: ["Trimble", "Hexagon", "Leica"],
-    ndaa_status: "Blue UAS cleared (WingtraRAY) — Swiss mfr", programs: ["Surveying", "Mapping", "Agriculture"]
+    ndaa_status: "Blue UAS cleared (WingtraRAY) — Swiss mfr", programs: ["Surveying", "Mapping", "Agriculture"],
+    last_audited: "2026-04-07"
   },
   {
     id: "zipline", name: "Zipline International", country: "US", hq: "South San Francisco, CA",
@@ -2582,7 +2600,8 @@ const MANUFACTURERS = [
     acquisition_probability: 5,
     acquirers: ["Already acquired by Robinson Helicopter"],
     ndaa_status: "NDAA compliant", signal: "positive",
-    programs: ["DOD SOCOM", "Law enforcement", "Public safety", "Robinson crewed-uncrewed teaming", "Replicator-adjacent"]
+    programs: ["DOD SOCOM", "Law enforcement", "Public safety", "Robinson crewed-uncrewed teaming", "Replicator-adjacent"],
+    last_audited: "2026-04-07"
   },
   {
     id: "harris-aerial", name: "Harris Aerial", country: "US", hq: "Huntsville, AL",
@@ -2800,6 +2819,16 @@ const MANUFACTURERS = [
     ndaa_status: "NDAA-compliant platform focus", programs: ["DFR", "Public safety", "Paladin Knighthawk MDL-2044"]
   },
 
+  {
+    id: "sentera", name: "Sentera (John Deere)", country: "US", hq: "St. Paul, MN",
+    tags: ["commercial","blue-uas"], status: "stable", status_label: "Stable — JD subsidiary",
+    signal: "positive",
+    key_risk: "John Deere acquisition May 2025. Now operates as JD Intelligent Solutions Group business unit. Revenue model shifting from direct sales to JD ecosystem. Cameras still sold direct to drone manufacturers.",
+    dependency_note: "Acquired by John Deere May 23 2025 (undisclosed price). FieldAgent software + SmartScripts drone weed mapping. Compatible with most major drone platforms. 10yr JD partnership prior. Sentera leadership stays St. Paul MN. JD Operations Center integration. Cameras continue sold direct to OEMs.",
+    acquisition_probability: 5, acquirers: ["Already acquired by John Deere"],
+    ndaa_status: "NDAA compliant", programs: ["John Deere Operations Center", "SmartScripts weed mapping", "Precision agriculture", "Frontier Precision reseller"],
+    last_audited: "2026-04-07"
+  },
 ];
 
 let activeMfrFilter = 'all';
@@ -2819,21 +2848,21 @@ const VARS_DATA = [
   {
     id: "drone-nerds", name: "Drone Nerds (XTI Aerospace)", hq: "Miami, FL", founded: 2014,
     type: ["national","dji-risk"],
-    revenue: "$100M+ (2024)", revenue_num: 100,
-    employees: "~135", yoy_growth: "+10% (pre-acquisition)",
+    revenue: "$100M+ (2024); $55M+ H1 2025", revenue_num: 100,
+    employees: "~135", yoy_growth: "Profitable 10yr record; H1 2025 pace suggests ~$110M full year",
     dji_exposure: "critical", ndaa_posture: "pivoting",
-    acquisition: "Acquired by XTI Aerospace Nov 2025 — $25M Unusual Machines investment",
+    acquisition: "Acquired by XTI Aerospace (XTIA) Nov 10 2025 for ~$40M ($20M cash + notes + equity). $25M UMAC (Unusual Machines) strategic investment simultaneous. Jeremy Schneiderman stays as CEO.",
     status: "acquired", status_label: "Acquired — XTI/UMAC",
     signal: "negative",
     brands: ["DJI","Autel","Skydio","Parrot","Teledyne FLIR"],
     key_brands_ndaa: ["Skydio","Parrot","Autel"],
-    intel: "Largest DJI dealer in US by own claim. $100M+ 2024 revenue, 10yr profitability streak. XTI Aerospace (XTIA) acquisition Nov 2025 + $25M Unusual Machines (UMAC) strategic investment. DJI new-model ban forces portfolio pivot. Repair + training + enterprise sales. National online presence.",
+    intel: "Acquired Nov 2025 for ~$40M by XTI Aerospace (XTIA). UMAC (Fat Shark, Rotor Riot) invested $25M simultaneously — wants distribution channel for US-made components as DJI ban hits. Jeremy Schneiderman (founder) stays CEO. Actively pivoting to Red Cat/Teal, Anzu Robotics replacing DJI revenue. FCC covered list kills new DJI model sales. XTI Jan 2026 CEO letter explicitly calls Drone Nerds the core focus — TriFan VTOL aircraft is secondary.",
     post_freq: "high", web_traffic: "high",
     geofootprint: "National (online) + Miami HQ",
     contracts: "Large DJI Enterprise fleet sales to law enforcement, fire, SAR nationally"
   ,
-    assessment: "Biggest revenue number in the VAR space but structurally compromised. $100M was built almost entirely on DJI — consumer, prosumer, and enterprise — a model the FCC ban is slowly dismantling. The XTI Aerospace acquisition is opportunistic financial engineering: a pre-revenue eVTOL company buying a profitable drone dealer to extend its runway. Unusual Machines is the real strategic driver, wanting distribution for their own components portfolio. Expect brand confusion and integration friction. Their enterprise sales team is consumer-trained, not mission-trained. Strong cash business turning into a forced pivot story with an inexperienced acquirer at the wheel."
-  
+    assessment: "The $40M acquisition price and $25M UMAC investment reveal more than the press releases admit. UMAC needed a distribution channel for its NDAA components before the DJI ban landed — Drone Nerds was the answer. XTI was a vehicle, not a strategic buyer. The good news: Schneiderman stays, the operations team stays, and the business is genuinely profitable. The hard news: the entire revenue model needs to rotate from DJI to US-made alternatives, and US-made alternatives cost more and move slower. The UMAC relationship is the real moat here — if UMAC components become standard in domestic FPV and enterprise builds, Drone Nerds becomes the default fulfillment channel. That is a credible path. The XTI parentage is noise. Watch Schneiderman, not the stock.",
+    last_audited: "2026-04-07"
   },
   {
     id: "advexure", name: "Advexure", hq: "Los Angeles (Irvine), CA", founded: 2012,
@@ -2846,13 +2875,13 @@ const VARS_DATA = [
     signal: "positive",
     brands: ["DJI","ACSL","Anzu","Autel","Freefly","Harris Aerial","Inspired Flight","Parrot","Red Cat","WingtraRAY","Counterdrone","Hextronics","GeoCue","Phoenix LiDAR"],
     key_brands_ndaa: ["ACSL","Anzu","Inspired Flight","Parrot","Freefly","Harris Aerial"],
-    intel: "Founded 2012 in Sheboygan WI, now LA HQ + Dallas office. 22k+ satisfied pilots. Broadest NDAA-compliant portfolio of any national VAR. Feb 2025 MatrixSpace radar partnership. CFO background includes taking companies public — potential M&A path. DJI authorized + agnostic posture is strategic hedge.",
+    intel: "Founded 2012 Sheboygan WI → LA HQ + Dallas office. CEO Travis Waibel. Feb 2025 MatrixSpace radar partnership for BVLOS/DFR detect-and-alert capabilities. Wingtra authorized reseller. Drone Advocacy Alliance member. 22k+ pilots. Red Cat Black Widow SSR added to catalog. Counterdrone OmniDock + Hextronics dock systems. WingtraRAY carrying. Actively positioning for DFR infrastructure market beyond pure hardware.",
     post_freq: "high", web_traffic: "high",
     geofootprint: "National (online) + LA + Dallas offices",
     contracts: "Public safety, utilities, agriculture, construction enterprise programs"
   ,
-    assessment: "Best-positioned national VAR heading into 2026. Agnostic portfolio philosophy was the right call years before everyone else felt the DJI pressure. 22k+ pilot community is real loyalty infrastructure. LA and Dallas offices plus national online gives genuine coverage. The CFO background in taking companies public is a signal worth watching — either an IPO or strategic sale is being considered. Weakness is that their sales culture is commercial and product-centric, not program-centric. They win on breadth, not depth. Will struggle to win large DFR or government program contracts against more mission-focused VARs. Still the benchmark everyone else is chasing on product mix."
-  
+    assessment: "Best-positioned national VAR for post-DJI era but quietly building toward something more. The MatrixSpace radar partnership is notable — that is a detect-and-alert play for DFR programs, not just hardware sales. They are assembling the full stack: compliant platforms + radar + docks + training. CEO Travis Waibel is methodical and has been ahead of the NDAA curve. The CFO with IPO experience is still the most interesting signal in the company — either they sell to a consolidator or they try to take the model public. Either way, Advexure is the national benchmark for product mix and will be a target or an acquirer in the consolidation wave coming.",
+    last_audited: "2026-04-07"
   },
   {
     id: "frontier-precision", name: "Frontier Precision Unmanned", hq: "Fargo, ND", founded: 1988,
@@ -2870,8 +2899,8 @@ const VARS_DATA = [
     geofootprint: "Upper Midwest, Mountain West, West Coast (22 states)",
     contracts: "Agriculture, survey/mapping, utility, LiDAR, public safety"
   ,
-    assessment: "Underestimated. 37-year ESOP business with the most comprehensive NDAA-compliant brand mix of any regional VAR. They added Skyfront Blue UAS fast, have ACSL authorized status, and carry brands most competitors haven't even heard of. The problem is identity — they're a survey company that does drones, not a drone company. Sales team sells to GIS professionals and engineers, not to public safety agencies. ESOP structure means no outside capital and no M&A, but also no pressure to make dumb decisions for a quarterly number. Steady, honest operator. Ceiling is limited by geography and vertical focus. Strong in their lane, unlikely to leave it."
-  
+    assessment: "Underestimated. 37-year ESOP business with the most comprehensive NDAA-compliant brand mix of any regional VAR. They added Skyfront Blue UAS fast, have ACSL authorized status, and carry brands most competitors haven't even heard of. The problem is identity — they're a survey company that does drones, not a drone company. Sales team sells to GIS professionals and engineers, not to public safety agencies. ESOP structure means no outside capital and no M&A, but also no pressure to make dumb decisions for a quarterly number. Steady, honest operator. Ceiling is limited by geography and vertical focus. Strong in their lane, unlikely to leave it.",
+    last_audited: "2026-04-07"
   },
   {
     id: "duncan-parnell", name: "Duncan-Parnell", hq: "Charlotte, NC", founded: 1946,
@@ -2889,8 +2918,8 @@ const VARS_DATA = [
     geofootprint: "Southeast US (18 locations across NC, SC, VA, MD, DC, TN)",
     contracts: "AEC/construction, land survey, utility mapping, DOT programs, government"
   ,
-    assessment: "78-year legacy business with a real Southeast moat that nobody is going to replicate. 18 physical locations means they can show up, train, and service in ways national online VARs can't. Deep AEC and survey customer relationships are sticky. But their drone business is probably 15-20% of total revenue at best — it's a product line, not a mission. Sales team knows surveyors, not cops or DFR program managers. DJI is still dominant in their mix despite the compliance messaging. Wingtra GSA approval is good. The honest read: very strong regional incumbent for survey and mapping, essentially invisible in public safety and defense. Slow-moving but stable."
-  
+    assessment: "78-year legacy business with a real Southeast moat that nobody is going to replicate. 18 physical locations means they can show up, train, and service in ways national online VARs can't. Deep AEC and survey customer relationships are sticky. But their drone business is probably 15-20% of total revenue at best — it's a product line, not a mission. Sales team knows surveyors, not cops or DFR program managers. DJI is still dominant in their mix despite the compliance messaging. Wingtra GSA approval is good. The honest read: very strong regional incumbent for survey and mapping, essentially invisible in public safety and defense. Slow-moving but stable.",
+    last_audited: "2026-04-07"
   },
   {
     id: "dronefly", name: "Dronefly", hq: "Simi Valley, CA", founded: 2013,
@@ -2908,8 +2937,8 @@ const VARS_DATA = [
     geofootprint: "National (online) + Simi Valley CA",
     contracts: "Government agencies, commercial inspection, agriculture, law enforcement"
   ,
-    assessment: "In serious trouble and the blog content tells you they know it — every other post is about DJI alternatives and what to do when DJI gets banned. DJI Gold Partner plus senseFly distributor built a real business but both pillars are impaired. Skydio and FLIR are in the portfolio but those brands have strong direct sales teams and preferred VARs they trust more. National online model means competing on price with Amazon and B&H, which is a losing game long-term for enterprise hardware. No physical locations, no mission-specific expertise, no anchor program contracts. Unless they land a major public safety or utility program to anchor recurring revenue, this is a managed decline story."
-  
+    assessment: "In serious trouble and the blog content tells you they know it — every other post is about DJI alternatives and what to do when DJI gets banned. DJI Gold Partner plus senseFly distributor built a real business but both pillars are impaired. Skydio and FLIR are in the portfolio but those brands have strong direct sales teams and preferred VARs they trust more. National online model means competing on price with Amazon and B&H, which is a losing game long-term for enterprise hardware. No physical locations, no mission-specific expertise, no anchor program contracts. Unless they land a major public safety or utility program to anchor recurring revenue, this is a managed decline story.",
+    last_audited: "2026-04-07"
   },
   {
     id: "dslrpros", name: "DSLRPros / Hazon Solutions", hq: "Los Angeles, CA", founded: 2012,
@@ -2927,8 +2956,8 @@ const VARS_DATA = [
     geofootprint: "National (online) + LA HQ",
     contracts: "Public safety, agriculture, commercial inspection, entertainment"
   ,
-    assessment: "The rebranding to Hazon Solutions says everything. Fastest-moving rebranding signal in the VAR space — they saw the DJI cliff coming and are running from the association. But the pivot is incomplete and the brand equity they built was tied to DJI. FLIR Premium Partner status is valuable but Teledyne FLIR has multiple preferred VARs. Training arm is undermonetized and undermarketed. LA base gives access to entertainment, large event, and wildfire work that is more insulated from federal NDAA rules — if they lean into that niche aggressively there's a defensible business. Right now they're caught between what they were and what they're trying to become, which is the most dangerous place to be in a market moving this fast."
-  
+    assessment: "The rebranding to Hazon Solutions says everything. Fastest-moving rebranding signal in the VAR space — they saw the DJI cliff coming and are running from the association. But the pivot is incomplete and the brand equity they built was tied to DJI. FLIR Premium Partner status is valuable but Teledyne FLIR has multiple preferred VARs. Training arm is undermonetized and undermarketed. LA base gives access to entertainment, large event, and wildfire work that is more insulated from federal NDAA rules — if they lean into that niche aggressively there's a defensible business. Right now they're caught between what they were and what they're trying to become, which is the most dangerous place to be in a market moving this fast.",
+    last_audited: "2026-04-07"
   },
   {
     id: "uvt", name: "Unmanned Vehicle Technologies (UVT)", hq: "Columbia, MD", founded: 2015,
@@ -2946,27 +2975,27 @@ const VARS_DATA = [
     geofootprint: "East Coast / Mid-Atlantic — federal government focus",
     contracts: "DOD, DHS, federal law enforcement, intelligence community adjacent"
   ,
-    assessment: "Most defensible niche in the VAR ecosystem. NDAA-only product mix plus GSA schedule plus DC corridor proximity equals a moat that's hard to replicate without years of federal relationship building. Contract value per unit is 5-10x what commercial VARs see. The weakness is size and visibility — they're small, low-profile, and entirely dependent on the federal procurement cycle. A continuing resolution or program cut lands hard. They're also a prime acquisition target for any defense systems integrator that wants instant UAS distribution capability and a GSA schedule — Leidos, SAIC, or a mid-tier defense SI could buy them for $20-30M and unlock real value. Best-in-class for what they do, but what they do has a narrow ceiling."
-  
+    assessment: "Most defensible niche in the VAR ecosystem. NDAA-only product mix plus GSA schedule plus DC corridor proximity equals a moat that's hard to replicate without years of federal relationship building. Contract value per unit is 5-10x what commercial VARs see. The weakness is size and visibility — they're small, low-profile, and entirely dependent on the federal procurement cycle. A continuing resolution or program cut lands hard. They're also a prime acquisition target for any defense systems integrator that wants instant UAS distribution capability and a GSA schedule — Leidos, SAIC, or a mid-tier defense SI could buy them for $20-30M and unlock real value. Best-in-class for what they do, but what they do has a narrow ceiling.",
+    last_audited: "2026-04-07"
   },
   {
     id: "volatus-drones", name: "Volatus Aerospace / Volatus Drones", hq: "Kelowna, BC + US ops", founded: 2021,
     type: ["national","defense"],
-    revenue: "$34.2M total FY2025 (+26% YoY)", revenue_num: 34,
-    employees: "~200+", yoy_growth: "+26% FY2025; equipment rev +106%",
+    revenue: "$34.2M FY2025 (+26% YoY)", revenue_num: 34,
+    employees: "~200+", yoy_growth: "+26% FY2025; equipment rev +106% from NATO ISR deliveries",
     dji_exposure: "moderate", ndaa_posture: "expanding — NATO defense pivot",
     acquisition: "Public (TSX: FLT / OTCQX: TAKOF) — graduated TSX 2026",
     status: "stable", status_label: "Stable — NATO pivot",
     signal: "positive",
     brands: ["DJI","ACSL","Autel","Skydio","Freefly","Draganfly","Percepto","Wingtra","YellowScan"],
     key_brands_ndaa: ["ACSL","Skydio","Percepto","Freefly","Wingtra"],
-    intel: "Public company (TSX: FLT). FY2025: $34.2M revenue +26% YoY. Equipment revenue +106% from NATO ISR drone system deliveries. Europe/UK +150% revenue. Merged with Drone Delivery Canada Aug 2024. US pilot network 1,200+ certified. SKYDRA system launch post-FY2025. Largest UAV distributor Canada + major US service provider. NATO defense pivot is key differentiator vs other VARs.",
+    intel: "Public (TSX: FLT / OTCQX: TAKOF). FY2025 $34.2M revenue (+26% YoY confirmed). Equipment revenue +106% from NATO ISR drone system deliveries. Europe/UK +150%. Merged with Drone Delivery Canada Aug 2024. 1,200+ certified US/Canada pilots. SKYDRA system post-FY2025 launch. $9M NATO training contract. Total assets $92M (+60% YoY). Working capital surplus $36.5M (was deficit 2024). TSX graduation 2026. ACSL authorized dealer. DJI still in mix but NATO defense is the growth driver.",
     post_freq: "medium", web_traffic: "medium",
     geofootprint: "Canada HQ + North America + Europe/NATO",
     contracts: "NATO member ISR systems, energy inspection, utilities, construction"
   ,
-    assessment: "More interesting than their marketing suggests. $34.2M FY2025 revenue with 26% growth and equipment revenue up 106% from NATO ISR deliveries is a genuine business transformation, not just spin. They're becoming a defense systems integrator with distribution capability, not just a dealer. Merger with Drone Delivery Canada added cargo and delivery capacity. TSX graduation signals financial maturity. The risk is strategic sprawl — services, hardware, NATO delivery, drone delivery, Canadian government, US commercial — they're running a lot of plays simultaneously. US footprint is materially weaker than their Canadian base. Canadian HQ creates real complications for US federal NDAA procurement. Watch the SKYDRA system launch to see if they can execute vertical integration."
-  
+    assessment: "The FY2025 financials tell a real transformation story. Equipment revenue doubling from NATO ISR deliveries is not incremental — that is a business model change. The working capital swing from deficit to $36.5M surplus in one year is significant. TSX graduation signals institutional maturity. The Canadian HQ is still a genuine complication for US federal NDAA procurement, but NATO-aligned defense work sidesteps that problem entirely. The SKYDRA system launch is worth watching — if it is a proprietary long-endurance ISR platform, Volatus stops being a VAR and becomes a manufacturer. That is the real question for 2026.",
+    last_audited: "2026-04-07"
   },
   {
     id: "skyfireai", name: "SkyfireAI (fka Skyfire Consulting)", hq: "Huntsville, AL", founded: 2016,
@@ -2979,13 +3008,13 @@ const VARS_DATA = [
     signal: "positive",
     brands: ["Parrot","BRINC","Autel","Skydio","DJI","Ondas/American Robotics"],
     key_brands_ndaa: ["Parrot Anafi USA","BRINC LEMUR","Skydio X10","American Robotics Scout"],
-    intel: "Pivotal company: was pure consulting/training, now SaaS + hardware + SI via Echelon AI acquisition. Andrew Ng's AI Fund backing. Manages Ohio statewide DFR pilot program (9 agencies). Skyfire SF2 US-made drone in production. Huntsville AL base = Army Redstone Arsenal proximity. FBI training contract. DFR program implementation = recurring revenue model. Hardware commoditization play to software+SI.",
+    intel: "Echelon AI (Andrew Ng AI Fund) acquisition Sep 2024. CEO Matt Sloane (founder stays). Ohio statewide DFR Pilot Program manager confirmed Oct 2025 — first statewide DFR in US, 9 agencies, 2-year program, ODOT/DriveOhio. Medical drone delivery with CVS Health. FBI training. U.S. Army AI Symposium presenter Mar 2026. Huntsville AL base near Redstone Arsenal for DOD work. CAL Analytics UTM partner for Ohio. SkyfireAI SF2 US-made drone in production. Agentic AI multi-ship autonomy development.",
     post_freq: "high", web_traffic: "medium",
     geofootprint: "National — Huntsville AL + Atlanta GA HQs",
     contracts: "Ohio DFR statewide program, DOD training, FBI, Super Bowl security, Vantis/Thales"
   ,
-    assessment: "Highest ceiling of any entity on this list. They've already made the transition from VAR to software company with hardware capabilities — that's the model everyone is eventually going to chase. Andrew Ng's AI Fund backing gives credibility and runway that no other VAR has. Managing the Ohio statewide DFR program is an anchor contract that builds the kind of institutional knowledge money can't buy. Huntsville AL location near Redstone Arsenal is deliberate and valuable. Skyfire SF2 in-house drone production means vertical integration. The risk is execution — their AI autonomy platform is still more narrative than deployed product. If the software delivers operationally, they won't be competing with VARs anymore. They'll be a mission control platform company that happens to distribute hardware."
-  
+    assessment: "Already stopped being a VAR — they are a program management and AI platform company that happens to know how to source hardware. Ohio statewide DFR as program manager is the template: they win the program contract, then decide which drones get deployed to 9 agencies. That is enormous procurement influence. CVS Health medical delivery + FBI + Army AI Symposium presenter = genuine multi-sector reach. The Agentic AI narrative is credible here because they have the operational data to train on. If multi-ship autonomous DFR becomes the standard, SkyfireAI wrote the playbook. Highest ceiling of any entity in this space by a significant margin.",
+    last_audited: "2026-04-07"
   },
   {
     id: "drone-arrival", name: "Drone Arrival", hq: "Minneapolis, MN", founded: 2017,
@@ -3003,8 +3032,8 @@ const VARS_DATA = [
     geofootprint: "Upper Midwest + national online",
     contracts: "Survey/mapping, agriculture, inspection, public safety, defense adjacent"
   ,
-    assessment: "Honest regional operator with above-average product intelligence. The Elistair tethered systems relationship is genuinely differentiated — nobody else in the US market is leading with persistent tethered ISR. Aurelia heavy-lift adds another angle most VARs ignore. But the marketing is weak, the web presence is thin, and there's no evidence of large program wins. They service repeat commercial customers well but lack the enterprise sales motion to break into the DFR wave or public safety programs where contract value is concentrating. Good operator, limited ceiling. The kind of VAR that quietly builds a profitable niche business without making noise."
-  
+    assessment: "Honest regional operator with above-average product intelligence. The Elistair tethered systems relationship is genuinely differentiated — nobody else in the US market is leading with persistent tethered ISR. Aurelia heavy-lift adds another angle most VARs ignore. But the marketing is weak, the web presence is thin, and there's no evidence of large program wins. They service repeat commercial customers well but lack the enterprise sales motion to break into the DFR wave or public safety programs where contract value is concentrating. Good operator, limited ceiling. The kind of VAR that quietly builds a profitable niche business without making noise.",
+    last_audited: "2026-04-07"
   },
   {
     id: "uas-nexus-syndicate", name: "UAS Nexus Syndicate", hq: "Salt Lake City, UT", founded: 2020,
@@ -3021,7 +3050,8 @@ const VARS_DATA = [
     contracts: "DFR programs, DOD tactical FPV, NDAA component sourcing for OEMs, Platform One scaled deployment",
     geofootprint: "Salt Lake City UT HQ + national online Syndicate Store + decentralized manufacturing network",
     post_freq: "medium", web_traffic: "growing",
-    assessment: "The most misunderstood entry in the VAR space because they are not just a VAR. UAS Nexus operates across three distinct lanes simultaneously: authorized dealer for proven platforms like Paladin Knighthawk, in-house manufacturer of Platform One (a MOSA attritable FPV ecosystem), and operator of the Drone Syndicate Store — a vetted NDAA-compliant component marketplace. The Nov 2025 Syndicate Store launch was a smart read of a real market gap: when eight vendors got removed from the Blue UAS list in March 2025 including Parrot and Inspired Flight, agencies that had standardized on those platforms had nowhere to go for compliant components. UAS Nexus built the infrastructure layer that everyone else was missing. The decentralized manufacturing claim — 10,000+ aircraft per month — is ambitious and unverified, but the underlying model mirrors what Ukraine proved works. The Orqa FPV.One goggles relationship and Fat Shark Aura Blue UAS listed cameras show genuine supply chain depth. The honest ceiling question is execution at scale: vertically integrated models are powerful but operationally complex, and this is still a small team. If they execute, this is one of the more defensible positions in the domestic UAS market."
+    assessment: "The most misunderstood entry in the VAR space because they are not just a VAR. UAS Nexus operates across three distinct lanes simultaneously: authorized dealer for proven platforms like Paladin Knighthawk, in-house manufacturer of Platform One (a MOSA attritable FPV ecosystem), and operator of the Drone Syndicate Store — a vetted NDAA-compliant component marketplace. The Nov 2025 Syndicate Store launch was a smart read of a real market gap: when eight vendors got removed from the Blue UAS list in March 2025 including Parrot and Inspired Flight, agencies that had standardized on those platforms had nowhere to go for compliant components. UAS Nexus built the infrastructure layer that everyone else was missing. The decentralized manufacturing claim — 10,000+ aircraft per month — is ambitious and unverified, but the underlying model mirrors what Ukraine proved works. The Orqa FPV.One goggles relationship and Fat Shark Aura Blue UAS listed cameras show genuine supply chain depth. The honest ceiling question is execution at scale: vertically integrated models are powerful but operationally complex, and this is still a small team. If they execute, this is one of the more defensible positions in the domestic UAS market.",
+    last_audited: "2026-04-07"
   },
 ];
 
@@ -3716,7 +3746,7 @@ const DEP_GRAPH = {
       {name: "Holybro Kakute H7 v2", ndaa: true, cost: 65, note: "Similar H743 FC. Less UART density. Strong Betaflight support."},
       {name: "Matek H743-WLITE", ndaa: true, cost: 49, note: "Budget H743 FC. Good UART layout. No Orqa-specific features."},
       {name: "Pixhawk 6X", ndaa: true, cost: 349, note: "PX4/ArduPilot flight controller. More capable but heavier and costlier."},
-    ],
+    ]
   },
   "Orqa WingCore H7": {
     platforms: ["Fixed-wing enterprise builds", "VTOL platforms"],
@@ -3726,7 +3756,7 @@ const DEP_GRAPH = {
     alternatives: [
       {name: "Pixhawk 6C (PX4)", ndaa: true, cost: 199, note: "Standard PX4 FC. Widely supported. Less integrated I/O than WingCore."},
       {name: "Cube Orange+ (Hex)", ndaa: true, cost: 279, note: "Triple-redundant IMU. Popular in enterprise fixed-wing. ArduPilot preferred."},
-    ],
+    ]
   },
   "Orqa DTK APB": {
     platforms: ["AI-enabled UAS", "Orqa autonomous builds"],
@@ -3736,7 +3766,7 @@ const DEP_GRAPH = {
     alternatives: [
       {name: "NVIDIA Jetson Orin Nano + FC", ndaa: true, cost: 350, note: "More AI compute but two separate boards. More power. Larger form factor."},
       {name: "ModalAI VOXL 2 Mini", ndaa: true, cost: 299, note: "All-in-one like DTK APB. Qualcomm-based. Blue UAS framework certified."},
-    ],
+    ]
   },
   "NVIDIA Jetson Orin NX": {
     platforms: ["Skydio X10D", "Shield AI V-BAT", "Anduril Ghost-X", "Neousys FLYC-300"],
@@ -3748,7 +3778,7 @@ const DEP_GRAPH = {
       {name: "Hailo-8 AI Accelerator", ndaa: true, cost: 99, note: "AI inference only — no general compute. Pair with a host processor."},
       {name: "Google Coral Edge TPU", ndaa: true, cost: 60, note: "TensorFlow Lite only. Very low power. Limited model support."},
       {name: "Rockchip RK3588", ndaa: false, cost: 80, note: "Good specs, cheap — but Chinese-origin. NOT NDAA compliant."},
-    ],
+    ]
   },
   "Qualcomm QRB5165": {
     platforms: ["ModalAI VOXL 2", "ModalAI Seeker", "Teal 2", "Teal Black Widow"],
@@ -3759,7 +3789,7 @@ const DEP_GRAPH = {
       {name: "NVIDIA Jetson Orin NX", ndaa: true, cost: 599, note: "More GPU compute, larger form factor. CUDA ecosystem."},
       {name: "NVIDIA Jetson Orin Nano", ndaa: true, cost: 249, note: "Lower-tier Jetson. Less AI throughput but cheaper."},
       {name: "Ambarella CV72", ndaa: true, cost: 350, note: "Strong CV pipeline. Used in some ISR payloads. Different toolchain."},
-    ],
+    ]
   },
   "STM32H743": {
     platforms: ["Neros Archer", "Pixhawk 6X", "Orqa H7 FC", "100+ FCs in Forge DB"],
@@ -3771,7 +3801,7 @@ const DEP_GRAPH = {
       {name: "STM32F765", ndaa: true, cost: 10, note: "Previous gen. Less compute but well-supported in Betaflight/ArduPilot."},
       {name: "RP2350 (Raspberry Pi)", ndaa: true, cost: 1, note: "Dual-core Cortex-M33. Very cheap. Emerging FC support."},
       {name: "GD32F405/450 (Chinese clone)", ndaa: false, cost: 4, note: "STM32 clone. Widely used in cheap FCs. NOT NDAA compliant."},
-    ],
+    ]
   },
   "FLIR Boson 640": {
     platforms: ["Switchblade 600", "Anduril Ghost-X", "Teal 2 (Hadron)"],
@@ -3782,7 +3812,7 @@ const DEP_GRAPH = {
       {name: "FLIR Lepton 3.5", ndaa: true, cost: 250, note: "160×120 vs 640×512. Much cheaper but much lower resolution and range."},
       {name: "DRS Tamarisk 640", ndaa: true, cost: 2800, note: "Similar resolution. Different interface. Less common in UAS."},
       {name: "Lynred/Sofradir (French)", ndaa: true, cost: 2500, note: "European alternative. ITAR-free. Good for NATO/allied export."},
-    ],
+    ]
   },
   "Doodle Labs Helix": {
     platforms: ["Anduril Ghost-X", "Blue UAS integrators"],
@@ -3793,7 +3823,7 @@ const DEP_GRAPH = {
       {name: "Silvus StreamCaster SC4200", ndaa: true, cost: 5200, note: "Higher throughput, longer range. 2-3x cost and weight."},
       {name: "Rajant BreadCrumb LX5", ndaa: true, cost: 3500, note: "Kinetic Mesh. More capacity, heavier. Industrial heritage."},
       {name: "Persistent Systems MPU5", ndaa: true, cost: 12000, note: "Wave Relay. Highest performance. Most expensive. SOF-grade."},
-    ],
+    ]
   },
   "Silvus MN Micro": {
     platforms: ["Teal 2", "SOF ISR platforms"],
@@ -3804,7 +3834,7 @@ const DEP_GRAPH = {
       {name: "Doodle Labs Helix", ndaa: true, cost: 1800, note: "Lower cost, good mesh. Less throughput than Silvus."},
       {name: "Persistent Systems Embedded Module", ndaa: true, cost: 8000, note: "Wave Relay. Higher performance, much higher cost and SWaP."},
       {name: "Mobilicom SkyHopper PRO", ndaa: true, cost: 3000, note: "Blue UAS Framework certified. IP mesh for UAS C2."},
-    ],
+    ]
   },
   "ELRS 900MHz": {
     platforms: ["Neros Archer", "Ukraine FPV fleet", "Commercial FPV"],
@@ -3815,7 +3845,7 @@ const DEP_GRAPH = {
       {name: "TBS Crossfire", ndaa: true, cost: 60, note: "868/915MHz. Established long-range link. Proprietary protocol."},
       {name: "Orqa IRONghost", ndaa: true, cost: 120, note: "EU-manufactured. Dual-band FHSS. NDAA compliant. Higher cost."},
       {name: "TBS Tracer", ndaa: true, cost: 50, note: "2.4GHz. Lower latency, shorter range than 900MHz ELRS."},
-    ],
+    ]
   },
   "RPi Compute Module 4": {
     platforms: ["Freefly Astro", "Custom builds", "Education/research"],
@@ -3826,7 +3856,7 @@ const DEP_GRAPH = {
       {name: "ModalAI VOXL 2", ndaa: true, cost: 449, note: "Massive upgrade. Blue UAS Framework. Different class entirely."},
       {name: "RPi 5 (8GB)", ndaa: true, cost: 95, note: "Standard board, not CM form factor. Need adapter."},
       {name: "Orange Pi 5 (RK3588S)", ndaa: false, cost: 60, note: "Better specs, cheaper — but Chinese SoC. NOT NDAA."},
-    ],
+    ]
   },
   "u-blox ZED-F9P": {
     platforms: ["Most RTK-equipped Blue UAS", "Precision ag drones"],
@@ -3836,7 +3866,7 @@ const DEP_GRAPH = {
     alternatives: [
       {name: "Septentrio Mosaic-X5", ndaa: true, cost: 320, note: "Multi-band RTK. Belgian company. Higher accuracy, higher cost."},
       {name: "u-blox NEO-M9N", ndaa: true, cost: 45, note: "Same company, lower tier. No RTK. Good for non-precision use."},
-    ],
+    ]
   },
   "TrellisWare TSM Waveform": {
     platforms: ["L3Harris AN/PRC-163", "SOF ground radios"],
@@ -3846,7 +3876,7 @@ const DEP_GRAPH = {
     alternatives: [
       {name: "Persistent Systems Wave Relay", ndaa: true, cost: 12000, note: "Different waveform, different network. Not interoperable with TSM."},
       {name: "Silvus MANET", ndaa: true, cost: 5000, note: "Commercial MANET. Proven in UAS. Not TSM-interoperable."},
-    ],
+    ]
   },
   "Semtech SX1262 (LoRa)": {
     platforms: ["Every ELRS platform", "Every LoRa telemetry link", "Swarm datalinks"],
@@ -3857,7 +3887,7 @@ const DEP_GRAPH = {
       {name: "Semtech SX1276 (previous gen)", ndaa: true, cost: 3.20, note: "Works but lower performance. Still Semtech — same single-source risk."},
       {name: "HopeRF RFM95W", ndaa: false, cost: 2.50, note: "LoRa module using SX1276 internally — same foundry dependency, Chinese assembly."},
       {name: "Microchip RN2903", ndaa: true, cost: 8.00, note: "LoRaWAN only. Not suitable for ELRS/CRSF RC use. Niche replacement."},
-    ],
+    ]
   },
   "Sony IMX477 / IMX585": {
     platforms: ["Freefly Astro", "Skydio (camera module)", "Auterion Skynode payloads", "Most enterprise UAS cameras"],
@@ -3868,7 +3898,7 @@ const DEP_GRAPH = {
       {name: "onsemi AR0521 (5MP)", ndaa: true, cost: 85, note: "US-designed. Different performance profile. Used in some industrial cameras."},
       {name: "OmniVision OV64A", ndaa: false, cost: 40, note: "High-res but Chinese company. NOT NDAA-aligned for government procurement."},
       {name: "CMOSIS CMV20000", ndaa: true, cost: 450, note: "Industrial-grade. Belgian-designed (now ams-OSRAM). Overkill for most UAS."},
-    ],
+    ]
   },
   "Nordic nRF52840 (Remote ID)": {
     platforms: ["Every Remote ID broadcast module", "DroneTag, Dronetag, uAvionix ping1090i", "ASTM F3411 compliance"],
@@ -3879,7 +3909,7 @@ const DEP_GRAPH = {
       {name: "Espressif ESP32-S3", ndaa: false, cost: 2.80, note: "Chinese — capable but NDAA non-compliant. Widely used in cheap RID modules."},
       {name: "Nordic nRF5340", ndaa: true, cost: 5.50, note: "Same company, dual-core upgrade. Drop-in for new RID module designs."},
       {name: "Silicon Labs EFR32BG22", ndaa: true, cost: 3.90, note: "US-designed BLE SoC. Less ecosystem support for RID firmware than nRF."},
-    ],
+    ]
   },
   "CubePilot Cube Orange+": {
     platforms: ["Freefly Astro", "Inspired Flight IF800/IF1200A", "Most ArduPilot enterprise builds", "ACSL SOTEN"],
@@ -3890,7 +3920,7 @@ const DEP_GRAPH = {
       {name: "Pixhawk 6X (Holybro)", ndaa: true, cost: 349, note: "STM32H753. Fully open hardware. Strong PX4 support. Growing enterprise adoption."},
       {name: "Orqa WingCore H7", ndaa: true, cost: 229, note: "Croatian-made. EU supply chain. PX4/ArduPilot. More integrated I/O."},
       {name: "mRo Control Zero H7", ndaa: true, cost: 199, note: "US-assembled. Compact. Strong Ardupilot heritage."},
-    ],
+    ]
   },
   "KDE Direct UAS Motors": {
     platforms: ["Heavy-lift Blue UAS", "Inspired Flight platforms", "Enterprise cargo drones"],
@@ -3901,7 +3931,7 @@ const DEP_GRAPH = {
       {name: "T-Motor U8/U10 series", ndaa: false, cost: 260, note: "Chinese — dominant in heavy lift globally but NOT NDAA-compliant."},
       {name: "Scorpion Power System", ndaa: true, cost: 390, note: "US/EU distributed. NDAA-aligned. Less brand recognition than KDE."},
       {name: "Tiger Motor (US dist.)", ndaa: false, cost: 220, note: "Chinese manufacturer. Rebranded for US market. NDAA non-compliant."},
-    ],
+    ]
   },
   "EaglePicher LiPo Mil-Spec": {
     platforms: ["Switchblade 600", "ALTIUS-600", "Kratos UTAP-22", "Joby (testing)"],
@@ -3912,7 +3942,7 @@ const DEP_GRAPH = {
       {name: "Inventus Power (mil-spec cells)", ndaa: true, cost: 900, note: "US manufacturer. Lower volume. Longer qualification cycle."},
       {name: "Ultralife Corporation", ndaa: true, cost: 750, note: "US-made. Military Li-SO2 and LiMnO2 cells. Different chemistry."},
       {name: "Tadiran (Israeli)", ndaa: true, cost: 850, note: "High-reliability cells. Allied supply chain but not domestic."},
-    ],
+    ]
   },
   "Hailo-8 AI Accelerator": {
     platforms: ["Percepto Sparrow", "Skydio X10 (option)", "Blue UAS AI payloads"],
@@ -3924,7 +3954,7 @@ const DEP_GRAPH = {
       {name: "NVIDIA Jetson Orin Nano", ndaa: true, cost: 249, note: "Full SOM vs accelerator. Massive upgrade in capability and cost."},
       {name: "Kneron KL720", ndaa: true, cost: 45, note: "Taiwanese. 1.5 TOPS. Good power efficiency. Less ecosystem."},
       {name: "Axelera Metis (214 TOPS)", ndaa: true, cost: 350, note: "Dutch company. New entrant. Extraordinary throughput if it delivers."},
-    ],
+    ]
   },
   "DDR4 DRAM (8GB)": {
     platforms: ["All SBC platforms", "All Jetson builds", "All RPi builds"],
@@ -3934,7 +3964,7 @@ const DEP_GRAPH = {
     alternatives: [
       {name: "LPDDR5 (newer standard)", ndaa: true, cost: 35, note: "Higher bandwidth, lower power. Requires board redesign."},
       {name: "Micron DDR4 (US-sourced)", ndaa: true, cost: 28, note: "Micron is US company — preferred for procurement compliance."},
-    ],
+    ]
   },
   "Persistent Systems MPU5": {
     platforms: ["Shield AI V-BAT", "SOF swarm builds", "AFSOC ISR platforms"],
@@ -3945,7 +3975,7 @@ const DEP_GRAPH = {
       {name: "Silvus StreamCaster SC4200", ndaa: true, cost: 5200, note: "High throughput MIMO. Not Wave Relay — different waveform, no interop."},
       {name: "TrellisWare TSM radio", ndaa: true, cost: 8000, note: "Different waveform. Used in manned platforms. UAS integration less mature."},
       {name: "Doodle Labs Helix", ndaa: true, cost: 1800, note: "Commercial mesh. Much lower cost, much lower performance and range."},
-    ],
+    ]
   },
   "DJI O3/O4 Air Unit": {
     platforms: ["Consumer FPV", "Gray zone commercial", "Anzu Robotics (licensed)"],
@@ -3956,7 +3986,7 @@ const DEP_GRAPH = {
       {name: "Walksnail Avatar HD Pro", ndaa: false, cost: 119, note: "Chinese (Caddx). Better price, same NDAA problem."},
       {name: "HDZero Freestyle V2", ndaa: false, cost: 60, note: "Chinese. Ultra-low latency. NDAA non-compliant."},
       {name: "Connex ProHD (Amimon)", ndaa: true, cost: 850, note: "Israeli. Low latency. NDAA-aligned. High cost. Less ecosystem."},
-    ],
+    ]
   },
   "AMD/Xilinx Zynq UltraScale+": {
     platforms: ["High-end ISR payloads", "GCS signal processing", "Anduril/Shield AI edge compute"],
@@ -3967,8 +3997,8 @@ const DEP_GRAPH = {
       {name: "Intel Agilex FPGA", ndaa: true, cost: 700, note: "US-designed. Different toolchain (Intel Quartus). Long qualification time."},
       {name: "Microchip PolarFire SoC", ndaa: true, cost: 380, note: "Lower power, lower perf. RISC-V SoC + FPGA. Canadian company."},
       {name: "Lattice Avant (small FPGA)", ndaa: true, cost: 120, note: "Too small for high-end ISR but workable for signal preprocessing stage."},
-    ],
-  },
+    ]
+  }
 };
 const SCENARIOS = [
   { id: "fcc-cliff", name: "🔒 FCC Firmware Cliff — Jan 1, 2027", probability: 70,
