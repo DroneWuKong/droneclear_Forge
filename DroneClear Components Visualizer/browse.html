@@ -95,6 +95,21 @@ body { font-family:var(--sans); background:var(--bg); color:var(--text); -webkit
     .browse-card { padding:14px 8px; min-height:85px; }
     .browse-card-count { font-size:1.3rem; }
 }
+
+/* PIE intelligence flags */
+.pie-flags { margin-top:14px; display:flex; flex-direction:column; gap:6px; }
+.pie-flag { padding:8px 10px; border-radius:6px; border-left:3px solid; font-size:11px; line-height:1.5; }
+.pie-flag-title { font:700 11px var(--mono); margin-bottom:3px; }
+.pie-flag-detail { color:var(--text-dim); font-size:10px; line-height:1.4; }
+.pie-flag.critical { border-color:#ef4444; background:rgba(239,68,68,.07); }
+.pie-flag.critical .pie-flag-title { color:#ef4444; }
+.pie-flag.high    { border-color:#f97316; background:rgba(249,115,22,.07); }
+.pie-flag.high    .pie-flag-title { color:#f97316; }
+.pie-flag.warning { border-color:#f59e0b; background:rgba(245,158,11,.07); }
+.pie-flag.warning .pie-flag-title { color:#f59e0b; }
+.pie-flag.info    { border-color:#60a5fa; background:rgba(96,165,250,.07); }
+.pie-flag.info    .pie-flag-title { color:#60a5fa; }
+.pie-flags-header { font:700 9px var(--mono); letter-spacing:.08em; color:var(--text-dim); margin-bottom:4px; text-transform:uppercase; }
 </style>
 </head>
 <body>
@@ -175,6 +190,10 @@ body { font-family:var(--sans); background:var(--bg); color:var(--text); -webkit
         sensors:'ph-compass', counter_uas:'ph-shield-warning', esad:'ph-target',
         fpv_detectors:'ph-radio-button', payload_droppers:'ph-parachute',
         video_scramblers:'ph-lock-key', control_link_tx:'ph-broadcast',
+        ai_accelerators:'ph-brain', c2_datalinks:'ph-network', companion_computers:'ph-device-mobile',
+        ew_systems:'ph-wave-sine', ground_control_stations:'ph-monitor', lidar_rangefinders:'ph-scan',
+        military_firmware:'ph-code', navigation_pnt:'ph-navigation', optical_flow:'ph-eye',
+        propulsion:'ph-engine', swarm_software:'ph-swarm',
     };
     const catLabels = {
         antennas:'Antennas', batteries:'Batteries', escs:'ESCs',
@@ -208,6 +227,9 @@ body { font-family:var(--sans); background:var(--bg); color:var(--text); -webkit
 
     let allCategories = [];
     let allComponents = {};
+    let pieFlags = [];      // all PIE flags
+    let pieByCat = {};      // category slug → flags[]
+    let pieByComp = {};     // component_id slug → flags[]
     let navStack = []; // [{view, title, crumb}]
     let currentParts = [];
     let ndaaFilter = 'all'; // 'all' | 'ndaa' | 'non-ndaa' | 'china' | 'usa'
@@ -229,6 +251,25 @@ body { font-family:var(--sans); background:var(--bg); color:var(--text); -webkit
         try {
             const catRes = await fetch('/api/categories/');
             allCategories = await catRes.json();
+
+            // Load PIE flags (non-blocking — best effort)
+            try {
+                const pieRes = await fetch('pie_flags.json');
+                pieFlags = await pieRes.json();
+                // Build lookup indexes
+                const CAT_SLUGS = new Set(Object.keys(catIcons));
+                for (const f of pieFlags) {
+                    const cid = f.component_id;
+                    if (!cid) continue;
+                    if (CAT_SLUGS.has(cid)) {
+                        if (!pieByCat[cid]) pieByCat[cid] = [];
+                        pieByCat[cid].push(f);
+                    } else {
+                        if (!pieByComp[cid]) pieByComp[cid] = [];
+                        pieByComp[cid].push(f);
+                    }
+                }
+            } catch(e) { /* PIE flags unavailable — continue without */ }
 
             if (startCat) {
                 const parts = await loadCategory(startCat);
@@ -580,6 +621,74 @@ body { font-family:var(--sans); background:var(--bg); color:var(--text); -webkit
         }).join('');
     }
 
+    // ── PIE flag lookup ──
+    function getPieFlags(category, partName, manufacturer, ndaaCompliant) {
+        const results = [];
+        const seen = new Set();
+
+        // Helper: slugify text for matching
+        const slug = t => (t||'').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g,'');
+
+        const partSlug = slug(partName);
+        const mfrSlug = slug(manufacturer);
+
+        // 1. Exact component_id match against part name or manufacturer slug
+        for (const [cid, flist] of Object.entries(pieByComp)) {
+            const cidClean = cid.replace(/[()]/g,'').replace(/\s/g,'-').toLowerCase();
+            if (partSlug.includes(cidClean) || cidClean.includes(partSlug.split('-')[0]) ||
+                mfrSlug.includes(cidClean) || cidClean.includes(mfrSlug.split('-')[0])) {
+                for (const f of flist) {
+                    if (!seen.has(f.id)) { seen.add(f.id); results.push(f); }
+                }
+            }
+        }
+
+        // 2. Category-level flags (max 2 most severe, skip pure info)
+        const catFlags = (pieByCat[category] || [])
+            .filter(f => f.severity !== 'info' && 
+                         ['diversion_risk','supply_constraint','supply_chain_risk','grayzone','compliance'].includes(f.flag_type) &&
+                         // Suppress supply_chain_risk and compliance for verified NDAA-compliant parts
+                         !(ndaaCompliant === true && ['supply_chain_risk','compliance'].includes(f.flag_type)))
+            .sort((a,b) => {
+                const ord = {critical:0,high:1,warning:2,info:3};
+                return (ord[a.severity]??3) - (ord[b.severity]??3);
+            })
+            .slice(0, 2);
+        for (const f of catFlags) {
+            if (!seen.has(f.id)) { seen.add(f.id); results.push(f); }
+        }
+
+        // Sort: critical first, then by type priority
+        const typeOrd = {diversion_risk:0,grayzone:1,supply_constraint:2,supply_chain_risk:3,compliance:4};
+        const sevOrd = {critical:0,high:1,warning:2,info:3};
+        results.sort((a,b) => {
+            const sd = (sevOrd[a.severity]??3) - (sevOrd[b.severity]??3);
+            if (sd !== 0) return sd;
+            return (typeOrd[a.flag_type]??9) - (typeOrd[b.flag_type]??9);
+        });
+
+        return results.slice(0, 4); // cap at 4 flags per part
+    }
+
+    function renderPieFlags(flags) {
+        if (!flags.length) return '';
+        const TYPE_ICON = {
+            diversion_risk:'☢', supply_constraint:'⚠', supply_chain_risk:'🔗',
+            grayzone:'⚡', compliance:'🛡', contract_signal:'📋',
+            component_analysis:'🔍', price_anomaly:'💰', correlation:'🔄'
+        };
+        const items = flags.map(f => {
+            const icon = TYPE_ICON[f.flag_type] || '●';
+            const sev = f.severity || 'info';
+            const detail = (f.detail||'').slice(0,160) + ((f.detail||'').length > 160 ? '…' : '');
+            return `<div class="pie-flag ${sev}">
+                <div class="pie-flag-title">${icon} ${f.title||''}</div>
+                ${detail ? `<div class="pie-flag-detail">${detail}</div>` : ''}
+            </div>`;
+        }).join('');
+        return `<div class="pie-flags"><div class="pie-flags-header">⬡ PIE Intelligence</div>${items}</div>`;
+    }
+
     // ── Detail modal ──
     window.showDetail = async function(pid, category) {
         const parts = allComponents[category] || [];
@@ -632,6 +741,7 @@ body { font-family:var(--sans); background:var(--bg); color:var(--text); -webkit
             ${specsHtml ? `<div class="modal-specs">${specsHtml}</div>` : ''}
             ${tagsHtml}
             ${p.ndaa_note ? `<div style="margin-top:10px;padding:8px 10px;background:rgba(245,158,11,.06);border:1px solid rgba(245,158,11,.2);border-radius:6px;font-size:11px;color:var(--text-dim)">${p.ndaa_note}</div>` : ''}
+            ${renderPieFlags(getPieFlags(category, p.name||'', p.manufacturer||'', p.ndaa_compliant))}
             ${linkUrl ? `<a href="${linkUrl}" target="_blank" rel="noopener" style="display:inline-block;margin-top:12px;color:var(--accent);font-size:13px;text-decoration:none;">View product page →</a>` : ''}
         `;
         modal.classList.add('open');
