@@ -56,6 +56,7 @@ PAGES = {
     'intel-financial.html': 'intel-financial/index.html',
     'intel-commercial.html': 'intel-commercial/index.html',
     'payload-compare.html': 'payload-compare/index.html',
+    'stack-builder.html': 'stack-builder/index.html',
     'tools.html': 'tools/index.html',
     'wingman.html': 'wingman/index.html',
     'pro.html': 'pro/index.html',

@@ -1,0 +1,604 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Stack Builder — DroneClear</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://unpkg.com/@phosphor-icons/web@2.1.1/src/regular/style.css"/>
+<style>
+:root{
+  --bg:#0a0b10;--surface:#12131a;--card:#1a1b24;--border:#2a2b35;
+  --text:#e8e8f0;--text-s:#b0b0c0;--text-d:#666680;--text-xd:#3a3a50;
+  --cyan:#00d4ff;--green:#22c55e;--amber:#f59e0b;--red:#ef4444;--blue:#3b82f6;--purple:#a855f7;
+  --font:'DM Sans',sans-serif;--mono:'JetBrains Mono',monospace;--radius:10px;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--bg);color:var(--text);font-family:var(--font);min-height:100vh}
+.topbar{display:flex;align-items:center;gap:10px;padding:14px 20px;border-bottom:1px solid var(--border);position:sticky;top:0;background:var(--bg);z-index:100}
+.topbar-logo{font:800 16px var(--font);color:var(--red);text-decoration:none}
+.pill{font:500 11px var(--font);padding:5px 12px;border:1px solid var(--border);border-radius:20px;color:var(--text-s);text-decoration:none;transition:all .15s}
+.pill:hover{border-color:var(--text-d);color:var(--text)}
+.pill.active{border-color:var(--cyan);color:var(--cyan)}
+.page{max-width:720px;margin:0 auto;padding:24px 16px 80px}
+.eyebrow{font:700 10px var(--mono);letter-spacing:.14em;text-transform:uppercase;color:var(--cyan);margin-bottom:8px}
+h1{font:800 22px var(--font);color:var(--text);line-height:1.2;margin-bottom:6px}
+.sub{font-size:12px;color:var(--text-d);margin-bottom:24px;line-height:1.5}
+
+/* Picker cards */
+.picker-row{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:24px}
+.picker-card{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:14px}
+.picker-label{font:700 9px var(--mono);letter-spacing:.1em;text-transform:uppercase;color:var(--text-d);margin-bottom:10px;display:flex;align-items:center;gap:6px}
+.picker-label i{font-size:13px}
+select{width:100%;background:var(--surface);border:1px solid var(--border);border-radius:6px;color:var(--text-s);font:500 11px var(--font);padding:8px 10px;cursor:pointer;-webkit-appearance:none;appearance:none;outline:none}
+select:focus{border-color:var(--cyan);color:var(--text)}
+select option{background:var(--surface)}
+.picker-selected{margin-top:10px;font-size:10px;color:var(--text-d);line-height:1.6;min-height:36px}
+.picker-selected .spec{color:var(--text-s)}
+.picker-selected .spec span{color:var(--text)}
+
+/* Constraint bar */
+.constraint-bar{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:14px;margin-bottom:16px;display:none}
+.constraint-bar.visible{display:block}
+.cb-label{font:700 9px var(--mono);letter-spacing:.1em;text-transform:uppercase;color:var(--text-d);margin-bottom:10px}
+.cb-row{display:flex;gap:8px;flex-wrap:wrap}
+.cb-item{background:var(--surface);border:1px solid var(--border);border-radius:6px;padding:6px 10px;font-size:10px}
+.cb-item label{display:block;font:700 8px var(--mono);color:var(--text-d);text-transform:uppercase;letter-spacing:.06em;margin-bottom:2px}
+.cb-item input[type=range]{width:90px;accent-color:var(--cyan);display:block;margin-top:3px}
+.cb-item .cb-val{font:600 11px var(--mono);color:var(--cyan)}
+
+/* Result card */
+.result{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);overflow:hidden;margin-bottom:16px;display:none}
+.result.visible{display:block}
+.result-header{padding:14px 16px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center}
+.result-title{font:700 13px var(--font);color:var(--text)}
+.compat-badge{font:700 9px var(--mono);padding:3px 8px;border-radius:4px;letter-spacing:.05em}
+.cb-go{background:rgba(34,197,94,.12);color:var(--green);border:1px solid rgba(34,197,94,.25)}
+.cb-caution{background:rgba(245,158,11,.1);color:var(--amber);border:1px solid rgba(245,158,11,.2)}
+.cb-no{background:rgba(239,68,68,.1);color:var(--red);border:1px solid rgba(239,68,68,.2)}
+
+/* Metrics grid */
+.metrics{display:grid;grid-template-columns:repeat(3,1fr);border-bottom:1px solid var(--border)}
+.metric{padding:14px 12px;border-right:1px solid var(--border);text-align:center}
+.metric:last-child{border-right:none}
+.metric-val{font:800 20px var(--mono);margin-bottom:3px}
+.metric-lbl{font:500 9px var(--font);color:var(--text-d);text-transform:uppercase;letter-spacing:.05em}
+.metric-sub{font:500 9px var(--mono);color:var(--text-xd);margin-top:2px}
+.mv-green{color:var(--green)}
+.mv-amber{color:var(--amber)}
+.mv-red{color:var(--red)}
+.mv-cyan{color:var(--cyan)}
+
+/* Detail rows */
+.detail-rows{padding:0 16px}
+.detail-row{display:flex;justify-content:space-between;align-items:baseline;padding:9px 0;border-bottom:1px solid rgba(42,43,53,.5);font-size:11px}
+.detail-row:last-child{border-bottom:none}
+.dr-label{color:var(--text-d)}
+.dr-val{font:500 11px var(--mono);color:var(--text-s);text-align:right}
+.dr-val.good{color:var(--green)}
+.dr-val.warn{color:var(--amber)}
+.dr-val.bad{color:var(--red)}
+.dr-val.info{color:var(--cyan)}
+
+/* Warning banner */
+.warn-banner{margin:0 16px 12px;background:rgba(245,158,11,.06);border:1px solid rgba(245,158,11,.15);border-radius:6px;padding:10px 12px;font-size:10px;color:var(--amber);line-height:1.5}
+.warn-banner i{margin-right:4px}
+.err-banner{margin:0 16px 12px;background:rgba(239,68,68,.06);border:1px solid rgba(239,68,68,.15);border-radius:6px;padding:10px 12px;font-size:10px;color:var(--red);line-height:1.5}
+.err-banner i{margin-right:4px}
+
+/* Coverage vis */
+.coverage-vis{padding:14px 16px;border-top:1px solid var(--border)}
+.cov-label{font:700 9px var(--mono);letter-spacing:.1em;text-transform:uppercase;color:var(--text-d);margin-bottom:8px}
+.cov-bar-wrap{background:var(--surface);border-radius:4px;height:8px;overflow:hidden;margin-bottom:6px}
+.cov-bar{height:100%;border-radius:4px;transition:width .4s ease;background:linear-gradient(90deg,var(--cyan),var(--green))}
+.cov-legend{display:flex;justify-content:space-between;font:500 9px var(--mono);color:var(--text-xd)}
+
+/* Assumptions note */
+.assumptions{background:var(--surface);border-radius:6px;padding:10px 12px;font-size:10px;color:var(--text-d);line-height:1.6;margin:0 16px 14px}
+.assumptions strong{color:var(--text-d);font-weight:700}
+
+/* Empty state */
+.empty{text-align:center;padding:48px 20px;color:var(--text-d)}
+.empty i{font-size:36px;margin-bottom:12px;display:block;color:var(--text-xd)}
+</style>
+</head>
+<body>
+<header class="topbar">
+  <a href="/" class="topbar-logo">DroneClear</a>
+  <a href="/intel-commercial/" class="pill">Commercial Intel</a>
+  <a href="/payload-compare/" class="pill">Payloads</a>
+  <a href="/stack-builder/" class="pill active">Stack Builder</a>
+</header>
+
+<div class="page">
+  <div class="eyebrow">// Mission Planning</div>
+  <h1>Stack Builder</h1>
+  <p class="sub">Pick a platform and a payload. Get a real-world estimate of flight time under load, area coverage per flight, and whether the combination is physically viable.</p>
+
+  <!-- Pickers -->
+  <div class="picker-row">
+    <div class="picker-card">
+      <div class="picker-label"><i class="ph ph-drone"></i>Platform</div>
+      <select id="platform-select" onchange="update()">
+        <option value="">— Select platform —</option>
+      </select>
+      <div class="picker-selected" id="platform-info"></div>
+    </div>
+    <div class="picker-card">
+      <div class="picker-label"><i class="ph ph-broadcast"></i>Payload</div>
+      <select id="payload-select" onchange="update()">
+        <option value="">— Select payload —</option>
+      </select>
+      <div class="picker-selected" id="payload-info"></div>
+    </div>
+  </div>
+
+  <!-- Mission params -->
+  <div class="constraint-bar" id="constraint-bar">
+    <div class="cb-label">Mission Parameters</div>
+    <div class="cb-row">
+      <div class="cb-item">
+        <label>AGL Height</label>
+        <span class="cb-val" id="agl-val">80m</span>
+        <input type="range" id="agl-slider" min="40" max="200" value="80" step="10" oninput="updateSliders()">
+      </div>
+      <div class="cb-item">
+        <label>Speed</label>
+        <span class="cb-val" id="speed-val">8 m/s</span>
+        <input type="range" id="speed-slider" min="4" max="18" value="8" step="1" oninput="updateSliders()">
+      </div>
+      <div class="cb-item">
+        <label>Side Overlap</label>
+        <span class="cb-val" id="overlap-val">30%</span>
+        <input type="range" id="overlap-slider" min="20" max="60" value="30" step="5" oninput="updateSliders()">
+      </div>
+      <div class="cb-item">
+        <label>Reserve</label>
+        <span class="cb-val" id="reserve-val">20%</span>
+        <input type="range" id="reserve-slider" min="10" max="30" value="20" step="5" oninput="updateSliders()">
+      </div>
+    </div>
+  </div>
+
+  <!-- Result -->
+  <div class="result" id="result"></div>
+
+  <div class="empty" id="empty-state">
+    <i class="ph ph-stack"></i>
+    <p style="font-size:12px;line-height:1.7">Select a platform and payload<br>to calculate mission viability.</p>
+  </div>
+</div>
+
+<script>
+// ── Platform data ─────────────────────────────────────────────────────────────
+// max_payload_kg = max payload the platform can carry
+// base_flight_min = flight time with no payload
+// payload_penalty = minutes lost per kg of payload (empirical rule of thumb)
+// speed_max_ms = max horizontal speed
+// lidar_fov_deg = effective swath angle for area calc (if fixed-wing style)
+// fixed_wing = true for VTOL/fixed-wing (different area calc)
+// notes = caveats
+const PLATFORMS = [
+  {
+    id:'if1200a', name:'Inspired Flight IF1200A',
+    mfr:'Inspired Flight Technologies', ndaa:true,
+    max_payload_kg:8.7, base_flight_min:43, payload_penalty_min_per_kg:1.8,
+    speed_max_ms:25, weight_kg:9.5,
+    notes:'Hexacopter. 19.1 lb under Part 107; 28.7 lb with cert. Real-world 30+ min with 8 lb payload confirmed.',
+    part107_payload_kg:8.66
+  },
+  {
+    id:'if800', name:'Inspired Flight IF800',
+    mfr:'Inspired Flight Technologies', ndaa:true,
+    max_payload_kg:2.5, base_flight_min:38, payload_penalty_min_per_kg:3.5,
+    speed_max_ms:20, weight_kg:3.2,
+    notes:'Quad. Most common NDAA survey platform. Phoenix Recon-XT + GeoCue TV1 Lite native integration.',
+    part107_payload_kg:2.5
+  },
+  {
+    id:'freefly-astro', name:'Freefly Astro / Astro Max',
+    mfr:'Freefly Systems', ndaa:true,
+    max_payload_kg:2.3, base_flight_min:33, payload_penalty_min_per_kg:4.0,
+    speed_max_ms:16, weight_kg:2.3,
+    notes:'Manufacturer spec: 25 min with Sony ILX-LR1. Auterion Skynode FC. Blue UAS cleared.',
+    part107_payload_kg:2.3
+  },
+  {
+    id:'m350-rtk', name:'DJI Matrice 350 RTK',
+    mfr:'DJI', ndaa:false,
+    max_payload_kg:2.73, base_flight_min:55, payload_penalty_min_per_kg:3.2,
+    speed_max_ms:23, weight_kg:6.47,
+    notes:'FCC Covered List — no new FCC authorizations. Existing registered units operational. Triple gimbal = 2.73 kg.',
+    part107_payload_kg:2.73
+  },
+  {
+    id:'m300-rtk', name:'DJI Matrice 300 RTK',
+    mfr:'DJI', ndaa:false,
+    max_payload_kg:2.7, base_flight_min:55, payload_penalty_min_per_kg:3.5,
+    speed_max_ms:23, weight_kg:6.3,
+    notes:'FCC Covered List — predecessor to M350. Many LiDAR integrations built for this platform.',
+    part107_payload_kg:2.7
+  },
+  {
+    id:'m400-rtk', name:'DJI Matrice 400 RTK',
+    mfr:'DJI', ndaa:false,
+    max_payload_kg:2.0, base_flight_min:52, payload_penalty_min_per_kg:3.0,
+    speed_max_ms:23, weight_kg:5.9,
+    notes:'FCC Covered List. 2024 release. GeoCue TV1 + TV1 Lite optimized for M400.',
+    part107_payload_kg:2.0
+  },
+  {
+    id:'wingtra-gen2', name:'WingtraONE GEN II / WingtraRAY',
+    mfr:'Wingtra', ndaa:true,
+    max_payload_kg:0.8, base_flight_min:59, payload_penalty_min_per_kg:5.0,
+    speed_max_ms:22, weight_kg:4.5,
+    fixed_wing:true, cruise_speed_ms:16,
+    notes:'VTOL fixed-wing. Blue UAS cleared (WingtraRAY). 250 acres in 10 min at altitude. Best area/flight ratio.',
+    part107_payload_kg:0.8
+  },
+  {
+    id:'alta-x', name:'Freefly Alta X',
+    mfr:'Freefly Systems', ndaa:true,
+    max_payload_kg:15.9, base_flight_min:22, payload_penalty_min_per_kg:0.8,
+    speed_max_ms:20, weight_kg:15.0,
+    notes:'Heavy-lift octocopter. Primarily cinema/broadcast. Carries Mōvi + RED Komodo. Flight time drops sharply under heavy load.',
+    part107_payload_kg:15.9
+  },
+  {
+    id:'alta-8', name:'Freefly Alta 8',
+    mfr:'Freefly Systems', ndaa:true,
+    max_payload_kg:9.1, base_flight_min:22, payload_penalty_min_per_kg:1.2,
+    speed_max_ms:14, weight_kg:8.2,
+    notes:'Predecessor to Alta X. Still widely used for heavy cinema and LiDAR. YellowScan Voyager compatible.',
+    part107_payload_kg:9.1
+  },
+  {
+    id:'sony-airpeak', name:'Sony Airpeak S1',
+    mfr:'Sony', ndaa:false,
+    max_payload_kg:2.5, base_flight_min:22, payload_penalty_min_per_kg:3.8,
+    speed_max_ms:22, weight_kg:3.1,
+    notes:'Inertial Labs RESEPI GEN-II integration partner. Non-NDAA (Japanese manufacturer).',
+    part107_payload_kg:2.5
+  },
+  {
+    id:'acsl-soten', name:'ACSL SOTEN',
+    mfr:'ACSL', ndaa:true,
+    max_payload_kg:1.0, base_flight_min:30, payload_penalty_min_per_kg:5.0,
+    speed_max_ms:14, weight_kg:2.0,
+    notes:'NDAA compliant. Swappable payload design. IP43. Limited payload budget.',
+    part107_payload_kg:1.0
+  },
+];
+
+// ── Payload data ──────────────────────────────────────────────────────────────
+// weight_kg = payload weight
+// type = lidar | camera | gimbal | multi
+// swath_factor = approximate swath width = AGL * swath_factor (m)
+//   LiDAR: based on FOV. Cameras: based on sensor footprint at altitude.
+// min_agl_m, max_agl_m = operating envelope
+// ndaa = true/false
+// platform_notes = compatibility notes per platform ID
+const PAYLOADS = [
+  // LiDAR
+  { id:'ys-mapper-plus', name:'YellowScan Mapper+', mfr:'YellowScan', type:'lidar', ndaa:false,
+    weight_kg:1.3, swath_factor:0.8, min_agl_m:30, max_agl_m:70,
+    price:'$40–50K', pts_sec:'300K', accuracy_cm:3,
+    compat:{'if800':'native','if1200a':'native','m350-rtk':'native','m300-rtk':'native','wingtra-gen2':'✓'},
+    notes:'Gremsy + Skyport mounts. 70m AGL limit. Good for corridors and topo.' },
+  { id:'ys-venturer', name:'YellowScan Venturer', mfr:'YellowScan', type:'lidar', ndaa:true,
+    weight_kg:1.7, swath_factor:1.0, min_agl_m:30, max_agl_m:120,
+    price:'~$55K', pts_sec:'300K', accuracy_cm:3,
+    compat:{'if800':'native','if1200a':'native','m350-rtk':'native'},
+    notes:'NDAA-compliant variant available. 120m AGL ceiling.' },
+  { id:'ys-voyager', name:'YellowScan Voyager', mfr:'YellowScan', type:'lidar', ndaa:false,
+    weight_kg:2.2, swath_factor:1.4, min_agl_m:50, max_agl_m:440,
+    price:'$70–90K', pts_sec:'2M', accuracy_cm:1,
+    compat:{'if1200a':'native','alta-x':'native','alta-8':'native','wingtra-gen2':'✓'},
+    notes:'32 returns per pulse. Best veg penetration. Heavy — IF1200A or Alta required.' },
+  { id:'gc-tv1-lite', name:'GeoCue TrueView 1 Lite', mfr:'GeoCue', type:'lidar', ndaa:true,
+    weight_kg:1.4, swath_factor:0.85, min_agl_m:30, max_agl_m:100,
+    price:'$18,990', pts_sec:'640K', accuracy_cm:3,
+    compat:{'if800':'native','freefly-astro':'native','m350-rtk':'mount kit','m300-rtk':'mount kit','m400-rtk':'mount kit'},
+    notes:'US-assembled. Best entry-level NDAA option. Native IF800 + Astro integration.' },
+  { id:'gc-tv1', name:'GeoCue TrueView 1', mfr:'GeoCue', type:'lidar', ndaa:true,
+    weight_kg:1.6, swath_factor:0.85, min_agl_m:30, max_agl_m:100,
+    price:'$30–45K', pts_sec:'640K', accuracy_cm:3,
+    compat:{'if800':'native','m400-rtk':'native','m350-rtk':'native'},
+    notes:'PP-RTX option = no base station. 26/45/61MP camera options.' },
+  { id:'gc-tv615', name:'GeoCue TrueView 615/620', mfr:'GeoCue', type:'lidar', ndaa:true,
+    weight_kg:3.25, swath_factor:1.2, min_agl_m:30, max_agl_m:100,
+    price:'$80–120K', pts_sec:'200K', accuracy_cm:2,
+    compat:{'if1200a':'native','alta-x':'✓','alta-8':'✓'},
+    notes:'Riegl miniVUX-2UAV. 3.25kg — heavy-lift required. Wire detection grade.' },
+  { id:'il-ultra-lite', name:'Inertial Labs RESEPI Ultra LITE', mfr:'Inertial Labs', type:'lidar', ndaa:true,
+    weight_kg:1.1, swath_factor:0.8, min_agl_m:30, max_agl_m:100,
+    price:'$19,550–21,050', pts_sec:'640K', accuracy_cm:3,
+    compat:{'if800':'native','freefly-astro':'native','m350-rtk':'native','sony-airpeak':'native'},
+    notes:'Lightest complete LiDAR+cam. SnapFit mounts. NDAA compliant.' },
+  { id:'ph-recon-xt', name:'Phoenix Recon-XT', mfr:'Phoenix LiDAR', type:'lidar', ndaa:true,
+    weight_kg:1.8, swath_factor:0.75, min_agl_m:20, max_agl_m:80,
+    price:'$25–35K', pts_sec:null, accuracy_cm:4,
+    compat:{'if800':'native','freefly-astro':'native','m350-rtk':'native','m300-rtk':'native'},
+    notes:'Smart Dovetail quick swap. 80m AGL limit. Budget entry.' },
+  { id:'ph-mini3', name:'Phoenix miniRANGER-3 LITE', mfr:'Phoenix LiDAR', type:'lidar', ndaa:true,
+    weight_kg:2.5, swath_factor:1.0, min_agl_m:30, max_agl_m:100,
+    price:'$45–60K', pts_sec:'300K', accuracy_cm:3,
+    compat:{'if800':'native','if1200a':'native','m350-rtk':'native','alta-x':'✓'},
+    notes:'Simultaneous 61MP photogrammetry option. 3× density vs Gen-2.' },
+  // Cameras
+  { id:'sony-ilx-lr1', name:'Sony ILX-LR1', mfr:'Sony', type:'camera', ndaa:false,
+    weight_kg:0.327, swath_factor:0.55, min_agl_m:30, max_agl_m:150,
+    price:'~$3,500', pts_sec:null, accuracy_cm:null,
+    compat:{'all':'✓'},
+    notes:'61MP. Purpose-built industrial sensor. Pairs with Gremsy T3.' },
+  { id:'mica-rededge-p', name:'MicaSense RedEdge-P', mfr:'MicaSense', type:'multi', ndaa:true,
+    weight_kg:0.325, swath_factor:0.45, min_agl_m:60, max_agl_m:200,
+    price:'$8–10K', pts_sec:null, accuracy_cm:null,
+    compat:{'all':'✓'},
+    notes:'5-band MS + 12.4MP panchromatic. DLS 2 irradiance. Agriculture standard.' },
+  { id:'mica-altum-pt', name:'MicaSense Altum-PT', mfr:'MicaSense', type:'multi', ndaa:true,
+    weight_kg:0.577, swath_factor:0.45, min_agl_m:60, max_agl_m:200,
+    price:'$12–15K', pts_sec:null, accuracy_cm:null,
+    compat:{'all':'✓'},
+    notes:'5-band MS + thermal LWIR combined. Single flight = both datasets.' },
+  // Gimbals (show weight impact only, no swath)
+  { id:'gremsy-t3v3', name:'Gremsy T3 v3 + Sony ILX-LR1', mfr:'Gremsy', type:'gimbal', ndaa:false,
+    weight_kg:1.52, swath_factor:0.55, min_agl_m:30, max_agl_m:150,
+    price:'~$6K combined', pts_sec:null, accuracy_cm:null,
+    compat:{'if1200a':'✓','if800':'tight','m350-rtk':'✓','alta-x':'✓','alta-8':'✓'},
+    notes:'Gimbal 1.2kg + ILX-LR1 0.33kg = 1.52kg combined. Hot-swap T series.' },
+  { id:'gremsy-t7-a7r', name:'Gremsy T7 + Sony a7R V', mfr:'Gremsy', type:'gimbal', ndaa:false,
+    weight_kg:2.42, swath_factor:0.6, min_agl_m:50, max_agl_m:200,
+    price:'~$8.5K combined', pts_sec:null, accuracy_cm:null,
+    compat:{'if1200a':'native','alta-x':'native','alta-8':'native'},
+    notes:'Gimbal 1.7kg + a7R V 0.72kg = 2.42kg. Heavy-lift only.' },
+  { id:'freefly-movi', name:'Freefly Mōvi Cinema Robot', mfr:'Freefly', type:'gimbal', ndaa:true,
+    weight_kg:3.0, swath_factor:0.6, min_agl_m:50, max_agl_m:200,
+    price:'$5–8K', pts_sec:null, accuracy_cm:null,
+    compat:{'alta-x':'native','alta-8':'native'},
+    notes:'4.5kg payload capacity. Cinema/broadcast only. Alta-X primary platform.' },
+];
+
+// ── State ─────────────────────────────────────────────────────────────────────
+let selPlatform = null, selPayload = null;
+let agl = 80, speed = 8, overlap = 0.30, reserve = 0.20;
+
+// ── Build selects ─────────────────────────────────────────────────────────────
+const pSel = document.getElementById('platform-select');
+const plSel = document.getElementById('payload-select');
+
+PLATFORMS.forEach(p => {
+  const o = document.createElement('option');
+  o.value = p.id;
+  o.textContent = p.name + (p.ndaa ? '' : ' ⚠');
+  pSel.appendChild(o);
+});
+PAYLOADS.forEach(p => {
+  const o = document.createElement('option');
+  o.value = p.id;
+  o.textContent = p.name + (p.ndaa ? '' : ' ⚠');
+  plSel.appendChild(o);
+});
+
+// ── Sliders ───────────────────────────────────────────────────────────────────
+function updateSliders() {
+  agl    = +document.getElementById('agl-slider').value;
+  speed  = +document.getElementById('speed-slider').value;
+  overlap = +document.getElementById('overlap-slider').value / 100;
+  reserve = +document.getElementById('reserve-slider').value / 100;
+  document.getElementById('agl-val').textContent    = agl + 'm';
+  document.getElementById('speed-val').textContent  = speed + ' m/s';
+  document.getElementById('overlap-val').textContent= (overlap*100) + '%';
+  document.getElementById('reserve-val').textContent= (reserve*100) + '%';
+  calculate();
+}
+
+// ── Compute ───────────────────────────────────────────────────────────────────
+function calcFlightTime(platform, payload_kg) {
+  // Base time reduced by payload weight via empirical penalty
+  const penalized = platform.base_flight_min - (payload_kg * platform.payload_penalty_min_per_kg);
+  // Apply battery reserve
+  const usable = penalized * (1 - reserve);
+  return Math.max(0, usable);
+}
+
+function calcSwathWidth(payload, agl_m) {
+  // Swath = AGL × swath_factor (factor encodes sensor FOV)
+  return agl_m * payload.swath_factor;
+}
+
+function calcAreaHa(platform, payload, flight_min, agl_m, speed_ms, overlap_frac) {
+  // Fixed-wing VTOL — different area model
+  if (platform.fixed_wing) {
+    // Survey distance = speed × usable flight time (convert to seconds)
+    const survey_time_s = flight_min * 60 * 0.85; // 85% for turns/transit
+    const ground_dist_m = survey_time_s * platform.cruise_speed_ms;
+    const swath_m = calcSwathWidth(payload, agl_m);
+    const effective_swath = swath_m * (1 - overlap_frac);
+    // Area = strips × strip length × effective swath... approximate
+    return (ground_dist_m * effective_swath) / 10000; // m² → ha
+  }
+  // Multirotor — line pattern
+  const usable_flight_s = flight_min * 60 * 0.80; // 80% for transitions
+  const ground_dist_m = usable_flight_s * speed_ms;
+  const swath_m = calcSwathWidth(payload, agl_m);
+  const effective_swath = swath_m * (1 - overlap_frac);
+  return (ground_dist_m * effective_swath) / 10000;
+}
+
+function compatStatus(platform, payload) {
+  if (!payload.compat) return 'unknown';
+  if (payload.compat[platform.id]) return payload.compat[platform.id];
+  if (payload.compat['all']) return payload.compat['all'];
+  return null;
+}
+
+// ── Update selects → show info ────────────────────────────────────────────────
+function update() {
+  const pId  = pSel.value;
+  const plId = plSel.value;
+  selPlatform = PLATFORMS.find(p => p.id === pId) || null;
+  selPayload  = PAYLOADS.find(p => p.id === plId) || null;
+
+  // Platform info
+  const pInfo = document.getElementById('platform-info');
+  if (selPlatform) {
+    pInfo.innerHTML = `<span class="spec">Max payload <span>${selPlatform.max_payload_kg}kg</span> · Base flight <span>${selPlatform.base_flight_min}min</span></span><br>
+    <span style="color:${selPlatform.ndaa?'var(--green)':'var(--red)'};font:700 8px var(--mono)">${selPlatform.ndaa?'NDAA ✓':'⚠ Non-NDAA'}</span>`;
+  } else { pInfo.innerHTML = ''; }
+
+  // Payload info
+  const plInfo = document.getElementById('payload-info');
+  if (selPayload) {
+    plInfo.innerHTML = `<span class="spec">Weight <span>${selPayload.weight_kg}kg</span> · AGL <span>${selPayload.min_agl_m}–${selPayload.max_agl_m}m</span></span><br>
+    <span style="color:${selPayload.ndaa?'var(--green)':'var(--red)');font:700 8px var(--mono)">${selPayload.ndaa?'NDAA ✓':'⚠ Non-NDAA'}</span>`;
+  } else { plInfo.innerHTML = ''; }
+
+  const hasData = selPlatform && selPayload;
+  document.getElementById('constraint-bar').classList.toggle('visible', hasData);
+  if (hasData) calculate();
+  else showEmpty();
+}
+
+function showEmpty() {
+  document.getElementById('result').classList.remove('visible');
+  document.getElementById('empty-state').style.display = 'block';
+}
+
+// ── Main calculation ──────────────────────────────────────────────────────────
+function calculate() {
+  if (!selPlatform || !selPayload) return;
+  const p  = selPlatform;
+  const pl = selPayload;
+
+  const flight_min = calcFlightTime(p, pl.weight_kg);
+  const area_ha    = calcAreaHa(p, pl, flight_min, agl, speed, overlap);
+  const compat     = compatStatus(p, pl);
+
+  // Constraint checks
+  const overweight   = pl.weight_kg > p.max_payload_kg;
+  const tooHeavyWarn = pl.weight_kg > p.max_payload_kg * 0.85; // >85% of limit
+  const aglExceeded  = agl > pl.max_agl_m;
+  const aglTooLow    = agl < pl.min_agl_m;
+  const incompatible = compat === null;
+  const ndaaMismatch = !p.ndaa || !pl.ndaa;
+
+  let compatClass, compatLabel;
+  if (overweight || aglExceeded || aglTooLow || incompatible) {
+    compatClass = 'cb-no'; compatLabel = 'NOT VIABLE';
+  } else if (tooHeavyWarn || ndaaMismatch || (compat && compat.includes('tight'))) {
+    compatClass = 'cb-caution'; compatLabel = 'CAUTION';
+  } else {
+    compatClass = 'cb-go'; compatLabel = 'VIABLE';
+  }
+
+  // Flight time color
+  const ftColor = flight_min < 8 ? 'mv-red' : flight_min < 15 ? 'mv-amber' : 'mv-green';
+  // Area color
+  const areaColor = area_ha < 5 ? 'mv-amber' : area_ha < 20 ? 'mv-cyan' : 'mv-green';
+
+  const warnings = [];
+  const errors = [];
+
+  if (overweight) errors.push(`Payload ${pl.weight_kg}kg exceeds platform max ${p.max_payload_kg}kg — this combination cannot fly.`);
+  if (!overweight && tooHeavyWarn) warnings.push(`Payload is ${Math.round(pl.weight_kg/p.max_payload_kg*100)}% of max capacity — leaves minimal margin for accessories and vibration isolators. Add 200–400g for mounts.`);
+  if (aglExceeded) errors.push(`AGL ${agl}m exceeds payload's ${pl.max_agl_m}m operating ceiling — reduce altitude.`);
+  if (aglTooLow) errors.push(`AGL ${agl}m below payload's ${pl.min_agl_m}m minimum — increase altitude.`);
+  if (incompatible) warnings.push(`No documented integration between ${p.name} and ${pl.name}. Custom mount required.`);
+  if (ndaaMismatch && !overweight && !incompatible) {
+    if (!p.ndaa) warnings.push(`${p.name} is on the FCC Covered List — not eligible for federal contracts.`);
+    if (!pl.ndaa) warnings.push(`${pl.name} is manufactured in a covered country — verify federal contract NDAA requirements before procurement.`);
+  }
+  if (pl.type === 'lidar' && pl.accuracy_cm && agl > pl.max_agl_m * 0.9) {
+    warnings.push(`Flying near AGL ceiling. Point density decreases at altitude — expect wider point spacing.`);
+  }
+  if (flight_min < 10 && flight_min > 0) warnings.push(`Effective flight time under 10 minutes. Consider reducing AGL or increasing reserve battery.`);
+
+  // Coverage context
+  const surveysPerDay = Math.floor(480 / (flight_min + 15)); // 8hr day, 15min turnaround
+  const totalDayHa = surveysPerDay * area_ha;
+  const footballFields = Math.round(area_ha / 0.51); // 1 football field ~0.51 ha
+  const swath_m = calcSwathWidth(pl, agl).toFixed(0);
+
+  let html = `
+    <div class="result-header">
+      <div class="result-title">${p.name} + ${pl.name}</div>
+      <span class="compat-badge ${compatClass}">${compatLabel}</span>
+    </div>
+    <div class="metrics">
+      <div class="metric">
+        <div class="metric-val ${ftColor}">${flight_min > 0 ? flight_min.toFixed(0) : '—'}</div>
+        <div class="metric-lbl">Minutes</div>
+        <div class="metric-sub">under load w/ ${Math.round(reserve*100)}% reserve</div>
+      </div>
+      <div class="metric">
+        <div class="metric-val ${areaColor}">${overweight||incompatible ? '—' : area_ha.toFixed(1)}</div>
+        <div class="metric-lbl">Hectares</div>
+        <div class="metric-sub">per flight at ${agl}m AGL</div>
+      </div>
+      <div class="metric">
+        <div class="metric-val" style="color:var(--amber)">${overweight||incompatible ? '—' : swath_m}</div>
+        <div class="metric-lbl">Swath (m)</div>
+        <div class="metric-sub">effective at ${agl}m</div>
+      </div>
+    </div>`;
+
+  errors.forEach(e => { html += `<div class="err-banner" style="margin-top:12px"><i class="ph ph-x-circle"></i>${e}</div>`; });
+  warnings.forEach(w => { html += `<div class="warn-banner" style="margin-top:${warnings.indexOf(w)===0?'12px':'4px'}"><i class="ph ph-warning"></i>${w}</div>`; });
+
+  if (!overweight && !incompatible) {
+    html += `<div class="detail-rows">
+      <div class="detail-row"><span class="dr-label">Payload weight</span><span class="dr-val ${tooHeavyWarn?'warn':'good'}">${pl.weight_kg} kg (${Math.round(pl.weight_kg/p.max_payload_kg*100)}% of max)</span></div>
+      <div class="detail-row"><span class="dr-label">Platform max payload</span><span class="dr-val">${p.max_payload_kg} kg</span></div>
+      <div class="detail-row"><span class="dr-label">Weight margin</span><span class="dr-val ${tooHeavyWarn?'warn':'good'}">${(p.max_payload_kg - pl.weight_kg).toFixed(2)} kg remaining</span></div>
+      <div class="detail-row"><span class="dr-label">Base flight time (no load)</span><span class="dr-val">${p.base_flight_min} min</span></div>
+      <div class="detail-row"><span class="dr-label">Est. flight time under load</span><span class="dr-val ${ftColor}">${flight_min.toFixed(0)} min</span></div>
+      <div class="detail-row"><span class="dr-label">Flights per 8hr day</span><span class="dr-val info">~${surveysPerDay} flights (15 min turnaround)</span></div>
+      <div class="detail-row"><span class="dr-label">Total daily coverage</span><span class="dr-val info">~${totalDayHa.toFixed(0)} ha/day</span></div>
+      <div class="detail-row"><span class="dr-label">Context</span><span class="dr-val" style="color:var(--text-d)">~${footballFields} football fields/flight</span></div>
+      ${pl.pts_sec ? `<div class="detail-row"><span class="dr-label">Point rate</span><span class="dr-val">${pl.pts_sec} pts/sec</span></div>` : ''}
+      ${pl.accuracy_cm ? `<div class="detail-row"><span class="dr-label">Accuracy (spec)</span><span class="dr-val good">±${pl.accuracy_cm} cm</span></div>` : ''}
+      <div class="detail-row"><span class="dr-label">Integration status</span><span class="dr-val ${compat&&!compat.includes('mount kit')?'good':'warn'}">${compat||'Unknown — verify'}</span></div>
+      <div class="detail-row"><span class="dr-label">Platform NDAA</span><span class="dr-val ${p.ndaa?'good':'bad'}">${p.ndaa?'✓ Compliant':'✗ Non-compliant (FCC Covered List)'}</span></div>
+      <div class="detail-row"><span class="dr-label">Payload NDAA</span><span class="dr-val ${pl.ndaa?'good':'warn'}">${pl.ndaa?'✓ Compliant':'⚠ Non-compliant ('+pl.mfr+')'}</span></div>
+    </div>`;
+
+    // Coverage bar (relative to 100 ha as "excellent")
+    const barPct = Math.min(100, area_ha / 100 * 100);
+    const barColor = area_ha < 5 ? 'var(--amber)' : 'var(--cyan)';
+    html += `<div class="coverage-vis">
+      <div class="cov-label">Coverage per flight vs. typical benchmarks</div>
+      <div class="cov-bar-wrap"><div class="cov-bar" style="width:${barPct}%;background:linear-gradient(90deg,${barColor},var(--green))"></div></div>
+      <div class="cov-legend"><span>0 ha</span><span>25 ha</span><span>50 ha</span><span>75 ha</span><span>100 ha+</span></div>
+    </div>`;
+
+    html += `<div class="assumptions">
+      <strong>Assumptions:</strong> ${Math.round(reserve*100)}% battery reserve · ${speed} m/s ground speed · ${agl}m AGL · ${Math.round(overlap*100)}% side overlap · 
+      flight time penalty ~${p.payload_penalty_min_per_kg} min/kg · swath based on ${pl.swath_factor}× AGL factor.
+      Actual results vary by wind, temperature, and battery state. Always verify with manufacturer data.
+    </div>`;
+  }
+
+  // Platform notes
+  if (p.notes || pl.notes) {
+    html += `<div class="detail-rows" style="border-top:1px solid var(--border)">
+      ${p.notes ? `<div class="detail-row"><span class="dr-label">Platform note</span><span class="dr-val" style="color:var(--text-d);text-align:right;font-size:10px">${p.notes}</span></div>` : ''}
+      ${pl.notes ? `<div class="detail-row"><span class="dr-label">Payload note</span><span class="dr-val" style="color:var(--text-d);text-align:right;font-size:10px">${pl.notes}</span></div>` : ''}
+    </div>`;
+  }
+
+  const resultEl = document.getElementById('result');
+  resultEl.innerHTML = html;
+  resultEl.classList.add('visible');
+  document.getElementById('empty-state').style.display = 'none';
+}
+
+// ── URL preload ───────────────────────────────────────────────────────────────
+const params = new URLSearchParams(window.location.search);
+if (params.get('platform')) { pSel.value = params.get('platform'); }
+if (params.get('payload'))  { plSel.value = params.get('payload'); }
+if (params.get('platform') || params.get('payload')) update();
+</script>
+</body>
+</html>
