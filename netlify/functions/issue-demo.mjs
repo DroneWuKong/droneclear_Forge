@@ -99,16 +99,20 @@ export default async (req, context) => {
 
   // ── POST ?action=issue — mint a demo token ──────────────────────────────────
   if (action === 'issue') {
-    const { email, name, days = 30, note = '', tier = 'pro', scope = [] } = body;
+    const { email, name, days = 30, note = '', tier = 'commercial', scope = [] } = body;
     if (!email) return json({ error: 'email required' }, 400);
 
     // Resolve tier + scope
-    // tier: 'pro' | 'full'
+    // tier: 'commercial' | 'dfr' | 'defense' | 'full'
     // scope: [] means tier defaults; ['dfr','vault','wingman','pie','compliance'] means explicit
-    const resolvedTier  = tier === 'full' ? 'full' : 'pro';
+    const resolvedTier  = tier === 'full' ? 'full' : ['dfr','defense','commercial'].includes(tier) ? tier : 'commercial';
     const resolvedScope = resolvedTier === 'full'
       ? ['dfr', 'vault', 'wingman', 'pie', 'compliance', 'intel', 'command']
-      : (scope.length ? scope : ['wingman', 'pie', 'compliance']);
+      : resolvedTier === 'defense'
+      ? ['dfr', 'vault', 'wingman', 'pie', 'compliance', 'intel', 'command']
+      : resolvedTier === 'dfr'
+      ? ['dfr', 'wingman', 'pie', 'compliance', 'intel']
+      : (scope.length ? scope : ['wingman', 'pie', 'compliance']); // commercial
 
     const exp   = Date.now() + days * 24 * 60 * 60 * 1000;
     const iat   = Date.now();

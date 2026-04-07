@@ -121,8 +121,8 @@ export default async (req) => {
 
     // Determine tier from price ID
     const priceId = sub?.items?.data?.[0]?.price?.id || '';
-    const tier = priceId === proPriceId ? 'pro'
-               : priceId === dfrPriceId ? 'dfr'
+    const tier = priceId === proPriceId ? 'dfr'
+               : priceId === dfrPriceId ? 'commercial'
                : 'agency';
 
     // Issue 30-day token

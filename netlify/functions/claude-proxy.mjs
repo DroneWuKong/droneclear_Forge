@@ -64,7 +64,7 @@ export default async (req) => {
       const valid = await crypto.subtle.verify('HMAC', key, sigBytes, enc.encode(JSON.stringify(payload)));
       if (valid && (!payload.exp || Date.now() < payload.exp)) {
         authed = true;
-        authTier = payload.tier || 'pro';
+        authTier = payload.tier || 'commercial';
       }
     } catch { /* invalid token */ }
   }
