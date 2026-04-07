@@ -247,7 +247,7 @@ function renderDFR(){
     const flagsDfr=getPIEFlags(x);
     if(isPaidDfr&&!isProUser()) return paywallGate(x.title);
     const dfrKey=x.id||('dfr_'+Math.random().toString(36).slice(2,8));
-    if(!x.id) RENDER_CACHE[dfrKey]=x;
+    if(!x.id) window.RENDER_CACHE[dfrKey]=x;
     return`<div class="acard dfr" onclick="handleCardClick(this)" data-rid="${dfrKey}">
       <div style="display:flex;gap:6px;align-items:center;margin-bottom:4px;flex-wrap:wrap">
         ${isExcl?'<span class="badge" style="background:var(--dfr-d);color:var(--dfr)">EXCLUSIVE</span>':''}
@@ -327,7 +327,7 @@ function cr(){document.getElementById('ro').classList.remove('open');document.ge
 function oe(){if(ru)window.open(ru,'_blank');}
 
 // Rich detail modal — used by DB records and PDF sources
-function openDM(record){
+window.openDM=function(record){
   const isPro=isProUser();
   const col=record.vertical_tag==='defense'?'var(--defense)':record.vertical_tag==='dfr'?'var(--dfr)':'var(--commercial)';
   const colD=record.vertical_tag==='defense'?'var(--defense-d)':record.vertical_tag==='dfr'?'var(--dfr-d)':'var(--commercial-d)';
@@ -398,7 +398,7 @@ function openDM(record){
   document.getElementById('dm-content').innerHTML=html;
   document.getElementById('dm-overlay').classList.add('open');
 }
-function closeDM(){document.getElementById('dm-overlay').classList.remove('open');}document.addEventListener('keydown',e=>{if(e.key==='Escape'){if(document.getElementById('dm-overlay').classList.contains('open'))closeDM();else if(document.getElementById('ro').classList.contains('open'))cr();}});
+window.closeDM=function(){document.getElementById('dm-overlay').classList.remove('open');};document.addEventListener('keydown',e=>{if(e.key==='Escape'){if(document.getElementById('dm-overlay').classList.contains('open'))closeDM();else if(document.getElementById('ro').classList.contains('open'))cr();}});
 
 // ── PIE + PAYWALL GLOBALS ──
 let PIE_FLAGS=[], PIE_PREDS=[], PIE_BRIEF={};
@@ -558,7 +558,7 @@ function forgeIntelToCommercialRecords(fi){
 let defSubFilter='all';
 let DEFENSE_DB=[];
 let DFR_DB=[];
-let RECORD_INDEX={};
+window.RECORD_INDEX={};
 function renderDefense(){
   let a=[...DEFENSE_DB];
   // also pull keyword-matched articles from main feed
@@ -580,7 +580,7 @@ function renderDefense(){
     const flags=getPIEFlags(x);
     if(isPaid&&!isProUser()) return paywallGate(x.title);
     const defKey=x.id||('def_'+Math.random().toString(36).slice(2,8));
-    if(!x.id) RENDER_CACHE[defKey]=x;
+    if(!x.id) window.RENDER_CACHE[defKey]=x;
     return`<div class="acard defense" onclick="handleCardClick(this)" data-rid="${defKey}">
       <div style="display:flex;gap:6px;align-items:center;margin-bottom:4px;flex-wrap:wrap">
         ${isPaid?'<span class="badge" style="background:var(--defense-d);color:var(--defense)">🔒 PRO</span>':''}
@@ -622,7 +622,7 @@ function renderCommercial(){
     const flags=getPIEFlags(x);
     if(isPaid&&!isProUser()) return paywallGate(x.title);
     const comKey=x.id||('com_'+Math.random().toString(36).slice(2,8));
-    if(!x.id) RENDER_CACHE[comKey]=x;
+    if(!x.id) window.RENDER_CACHE[comKey]=x;
     return`<div class="acard commercial" onclick="handleCardClick(this)" data-rid="${comKey}">
       <div style="display:flex;gap:6px;align-items:center;margin-bottom:4px;flex-wrap:wrap">
         ${isPaid?'<span class="badge" style="background:var(--commercial-d);color:var(--commercial)">🔒 PRO</span>':''}
@@ -641,14 +641,13 @@ function renderCommercial(){
   }).join('')+(filtered.length>80?`<div style="text-align:center;padding:20px;color:var(--text-d);font:11px var(--mono)">Showing 80 of ${filtered.length}</div>`:'');
 }
 
-let RENDER_CACHE={};
-function handleCardClick(el){
+window.RENDER_CACHE={};
+window.handleCardClick=function(el){
   const rid=el.dataset.rid;
   // DB record — open rich modal
-  if(rid && RECORD_INDEX[rid]){ openDM(RECORD_INDEX[rid]); return; }
-  // Feed article cached during render
-  if(rid && RENDER_CACHE[rid]){
-    const x=RENDER_CACHE[rid];
+  if(rid && window.RECORD_INDEX[rid]){ window.openDM(window.RECORD_INDEX[rid]); return; }
+  if(rid && window.RENDER_CACHE[rid]){
+    const x=window.RENDER_CACHE[rid];
     or(x.url||'#', x.title||'');
     return;
   }
@@ -679,8 +678,8 @@ Promise.all([
   DEFENSE_DB=[...(defDB.records||[]), ...forgeIntelToDefenseRecords(forgeIntel)];
   COMMERCIAL_DB=[...(comDB.records||[]), ...forgeIntelToCommercialRecords(forgeIntel)];
   DFR_DB=(dfrDB.records||[]).filter(r=>r.vertical_tag==='dfr');
-  RECORD_INDEX={};
-  [...DEFENSE_DB,...COMMERCIAL_DB,...DFR_DB].forEach(r=>{if(r.id)RECORD_INDEX[r.id]=r;});
+  window.RECORD_INDEX={};
+  [...DEFENSE_DB,...COMMERCIAL_DB,...DFR_DB].forEach(r=>{if(r.id)window.RECORD_INDEX[r.id]=r;});
   PIE_FLAGS=pieFlags||[];
   PIE_PREDS=piePreds||[];
   PIE_BRIEF=pieBrief||{};
