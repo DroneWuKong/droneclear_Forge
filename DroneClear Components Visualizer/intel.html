@@ -151,7 +151,7 @@ a{color:var(--blue);text-decoration:none}a:hover{text-decoration:underline}
 </header>
 <style>.tp-pill{font:500 10px 'DM Sans',system-ui,sans-serif;color:#6b6358;padding:4px 9px;border:1px solid #2e2e26;border-radius:20px;text-decoration:none;white-space:nowrap;transition:all .15s}.tp-pill:hover{border-color:#3e3e34;color:#b8b0a0}</style>
 <div class="tabs">
-  <button class="tab active" data-tab="feed" data-accent="feed"><i class="ph ph-newspaper"></i> Feed <span class="count" id="feed-count">—</span></button>
+  <button class="tab active" data-tab="feed" data-accent="feed"><i class="ph ph-clock-clockwise"></i> Latest <span class="count" id="feed-count">—</span></button>
   <button class="tab" data-tab="defense" data-accent="defense"><i class="ph ph-shield-star"></i> Defense <span class="count" id="defense-count">—</span></button>
   <button class="tab" data-tab="dfr" data-accent="dfr"><i class="ph ph-siren"></i> DFR <span class="count" id="dfr-count">—</span></button>
   <button class="tab" data-tab="commercial" data-accent="commercial"><i class="ph ph-drone"></i> Commercial <span class="count" id="commercial-count">—</span></button>
@@ -303,10 +303,12 @@ document.querySelectorAll('.tab').forEach(t=>{t.addEventListener('click',()=>{do
 function toggleFS(hdr){hdr.classList.toggle('open');const row=hdr.nextElementSibling;row.classList.toggle('open');}
 function rFi(){
   const cc={all:ALL.length,defense:0,financial:0,commercial:0,dfr:0};ALL.forEach(a=>cc[cat(a)]++);
-  document.getElementById('dfr-count').textContent=cc.dfr;
+  document.getElementById('dfr-count').textContent=(DFR_DB.length||0)+cc.dfr;
   document.getElementById('defense-count').textContent=(DEFENSE_DB.length||0)+cc.defense;
   document.getElementById('commercial-count').textContent=(COMMERCIAL_DB.length||0)+cc.commercial;
-  document.getElementById('cat-filters').innerHTML=['all','defense','financial','commercial','dfr'].map(c=>`<button class="fbtn${cC===c?' active':''}" onclick="cC='${c}';rFi();renderFeed()">${c==='all'?'All Types':c==='dfr'?'DFR':c.charAt(0).toUpperCase()+c.slice(1)} (${cc[c]})</button>`).join('');
+  // cat-filters may not exist anymore
+  const cf=document.getElementById('cat-filters');
+  if(cf) cf.innerHTML=['all','defense','financial','commercial','dfr'].map(c=>`<button class="fbtn${cC===c?' active':''}" onclick="cC='${c}';rFi();renderFeed()">${c==='all'?'All Types':c==='dfr'?'DFR':c.charAt(0).toUpperCase()+c.slice(1)} (${cc[c]})</button>`).join('');
   const sc={};ALL.forEach(a=>{const s=a.site||'other';sc[s]=(sc[s]||0)+1;});
   const ts=Object.entries(sc).sort((a,b)=>b[1]-a[1]);
   document.getElementById('src-filters').innerHTML=`<button class="fbtn${cS==='all'?' active':''}" onclick="cS='all';rFi();renderFeed()">All Sources</button>`+ts.map(([s,c])=>`<button class="fbtn${cS===s?' active':''}" onclick="cS='${s}';rFi();renderFeed()">${SL[s]||s} (${c})</button>`).join('');
@@ -320,17 +322,20 @@ function rFi(){
 }
 function renderFeed(){
   window.DC=[];
-  let a=ALL;if(cC!=='all')a=a.filter(x=>cat(x)===cC);if(cS!=='all')a=a.filter(x=>x.site===cS);if(cR!=='all')a=a.filter(x=>ar(x).includes(cR));
-  const q=(document.getElementById('feed-search')?.value||'').toLowerCase().trim();if(q)a=a.filter(x=>(x.title||'').toLowerCase().includes(q)||(x.summary||'').toLowerCase().includes(q));
-  const sortVal=(document.getElementById('feed-sort')?.value)||'date-desc';
-  if(sortVal==='date-desc')a.sort((x,y)=>(y.pub_date||'').localeCompare(x.pub_date||''));
-  else if(sortVal==='date-asc')a.sort((x,y)=>(x.pub_date||'').localeCompare(y.pub_date||''));
-  else if(sortVal==='type')a.sort((x,y)=>cat(x).localeCompare(cat(y)));
+  // Combine DB records + feed articles, dedupe by id/url, sort by date
+  const dbAll=[...DEFENSE_DB,...DFR_DB,...COMMERCIAL_DB];
+  const feedIds=new Set(dbAll.map(r=>r.id||r.url).filter(Boolean));
+  const feedOnly=ALL.filter(x=>!feedIds.has(x.id)&&!feedIds.has(x.url));
+  let a=[...dbAll,...feedOnly];
+  const q=(document.getElementById('feed-search')?.value||'').toLowerCase().trim();
+  if(q) a=a.filter(x=>(x.title||'').toLowerCase().includes(q)||(x.summary||'').toLowerCase().includes(q));
+  a.sort((x,y)=>(y.pub_date||'').localeCompare(x.pub_date||''));
   document.getElementById('feed-count').textContent=a.length;
-  const cs={defense:0,financial:0,commercial:0};a.forEach(x=>cs[cat(x)]++);
-  document.getElementById('feed-stats').innerHTML=`<span>Showing <b style="color:var(--tab-accent)">${a.length}</b> of <b style="color:var(--tab-accent)">${ALL.length}</b> &nbsp;◆ <b style="color:var(--defense)">${cs.defense} defense</b> &nbsp;◆ <b style="color:var(--financial)">${cs.financial} financial</b></span><span style="color:var(--commercial)">◆ ${cs.commercial} commercial</span>`;
+  const byV={defense:0,dfr:0,commercial:0,other:0};
+  a.forEach(x=>{const v=x.vertical_tag||cat(x);byV[v]=(byV[v]||0)+1;});
+  document.getElementById('feed-stats').innerHTML=`<span>Latest across all verticals · <b style="color:var(--defense)">${byV.defense} defense</b> · <b style="color:var(--dfr)">${byV.dfr} DFR</b> · <b style="color:var(--commercial)">${byV.commercial} commercial</b></span>`;
   const l=document.getElementById('feed-list');
-  if(!a.length){l.innerHTML='<div style="text-align:center;padding:40px;color:var(--text-d)">No articles match.</div>';return;}
+  if(!a.length){l.innerHTML='<div style="text-align:center;padding:40px;color:var(--text-d)">No intel found.</div>';return;}
   l.innerHTML=a.slice(0,100).map(x=>{
     const c=cat(x),rg=ar(x),en=x.entities||{},pr=(en.programs||[]).slice(0,2),co=(en.companies||[]).slice(0,2),u=x.url||'#';
         var fi=window.DC.push(x)-1;
