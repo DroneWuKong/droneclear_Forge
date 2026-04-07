@@ -207,3 +207,29 @@ jobs:
           git push
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  generate-pie-flags:
+    name: "PIE: Generate DFR Flags"
+    runs-on: ubuntu-latest
+    if: always()
+    needs:
+      - normalize-and-commit
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: master
+      - uses: actions/setup-python@v5
+        with: { python-version: '3.11' }
+      - run: pip install requests
+      - name: Generate DFR PIE flags
+        run: python3 scripts/dfr/generate_pie_flags.py
+      - name: Commit and push
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add "DroneClear Components Visualizer/pie_flags.json"
+          git diff --staged --quiet || git commit -m "chore(pie): regenerate DFR flags $(date +%Y-%m-%d)"
+          git pull --rebase origin master
+          git push
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

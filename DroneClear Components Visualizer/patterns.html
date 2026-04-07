@@ -610,6 +610,11 @@ const FLAG_META = {
   osint:             {label:"OSINT",badge:"badge-purple",sev:"info",icon:"🔍"},
   regulatory:        {label:"Regulatory",badge:"badge-warning",sev:"warning",icon:"📋"},
   regulatory_deadline:{label:"Regulatory Deadline",badge:"badge-red",sev:"critical",icon:"⏰"},
+  // DFR vertical types
+  dfr_grounding:     {label:"Fleet Grounding",badge:"badge-red",sev:"critical",icon:"🚨"},
+  dfr_dealer:        {label:"Dealer Signal",badge:"badge-warning",sev:"warning",icon:"🏪"},
+  dfr_grant:         {label:"Grant Signal",badge:"badge-blue",sev:"info",icon:"💰"},
+  dfr_platform:      {label:"Platform Signal",badge:"badge-cyan",sev:"warning",icon:"🚁"},
 };
 
 // ── Simulated platform + component data (in production: fetched from Forge API) ──
@@ -1009,6 +1014,31 @@ function getGroupKey(f) {
     if (title.startsWith(c + ':') || title.startsWith(c + ' ')) return 'geo:' + c;
   }
   
+  // DFR category grouping
+  if (f.category === 'dfr') {
+    if (f.entity_id) {
+      const dfr_entities = {
+        'nasao-fleet-grounding': 'DFR: Fleet Grounding (National)',
+        'wisconsin-fleet-grounding': 'DFR: Wisconsin',
+        'seiler-geodrones': 'DFR: Seiler GeoDrones',
+        'frontier-precision': 'DFR: Frontier Precision',
+        'uvt-channel': 'DFR: UVT Channel',
+        'versaterm-aloft': 'DFR: Versaterm / Aloft',
+        'faa-beyond-waiver': 'DFR: FAA BEYOND',
+        'cops-technology-grant': 'DFR: COPS Grant',
+        'dfr-platform-supply-gap': 'DFR: Platform Supply',
+        'fcc-conditional-approval': 'DFR: FCC Conditional',
+        'ohio-dfr-pilot': 'DFR: Ohio Pilot',
+      };
+      if (dfr_entities[f.entity_id]) return dfr_entities[f.entity_id];
+      if (f.entity_id.startsWith('state-grounding-')) {
+        const state = f.entity_id.replace('state-grounding-','').replace(/-/g,' ');
+        return 'DFR: ' + state.charAt(0).toUpperCase() + state.slice(1) + ' Grounding';
+      }
+    }
+    return 'DFR: ' + (f.flag_type || 'Intel');
+  }
+
   // Fallback: by flag_type
   return 'type:' + type;
 }
