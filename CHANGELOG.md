@@ -1,5 +1,26 @@
 # Changelog
 
+## [Unreleased] - 2026-04-07 — DFR Regulatory + Commercial Tier
+
+### Added
+- **DFR Regulatory Intelligence Brief** (docx) — deep research document covering FAA COW/COA framework, TBVLOS→COW transition, Part 108 NPRM timeline, landmark case studies (Chula Vista, Fort Wayne, Campbell PD, Paladin), equipment requirements by waiver type, and 8 copy-ready waiver templates. Includes 5 Forge troubleshooting KB entries for compliance category.
+- **`mine_pilotinstitute.py`** — new DFR regulatory miner targeting 8 Pilot Institute BVLOS/public safety pages + 50-state spider flagging DFR-relevant statutes. Extracts CFR citations and regulatory facts as structured fields. Weekly cadence.
+- **Grant eligibility matrix v2** — real FY2025/2026 amounts + application deadlines for all 5 existing programs. 3 new programs: C-UAS Grant ($500M total, FIFA host states), Byrne-JAG ($311M), AFG/SAFER ($580M combined for fire dept DFR).
+- **DFR platform DB expanded** — 8 → 14 platforms: Paladin Knighthawk, American Robotics Optimus + Kestrel, Percepto Sparrow (NDAA flag), Flock Aerodome, DJI Dock 2 (federally ineligible, documented).
+- **Commercial tier** — new $29/mo tier for operators, integrators, dealers with 8 document builder templates: Drone Services Agreement, Media Licensing Agreement, Property Access Permission, Part 107 Operations Manual, Certificate of Insurance Summary, Subcontractor Agreement, Incident/Accident Report (§107.9), Client NDA. Full AI-generated prompts with 10–15 required sections each.
+- **Document Builder surfaced** — `/waiver/` linked from pro.html dashboard (DFR/Agency users), intel-dfr.html topbar, and waiver page nav fixed (broken `/intel/feed/?tab=dfr` → `/intel-dfr/`).
+- **DFR Intel dashboard tile** on pro.html — hidden by default, visible for DFR/full scope tokens.
+- **Full Access token tier** — admin console issues `tier: full` with all scopes: dfr, vault, wingman, pie, compliance, intel, command.
+
+### Changed
+- **Tier rename: Pro → Commercial / Agency → Defense → Agency** — complete sweep across 6 files. Tier structure: Commercial ($29) · DFR ($49) · Agency ($299) · Full (demo).
+- **Admin console** — DRONECLEAR branding, tier selector on standard issue form (Commercial/DFR/Agency/Full), DFR Intel sidebar section with dashboard link + Issue DFR Token + Issue Full Access nav items.
+- **`issue-demo.mjs`** — tier now encodes scope array in JWT payload. Defense/Agency auto-resolves to all scopes. DFR → [dfr, wingman, pie, compliance, intel]. Commercial → [wingman, pie, compliance].
+- **`subscription-check.mjs`** — STRIPE_PRO_PRICE_ID now maps to `dfr`, STRIPE_DFR_PRICE_ID maps to `commercial`.
+- **Platform chips in waiver.html** — updated to match 14-platform DB (added Skydio R10, Flock Aerodome, Paladin Knighthawk, American Robotics Optimus).
+- **`canUse()` in waiver.html** — commercial docs accessible commercial/dfr/agency/full; dfr docs require dfr/agency/full; agency docs require agency/full.
+
+
 ## [Unreleased] - 2026-04-06 — DFR Phase 2
 
 ### Added
