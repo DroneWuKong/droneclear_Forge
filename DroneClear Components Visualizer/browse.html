@@ -128,7 +128,42 @@ body { font-family:var(--sans); background:var(--bg); color:var(--text); -webkit
 (function() {
     'use strict';
 
-    const SKIP_KEYS = new Set(['pid','name','description','link','image_file','approx_price','tags','category','manufacturer']);
+    const SKIP_KEYS = new Set(['pid','name','description','link','links','image_file','approx_price',
+        'approx_price_uah','approx_price_usd','tags','category','manufacturer','schema_data',
+        'source','compatibility','lua_name','layout_file','upload_methods','min_fw_version',
+        'freq_band_raw','compliance','ndaa_note','country']);
+
+    // Priority fields shown first with nice labels + formatting
+    const PRIORITY_FIELDS = [
+        {k:'manufacturer_country', label:'Country', fmt: v => v},
+        {k:'ndaa_compliant',       label:'NDAA',    fmt: v => v === true ? '✓ Compliant' : v === false ? '✗ Non-compliant' : '? Unverified',
+                                                     cls: v => v === true ? 'good' : v === false ? 'bad' : 'dim'},
+        {k:'blue_uas',             label:'Blue UAS', fmt: v => v === true ? '✓ Listed' : v === false ? '✗ Not listed' : null,
+                                                      cls: v => v === true ? 'good' : 'dim'},
+        {k:'price_usd',            label:'Price',   fmt: v => '$' + parseFloat(v).toLocaleString()},
+        {k:'weight_g',             label:'Weight',  fmt: v => v + ' g'},
+        {k:'interface',            label:'Interface', fmt: v => v},
+        {k:'interfaces',           label:'Interface', fmt: v => Array.isArray(v) ? v.join(', ') : v},
+        {k:'firmware_compat',      label:'Firmware',  fmt: v => Array.isArray(v) ? v.join(', ') : v},
+        {k:'firmware',             label:'Firmware',  fmt: v => v},
+        {k:'kv',                   label:'KV',        fmt: v => v + ' KV'},
+        {k:'kv_rating',            label:'KV',        fmt: v => v + ' KV'},
+        {k:'stator_size',          label:'Stator',    fmt: v => v},
+        {k:'continuous_current_a', label:'Continuous', fmt: v => v + 'A'},
+        {k:'esc_current_a',        label:'Current',   fmt: v => v + 'A'},
+        {k:'capacity_mah',         label:'Capacity',  fmt: v => v + ' mAh'},
+        {k:'cell_count',           label:'Cell Count', fmt: v => v + 'S'},
+        {k:'voltage_nominal_v',    label:'Voltage',   fmt: v => v + 'V'},
+        {k:'frequency_ghz',        label:'Frequency', fmt: v => v + ' GHz'},
+        {k:'diameter_in',          label:'Diameter',  fmt: v => v + '"'},
+        {k:'blade_count',          label:'Blades',    fmt: v => v},
+        {k:'resolution_h',         label:'Resolution',fmt: v => v + 'px'},
+        {k:'accuracy_cm',          label:'Accuracy',  fmt: v => '±' + v + ' cm'},
+        {k:'range_m',              label:'Range',     fmt: v => v + ' m'},
+        {k:'ai_compute_tops',      label:'AI Compute',fmt: v => v + ' TOPS'},
+        {k:'price_note',           label:'Pricing',   fmt: v => v},
+    ];
+    const PRIORITY_KEYS = new Set(PRIORITY_FIELDS.map(f => f.k));
     const catIcons = {
         antennas:'ph-broadcast', batteries:'ph-battery-full', escs:'ph-lightning',
         flight_controllers:'ph-cpu', fpv_cameras:'ph-camera', frames:'ph-frame-corners',
@@ -518,12 +553,39 @@ body { font-family:var(--sans); background:var(--bg); color:var(--text); -webkit
 
         const hasImg = p.image_file && !p.image_file.startsWith('data:');
 
+        // Build specs — priority fields first, then remaining
         let specsHtml = '';
+        const shownKeys = new Set();
+
+        // Priority fields
+        for (const {k, label, fmt, cls} of PRIORITY_FIELDS) {
+            const v = p[k];
+            if (v === null || v === undefined || v === '' || v === false && k !== 'ndaa_compliant') continue;
+            let display = fmt ? fmt(v) : String(v);
+            if (!display) continue;
+            const valCls = cls ? cls(v) : '';
+            const colorStyle = valCls === 'good' ? 'color:#22c55e' : valCls === 'bad' ? 'color:#ef4444' : 'color:var(--text-bright)';
+            specsHtml += `<div class="modal-spec"><span class="modal-spec-key">${label}</span><span class="modal-spec-val" style="${colorStyle}">${display}</span></div>`;
+            shownKeys.add(k);
+        }
+
+        // Remaining fields (not skipped, not already shown)
         for (const [k,v] of Object.entries(p)) {
-            if (SKIP_KEYS.has(k) || v === null || v === undefined || v === '' || typeof v === 'object') continue;
+            if (SKIP_KEYS.has(k) || PRIORITY_KEYS.has(k) || shownKeys.has(k)) continue;
+            if (v === null || v === undefined || v === '' || typeof v === 'object') continue;
             const label = k.replace(/_/g,' ').replace(/\b\w/g,c=>c.toUpperCase());
             specsHtml += `<div class="modal-spec"><span class="modal-spec-key">${label}</span><span class="modal-spec-val">${v}</span></div>`;
         }
+
+        // Links
+        const linkUrl = (p.links && p.links[0]) || p.link || null;
+
+        // Tags
+        const tagsHtml = (p.tags && p.tags.length)
+            ? '<div style="margin-top:10px;display:flex;flex-wrap:wrap;gap:4px">'
+              + p.tags.slice(0,8).map(t => `<span style="font:600 9px var(--mono);padding:2px 6px;background:rgba(0,212,255,.08);border:1px solid rgba(0,212,255,.2);border-radius:4px;color:var(--accent)">${t}</span>`).join('')
+              + '</div>'
+            : '';
 
         modalContent.innerHTML = `
             <button class="browse-modal-close" onclick="closeDetail()"><i class="ph ph-x"></i></button>
@@ -533,7 +595,9 @@ body { font-family:var(--sans); background:var(--bg); color:var(--text); -webkit
             <div class="modal-pid">${p.pid}</div>
             ${p.description ? `<div class="modal-desc">${p.description}</div>` : ''}
             ${specsHtml ? `<div class="modal-specs">${specsHtml}</div>` : ''}
-            ${p.link ? `<a href="${p.link}" target="_blank" rel="noopener" style="display:inline-block;margin-top:12px;color:var(--accent);font-size:13px;text-decoration:none;">View product page →</a>` : ''}
+            ${tagsHtml}
+            ${p.ndaa_note ? `<div style="margin-top:10px;padding:8px 10px;background:rgba(245,158,11,.06);border:1px solid rgba(245,158,11,.2);border-radius:6px;font-size:11px;color:var(--text-dim)">${p.ndaa_note}</div>` : ''}
+            ${linkUrl ? `<a href="${linkUrl}" target="_blank" rel="noopener" style="display:inline-block;margin-top:12px;color:var(--accent);font-size:13px;text-decoration:none;">View product page →</a>` : ''}
         `;
         modal.classList.add('open');
         modal.onclick = function(e) { if (e.target === modal) closeDetail(); };
