@@ -238,6 +238,7 @@ a.brief-source-chip:hover{color:var(--text-s);border-color:var(--border-hi)}
   <button class="tab" data-tab="components">🔩 Components</button>
   <button class="tab" data-tab="predictions">🔮 Predictions</button>
   <button class="tab" data-tab="whatif">⚡ What-If</button>
+  <button class="tab" data-tab="manufacturers">🏭 Manufacturers</button>
 </div>
 
 <!-- ═══ Content ═══ -->
@@ -470,6 +471,24 @@ a.brief-source-chip:hover{color:var(--text-s);border-color:var(--border-hi)}
       <div style="font:600 10px var(--mono);color:var(--red);text-transform:uppercase;letter-spacing:.06em;margin-bottom:10px">⚠ Cascade Analysis</div>
       <div id="whatif-cascade"></div>
     </div>
+  </div>
+
+
+  <!-- MANUFACTURERS PANEL -->
+  <div class="panel" id="panel-manufacturers">
+    <div style="font:700 9px var(--mono);color:var(--text-d);letter-spacing:.12em;text-transform:uppercase;margin-bottom:4px">Manufacturer Viability Intelligence</div>
+    <p style="font-size:11px;color:var(--text-d);margin-bottom:14px;line-height:1.5">Key UAS manufacturers tracked by financial health, program dependency, and acquisition risk. Viability events directly impact platform supply chains.</p>
+    <div class="filter-section" style="margin-bottom:14px">
+      <div class="filter-row">
+        <button class="filter-chip active" onclick="setMfrFilter('all',this)">All</button>
+        <button class="filter-chip" onclick="setMfrFilter('blue-uas',this)">Blue UAS</button>
+        <button class="filter-chip" onclick="setMfrFilter('defense',this)">Defense</button>
+        <button class="filter-chip" onclick="setMfrFilter('commercial',this)">Commercial</button>
+        <button class="filter-chip" onclick="setMfrFilter('gray-zone',this)">Gray Zone</button>
+        <button class="filter-chip" onclick="setMfrFilter('watch',this)">⚠ Watch</button>
+      </div>
+    </div>
+    <div id="mfr-list"></div>
   </div>
 
   <div class="footer">
@@ -2043,6 +2062,255 @@ function backToGlobal() {
   document.getElementById("region-detail").style.display = "none";
 }
 
+
+// ═══ MANUFACTURER VIABILITY GRAPH ═══════════════════════════════════════════
+const MANUFACTURERS = [
+  // ── Blue UAS / Domestic ──
+  {
+    id: "skydio", name: "Skydio", country: "US", hq: "San Mateo, CA",
+    tags: ["blue-uas","defense","commercial"],
+    status: "watch", status_label: "Watch — layoffs + DoD pivot",
+    funding: "$340M raised", last_round: "Series E (2021)", revenue: "Pre-profit",
+    programs: ["Army FTUAS", "DOI fleet", "PS-LE DFR", "USMC"],
+    platforms_in_forge: ["Skydio X10", "Skydio X10D", "Skydio R10"],
+    key_risk: "Laid off 25% of workforce in late 2024. Pivoted hard to DoD. Commercial business shrinking. If DoD contracts don't materialize at scale, runway concern by 2026.",
+    dependency_note: "30+ PS-LE agencies now depend on Skydio X10 for DFR programs. Army FTUAS contract is existential — loss would be severe.",
+    acquisition_probability: 45,
+    acquirers: ["L3Harris", "Textron", "General Atomics"],
+    ndaa_status: "Blue UAS cleared",
+    signal: "negative",
+  },
+  {
+    id: "brinc", name: "BRINC Drones", country: "US", hq: "Seattle, WA",
+    tags: ["blue-uas","commercial","defense"],
+    status: "stable", status_label: "Stable — growing DFR footprint",
+    funding: "$76M raised", last_round: "Series B (2023)", revenue: "Growing",
+    programs: ["PS-LE DFR nationwide", "NLC partnership", "FBI"],
+    platforms_in_forge: ["BRINC Lemur 2", "BRINC Guardian"],
+    key_risk: "Single-market dependency on PS-LE. If DFR adoption slows or NDAA rules change for indoor ops, growth stalls. Profitable at current scale unclear.",
+    dependency_note: "NLC partnership (2,600 member cities) creates massive pipeline. Lemur 2 is purpose-built indoor DFR — no direct competitor.",
+    acquisition_probability: 35,
+    acquirers: ["Axon", "Motorola Solutions", "Flock Safety"],
+    ndaa_status: "Blue UAS cleared",
+    signal: "positive",
+  },
+  {
+    id: "shield-ai", name: "Shield AI", country: "US", hq: "San Diego, CA",
+    tags: ["blue-uas","defense"],
+    status: "stable", status_label: "Stable — pre-IPO growth phase",
+    funding: "$500M+ raised", last_round: "Series F (2023) at $2.7B valuation", revenue: "DoD contracts",
+    programs: ["USMC V-BAT", "USAF autonomy", "Hivemind platform"],
+    platforms_in_forge: ["Shield AI V-BAT"],
+    key_risk: "Valuation depends on Hivemind AI scaling to multiple platforms. Revenue concentrated in USMC V-BAT contract. IPO timing uncertain.",
+    dependency_note: "Hivemind autonomy stack is the differentiator. If DoD budget pressure hits USMC programs, Shield AI revenue drops sharply.",
+    acquisition_probability: 20,
+    acquirers: ["IPO likely before acquisition", "Northrop Grumman", "L3Harris"],
+    ndaa_status: "Blue UAS cleared",
+    signal: "positive",
+  },
+  {
+    id: "anduril", name: "Anduril Industries", country: "US", hq: "Costa Mesa, CA",
+    tags: ["defense"],
+    status: "strong", status_label: "Strong — defense prime trajectory",
+    funding: "$4B+ raised", last_round: "Series F (2024) at $14B valuation", revenue: "Multi-hundred million",
+    programs: ["Ghost-X", "Altius-600", "OBSS", "CCA (competing)", "Replicator"],
+    platforms_in_forge: ["Anduril Ghost-X"],
+    key_risk: "Defense prime transition risk. Growing fast enough to become a target for political scrutiny (Palmer Luckey profile). CCA competition outcome uncertain.",
+    dependency_note: "Lattice OS is platform-agnostic — even if Ghost-X loses programs, Anduril stays relevant via software. Strongest moat in US drone space.",
+    acquisition_probability: 5,
+    acquirers: ["Too large — IPO or stays private"],
+    ndaa_status: "NDAA compliant",
+    signal: "positive",
+  },
+  {
+    id: "aerovironment", name: "AeroVironment", country: "US", hq: "Arlington, VA",
+    tags: ["defense","blue-uas"],
+    status: "stable", status_label: "Stable — public, profitable",
+    funding: "Public (AVAV)", last_round: "N/A — NASDAQ listed", revenue: "$650M+ FY2024",
+    programs: ["Switchblade 300/600", "Puma 3 AE", "Raven", "Ukraine USAI"],
+    platforms_in_forge: ["AeroVironment Switchblade 600"],
+    key_risk: "Switchblade 600 scales with Ukraine — risk if conflict ends or USAI funding drops. Puma legacy business declining. FLIR Boson supply constraint directly affects Switchblade.",
+    dependency_note: "Most diversified US drone public co. Switchblade demand driven by geopolitics. If FLIR Boson allocates to Switchblade, other ISR platforms get squeezed.",
+    acquisition_probability: 15,
+    acquirers: ["L3Harris", "General Dynamics", "Textron"],
+    ndaa_status: "NDAA compliant",
+    signal: "neutral",
+  },
+  {
+    id: "freefly", name: "Freefly Systems", country: "US", hq: "Woodinville, WA",
+    tags: ["blue-uas","commercial"],
+    status: "stable", status_label: "Stable — profitable niche",
+    funding: "Bootstrapped/private", last_round: "No outside funding known", revenue: "Profitable (est.)",
+    programs: ["DOI fleet", "USGS survey", "Commercial cinema/survey"],
+    platforms_in_forge: ["Freefly Astro"],
+    key_risk: "Small team, bootstrapped. CubePilot and RPi CM4 dependency in supply chain. Premium pricing makes them vulnerable if Blue UAS alternatives scale.",
+    dependency_note: "Astro is the default answer when agencies ask for an open-platform, RPi-based, Blue UAS compliant drone. Niche but entrenched.",
+    acquisition_probability: 50,
+    acquirers: ["Teledyne", "Trimble", "Hexagon"],
+    ndaa_status: "Blue UAS cleared",
+    signal: "neutral",
+  },
+  {
+    id: "teal", name: "Teal Drones (Red Cat Holdings)", country: "US", hq: "Salt Lake City, UT",
+    tags: ["blue-uas","defense"],
+    status: "watch", status_label: "Watch — acquisition integration risk",
+    funding: "Public (RCAT)", last_round: "Acquired by Red Cat 2022", revenue: "Growing via DoD",
+    programs: ["Drone Dominance", "USMC FPV", "Army short-range recon"],
+    platforms_in_forge: ["Teal 2"],
+    key_risk: "Red Cat integration has been rocky. Teal 2 relies on Qualcomm QRB5165 and Hadron thermal — both constrained. Program execution risk if supply delays hit during ramp.",
+    dependency_note: "Black Widow variant is night-vision capable. Drone Dominance contract is transformational if executed. Supply chain is the critical variable.",
+    acquisition_probability: 10,
+    acquirers: ["Already acquired by Red Cat"],
+    ndaa_status: "Blue UAS cleared",
+    signal: "neutral",
+  },
+  // ── Gray Zone / Adversary ──
+  {
+    id: "dji", name: "DJI (SZ DJI Technology)", country: "CN", hq: "Shenzhen, China",
+    tags: ["gray-zone"],
+    status: "restricted", status_label: "Restricted — FCC Covered List",
+    funding: "Private (est. $30B valuation)", last_round: "N/A", revenue: "$4B+ annually",
+    programs: ["FCC Covered List", "NDAA §848 covered", "300+ US agency fleets"],
+    platforms_in_forge: ["DJI Mavic 3", "DJI Matrice 350"],
+    key_risk: "FCC Blue UAS exemption expires Jan 1, 2027. Ninth Circuit case pending. Texas AG passthrough theory. Every DJI-dependent agency faces forced transition in 2026.",
+    dependency_note: "300+ US law enforcement agencies currently fly DJI. DFR programs built on DJI Dock 2 face complete platform replacement. Supply side not the risk — legal/compliance is.",
+    acquisition_probability: 0,
+    acquirers: ["N/A — geopolitical barrier"],
+    ndaa_status: "NDAA non-compliant — Covered Entity",
+    signal: "negative",
+  },
+  {
+    id: "autel", name: "Autel Robotics", country: "CN", hq: "Shenzhen (US ops: Bothell, WA)",
+    tags: ["gray-zone","commercial"],
+    status: "restricted", status_label: "Restricted — FCC Covered List",
+    funding: "Subsidiary of Autel Intelligent Technology", last_round: "N/A", revenue: "Est. $200M",
+    programs: ["FCC Covered List", "Some PS-LE programs", "Commercial photography"],
+    platforms_in_forge: ["Autel EVO II Pro"],
+    key_risk: "Same FCC cliff as DJI. US subsidiary structure doesn't resolve NDAA. Some agencies chose Autel as 'not DJI' — they still have a compliance problem.",
+    dependency_note: "Smaller agency footprint than DJI but similar compliance cliff. EVO II Dual thermal made inroads in fire/SAR — all of that needs replacement.",
+    acquisition_probability: 0,
+    acquirers: ["N/A — FCC bar"],
+    ndaa_status: "NDAA non-compliant — Covered List",
+    signal: "negative",
+  },
+  {
+    id: "anzu", name: "Anzu Robotics", country: "US (shell)", hq: "Austin, TX → XTI Aerospace (NASDAQ: XTIA)",
+    tags: ["gray-zone"],
+    status: "critical", status_label: "Critical — DJI clone, gray zone",
+    funding: "NASDAQ-listed shell via XTIA merger", last_round: "Reverse merger 2024", revenue: "Minimal",
+    programs: ["Gray zone DFR marketing", "Several PDs holding dead hardware"],
+    platforms_in_forge: [],
+    key_risk: "DJI Mavic 3 licensed derivative. DJI retains crypto signing keys — Anzu cannot update firmware independently. Product line discontinued after DJI license termination.",
+    dependency_note: "Agencies that bought Anzu thinking they were buying non-DJI now hold DJI-controlled hardware with no support path. PIE tracks this as active gray zone.",
+    acquisition_probability: 0,
+    acquirers: ["N/A — product line dead"],
+    ndaa_status: "Non-compliant — DJI derivative",
+    signal: "negative",
+  },
+  {
+    id: "parrot", name: "Parrot SA", country: "FR", hq: "Paris, France",
+    tags: ["blue-uas","commercial"],
+    status: "watch", status_label: "Watch — Blue UAS cleared but shrinking",
+    funding: "Public (PARRO.PA)", last_round: "N/A — Paris-listed", revenue: "Declining commercial",
+    programs: ["Blue UAS Framework (ANAFI USA)", "DOI fleet", "Military recon"],
+    platforms_in_forge: ["Parrot ANAFI USA"],
+    key_risk: "Commercial consumer business essentially dead. ANAFI USA is the only product keeping them in US market. French government support unclear. Revenue declining YoY.",
+    dependency_note: "ANAFI USA is unique: Blue UAS cleared, lightweight, compact. Agencies that spec'd ANAFI USA have limited alternatives at similar price/weight point.",
+    acquisition_probability: 60,
+    acquirers: ["Thales", "Safran", "US defense prime via French government deal"],
+    ndaa_status: "Blue UAS cleared (ANAFI USA only)",
+    signal: "negative",
+  },
+  {
+    id: "inspired-flight", name: "Inspired Flight", country: "US", hq: "San Luis Obispo, CA",
+    tags: ["blue-uas","commercial"],
+    status: "stable", status_label: "Stable — niche enterprise",
+    funding: "Private", last_round: "Unknown", revenue: "Profitable (est.)",
+    programs: ["DOI fleet", "Commercial heavy lift", "Utility inspection"],
+    platforms_in_forge: ["Inspired Flight IF800", "Inspired Flight IF1200A"],
+    key_risk: "CubePilot dependency. Small team. Limited brand recognition outside survey/inspection verticals. T-Motor dependency for heavy-lift motors creates NDAA exposure.",
+    dependency_note: "IF1200A is the workhorse of US utility inspection. If CubePilot supply tightens or T-Motor gets tariffed, Inspired Flight's BOM cost spikes.",
+    acquisition_probability: 55,
+    acquirers: ["Trimble", "Hexagon", "senseFly/AgEagle"],
+    ndaa_status: "Blue UAS cleared",
+    signal: "neutral",
+  },
+];
+
+let activeMfrFilter = 'all';
+
+function setMfrFilter(f, btn) {
+  activeMfrFilter = f;
+  document.querySelectorAll('.filter-chip').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  renderManufacturers();
+}
+
+function renderManufacturers() {
+  const el = document.getElementById('mfr-list');
+  if (!el) return;
+
+  const filtered = MANUFACTURERS.filter(m => {
+    if (activeMfrFilter === 'all') return true;
+    if (activeMfrFilter === 'watch') return m.status === 'watch' || m.status === 'critical' || m.status === 'restricted';
+    return m.tags.includes(activeMfrFilter);
+  });
+
+  const statusColor = {
+    strong: 'var(--green)', stable: 'var(--cyan)',
+    watch: 'var(--amber)', restricted: 'var(--red)',
+    critical: 'var(--red)'
+  };
+  const signalIcon = {positive: '▲', neutral: '◆', negative: '▼'};
+  const signalColor = {positive: 'var(--green)', neutral: 'var(--text-d)', negative: 'var(--red)'};
+
+  el.innerHTML = filtered.map(m => {
+    const sc = statusColor[m.status] || 'var(--text-d)';
+    const countryFlag = {US:'🇺🇸',CN:'🇨🇳',FR:'🇫🇷','US (shell)':'🇺🇸'}[m.country] || '🌐';
+
+    return `<div class="flag-card" style="border-left:3px solid ${sc};margin-bottom:10px">
+      <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:8px;margin-bottom:8px">
+        <div>
+          <div style="display:flex;align-items:center;gap:6px">
+            <span style="font-size:14px">${countryFlag}</span>
+            <span style="font:700 13px var(--font);color:var(--text)">${m.name}</span>
+            <span style="font:700 9px var(--mono);color:${signalColor[m.signal]}">${signalIcon[m.signal]}</span>
+          </div>
+          <div style="font:500 10px var(--font);color:var(--text-d);margin-top:1px">${m.hq}</div>
+        </div>
+        <span style="font:700 9px var(--mono);padding:2px 7px;border-radius:4px;background:${sc}18;color:${sc};white-space:nowrap;flex-shrink:0">${m.status_label}</span>
+      </div>
+
+      <div style="display:flex;gap:4px;flex-wrap:wrap;margin-bottom:8px">
+        ${m.tags.map(t => `<span style="font:500 9px var(--mono);padding:2px 6px;border-radius:3px;background:rgba(59,130,246,.08);color:var(--blue)">${t}</span>`).join('')}
+        <span style="font:500 9px var(--mono);padding:2px 6px;border-radius:3px;background:rgba(0,0,0,.2);color:var(--text-d)">${m.ndaa_status}</span>
+      </div>
+
+      <div style="font-size:11px;color:var(--text-d);line-height:1.6;margin-bottom:8px">${m.key_risk}</div>
+      <div style="font-size:11px;color:var(--text-d);line-height:1.5;padding:7px 10px;background:var(--surface);border-radius:6px;margin-bottom:8px">
+        <span style="font:700 9px var(--mono);color:var(--text-d);text-transform:uppercase;letter-spacing:.06em">Supply chain note: </span>${m.dependency_note}
+      </div>
+
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;font-size:10px">
+        <div style="background:var(--surface);border-radius:5px;padding:7px 9px">
+          <div style="font:700 8px var(--mono);color:var(--text-d);text-transform:uppercase;letter-spacing:.06em;margin-bottom:3px">Funding</div>
+          <div style="color:var(--text-s)">${m.funding}</div>
+          ${m.last_round !== 'N/A' ? `<div style="color:var(--text-d);margin-top:1px">${m.last_round}</div>` : ''}
+        </div>
+        <div style="background:var(--surface);border-radius:5px;padding:7px 9px">
+          <div style="font:700 8px var(--mono);color:var(--text-d);text-transform:uppercase;letter-spacing:.06em;margin-bottom:3px">Acquisition risk</div>
+          <div style="color:${m.acquisition_probability >= 50 ? 'var(--amber)' : m.acquisition_probability >= 20 ? 'var(--text-s)' : 'var(--text-d)'}">${m.acquisition_probability}% probability</div>
+          ${m.acquirers[0] !== 'N/A — geopolitical barrier' && m.acquirers[0] !== 'N/A — FCC bar' && m.acquirers[0] !== 'N/A — product line dead' && m.acquirers[0] !== 'Too large — IPO or stays private' && m.acquirers[0] !== 'Already acquired by Red Cat'
+            ? `<div style="color:var(--text-d);margin-top:1px">${m.acquirers.slice(0,2).join(', ')}</div>` : ''}
+        </div>
+      </div>
+
+      ${m.programs.length ? `<div style="margin-top:8px;display:flex;gap:3px;flex-wrap:wrap">${m.programs.map(p => `<span style="font:500 9px var(--mono);padding:2px 5px;border-radius:3px;background:rgba(245,158,11,.08);color:var(--amber)">${p}</span>`).join('')}</div>` : ''}
+    </div>`;
+  }).join('') || '<div style="text-align:center;padding:32px;color:var(--text-d);font-size:12px">No manufacturers match this filter.</div>';
+}
+// ─────────────────────────────────────────────────────────────────────────────
+
 function renderAll() {
   // Each render step wrapped individually — one crash won't blank the whole page
   const _safe = (name, fn) => { try { fn(); } catch(e) {
@@ -2284,6 +2552,61 @@ const DEP_GRAPH = {
       {name: "T-Motor U8/U10 series", ndaa: false, cost: 260, note: "Chinese — dominant in heavy lift globally but NOT NDAA-compliant."},
       {name: "Scorpion Power System", ndaa: true, cost: 390, note: "US/EU distributed. NDAA-aligned. Less brand recognition than KDE."},
       {name: "Tiger Motor (US dist.)", ndaa: false, cost: 220, note: "Chinese manufacturer. Rebranded for US market. NDAA non-compliant."},
+    ],
+  },
+  "EaglePicher LiPo Mil-Spec": {
+    platforms: ["Switchblade 600", "ALTIUS-600", "Kratos UTAP-22", "Joby (testing)"],
+    programs: ["Ukraine USAI", "USSOCOM strike UAS", "Army FTUAS"],
+    upstream: ["EaglePicher Technologies (Joplin, MO)", "Lithium cell raw materials (cobalt/Li)"],
+    lead_wk: 16, single_source: true, cost: 800,
+    alternatives: [
+      {name: "Inventus Power (mil-spec cells)", ndaa: true, cost: 900, note: "US manufacturer. Lower volume. Longer qualification cycle."},
+      {name: "Ultralife Corporation", ndaa: true, cost: 750, note: "US-made. Military Li-SO2 and LiMnO2 cells. Different chemistry."},
+      {name: "Tadiran (Israeli)", ndaa: true, cost: 850, note: "High-reliability cells. Allied supply chain but not domestic."},
+    ],
+  },
+  "Hailo-8 AI Accelerator": {
+    platforms: ["Percepto Sparrow", "Skydio X10 (option)", "Blue UAS AI payloads"],
+    programs: ["Commercial inspection AI", "DFR AI dispatch", "Edge inference programs"],
+    upstream: ["Hailo Technologies (Tel Aviv)", "TSMC (7nm fab)", "Israeli R&D"],
+    lead_wk: 12, single_source: true, cost: 89,
+    alternatives: [
+      {name: "Google Coral Edge TPU", ndaa: true, cost: 60, note: "4 TOPS vs Hailo's 26 TOPS. TensorFlow Lite only. US-friendly."},
+      {name: "NVIDIA Jetson Orin Nano", ndaa: true, cost: 249, note: "Full SOM vs accelerator. Massive upgrade in capability and cost."},
+      {name: "Kneron KL720", ndaa: true, cost: 45, note: "Taiwanese. 1.5 TOPS. Good power efficiency. Less ecosystem."},
+      {name: "Axelera Metis (214 TOPS)", ndaa: true, cost: 350, note: "Dutch company. New entrant. Extraordinary throughput if it delivers."},
+    ],
+  },
+  "DDR4 DRAM (8GB)": {
+    platforms: ["All SBC platforms", "All Jetson builds", "All RPi builds"],
+    programs: ["Every program using autonomous compute"],
+    upstream: ["Samsung (South Korea)", "SK Hynix (South Korea)", "Micron (US)"],
+    lead_wk: 4, single_source: false, cost: 23,
+    alternatives: [
+      {name: "LPDDR5 (newer standard)", ndaa: true, cost: 35, note: "Higher bandwidth, lower power. Requires board redesign."},
+      {name: "Micron DDR4 (US-sourced)", ndaa: true, cost: 28, note: "Micron is US company — preferred for procurement compliance."},
+    ],
+  },
+  "Persistent Systems MPU5": {
+    platforms: ["Shield AI V-BAT", "SOF swarm builds", "AFSOC ISR platforms"],
+    programs: ["USSOCOM MANET", "Army Tactical Network", "AFSOC", "Replicator (tier 1)"],
+    upstream: ["Persistent Systems (NYC)", "Qualcomm baseband (TSMC)", "Custom ASIC"],
+    lead_wk: 24, single_source: true, cost: 12000,
+    alternatives: [
+      {name: "Silvus StreamCaster SC4200", ndaa: true, cost: 5200, note: "High throughput MIMO. Not Wave Relay — different waveform, no interop."},
+      {name: "TrellisWare TSM radio", ndaa: true, cost: 8000, note: "Different waveform. Used in manned platforms. UAS integration less mature."},
+      {name: "Doodle Labs Helix", ndaa: true, cost: 1800, note: "Commercial mesh. Much lower cost, much lower performance and range."},
+    ],
+  },
+  "DJI O3/O4 Air Unit": {
+    platforms: ["Consumer FPV", "Gray zone commercial", "Anzu Robotics (licensed)"],
+    programs: ["FCC Covered List — banned post-2027", "Gray zone DFR programs"],
+    upstream: ["DJI (Shenzhen)", "TSMC (SoC)", "Sony (sensor)"],
+    lead_wk: 2, single_source: true, cost: 200,
+    alternatives: [
+      {name: "Walksnail Avatar HD Pro", ndaa: false, cost: 119, note: "Chinese (Caddx). Better price, same NDAA problem."},
+      {name: "HDZero Freestyle V2", ndaa: false, cost: 60, note: "Chinese. Ultra-low latency. NDAA non-compliant."},
+      {name: "Connex ProHD (Amimon)", ndaa: true, cost: 850, note: "Israeli. Low latency. NDAA-aligned. High cost. Less ecosystem."},
     ],
   },
   "AMD/Xilinx Zynq UltraScale+": {
