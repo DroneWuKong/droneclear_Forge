@@ -158,7 +158,9 @@
         'use strict';
 
         let allPlatforms = [];
-        let selected = [null, null, null]; // up to 3
+        let selected = [null, null, null];
+        let pieGzCmp = {};    // entity_id → flags[] for gray zone
+        let pieByCompCmp = {}; // component_id → flags[] // up to 3
 
         const ESC = s => {
             if (s == null) return '';
@@ -166,6 +168,28 @@
             d.textContent = String(s);
             return d.innerHTML;
         };
+
+        function cmpSlug(t) {
+            return (t||'').toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'');
+        }
+
+        function getPlatformPieFlags(p) {
+            if (!p) return [];
+            const mfrSlug = cmpSlug(p.manufacturer||p.name||'');
+            const nameSlug = cmpSlug(p.platform_name||p.name||'');
+            const combined = mfrSlug + '-' + nameSlug;
+            let flags = [];
+            const seen = new Set();
+            // Gray zone entity match
+            for (const [eid, flist] of Object.entries(pieGzCmp)) {
+                const eidClean = eid.replace(/[^a-z0-9-]/g,'-');
+                if (combined.includes(eidClean) || eidClean.includes(mfrSlug.split('-')[0]) ||
+                    mfrSlug.includes(eidClean.split('-')[0])) {
+                    for (const f of flist) { if (!seen.has(f.id)) { seen.add(f.id); flags.push(f); } }
+                }
+            }
+            return flags.sort((a,b) => ({critical:0,high:1,warning:2,info:3}[a.severity]||3) - ({critical:0,high:1,warning:2,info:3}[b.severity]||3));
+        }
 
         function getTier(p) {
             const blue = p.blue_uas === true || p.compliance?.blue_uas === true;
@@ -322,6 +346,15 @@
                 { label: 'Blue UAS', fn: p => fmtBool(p.blue_uas === true || p.compliance?.blue_uas === true, 'green', '<i class="ph ph-seal-check"></i> Listed', 'No') },
                 { label: 'NDAA §848', fn: p => fmtBool(p.ndaa_compliant === true || p.compliance?.ndaa_compliant === true, 'green', 'Compliant', 'Non-compliant') },
                 { label: 'Combat Proven', fn: p => fmtBool(p.compliance?.combat_proven, 'purple', 'Yes', '—') },
+                { label: 'PIE Risk', fn: p => {
+                    const flags = getPlatformPieFlags(p);
+                    if (!flags.length) return '<span style="color:#5e5a50;font-size:11px">— Clean</span>';
+                    const worst = flags[0].severity;
+                    const COLOR = {critical:'#ef4444',high:'#f97316',warning:'#f59e0b',info:'#60a5fa'};
+                    const col = COLOR[worst]||'#f59e0b';
+                    const label = worst === 'critical' ? `⚡ ${flags.length} CRITICAL` : `⚠ ${flags.length} ${worst}`;
+                    return `<span class="badge-sm" style="background:${col}18;border:1px solid ${col}44;color:${col};font-size:10px">${label}</span><div style="font-size:9px;color:#5e5a50;margin-top:2px">${flags[0].title.slice(0,55)}…</div>`;
+                }},
                 { label: 'Compliance Tier', fn: p => {
                     const t = getTier(p);
                     const labels = { green: 'Green — Gov cleared', yellow: 'Yellow — NDAA OK', orange: 'Orange — Commercial', red: 'Red — Restricted' };
@@ -368,6 +401,22 @@
                     const p = allPlatforms.find(x => x.pid === pid);
                     if (p && i < 3) selected[i] = p;
                 });
+
+                // Load PIE flags (best-effort)
+                try {
+                    const pieRes = await fetch('pie_flags.json');
+                    const pieFlags = await pieRes.json();
+                    for (const f of pieFlags) {
+                        if (f.flag_type === 'grayzone' && f.entity_id) {
+                            if (!pieGzCmp[f.entity_id]) pieGzCmp[f.entity_id] = [];
+                            pieGzCmp[f.entity_id].push(f);
+                        }
+                        if (f.component_id) {
+                            if (!pieByCompCmp[f.component_id]) pieByCompCmp[f.component_id] = [];
+                            pieByCompCmp[f.component_id].push(f);
+                        }
+                    }
+                } catch(e) {}
 
                 renderSlots();
                 renderComparison();

@@ -654,6 +654,8 @@ var STARTERS = [
 // ─── RAG INDEX ───────────────────────────────────────────────
 // Each entry: {cat, name, text, src, data}
 var ragIndex = [];
+var pieIndex = [];    // PIE flags for Wingman context injection
+var pieByKeyword = {}; // keyword → Set of flag ids
 var handbookChunks = []; // {title, text, src}
 var ragStats = { platforms: 0, components: 0, handbook: 0, firmware: 0, categories: new Set() };
 
@@ -943,6 +945,27 @@ async function loadRAG() {
   buildIDF(); // compute TF-IDF weights now that corpus is loaded
   buildComponentCache(); // build category lookup cache for validator
   updateStats();
+  // Load PIE flags for context injection (best-effort, non-blocking)
+  try {
+    const pieRes = await fetch('pie_flags.json');
+    const allPieFlags = await pieRes.json();
+    // Index high-value flags only (diversion_risk, supply_constraint, grayzone, supply_chain_risk)
+    const HIGH_VALUE = new Set(['diversion_risk','supply_constraint','grayzone','supply_chain_risk','compliance','contract_signal']);
+    pieIndex = allPieFlags.filter(f => HIGH_VALUE.has(f.flag_type));
+    // Build keyword index from title + component_id
+    for (const f of pieIndex) {
+      const keywords = [
+        ...(f.component_id||'').toLowerCase().split(/[-_]+/),
+        ...(f.entity_id||'').toLowerCase().split(/[-_]+/),
+        ...(f.title||'').toLowerCase().replace(/[^a-z0-9 ]/g,' ').split(/\s+/)
+      ].filter(w => w.length > 3);
+      for (const kw of keywords) {
+        if (!pieByKeyword[kw]) pieByKeyword[kw] = new Set();
+        pieByKeyword[kw].add(f.id);
+      }
+    }
+  } catch(e) { /* PIE unavailable */ }
+
   updateSourcePills();
   console.log(`RAG loaded: ${ragIndex.length} items, ${handbookChunks.length} handbook chunks in ${Date.now()-t0}ms`);
 }
@@ -1893,6 +1916,37 @@ function buildValidationContext(query) {
 }
 
 // ─── SYSTEM PROMPT ────────────────────────────────────────────
+function buildPieContext(query) {
+  if (!pieIndex.length || !query) return '';
+  const words = query.toLowerCase().replace(/[^a-z0-9 ]/g,' ').split(/\s+/).filter(w => w.length > 3);
+  // Score each flag by keyword overlap
+  const scores = {};
+  for (const word of words) {
+    const ids = pieByKeyword[word] || new Set();
+    for (const id of ids) {
+      scores[id] = (scores[id] || 0) + 1;
+    }
+  }
+  if (!Object.keys(scores).length) return '';
+  // Get top 3 flags by score, then severity
+  const sevOrd = {critical:0,high:1,warning:2,info:3};
+  const topFlags = pieIndex
+    .filter(f => scores[f.id])
+    .sort((a,b) => {
+      const scoreDiff = (scores[b.id]||0) - (scores[a.id]||0);
+      if (scoreDiff !== 0) return scoreDiff;
+      return (sevOrd[a.severity]||3) - (sevOrd[b.severity]||3);
+    })
+    .slice(0, 3);
+  if (!topFlags.length) return '';
+  const lines = topFlags.map(f => {
+    const sev = f.severity.toUpperCase();
+    const detail = (f.detail||'').slice(0,200);
+    return `[${sev}] ${f.flag_type}: ${f.title}${detail ? '\n  ' + detail : ''}`;
+  });
+  return '\nPIE INTELLIGENCE (supply chain / compliance signals relevant to this query):\n' + lines.join('\n') + '\n';
+}
+
 function buildPrompt(query, hasImages) {
   // ── 4. Conversation-aware: extract last 3 user messages as context
   const recentUserMsgs = messages
@@ -1978,7 +2032,7 @@ KNOWLEDGE BASE:
 ${FALLBACK_KB}
 ${kbData !== FALLBACK_KB ? kbData : ''}
 ${validationCtx ? validationCtx : ''}
-${ragCtx ? '\nRELEVANT DB ENTRIES:' + ragCtx : ''}
+${ragCtx ? '\nRELEVANT DB ENTRIES:' + ragCtx : ''}${buildPieContext(query)}
 ${imageInstructions}`;
 }
 
