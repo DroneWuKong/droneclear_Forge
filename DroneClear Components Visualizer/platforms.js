@@ -3,6 +3,9 @@
 
     let allPlatforms = [];
     let activeFilter = null;
+    let pieGrayzone = {};   // entity_id → flags[]
+    let pieByCatP   = {};   // category → flags[]
+    let pieByCompP  = {};   // component_id → flags[]
 
     // ── Clean unified category taxonomy ──
     const UNIFIED_CATS = {
@@ -158,6 +161,25 @@
                 }));
 
             allPlatforms = [...normalizedModels, ...industryDeduped];
+
+            // Load PIE flags for gray zone badging (best-effort)
+            try {
+                const pieRes = await fetch('pie_flags.json');
+                const pieFlags = await pieRes.json();
+                const GZ_CATS = new Set(['grayzone','grayzone_xref']);
+                for (const f of pieFlags) {
+                    // Gray zone index by entity_id
+                    if (GZ_CATS.has(f.flag_type) && f.entity_id) {
+                        if (!pieGrayzone[f.entity_id]) pieGrayzone[f.entity_id] = [];
+                        pieGrayzone[f.entity_id].push(f);
+                    }
+                    // Component index
+                    if (f.component_id) {
+                        if (!pieByCompP[f.component_id]) pieByCompP[f.component_id] = [];
+                        pieByCompP[f.component_id].push(f);
+                    }
+                }
+            } catch(e) { /* PIE unavailable — continue */ }
             renderStats();
             buildFilters();
 
@@ -322,6 +344,8 @@
             const badges = [];
             if (p.compliance?.blue_uas) badges.push('<span class="plat-badge blue-uas"><i class="ph ph-shield-check"></i> Blue UAS</span>');
             if (p.compliance?.ndaa_compliant) badges.push('<span class="plat-badge ndaa"><i class="ph ph-check-circle"></i> NDAA</span>');
+            const gzFlagsCard = getPlatformGzFlags(p);
+            if (gzFlagsCard.length) badges.push('<span class="plat-badge" style="background:rgba(239,68,68,.12);border-color:rgba(239,68,68,.4);color:#ef4444;"><i class="ph ph-warning-circle"></i> GRAY ZONE</span>');
 
             const vis = getCatVisual(p.category);
             const initials = p.platform_name.split(/[\s-]+/).map(w => w[0]).join('').substring(0, 3).toUpperCase();
@@ -353,6 +377,45 @@
                     ${badges.length ? '<div class="plat-card-badges" style="margin-top:4px;">' + badges.join('') + '</div>' : ''}
                 </div>`;
         }).join('');
+    }
+
+    // ── PIE gray zone helpers ──────────────────────────────────────────────
+    function pieSlug(t) {
+        return (t || '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+    }
+
+    function getPlatformGzFlags(platform) {
+        const mfrSlug = pieSlug(platform.manufacturer || '');
+        const nameSlug = pieSlug(platform.platform_name || '');
+        const combined = mfrSlug + '-' + nameSlug;
+        for (const [eid, flist] of Object.entries(pieGrayzone)) {
+            const eidClean = eid.replace(/[^a-z0-9-]/g, '-');
+            // Match entity_id against manufacturer or platform name slug
+            if (combined.includes(eidClean) || eidClean.includes(mfrSlug.split('-')[0]) ||
+                mfrSlug.includes(eidClean.split('-')[0])) {
+                return flist;
+            }
+        }
+        return [];
+    }
+
+    function renderPieBanner(flags) {
+        if (!flags.length) return '';
+        const sev_ord = {critical:0, high:1, warning:2, info:3};
+        const sorted = [...flags].sort((a,b) => (sev_ord[a.severity]||3)-(sev_ord[b.severity]||3));
+        const worst = sorted[0].severity;
+        const COLOR = {critical:'#ef4444', high:'#f97316', warning:'#f59e0b', info:'#60a5fa'};
+        const col = COLOR[worst] || '#f59e0b';
+        const items = sorted.slice(0,3).map(f =>
+            `<div style="margin-top:6px;padding:6px 8px;background:rgba(239,68,68,.06);border-left:3px solid ${col};border-radius:4px;">
+                <div style="font:700 10px var(--mono,monospace);color:${col}">⚡ ${f.title||''}</div>
+                ${f.detail ? `<div style="font-size:10px;color:#a8a090;margin-top:2px;line-height:1.4">${(f.detail||'').slice(0,140)}${f.detail.length>140?'…':''}</div>` : ''}
+            </div>`
+        ).join('');
+        return `<div style="margin-top:14px;padding:10px 12px;background:rgba(239,68,68,.05);border:1px solid ${col}44;border-radius:8px;">
+            <div style="font:700 9px var(--mono,monospace);letter-spacing:.08em;color:${col};text-transform:uppercase;margin-bottom:2px">⬡ PIE — ${flags.length} Gray Zone Flag${flags.length>1?'s':''}</div>
+            ${items}
+        </div>`;
     }
 
     function mkSpec(label, value) {
@@ -402,6 +465,7 @@
                     ${c.ndaa_compliant ? '<span class="plat-badge ndaa"><i class="ph ph-check-circle"></i> NDAA</span>' : ''}
                     <span class="plat-card-cat" style="margin:0;">${esc(p.category.replace(/_/g, ' '))}</span>
                 </div>
+                ${renderPieBanner(getPlatformGzFlags(p))}
                 ${c.note ? `<div style="margin-top:8px; font-size:12px; color:var(--text-muted); font-style:italic;">${esc(c.note)}</div>` : ''}
                 ${p.manufacturer_url ? `<a href="${esc(p.manufacturer_url)}" target="_blank" rel="noopener" style="display:inline-flex; align-items:center; gap:6px; margin-top:12px; padding:8px 16px; border-radius:6px; background:rgba(34,211,238,0.1); border:1px solid rgba(34,211,238,0.2); color:var(--accent-cyan); font-family:var(--font-family); font-size:12px; font-weight:600; text-decoration:none; letter-spacing:0.03em; transition:all 0.15s;"><i class="ph ph-arrow-square-out"></i> Visit ${esc(p.manufacturer)}</a>` : ''}
             </div>`;
