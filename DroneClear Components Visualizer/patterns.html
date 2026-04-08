@@ -174,7 +174,7 @@ a{color:var(--blue);text-decoration:none}a:hover{text-decoration:underline}
 .brief-card.lead{border-left:3px solid var(--red)}
 .brief-card.entity{border-left:3px solid var(--warning,#f59e0b)}
 .brief-card.supply{border-left:3px solid var(--blue)}
-.brief-card.pred{display:flex;gap:10px;align-items:flex-start;border-left:3px solid var(--purple)}
+.brief-card.pred{display:flex;gap:10px;align-items:flex-start;border-left:3px solid var(--purple);cursor:pointer;transition:border-color .15s}.brief-card.pred:hover{border-color:#a78bfa}
 .brief-card .entity-status{font:500 10px var(--mono);color:var(--text-d);margin-bottom:4px}
 .brief-card .entity-exposure{font:400 10px var(--font);color:var(--text-d);margin-bottom:6px}
 .brief-card .supply-window{font:500 9px var(--mono);color:var(--text-d)}
@@ -229,7 +229,7 @@ a.brief-source-chip:hover{color:var(--text-s);border-color:var(--border-hi)}
 <body>
 <header style="display:flex;align-items:center;justify-content:space-between;gap:8px;padding:10px 16px;border-bottom:1px solid #2e2e26;background:#1c1c17;position:sticky;top:0;z-index:100;flex-shrink:0;">
   <a href="/patterns-home/" style="font:800 18px 'JetBrains Mono',monospace;color:#22c55e;letter-spacing:-0.03em;text-decoration:none;flex-shrink:0;">Patterns</a>
-  <div style="display:flex;gap:5px;align-items:center;flex-wrap:nowrap;"><a href="/" class="tp-pill tp-hide-sm">Forge</a><a href="/intel/" class="tp-pill tp-hide-sm">Intel</a><a href="/wingman/" class="tp-pill tp-hide-sm">Wingman</a><a href="/start/" class="tp-pill tp-hide-sm">Docs</a><a href="/pro/" class="tp-pill" style="color:#22c55e;border-color:rgba(34,197,94,.3)">Subscribe</a></div>
+  <div style="display:flex;gap:5px;align-items:center;flex-wrap:nowrap;"><a href="/" class="tp-pill tp-hide-sm">Forge</a><a href="/intel/" class="tp-pill tp-hide-sm">Intel</a><a href="/wingman/" class="tp-pill tp-hide-sm">Wingman</a><a href="/start/" class="tp-pill tp-hide-sm">Docs</a></div>
 </header>
 <style>.tp-pill{font:500 10px 'DM Sans',system-ui,sans-serif;color:#6b6358;padding:4px 9px;border:1px solid #2e2e26;border-radius:20px;text-decoration:none;white-space:nowrap;transition:all .15s}.tp-pill:hover{border-color:#3e3e34;color:#b8b0a0}@media(max-width:520px){.tp-hide-sm{display:none}}</style>
 
@@ -551,6 +551,57 @@ function showProGate(containerId, featureName) {
     + '</div>';
 }
 // ── Detail modal ──
+function buildPredModalBody(p) {
+  var ic = {critical:'var(--red)',high:'var(--warning)',medium:'var(--blue)',low:'var(--text-d)'}[p.impact]||'var(--text-d)';
+  var pct = Math.round((p.probability||0)*100);
+  var conf = Math.round((p.confidence||0)*100);
+  var body = '';
+  body += '<div style="background:var(--surface);border-radius:8px;padding:14px;margin-bottom:12px">';
+  body += '<div style="display:flex;justify-content:space-between;margin-bottom:6px">';
+  body += '<span style="font:600 11px var(--mono);color:var(--text-d)">PROBABILITY</span>';
+  body += '<span style="font:700 18px var(--mono);color:'+(pct>70?'var(--amber)':'var(--text-s)')+'">'+pct+'%</span></div>';
+  body += '<div style="height:6px;background:var(--border);border-radius:3px;margin-bottom:6px"><div style="width:'+pct+'%;height:100%;background:var(--amber);border-radius:3px"></div></div>';
+  if (p.model) body += '<div style="font:400 10px var(--font);color:var(--text-d);margin-top:2px">'+p.model+'</div>';
+  body += '</div>';
+  body += '<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px">';
+  if (p.timeframe) body += '<span class="badge badge-purple">◎ '+p.timeframe+'</span>';
+  if (p.impact) body += '<span class="badge" style="background:'+ic+'18;color:'+ic+'">'+p.impact+' impact</span>';
+  if (conf) body += '<span class="badge" style="background:var(--surface);color:var(--text-d)">'+conf+'% confidence</span>';
+  body += '</div>';
+  if (p.hedge) {
+    body += '<div style="background:var(--purple-d,rgba(139,92,246,.1));border:1px solid rgba(139,92,246,.2);border-radius:7px;padding:10px 12px;margin-bottom:12px">';
+    body += '<div style="font:600 9px var(--mono);color:var(--purple);text-transform:uppercase;letter-spacing:.06em;margin-bottom:4px">◎ Hedge</div>';
+    body += '<div style="font:400 11px var(--font);color:var(--text-s);line-height:1.5">'+p.hedge+'</div></div>';
+  }
+  if (p.model_outputs && p.model_outputs.length) {
+    body += '<div style="font:600 10px var(--mono);color:var(--text-d);text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px">Model Breakdown</div>';
+    p.model_outputs.forEach(function(m) {
+      var mp = Math.round((m.probability||0)*100);
+      body += '<div style="background:var(--surface);border-radius:8px;padding:10px;margin-bottom:6px;border-left:3px solid var(--purple)">';
+      body += '<div style="display:flex;justify-content:space-between;margin-bottom:3px">';
+      body += '<span style="font:600 10px var(--mono);color:var(--purple)">'+m.model+'</span>';
+      body += '<span style="font:700 13px var(--mono);color:var(--amber)">'+mp+'%</span></div>';
+      body += '<div style="height:4px;background:var(--border);border-radius:2px;margin-bottom:5px"><div style="width:'+mp+'%;height:100%;background:var(--purple);border-radius:2px"></div></div>';
+      (m.drivers||[]).forEach(function(d){ body += '<div style="font:400 10px var(--font);color:var(--text-s);margin-top:2px">→ '+d+'</div>'; });
+      body += '</div>';
+    });
+  }
+  if (p.drivers && p.drivers.length) {
+    body += '<div style="font:600 9px var(--mono);color:var(--text-d);text-transform:uppercase;letter-spacing:.08em;margin:12px 0 6px">All Drivers</div>';
+    p.drivers.forEach(function(d){ body += '<div style="font:400 11px var(--font);color:var(--text-s);padding:3px 0;border-bottom:1px solid var(--border)">→ '+d+'</div>'; });
+  }
+  return body;
+}
+
+function wirePredCards(container, predsArray) {
+  container.querySelectorAll('.brief-card.pred').forEach(function(card, i) {
+    var p = predsArray[i]; if (!p) return;
+    card.addEventListener('click', function() {
+      openDetailModal(p.event, (p.timeframe||'') + (p.impact ? ' · '+p.impact : ''), buildPredModalBody(p));
+    });
+  });
+}
+
 function openDetailModal(title, subtitle, body) {
   var ov = document.getElementById('flag-modal-overlay');
   if (!ov) return;
@@ -840,11 +891,8 @@ function renderBriefPanel(b) {
   const gen = b.generated_at ? new Date(b.generated_at).toLocaleString() : '';
   html += `<div class="brief-footer">${b.pipeline_version||'PIE'} · ${gen}</div>`;
   el.innerHTML = html;
+  wirePredCards(el, b.predictions||[]);
 }
-
-async function loadBriefPanel() {
-  try {
-    const paths = ['../static/pie_brief.json', '/static/pie_brief.json'];
     let b = null;
     for (const p of paths) {
       try { const r = await fetch(p); if (r.ok) { b = await r.json(); break; } } catch(e) {}
@@ -1013,6 +1061,7 @@ function renderBriefPanel(b){
   const gen=b.generated_at?new Date(b.generated_at).toLocaleString():"";
   html+=`<div class="brief-footer">${b.pipeline_version||"PIE"} · Generated ${gen}</div>`;
   el.innerHTML=html;
+  wirePredCards(el, b.predictions||[]);
 }
 async function loadBriefPanel(){
   try{
@@ -1646,6 +1695,9 @@ function renderPredictions() {
       +'<div style="text-align:center;min-width:60px">'
       +'<div style="font:700 22px var(--mono);color:'+(pct>70?"var(--amber)":"var(--text-s)")+'">'+pct+'%</div>'
       +'<div style="font-size:9px;color:var(--text-d)">probability</div></div></div>'
+      +(p.hedge ? '<div style="background:var(--surface);border-radius:5px;padding:6px 8px;margin-bottom:8px">'
+        +'<div style="font:600 8px var(--mono);color:var(--purple);margin-bottom:2px">◎ Hedge</div>'
+        +'<div style="font:400 10px var(--font);color:var(--text-s);line-height:1.5">'+p.hedge+'</div></div>' : '')
       +'<div class="drivers"><span style="font-size:10px;color:var(--text-d)">Drivers:</span>'
       +(p.drivers||[]).slice(0,3).map(function(d){return '<span class="driver">'+d+'</span>';}).join("")
       +'</div></div>';
@@ -1653,38 +1705,7 @@ function renderPredictions() {
   el.querySelectorAll("[data-pred-idx]").forEach(function(card) {
     card.addEventListener("click", function() {
       var p = PREDICTIONS[+card.dataset.predIdx]; if (!p) return;
-      var ic = {critical:"var(--red)",high:"var(--warning)",medium:"var(--blue)",low:"var(--text-d)"}[p.impact]||"var(--text-d)";
-      var pct = Math.round((p.probability||0)*100);
-      var conf = Math.round((p.confidence||0)*100);
-      var body = "";
-      body += '<div style="background:var(--surface);border-radius:8px;padding:14px;margin-bottom:12px">';
-      body += '<div style="display:flex;justify-content:space-between;margin-bottom:6px">';
-      body += '<span style="font:600 11px var(--mono);color:var(--text-d)">PROBABILITY</span>';
-      body += '<span style="font:700 18px var(--mono);color:'+(pct>70?"var(--amber)":"var(--text-s)")+'">'+pct+'%</span></div>';
-      body += '<div style="height:6px;background:var(--border);border-radius:3px;margin-bottom:6px"><div style="width:'+pct+'%;height:100%;background:var(--amber);border-radius:3px"></div></div>';
-      body += '<div style="font:400 10px var(--font);color:var(--text-d);margin-top:2px">'+(p.model||"")+'</div></div>';
-      body += '<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px">';
-      body += '<span class="badge badge-purple">◎ '+p.timeframe+'</span>';
-      body += '<span class="badge" style="background:'+ic+'18;color:'+ic+'">'+p.impact+' impact</span>';
-      body += '<span class="badge" style="background:var(--surface);color:var(--text-d)">'+conf+'% confidence</span></div>';
-      if (p.model_outputs && p.model_outputs.length) {
-        body += '<div style="font:600 10px var(--mono);color:var(--text-d);text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px">Model Breakdown</div>';
-        p.model_outputs.forEach(function(m) {
-          var mp = Math.round((m.probability||0)*100);
-          body += '<div style="background:var(--surface);border-radius:8px;padding:10px;margin-bottom:6px;border-left:3px solid var(--purple)">';
-          body += '<div style="display:flex;justify-content:space-between;margin-bottom:3px">';
-          body += '<span style="font:600 10px var(--mono);color:var(--purple)">'+m.model+'</span>';
-          body += '<span style="font:700 13px var(--mono);color:var(--amber)">'+mp+'%</span></div>';
-          body += '<div style="height:4px;background:var(--border);border-radius:2px;margin-bottom:5px"><div style="width:'+mp+'%;height:100%;background:var(--purple);border-radius:2px"></div></div>';
-          (m.drivers||[]).forEach(function(d){ body += '<div style="font:400 10px var(--font);color:var(--text-s);margin-top:2px">→ '+d+'</div>'; });
-          body += '</div>';
-        });
-      }
-      if (p.drivers && p.drivers.length) {
-        body += '<div style="font:600 9px var(--mono);color:var(--text-d);text-transform:uppercase;letter-spacing:.08em;margin:12px 0 6px">All Drivers</div>';
-        p.drivers.forEach(function(d){ body += '<div style="font:400 11px var(--font);color:var(--text-s);padding:3px 0;border-bottom:1px solid var(--border)">→ '+d+'</div>'; });
-      }
-      openDetailModal(p.event, p.timeframe+' · '+p.impact, body);
+      openDetailModal(p.event, (p.timeframe||'') + (p.impact ? ' · '+p.impact : ''), buildPredModalBody(p));
     });
   });
 }
@@ -3444,6 +3465,7 @@ function renderWeeklyPanel(w) {
   const gen = w.generated_at ? new Date(w.generated_at).toLocaleString() : '';
   html += `<div class="brief-footer">${w.pipeline_version||'PIE Weekly'} · ${gen}</div>`;
   el.innerHTML = html;
+  wirePredCards(el, w.predictions||[]);
 }
 // ─────────────────────────────────────────────────────────────────────────────
 
@@ -3709,7 +3731,6 @@ ${e.stack||e.message||e}</div>`;
   _safe("renderPlatforms",  renderPlatforms);
   _safe("renderComponents", renderComponents);
   _safe("renderPredictions",renderPredictions);
-  _safe("loadBriefPanel",loadBriefPanel);
   _safe("loadBriefPanel",loadBriefPanel);
   _safe("renderWhatIf",     renderWhatIf);
 
