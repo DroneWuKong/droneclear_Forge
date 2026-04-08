@@ -175,6 +175,14 @@ a{color:var(--blue);text-decoration:none}a:hover{text-decoration:underline}
 .brief-card.entity{border-left:3px solid var(--warning,#f59e0b)}
 .brief-card.supply{border-left:3px solid var(--blue)}
 .brief-card.pred{display:flex;gap:10px;align-items:flex-start;border-left:3px solid var(--purple);cursor:pointer;transition:border-color .15s}.brief-card.pred:hover{border-color:#a78bfa}
+.brief-card.lead{cursor:pointer;transition:all .15s}.brief-card.lead:hover{border-color:var(--red);background:var(--card-hi)}
+.brief-card.entity{cursor:pointer;transition:all .15s}.brief-card.entity:hover{border-color:var(--warning,#f59e0b);background:var(--card-hi)}
+.brief-card.supply{cursor:pointer;transition:all .15s}.brief-card.supply:hover{border-color:var(--blue);background:var(--card-hi)}
+.watch-item{cursor:pointer;transition:background .15s}.watch-item:hover{background:var(--card-hi,#242420) !important}
+.signal-stat{cursor:pointer;transition:all .15s;user-select:none}.signal-stat:hover{background:var(--card-hi);transform:scale(1.04)}
+.brief-headline{cursor:pointer;transition:opacity .15s}.brief-headline:hover{opacity:.8}
+.concern-bar{cursor:pointer;transition:background .15s}.concern-bar:hover{background:var(--card)}
+.intel-news-card{cursor:pointer;transition:all .15s}.intel-news-card:hover{border-color:var(--border-hi);background:var(--card-hi)}
 .brief-card .entity-status{font:500 10px var(--mono);color:var(--text-d);margin-bottom:4px}
 .brief-card .entity-exposure{font:400 10px var(--font);color:var(--text-d);margin-bottom:6px}
 .brief-card .supply-window{font:500 9px var(--mono);color:var(--text-d)}
@@ -254,9 +262,10 @@ a.brief-source-chip:hover{color:var(--text-s);border-color:var(--border-hi)}
 
   <!-- BRIEF PANEL -->
   <div class="panel active" id="panel-brief">
-    <div style="display:flex;gap:6px;margin-bottom:12px">
+    <div style="display:flex;gap:6px;margin-bottom:12px;align-items:center">
       <button type="button" id="brief-tab-daily" onclick="switchBriefTab('daily')" style="font:600 10px var(--mono);padding:5px 14px;border-radius:20px;border:1px solid var(--cyan);background:rgba(0,212,255,.1);color:var(--cyan);cursor:pointer">Daily</button>
       <button type="button" id="brief-tab-weekly" onclick="switchBriefTab('weekly')" style="font:600 10px var(--mono);padding:5px 14px;border-radius:20px;border:1px solid var(--border);background:none;color:var(--text-d);cursor:pointer">Weekly</button>
+      <button type="button" onclick="openLegendModal()" style="margin-left:auto;font:500 10px var(--mono);padding:4px 11px;border-radius:20px;border:1px solid var(--border);background:none;color:var(--text-d);cursor:pointer">? Legend</button>
     </div>
     <div id="brief-inner"><div style="color:var(--text-d);font:400 11px var(--mono);padding:20px 0">Loading brief...</div></div>
     <div id="brief-weekly-inner" style="display:none"></div>
@@ -602,7 +611,250 @@ function wirePredCards(container, predsArray) {
   });
 }
 
-function openDetailModal(title, subtitle, body) {
+// ── Easter egg system ────────────────────────────────────────────────────────
+var _eggClicks = {};
+var _eggToasts = [];
+var EGGS = [
+  { key:'signal_critical', trigger:5, msg:'🚨 You clicked Critical 5x. The threat is real. So is your anxiety.' },
+  { key:'signal_warning',  trigger:3, msg:'⚠️ 3 warnings. The pipeline sees your concern.' },
+  { key:'signal_total',    trigger:7, msg:'📊 Seven total-flag clicks. Analyst mode: activated.' },
+  { key:'headline',        trigger:2, msg:'📰 Twice on the headline. We get it — you want context.' },
+  { key:'concern',         trigger:3, msg:'🔴 Top concern clicked 3x. It\'s still the top concern.' },
+  { key:'lead',            trigger:4, msg:'🔺 Four lead story taps. DEFCON: heightened.' },
+  { key:'gray_zone',       trigger:3, msg:'🌫️ Gray zone × 3. Compliance is gray. So is procurement.' },
+  { key:'supply',          trigger:4, msg:'🔩 Four supply chain taps. You\'re basically a logistics officer now.' },
+  { key:'watch',           trigger:5, msg:'👁️ Watching the watch list 5 times. Very meta.' },
+  { key:'intel_feed',      trigger:3, msg:'📡 Three news taps. Open-source intelligence: you\'re doing it.' },
+  { key:'any',             trigger:20, msg:'🎖️ 20 total interactions. PIE analyst certification: pending.' },
+  { key:'any',             trigger:50, msg:'🏆 50 interactions. You have read more intelligence briefs than most GS-13s.' },
+];
+var _totalEggClicks = 0;
+
+function _eggTap(key) {
+  _eggClicks[key] = (_eggClicks[key]||0) + 1;
+  _totalEggClicks++;
+  EGGS.forEach(function(egg) {
+    var count = egg.key === 'any' ? _totalEggClicks : (_eggClicks[egg.key]||0);
+    var toastKey = egg.key + ':' + egg.trigger;
+    if (count === egg.trigger && !_eggToasts.includes(toastKey)) {
+      _eggToasts.push(toastKey);
+      _showEggToast(egg.msg);
+    }
+  });
+}
+
+function _showEggToast(msg) {
+  var t = document.createElement('div');
+  t.textContent = msg;
+  t.style.cssText = 'position:fixed;bottom:72px;left:50%;transform:translateX(-50%) translateY(20px);background:#1c1c17;border:1px solid #3e3e34;border-radius:10px;padding:10px 16px;font:500 11px "DM Sans",sans-serif;color:#e8e8f0;z-index:9999;max-width:320px;text-align:center;box-shadow:0 4px 24px rgba(0,0,0,.6);opacity:0;transition:all .3s ease;pointer-events:none';
+  document.body.appendChild(t);
+  requestAnimationFrame(function() {
+    t.style.opacity = '1';
+    t.style.transform = 'translateX(-50%) translateY(0)';
+  });
+  setTimeout(function() {
+    t.style.opacity = '0';
+    t.style.transform = 'translateX(-50%) translateY(10px)';
+    setTimeout(function(){ t.remove(); }, 400);
+  }, 3200);
+}
+
+// ── Wire ALL card types after any brief render ────────────────────────────────
+function wireAllCards(container, briefData) {
+  var b = briefData || {};
+
+  // Signal stats → filter to that severity on Flags tab
+  container.querySelectorAll('.signal-stat').forEach(function(el) {
+    var lbl = (el.querySelector('.lbl')||{}).textContent||'';
+    el.addEventListener('click', function() {
+      var key = lbl.toLowerCase().includes('critical') ? 'critical'
+               : lbl.toLowerCase().includes('warning') ? 'warning'
+               : lbl.toLowerCase().includes('new') ? 'new' : 'total';
+      _eggTap('signal_' + key);
+      if (key === 'total') {
+        // Switch to flags tab
+        var tab = document.querySelector('.tab[data-tab="flags"]');
+        if (tab) tab.click();
+      } else {
+        var tab = document.querySelector('.tab[data-tab="flags"]');
+        if (tab) tab.click();
+        setTimeout(function() {
+          var chip = document.querySelector('.filter-chip[data-sev="'+key+'"], .filter-btn');
+          // best effort — just open flags tab
+        }, 100);
+      }
+    });
+  });
+
+  // Headline → open detail
+  var hl = container.querySelector('.brief-headline');
+  if (hl && b.headline) {
+    hl.addEventListener('click', function() {
+      _eggTap('headline');
+      var body = '<div style="font:400 13px var(--font);color:var(--text-s);line-height:1.7;padding:4px 0">' + b.headline + '</div>';
+      if (b.lead_story && b.lead_story.body) {
+        body += '<div style="margin-top:12px;font:400 11px var(--font);color:var(--text-s);line-height:1.6">' + b.lead_story.body + '</div>';
+      }
+      openDetailModal('Headline', 'Top Signal Today', body);
+    });
+  }
+
+  // Concern bar → open detail
+  var cb = container.querySelector('.concern-bar');
+  if (cb) {
+    cb.addEventListener('click', function() {
+      _eggTap('concern');
+      var body = '<div style="font:400 12px var(--font);color:var(--text-s);line-height:1.7">'
+        + (cb.textContent||'').trim() + '</div>'
+        + '<div style="margin-top:12px;font:400 10px var(--mono);color:var(--text-d)">Source: PIE signal aggregation pipeline</div>';
+      openDetailModal('Top Concern', 'Live Signal', body);
+    });
+  }
+
+  // Lead story cards
+  container.querySelectorAll('.brief-card.lead').forEach(function(card) {
+    if (card.dataset.wired) return; card.dataset.wired = '1';
+    var lead = b.lead_story || {};
+    card.addEventListener('click', function() {
+      _eggTap('lead');
+      var body = '';
+      body += '<div style="font:400 12px var(--font);color:var(--text-s);line-height:1.7;margin-bottom:12px">' + (lead.body||'No detail available.') + '</div>';
+      if (lead.action) body += '<div style="background:var(--surface);border-radius:7px;padding:10px 12px"><div style="font:600 9px var(--mono);color:var(--cyan);margin-bottom:4px">→ ACTION</div><div style="font:400 11px var(--font);color:var(--text-s)">' + lead.action + '</div></div>';
+      if ((lead.sources||[]).length) body += '<div style="margin-top:10px;font:400 9px var(--mono);color:var(--text-d)">Sources: ' + lead.sources.join(' · ') + '</div>';
+      openDetailModal(lead.title||'Lead Story', 'Critical · Lead Signal', body);
+    });
+  });
+
+  // Gray zone / entity cards
+  var gzArr = b.gray_zone || [];
+  container.querySelectorAll('.brief-card.entity').forEach(function(card, i) {
+    if (card.dataset.wired) return; card.dataset.wired = '1';
+    var e = gzArr[i] || {};
+    card.addEventListener('click', function() {
+      _eggTap('gray_zone');
+      var body = '';
+      if (e.status) body += '<div style="font:500 10px var(--mono);color:var(--warning,#f59e0b);margin-bottom:8px">' + e.status + '</div>';
+      body += '<div style="font:400 12px var(--font);color:var(--text-s);line-height:1.7;margin-bottom:10px">' + (e.development||'') + '</div>';
+      if (e.buyer_exposure) body += '<div style="background:rgba(245,158,11,.07);border-radius:7px;padding:10px 12px;margin-bottom:8px"><div style="font:600 9px var(--mono);color:var(--warning,#f59e0b);margin-bottom:3px">BUYER EXPOSURE</div><div style="font:400 11px var(--font);color:var(--text-s)">' + e.buyer_exposure + '</div></div>';
+      if (e.action) body += '<div style="background:var(--surface);border-radius:7px;padding:10px 12px"><div style="font:600 9px var(--mono);color:var(--cyan);margin-bottom:4px">→ ACTION</div><div style="font:400 11px var(--font);color:var(--text-s)">' + e.action + '</div></div>';
+      openDetailModal(e.entity||'Gray Zone Entity', 'Warning · Gray Zone', body);
+    });
+  });
+
+  // Supply chain cards
+  var supArr = b.supply_chain || [];
+  container.querySelectorAll('.brief-card.supply').forEach(function(card, i) {
+    if (card.dataset.wired) return; card.dataset.wired = '1';
+    var s = supArr[i] || {};
+    card.addEventListener('click', function() {
+      _eggTap('supply');
+      var body = '';
+      if (s.window) body += '<div style="font:600 10px var(--mono);color:var(--blue);margin-bottom:8px">⏱ Lead window: ' + s.window + '</div>';
+      body += '<div style="font:400 12px var(--font);color:var(--text-s);line-height:1.7;margin-bottom:10px">' + (s.signal||'') + '</div>';
+      if (s.action) body += '<div style="background:var(--surface);border-radius:7px;padding:10px 12px"><div style="font:600 9px var(--mono);color:var(--cyan);margin-bottom:4px">→ ACTION</div><div style="font:400 11px var(--font);color:var(--text-s)">' + s.action + '</div></div>';
+      if ((s.sources||[]).length) body += '<div style="margin-top:10px;font:400 9px var(--mono);color:var(--text-d)">Sources: ' + s.sources.join(' · ') + '</div>';
+      openDetailModal(s.component||'Supply Chain Signal', (s.window?'Lead window: '+s.window:'') + ' · Supply', body);
+    });
+  });
+
+  // Watch list items
+  var watchArr = b.watch_list || [];
+  container.querySelectorAll('.watch-item').forEach(function(card, i) {
+    if (card.dataset.wired) return; card.dataset.wired = '1';
+    var w = watchArr[i] || {};
+    card.addEventListener('click', function() {
+      _eggTap('watch');
+      var body = '';
+      if (w.why) body += '<div style="font:400 12px var(--font);color:var(--text-s);line-height:1.7;margin-bottom:10px">' + w.why + '</div>';
+      if (w.trigger) body += '<div style="background:var(--surface);border-radius:7px;padding:10px 12px"><div style="font:600 9px var(--mono);color:var(--amber);margin-bottom:4px">TRIGGER</div><div style="font:400 11px var(--font);color:var(--text-s)">' + w.trigger + '</div></div>';
+      openDetailModal(w.item||'Watch Item', 'Watch List', body);
+    });
+  });
+
+  // Intelligence feed news cards (add class for CSS, wire click)
+  var intelArr = b.intel_feed || [];
+  container.querySelectorAll('[data-intel-idx]').forEach(function(card) {
+    if (card.dataset.wired) return; card.dataset.wired = '1';
+    var n = intelArr[+card.dataset.intelIdx] || {};
+    card.addEventListener('click', function(e) {
+      if (e.target.tagName === 'A') return; // let links work
+      _eggTap('intel_feed');
+      var body = '';
+      if (n.summary) body += '<div style="font:400 12px var(--font);color:var(--text-s);line-height:1.7;margin-bottom:10px">' + n.summary + '</div>';
+      body += '<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">';
+      if (n.source) body += '<span style="font:500 9px var(--mono);color:var(--text-d)">' + n.source + '</span>';
+      if (n.pub_date) body += '<span style="font:400 9px var(--mono);color:var(--text-d)">' + n.pub_date + '</span>';
+      body += '</div>';
+      if (n.url) body += '<div style="margin-top:10px"><a href="'+n.url+'" target="_blank" rel="noopener" style="font:500 11px var(--font);color:var(--cyan);text-decoration:none">Open source →</a></div>';
+      openDetailModal(n.title||'Intelligence', 'Intel Feed', body);
+    });
+  });
+
+  // Wire pred cards (already done by wirePredCards but call again for safety with data)
+  wirePredCards(container, b.predictions||[]);
+}
+
+function openLegendModal() {
+  var body = '';
+  body += '<div style="display:flex;flex-direction:column;gap:10px">';
+
+  // Signal types
+  body += '<div style="font:600 9px var(--mono);color:var(--text-d);text-transform:uppercase;letter-spacing:.08em;margin-bottom:2px">Signal Types</div>';
+  var signals = [
+    ['var(--red)',    'sev-critical', '🔴 Critical',   'Immediate action required. Active compliance exposure, confirmed supply disruption, or policy enforcement in effect.'],
+    ['var(--warning,#f59e0b)', 'sev-warning', '⚠ Warning',    'Elevated risk. Gray zone status, pending policy, or lead-time pressure detected.'],
+    ['var(--blue)',   'sev-info',     '🔵 Info',        'Signal detected. Low urgency. Monitor for escalation.'],
+    ['var(--purple)', '',             '🔮 Prediction',  'Statistical forecast from Granger causality + cross-correlation models. Probability = consensus of 3 independent models.'],
+  ];
+  signals.forEach(function(s) {
+    body += '<div style="display:flex;gap:10px;align-items:flex-start;padding:8px 10px;background:var(--surface);border-radius:7px;border-left:3px solid '+s[0]+'">';
+    body += '<div style="flex:1"><div style="font:600 11px var(--font);color:var(--text);margin-bottom:3px">'+s[2]+'</div>';
+    body += '<div style="font:400 10px var(--font);color:var(--text-d);line-height:1.5">'+s[3]+'</div></div></div>';
+  });
+
+  // Card sections
+  body += '<div style="font:600 9px var(--mono);color:var(--text-d);text-transform:uppercase;letter-spacing:.08em;margin:6px 0 2px">Brief Sections</div>';
+  var sections = [
+    ['🔴', 'Lead Story',       'Top signal of the day. Highest severity item from the PIE pipeline.'],
+    ['⚠',  'Gray Zone',        'Entities in NDAA/ITAR/regulatory ambiguity. Buyer exposure tracked.'],
+    ['🔩', 'Supply Chain',     'Component lead-time alerts, allocation warnings, alternative sourcing windows.'],
+    ['👁',  'Watch List',       'Items flagged for monitoring. Tap to see trigger conditions.'],
+    ['📡', 'Intel Feed',       'Open-source news injected and relevance-scored by the pipeline.'],
+    ['🔮', 'Predictions',      'Tap any prediction card for probability breakdown, model outputs, and hedge strategy.'],
+  ];
+  sections.forEach(function(s) {
+    body += '<div style="display:flex;gap:8px;align-items:flex-start;padding:7px 10px;background:var(--surface);border-radius:6px">';
+    body += '<span style="font-size:14px;flex-shrink:0;margin-top:1px">'+s[0]+'</span>';
+    body += '<div><div style="font:600 11px var(--font);color:var(--text);margin-bottom:2px">'+s[1]+'</div>';
+    body += '<div style="font:400 10px var(--font);color:var(--text-d);line-height:1.5">'+s[2]+'</div></div></div>';
+  });
+
+  // Interaction guide
+  body += '<div style="font:600 9px var(--mono);color:var(--text-d);text-transform:uppercase;letter-spacing:.08em;margin:6px 0 2px">Interaction Guide</div>';
+  body += '<div style="padding:8px 10px;background:var(--surface);border-radius:7px;display:flex;flex-direction:column;gap:5px">';
+  [
+    ['Tap any card', 'Expands full detail, buyer exposure, and recommended action'],
+    ['Tap stat bars', 'Jumps to Flags tab filtered by severity'],
+    ['Tap headline', 'Opens lead story context'],
+    ['Tap concern bar', 'Explains top pipeline signal'],
+    ['Tap watch items', 'Reveals trigger conditions'],
+    ['Tap intel feed', 'Full article summary + source link'],
+  ].forEach(function(r) {
+    body += '<div style="display:flex;gap:8px"><span style="font:600 10px var(--mono);color:var(--cyan);min-width:110px;flex-shrink:0">'+r[0]+'</span><span style="font:400 10px var(--font);color:var(--text-d)">'+r[1]+'</span></div>';
+  });
+  body += '</div>';
+
+  // Model note
+  body += '<div style="padding:8px 10px;background:rgba(167,139,250,.06);border:1px solid rgba(167,139,250,.15);border-radius:7px">';
+  body += '<div style="font:600 9px var(--mono);color:var(--purple);margin-bottom:4px">◎ PIE MODEL NOTE</div>';
+  body += '<div style="font:400 10px var(--font);color:var(--text-d);line-height:1.5">Probability scores are ensemble outputs from Granger causality analysis, cross-correlation models, and structural VAR against the Forge DB + distributor data. Confidence reflects inter-model agreement. Hedge strategies are inverse-probability hedges — not investment advice.</div>';
+  body += '</div>';
+
+  body += '</div>';
+  openDetailModal('PIE Legend', 'Pattern Intelligence Engine · User Guide', body);
+}
+
+
   var ov = document.getElementById('flag-modal-overlay');
   if (!ov) return;
   var el = document.getElementById('flag-modal-meta');
@@ -891,7 +1143,7 @@ function renderBriefPanel(b) {
   const gen = b.generated_at ? new Date(b.generated_at).toLocaleString() : '';
   html += `<div class="brief-footer">${b.pipeline_version||'PIE'} · ${gen}</div>`;
   el.innerHTML = html;
-  wirePredCards(el, b.predictions||[]);
+  wireAllCards(el, b);
 }
     let b = null;
     for (const p of paths) {
@@ -1024,9 +1276,10 @@ function renderBriefPanel(b){
   // Intelligence feed (news injection)
   if((b.intel_feed||[]).length){
     html+=`<div class="brief-section-label">📡 Intelligence Feed</div>`;
-    for(const n of b.intel_feed){
+    for(let _ni=0;_ni<b.intel_feed.length;_ni++){
+      const n=b.intel_feed[_ni];
       const age = n.pub_date ? n.pub_date : '';
-      html+=`<div style="background:var(--card);border:1px solid var(--border);border-radius:8px;padding:10px 12px;margin-bottom:6px">
+      html+=`<div class="intel-news-card" data-intel-idx="${_ni}" style="background:var(--card);border:1px solid var(--border);border-radius:8px;padding:10px 12px;margin-bottom:6px">
         <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px;margin-bottom:4px">
           <a href="${n.url||'#'}" target="_blank" rel="noopener" style="font:600 11px var(--font);color:var(--text);text-decoration:none;flex:1;line-height:1.3">${n.title}</a>
           <span style="font:500 9px var(--mono);color:var(--text-d);white-space:nowrap;flex-shrink:0">${age}</span>
@@ -1034,6 +1287,8 @@ function renderBriefPanel(b){
         ${n.summary?`<div style="font-size:10px;color:var(--text-d);line-height:1.5">${n.summary}</div>`:''}
         <div style="margin-top:4px"><span style="font:500 8px var(--mono);color:var(--text-d)">${n.source||''}</span></div>
       </div>`;
+    }
+  }
     }
   }
 
@@ -1061,7 +1316,7 @@ function renderBriefPanel(b){
   const gen=b.generated_at?new Date(b.generated_at).toLocaleString():"";
   html+=`<div class="brief-footer">${b.pipeline_version||"PIE"} · Generated ${gen}</div>`;
   el.innerHTML=html;
-  wirePredCards(el, b.predictions||[]);
+  wireAllCards(el, b);
 }
 async function loadBriefPanel(){
   try{
@@ -3465,7 +3720,7 @@ function renderWeeklyPanel(w) {
   const gen = w.generated_at ? new Date(w.generated_at).toLocaleString() : '';
   html += `<div class="brief-footer">${w.pipeline_version||'PIE Weekly'} · ${gen}</div>`;
   el.innerHTML = html;
-  wirePredCards(el, w.predictions||[]);
+  wireAllCards(el, { predictions: w.predictions||[], watch_list: w.new_flags||[] });
 }
 // ─────────────────────────────────────────────────────────────────────────────
 
