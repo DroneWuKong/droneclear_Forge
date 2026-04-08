@@ -2707,6 +2707,380 @@
         "rulemaking",
         "part107"
       ]
+    },
+    {
+      "id": "wir-001",
+      "category": "wiring",
+      "created": "2026-04-08",
+      "title": "FC UART assignment \u2014 TX/RX crossed, no data",
+      "symptom": "Receiver, GPS, VTX, or ESC telemetry not working despite correct wiring",
+      "cause": "UART TX and RX are labeled from the FC's perspective, not the peripheral's. FC TX connects to peripheral RX, and vice versa. Most wiring failures are this crossed connection.",
+      "fix": "Swap TX and RX wires between FC and the device. In Betaflight Ports tab, enable Serial RX on the correct UART number. Verify with `serial` CLI command.",
+      "tags": [
+        "uart",
+        "wiring",
+        "rx",
+        "tx",
+        "betaflight"
+      ],
+      "firmware": [
+        "Betaflight",
+        "iNAV",
+        "ArduPilot"
+      ]
+    },
+    {
+      "id": "wir-002",
+      "category": "wiring",
+      "created": "2026-04-08",
+      "title": "ESC signal wire \u2014 DSHOT not working, motors won't spin",
+      "symptom": "Motors don't respond or spin erratically. DSHOT selected in Betaflight but no response.",
+      "cause": "ESC signal pads require direct connection from FC motor outputs. Common issues: wrong pad, shared ground missing, or bi-directional DSHOT enabled on ESC that doesn't support it.",
+      "fix": "1) Connect FC M1\u2013M4 pads directly to ESC signal inputs. 2) Ensure common ground between FC and ESC. 3) In Betaflight Motor tab, set DSHOT300 or DSHOT600. 4) If using bi-dir DSHOT, flash ESC with AM32 or BLHeli_32 firmware that supports it.",
+      "tags": [
+        "esc",
+        "dshot",
+        "motors",
+        "wiring",
+        "signal"
+      ],
+      "firmware": [
+        "Betaflight",
+        "iNAV"
+      ]
+    },
+    {
+      "id": "wir-003",
+      "category": "wiring",
+      "created": "2026-04-08",
+      "title": "ELRS receiver wiring \u2014 no signal, solid LED",
+      "symptom": "ELRS receiver powers on (LED solid) but Betaflight shows no RC input. LQ stays at 0.",
+      "cause": "CRSF protocol requires UART at 420000 baud with half-duplex off. Wrong UART, inverted serial, or wrong protocol selected in Betaflight.",
+      "fix": "1) Wire receiver TX\u2192FC RX, receiver RX\u2192FC TX on a free UART. 2) Ports tab: enable Serial RX on that UART. 3) Configuration tab: Receiver Mode = Serial, Provider = CRSF. 4) CLI: `set serialrx_inverted = OFF`, `set serialrx_halfduplex = OFF`, `save`. 5) Bind receiver to transmitter.",
+      "tags": [
+        "elrs",
+        "crsf",
+        "receiver",
+        "wiring",
+        "uart"
+      ],
+      "firmware": [
+        "Betaflight",
+        "iNAV"
+      ]
+    },
+    {
+      "id": "wir-004",
+      "category": "wiring",
+      "created": "2026-04-08",
+      "title": "VTX UART control not working \u2014 channel/power won't change",
+      "symptom": "FPV video works but can't change VTX channel or power from OSD/transmitter.",
+      "cause": "VTX control via Tramp or SmartAudio requires a dedicated UART TX connection (one-wire). Not connected, or wrong UART, or VTX protocol mismatch.",
+      "fix": "1) Connect VTX control wire to any FC TX pad (one-wire, no RX needed). 2) Ports tab: enable VTX (TBS SmartAudio or IRC Tramp) on that UART. 3) In OSD or VTX menu, confirm protocol matches your VTX. 4) Some VTX require TX pad only \u2014 don't connect RX.",
+      "tags": [
+        "vtx",
+        "smartaudio",
+        "tramp",
+        "wiring",
+        "uart",
+        "osd"
+      ],
+      "firmware": [
+        "Betaflight",
+        "iNAV"
+      ]
+    },
+    {
+      "id": "wir-005",
+      "category": "wiring",
+      "created": "2026-04-08",
+      "title": "GPS no fix \u2014 connected but no satellites",
+      "symptom": "GPS shows connected in Betaflight/ArduPilot but 0 satellites or never gets fix.",
+      "cause": "GPS baud rate mismatch, wrong UART, or antenna blocked/indoors. M8N default is 9600 baud; M9N/M10 may auto-negotiate but some configs need manual set.",
+      "fix": "1) Ensure GPS is on a dedicated UART with GPS protocol enabled (Ports tab). 2) Set baud to 57600 or 115200 and match in GPS module config (u-center for u-blox). 3) Take outdoors with clear sky view \u2014 never test GPS indoors. 4) CLI: `gpspassthrough` to verify communication.",
+      "tags": [
+        "gps",
+        "wiring",
+        "uart",
+        "ublox",
+        "satellites"
+      ],
+      "firmware": [
+        "Betaflight",
+        "iNAV",
+        "ArduPilot"
+      ]
+    },
+    {
+      "id": "wir-006",
+      "category": "wiring",
+      "created": "2026-04-08",
+      "title": "Voltage/current sensor not reading \u2014 always shows 0V or wrong value",
+      "symptom": "Battery voltage reads 0 or wildly wrong. Current always 0A.",
+      "cause": "Voltage and current sensing require correct pad connections and calibration values in Betaflight. Many FCs have dedicated VBAT and CURR pads; wrong scale factors produce wrong readings.",
+      "fix": "1) Connect battery + to VBAT pad and ground to GND. 2) In Betaflight Power & Battery tab, set voltage scale (default ~110 for most FCs \u2014 adjust until reading matches multimeter). 3) For current: connect ESC current output to FC CURR pad; set current scale to match ESC spec (e.g. 250 for 50A ESC). 4) CLI: `set vbat_scale`, `set current_meter_scale`.",
+      "tags": [
+        "voltage",
+        "current",
+        "sensor",
+        "wiring",
+        "vbat",
+        "osd"
+      ],
+      "firmware": [
+        "Betaflight",
+        "iNAV"
+      ]
+    },
+    {
+      "id": "pid-001",
+      "category": "pid_tuning",
+      "created": "2026-04-08",
+      "title": "Props wash / oscillations on fast direction changes",
+      "symptom": "Quad shakes or wobbles briefly during quick throttle chops or direction reversals, especially in freestyle moves.",
+      "cause": "P gains too high, or D term too low to damp P overshoot. Also common with poorly balanced props or high motor noise feeding back into gyro.",
+      "fix": "1) Reduce P gains by 10\u201315% on Roll and Pitch. 2) Increase D gains slightly (5\u201310 points) to damp oscillations. 3) Check prop balance \u2014 even small imbalance amplifies P oscillations. 4) Enable RPM filtering if ESC supports bi-dir DSHOT. 5) Run Betaflight blackbox and look at gyro traces \u2014 clean P trace with D tracking = good tune.",
+      "tags": [
+        "pid",
+        "oscillation",
+        "props wash",
+        "tuning",
+        "p gain",
+        "d gain"
+      ],
+      "firmware": [
+        "Betaflight",
+        "iNAV"
+      ]
+    },
+    {
+      "id": "pid-002",
+      "category": "pid_tuning",
+      "created": "2026-04-08",
+      "title": "Quad feels mushy / slow to respond \u2014 sluggish handling",
+      "symptom": "Drone feels soft, doesn't snap to stick inputs, lags noticeably.",
+      "cause": "P gains too low, I term too high (fighting stick input), or D term too high dampening response.",
+      "fix": "1) Increase P gains by 10\u201320% on Roll/Pitch until you feel response without oscillation. 2) Reduce I term slightly if quad feels like it's fighting you (I resists stick movement). 3) Lower D if it feels like movement is being dragged. 4) Check RC smoothing \u2014 too much smoothing kills feel. Set RC smoothing to AUTO or 25ms.",
+      "tags": [
+        "pid",
+        "sluggish",
+        "response",
+        "tuning",
+        "p gain",
+        "i gain"
+      ],
+      "firmware": [
+        "Betaflight",
+        "iNAV"
+      ]
+    },
+    {
+      "id": "pid-003",
+      "category": "pid_tuning",
+      "created": "2026-04-08",
+      "title": "Hot motors after flight \u2014 possible filter or PID issue",
+      "symptom": "Motors noticeably hot after a 3\u20135 minute flight. Getting hotter over time.",
+      "cause": "D term too high generates high-frequency motor signals (D-term buzz) that heat motors without doing useful work. Also caused by unfiltered high-frequency noise feeding into PID loop.",
+      "fix": "1) Reduce D gains by 10\u201315% and fly again \u2014 if motors cooler, D was too high. 2) Enable RPM filtering (requires bi-dir DSHOT + supported ESC firmware) \u2014 dramatically reduces D-term buzz. 3) Check motor screws tight, no arm cracks, props balanced. 4) In Betaflight Filtering tab, increase gyro lowpass cutoff slightly if over-filtered (this is counterintuitive but over-filtering can cause noise issues at certain frequencies).",
+      "tags": [
+        "pid",
+        "hot motors",
+        "d gain",
+        "filters",
+        "rpm filtering",
+        "tuning"
+      ],
+      "firmware": [
+        "Betaflight",
+        "iNAV"
+      ]
+    },
+    {
+      "id": "bld-001",
+      "category": "build",
+      "created": "2026-04-08",
+      "title": "Motors spin in wrong direction \u2014 quad flips on takeoff",
+      "symptom": "Quad immediately flips or rolls on takeoff. One or more motors spinning wrong direction.",
+      "cause": "Brushless motor direction depends on phase wire order. Any two wires swapped reverses direction. Factory direction may not match Betaflight motor layout.",
+      "fix": "1) In Betaflight Motor tab, with props OFF, spin each motor and verify direction matches the diagram (standard: M1 CCW, M2 CW, M3 CW, M4 CCW for Betaflight default). 2) To reverse: in Betaflight Motor tab, click reverse on that motor (DSHOT command) \u2014 no soldering needed with DSHOT. 3) If no DSHOT: swap any two of the three phase wires on the offending motor.",
+      "tags": [
+        "build",
+        "motors",
+        "direction",
+        "betaflight",
+        "dshot",
+        "setup"
+      ],
+      "firmware": [
+        "Betaflight",
+        "iNAV"
+      ]
+    },
+    {
+      "id": "bld-002",
+      "category": "build",
+      "created": "2026-04-08",
+      "title": "FC won't arm \u2014 pre-arming checks failing",
+      "symptom": "Cannot arm. Betaflight OSD shows flags or beeping. Arm switch has no effect.",
+      "cause": "Betaflight has pre-arm checks. Common blockers: throttle not at zero, gyro not calibrated, angle too steep, GPS not ready (if required), RX signal lost.",
+      "fix": "1) Open Betaflight CLI, type `status` \u2014 lists active arming flags. 2) Most common fix: ensure throttle stick is at minimum before arming. 3) `ANGLE` flag: level the quad before arming. 4) `RX LOSS` flag: receiver not connected or not bound. 5) `NOPREARM` flag: configure a prearm switch or disable in CLI: `set use_unsynced_pwm = OFF`. 6) Check Modes tab \u2014 arm switch must be assigned.",
+      "tags": [
+        "build",
+        "arm",
+        "betaflight",
+        "setup",
+        "flags",
+        "receiver"
+      ],
+      "firmware": [
+        "Betaflight",
+        "iNAV",
+        "ArduPilot"
+      ]
+    },
+    {
+      "id": "bld-003",
+      "category": "build",
+      "created": "2026-04-08",
+      "title": "Maiden flight checklist \u2014 common pre-flight mistakes",
+      "symptom": "First flight fails or causes crash \u2014 props, direction, FC orientation all need verification.",
+      "cause": "Build errors that survive bench testing but cause crashes on first flight.",
+      "fix": "Maiden checklist: 1) Props correct direction (leading edge faces rotation direction). 2) Props tight \u2014 hand-tighten then 1/4 turn with tool. 3) Motors correct direction (test in Betaflight motor tab, props OFF). 4) FC board orientation set in Betaflight (Configuration \u2192 Board Alignment). 5) Rates not too aggressive for first flight \u2014 start with low rates. 6) Arm on bench and tilt \u2014 verify quad compensates in correct direction. 7) Test failsafe: arm, fly hover, turn off TX \u2014 verify RTH or land behavior. 8) Check CG \u2014 should be roughly centered.",
+      "tags": [
+        "build",
+        "maiden",
+        "checklist",
+        "setup",
+        "props",
+        "motors"
+      ],
+      "firmware": [
+        "Betaflight",
+        "iNAV",
+        "ArduPilot"
+      ]
+    },
+    {
+      "id": "bld-004",
+      "category": "build",
+      "created": "2026-04-08",
+      "title": "Video feed has noise / lines when throttle increases",
+      "symptom": "FPV image clean at idle, gets horizontal lines or noise as throttle rises.",
+      "cause": "ESC switching noise coupling into video circuit through shared power. Classic ground loop or insufficient filtering on VTX power.",
+      "fix": "1) Add LC filter on VTX power supply (available for ~$3, e.g. Matek FCHUB LC filter). 2) Power VTX from filtered 9V or 12V BEC rather than direct battery. 3) Run VTX and camera power/ground separately from ESC power leads. 4) Add capacitor (1000\u20132200\u00b5F 35V) across main battery pads on ESC. 5) Keep VTX antenna away from ESC/motor wires.",
+      "tags": [
+        "build",
+        "video",
+        "noise",
+        "vtx",
+        "filtering",
+        "power"
+      ],
+      "firmware": [
+        "Betaflight",
+        "iNAV"
+      ]
+    },
+    {
+      "id": "frm-001",
+      "category": "mechanical",
+      "created": "2026-04-08",
+      "title": "Frame vibration \u2014 oscillations at certain throttle bands",
+      "symptom": "Quad vibrates noticeably at specific throttle levels. Video shaky at those points. Blackbox shows gyro noise spikes.",
+      "cause": "Motor/prop resonance hitting a frame natural frequency. Often worsened by loose screws, cracked arms, or unbalanced props.",
+      "fix": "1) Check all motor mount screws \u2014 even one loose screw dramatically increases vibration. 2) Inspect arms for hairline cracks (common at motor mount and arm-body junction). 3) Balance props with a prop balancer \u2014 most significant single fix. 4) Add soft-mount o-rings or grommets under FC to isolate vibration from reaching gyro. 5) In Betaflight, run blackbox and identify the resonance frequency \u2014 adjust notch filters to target it.",
+      "tags": [
+        "frame",
+        "vibration",
+        "mechanical",
+        "props",
+        "motors",
+        "filters"
+      ],
+      "firmware": [
+        "Betaflight",
+        "iNAV"
+      ]
+    },
+    {
+      "id": "frm-002",
+      "category": "mechanical",
+      "created": "2026-04-08",
+      "title": "Cracked arm \u2014 field repair options",
+      "symptom": "Arm cracked at motor mount or body junction after crash. Quad flies but unstable, or won't fly.",
+      "cause": "Carbon fiber arms crack under impact stress, particularly at stress concentrations around motor mount holes and where the arm meets the main body plates.",
+      "fix": "Field repair (temporary): 1) Wrap crack tightly with electrical tape or fiber tape \u2014 not structural but can get you flying. 2) CA glue (super glue) + baking soda accelerator fills small cracks. Permanent fix: replace the arm \u2014 most frames use replaceable arms, not monocoque. Order spare arms before you need them. Inspect: tighten all motor mount bolts, which reduce stress on the arm itself.",
+      "tags": [
+        "frame",
+        "arm",
+        "crack",
+        "repair",
+        "carbon fiber",
+        "crash"
+      ],
+      "firmware": []
+    },
+    {
+      "id": "orqa-001",
+      "category": "orqa",
+      "created": "2026-04-08",
+      "title": "Orqa QuadCore H7 \u2014 UART assignment quick reference",
+      "symptom": "Need to know which UARTs are available and what they're pre-assigned to on the QuadCore H7.",
+      "cause": "The H7 has 7 UARTs but several are pre-assigned. Knowing the layout prevents conflicts.",
+      "fix": "QuadCore H7 UART layout: UART1 = ESC telemetry (pre-assigned), UART2 = free (use for receiver), UART3 = free (GPS recommended), UART4 = free, UART5 = free, UART6 = VTX control recommended, UART7 = free. Betaflight target: ORQA_QUADCORE_H7. Enable Serial RX on UART2 for ELRS/Crossfire. Note: USB uses a virtual COM \u2014 doesn't occupy a UART number.",
+      "tags": [
+        "orqa",
+        "quadcore",
+        "h7",
+        "uart",
+        "wiring",
+        "setup"
+      ],
+      "firmware": [
+        "Betaflight"
+      ]
+    },
+    {
+      "id": "orqa-002",
+      "category": "orqa",
+      "created": "2026-04-08",
+      "title": "Orqa 3030 Lite F405 \u2014 UART and motor output layout",
+      "symptom": "Setting up the 3030 Lite F405 and need UART and motor pad locations.",
+      "cause": "The F405 is a 30x30 stack FC \u2014 tighter layout than H7. 5 UARTs available.",
+      "fix": "3030 Lite F405 layout: UART1 = ESC telemetry, UART2 = Serial RX (receiver), UART3 = GPS, UART4 = free (VTX or other), UART6 = free. Motor outputs M1\u2013M4 on corners, M5\u2013M6 on dedicated pads. Betaflight target: ORQA_3030LITE_F405. Stack with 3030 70A ESC using included mounting hardware \u2014 signal pads align with ESC connector.",
+      "tags": [
+        "orqa",
+        "3030",
+        "f405",
+        "uart",
+        "wiring",
+        "stack"
+      ],
+      "firmware": [
+        "Betaflight"
+      ]
+    },
+    {
+      "id": "orqa-003",
+      "category": "orqa",
+      "created": "2026-04-08",
+      "title": "Orqa WingCore H7 \u2014 PX4/ArduPilot setup for fixed-wing",
+      "symptom": "Setting up WingCore H7 for a fixed-wing or VTOL build. Need to know port assignments and firmware.",
+      "cause": "WingCore H7 is designed for PX4/ArduPilot, not Betaflight. Different pinout philosophy than FPV FCs.",
+      "fix": "WingCore H7 setup: 1) Flash PX4 or ArduPilot \u2014 NOT Betaflight. 2) 8 JST-GH ports: GPS1 (UART4), GPS2 (UART5), TELEM1 (UART2 \u2014 GCS link), TELEM2 (UART3), RC input (UART6), I2C1, CAN1, CAN2. 3) 14 PWM outputs for servos/ESCs. 4) 160A current sensor onboard \u2014 configure in PX4 SENS_BATT_A_PER_V parameter. 5) Connect QGroundControl via USB for initial config.",
+      "tags": [
+        "orqa",
+        "wingcore",
+        "h7",
+        "px4",
+        "ardupilot",
+        "fixed-wing",
+        "uart"
+      ],
+      "firmware": [
+        "ArduPilot",
+        "PX4"
+      ]
     }
   ]
 }
