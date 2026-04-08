@@ -1,6 +1,34 @@
 # Changelog
 
-## [Unreleased] - 2026-04-07 — DFR Regulatory + Commercial Tier
+## [Session] - 2026-04-07 — Platform Mining + Patterns Overhaul + DB Enrichment
+
+### Added — Platform Mining (drone_models now 254)
+- **KrattWorks** (4 platforms): DART Fixed Wing, DART-R Flying Wing (100km range, X/S-band radar reflectors), PARM Aerial Target Quad, Ghost Dragon ISR (corrected — prior entry had fabricated specs)
+- **EchoMAV** (2 platforms + 3 components): MONARK UAS (42min, 1kg payload, modular radio, NDAA), MK1 VTOL hybrid (100mi BVLOS, 80x EO, MAVNet); EchoPilot AI FC (FC-2051), EchoTherm 320 thermal (TCAM-0044), Jetson Orin NX TAA (AI-0014)
+- **ARK Electronics** full site mine (9 parts): ARKV6X, ARKV6X Extended Range (4000dps IIM-42653), ARK FPV FC (Betaflight+PX4+ArduPilot), ARK Pi6X (RPi CM4/CM5 integrated); ARK 4IN1 ESC + CONS variant; ARK GPS (M9N), ARK RTK GPS (F9P L1/L2); ARK Flow (optical flow + 30m ToF LiDAR) — all Blue UAS listed, USA made
+
+### Added — Patterns/PIE
+- **All brief cards now clickable**: Lead story, gray zone entities, supply chain, watch list, intel feed — all expand to full detail modal with buyer exposure, action, sources
+- **Easter egg system**: 12 trigger conditions, toast notifications (Critical ×5, GS-13 unlock at 50 taps, analyst cert at 20, etc.)
+- **Legend modal**: `? Legend` button in brief header — signal type guide, section descriptions, interaction guide, PIE model methodology note
+- **`wireAllCards()`**: consolidates all card wiring, replaces per-renderer `wirePredCards()` calls
+- **`buildPredModalBody()`**: shared prediction modal builder used by all renderers
+- **URL param filter on /platforms/**: `?filter=survey` → mapping chip, `?filter=inspection` → keyword match, all category keys supported; chip clicks write URL via `history.replaceState`
+- **Intel feed cards**: `data-intel-idx` attrs, click-to-expand with full summary + source link
+- **Signal stat bars**: tap jumps to Flags tab
+- **Hedge boxes**: now render inline on pred cards (not just in modal)
+
+### Fixed — Patterns/PIE
+- Brief stuck at "Loading brief..." — orphaned `}}` from intel_feed loop refactor broke `renderBriefPanel`
+- Two missing function declarations eaten by `str_replace` edits: `openDetailModal` and `async function loadBriefPanel`
+- Sources rendered as `[object Object]` — lead story and supply chain modals were calling `.join()` on `{name, url, type}` objects; now maps to linked `name ↗`
+- Duplicate `loadBriefPanel` call in `renderAll` removed
+- Self-promotional hedge in `pie_brief.json` and `pie_weekly.json`: "like DroneClear Document Builder" → neutral factual hedge
+- Subscribe button removed from Patterns topbar
+
+### Data Quality
+- KrattWorks Ghost Dragon DM-0032: prior entry had fabricated specs (25kg MTOW, 100km range, 130km/h — all wrong). Corrected with real website data: 40min, 20km, dual-band GNSS, 640x512 LWIR, IPX5, deployed Ukraine/Georgia/Moldova/Estonia
+
 
 ### Added
 - **DFR Regulatory Intelligence Brief** (docx) — deep research document covering FAA COW/COA framework, TBVLOS→COW transition, Part 108 NPRM timeline, landmark case studies (Chula Vista, Fort Wayne, Campbell PD, Paladin), equipment requirements by waiver type, and 8 copy-ready waiver templates. Includes 5 Forge troubleshooting KB entries for compliance category.
