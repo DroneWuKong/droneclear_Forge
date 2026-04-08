@@ -408,14 +408,40 @@ body { font-family:var(--sans); background:var(--bg); color:var(--text); -webkit
         const catLabel = catLabels;
         if (meta) meta.textContent = results.length === 0 ? 'No results' : `${results.length} result${results.length !== 1 ? 's' : ''}`;
 
-        // Hide category grid, show results list
-        const catGrid = content.querySelector('.browse-grid');
+        // Compute NDAA counts for filter pills
+        const ndaaOk  = results.filter(p => p.ndaa_compliant === true).length;
+        const ndaaBad = results.filter(p => p.ndaa_compliant === false).length;
+        const china   = results.filter(p => (p.manufacturer_country||'').toLowerCase().includes('china')).length;
+        const usa     = results.filter(p => ['usa','united states'].includes((p.manufacturer_country||'').toLowerCase())).length;
 
-        let html = '<div class="browse-list">';
-        if (results.length === 0) {
-            html += `<div class="browse-empty"><i class="ph ph-magnifying-glass" style="font-size:32px;display:block;margin-bottom:8px;opacity:0.3"></i>No parts match "${query}"</div>`;
+        // Get active NDAA filter from global state
+        const activeNdaa = ndaaFilter || 'all';
+
+        // Apply NDAA filter to results before rendering
+        let filtered = results;
+        if (activeNdaa === 'ndaa')     filtered = results.filter(p => p.ndaa_compliant === true);
+        else if (activeNdaa === 'non-ndaa') filtered = results.filter(p => p.ndaa_compliant === false);
+        else if (activeNdaa === 'china')    filtered = results.filter(p => (p.manufacturer_country||'').toLowerCase().includes('china'));
+        else if (activeNdaa === 'usa')      filtered = results.filter(p => ['usa','united states'].includes((p.manufacturer_country||'').toLowerCase()));
+
+        // Build NDAA pills HTML
+        let pillsHtml = '';
+        if (ndaaOk + ndaaBad > 0) {
+            pillsHtml = `<div class="ndaa-pills" id="global-ndaa-pills" style="padding:0 16px 8px">
+                <button class="ndaa-pill ${activeNdaa==='all'?'active-all':''}" data-ndaa="all">All (${results.length})</button>
+                ${ndaaOk  ? `<button class="ndaa-pill ${activeNdaa==='ndaa'?'active-ndaa':''}" data-ndaa="ndaa">NDAA ✓ (${ndaaOk})</button>` : ''}
+                ${ndaaBad ? `<button class="ndaa-pill ${activeNdaa==='non-ndaa'?'active-non':''}" data-ndaa="non-ndaa">Non-NDAA ✗ (${ndaaBad})</button>` : ''}
+                ${china   ? `<button class="ndaa-pill ${activeNdaa==='china'?'active-cn':''}" data-ndaa="china">China (${china})</button>` : ''}
+                ${usa     ? `<button class="ndaa-pill ${activeNdaa==='usa'?'active-us':''}" data-ndaa="usa">USA (${usa})</button>` : ''}
+            </div>`;
+        }
+
+        // Hide category grid, show results list
+        let html = pillsHtml + '<div class="browse-list">';
+        if (filtered.length === 0) {
+            html += `<div class="browse-empty"><i class="ph ph-magnifying-glass" style="font-size:32px;display:block;margin-bottom:8px;opacity:0.3"></i>No parts match "${query}"${activeNdaa !== 'all' ? ' with current filter' : ''}</div>`;
         } else {
-            for (const p of results.slice(0, 100)) {
+            for (const p of filtered.slice(0, 100)) {
                 const hasImg = p.image_file && !p.image_file.startsWith('data:');
                 const price = p.price_usd ? '$' + parseFloat(p.price_usd).toLocaleString() : '';
                 const catName = catLabels[p._category] || p._category;
@@ -431,15 +457,26 @@ body { font-family:var(--sans); background:var(--bg); color:var(--text); -webkit
                     ${price ? `<div class="browse-item-price">${price}</div>` : ''}
                 </div>`;
             }
-            if (results.length > 100) {
-                html += `<div class="browse-empty" style="padding:12px 20px">Showing 100 of ${results.length} results — refine your search</div>`;
+            if (filtered.length > 100) {
+                html += `<div class="browse-empty" style="padding:12px 20px">Showing 100 of ${filtered.length} results — refine your search</div>`;
             }
         }
         html += '</div>';
         content.innerHTML = html;
 
+        // Wire up NDAA pills in global search results
+        const pillsContainer = document.getElementById('global-ndaa-pills');
+        if (pillsContainer) {
+            pillsContainer.querySelectorAll('.ndaa-pill').forEach(btn => {
+                btn.addEventListener('click', function() {
+                    ndaaFilter = this.dataset.ndaa;
+                    runGlobalSearch(query);
+                });
+            });
+        }
+
         // Track search
-        if (window.__forgeAnalytics) window.__forgeAnalytics.search(query, 'global', results.length);
+        if (window.__forgeAnalytics) window.__forgeAnalytics.search(query, 'global', filtered.length);
     }
 
     // Wire up global search input
@@ -453,6 +490,7 @@ body { font-family:var(--sans); background:var(--bg); color:var(--text); -webkit
         input.addEventListener('keydown', function(e) {
             if (e.key === 'Escape') {
                 this.value = '';
+                ndaaFilter = 'all';
                 showCategories();
             }
         });
@@ -627,6 +665,53 @@ body { font-family:var(--sans); background:var(--bg); color:var(--text); -webkit
         control_link_tx: [
             {field:'manufacturer', label:'Manufacturer'},
             {field:'country', label:'Country'},
+        ],
+        optical_flow: [
+            {field:'ndaa_compliant', label:'NDAA'},
+            {field:'manufacturer_country', label:'Country'},
+            {field:'interface', label:'Interface'},
+            {field:'rangefinder', label:'Rangefinder'},
+        ],
+        gps_modules: [
+            {field:'ndaa_compliant', label:'NDAA'},
+            {field:'manufacturer_country', label:'Country'},
+            {field:'bands', label:'Bands'},
+        ],
+        navigation_pnt: [
+            {field:'ndaa_compliant', label:'NDAA'},
+            {field:'manufacturer_country', label:'Country'},
+        ],
+        companion_computers: [
+            {field:'ndaa_compliant', label:'NDAA'},
+            {field:'manufacturer_country', label:'Country'},
+            {field:'sbc_family', label:'Family'},
+        ],
+        c2_datalinks: [
+            {field:'ndaa_compliant', label:'NDAA'},
+            {field:'manufacturer', label:'Manufacturer'},
+            {field:'protocol', label:'Protocol'},
+        ],
+        ground_control_stations: [
+            {field:'ndaa_compliant', label:'NDAA'},
+            {field:'manufacturer', label:'Manufacturer'},
+        ],
+        swarm_software: [
+            {field:'open_source', label:'Open Source'},
+            {field:'manufacturer', label:'Developer'},
+        ],
+        ew_systems: [
+            {field:'ndaa_compliant', label:'NDAA'},
+            {field:'subcategory', label:'Type'},
+            {field:'manufacturer_country', label:'Country'},
+        ],
+        gimbals: [
+            {field:'ndaa_compliant', label:'NDAA'},
+            {field:'manufacturer', label:'Manufacturer'},
+            {field:'axis_count', label:'Axes'},
+        ],
+        ai_accelerators: [
+            {field:'ndaa_compliant', label:'NDAA'},
+            {field:'manufacturer_country', label:'Country'},
         ],
     };
 
