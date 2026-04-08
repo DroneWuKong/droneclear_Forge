@@ -13,6 +13,7 @@
   --border:#2e2e26;--border-hi:#3e3e34;
   /* per-tab accent: Feed=amber, Programs=violet, Companies=cyan, Regions=blue */
   --feed:#f59e0b;--feed-d:#f59e0b18;
+  --sol:#10b981;--sol-d:#10b98118;
   --prog:#8b5cf6;--prog-d:#8b5cf618;
   --comp:#06b6d4;--comp-d:#06b6d418;
   --reg:#3b82f6;--reg-d:#3b82f618;
@@ -158,6 +159,7 @@ a{color:var(--blue);text-decoration:none}a:hover{text-decoration:underline}
   <button class="tab" data-tab="programs" data-accent="prog"><i class="ph ph-flag-banner"></i> Programs</button>
   <button class="tab" data-tab="companies" data-accent="comp"><i class="ph ph-buildings"></i> Companies</button>
   <button class="tab" data-tab="regions" data-accent="reg"><i class="ph ph-globe-hemisphere-west"></i> Regions</button>
+  <button class="tab" data-tab="solicitations" data-accent="sol"><i class="ph ph-file-search"></i> Solicitations <span class="count" id="sol-count">—</span></button>
 </div>
 <div class="content">
   <div class="panel active" id="panel-feed">
@@ -221,6 +223,13 @@ a{color:var(--blue);text-decoration:none}a:hover{text-decoration:underline}
   <div class="panel" id="panel-regions">
     <p style="font-size:11px;color:var(--text-d);margin-bottom:12px">Geographic distribution · Click a region to filter the feed</p>
     <div id="intel-region-list"></div>
+  </div>
+  <div class="panel" id="panel-solicitations">
+    <div class="stats-bar" id="sol-stats">Loading solicitations…</div>
+    <input class="search-bar" id="sol-search" placeholder="Search solicitations… (e.g. Skydio, counter-UAS, DoD, SBIR, RFP, NAICS 336411)" oninput="renderSolicitations()">
+    <div class="filter-row" style="margin-bottom:10px;flex-wrap:wrap;gap:6px" id="sol-source-filters"></div>
+    <div class="filter-row" style="margin-bottom:14px;flex-wrap:wrap;gap:6px" id="sol-type-filters"></div>
+    <div id="sol-list">Loading…</div>
   </div>
 </div>
 <div class="ro" id="ro" onclick="if(event.target===this)cr()"><div class="rf"><div class="rb"><span class="rt" id="rt">Loading…</span><button onclick="oe()">↗</button><button onclick="cr()">✕</button></div><iframe class="ri" id="ri" sandbox="allow-scripts allow-same-origin allow-popups"></iframe></div></div>
@@ -299,7 +308,7 @@ function renderDFR(){
   }).join('')+(a.length>60?`<div style="text-align:center;padding:20px"><button onclick="feedLimit=feedLimit+50;renderFeed()" style="background:none;border:1px solid var(--border);border-radius:20px;padding:8px 20px;font:600 11px var(--font);color:var(--text-s);cursor:pointer">Load ${Math.min(50,a.length-feedLimit)} more — ${a.length-feedLimit} remaining</button></div>`:'');
 }
 
-document.querySelectorAll('.tab').forEach(t=>{t.addEventListener('click',()=>{document.querySelectorAll('.tab').forEach(x=>x.classList.remove('active'));document.querySelectorAll('.panel').forEach(x=>x.classList.remove('active'));t.classList.add('active');document.getElementById('panel-'+t.dataset.tab).classList.add('active');const acc=t.dataset.accent||'feed';document.documentElement.style.setProperty('--tab-accent',`var(--${acc})`);document.documentElement.style.setProperty('--tab-accent-d',`var(--${acc}-d)`);if(t.dataset.tab==='dfr')renderDFR();if(t.dataset.tab==='defense')renderDefense();if(t.dataset.tab==='commercial')renderCommercial();window.scrollTo({top:0,behavior:'smooth'});});});
+document.querySelectorAll('.tab').forEach(t=>{t.addEventListener('click',()=>{document.querySelectorAll('.tab').forEach(x=>x.classList.remove('active'));document.querySelectorAll('.panel').forEach(x=>x.classList.remove('active'));t.classList.add('active');document.getElementById('panel-'+t.dataset.tab).classList.add('active');const acc=t.dataset.accent||'feed';document.documentElement.style.setProperty('--tab-accent',`var(--${acc})`);document.documentElement.style.setProperty('--tab-accent-d',`var(--${acc}-d)`);if(t.dataset.tab==='dfr')renderDFR();if(t.dataset.tab==='defense')renderDefense();if(t.dataset.tab==='commercial')renderCommercial();if(t.dataset.tab==='solicitations')renderSolicitations();window.scrollTo({top:0,behavior:'smooth'});});});
 function toggleFS(hdr){hdr.classList.toggle('open');const row=hdr.nextElementSibling;row.classList.toggle('open');}
 function rFi(){
   const cc={all:ALL.length,defense:0,financial:0,commercial:0,dfr:0};ALL.forEach(a=>cc[cat(a)]++);
@@ -441,6 +450,7 @@ window.closeDM=function(){document.getElementById('dm-overlay').classList.remove
 
 // ── PIE + PAYWALL GLOBALS ──
 let PIE_FLAGS=[], PIE_PREDS=[], PIE_BRIEF={};
+let SOL_DATA={meta:{},solicitations:[]};
 
 function getTier(){
   var tok=localStorage.getItem('wingman_sub_token')||'';
@@ -816,7 +826,8 @@ Promise.all([
   fetch('pie_flags.json').then(r=>r.ok?r.json():[]).catch(()=>[]),
   fetch('pie_predictions.json').then(r=>r.ok?r.json():[]).catch(()=>[]),
   fetch('pie_brief.json').then(r=>r.ok?r.json():{}).catch(()=>({})),
-]).then(([articles, defDB, comDB, dfrDB, forgeIntel, pieFlags, piePreds, pieBrief])=>{
+  fetch('solicitations.json').then(r=>r.ok?r.json():{meta:{},solicitations:[]}).catch(()=>({meta:{},solicitations:[]})),
+]).then(([articles, defDB, comDB, dfrDB, forgeIntel, pieFlags, piePreds, pieBrief, solData])=>{
   ALL=articles;
   DEFENSE_DB=[...(defDB.records||[]), ...forgeIntelToDefenseRecords(forgeIntel)];
   COMMERCIAL_DB=[...(comDB.records||[]), ...forgeIntelToCommercialRecords(forgeIntel)];
@@ -826,10 +837,160 @@ Promise.all([
   PIE_FLAGS=pieFlags||[];
   PIE_PREDS=piePreds||[];
   PIE_BRIEF=pieBrief||{};
+  SOL_DATA=solData||{meta:{},solicitations:[]};
   const pfc=document.getElementById('pie-footer-count');if(pfc)pfc.textContent=`PIE (${(pieFlags||[]).length} flags, ${(piePreds||[]).length} predictions)`;
+  const sc=document.getElementById('sol-count');if(sc){const n=(SOL_DATA.solicitations||[]).length;sc.textContent=n>0?n:'—';}
   rFi();renderFeed();renderDFR();renderDefense();renderCommercial();renderPIESidebar();rP();rC();rR();
 }).catch(e=>{document.getElementById('feed-list').innerHTML=`<div style="text-align:center;padding:40px;color:var(--red)">Error: ${e.message}</div>`;});
 
+
+
+
+// ── Solicitations Tab ─────────────────────────────────────────────────────
+let solSrcFilter='all', solTypeFilter='all';
+
+const SOL_SOURCE_LABELS={
+  usaspending:'USAspending',
+  sam:'SAM.gov',
+  sbir:'SBIR.gov',
+  news:'News Signal',
+};
+const SOL_TYPE_COLORS={
+  'award':           'var(--green)',
+  'Award Notice':    'var(--green)',
+  'Solicitation':    'var(--sol)',
+  'Combined Synopsis/Solicitation': 'var(--sol)',
+  'Sources Sought':  'var(--amber)',
+  'Presolicitation': 'var(--amber)',
+  'SBIR/STTR Award': 'var(--blue)',
+  'news_signal':     'var(--text-d)',
+};
+
+function solTypeColor(type){
+  if(!type) return 'var(--border-hi)';
+  for(const[k,v] of Object.entries(SOL_TYPE_COLORS)) if(type.toLowerCase().includes(k.toLowerCase())) return v;
+  return 'var(--border-hi)';
+}
+
+function fmtAmount(n){
+  if(!n) return null;
+  if(n>=1e9) return `$${(n/1e9).toFixed(1)}B`;
+  if(n>=1e6) return `$${(n/1e6).toFixed(1)}M`;
+  if(n>=1e3) return `$${(n/1e3).toFixed(0)}K`;
+  return `$${n.toLocaleString()}`;
+}
+
+function fmtSolDate(d){
+  if(!d) return '';
+  try{
+    const dt=new Date(d);
+    if(isNaN(dt)) return d.slice?.(0,10)||'';
+    return dt.toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'});
+  }catch(e){return d.slice?.(0,10)||'';}
+}
+
+function renderSolicitations(){
+  const sols=(SOL_DATA.solicitations||[]);
+  const meta=SOL_DATA.meta||{};
+  const q=(document.getElementById('sol-search')?.value||'').toLowerCase().trim();
+
+  // Filter
+  let filtered=sols.filter(s=>{
+    if(solSrcFilter!=='all' && s.source!==solSrcFilter) return false;
+    if(solTypeFilter==='open' && !s.deadline) return false;
+    if(solTypeFilter==='gray_zone' && !s.gray_zone_flag) return false;
+    if(solTypeFilter==='blue_uas' && !s.blue_uas_flag) return false;
+    if(solTypeFilter==='award' && !['award','Award Notice','SBIR/STTR Award'].includes(s.type)) return false;
+    if(q){
+      const hay=[s.title,s.agency,s.sub_agency,s.recipient,s.naics,s.set_aside,s.source_label].join(' ').toLowerCase();
+      if(!hay.includes(q)) return false;
+    }
+    return true;
+  });
+
+  // Stats bar
+  const gzCount=sols.filter(s=>s.gray_zone_flag).length;
+  const buCount=sols.filter(s=>s.blue_uas_flag).length;
+  const openCount=sols.filter(s=>s.deadline).length;
+  const statsEl=document.getElementById('sol-stats');
+  if(statsEl) statsEl.innerHTML=`
+    <span><b style="color:var(--sol)">${filtered.length}</b> of ${sols.length} solicitations</span>
+    <span><b style="color:var(--red)">${gzCount}</b> gray zone flags</span>
+    <span><b style="color:var(--green)">${buCount}</b> Blue UAS hits</span>
+    <span><b style="color:var(--amber)">${openCount}</b> open deadlines</span>
+    <span style="margin-left:auto;color:var(--text-xd)">${meta.generated_at?'Scanned '+fmtSolDate(meta.generated_at):''}</span>
+  `;
+
+  // Source filter pills
+  const srcCounts={all:sols.length};
+  sols.forEach(s=>{srcCounts[s.source]=(srcCounts[s.source]||0)+1;});
+  const srcEl=document.getElementById('sol-source-filters');
+  if(srcEl) srcEl.innerHTML=
+    `<span style="font:10px var(--mono);color:var(--text-d);margin-right:4px">Source:</span>`+
+    Object.entries(srcCounts).map(([src,cnt])=>
+      `<button class="fbtn${solSrcFilter===src?' active':''}" onclick="solSrcFilter='${src}';renderSolicitations()">
+        ${src==='all'?'All':SOL_SOURCE_LABELS[src]||src} (${cnt})
+      </button>`
+    ).join('');
+
+  // Type filter pills
+  const typeEl=document.getElementById('sol-type-filters');
+  if(typeEl) typeEl.innerHTML=
+    `<span style="font:10px var(--mono);color:var(--text-d);margin-right:4px">Filter:</span>`+
+    [
+      ['all',   'All'],
+      ['open',  `Open Deadlines (${openCount})`],
+      ['award', `Awards`],
+      ['gray_zone', `<span style="color:var(--red)">⚠ Gray Zone (${gzCount})</span>`],
+      ['blue_uas',  `<span style="color:var(--green)">✓ Blue UAS (${buCount})</span>`],
+    ].map(([k,label])=>
+      `<button class="fbtn${solTypeFilter===k?' active':''}" onclick="solTypeFilter='${k}';renderSolicitations()">${label}</button>`
+    ).join('');
+
+  // Card list
+  const listEl=document.getElementById('sol-list');
+  if(!listEl) return;
+  if(!sols.length){
+    listEl.innerHTML=`<div style="text-align:center;padding:40px;color:var(--text-d)">
+      <p style="font-size:13px;margin-bottom:8px">No solicitations data yet</p>
+      <p style="font-size:11px">Run the procurement scanner to populate this feed</p>
+    </div>`;
+    return;
+  }
+  if(!filtered.length){
+    listEl.innerHTML=`<div style="text-align:center;padding:30px;color:var(--text-d);font-size:12px">No results match your filters</div>`;
+    return;
+  }
+
+  const LIMIT=75;
+  const show=filtered.slice(0,LIMIT);
+  listEl.innerHTML=show.map(s=>{
+    const gz=s.gray_zone_flag;
+    const bu=s.blue_uas_flag;
+    const borderColor=gz?'var(--red)':bu?'var(--green)':solTypeColor(s.type);
+    const amount=fmtAmount(s.amount);
+    const deadline=s.deadline?`<span style="color:var(--amber);font-weight:600">⏰ ${fmtSolDate(s.deadline)}</span>`:'';
+    const gzBadge=gz?`<span style="background:var(--red-d);color:var(--red);border:1px solid var(--red);border-radius:4px;padding:1px 5px;font-size:9px;font-weight:700">⚠ GRAY ZONE</span>`:'';
+    const buBadge=bu?`<span style="background:var(--green-d);color:var(--green);border:1px solid var(--green);border-radius:4px;padding:1px 5px;font-size:9px;font-weight:700">✓ BLUE UAS</span>`:'';
+    const srcBadge=`<span style="background:var(--surface);border:1px solid var(--border);border-radius:4px;padding:1px 5px;font-size:9px;color:var(--text-d)">${SOL_SOURCE_LABELS[s.source]||s.source}</span>`;
+    const typeBadge=s.type&&s.type!=='news_signal'?`<span style="color:${solTypeColor(s.type)};font-size:9px;font-weight:600;text-transform:uppercase;letter-spacing:.04em">${s.type}</span>`:'';
+    const naicsBadge=s.naics?`<span style="color:var(--text-xd);font-size:9px">NAICS ${s.naics}</span>`:'';
+    const setAsideBadge=s.set_aside?`<span style="color:var(--purple);font-size:9px">${s.set_aside}</span>`:'';
+    return `<div class="acard" style="border-left-color:${borderColor}" onclick="window.open('${s.url||'#'}','_blank')">
+      <div style="display:flex;gap:6px;align-items:flex-start;margin-bottom:6px;flex-wrap:wrap">
+        ${gzBadge}${buBadge}${srcBadge}${typeBadge}${naicsBadge}${setAsideBadge}
+      </div>
+      <div style="font:600 12px var(--font);color:var(--text);margin-bottom:5px;line-height:1.4">${s.title||'Untitled'}</div>
+      <div style="font:10px var(--mono);color:var(--text-d);margin-bottom:4px">${[s.agency,s.sub_agency].filter(Boolean).join(' › ')}</div>
+      ${s.recipient?`<div style="font:10px var(--mono);color:var(--text-s)">Recipient: ${s.recipient}</div>`:''}
+      <div style="display:flex;gap:12px;align-items:center;margin-top:6px;flex-wrap:wrap">
+        ${amount?`<span style="font:700 12px var(--mono);color:var(--sol)">${amount}</span>`:''}
+        ${deadline}
+        <span style="font:10px var(--mono);color:var(--text-xd);margin-left:auto">${fmtSolDate(s.posted_date)}</span>
+      </div>
+    </div>`;
+  }).join('')+(filtered.length>LIMIT?`<div style="text-align:center;padding:16px;color:var(--text-d);font-size:11px">${filtered.length-LIMIT} more — refine search to narrow</div>`:'');
+}
 
 function fmtUpdated(iso) {
   try {
