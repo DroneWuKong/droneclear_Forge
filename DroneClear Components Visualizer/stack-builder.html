@@ -197,6 +197,8 @@ select option{background:var(--surface)}
 // uk    — metres, kg, m/s, acres  (British survey: metric distances, acreage)
 // intl  — international feet, lb, mph, acres (alias for clarity)
 var SYS = 'si';
+var stackPieFlags = [];
+var stackPieByComp = {};
 
 // Conversion constants
 var M_PER_FT_INTL = 0.3048;          // international foot (exact, ISO 31-1)
@@ -778,7 +780,7 @@ function calculate() {
       <div class="detail-row"><span class="dr-label">Integration</span><span class="dr-val ${compat==='mount required'?'warn':compat&&(compat.includes('Gremsy')||compat.includes('Skyport')||compat.includes('native')||compat.includes('SnapFit'))?'good':'warn'}">${compat||'Verify mount'}</span></div>
       <div class="detail-row"><span class="dr-label">Platform NDAA</span><span class="dr-val ${p.ndaa?'good':'bad'}">${p.ndaa?'✓ Compliant':'✗ Non-compliant (FCC Covered List)'}</span></div>
       <div class="detail-row"><span class="dr-label">Payload NDAA</span><span class="dr-val ${pl.ndaa?'good':'warn'}">${pl.ndaa?'✓ Compliant':'⚠ Non-compliant ('+pl.mfr+')'}</span></div>
-    </div>`;
+    </div>\` + renderStackPie(getStackPieFlags(p.id, p.name), getStackPieFlags(pl.id, pl.name)) + \`;
 
     // Coverage bar (relative to 100 ha as "excellent")
     const barMax = usesAcres() ? 247 : 100; // 100 ha ≈ 247 ac
@@ -812,6 +814,55 @@ function calculate() {
   resultEl.innerHTML = html;
   resultEl.classList.add('visible');
   document.getElementById('empty-state').style.display = 'none';
+}
+
+// ── PIE flags ─────────────────────────────────────────────────────────────────
+(async function() {
+  try {
+    const r = await fetch('pie_flags.json');
+    const all = await r.json();
+    const TYPES = new Set(['diversion_risk','supply_constraint','grayzone','supply_chain_risk']);
+    stackPieFlags = all.filter(f => TYPES.has(f.flag_type));
+    for (const f of stackPieFlags) {
+      const cid = (f.component_id||'').toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'');
+      if (cid) { if (!stackPieByComp[cid]) stackPieByComp[cid] = []; stackPieByComp[cid].push(f); }
+    }
+  } catch(e) {}
+})();
+
+function getStackPieFlags(id, name) {
+  if (!stackPieFlags.length) return [];
+  const idSlug = (id||'').toLowerCase().replace(/[^a-z0-9]+/g,'-');
+  const namSlug = (name||'').toLowerCase().replace(/[^a-z0-9]+/g,'-');
+  const results = []; const seen = new Set();
+  for (const [cid, flist] of Object.entries(stackPieByComp)) {
+    const cidBase = cid.split('-').slice(0,3).join('-');
+    if (idSlug.includes(cidBase) || namSlug.includes(cidBase) ||
+        (cidBase.length >= 4 && (idSlug.includes(cidBase.slice(0,4)) || namSlug.includes(cidBase.slice(0,4))))) {
+      for (const f of flist) { if (!seen.has(f.id)) { seen.add(f.id); results.push(f); } }
+    }
+  }
+  const sevOrd = {critical:0,high:1,warning:2,info:3};
+  return results.sort((a,b)=>(sevOrd[a.severity]||3)-(sevOrd[b.severity]||3)).slice(0,3);
+}
+
+function renderStackPie(pf, plf) {
+  const all = [...pf, ...plf]; if (!all.length) return '';
+  const sevOrd = {critical:0,high:1,warning:2,info:3};
+  const sorted = all.sort((a,b)=>(sevOrd[a.severity]||3)-(sevOrd[b.severity]||3));
+  const worst = sorted[0].severity;
+  const COLOR = {critical:'#ef4444',high:'#f97316',warning:'#f59e0b',info:'#60a5fa'};
+  const col = COLOR[worst]||'#f59e0b';
+  const items = sorted.map(f =>
+    '<div style="padding:5px 8px;border-left:3px solid '+col+';background:'+col+'0d;border-radius:0 4px 4px 0;margin-bottom:3px">' +
+    '<div style="font:700 10px var(--mono);color:'+col+'">⚡ '+f.flag_type.replace(/_/g,' ')+' · '+f.severity+'</div>' +
+    '<div style="font-size:10px;color:var(--text-d);margin-top:1px">'+f.title+'</div>' +
+    (f.detail ? '<div style="font-size:9px;color:#5e5a50;margin-top:1px">'+f.detail.slice(0,120)+(f.detail.length>120?'…':'')+'</div>' : '') +
+    '</div>'
+  ).join('');
+  return '<div style="margin-top:12px;padding:10px 12px;background:'+col+'08;border:1px solid '+col+'33;border-radius:8px">' +
+    '<div style="font:700 9px var(--mono);letter-spacing:.08em;color:'+col+';text-transform:uppercase;margin-bottom:5px">⬡ PIE — '+all.length+' intelligence flag'+(all.length>1?'s':'')+'</div>' +
+    items + '</div>';
 }
 
 // ── URL preload ───────────────────────────────────────────────────────────────
