@@ -371,6 +371,17 @@ def save_results(gaps, mined_entries, analytics_data):
         }, f, indent=2)
     print(f'\n  Gap analysis saved: {gap_path}')
     
+    # Also write to static/ so the analytics page can load it
+    static_path = os.path.join(os.path.dirname(__file__), '..', 
+        'DroneClear Components Visualizer', 'gap_analysis_latest.json')
+    try:
+        import shutil
+        shutil.copy2(gap_path, static_path)
+        print(f'  Copied to static: {static_path}')
+        print(f'  → Deploy and it will appear at /static/gap_analysis_latest.json')
+    except Exception as e:
+        print(f'  Warning: could not copy to static: {e}')
+    
     # Save mined entries (review queue)
     if mined_entries:
         mined_path = os.path.join(OUTPUT_DIR, f'mined_entries_{timestamp}.json')
