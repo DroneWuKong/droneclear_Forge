@@ -721,8 +721,13 @@ body { font-family:var(--sans); background:var(--bg); color:var(--text); -webkit
             specsHtml += `<div class="modal-spec"><span class="modal-spec-key">${label}</span><span class="modal-spec-val">${v}</span></div>`;
         }
 
-        // Links
-        const linkUrl = (p.links && p.links[0]) || p.link || null;
+        // Source resolution — check all possible source fields in priority order
+        const sourceUrl = (p.links && p.links[0]) || p.link || p.product_url || p.datasheet_url
+            || (p.source && p.source !== 'internal_archetype' && p.source !== 'null' && p.source !== null ? p.source : null)
+            || null;
+        const isArchetype = p.source === 'internal_archetype';
+        const isUnverified = p.source_needed === true || (p.source === null && !isArchetype);
+        const hasVerification = p.verification && p.verification.status;
 
         // Tags
         const tagsHtml = (p.tags && p.tags.length)
@@ -731,18 +736,43 @@ body { font-family:var(--sans); background:var(--bg); color:var(--text); -webkit
               + '</div>'
             : '';
 
+        // Source footer — always rendered at bottom of modal
+        let sourceFooterHtml = '';
+        if (isArchetype) {
+            sourceFooterHtml = `<div style="margin-top:14px;padding:8px 10px;background:rgba(148,163,184,.06);border:1px solid rgba(148,163,184,.15);border-radius:6px;font-size:11px;color:var(--text-dim)">
+                <i class="ph ph-cube"></i> Internal build archetype — no manufacturer. Reference only.
+            </div>`;
+        } else if (isUnverified) {
+            sourceFooterHtml = `<div style="margin-top:14px;padding:8px 10px;background:rgba(239,68,68,.06);border:1px solid rgba(239,68,68,.25);border-radius:6px;font-size:11px;color:#fca5a5">
+                <i class="ph ph-warning"></i> Source not verified — data may be incomplete or inaccurate. Do not use in procurement decisions without independent verification.
+            </div>`;
+        } else if (sourceUrl) {
+            sourceFooterHtml = `<div style="margin-top:14px;padding:8px 10px;background:rgba(0,212,255,.04);border:1px solid rgba(0,212,255,.15);border-radius:6px;display:flex;align-items:center;justify-content:space-between;gap:8px">
+                <span style="font:500 11px var(--mono);color:var(--text-dim);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1">${sourceUrl.replace(/^https?:\/\//,'')}</span>
+                <a href="${sourceUrl}" target="_blank" rel="noopener" style="color:var(--accent);font:600 11px var(--mono);text-decoration:none;white-space:nowrap;flex-shrink:0">Source →</a>
+            </div>`;
+        }
+
+        // Verification badge if audited
+        const verificationHtml = (hasVerification && p.verification.status !== 'unverified')
+            ? `<div style="margin-top:6px;display:inline-flex;align-items:center;gap:4px;padding:3px 8px;background:rgba(34,197,94,.08);border:1px solid rgba(34,197,94,.2);border-radius:4px;font:600 9px var(--mono);color:#86efac">
+                <i class="ph ph-seal-check"></i> AUDITED ${p.verification.audited_at || ''}
+               </div>`
+            : '';
+
         modalContent.innerHTML = `
             <button class="browse-modal-close" onclick="closeDetail()"><i class="ph ph-x"></i></button>
             ${hasImg ? `<img src="${p.image_file}" alt="${p.name}">` : ''}
             <h3>${p.name}</h3>
             <div class="modal-mfr">${p.manufacturer || ''}</div>
             <div class="modal-pid">${p.pid}</div>
+            ${verificationHtml}
             ${p.description ? `<div class="modal-desc">${p.description}</div>` : ''}
             ${specsHtml ? `<div class="modal-specs">${specsHtml}</div>` : ''}
             ${tagsHtml}
             ${p.ndaa_note ? `<div style="margin-top:10px;padding:8px 10px;background:rgba(245,158,11,.06);border:1px solid rgba(245,158,11,.2);border-radius:6px;font-size:11px;color:var(--text-dim)">${p.ndaa_note}</div>` : ''}
             ${renderPieFlags(getPieFlags(category, p.name||'', p.manufacturer||'', p.ndaa_compliant))}
-            ${linkUrl ? `<a href="${linkUrl}" target="_blank" rel="noopener" style="display:inline-block;margin-top:12px;color:var(--accent);font-size:13px;text-decoration:none;">View product page →</a>` : ''}
+            ${sourceFooterHtml}
         `;
         modal.classList.add('open');
         modal.onclick = function(e) { if (e.target === modal) closeDetail(); };
