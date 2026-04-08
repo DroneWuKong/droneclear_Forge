@@ -168,7 +168,7 @@
 ### Added
 - Wingman AI chat tool (wingman.html) — AI-powered drone troubleshooting with GitHub repo fetch + live web search + multi-image visual triage
 - Wingman AI deployed as standalone HTML at /wingman/ route
-- Orqa POC mode toggle in Wingman AI (orange theme, Orqa product persona)
+- POC mode toggle in Wingman AI (partner theme, partner product persona)
 
 ### Changed
 - layout.css: compact Wingman-style topbar across all pages (10px padding vs 30px, no backdrop-filter)
