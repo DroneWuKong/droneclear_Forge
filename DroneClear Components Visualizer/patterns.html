@@ -1390,8 +1390,18 @@ document.querySelectorAll(".tab").forEach(t => {
 // ── Region extraction from flag detail text ──
 const REGIONS = ["China","Russia","Iran","Ukraine","Turkey","Israel","US","EU","NATO","Taiwan","North Korea","Japan","India","Australia","UK","France","Germany"];
 function extractRegions(f) {
+  // Use explicit region field first (from LLM predictions and static flags)
+  const REGION_FIELD_MAP = {
+    'north-america': 'North America', 'europe': 'Europe',
+    'asia-pacific': 'Asia-Pacific', 'ukraine': 'Ukraine',
+    'russia': 'Russia', 'middle-east': 'Middle East',
+    'africa': 'Africa', 'oceania': 'Oceania',
+    'south-america': 'South America',
+  };
+  if (f.region && REGION_FIELD_MAP[f.region]) return [REGION_FIELD_MAP[f.region]];
+  // Fall back to keyword extraction with word-boundary matching
   const text = (f.title||"") + " " + (f.detail||"") + " " + (f.prediction||"");
-  return REGIONS.filter(r => text.includes(r));
+  return REGIONS.filter(r => new RegExp("\\b" + r.replace(/ /g,"\\s+") + "\\b", "i").test(text));
 }
 
 // ── Active filters ──
@@ -2406,8 +2416,11 @@ function renderRegionMap() {
   const list = document.getElementById("region-list");
   const regionStats = Object.entries(REGION_DATA).map(([slug, data]) => {
     const flagCount = FLAGS.filter(f => {
-      const text = ((f.title||'')+(f.detail||'')).toLowerCase();
-      return data.countries.some(c => text.includes(c));
+      // Check explicit region field first
+      if (f.region === slug) return true;
+      // Fall back to keyword matching with word boundaries
+      const text = ((f.title||'')+(f.detail||'')+(f.prediction||'')).toLowerCase();
+      return data.countries.some(c => new RegExp('\b' + c.replace(/ /g,'\s+') + '\b', 'i').test(text));
     }).length;
     return {slug, ...data, flagCount};
   }).sort((a,b) => b.flagCount - a.flagCount);
