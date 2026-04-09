@@ -449,7 +449,7 @@ async function loadAll(){
       } catch(e) {}
       sessionStorage.setItem('forge_backfill_done', '1');
     }
-    try{var d=await fetch(DASH_FN+'?key='+KEY+'&range=30');if(d.ok){var dr=await d.json();DASH={overview:{total_views:dr.totals&&dr.totals.pageViews||0,total_wingman_queries:dr.totals&&dr.totals.queries||0,total_gap_analyses:dr.totals&&dr.totals.gapAnalyses||0,unique_sessions:dr.totals&&dr.totals.sessions||0,days_with_data:Object.keys(dr.daily||{}).length},daily_activity:Object.entries(dr.daily||{}).map(function(e){return{date:e[0],views:e[1].count||0,wingman_queries:0,gap_analyses:0};}),wingman_categories:Object.entries((dr.totals&&dr.totals.cats)||{}).map(function(e){return{cat:e[0],count:e[1]};}),top_gap_pairs:[]}}}catch(e){}
+    try{var d=await fetch(DASH_FN+'?key='+KEY+'&range=30');if(d.ok){var dr=await d.json();DASH={overview:{total_views:dr.totals&&dr.totals.pageViews||0,total_wingman_queries:dr.totals&&dr.totals.queries||0,total_gap_analyses:dr.totals&&dr.totals.gapAnalyses||0,unique_sessions:dr.totals&&dr.totals.sessions||0,days_with_data:Object.keys(dr.daily||{}).length},daily_activity:Object.entries(dr.daily||{}).map(function(e){return{date:e[0],views:e[1].pageViews||e[1].count||0,wingman_queries:e[1].count||0,gap_analyses:0};}),wingman_categories:Object.entries((dr.totals&&dr.totals.cats)||{}).map(function(e){return{cat:e[0],count:e[1]};}),top_gap_pairs:[]}}}catch(e){}
     try{var g=await fetch('/static/gap_analysis_latest.json');if(g.ok)GAPS=await g.json()}catch(e){}
     try{var tr=await fetch('/static/pie_trends.json');if(tr.ok)TRENDS=await tr.json()}catch(e){}
     if(!TRENDS)try{var tr2=await fetch('/pie_trends.json');if(tr2.ok)TRENDS=await tr2.json()}catch(e){}
@@ -689,24 +689,25 @@ function renderUsage(){
     sc(ov.days_with_data||0,'Days w/ Data','',''),
   ].join('');
   $('badge-usage').textContent=fmt(totalViews+totalWingman+totalGaps);
-  // Daily spark
-  if(daily.length){
-    var dk=daily.map(function(d){return(d.date||'').substring(5);});
-    var dv=daily.map(function(d){return(d.views||0)+(d.wingman_queries||0)+(d.gap_analyses||0);});
-    $('ug-daily').innerHTML=spark(dv,dk)+'<div style="font-size:10px;color:var(--an-text-muted);margin-top:6px">Views + Wingman + Gap runs per day</div>';
-  } else { $('ug-daily').innerHTML='<div class="an-empty">Builds over time</div>'; }
-  // Wingman categories
+  // Daily spark — use DASH daily_activity, fall back to LIVE.daily
+  var dailyForSpark = daily.length ? daily : (LIVE && LIVE.daily ? Object.entries(LIVE.daily).sort().map(function(e){return{date:e[0],views:e[1].pageViews||0,wingman_queries:e[1].count||0,gap_analyses:0};}) : []);
+  if(dailyForSpark.length){
+    var dk=dailyForSpark.map(function(d){return(d.date||'').substring(5);});
+    var dv=dailyForSpark.map(function(d){return(d.views||0)+(d.wingman_queries||0)+(d.gap_analyses||0);});
+    $('ug-daily').innerHTML=spark(dv,dk)+'<div style="font-size:10px;color:var(--an-text-muted);margin-top:6px">Views + Wingman queries per day</div>';
+  } else { $('ug-daily').innerHTML='<div class="an-empty">Activity chart builds as you use the platform</div>'; }
+  // Wingman categories — use DASH wingman_categories OR LIVE totals.cats
   var cats2=wingCats.length?wingCats.map(function(c){return[c.cat,c.count];}):sortObj(liveT.cats||{},12);
-  if(cats2.length){var mc=cats2[0][1];$('ug-wingman-cats').innerHTML=cats2.slice(0,12).map(function(e){return bar(e[0],e[1],mc,'teal');}).join('');}
-  else{$('ug-wingman-cats').innerHTML='<div class="an-empty">Builds as Wingman is used</div>';}
+  if(cats2.length){var mc=cats2[0]?cats2[0][1]:1;$('ug-wingman-cats').innerHTML=cats2.slice(0,12).map(function(e){return bar(e[0],e[1],mc,'teal');}).join('');}
+  else{$('ug-wingman-cats').innerHTML='<div class="an-empty">Categories appear after Wingman queries are made</div>';}
   // Gap pairs
   if(gapPairs.length){var mg=gapPairs[0].count;$('ug-gap-pairs').innerHTML=gapPairs.slice(0,10).map(function(p){return bar(p.pair,p.count,mg,'orange');}).join('');}
-  else{$('ug-gap-pairs').innerHTML='<div class="an-empty">Top entity pairs appear after gap runs</div>';}
-  // Surface breakdown
+  else{$('ug-gap-pairs').innerHTML='<div class="an-empty">Top entity pairs appear after Gap Analyzer runs</div>';}
+  // Traffic by surface
   var surfEntries=Object.entries(liveSurf);
   if(surfEntries.length){var ms=Math.max.apply(null,surfEntries.map(function(e){return e[1];}));$('ug-surfaces').innerHTML=surfEntries.sort(function(a,b){return b[1]-a[1];}).map(function(e){return bar(e[0],e[1],ms,'blue');}).join('');}
   else{$('ug-surfaces').innerHTML='<div class="an-empty">Forge · Patterns · Intel · Platforms · Wingman</div>';}
-  // Recent pages from LIVE daily
+  // Recent pages from LIVE daily cats
   var recentPages=[];
   if(LIVE&&LIVE.daily){Object.values(LIVE.daily).forEach(function(day){if(day&&day.cats)Object.entries(day.cats).forEach(function(e){recentPages.push({path:e[0],count:e[1]});});});}
   if(recentPages.length){recentPages.sort(function(a,b){return b.count-a.count;});var mp=recentPages[0].count;$('ug-pages').innerHTML=recentPages.slice(0,15).map(function(p){return bar(p.path,p.count,mp,'blue');}).join('');}

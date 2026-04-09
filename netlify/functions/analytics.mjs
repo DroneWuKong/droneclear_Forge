@@ -254,9 +254,13 @@ export default async (req, context) => {
           const data = await store.get(dayKey);
           if (data) {
             const parsed = JSON.parse(data);
-            const queryEvents = parsed.filter(e => e.q && e.q.trim()); // type='query' events only
+            // Query events have q field; batch/page_view events have action field
+            const queryEvents = parsed.filter(e => e.q && e.q.trim());
+            const pageViewEvents = parsed.filter(e => e.action === 'page_view' || e.type === 'page_view');
             dailyData[d.toISOString().split('T')[0]] = {
-              count: queryEvents.length,
+              count: queryEvents.length,          // Wingman query count for this day
+              pageViews: pageViewEvents.length,    // Page view events for this day
+              total: parsed.length,               // All events
               images: queryEvents.filter(e => e.img).length,
               cats: queryEvents.reduce((acc, e) => { acc[e.cat] = (acc[e.cat] || 0) + 1; return acc; }, {}),
             };
