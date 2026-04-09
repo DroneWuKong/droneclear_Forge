@@ -2074,21 +2074,23 @@ function renderDashboard() {
 
   // ── Component Risk Heatmap ──
   const compKeywords = [
-    {label:'Jetson Orin', key:'jetson', color:'#ef4444'},
-    {label:'FLIR/Thermal', key:'flir', color:'#f97316'},
-    {label:'Doodle Labs', key:'doodle', color:'#f59e0b'},
-    {label:'STM32', key:'stm32', color:'#eab308'},
-    {label:'RPi', key:'rpi', color:'#84cc16'},
-    {label:'QRB5165', key:'qrb5165', color:'#22c55e'},
-    {label:'ELRS', key:'elrs', color:'#06b6d4'},
-    {label:'Silvus', key:'silvus', color:'#3b82f6'},
-    {label:'TrellisWare', key:'trellisware', color:'#8b5cf6'},
-    {label:'u-blox', key:'u-blox', color:'#a78bfa'},
+    {label:'Jetson Orin', keys:['jetson'], color:'#ef4444'},
+    {label:'FLIR/Thermal', keys:['flir','thermal'], color:'#f97316'},
+    {label:'Doodle Labs', keys:['doodle labs','doodle'], color:'#f59e0b'},
+    {label:'STM32', keys:['stm32'], color:'#eab308'},
+    {label:'RPi', keys:['rpi','raspberry pi'], color:'#84cc16'},
+    {label:'QRB5165', keys:['qrb5165'], color:'#22c55e'},
+    {label:'ELRS', keys:['elrs'], color:'#06b6d4'},
+    {label:'Silvus', keys:['silvus'], color:'#3b82f6'},
+    {label:'TrellisWare', keys:['trellisware'], color:'#8b5cf6'},
+    {label:'u-blox', keys:['u-blox','ublox'], color:'#a78bfa'},
   ];
+  const allPIEItems = [...FLAGS, ...(PREDICTIONS||[])];
   const compCounts = compKeywords.map(c => {
-    const count = FLAGS.filter(f => 
-      ((f.title||'')+(f.detail||'')).toLowerCase().includes(c.key)
-    ).length;
+    const count = allPIEItems.filter(f => {
+      const text = ((f.title||'')+(f.detail||'')+(f.event||'')+(f.prediction||'')).toLowerCase();
+      return c.keys.some(k => text.includes(k));
+    }).length;
     return {...c, count};
   }).sort((a,b) => b.count - a.count);
   const maxComp = Math.max(...compCounts.map(c => c.count));
