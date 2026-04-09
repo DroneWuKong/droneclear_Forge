@@ -257,6 +257,7 @@ a.brief-source-chip:hover{color:var(--text-s);border-color:var(--border-hi)}
   <button type="button" class="tab" data-tab="vars">🏪 VARs</button>
   <button type="button" class="tab" data-tab="history">📈 History</button>
   <button type="button" class="tab" data-tab="procurement">💰 Procurement</button>
+  <button type="button" class="tab" data-tab="explorer">🔬 Explorer</button>
 </div>
 
 <!-- ═══ Content ═══ -->
@@ -574,6 +575,12 @@ a.brief-source-chip:hover{color:var(--text-s);border-color:var(--border-hi)}
     <!-- Trend charts -->
     <div id="history-charts" style="display:flex;flex-direction:column;gap:10px;margin-bottom:14px"></div>
 
+    <!-- Pipeline Observability -->
+    <div style="font:600 9px var(--mono);color:var(--text-d);letter-spacing:.08em;margin-bottom:8px">PIPELINE OBSERVABILITY</div>
+    <div id="history-pipeline-obs" style="margin-bottom:16px">
+      <div style="font:400 10px var(--font);color:var(--text-d);padding:10px">Loading pipeline data...</div>
+    </div>
+
     <!-- Snapshot timeline -->
     <div style="font:600 9px var(--mono);color:var(--text-d);letter-spacing:.08em;margin-bottom:8px">DAILY SNAPSHOTS</div>
     <div id="history-timeline" style="display:flex;flex-direction:column;gap:6px;margin-bottom:14px"></div>
@@ -581,6 +588,37 @@ a.brief-source-chip:hover{color:var(--text-s);border-color:var(--border-hi)}
     <!-- Prediction archive -->
     <div style="font:600 9px var(--mono);color:var(--text-d);letter-spacing:.08em;margin-bottom:8px">PREDICTION ARCHIVE</div>
     <div id="history-pred-archive" style="display:flex;flex-direction:column;gap:5px"></div>
+  </div>
+
+  <!-- DATA EXPLORER PANEL -->
+  <div class="panel" id="panel-explorer" style="display:none">
+    <div style="font:700 9px var(--mono);color:var(--text-d);letter-spacing:.1em;margin-bottom:4px">DATA EXPLORER</div>
+    <p style="font-size:11px;color:var(--text-d);margin-bottom:14px;line-height:1.5">Browse any loaded dataset. Full-text search, column toggles, sort, CSV export.</p>
+    <!-- Dataset selector -->
+    <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-bottom:12px">
+      <span style="font:500 10px var(--mono);color:var(--text-d)">Dataset:</span>
+      <select id="explorer-dataset" onchange="explorerLoad()" style="background:var(--surface);border:1px solid var(--border);border-radius:6px;padding:6px 10px;font:11px var(--mono);color:var(--text);outline:none;-webkit-appearance:menulist;appearance:menulist;min-height:32px">
+        <option value="flags">🚩 Flags (210)</option>
+        <option value="articles">📰 Articles</option>
+        <option value="companies">🏢 Companies</option>
+        <option value="solicitations">💰 Solicitations</option>
+        <option value="predictions">🔮 Predictions</option>
+        <option value="platforms">🛡 Platforms</option>
+      </select>
+      <input id="explorer-search" type="text" placeholder="Search…" class="search-bar" style="flex:1;min-width:160px;margin-bottom:0" oninput="explorerFilter()">
+      <span id="explorer-count" style="font:400 9px var(--mono);color:var(--text-d);white-space:nowrap"></span>
+      <button type="button" onclick="explorerExportCSV()" style="font:500 10px var(--font);padding:4px 10px;border-radius:6px;border:1px solid var(--border);background:none;color:var(--text-d);cursor:pointer;white-space:nowrap">⬇ CSV</button>
+    </div>
+    <!-- Column toggles -->
+    <div id="explorer-col-toggles" style="display:flex;gap:4px;flex-wrap:wrap;margin-bottom:10px"></div>
+    <!-- Table -->
+    <div style="overflow-x:auto;-webkit-overflow-scrolling:touch">
+      <table id="explorer-table" style="width:100%;border-collapse:collapse;min-width:400px;font-size:11px">
+        <thead id="explorer-thead"></thead>
+        <tbody id="explorer-tbody"></tbody>
+      </table>
+    </div>
+    <div id="explorer-empty" style="display:none;font:400 11px var(--font);color:var(--text-d);padding:24px;text-align:center">No rows match.</div>
   </div>
 
   <div class="footer">
@@ -1166,7 +1204,7 @@ async function loadData() {
     if(d && d.entities) { ENTITY_GRAPH = d.entities; }
   }).catch(()=>{});
   fetch("../static/miner_health.json").then(r=>r.ok?r.json():null).then(h=>{
-    if(h) renderPipelineHealth(h);
+    if(h) { window._minerHealth = h; renderPipelineHealth(h); }
   }).catch(()=>{});
   fetch("../static/solicitations.json").then(r=>r.ok?r.json():null).then(d=>{
     if(d) { PROCUREMENT_DATA = d; renderProcurement(); }
@@ -1581,6 +1619,9 @@ document.querySelectorAll(".tab").forEach(t => {
     if (activeTab === 'vars') { renderVarSummary(); renderVars(); }
     if (activeTab === 'history') {
       loadHistoryData().then(() => renderHistory());
+    }
+    if (activeTab === 'explorer') {
+      explorerLoad();
     }
   });
 });
@@ -2480,6 +2521,75 @@ function renderHistory() {
         </div>
       </div>`;
     }).join('');
+  }
+
+  // ── Pipeline Observability ─────────────────────────────────────
+  const obsEl = document.getElementById('history-pipeline-obs');
+  if (obsEl) {
+    // Build run rows from trend snapshots + miner_health for the latest run
+    const allSnaps = _historyData || [];
+    const runRows = [...allSnaps].reverse(); // newest first
+
+    let obsHtml = '';
+
+    // Current run card from miner_health (loaded globally as _minerHealth)
+    if (window._minerHealth) {
+      const mh = window._minerHealth;
+      const ts = mh.timestamp ? new Date(mh.timestamp) : null;
+      const diffHrs = ts ? Math.round((Date.now() - ts) / 3600000) : null;
+      const freshStr = diffHrs == null ? '' : diffHrs < 2 ? 'live' : diffHrs < 24 ? diffHrs+'h ago' : Math.round(diffHrs/24)+'d ago';
+      const freshColor = diffHrs == null ? 'var(--text-d)' : diffHrs < 24 ? 'var(--green)' : diffHrs < 48 ? 'var(--warning)' : 'var(--red)';
+
+      obsHtml += `<div style="background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:10px 12px;margin-bottom:8px;border-left:3px solid var(--green)">`;
+      obsHtml += `<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">`;
+      obsHtml += `<div><span style="font:700 10px var(--mono);color:var(--green)">RUN #${mh.run||'—'}</span> <span style="font:400 9px var(--mono);color:var(--text-d)">${ts ? ts.toISOString().slice(0,16).replace('T',' ')+' UTC' : ''}</span></div>`;
+      obsHtml += `<span style="font:600 9px var(--mono);color:${freshColor}">${freshStr}</span>`;
+      obsHtml += `</div>`;
+      // Source grid
+      const sources = mh.sources || {};
+      const sortedSrc = Object.entries(sources).sort((a,b)=>b[1]-a[1]);
+      const maxSrc = sortedSrc[0]?.[1] || 1;
+      obsHtml += `<div style="display:flex;gap:4px;flex-wrap:wrap;margin-bottom:6px">`;
+      sortedSrc.forEach(([src, cnt]) => {
+        const barW = Math.max(Math.round((cnt/maxSrc)*60), 6);
+        obsHtml += `<div style="display:flex;align-items:center;gap:3px;background:var(--card);border-radius:5px;padding:3px 7px;border:1px solid var(--border)" title="${src}: ${cnt} articles">`;
+        obsHtml += `<span style="font:600 8px var(--mono);color:var(--green)">●</span>`;
+        obsHtml += `<span style="font:500 9px var(--font);color:var(--text-s)">${src}</span>`;
+        obsHtml += `<span style="font:700 9px var(--mono);color:var(--text-d)">${cnt}</span>`;
+        obsHtml += `</div>`;
+      });
+      obsHtml += `</div>`;
+      obsHtml += `<div style="font:400 9px var(--mono);color:var(--text-d)">${(mh.total||0).toLocaleString()} total articles · ${mh.active||0} active sources</div>`;
+      obsHtml += `</div>`;
+    }
+
+    // Run history from snapshots
+    if (runRows.length) {
+      obsHtml += `<div style="font:600 9px var(--mono);color:var(--text-d);letter-spacing:.06em;margin:10px 0 6px">RUN HISTORY (${runRows.length} snapshots)</div>`;
+      obsHtml += `<div style="display:flex;flex-direction:column;gap:3px">`;
+      runRows.forEach((h, i) => {
+        const next = runRows[i + 1]; // older
+        const flagDelta = (next && h.total_flags != null && next.total_flags != null) ? Math.round(h.total_flags - next.total_flags) : null;
+        const flagDeltaColor = flagDelta > 0 ? 'var(--red)' : flagDelta < 0 ? 'var(--green)' : 'var(--text-d)';
+        const partsDelta = (next && h.parts_total != null && next.parts_total != null) ? Math.round(h.parts_total - next.parts_total) : null;
+        const velMetric = h.intel_velocity != null ? h.intel_velocity : h.intel_velocity_7d;
+        obsHtml += `<div style="background:var(--surface);border-radius:6px;padding:6px 10px;display:flex;align-items:center;gap:8px;border-left:2px solid var(--border)">`;
+        obsHtml += `<span style="font:700 9px var(--mono);color:var(--text-s);min-width:76px">${h.date}</span>`;
+        obsHtml += `<div style="flex:1;display:flex;gap:8px;flex-wrap:wrap;align-items:center">`;
+        if (h.total_flags != null) obsHtml += `<span style="font:500 9px var(--mono);color:var(--text-d)">🚩 ${Math.round(h.total_flags)}${flagDelta!=null?` <span style="color:${flagDeltaColor}">(${flagDelta>0?'+':''}${flagDelta})</span>`:''}</span>`;
+        if (h.critical_flags != null) obsHtml += `<span style="font:500 9px var(--mono);color:var(--red)">⚠ ${Math.round(h.critical_flags)} crit</span>`;
+        if (h.parts_total != null) obsHtml += `<span style="font:500 9px var(--mono);color:var(--text-d)">⚙ ${Math.round(h.parts_total).toLocaleString()}${partsDelta!=null&&partsDelta!==0?` <span style="color:var(--green)">(+${partsDelta})</span>`:''}</span>`;
+        if (velMetric != null) obsHtml += `<span style="font:500 9px var(--mono);color:var(--text-d)">📰 ${velMetric.toFixed(1)}/day</span>`;
+        if (h.ndaa_ratio != null) obsHtml += `<span style="font:500 9px var(--mono);color:var(--text-d)">NDAA ${(h.ndaa_ratio*100).toFixed(1)}%</span>`;
+        obsHtml += `</div>`;
+        obsHtml += `</div>`;
+      });
+      obsHtml += `</div>`;
+    } else {
+      obsHtml += `<div style="font:400 10px var(--font);color:var(--text-d);padding:10px">Pipeline snapshots accumulate daily. Check back after the next run.</div>`;
+    }
+
+    obsEl.innerHTML = obsHtml;
   }
 
   // ── Snapshot timeline ──────────────────────────────────────────
@@ -5039,6 +5149,231 @@ function exportProcurementCSV() {
   const a = document.createElement('a');
   a.href = URL.createObjectURL(blob);
   a.download = 'procurement_intel_'+new Date().toISOString().slice(0,10)+'.csv';
+  a.click();
+}
+
+// ══════════════════════════════════════════
+// DATA EXPLORER
+// ══════════════════════════════════════════
+var _explorerDataset = null;  // current dataset key
+var _explorerRows    = [];    // full rows for current dataset
+var _explorerCols    = [];    // all column names
+var _explorerHidden  = new Set(); // hidden columns
+var _explorerFiltered = [];   // rows after search filter
+
+const EXPLORER_DATASETS = {
+  flags: {
+    label: 'Flags',
+    loader: async () => FLAGS,
+    cols: ['id','flag_type','severity','confidence','title','detail','prediction','platform_id','component_id','timestamp'],
+    fmt: {
+      confidence: v => v != null ? Math.round(v*100)+'%' : '',
+      timestamp: v => (v||'').slice(0,10),
+    }
+  },
+  articles: {
+    label: 'Articles',
+    loader: async () => {
+      if (window._explorerArticlesCache) return window._explorerArticlesCache;
+      const r = await fetch('../static/intel_articles.json');
+      const d = r.ok ? await r.json() : [];
+      window._explorerArticlesCache = d;
+      return d;
+    },
+    cols: ['aid','title','site','pub_date','url'],
+  },
+  companies: {
+    label: 'Companies',
+    loader: async () => {
+      if (window._explorerCompaniesCache) return window._explorerCompaniesCache;
+      const r = await fetch('../static/intel_companies.json');
+      const d = r.ok ? await r.json() : [];
+      window._explorerCompaniesCache = d;
+      return d;
+    },
+    cols: ['cid','name','programs','tags'],
+    fmt: {
+      programs: v => Array.isArray(v) ? v.join(', ') : (v||''),
+      tags: v => Array.isArray(v) ? v.join(', ') : (v||''),
+    }
+  },
+  solicitations: {
+    label: 'Solicitations',
+    loader: async () => (PROCUREMENT_DATA ? PROCUREMENT_DATA.solicitations : []),
+    cols: ['source','title','agency','recipient','amount','posted_date','gray_zone_flag','blue_uas_flag'],
+    fmt: {
+      amount: v => v ? '$'+(v/1e6).toFixed(1)+'M' : '',
+      gray_zone_flag: v => v ? '✓' : '',
+      blue_uas_flag: v => v ? '✓' : '',
+    }
+  },
+  predictions: {
+    label: 'Predictions',
+    loader: async () => PREDICTIONS,
+    cols: ['id','timeframe','event','probability','confidence','impact','last_updated'],
+    fmt: {
+      probability: v => v != null ? Math.round(v*100)+'%' : '',
+      confidence:  v => v != null ? Math.round(v*100)+'%' : '',
+    }
+  },
+  platforms: {
+    label: 'Platforms',
+    loader: async () => PLATFORMS,
+    cols: ['id','name','mfr','tier','country','combat','prod','yoy'],
+    fmt: {
+      combat: v => v ? '✓' : '',
+      sbc: v => Array.isArray(v) ? v.join(', ') : (v||''),
+      contracts: v => Array.isArray(v) ? v.join(', ') : (v||''),
+    }
+  }
+};
+
+async function explorerLoad() {
+  const key = document.getElementById('explorer-dataset')?.value || 'flags';
+  const def = EXPLORER_DATASETS[key];
+  if (!def) return;
+
+  // Show loading state
+  const tbody = document.getElementById('explorer-tbody');
+  if (tbody) tbody.innerHTML = '<tr><td colspan="99" style="padding:16px;text-align:center;font:400 11px var(--font);color:var(--text-d)">Loading…</td></tr>';
+
+  try {
+    const rows = await def.loader();
+    _explorerDataset = key;
+    _explorerRows = Array.isArray(rows) ? rows : [];
+
+    // Derive columns: use defined cols, fill any missing with top keys from first row
+    const definedCols = def.cols || [];
+    const extraCols = _explorerRows.length
+      ? Object.keys(_explorerRows[0]).filter(k => !definedCols.includes(k))
+      : [];
+    _explorerCols = [...definedCols, ...extraCols].filter(c => c !== '__proto__');
+    // Reset hidden — hide cols not in definedCols by default (de-clutter)
+    _explorerHidden = new Set(extraCols);
+
+    explorerRenderToggles();
+    explorerFilter();
+  } catch(e) {
+    console.error('Explorer load error:', e);
+    if (tbody) tbody.innerHTML = '<tr><td colspan="99" style="padding:16px;color:var(--red);font:400 11px var(--mono)">Load failed: '+e.message+'</td></tr>';
+  }
+}
+
+function explorerRenderToggles() {
+  const el = document.getElementById('explorer-col-toggles');
+  if (!el) return;
+  el.innerHTML = _explorerCols.map(col => {
+    const active = !_explorerHidden.has(col);
+    return `<button type="button" onclick="explorerToggleCol('${col}')"
+      style="font:500 9px var(--mono);padding:2px 8px;border-radius:4px;cursor:pointer;border:1px solid ${active?'var(--cyan)':'var(--border)'};background:${active?'rgba(8,145,178,.12)':'none'};color:${active?'var(--cyan)':'var(--text-d)'};white-space:nowrap"
+      >${col}</button>`;
+  }).join('');
+}
+
+function explorerToggleCol(col) {
+  if (_explorerHidden.has(col)) _explorerHidden.delete(col);
+  else _explorerHidden.add(col);
+  explorerRenderToggles();
+  explorerRenderTable();
+}
+
+function explorerFilter() {
+  const q = (document.getElementById('explorer-search')?.value || '').toLowerCase().trim();
+  if (!q) {
+    _explorerFiltered = _explorerRows;
+  } else {
+    _explorerFiltered = _explorerRows.filter(row =>
+      Object.values(row).some(v => {
+        const s = Array.isArray(v) ? v.join(' ') : String(v||'');
+        return s.toLowerCase().includes(q);
+      })
+    );
+  }
+  const countEl = document.getElementById('explorer-count');
+  if (countEl) countEl.textContent = _explorerFiltered.length.toLocaleString() + ' / ' + _explorerRows.length.toLocaleString() + ' rows';
+  explorerRenderTable();
+}
+
+function explorerRenderTable() {
+  const def = EXPLORER_DATASETS[_explorerDataset] || {};
+  const fmts = def.fmt || {};
+  const visibleCols = _explorerCols.filter(c => !_explorerHidden.has(c));
+
+  // Header
+  const thead = document.getElementById('explorer-thead');
+  if (thead) {
+    thead.innerHTML = '<tr style="border-bottom:1px solid var(--border)">' +
+      visibleCols.map(c =>
+        `<th style="padding:5px 8px;font:600 9px var(--mono);color:var(--text-d);text-align:left;text-transform:uppercase;white-space:nowrap;cursor:pointer" onclick="explorerSort('${c}')">${c} <span style="color:var(--text-xd)">↕</span></th>`
+      ).join('') + '</tr>';
+  }
+
+  // Body — cap at 200 rows for performance
+  const tbody = document.getElementById('explorer-tbody');
+  const emptyEl = document.getElementById('explorer-empty');
+  const rows = _explorerFiltered.slice(0, 200);
+
+  if (!rows.length) {
+    if (tbody) tbody.innerHTML = '';
+    if (emptyEl) emptyEl.style.display = '';
+    return;
+  }
+  if (emptyEl) emptyEl.style.display = 'none';
+
+  const thStyle = 'padding:5px 8px;border-bottom:1px solid var(--border);vertical-align:top;color:var(--text-s);max-width:280px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap';
+
+  tbody.innerHTML = rows.map((row, i) => {
+    const bg = i % 2 === 0 ? '' : 'background:var(--surface)';
+    return '<tr style="'+bg+'">' +
+      visibleCols.map(col => {
+        var raw = row[col];
+        var val = fmts[col] ? fmts[col](raw) : (Array.isArray(raw) ? raw.join(', ') : (raw != null ? String(raw) : ''));
+        // Linkify urls
+        if (col === 'url' && val) val = `<a href="${val}" target="_blank" rel="noopener" style="color:var(--cyan);font-size:10px">↗</a>`;
+        return `<td style="${thStyle}" title="${(val||'').replace(/"/g,"'")}">${val}</td>`;
+      }).join('') +
+    '</tr>';
+  }).join('');
+
+  // Row cap notice
+  if (_explorerFiltered.length > 200) {
+    tbody.innerHTML += `<tr><td colspan="${visibleCols.length}" style="padding:8px;text-align:center;font:400 9px var(--mono);color:var(--text-d)">Showing 200 of ${_explorerFiltered.length.toLocaleString()} rows — refine search to see more</td></tr>`;
+  }
+}
+
+var _explorerSortCol = null;
+var _explorerSortAsc = true;
+function explorerSort(col) {
+  if (_explorerSortCol === col) _explorerSortAsc = !_explorerSortAsc;
+  else { _explorerSortCol = col; _explorerSortAsc = true; }
+  _explorerFiltered = [..._explorerFiltered].sort((a, b) => {
+    const av = a[col] != null ? String(a[col]) : '';
+    const bv = b[col] != null ? String(b[col]) : '';
+    const cmp = av.localeCompare(bv, undefined, {numeric: true});
+    return _explorerSortAsc ? cmp : -cmp;
+  });
+  explorerRenderTable();
+}
+
+function explorerExportCSV() {
+  const def = EXPLORER_DATASETS[_explorerDataset] || {};
+  const fmts = def.fmt || {};
+  const visibleCols = _explorerCols.filter(c => !_explorerHidden.has(c));
+  const esc = v => '"' + (v||'').toString().replace(/"/g, "''") + '"';
+
+  const header = visibleCols.join(',');
+  const csv = [header, ..._explorerFiltered.map(row =>
+    visibleCols.map(col => {
+      const raw = row[col];
+      const val = fmts[col] ? fmts[col](raw) : (Array.isArray(raw) ? raw.join('; ') : (raw != null ? String(raw) : ''));
+      return esc(val);
+    }).join(',')
+  )].join('\n');
+
+  const blob = new Blob([csv], {type: 'text/csv'});
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'pie_explorer_' + (_explorerDataset||'data') + '_' + new Date().toISOString().slice(0,10) + '.csv';
   a.click();
 }
 
