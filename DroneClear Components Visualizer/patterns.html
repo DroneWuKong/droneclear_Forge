@@ -763,6 +763,7 @@ function wireAllCards(container, briefData) {
       body += '<div style="font:400 12px var(--font);color:var(--text-s);line-height:1.7;margin-bottom:10px">' + (e.development||'') + '</div>';
       if (e.buyer_exposure) body += '<div style="background:rgba(245,158,11,.07);border-radius:7px;padding:10px 12px;margin-bottom:8px"><div style="font:600 9px var(--mono);color:var(--warning,#f59e0b);margin-bottom:3px">BUYER EXPOSURE</div><div style="font:400 11px var(--font);color:var(--text-s)">' + e.buyer_exposure + '</div></div>';
       if (e.action) body += '<div style="background:var(--surface);border-radius:7px;padding:10px 12px"><div style="font:600 9px var(--mono);color:var(--cyan);margin-bottom:4px">→ ACTION</div><div style="font:400 11px var(--font);color:var(--text-s)">' + e.action + '</div></div>';
+      if ((e.sources||[]).length) body += '<div style="margin-top:10px;font:400 9px var(--mono);color:var(--text-d)">Sources: ' + e.sources.map(function(src){ var n=typeof src==='string'?src:(src.name||src.url||''); var u=typeof src==='object'?src.url:''; return u?'<a href="'+u+'" target="_blank" rel="noopener" style="color:var(--cyan);text-decoration:none">'+n+' ↗</a>':n; }).join(' · ') + '</div>';
       openDetailModal(e.entity||'Gray Zone Entity', 'Warning · Gray Zone', body);
     });
   });
@@ -1785,16 +1786,20 @@ function renderPlatforms() {
   const gzEntities = [
     {name:"SkyRover / Knowact",score:0.850,tier:"CRITICAL",hq:"Shenzhen (Nanshan District — DJI's district)",status:"Active — selling at retailers",
      finding:"DJI Mini 4 Pro clone. Direct DJI cloud. 9+ shell companies. OcuSync frequency fingerprint confirmed. App = DJI Fly fork.",
-     flags:FLAGS.filter(f=>(f.title||'').includes('SkyRover')).length},
+     flags:FLAGS.filter(f=>(f.title||'').includes('SkyRover')).length,
+     sources:[{name:"FCC Covered List",url:"https://www.fcc.gov/supplychain/coveredlist"},{name:"DroneDJ Analysis",url:"https://dronedj.com/2024/07/18/skyrover-knowact-dji-clone-analysis/"}]},
     {name:"Anzu Robotics",score:0.782,tier:"CRITICAL",hq:"Austin, TX → XTI Aerospace (NASDAQ: XTIA)",status:"Product discontinued. Active TX AG litigation.",
      finding:"DJI Mavic 3 licensed derivative. DJI retains crypto signing keys. ~50% Chinese components. 3 PDs holding dead hardware.",
-     flags:FLAGS.filter(f=>(f.title||'').includes('Anzu')).length},
+     flags:FLAGS.filter(f=>(f.title||'').includes('Anzu')).length,
+     sources:[{name:"TX AG Complaint",url:"https://www.texasattorneygeneral.gov/news/releases/attorney-general-ken-paxton-sues-anzu-robotics"},{name:"DroneLife",url:"https://dronelife.com/2024/09/26/anzu-robotics-discontinues-raptor-drone/"}]},
     {name:"Cogito Tech / SPECTA",score:0.537,tier:"HIGH",hq:"Hong Kong (Google Sites website, no support infrastructure)",status:"Products on Amazon. Subject to FCC Covered List.",
      finding:"DJI Air 3 clone — identical PCBs within 2 grams. Denies DJI connection. OcuSync + patented DJI chipsets prove otherwise.",
-     flags:FLAGS.filter(f=>(f.title||'').includes('Cogito')).length},
+     flags:FLAGS.filter(f=>(f.title||'').includes('Cogito')).length,
+     sources:[{name:"FCC Covered List",url:"https://www.fcc.gov/supplychain/coveredlist"}]},
     {name:"Autel Robotics",score:0.525,tier:"HIGH",hq:"Shenzhen → US operations",status:"Named in FY2025 NDAA Section 1709. FCC authorizations revoked.",
      finding:"Chinese-owned. Entity List. CITIC/Ministry of Finance investor. Cannot bypass ban even via US manufacturing.",
-     flags:FLAGS.filter(f=>(f.title||'').includes('Autel')).length},
+     flags:FLAGS.filter(f=>(f.title||'').includes('Autel')).length,
+     sources:[{name:"NDAA FY2025 §1709",url:"https://www.congress.gov/bill/118th-congress/house-bill/8070"},{name:"FCC Covered List",url:"https://www.fcc.gov/supplychain/coveredlist"}]},
   ];
 
   const gzContainer = document.getElementById("grayzone-entities");
@@ -1832,6 +1837,7 @@ function renderPlatforms() {
       body += '<div style="background:var(--surface);border-radius:6px;padding:8px 10px;margin-bottom:10px"><div style="font:500 9px var(--mono);color:var(--text-d);margin-bottom:2px">KEY FINDING</div><div style="font:400 11px var(--font);color:var(--text-s);line-height:1.5">'+gz.finding+'</div></div>';
       body += '<div style="background:'+tc+'12;border:1px solid '+tc+'30;border-radius:6px;padding:8px 10px;margin-bottom:10px;font:500 11px var(--font);color:'+tc+'">'+gz.status+'</div>';
       if (relFlags.length) { body += '<div><div style="font:600 9px var(--mono);color:var(--text-d);margin-bottom:6px">Related PIE Flags ('+relFlags.length+')</div>'+relFlags.slice(0,5).map(function(f){return '<div style="background:var(--surface);border-radius:6px;padding:6px 9px;margin-bottom:4px;font:400 10px var(--font);color:var(--text-s)">'+f.title+'</div>';}).join("")+'</div>'; }
+      if ((gz.sources||[]).length) { body += '<div style="margin-top:10px"><div style="font:600 9px var(--mono);color:var(--text-d);margin-bottom:5px">SOURCES</div><div style="display:flex;flex-direction:column;gap:4px">'+gz.sources.map(function(s){return '<div style="background:var(--surface);border-radius:5px;padding:6px 9px">'+(s.url?'<a href="'+s.url+'" target="_blank" rel="noopener" style="font:500 11px var(--font);color:var(--cyan);text-decoration:none">'+s.name+' ↗</a>':'<span style="font:500 11px var(--font);color:var(--text-s)">'+s.name+'</span>')+'</div>';}).join('')+'</div></div>'; }
       openDetailModal(gz.name, gz.hq, body);
     });
   });
@@ -1878,7 +1884,13 @@ function renderPlatforms() {
       if (p.sbc&&p.sbc.length){body+='<div style="margin-bottom:10px"><div style="font:600 9px var(--mono);color:var(--text-d);margin-bottom:5px">SBC</div><div style="display:flex;gap:4px;flex-wrap:wrap">'+p.sbc.map(function(s){return '<span class="badge badge-cyan">'+s+'</span>';}).join("")+'</div></div>';}
       if (p.contracts&&p.contracts.length){body+='<div style="margin-bottom:10px"><div style="font:600 9px var(--mono);color:var(--text-d);margin-bottom:5px">Contracts</div><div style="display:flex;gap:4px;flex-wrap:wrap">'+p.contracts.map(function(cn){return '<span class="badge badge-amber">'+cn+'</span>';}).join("")+'</div></div>';}
       if (relFlags.length){body+='<div><div style="font:600 9px var(--mono);color:var(--text-d);margin-bottom:6px">Related Flags ('+relFlags.length+')</div>'+relFlags.slice(0,5).map(function(f){return '<div style="background:var(--surface);border-radius:6px;padding:6px 9px;margin-bottom:4px;font:400 10px var(--font);color:var(--text-s)">'+f.title+'</div>';}).join("")+'</div>';}
-      openDetailModal(p.name, p.mfr+" · "+p.country, body);
+      // Dynamic reference links
+      var refs = [];
+      if (p.tier === 'blue') refs.push({name:'DIU Blue UAS List',url:'https://www.diu.mil/blue-uas-cleared-list'});
+      if (p.tier === 'ndaa') refs.push({name:'NDAA §848 Compliant List',url:'https://www.diu.mil/blue-uas-cleared-list'});
+      if (p.contracts && p.contracts.some(function(c){return c.includes('Replicator');})) refs.push({name:'Replicator Initiative',url:'https://www.defense.gov/News/Releases/Release/Article/3562442/'});
+      if (refs.length) { body += '<div style="margin-top:10px"><div style="font:600 9px var(--mono);color:var(--text-d);margin-bottom:5px">REFERENCES</div><div style="display:flex;flex-direction:column;gap:3px">'+refs.map(function(r){return '<a href="'+r.url+'" target="_blank" rel="noopener" style="font:500 11px var(--font);color:var(--cyan);text-decoration:none;background:var(--surface);border-radius:5px;padding:5px 8px;display:block">'+r.name+' ↗</a>';}).join('')+'</div></div>'; }
+      openDetailModal(p.name, p.mfr+' · '+p.country, body);
     });
   });
 }
@@ -1956,7 +1968,13 @@ function renderComponents() {
       }
       if (comp.note) body += '<div style="background:var(--surface);border-radius:6px;padding:8px 10px;margin-bottom:10px;font:400 11px var(--font);color:var(--text-s);line-height:1.6">'+comp.note+'</div>';
       if (comp.users && comp.users.length) { body += '<div><div style="font:600 9px var(--mono);color:var(--text-d);margin-bottom:5px">Used By</div><div style="display:flex;gap:4px;flex-wrap:wrap">'+comp.users.map(function(u){return '<span class="badge badge-blue">'+u+'</span>';}).join("")+'</div></div>'; }
-      openDetailModal(comp.name, comp.cat+" · "+comp.status, body);
+      // Reference links by risk type
+      var compRefs = [];
+      if (comp.risk === 'diversion' || comp.risk === 'china_source') compRefs.push({name:'NDAA §889 Covered List',url:'https://www.sam.gov'});
+      if (comp.risk === 'single_source' || comp.risk === 'allocated') compRefs.push({name:'Blue UAS Cleared List',url:'https://www.diu.mil/blue-uas-cleared-list'});
+      compRefs.push({name:'Browse in Forge Parts DB',url:'https://forgeprole.netlify.app'});
+      body += '<div style="margin-top:10px"><div style="font:600 9px var(--mono);color:var(--text-d);margin-bottom:5px">REFERENCES</div><div style="display:flex;flex-direction:column;gap:3px">'+compRefs.map(function(r){return '<a href="'+r.url+'" target="_blank" rel="noopener" style="font:500 11px var(--font);color:var(--cyan);text-decoration:none;background:var(--surface);border-radius:5px;padding:5px 8px;display:block">'+r.name+' ↗</a>';}).join('')+'</div></div>';
+      openDetailModal(comp.name, comp.cat+' · '+comp.status, body);
     });
   });
 }
