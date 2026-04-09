@@ -255,6 +255,7 @@ a.brief-source-chip:hover{color:var(--text-s);border-color:var(--border-hi)}
   <button type="button" class="tab" data-tab="whatif">⚡ What-If</button>
   <button type="button" class="tab" data-tab="manufacturers">🏭 Manufacturers</button>
   <button type="button" class="tab" data-tab="vars">🏪 VARs</button>
+  <button type="button" class="tab" data-tab="history">📈 History</button>
 </div>
 
 <!-- ═══ Content ═══ -->
@@ -534,6 +535,35 @@ a.brief-source-chip:hover{color:var(--text-s);border-color:var(--border-hi)}
 
     <!-- VAR list -->
     <div id="var-list"></div>
+  </div>
+
+  <div class="panel" id="panel-history">
+    <div style="font:700 9px var(--mono);color:var(--text-d);letter-spacing:.1em;margin-bottom:12px">INTELLIGENCE TIMELINE</div>
+
+    <!-- Time range selector -->
+    <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-bottom:14px">
+      <span style="font:500 10px var(--mono);color:var(--text-d)">Range:</span>
+      <button type="button" class="filter-chip active" onclick="setHistoryRange(7,this)">7 days</button>
+      <button type="button" class="filter-chip" onclick="setHistoryRange(14,this)">14 days</button>
+      <button type="button" class="filter-chip" onclick="setHistoryRange(30,this)">30 days</button>
+      <button type="button" class="filter-chip" onclick="setHistoryRange(0,this)">All</button>
+      <div style="flex:1"></div>
+      <button type="button" onclick="generateReport()" style="background:var(--cyan);color:#000;border:none;border-radius:6px;padding:5px 12px;font:600 10px var(--mono);cursor:pointer">⬇ Generate Report</button>
+    </div>
+
+    <!-- Metric cards row -->
+    <div id="history-metric-cards" style="display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-bottom:14px"></div>
+
+    <!-- Trend charts -->
+    <div id="history-charts" style="display:flex;flex-direction:column;gap:10px;margin-bottom:14px"></div>
+
+    <!-- Snapshot timeline -->
+    <div style="font:600 9px var(--mono);color:var(--text-d);letter-spacing:.08em;margin-bottom:8px">DAILY SNAPSHOTS</div>
+    <div id="history-timeline" style="display:flex;flex-direction:column;gap:6px;margin-bottom:14px"></div>
+
+    <!-- Prediction archive -->
+    <div style="font:600 9px var(--mono);color:var(--text-d);letter-spacing:.08em;margin-bottom:8px">PREDICTION ARCHIVE</div>
+    <div id="history-pred-archive" style="display:flex;flex-direction:column;gap:5px"></div>
   </div>
 
   <div class="footer">
@@ -1477,6 +1507,9 @@ document.querySelectorAll(".tab").forEach(t => {
     }
   }
     if (activeTab === 'vars') { renderVarSummary(); renderVars(); }
+    if (activeTab === 'history') {
+      loadHistoryData().then(() => renderHistory());
+    }
   });
 });
 
@@ -2094,6 +2127,364 @@ function renderComponents() {
   });
 }
 
+
+// ══════════════════════════════════════════════════════════════════
+// HISTORY TAB — timeline, trends, report generator
+// ══════════════════════════════════════════════════════════════════
+
+let _historyData    = null;  // pie_history.json
+let _trendsData     = null;  // pie_trends.json
+let _predArchive    = null;  // predictions_archive.json
+let _historyRange   = 7;     // days to show
+
+async function loadHistoryData() {
+  if (_historyData) return;
+  try {
+    const [trendsRes, predRes] = await Promise.all([
+      fetch('../static/pie_trends.json').then(r => r.ok ? r.json() : null),
+      fetch('../static/predictions_archive.json').then(r => r.ok ? r.json() : []),
+    ]);
+    _trendsData  = trendsRes;
+    _predArchive = predRes || [];
+
+    // Reconstruct daily snapshot rows from trend metric arrays
+    // Each trend has .dates[] and .values[] of same length
+    if (_trendsData && _trendsData.trends && _trendsData.trends.length) {
+      const dates = _trendsData.trends[0].dates || [];
+      _historyData = dates.map((date, i) => {
+        const snap = { date };
+        for (const t of _trendsData.trends) {
+          snap[t.metric] = (t.values && t.values[i] != null) ? t.values[i] : null;
+        }
+        return snap;
+      });
+    } else {
+      _historyData = [];
+    }
+  } catch(e) {
+    console.error('History load failed:', e);
+    _historyData = [];
+    _predArchive = [];
+  }
+}
+
+function setHistoryRange(days, btn) {
+  _historyRange = days;
+  document.querySelectorAll('#panel-history .filter-chip').forEach(b => b.classList.remove('active'));
+  if (btn) btn.classList.add('active');
+  renderHistory();
+}
+
+function getFilteredHistory() {
+  if (!_historyData || !_historyData.length) return [];
+  if (_historyRange === 0) return _historyData;
+  const cutoff = new Date();
+  cutoff.setDate(cutoff.getDate() - _historyRange);
+  return _historyData.filter(h => new Date(h.date) >= cutoff);
+}
+
+function sparkline(values, color, width, height) {
+  if (!values || values.length < 2) return '';
+  const min = Math.min(...values);
+  const max = Math.max(...values);
+  const range = max - min || 1;
+  const w = width || 80;
+  const h = height || 24;
+  const pts = values.map((v, i) => {
+    const x = (i / (values.length - 1)) * w;
+    const y = h - ((v - min) / range) * (h - 4) - 2;
+    return `${x.toFixed(1)},${y.toFixed(1)}`;
+  }).join(' ');
+  return `<svg width="${w}" height="${h}" style="overflow:visible">
+    <polyline points="${pts}" fill="none" stroke="${color}" stroke-width="1.5" stroke-linejoin="round"/>
+    <circle cx="${values.length > 1 ? ((values.length-1)/(values.length-1))*w : 0}" 
+            cy="${(h - ((values[values.length-1] - min) / range) * (h-4) - 2).toFixed(1)}" 
+            r="2.5" fill="${color}"/>
+  </svg>`;
+}
+
+function renderHistory() {
+  const filtered = getFilteredHistory();
+  const trends   = _trendsData;
+
+  // ── Metric cards ──────────────────────────────────────────────
+  const cards = document.getElementById('history-metric-cards');
+  if (!cards) return;
+
+  if (!filtered.length) {
+    cards.innerHTML = '<div style="grid-column:1/-1;font:400 11px var(--font);color:var(--text-d);padding:20px;text-align:center">No history data yet — snapshots accumulate daily after pipeline runs.</div>';
+    document.getElementById('history-charts').innerHTML = '';
+    document.getElementById('history-timeline').innerHTML = '';
+    document.getElementById('history-pred-archive').innerHTML = '';
+    return;
+  }
+
+  const first = filtered[0];
+  const last  = filtered[filtered.length - 1];
+
+  const metricCards = [
+    {
+      label: 'Flags',
+      metric: 'total_flags',
+      first: first.total_flags,
+      last: last.total_flags,
+      color: 'var(--red)',
+      unit: '',
+      fmt: v => v != null ? Math.round(v) : '—',
+    },
+    {
+      label: 'NDAA Ratio',
+      metric: 'ndaa_ratio',
+      first: first.ndaa_ratio,
+      last: last.ndaa_ratio,
+      color: 'var(--green)',
+      unit: '%',
+      fmt: v => v != null ? (v * 100).toFixed(1) : '—',
+    },
+    {
+      label: 'Parts in DB',
+      metric: 'total_parts',
+      first: first.total_parts,
+      last: last.total_parts,
+      color: 'var(--cyan)',
+      unit: '',
+      fmt: v => v != null ? Math.round(v).toLocaleString() : '—',
+    },
+    {
+      label: 'Intel Velocity',
+      metric: 'intel_velocity_7d',
+      first: first.intel_velocity_7d,
+      last: last.intel_velocity_7d,
+      color: 'var(--blue)',
+      unit: '/day',
+      fmt: v => v != null ? v.toFixed(1) : '—',
+    },
+  ];
+
+  cards.innerHTML = metricCards.map(m => {
+    const delta = (m.last != null && m.first != null) ? m.last - m.first : null;
+    const pct   = (delta != null && m.first) ? ((delta / m.first) * 100).toFixed(1) : null;
+    const dir   = delta > 0.01 ? '▲' : delta < -0.01 ? '▼' : '→';
+    const dc    = delta > 0.01 ? 'var(--green)' : delta < -0.01 ? 'var(--red)' : 'var(--text-d)';
+    const vals  = filtered.map(h => h[m.metric]).filter(v => v != null);
+    return `<div style="background:var(--surface);border-radius:8px;padding:8px 10px;border-top:2px solid ${m.color}">
+      <div style="font:500 8px var(--mono);color:var(--text-d);margin-bottom:4px">${m.label.toUpperCase()}</div>
+      <div style="display:flex;justify-content:space-between;align-items:flex-end">
+        <div>
+          <div style="font:700 16px var(--mono);color:${m.color}">${m.fmt(m.last)}${m.unit}</div>
+          ${pct != null ? `<div style="font:500 9px var(--mono);color:${dc}">${dir} ${Math.abs(pct)}%</div>` : ''}
+        </div>
+        ${sparkline(vals, m.color, 60, 28)}
+      </div>
+    </div>`;
+  }).join('');
+
+  // ── Trend charts ───────────────────────────────────────────────
+  const chartsEl = document.getElementById('history-charts');
+  if (trends && trends.trends) {
+    const showTrends = trends.trends.filter(t => {
+      const vals = getFilteredTrendValues(t, filtered);
+      return vals.some(v => v != null);
+    });
+
+    chartsEl.innerHTML = showTrends.map(t => {
+      const vals  = getFilteredTrendValues(t, filtered);
+      const dates = filtered.map(h => h.date);
+      const min   = Math.min(...vals.filter(v=>v!=null));
+      const max   = Math.max(...vals.filter(v=>v!=null));
+      const range = max - min || 1;
+      const W = 260, H = 48;
+      const pts = vals.map((v, i) => {
+        if (v == null) return null;
+        const x = (i / Math.max(vals.length-1, 1)) * W;
+        const y = H - ((v - min) / range) * (H - 8) - 4;
+        return `${x.toFixed(1)},${y.toFixed(1)}`;
+      }).filter(Boolean).join(' ');
+      const dir   = t.direction === 'rising' ? '▲' : t.direction === 'falling' ? '▼' : '→';
+      const dc    = t.direction === 'rising' ? 'var(--green)' : t.direction === 'falling' ? 'var(--red)' : 'var(--text-d)';
+      const proj  = trends.projections ? trends.projections.find(p => p.label === t.label) : null;
+      return `<div style="background:var(--surface);border-radius:8px;padding:10px 12px">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
+          <div style="font:600 10px var(--mono);color:var(--text-s)">${t.label}</div>
+          <div style="display:flex;gap:6px;align-items:center">
+            <span style="font:600 9px var(--mono);color:${dc}">${dir} ${t.signal||''}</span>
+            ${proj ? `<span style="font:400 8px var(--mono);color:var(--text-d)">90d: ${proj.p90}</span>` : ''}
+          </div>
+        </div>
+        <svg width="100%" height="${H}" viewBox="0 0 ${W} ${H}" style="overflow:visible">
+          <polyline points="${pts}" fill="none" stroke="var(--cyan)" stroke-width="1.5" stroke-linejoin="round" opacity=".8"/>
+        </svg>
+        <div style="display:flex;justify-content:space-between;margin-top:2px">
+          <span style="font:400 8px var(--mono);color:var(--text-d)">${dates[0]||''}</span>
+          <span style="font:600 9px var(--mono);color:var(--text-s)">${t.current} ${t.unit||''}</span>
+          <span style="font:400 8px var(--mono);color:var(--text-d)">${dates[dates.length-1]||''}</span>
+        </div>
+      </div>`;
+    }).join('');
+  }
+
+  // ── Snapshot timeline ──────────────────────────────────────────
+  const timelineEl = document.getElementById('history-timeline');
+  const snapshots  = [...filtered].reverse();
+  timelineEl.innerHTML = snapshots.map((h, i) => {
+    const prev = snapshots[i + 1];
+    const flagDelta = (prev && h.total_flags != null && prev.total_flags != null)
+      ? h.total_flags - prev.total_flags : null;
+    const dc = flagDelta > 0 ? 'var(--red)' : flagDelta < 0 ? 'var(--green)' : 'var(--text-d)';
+    return `<div style="background:var(--surface);border-radius:7px;padding:8px 12px;display:flex;align-items:center;gap:10px">
+      <div style="font:700 10px var(--mono);color:var(--text-s);min-width:80px">${h.date}</div>
+      <div style="flex:1;display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+        ${h.total_flags != null ? `<span style="font:500 9px var(--mono);color:var(--text-d)">🚩 ${Math.round(h.total_flags)}${flagDelta!=null?` <span style="color:${dc}">(${flagDelta>0?'+':''}${flagDelta})</span>`:''}</span>` : ''}
+        ${h.ndaa_ratio != null ? `<span style="font:500 9px var(--mono);color:var(--text-d)">NDAA ${(h.ndaa_ratio*100).toFixed(1)}%</span>` : ''}
+        ${h.total_parts != null ? `<span style="font:500 9px var(--mono);color:var(--text-d)">⚙ ${Math.round(h.total_parts).toLocaleString()} parts</span>` : ''}
+        ${h.intel_velocity_7d != null ? `<span style="font:500 9px var(--mono);color:var(--text-d)">📰 ${h.intel_velocity_7d.toFixed(1)}/day</span>` : ''}
+      </div>
+    </div>`;
+  }).join('');
+
+  // ── Prediction archive ─────────────────────────────────────────
+  const archEl = document.getElementById('history-pred-archive');
+  const arch   = _predArchive || [];
+  const cutoff = _historyRange > 0 ? (() => { const d = new Date(); d.setDate(d.getDate() - _historyRange); return d; })() : null;
+  const filteredArch = cutoff
+    ? arch.filter(p => new Date(p.archived_date) >= cutoff)
+    : arch;
+
+  if (!filteredArch.length) {
+    archEl.innerHTML = '<div style="font:400 10px var(--font);color:var(--text-d);padding:10px">No archived predictions in this range.</div>';
+    return;
+  }
+
+  archEl.innerHTML = filteredArch.map(p => {
+    const pct = Math.round((p.probability||0)*100);
+    const ic  = {critical:'var(--red)',high:'var(--warning)',medium:'var(--blue)',low:'var(--text-d)'}[p.impact]||'var(--text-d)';
+    return `<div style="background:var(--surface);border-radius:7px;padding:8px 10px;border-left:2px solid ${ic}">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px">
+        <div style="flex:1">
+          <div style="font:600 11px var(--font);color:var(--text);line-height:1.4">${p.event||''}</div>
+          <div style="display:flex;gap:5px;margin-top:3px;flex-wrap:wrap">
+            <span style="font:500 8px var(--mono);color:var(--text-d)">${p.archived_date}</span>
+            ${p.region ? `<span style="font:500 8px var(--mono);color:var(--text-d)">• ${p.region}</span>` : ''}
+            ${p.timeframe ? `<span class="badge badge-purple" style="font-size:7px">${p.timeframe}</span>` : ''}
+            ${p.generation > 1 ? `<span style="font:500 8px var(--mono);color:var(--amber)">gen ${p.generation}</span>` : ''}
+          </div>
+        </div>
+        <div style="text-align:right;min-width:42px">
+          <div style="font:700 14px var(--mono);color:${pct>70?'var(--amber)':'var(--text-s)'}">${pct}%</div>
+        </div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function getFilteredTrendValues(trend, filteredHistory) {
+  // Match trend values to filtered history dates
+  const allDates = trend.dates || [];
+  return filteredHistory.map(h => {
+    const i = allDates.indexOf(h.date);
+    return i >= 0 ? trend.values[i] : null;
+  });
+}
+
+// ── Report generator ───────────────────────────────────────────────
+function generateReport() {
+  const filtered = getFilteredHistory();
+  const trends   = _trendsData;
+  const arch     = _predArchive || [];
+
+  if (!filtered.length) {
+    alert('No history data available to generate a report.');
+    return;
+  }
+
+  const first  = filtered[0];
+  const last   = filtered[filtered.length - 1];
+  const label  = _historyRange > 0 ? `${_historyRange}-Day` : 'Full';
+  const today  = new Date().toISOString().slice(0,10);
+
+  let md = `# PIE Intelligence Report — ${label} Summary
+`;
+  md += `**Generated:** ${today}  **Period:** ${first.date} → ${last.date}
+
+`;
+  md += `---
+
+`;
+
+  // Metrics summary
+  md += `## Key Metrics
+
+`;
+  md += `| Metric | ${first.date} | ${last.date} | Change |
+`;
+  md += `|--------|---------|---------|--------|
+`;
+  const metricRows = [
+    ['Total Flags',    'total_flags',       v => v != null ? Math.round(v) : '—'],
+    ['NDAA Ratio',     'ndaa_ratio',        v => v != null ? (v*100).toFixed(1)+'%' : '—'],
+    ['Parts in DB',    'total_parts',       v => v != null ? Math.round(v).toLocaleString() : '—'],
+    ['Intel Velocity', 'intel_velocity_7d', v => v != null ? v.toFixed(1)+'/day' : '—'],
+  ];
+  for (const [label, key, fmt] of metricRows) {
+    const fv = first[key], lv = last[key];
+    const delta = (fv != null && lv != null) ? lv - fv : null;
+    const sign  = delta > 0.01 ? '+' : '';
+    md += `| ${label} | ${fmt(fv)} | ${fmt(lv)} | ${delta != null ? sign+fmt(delta) : '—'} |
+`;
+  }
+  md += `
+`;
+
+  // Trend signals
+  if (trends && trends.trends) {
+    md += `## Trend Signals
+
+`;
+    for (const t of trends.trends) {
+      const proj = trends.projections ? trends.projections.find(p => p.label === t.label) : null;
+      md += `**${t.label}** — ${t.direction.toUpperCase()} (${t.signal||''})
+`;
+      md += `  Current: ${t.current} ${t.unit||''}`;
+      if (proj) md += ` · 90-day projection: ${proj.p90}`;
+      md += `
+
+`;
+    }
+  }
+
+  // Active predictions in range
+  const cutoff = _historyRange > 0 ? (() => { const d = new Date(); d.setDate(d.getDate() - _historyRange); return d; })() : null;
+  const filteredArch = cutoff ? arch.filter(p => new Date(p.archived_date) >= cutoff) : arch;
+  if (filteredArch.length) {
+    md += `## Active Predictions (${filteredArch.length})
+
+`;
+    for (const p of filteredArch.sort((a,b) => (b.probability||0) - (a.probability||0))) {
+      md += `- **${Math.round((p.probability||0)*100)}%** ${p.event||''}
+`;
+      md += `  *${p.timeframe||''}* · ${p.region||'global'} · archived ${p.archived_date}
+
+`;
+    }
+  }
+
+  md += `---
+*Generated by PIE — Pattern Intelligence Engine · DroneClear · ${today}*
+`;
+
+  // Download as .md file
+  const blob = new Blob([md], {type: 'text/markdown'});
+  const url  = URL.createObjectURL(blob);
+  const a    = document.createElement('a');
+  a.href     = url;
+  a.download = `pie-report-${label.toLowerCase()}-${today}.md`;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+
+// Load history when tab activates
 // ── Predictions ──
 function renderPredictions() {
   var el = document.getElementById("prediction-list");
