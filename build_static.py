@@ -137,6 +137,7 @@ def fix_paths(html, depth=0):
         html = html.replace("fetch('intel_companies.json')", f"fetch('{prefix}static/intel_companies.json')")
         html = html.replace("fetch('intel_platforms.json')", f"fetch('{prefix}static/intel_platforms.json')")
         html = html.replace("fetch('intel_programs.json')", f"fetch('{prefix}static/intel_programs.json')")
+        html = html.replace("fetch('intel_programs.json')", f"fetch('{prefix}static/intel_programs.json')")
         html = html.replace("fetch('drone_parts_schema_v3.json')", f"fetch('{prefix}static/forge_database.json')")
         # Master DB files
         html = html.replace("fetch('../data/defense/defense_master.json')", f"fetch('{prefix}static/defense_master.json')")

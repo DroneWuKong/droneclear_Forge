@@ -354,20 +354,106 @@ function renderFeed(){
 }
 function rP(){
   const pc={};ALL.forEach(a=>{(a.entities?.programs||[]).forEach(p=>{pc[p]=(pc[p]||0)+1;});});
+  // Build article lookup per program
+  const pa={};ALL.forEach(a=>{(a.entities?.programs||[]).forEach(p=>{if(!pa[p])pa[p]=[];if(pa[p].length<6)pa[p].push(a);});});
+  const pgMap={};INTEL_PROGRAMS.forEach(p=>{pgMap[p.name]=p;});
   const s=Object.entries(pc).sort((a,b)=>b[1]-a[1]),mx=s[0]?s[0][1]:1;
-  document.getElementById('program-list').innerHTML=s.map(([n,c])=>`<div class="ecard" style="border-left:3px solid var(--prog)"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px"><span style="font:600 12px var(--font);color:var(--text)">${n}</span><span style="font:700 14px var(--mono);color:var(--prog)">${c}</span></div><div style="background:var(--surface);border-radius:3px;height:6px;overflow:hidden"><div style="width:${Math.round(c/mx*100)}%;height:100%;background:var(--prog);border-radius:3px"></div></div><div style="font-size:9px;color:var(--text-d);margin-top:4px">${c} articles · <a href="/patterns/" style="color:var(--amber)">PIE flags →</a></div></div>`).join('');
+  document.getElementById('program-list').innerHTML=s.map(([n,c])=>{
+    const pg=pgMap[n]||{};
+    const flags=PIE_FLAGS.filter(f=>(f.title||'').toLowerCase().includes(n.toLowerCase())||(f.detail||'').toLowerCase().includes(n.toLowerCase()));
+    const arts=pa[n]||[];
+    const tags=(pg.tags||[]).slice(0,5);
+    const parts=(pg.participants||[]).slice(0,6);
+    const id='prog-'+n.replace(/\W/g,'_');
+    return`<div class="ecard" style="border-left:3px solid var(--prog);cursor:pointer" onclick="document.getElementById('${id}').style.display=document.getElementById('${id}').style.display==='none'?'block':'none'">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">
+        <span style="font:600 12px var(--font);color:var(--text)">${n}</span>
+        <div style="display:flex;gap:6px;align-items:center">
+          ${flags.length?`<span style="font:600 9px var(--mono);color:var(--red);background:rgba(239,68,68,.12);padding:1px 5px;border-radius:3px">⚡${flags.length}</span>`:''}
+          <span style="font:700 14px var(--mono);color:var(--prog)">${c}</span>
+        </div>
+      </div>
+      <div style="background:var(--surface);border-radius:3px;height:4px;overflow:hidden;margin-bottom:6px"><div style="width:${Math.round(c/mx*100)}%;height:100%;background:var(--prog);border-radius:3px"></div></div>
+      <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap">
+        <span style="font-size:9px;color:var(--text-d)">${c} articles</span>
+        ${tags.map(t=>`<span style="font:500 8px var(--mono);color:var(--prog);background:rgba(139,92,246,.1);padding:1px 5px;border-radius:3px">${t}</span>`).join('')}
+        <span style="font-size:9px;color:var(--text-xd);margin-left:auto">▾ expand</span>
+      </div>
+      <div id="${id}" style="display:none;margin-top:10px;border-top:1px solid var(--border);padding-top:10px">
+        ${parts.length?`<div style="margin-bottom:8px"><div style="font:600 9px var(--mono);color:var(--text-d);margin-bottom:4px">KEY PARTICIPANTS</div><div style="display:flex;flex-wrap:wrap;gap:3px">${parts.map(p=>`<span style="font:500 9px var(--font);color:var(--text-s);background:var(--surface);padding:2px 7px;border-radius:4px">${p}</span>`).join('')}${(pg.participants||[]).length>6?`<span style="font:500 9px var(--mono);color:var(--text-xd)">+${(pg.participants||[]).length-6} more</span>`:''}</div></div>`:''}
+        ${arts.length?`<div style="margin-bottom:6px"><div style="font:600 9px var(--mono);color:var(--text-d);margin-bottom:4px">RECENT COVERAGE</div><div style="display:flex;flex-direction:column;gap:4px">${arts.slice(0,4).map(a=>`<a href="${a.url||'#'}" target="_blank" rel="noopener" style="text-decoration:none;display:block;background:var(--surface);border-radius:5px;padding:6px 8px"><div style="font:500 10px var(--font);color:var(--text-s);margin-bottom:1px">${(a.title||'').slice(0,72)}${(a.title||'').length>72?'…':''}</div><div style="font:400 9px var(--mono);color:var(--text-xd)">${a.site||''} · ${(a.pub_date||'').slice(0,10)}</div></a>`).join('')}</div></div>`:''}
+        ${flags.length?`<div><div style="font:600 9px var(--mono);color:var(--red);margin-bottom:4px">⚡ PIE FLAGS</div><div style="display:flex;flex-direction:column;gap:3px">${flags.slice(0,3).map(f=>`<div style="background:rgba(239,68,68,.07);border-radius:5px;padding:5px 8px;font:400 9px var(--font);color:var(--text-s)">${(f.title||'').slice(0,90)}</div>`).join('')}</div></div>`:''}
+      </div>
+    </div>`;
+  }).join('');
 }
 function rC(){
   const cc={};ALL.forEach(a=>{(a.entities?.companies||[]).forEach(c=>{cc[c]=(cc[c]||0)+1;});});
-  const s=Object.entries(cc).sort((a,b)=>b[1]-a[1]).slice(0,30),mx=s[0]?s[0][1]:1;
-  document.getElementById('company-list').innerHTML=s.map(([n,c])=>`<div class="ecard" style="border-left:3px solid var(--comp)"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px"><span style="font:600 12px var(--font);color:var(--text)">${n}</span><span style="font:700 14px var(--mono);color:var(--comp)">${c}</span></div><div style="background:var(--surface);border-radius:3px;height:6px;overflow:hidden"><div style="width:${Math.round(c/mx*100)}%;height:100%;background:var(--comp);border-radius:3px"></div></div></div>`).join('');
+  const ca={};ALL.forEach(a=>{(a.entities?.companies||[]).forEach(c=>{if(!ca[c])ca[c]=[];if(ca[c].length<6)ca[c].push(a);});});
+  const coMap={};INTEL_COMPANIES.forEach(c=>{coMap[c.name]=c;});
+  const s=Object.entries(cc).sort((a,b)=>b[1]-a[1]).slice(0,40),mx=s[0]?s[0][1]:1;
+  document.getElementById('company-list').innerHTML=s.map(([n,c])=>{
+    const co=coMap[n]||{};
+    const flags=PIE_FLAGS.filter(f=>(f.title||'').toLowerCase().includes(n.toLowerCase())||(f.detail||'').toLowerCase().includes(n.toLowerCase()));
+    const arts=ca[n]||[];
+    const tags=(co.tags||[]).slice(0,4);
+    const progs=(co.programs||[]).slice(0,4);
+    const id='comp-'+n.replace(/\W/g,'_');
+    return`<div class="ecard" style="border-left:3px solid var(--comp);cursor:pointer" onclick="document.getElementById('${id}').style.display=document.getElementById('${id}').style.display==='none'?'block':'none'">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">
+        <span style="font:600 12px var(--font);color:var(--text)">${n}</span>
+        <div style="display:flex;gap:6px;align-items:center">
+          ${flags.length?`<span style="font:600 9px var(--mono);color:var(--red);background:rgba(239,68,68,.12);padding:1px 5px;border-radius:3px">⚡${flags.length}</span>`:''}
+          <span style="font:700 14px var(--mono);color:var(--comp)">${c}</span>
+        </div>
+      </div>
+      <div style="background:var(--surface);border-radius:3px;height:4px;overflow:hidden;margin-bottom:6px"><div style="width:${Math.round(c/mx*100)}%;height:100%;background:var(--comp);border-radius:3px"></div></div>
+      <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap">
+        <span style="font-size:9px;color:var(--text-d)">${c} articles</span>
+        ${tags.map(t=>`<span style="font:500 8px var(--mono);color:var(--comp);background:rgba(6,182,212,.1);padding:1px 5px;border-radius:3px">${t}</span>`).join('')}
+        <span style="font-size:9px;color:var(--text-xd);margin-left:auto">▾ expand</span>
+      </div>
+      <div id="${id}" style="display:none;margin-top:10px;border-top:1px solid var(--border);padding-top:10px">
+        ${progs.length?`<div style="margin-bottom:8px"><div style="font:600 9px var(--mono);color:var(--text-d);margin-bottom:4px">PROGRAMS</div><div style="display:flex;flex-wrap:wrap;gap:3px">${progs.map(p=>`<span style="font:500 9px var(--font);color:var(--text-s);background:var(--surface);padding:2px 7px;border-radius:4px">${p}</span>`).join('')}</div></div>`:''}
+        ${arts.length?`<div style="margin-bottom:6px"><div style="font:600 9px var(--mono);color:var(--text-d);margin-bottom:4px">RECENT COVERAGE</div><div style="display:flex;flex-direction:column;gap:4px">${arts.slice(0,4).map(a=>`<a href="${a.url||'#'}" target="_blank" rel="noopener" style="text-decoration:none;display:block;background:var(--surface);border-radius:5px;padding:6px 8px"><div style="font:500 10px var(--font);color:var(--text-s);margin-bottom:1px">${(a.title||'').slice(0,72)}${(a.title||'').length>72?'…':''}</div><div style="font:400 9px var(--mono);color:var(--text-xd)">${a.site||''} · ${(a.pub_date||'').slice(0,10)}</div></a>`).join('')}</div></div>`:''}
+        ${flags.length?`<div><div style="font:600 9px var(--mono);color:var(--red);margin-bottom:4px">⚡ PIE FLAGS</div><div style="display:flex;flex-direction:column;gap:3px">${flags.slice(0,3).map(f=>`<div style="background:rgba(239,68,68,.07);border-radius:5px;padding:5px 8px;font:400 9px var(--font);color:var(--text-s)">${(f.title||'').slice(0,90)}</div>`).join('')}</div></div>`:''}
+      </div>
+    </div>`;
+  }).join('');
 }
 function rR(){
   const rc={};ALL.forEach(a=>ar(a).forEach(r=>{rc[r]=(rc[r]||0)+1;}));
+  const ra={};ALL.forEach(a=>{ar(a).forEach(r=>{if(!ra[r])ra[r]=[];if(ra[r].length<6)ra[r].push(a);});});
   const s=Object.entries(rc).sort((a,b)=>b[1]-a[1]),mx=s[0]?s[0][1]:1;
+  const THREAT={'China':'var(--red)','Russia':'var(--red)','Iran':'var(--red)','North Korea':'var(--red)'};
+  const ALLIED={'US':'var(--green)','NATO':'var(--green)','UK':'var(--green)','Australia':'var(--green)','France':'var(--green)','Germany':'var(--green)'};
   document.getElementById('intel-region-list').innerHTML=s.map(([n,c])=>{
-    const cl=n==='China'||n==='Russia'||n==='Iran'||n==='North Korea'?'var(--red)':n==='US'||n==='NATO'||n==='UK'||n==='Australia'?'var(--green)':'var(--amber)';
-    return`<div class="ecard" style="border-left:3px solid ${cl};cursor:pointer" onclick="cR='${n}';rFi();renderFeed();document.querySelector('[data-tab=feed]').click()"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px"><span style="font:600 12px var(--font);color:var(--text)">${n}</span><span style="font:700 14px var(--mono);color:${cl}">${c}</span></div><div style="background:var(--surface);border-radius:3px;height:6px;overflow:hidden"><div style="width:${Math.round(c/mx*100)}%;height:100%;background:${cl};border-radius:3px"></div></div><div style="font-size:9px;color:var(--text-d);margin-top:4px">${c} articles · <a href="/patterns/#region-${n.toLowerCase().replace(/\s+/g,'-')}" style="color:var(--amber)">PIE region →</a></div></div>`;
+    const cl=THREAT[n]||ALLIED[n]||'var(--amber)';
+    const label=THREAT[n]?'THREAT ACTOR':ALLIED[n]?'ALLIED':'MONITOR';
+    const arts=ra[n]||[];
+    const id='reg-'+n.replace(/\W/g,'_');
+    // Get top sources for this region
+    const srcCount={};arts.forEach(a=>{if(a.site)srcCount[a.site]=(srcCount[a.site]||0)+1;});
+    const topSrc=Object.entries(srcCount).sort((a,b)=>b[1]-a[1]).slice(0,4);
+    return`<div class="ecard" style="border-left:3px solid ${cl};cursor:pointer" onclick="document.getElementById('${id}').style.display=document.getElementById('${id}').style.display==='none'?'block':'none'">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">
+        <div style="display:flex;align-items:center;gap:7px">
+          <span style="font:600 12px var(--font);color:var(--text)">${n}</span>
+          <span style="font:600 8px var(--mono);color:${cl};opacity:.7">${label}</span>
+        </div>
+        <span style="font:700 14px var(--mono);color:${cl}">${c}</span>
+      </div>
+      <div style="background:var(--surface);border-radius:3px;height:4px;overflow:hidden;margin-bottom:6px"><div style="width:${Math.round(c/mx*100)}%;height:100%;background:${cl};border-radius:3px"></div></div>
+      <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap">
+        <span style="font-size:9px;color:var(--text-d)">${c} articles</span>
+        ${topSrc.map(([s,n])=>`<span style="font:500 8px var(--mono);color:var(--text-xd);background:var(--surface);padding:1px 5px;border-radius:3px">${s} (${n})</span>`).join('')}
+        <span style="font-size:9px;color:var(--text-xd);margin-left:auto">▾ expand</span>
+      </div>
+      <div id="${id}" style="display:none;margin-top:10px;border-top:1px solid var(--border);padding-top:10px">
+        ${arts.length?`<div style="margin-bottom:6px"><div style="font:600 9px var(--mono);color:var(--text-d);margin-bottom:4px">RECENT COVERAGE</div><div style="display:flex;flex-direction:column;gap:4px">${arts.slice(0,5).map(a=>`<a href="${a.url||'#'}" target="_blank" rel="noopener" style="text-decoration:none;display:block;background:var(--surface);border-radius:5px;padding:6px 8px"><div style="font:500 10px var(--font);color:var(--text-s);margin-bottom:1px">${(a.title||'').slice(0,72)}${(a.title||'').length>72?'…':''}</div><div style="font:400 9px var(--mono);color:var(--text-xd)">${a.site||''} · ${(a.pub_date||'').slice(0,10)}</div></a>`).join('')}</div></div>`:''}
+        <div style="margin-top:8px"><button onclick="event.stopPropagation();cR='${n}';rFi();renderFeed();document.querySelector('[data-tab=feed]').click()" style="background:none;border:1px solid ${cl};color:${cl};border-radius:5px;padding:4px 12px;font:600 9px var(--mono);cursor:pointer">Filter feed → ${n}</button></div>
+      </div>
+    </div>`;
   }).join('');
 }
 let ru='';
@@ -452,6 +538,7 @@ window.closeDM=function(){document.getElementById('dm-overlay').classList.remove
 // ── PIE + PAYWALL GLOBALS ──
 let PIE_FLAGS=[], PIE_PREDS=[], PIE_BRIEF={};
 let SOL_DATA={meta:{},solicitations:[]};
+let INTEL_PROGRAMS=[], INTEL_COMPANIES=[];
 
 function getTier(){
   var tok=localStorage.getItem('wingman_sub_token')||'';
@@ -828,8 +915,12 @@ Promise.all([
   fetch('pie_predictions.json').then(r=>r.ok?r.json():[]).catch(()=>[]),
   fetch('pie_brief.json').then(r=>r.ok?r.json():{}).catch(()=>({})),
   fetch('solicitations.json').then(r=>r.ok?r.json():{meta:{},solicitations:[]}).catch(()=>({meta:{},solicitations:[]})),
-]).then(([articles, defDB, comDB, dfrDB, forgeIntel, pieFlags, piePreds, pieBrief, solData])=>{
+  fetch('intel_programs.json').then(r=>r.ok?r.json():[]).catch(()=>[]),
+  fetch('intel_companies.json').then(r=>r.ok?r.json():[]).catch(()=>[]),
+]).then(([articles, defDB, comDB, dfrDB, forgeIntel, pieFlags, piePreds, pieBrief, solData, intelPrograms, intelCompanies])=>{
   ALL=articles;
+  INTEL_PROGRAMS=intelPrograms||[];
+  INTEL_COMPANIES=intelCompanies||[];
   DEFENSE_DB=[...(defDB.records||[]), ...forgeIntelToDefenseRecords(forgeIntel)];
   COMMERCIAL_DB=[...(comDB.records||[]), ...forgeIntelToCommercialRecords(forgeIntel)];
   DFR_DB=(dfrDB.records||[]).filter(r=>r.vertical_tag==='dfr');
