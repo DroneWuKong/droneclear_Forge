@@ -430,6 +430,9 @@ a.brief-source-chip:hover{color:var(--text-s);border-color:var(--border-hi)}
     <div id="component-table-wrap"></div>
   </div>
 
+  <!-- Staleness banner — shown when live predictions are replaced by archive fallback -->
+  <div id="predictions-stale-banner" style="display:none;background:#92400e22;border:1px solid #92400e;border-radius:8px;padding:8px 12px;margin:8px 0;font-size:11px;color:#f59e0b;text-align:center"></div>
+
   <!-- PREDICTIONS PANEL -->
   <div class="panel" id="panel-predictions">
     <p style="font-size:11px;color:var(--text-d);margin-bottom:14px">
@@ -1062,7 +1065,36 @@ async function loadData() {
         return r.json();
       }),
     ]);
-    FLAGS = fRes; PREDICTIONS = pRes;
+    FLAGS = fRes;
+
+    // Use live predictions if healthy (≥10 items), otherwise fall back to best archive
+    if (pRes && pRes.length >= 10) {
+      PREDICTIONS = pRes;
+    } else {
+      // Live predictions sparse — load best archive as fallback
+      try {
+        const bestRes = await fetch("../static/predictions_best.json");
+        if (bestRes.ok) {
+          const best = await bestRes.json();
+          if (best && best.length > pRes.length) {
+            PREDICTIONS = best;
+            // Show staleness banner
+            const staleDate = best.filter(p => p._archive_date).map(p => p._archive_date).sort().reverse()[0];
+            const bannerEl = document.getElementById("predictions-stale-banner");
+            if (bannerEl) {
+              bannerEl.style.display = "block";
+              bannerEl.textContent = `Showing ${best.length} archived predictions${staleDate ? " · last updated " + staleDate : ""}. Fresh synthesis runs daily at 4 AM CST.`;
+            }
+          } else {
+            PREDICTIONS = pRes;
+          }
+        } else {
+          PREDICTIONS = pRes;
+        }
+      } catch(e) {
+        PREDICTIONS = pRes;
+      }
+    }
   } catch(e) {
     console.error("Pipeline data load failed:", e);
     FLAGS = []; PREDICTIONS = [];
