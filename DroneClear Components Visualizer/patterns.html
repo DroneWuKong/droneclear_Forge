@@ -1643,9 +1643,9 @@ document.querySelectorAll(".tab").forEach(t => {
 });
 
 // ── Region extraction from flag detail text ──
-const REGIONS = ["China","Russia","Iran","Ukraine","Turkey","Israel","US","EU","NATO","Taiwan","North Korea","Japan","India","Australia","UK","France","Germany"];
+// Single source of truth: REGION_DATA.countries arrays
 function extractRegions(f) {
-  // Use explicit region field first (from LLM predictions and static flags)
+  // Use explicit region field first (pipeline-set, most reliable)
   const REGION_FIELD_MAP = {
     'north-america': 'North America', 'europe': 'Europe',
     'asia-pacific': 'Asia-Pacific', 'ukraine': 'Ukraine',
@@ -1654,9 +1654,15 @@ function extractRegions(f) {
     'south-america': 'South America',
   };
   if (f.region && REGION_FIELD_MAP[f.region]) return [REGION_FIELD_MAP[f.region]];
-  // Fall back to keyword extraction with word-boundary matching
-  const text = (f.title||"") + " " + (f.detail||"") + " " + (f.prediction||"");
-  return REGIONS.filter(r => new RegExp("\\b" + r.replace(/ /g,"\\s+") + "\\b", "i").test(text));
+  // Fall back: match against REGION_DATA.countries (expanded keyword lists)
+  const text = ((f.title||'') + ' ' + (f.detail||'') + ' ' + (f.prediction||'')).toLowerCase();
+  const matched = [];
+  for (const [slug, data] of Object.entries(REGION_DATA)) {
+    if (data.countries.some(c => text.includes(c.toLowerCase()))) {
+      matched.push(data.name);
+    }
+  }
+  return matched;
 }
 
 // ── Active filters ──
@@ -3039,63 +3045,91 @@ function renderDashboard() {
 const REGION_DATA = {
   "north-america": {
     name: "North America", emoji: "🇺🇸", color: "var(--blue)",
-    countries: ["usa", "united states", "canada", "north america"],
+    countries: ["usa", "united states", "u.s.", "u.s.a.", "north america", "canada", "american",
+                "army", "air force", "navy", "usaf", "usmc", "socom", "ussocom", "afsoc",
+                "dod", "pentagon", "diu", "darpa", "dhs", "cisa", "afwerx", "ardec",
+                "anduril", "skydio", "aerovironment", "shield ai", "neros", "modalai",
+                "drone dominance", "replicator", "blue uas", "sbir", "ndaa", "ftuas",
+                "srr program", "cca program", "attritable", "autonomous systems command"],
     keyPlayers: "Skydio, Shield AI, Anduril, AeroVironment, ModalAI, Neros, L3Harris, Raytheon, Freefly, Red Cat/Teal",
     programs: "Drone Dominance (200K drones/$1.4B), Army SRR (5,880 systems), CCA ($5.8B), Replicator/DAWG, USMC FPV ($47M), Blue UAS list (50+ platforms)",
     supplyNote: "Primary demand driver. Blue UAS ecosystem centered here. Industrial base scaling under Drone Dominance EO."
   },
   "europe": {
     name: "Europe (NATO)", emoji: "🇪🇺", color: "var(--cyan)",
-    countries: ["france", "germany", "uk", "united kingdom", "netherlands", "poland", "croatia", "estonia", "belgium", "spain", "italy", "sweden", "czech", "latvia", "lithuania", "slovenia", "austria", "slovakia", "bulgaria", "switzerland", "eu", "nato", "europe"],
+    countries: ["france", "germany", "uk", "united kingdom", "netherlands", "poland", "croatia",
+                "estonia", "belgium", "spain", "italy", "sweden", "czech", "latvia", "lithuania",
+                "slovenia", "austria", "slovakia", "bulgaria", "switzerland", "eu", "nato", "europe",
+                "orqa", "parrot", "quantum systems", "helsing", "stmicro", "stmicroelectronics",
+                "u-blox", "ublox", "nanoxplore", "thales", "safran", "wb group", "piap",
+                "fcas", "eurodrone", "british", "royal air force", "raf", "bundestag"],
     keyPlayers: "Parrot (France), Quantum Systems (Germany), Orqa (Croatia), WB Group (Poland), Helsing (Germany), Safran, Thales, STMicroelectronics",
     programs: "FCAS (€100B+), EuroDrone (MALE RPAS), NATO interop standards, Polish €2B anti-drone barrier, NanoXplore FPGAs",
     supplyNote: "STMicroelectronics fabs (STM32), u-blox GNSS (Swiss), NanoXplore FPGAs. Building sovereign supply chain to reduce US/Chinese dependency."
   },
   "ukraine": {
     name: "Ukraine", emoji: "🇺🇦", color: "var(--amber)",
-    countries: ["ukraine"],
+    countries: ["ukraine", "ukrainian", "kyiv", "kiev", "gur", "zaluzhnyi", "zelensky",
+                "brave1", "vyriy", "wild hornets", "taf industries", "iron belly",
+                "usai", "ukraine security assistance", "fpv ukraine"],
     keyPlayers: "TAF Industries, Vyriy Drone, Wild Hornets, Brave1 accelerator, Iron Belly + Shield AI Hivemind, Swarmer",
     programs: "10K+ FPV/month production. Hivemind autonomy integration. Fastest-iterating drone ecosystem in the world.",
     supplyNote: "Competes with US Drone Dominance for same FPV components (STM32, ELRS, Caddx). Combat experience drives global doctrine. 23 platforms in Forge DB."
   },
   "middle-east": {
     name: "Middle East", emoji: "🇹🇷", color: "var(--orange)",
-    countries: ["turkey", "israel", "uae", "iran", "saudi"],
+    countries: ["turkey", "israel", "uae", "iran", "saudi", "turkish", "israeli", "iranian",
+                "baykar", "tb2", "tb3", "bayraktar", "akinci", "kizilelma",
+                "elbit", "iai", "d-fend", "enforceair", "edge group",
+                "shahed", "geran", "mohajer", "arash", "hesa",
+                "middle east", "persian", "gaza", "hamas", "hezbollah"],
     keyPlayers: "Baykar (Turkey — TB2/TB3/Akıncı/Kızılelma), Elbit Systems (Israel), IAI (Israel), D-Fend (Israel), EDGE Group (UAE), HESA/Iran",
     programs: "Baykar: 35+ export customers. Shahed mass production (Iran→Russia). Elbit Skylark/Lanius. D-Fend EnforceAir (C-UAS).",
     supplyNote: "Turkey building indigenous supply chain after Canada sensor embargo. Iran drives gray market component diversion for Russian drones."
   },
   "asia-pacific": {
     name: "Asia-Pacific", emoji: "🌏", color: "var(--red)",
-    countries: ["china", "india", "south korea", "taiwan", "japan", "singapore"],
+    countries: ["china", "india", "south korea", "taiwan", "japan", "singapore", "chinese",
+                "dji", "tsmc", "catl", "byd", "huawei", "hisilicon", "espressif",
+                "samsung", "sk hynix", "ideaforge", "st engineering",
+                "pla", "chinese military", "beijing", "shenzhen",
+                "asia", "asian", "indo-pacific", "prc", "ccp",
+                "fcc covered list", "ndaa 889", "section 889",
+                "temu", "knowact", "skyrover", "autel", "anzu"],
     keyPlayers: "DJI (80% global share), CATL/BYD (batteries), TSMC (chip fab), Samsung/SK Hynix (DRAM), ideaForge (India), ST Engineering (Singapore)",
     programs: "PLA drone swarms (China), KAI stealth UCAV (S.Korea), Taiwan NCSIST + Hivemind, ideaForge SWITCH (India), Shield AI + ST Engineering (Singapore)",
     supplyNote: "TSMC is upstream of ALL Blue UAS compute (Jetson + QRB5165). China manufactures majority of drone motors, ESCs, LiPo cells. Samsung/SK Hynix: global DRAM."
   },
   "russia": {
     name: "Russia", emoji: "🇷🇺", color: "var(--red)",
-    countries: ["russia"],
+    countries: ["russia", "russian", "moscow", "kremlin", "alabuga", "yelabuga",
+                "zala", "lancet", "orlan", "geran", "geran-2", "geran-3", "geran-5",
+                "shahed-136", "shahed-238", "molniya", "borscht tracker",
+                "diverted", "gray market", "smuggled", "re-exported"],
     keyPlayers: "Alabuga factory (Yelabuga), ZALA Aero (Lancet), Orlan (ISR), diverted Western components, Iranian airframe technology",
     programs: "Mass drone production using gray market parts. GUR tracks 5,534 foreign components in 190 weapon systems. Geran/Shahed production at scale.",
     supplyNote: "Primary driver of component diversion. 40K+ RPi units diverted. STM32, Western MCUs flowing through China/UAE gray market channels."
   },
   "oceania": {
     name: "Oceania", emoji: "🇦🇺", color: "var(--green)",
-    countries: ["australia", "new zealand"],
+    countries: ["australia", "new zealand", "australian", "sypaq", "corvo",
+                "droneshield", "mq-28", "ghost bat", "boeing australia"],
     keyPlayers: "SYPAQ (Corvo cardboard drone), DroneShield (C-UAS), Boeing Australia (MQ-28 Ghost Bat)",
     programs: "SYPAQ Corvo used in Ukraine. MQ-28 Ghost Bat is Australia's CCA testbed. DroneShield: A$1.2B European pipeline.",
     supplyNote: "Five Eyes ally. MQ-28 feeds CCA concepts into US/UK programs. DroneShield is largest C-UAS customer base globally."
   },
   "south-america": {
     name: "South America", emoji: "🌎", color: "var(--green)",
-    countries: ["brazil", "argentina", "colombia", "chile", "mexico"],
+    countries: ["brazil", "argentina", "colombia", "chile", "mexico", "peru",
+                "brazilian", "latin america", "south america"],
     keyPlayers: "Emerging military drone programs, commercial agriculture UAS adoption",
     programs: "Growing adoption of ISR and agricultural UAS. Brazil military drone procurement expanding.",
     supplyNote: "Expanding market creating additional global component demand. Mostly importing platforms, not manufacturing."
   },
   "africa": {
     name: "Africa", emoji: "🌍", color: "var(--purple)",
-    countries: ["south africa", "nigeria", "ethiopia", "morocco", "egypt", "kenya", "libya"],
+    countries: ["south africa", "nigeria", "ethiopia", "morocco", "egypt", "kenya", "libya",
+                "african", "sahel", "mali", "niger", "somalia"],
     keyPlayers: "Baykar exports (multiple African nations), Chinese drone exports, emerging local manufacturers",
     programs: "Turkey/Baykar expanding across North/Sub-Saharan Africa. Chinese drone exports growing. Counter-terrorism ISR.",
     supplyNote: "Import-driven market. Turkish and Chinese drones dominating. Limited indigenous manufacturing capability."
