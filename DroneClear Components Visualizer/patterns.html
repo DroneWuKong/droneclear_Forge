@@ -256,6 +256,7 @@ a.brief-source-chip:hover{color:var(--text-s);border-color:var(--border-hi)}
   <button type="button" class="tab" data-tab="manufacturers">🏭 Manufacturers</button>
   <button type="button" class="tab" data-tab="vars">🏪 VARs</button>
   <button type="button" class="tab" data-tab="history">📈 History</button>
+  <button type="button" class="tab" data-tab="procurement">💰 Procurement</button>
 </div>
 
 <!-- ═══ Content ═══ -->
@@ -316,6 +317,14 @@ a.brief-source-chip:hover{color:var(--text-s);border-color:var(--border-hi)}
 
   <!-- DASHBOARD PANEL -->
   <div class="panel" id="panel-dashboard">
+    <!-- Pipeline Health Bar -->
+    <div id="pipeline-health-bar" style="background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:12px 14px;margin-bottom:14px">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
+        <span style="font:600 10px var(--mono);color:var(--text-d);text-transform:uppercase;letter-spacing:.06em">Pipeline Health</span>
+        <span id="pipeline-last-run" style="font:400 9px var(--mono);color:var(--text-d)">Loading...</span>
+      </div>
+      <div id="pipeline-sources" style="display:flex;gap:6px;flex-wrap:wrap"></div>
+    </div>
     <p style="font-size:11px;color:var(--text-d);margin-bottom:16px">
       Visual overview of the UAS supply chain intelligence landscape. Data from PIE pipeline — 
       <span id="dash-flag-count">0</span> flags across <span id="dash-layer-count">0</span> analysis layers.
@@ -366,6 +375,13 @@ a.brief-source-chip:hover{color:var(--text-s);border-color:var(--border-hi)}
       <div style="font:600 10px var(--mono);color:var(--text-d);text-transform:uppercase;letter-spacing:.06em;margin-bottom:10px">Intelligence Confidence Levels</div>
       <p style="font-size:10px;color:var(--text-xd);margin-bottom:10px">How confident is each flag? Higher confidence = stronger evidence chain.</p>
       <div id="dash-confidence"></div>
+    </div>
+  </div>
+
+  <!-- PROCUREMENT PANEL -->
+  <div class="panel" id="panel-procurement">
+    <div id="procurement-inner">
+      <div style="color:var(--text-d);font-size:12px;padding:40px;text-align:center">Loading procurement data...</div>
     </div>
   </div>
 
@@ -960,6 +976,9 @@ document.addEventListener('DOMContentLoaded', function() {
 // (committed by GitHub Actions pipeline)
 // ═══════════════════════════════════════════════════════════
 
+let ENTITY_GRAPH = {};
+let PROCUREMENT_DATA = null;
+
 const FLAG_META = {
   procurement_spike: {label:"Procurement Spike",badge:"badge-red",sev:"critical",icon:"▲"},
   supply_constraint: {label:"Supply Constraint",badge:"badge-warning",sev:"warning",icon:"⬡"},
@@ -1098,6 +1117,17 @@ async function loadData() {
     const n = (db.drone_models||[]).length;
     const el = document.getElementById('plat-count-blueuas');
     if(el) el.textContent = n;
+  }).catch(()=>{});
+
+  // Load entity graph + miner health + procurement (fire-and-forget)
+  fetch("../static/entity_graph.json").then(r=>r.ok?r.json():null).then(d=>{
+    if(d && d.entities) { ENTITY_GRAPH = d.entities; }
+  }).catch(()=>{});
+  fetch("../static/miner_health.json").then(r=>r.ok?r.json():null).then(h=>{
+    if(h) renderPipelineHealth(h);
+  }).catch(()=>{});
+  fetch("../static/solicitations.json").then(r=>r.ok?r.json():null).then(d=>{
+    if(d) { PROCUREMENT_DATA = d; renderProcurement(); }
   }).catch(()=>{});
 
   try {
@@ -1923,8 +1953,95 @@ function renderFlagDetail() {
     });
     html += `</div></div>`;
   }
+  // ── Related Intelligence (entity graph cross-ref) ──
+  html += renderRelatedIntel(f);
+
   document.getElementById("flag-modal-body").innerHTML = html;
   document.getElementById("flag-modal-overlay").classList.add("open");
+}
+
+function renderRelatedIntel(flag) {
+  // Try to match flag to entity graph by entity_id, title keywords, or component/platform id
+  const searchTerms = [
+    flag.entity_id,
+    flag.platform_id,
+    flag.component_id,
+    ...((flag.title||'').split(/\s+/).filter(w=>w.length>4))
+  ].filter(Boolean).map(s=>s.toLowerCase());
+
+  if (!searchTerms.length || !Object.keys(ENTITY_GRAPH).length) return '';
+
+  // Find matching entities
+  const matches = [];
+  for (const [key, node] of Object.entries(ENTITY_GRAPH)) {
+    const nodeName = (node.name||'').toLowerCase();
+    if (searchTerms.some(t => nodeName.includes(t) || t.includes(nodeName))) {
+      if (nodeName.length > 2) matches.push(node);
+    }
+  }
+  if (!matches.length) return '';
+
+  const node = matches[0]; // best match
+  const hasData = node.parts.length || node.articles.length || node.contracts.length || node.solicitations.length || node.flags.length;
+  if (!hasData) return '';
+
+  let html = `<div style="margin-top:14px;border-top:1px solid var(--border);padding-top:12px">
+    <div style="font:600 9px var(--mono);color:var(--cyan);text-transform:uppercase;letter-spacing:.08em;margin-bottom:8px">⟐ Related Intelligence — ${node.name}</div>
+    <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px">`;
+
+  if (node.parts.length) html += `<span class="badge badge-amber">${node.parts.length} parts</span>`;
+  if (node.articles.length) html += `<span class="badge badge-blue">${node.articles.length} articles</span>`;
+  if (node.contracts.length) html += `<span class="badge badge-green">${node.contracts.length} contracts</span>`;
+  if (node.solicitations.length) {
+    const totalAmt = node.solicitations.reduce((a,s)=>a+(s.amount||0),0);
+    html += `<span class="badge badge-cyan">$${(totalAmt/1e6).toFixed(0)}M awards</span>`;
+  }
+  if (node.flags.length > 1) html += `<span class="badge badge-red">${node.flags.length} flags</span>`;
+  html += '</div>';
+
+  // Recent articles
+  if (node.articles.length) {
+    html += `<div style="font:600 9px var(--font);color:var(--text-d);text-transform:uppercase;letter-spacing:.05em;margin-bottom:5px">Recent Coverage</div>
+    <div style="display:flex;flex-direction:column;gap:4px;margin-bottom:10px">`;
+    node.articles.slice(0,3).forEach(a => {
+      html += `<a href="${a.url||'#'}" target="_blank" rel="noopener" style="font:400 11px var(--font);color:var(--text-s);text-decoration:none;padding:5px 7px;background:var(--surface);border-radius:5px;display:block;border:1px solid var(--border)">
+        <span style="color:var(--text);font-weight:500">${(a.title||'').substring(0,72)}${(a.title||'').length>72?'…':''}</span>
+        <span style="font:9px var(--mono);color:var(--text-d);margin-left:4px">${a.site||''} · ${(a.pub_date||'').slice(0,10)}</span>
+      </a>`;
+    });
+    html += '</div>';
+  }
+
+  // Top contracts
+  if (node.contracts.length) {
+    html += `<div style="font:600 9px var(--font);color:var(--text-d);text-transform:uppercase;letter-spacing:.05em;margin-bottom:5px">Contracts</div>
+    <div style="display:flex;flex-direction:column;gap:4px;margin-bottom:10px">`;
+    node.contracts.slice(0,3).forEach(c => {
+      html += `<div style="font:400 11px var(--font);color:var(--text-s);padding:5px 7px;background:var(--surface);border-radius:5px;border-left:2px solid var(--green)">
+        <span style="color:var(--text);font-weight:500">${c.program||c.type||''}</span>
+        ${c.value ? `<span style="font:600 10px var(--mono);color:var(--green);margin-left:6px">${c.value}</span>` : ''}
+        ${c.date ? `<span style="font:9px var(--mono);color:var(--text-d);margin-left:4px">${c.date}</span>` : ''}
+      </div>`;
+    });
+    html += '</div>';
+  }
+
+  // Parts count
+  if (node.parts.length) {
+    const cats = {};
+    node.parts.forEach(p => { cats[p.category] = (cats[p.category]||0)+1; });
+    const topCats = Object.entries(cats).sort((a,b)=>b[1]-a[1]).slice(0,4);
+    html += `<div style="font:600 9px var(--font);color:var(--text-d);text-transform:uppercase;letter-spacing:.05em;margin-bottom:5px">Parts in Database</div>
+    <div style="display:flex;gap:5px;flex-wrap:wrap">`;
+    topCats.forEach(([cat,n]) => {
+      html += `<span style="font:400 10px var(--font);color:var(--text-d);background:var(--surface);border-radius:4px;padding:2px 7px;border:1px solid var(--border)">${cat.replace(/_/g,' ')} ×${n}</span>`;
+    });
+    if (Object.keys(cats).length > 4) html += `<span style="font:10px var(--font);color:var(--text-xd);padding:2px 7px">+${Object.keys(cats).length-4} more</span>`;
+    html += '</div>';
+  }
+
+  html += '</div>';
+  return html;
 }
 
 
@@ -4539,6 +4656,280 @@ function buildPersonalizedSection(tier) {
 }
 // ─────────────────────────────────────────────────────────────────────────────
 
+
+// ══════════════════════════════════════════
+// PIPELINE HEALTH
+// ══════════════════════════════════════════
+function renderPipelineHealth(h) {
+  const el = document.getElementById('pipeline-sources');
+  const lastRun = document.getElementById('pipeline-last-run');
+  if (!el) return;
+
+  const sources = h.sources || {};
+  const total = h.total || 0;
+  const ts = h.timestamp ? new Date(h.timestamp) : null;
+
+  if (lastRun && ts) {
+    const diffHrs = Math.round((Date.now() - ts) / 3600000);
+    const freshStr = diffHrs < 2 ? 'live' : diffHrs < 24 ? diffHrs+'h ago' : Math.round(diffHrs/24)+'d ago';
+    const color = diffHrs < 24 ? 'var(--green)' : diffHrs < 48 ? 'var(--warning)' : 'var(--red)';
+    lastRun.innerHTML = `<span style="color:${color}">●</span> run #${h.run||'—'} · ${ts.toISOString().slice(0,16).replace('T',' ')} UTC · ${freshStr} · ${total.toLocaleString()} articles`;
+  }
+
+  const sorted = Object.entries(sources).sort((a,b)=>b[1]-a[1]);
+  const max = sorted[0]?.[1] || 1;
+  el.innerHTML = sorted.map(([src, count]) => {
+    const pct = Math.round((count/max)*100);
+    const barW = Math.max(pct, 8);
+    return `<div title="${src}: ${count} articles" style="display:flex;align-items:center;gap:4px;background:var(--card);border-radius:6px;padding:4px 8px;border:1px solid var(--border)">
+      <span style="font:600 9px var(--mono);color:var(--green)">●</span>
+      <span style="font:500 9px var(--font);color:var(--text-s)">${src}</span>
+      <span style="font:700 9px var(--mono);color:var(--text-d)">${count}</span>
+    </div>`;
+  }).join('');
+}
+
+// ══════════════════════════════════════════
+// PROCUREMENT TAB
+// ══════════════════════════════════════════
+function renderProcurement() {
+  const el = document.getElementById('procurement-inner');
+  if (!el || !PROCUREMENT_DATA) return;
+
+  const sols = PROCUREMENT_DATA.solicitations || [];
+  const meta = PROCUREMENT_DATA.meta || {};
+
+  // Compute stats
+  const usaSpending = sols.filter(s => s.source === 'usaspending');
+  const newsSignals = sols.filter(s => s.source === 'news');
+  const grayZone = sols.filter(s => s.gray_zone_flag);
+  const blueUAS = sols.filter(s => s.blue_uas_flag);
+  const totalSpend = usaSpending.reduce((a,s) => a+(s.amount||0), 0);
+
+  // Agency breakdown
+  const agencySpend = {};
+  usaSpending.forEach(s => {
+    if (s.agency && s.amount) {
+      agencySpend[s.agency] = (agencySpend[s.agency]||0) + s.amount;
+    }
+  });
+  const topAgencies = Object.entries(agencySpend).sort((a,b)=>b[1]-a[1]).slice(0,8);
+  const maxAgency = topAgencies[0]?.[1] || 1;
+
+  // Recipient breakdown
+  const recipSpend = {};
+  usaSpending.forEach(s => {
+    if (s.recipient && s.amount) {
+      const r = s.recipient.replace(/ (INC|LLC|CORP|CORPORATION|INCORPORATED|CO)\.?$/i,'').trim();
+      recipSpend[r] = (recipSpend[r]||0) + s.amount;
+    }
+  });
+  const topRecips = Object.entries(recipSpend).sort((a,b)=>b[1]-a[1]).slice(0,10);
+  const maxRecip = topRecips[0]?.[1] || 1;
+
+  // Agency colors
+  const agencyColors = {
+    'Department of Defense': 'var(--red)',
+    'Department of Homeland Security': 'var(--orange)',
+    'National Aeronautics and Space Administration': 'var(--cyan)',
+    'Department of Health and Human Services': 'var(--purple)',
+    'Department of State': 'var(--blue)',
+    'Department of Transportation': 'var(--amber)',
+    'Department of Agriculture': 'var(--green)',
+    'Department of Justice': 'var(--warning)',
+  };
+
+  // Build table rows (all records, filterable)
+  let searchState = { q: '', gray: false, blue: false };
+  
+  const filteredRows = () => {
+    return sols.filter(s => {
+      if (searchState.gray && !s.gray_zone_flag) return false;
+      if (searchState.blue && !s.blue_uas_flag) return false;
+      if (searchState.q) {
+        const q = searchState.q.toLowerCase();
+        return (s.title||'').toLowerCase().includes(q) ||
+               (s.agency||'').toLowerCase().includes(q) ||
+               (s.recipient||'').toLowerCase().includes(q);
+      }
+      return true;
+    });
+  };
+
+  const renderTable = () => {
+    const rows = filteredRows().slice(0, 200);
+    const tbody = document.getElementById('proc-table-body');
+    if (!tbody) return;
+    tbody.innerHTML = rows.map(s => {
+      const amt = s.amount ? '$'+_fmtM(s.amount) : s.type === 'news_signal' ? '<span style="color:var(--text-d)">signal</span>' : '—';
+      const date = s.posted_date ? s.posted_date.split(' ').slice(1,4).join(' ') : '';
+      const gz = s.gray_zone_flag ? '<span class="badge badge-red" style="font-size:8px">GZ</span>' : '';
+      const bu = s.blue_uas_flag ? '<span class="badge badge-green" style="font-size:8px">BU</span>' : '';
+      const src = s.source === 'usaspending' ? '<span style="color:var(--cyan);font:600 8px var(--mono)">USA</span>' : '<span style="color:var(--text-d);font:600 8px var(--mono)">NEWS</span>';
+      return `<tr style="border-bottom:1px solid var(--border)">
+        <td style="padding:6px 8px;font-size:10px;color:var(--text-s)">${src}</td>
+        <td style="padding:6px 8px;font-size:10px;color:var(--text);max-width:260px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${gz}${bu} <a href="${s.url||'#'}" target="_blank" rel="noopener" style="color:var(--text);text-decoration:none">${(s.title||'').substring(0,80)}</a></td>
+        <td style="padding:6px 8px;font-size:10px;color:var(--text-d);white-space:nowrap">${(s.agency||s.sub_agency||'').substring(0,28)}</td>
+        <td style="padding:6px 8px;font:600 10px var(--mono);color:var(--amber);text-align:right;white-space:nowrap">${amt}</td>
+        <td style="padding:6px 8px;font-size:9px;color:var(--text-d);white-space:nowrap">${date}</td>
+      </tr>`;
+    }).join('');
+    document.getElementById('proc-result-count').textContent = filteredRows().length + ' records';
+  };
+
+  el.innerHTML = `
+    <!-- Stats row -->
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:10px;margin-bottom:16px">
+      <div style="background:var(--surface);border-radius:10px;padding:14px;text-align:center">
+        <div style="font:700 22px var(--mono);color:var(--amber)">$${_fmtB(totalSpend)}</div>
+        <div style="font:500 9px var(--font);color:var(--text-d);text-transform:uppercase;letter-spacing:.06em;margin-top:2px">Total Awards</div>
+      </div>
+      <div style="background:var(--surface);border-radius:10px;padding:14px;text-align:center">
+        <div style="font:700 22px var(--mono);color:var(--cyan)">${usaSpending.length.toLocaleString()}</div>
+        <div style="font:500 9px var(--font);color:var(--text-d);text-transform:uppercase;letter-spacing:.06em;margin-top:2px">USASpending Records</div>
+      </div>
+      <div style="background:var(--surface);border-radius:10px;padding:14px;text-align:center">
+        <div style="font:700 22px var(--mono);color:var(--text-s)">${newsSignals.length.toLocaleString()}</div>
+        <div style="font:500 9px var(--font);color:var(--text-d);text-transform:uppercase;letter-spacing:.06em;margin-top:2px">News Signals</div>
+      </div>
+      <div style="background:var(--surface);border-radius:10px;padding:14px;text-align:center">
+        <div style="font:700 22px var(--mono);color:var(--red)">${grayZone.length}</div>
+        <div style="font:500 9px var(--font);color:var(--text-d);text-transform:uppercase;letter-spacing:.06em;margin-top:2px">Gray Zone Flagged</div>
+      </div>
+      <div style="background:var(--surface);border-radius:10px;padding:14px;text-align:center">
+        <div style="font:700 22px var(--mono);color:var(--green)">${blueUAS.length}</div>
+        <div style="font:500 9px var(--font);color:var(--text-d);text-transform:uppercase;letter-spacing:.06em;margin-top:2px">Blue UAS Activity</div>
+      </div>
+    </div>
+
+    <!-- Agency + Recipient breakdown -->
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:12px;margin-bottom:16px">
+      <div style="background:var(--surface);border-radius:10px;padding:14px">
+        <div style="font:600 10px var(--mono);color:var(--text-d);text-transform:uppercase;letter-spacing:.06em;margin-bottom:10px">Spend by Agency</div>
+        ${topAgencies.map(([agency, amt]) => {
+          const color = agencyColors[agency] || 'var(--text-d)';
+          const shortName = agency.replace('Department of ', 'Dept. of ').replace('National Aeronautics and Space Administration','NASA');
+          return `<div style="display:flex;align-items:center;gap:8px;margin-bottom:7px">
+            <span style="font-size:9px;color:var(--text-s);width:80px;text-align:right;flex-shrink:0">${shortName}</span>
+            <div style="flex:1;background:var(--card);border-radius:4px;height:22px;overflow:hidden">
+              <div style="width:${(amt/maxAgency)*100}%;height:100%;background:${color}20;border-right:3px solid ${color};display:flex;align-items:center;padding-left:6px;min-width:40px">
+                <span style="font:700 10px var(--mono);color:${color}">$${_fmtB(amt)}</span>
+              </div>
+            </div>
+          </div>`;
+        }).join('')}
+      </div>
+      <div style="background:var(--surface);border-radius:10px;padding:14px">
+        <div style="font:600 10px var(--mono);color:var(--text-d);text-transform:uppercase;letter-spacing:.06em;margin-bottom:10px">Top Recipients</div>
+        ${topRecips.map(([recip, amt]) => {
+          return `<div style="display:flex;align-items:center;gap:8px;margin-bottom:7px">
+            <span style="font-size:9px;color:var(--text-s);width:100px;text-align:right;flex-shrink:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${recip}">${recip.substring(0,18)}</span>
+            <div style="flex:1;background:var(--card);border-radius:4px;height:22px;overflow:hidden">
+              <div style="width:${(amt/maxRecip)*100}%;height:100%;background:var(--amber)20;border-right:3px solid var(--amber);display:flex;align-items:center;padding-left:6px;min-width:40px">
+                <span style="font:700 10px var(--mono);color:var(--amber)">$${_fmtB(amt)}</span>
+              </div>
+            </div>
+          </div>`;
+        }).join('')}
+      </div>
+    </div>
+
+    <!-- Searchable table -->
+    <div style="background:var(--surface);border-radius:10px;padding:14px">
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;flex-wrap:wrap">
+        <div style="font:600 10px var(--mono);color:var(--text-d);text-transform:uppercase;letter-spacing:.06em;flex:1">Award Records</div>
+        <span id="proc-result-count" style="font:400 9px var(--mono);color:var(--text-d)">${sols.length} records</span>
+        <button type="button" onclick="exportProcurementCSV()" style="font:500 10px var(--font);padding:4px 10px;border-radius:6px;border:1px solid var(--border);background:none;color:var(--text-d);cursor:pointer">⬇ Export CSV</button>
+      </div>
+      <div style="display:flex;gap:6px;margin-bottom:8px;flex-wrap:wrap">
+        <input id="proc-search" type="text" placeholder="Search title, agency, recipient…" class="search-bar" style="flex:1;min-width:160px;margin-bottom:0" oninput="procSearch(this.value)">
+        <button type="button" id="proc-gz-btn" onclick="procToggleGZ()" style="font:500 10px var(--font);padding:4px 10px;border-radius:6px;border:1px solid var(--border);background:none;color:var(--text-d);cursor:pointer;white-space:nowrap">🔒 Gray Zone</button>
+        <button type="button" id="proc-bu-btn" onclick="procToggleBU()" style="font:500 10px var(--font);padding:4px 10px;border-radius:6px;border:1px solid var(--border);background:none;color:var(--text-d);cursor:pointer;white-space:nowrap">✅ Blue UAS</button>
+      </div>
+      <div style="overflow-x:auto;-webkit-overflow-scrolling:touch">
+        <table style="width:100%;border-collapse:collapse;min-width:560px">
+          <thead>
+            <tr style="border-bottom:1px solid var(--border)">
+              <th style="padding:4px 8px;font:600 9px var(--mono);color:var(--text-d);text-align:left;text-transform:uppercase">SRC</th>
+              <th style="padding:4px 8px;font:600 9px var(--mono);color:var(--text-d);text-align:left;text-transform:uppercase">Title</th>
+              <th style="padding:4px 8px;font:600 9px var(--mono);color:var(--text-d);text-align:left;text-transform:uppercase">Agency</th>
+              <th style="padding:4px 8px;font:600 9px var(--mono);color:var(--text-d);text-align:right;text-transform:uppercase">Amount</th>
+              <th style="padding:4px 8px;font:600 9px var(--mono);color:var(--text-d);text-align:left;text-transform:uppercase">Date</th>
+            </tr>
+          </thead>
+          <tbody id="proc-table-body"></tbody>
+        </table>
+      </div>
+    </div>
+  `;
+
+  // Wire up search
+  window._procSearchState = searchState;
+  window._procRenderTable = renderTable;
+  renderTable();
+}
+
+function _fmtM(n) {
+  if (!n) return '0';
+  if (n >= 1e9) return (n/1e9).toFixed(1)+'B';
+  if (n >= 1e6) return (n/1e6).toFixed(0)+'M';
+  if (n >= 1e3) return (n/1e3).toFixed(0)+'K';
+  return n.toLocaleString();
+}
+function _fmtB(n) {
+  if (!n) return '0';
+  if (n >= 1e9) return (n/1e9).toFixed(1)+'B';
+  if (n >= 1e6) return (n/1e6).toFixed(0)+'M';
+  if (n >= 1e3) return (n/1e3).toFixed(0)+'K';
+  return '$'+n.toLocaleString();
+}
+function procSearch(q) {
+  if (window._procSearchState) window._procSearchState.q = q;
+  if (window._procRenderTable) window._procRenderTable();
+}
+function procToggleGZ() {
+  if (!window._procSearchState) return;
+  window._procSearchState.gray = !window._procSearchState.gray;
+  const btn = document.getElementById('proc-gz-btn');
+  if (btn) {
+    btn.style.borderColor = window._procSearchState.gray ? 'var(--red)' : 'var(--border)';
+    btn.style.color = window._procSearchState.gray ? 'var(--red)' : 'var(--text-d)';
+  }
+  if (window._procRenderTable) window._procRenderTable();
+}
+function procToggleBU() {
+  if (!window._procSearchState) return;
+  window._procSearchState.blue = !window._procSearchState.blue;
+  const btn = document.getElementById('proc-bu-btn');
+  if (btn) {
+    btn.style.borderColor = window._procSearchState.blue ? 'var(--green)' : 'var(--border)';
+    btn.style.color = window._procSearchState.blue ? 'var(--green)' : 'var(--text-d)';
+  }
+  if (window._procRenderTable) window._procRenderTable();
+}
+function exportProcurementCSV() {
+  if (!PROCUREMENT_DATA) return;
+  const rows = PROCUREMENT_DATA.solicitations;
+  const header = 'source,title,agency,recipient,amount,posted_date,gray_zone,blue_uas,url';
+  const csv = [header, ...rows.map(s =>
+    [s.source,
+     '"'+(s.title||'').replace(/"/g,"''")+'"',
+     '"'+(s.agency||'')+'"',
+     '"'+(s.recipient||'')+'"',
+     s.amount||'',
+     s.posted_date||'',
+     s.gray_zone_flag?'1':'0',
+     s.blue_uas_flag?'1':'0',
+     '"'+(s.url||'')+'"'
+    ].join(',')
+  )].join('\n');
+  const blob = new Blob([csv], {type:'text/csv'});
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'procurement_intel_'+new Date().toISOString().slice(0,10)+'.csv';
+  a.click();
+}
+
 function renderAll() {
   // Each render step wrapped individually — one crash won't blank the whole page
   const _safe = (name, fn) => { try { fn(); } catch(e) {
@@ -4560,6 +4951,7 @@ ${e.stack||e.message||e}</div>`;
   _safe("renderPredictions",renderPredictions);
   _safe("loadBriefPanel",loadBriefPanel);
   _safe("renderWhatIf",     renderWhatIf);
+  _safe("renderProcurement", renderProcurement);
 
   // Handle hash routing for bookmarked regions
   const hash = window.location.hash;
