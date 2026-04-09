@@ -1104,6 +1104,31 @@ async function loadData() {
     </div>`;
     return;
   }
+  // Merge PREDICTIONS into FLAGS as normalized flag objects
+  // Drives: badge count, regions map, component heatmap, grouped view
+  const predFlags = (PREDICTIONS || []).map((p, idx) => {
+    const impact = p.impact || 'medium';
+    const sev = (impact === 'critical') ? 'critical' : 'warning';
+    return {
+      id: p.id || ('pred_' + idx),
+      title: p.event || '',
+      detail: (p.drivers || []).slice(0,3).join(' · '),
+      prediction: p.event || '',
+      flag_type: 'prediction',
+      severity: sev,
+      region: p.region || 'global',
+      confidence: p.probability || 0.5,
+      probability: p.probability || 0.5,
+      timestamp: p.last_updated || '',
+      timeframe: p.timeframe || '',
+      cross_validated: p.cross_validated || false,
+      lead_time_signal: p.lead_time_signal || null,
+      co_occurrence_signal: p.co_occurrence_signal || null,
+      _is_prediction: true,
+    };
+  });
+  FLAGS = [...FLAGS, ...predFlags];
+
   document.getElementById("flag-count").textContent = FLAGS.length;
   var _savedTab = typeof activeTab !== "undefined" ? activeTab : "brief";
   renderAll();
