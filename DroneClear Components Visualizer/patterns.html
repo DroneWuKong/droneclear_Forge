@@ -570,7 +570,7 @@ a.brief-source-chip:hover{color:var(--text-s);border-color:var(--border-hi)}
     </div>
 
     <!-- Metric cards row -->
-    <div id="history-metric-cards" style="display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-bottom:14px"></div>
+    <div id="history-metric-cards" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:6px;margin-bottom:14px"></div>
 
     <!-- Trend charts -->
     <div id="history-charts" style="display:flex;flex-direction:column;gap:10px;margin-bottom:14px"></div>
@@ -2487,18 +2487,18 @@ function renderHistory() {
     },
     {
       label: 'Parts in DB',
-      metric: 'total_parts',
-      first: first.total_parts,
-      last: last.total_parts,
+      metric: 'parts_total',
+      first: first.parts_total ?? first.total_parts,
+      last:  last.parts_total  ?? last.total_parts,
       color: 'var(--cyan)',
       unit: '',
       fmt: v => v != null ? Math.round(v).toLocaleString() : '—',
     },
     {
       label: 'Intel Velocity',
-      metric: 'intel_velocity_7d',
-      first: first.intel_velocity_7d,
-      last: last.intel_velocity_7d,
+      metric: 'intel_velocity',
+      first: first.intel_velocity ?? first.intel_velocity_7d,
+      last:  last.intel_velocity  ?? last.intel_velocity_7d,
       color: 'var(--blue)',
       unit: '/day',
       fmt: v => v != null ? v.toFixed(1) : '—',
@@ -2510,7 +2510,7 @@ function renderHistory() {
     const pct   = (delta != null && m.first) ? ((delta / m.first) * 100).toFixed(1) : null;
     const dir   = delta > 0.01 ? '▲' : delta < -0.01 ? '▼' : '→';
     const dc    = delta > 0.01 ? 'var(--green)' : delta < -0.01 ? 'var(--red)' : 'var(--text-d)';
-    const vals  = filtered.map(h => h[m.metric]).filter(v => v != null);
+    const vals  = filtered.map(h => h[m.metric] ?? h[m.metric === 'parts_total' ? 'total_parts' : m.metric === 'intel_velocity' ? 'intel_velocity_7d' : m.metric]).filter(v => v != null);
     return `<div style="background:var(--surface);border-radius:8px;padding:8px 10px;border-top:2px solid ${m.color}">
       <div style="font:500 8px var(--mono);color:var(--text-d);margin-bottom:4px">${m.label.toUpperCase()}</div>
       <div style="display:flex;justify-content:space-between;align-items:flex-end">
