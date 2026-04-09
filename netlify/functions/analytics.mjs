@@ -208,14 +208,16 @@ export default async (req, context) => {
           const data = await store.get(dayKey);
           if (data) {
             const parsed = JSON.parse(data);
+            const queryEvents = parsed.filter(e => e.q && e.q.trim()); // type='query' events only
             dailyData[d.toISOString().split('T')[0]] = {
-              count: parsed.length,
-              images: parsed.filter(e => e.img).length,
-              cats: parsed.reduce((acc, e) => { acc[e.cat] = (acc[e.cat] || 0) + 1; return acc; }, {}),
+              count: queryEvents.length,
+              images: queryEvents.filter(e => e.img).length,
+              cats: queryEvents.reduce((acc, e) => { acc[e.cat] = (acc[e.cat] || 0) + 1; return acc; }, {}),
             };
-            // Collect recent queries (last 50)
+            // Collect recent queries (last 50) — only entries with actual q text
+            // batch events (surface/type/action schema) don't have q field; skip them
             if (recentQueries.length < 50) {
-              parsed.slice(-50).forEach(e => {
+              parsed.filter(e => e.q && e.q.trim()).slice(-50).forEach(e => {
                 if (recentQueries.length < 50) {
                   recentQueries.push({ q: e.q, cat: e.cat, img: e.img, ts: e.ts, mode: e.mode });
                 }
