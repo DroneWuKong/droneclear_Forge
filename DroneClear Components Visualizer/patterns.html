@@ -2544,19 +2544,21 @@ function renderHistory() {
         const y = H - ((v - min) / range) * (H - 8) - 4;
         return `${x.toFixed(1)},${y.toFixed(1)}`;
       }).filter(Boolean).join(' ');
-      const dir   = t.direction === 'rising' ? '▲' : t.direction === 'falling' ? '▼' : '→';
-      const dc    = t.direction === 'rising' ? 'var(--green)' : t.direction === 'falling' ? 'var(--red)' : 'var(--text-d)';
-      const proj  = trends.projections ? trends.projections.find(p => p.label === t.label) : null;
-      return `<div style="background:var(--surface);border-radius:8px;padding:10px 12px">
+      const isArchived = t.signal === 'archived' || t.entity_status === 'discontinued';
+      const dir   = isArchived ? '◼' : t.direction === 'rising' ? '▲' : t.direction === 'falling' ? '▼' : '→';
+      const dc    = isArchived ? 'var(--text-d)' : t.direction === 'rising' ? 'var(--green)' : t.direction === 'falling' ? 'var(--red)' : 'var(--text-d)';
+      const signalLabel = isArchived ? 'archived · discontinued' : (t.signal||'');
+      const proj  = (!isArchived && trends.projections) ? trends.projections.find(p => p.label === t.label) : null;
+      return `<div style="background:var(--surface);border-radius:8px;padding:10px 12px${isArchived ? ';opacity:0.6' : ''}">
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
-          <div style="font:600 10px var(--mono);color:var(--text-s)">${t.label}</div>
+          <div style="font:600 10px var(--mono);color:${isArchived ? 'var(--text-d)' : 'var(--text-s)'}">${t.label}${isArchived ? ' <span style="font:400 8px var(--mono);color:var(--text-d)">[product discontinued]</span>' : ''}</div>
           <div style="display:flex;gap:6px;align-items:center">
-            <span style="font:600 9px var(--mono);color:${dc}">${dir} ${t.signal||''}</span>
+            <span style="font:600 9px var(--mono);color:${dc}">${dir} ${signalLabel}</span>
             ${proj ? `<span style="font:400 8px var(--mono);color:var(--text-d)">90d: ${proj.p90}</span>` : ''}
           </div>
         </div>
         <svg width="100%" height="${H}" viewBox="0 0 ${W} ${H}" style="overflow:visible">
-          <polyline points="${pts}" fill="none" stroke="var(--cyan)" stroke-width="1.5" stroke-linejoin="round" opacity=".8"/>
+          <polyline points="${pts}" fill="none" stroke="${isArchived ? 'var(--text-d)' : 'var(--cyan)'}" stroke-width="1.5" stroke-linejoin="round" opacity="${isArchived ? '.4' : '.8'}"/>
         </svg>
         <div style="display:flex;justify-content:space-between;margin-top:2px">
           <span style="font:400 8px var(--mono);color:var(--text-d)">${dates[0]||''}</span>
