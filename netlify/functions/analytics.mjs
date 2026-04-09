@@ -223,7 +223,10 @@ export default async (req, context) => {
 
   // ─── GET: Admin dashboard data ───
   if (req.method === 'GET') {
-    const adminKey = process.env.ANALYTICS_ADMIN_KEY || 'forge-admin-2026';
+    const adminKey = process.env.ANALYTICS_ADMIN_KEY;
+    if (!adminKey) {
+      return new Response(JSON.stringify({ error: 'Analytics not configured' }), { status: 503, headers: CORS });
+    }
     const reqKey = req.headers.get('x-admin-key') || new URL(req.url).searchParams.get('key');
 
     if (reqKey !== adminKey) {
