@@ -378,6 +378,22 @@ a.brief-source-chip:hover{color:var(--text-s);border-color:var(--border-hi)}
       <p style="font-size:10px;color:var(--text-xd);margin-bottom:10px">How confident is each flag? Higher confidence = stronger evidence chain.</p>
       <div id="dash-confidence"></div>
     </div>
+
+    <!-- Row 7: Data Sources / Miner Registry -->
+    <div style="background:var(--surface);border-radius:10px;padding:14px;margin-bottom:16px">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;flex-wrap:wrap;gap:6px">
+        <div>
+          <div style="font:600 10px var(--mono);color:var(--text-d);text-transform:uppercase;letter-spacing:.06em">Data Sources</div>
+          <div style="font:400 9px var(--font);color:var(--text-xd);margin-top:2px"><span id="sources-count">—</span> miners across <span id="sources-cat-count">—</span> categories</div>
+        </div>
+        <div style="display:flex;gap:4px;flex-wrap:wrap" id="sources-filter-bar">
+          <!-- populated by JS -->
+        </div>
+      </div>
+      <input type="text" id="sources-search" placeholder="Search sources… (e.g. Ukraine, parts, DFR, procurement)" oninput="renderSources()"
+        style="width:100%;box-sizing:border-box;background:var(--card);border:1px solid var(--border);border-radius:6px;padding:7px 10px;font:11px var(--mono);color:var(--text);outline:none;margin-bottom:10px">
+      <div id="sources-grid" style="display:flex;flex-direction:column;gap:6px"></div>
+    </div>
   </div>
 
   <!-- PROCUREMENT PANEL -->
@@ -1222,6 +1238,9 @@ async function loadData() {
   fetch("../static/miner_health.json").then(r=>r.ok?r.json():null).then(h=>{
     if(h) { window._minerHealth = h; renderPipelineHealth(h); }
   }).catch(()=>{});
+  fetch("../static/miner_registry.json").then(r=>r.ok?r.json():null).then(reg=>{
+    if(reg) { window._minerRegistry = reg; renderSources(); }
+  }).catch(()=>{});
   fetch("../static/solicitations.json").then(r=>r.ok?r.json():null).then(d=>{
     if(d) { PROCUREMENT_DATA = d; renderProcurement(); }
   }).catch(()=>{});
@@ -1638,6 +1657,9 @@ document.querySelectorAll(".tab").forEach(t => {
     }
     if (activeTab === 'explorer') {
       explorerLoad();
+    }
+    if (activeTab === 'dashboard') {
+      if (window._minerRegistry) renderSources();
     }
   });
 });
@@ -4985,9 +5007,118 @@ function renderPipelineHealth(h) {
   }).join('');
 }
 
-// ══════════════════════════════════════════
-// PROCUREMENT TAB
-// ══════════════════════════════════════════
+// ── Data Sources / Miner Registry ──────────────────────────────────────────
+let _sourcesFilter = 'all';
+
+const VERTICAL_LABELS = {
+  'defense':    {label:'Defense',    color:'var(--defense)'},
+  'commercial': {label:'Commercial', color:'var(--commercial)'},
+  'dfr':        {label:'DFR',        color:'var(--dfr)'},
+  'parts':      {label:'Parts DB',   color:'var(--cyan)'},
+};
+
+const CATEGORY_LABELS = {
+  'defense_wire':  'Defense Wire',
+  'conflict':      'Conflict Intel',
+  'procurement':   'Procurement',
+  'regulatory':    'Regulatory',
+  'commercial':    'Commercial UAS',
+  'dfr':           'DFR / Public Safety',
+  'parts':         'Parts & Pricing',
+  'research':      'Research',
+};
+
+const GEO_FLAGS = {
+  'us':'🇺🇸','ukraine':'🇺🇦','europe':'🇪🇺','turkey':'🇹🇷',
+  'china':'🇨🇳','global':'🌐','germany':'🇩🇪',
+};
+
+function renderSources() {
+  const reg = window._minerRegistry;
+  const health = window._minerHealth;
+  const el = document.getElementById('sources-grid');
+  const filterBar = document.getElementById('sources-filter-bar');
+  if (!el) return;
+
+  const miners = reg ? reg.miners : [];
+  const liveCounts = health ? (health.sources || {}) : {};
+  const q = (document.getElementById('sources-search')?.value || '').toLowerCase().trim();
+
+  // Update summary counts
+  const cats = [...new Set(miners.map(m=>m.category))];
+  const scEl = document.getElementById('sources-count');
+  const scCatEl = document.getElementById('sources-cat-count');
+  if(scEl) scEl.textContent = miners.length;
+  if(scCatEl) scCatEl.textContent = cats.length;
+
+  // Build filter bar
+  const verticals = ['all', ...Object.keys(VERTICAL_LABELS)];
+  if(filterBar && !filterBar.dataset.built) {
+    filterBar.dataset.built = '1';
+    filterBar.innerHTML = verticals.map(v => {
+      const vl = VERTICAL_LABELS[v];
+      const label = v === 'all' ? 'All' : vl?.label || v;
+      const color = v === 'all' ? 'var(--text-s)' : vl?.color || 'var(--text-d)';
+      return `<button type="button" onclick="_sourcesFilter='${v}';this.closest('#sources-filter-bar').querySelectorAll('button').forEach(b=>b.classList.remove('active'));this.classList.add('active');renderSources()"
+        class="${v==='all'?'active':''}"
+        style="font:600 9px var(--mono);padding:3px 10px;border-radius:5px;cursor:pointer;border:1px solid var(--border);background:none;color:${color};white-space:nowrap">
+        ${label}
+      </button>`;
+    }).join('');
+  }
+
+  // Filter
+  let visible = miners.filter(m => {
+    if(_sourcesFilter !== 'all' && m.vertical !== _sourcesFilter) return false;
+    if(q && !`${m.name} ${m.description} ${m.category} ${m.geo}`.toLowerCase().includes(q)) return false;
+    return true;
+  });
+
+  // Group by category
+  const grouped = {};
+  visible.forEach(m => {
+    const cat = m.category;
+    if(!grouped[cat]) grouped[cat] = [];
+    grouped[cat].push(m);
+  });
+
+  if(!visible.length) {
+    el.innerHTML = '<div style="color:var(--text-d);font:400 11px var(--font);padding:20px;text-align:center">No sources match.</div>';
+    return;
+  }
+
+  el.innerHTML = Object.entries(grouped).map(([cat, items]) => {
+    const catLabel = CATEGORY_LABELS[cat] || cat;
+    const catVert = items[0]?.vertical;
+    const catColor = VERTICAL_LABELS[catVert]?.color || 'var(--text-d)';
+    const rows = items.map(m => {
+      const live = liveCounts[m.id];
+      const liveHtml = live != null
+        ? `<span style="font:700 10px var(--mono);color:var(--green)">${live}</span><span style="font:400 8px var(--mono);color:var(--text-xd)"> articles</span>`
+        : `<span style="font:400 8px var(--mono);color:var(--text-xd)">${m.schedule}</span>`;
+      const dot = live != null ? 'var(--green)' : 'var(--border)';
+      const geoFlag = GEO_FLAGS[m.geo] || '🌐';
+      const urlDomain = m.url ? m.url.replace(/https?:\/\/(www\.)?/,'').split('/')[0] : '';
+      return `<div style="display:flex;align-items:center;gap:8px;padding:7px 0;border-bottom:1px solid var(--border)">
+        <span style="font:500 8px var(--mono);color:${dot};flex-shrink:0">●</span>
+        <div style="flex:1;min-width:0">
+          <div style="display:flex;align-items:center;gap:5px;flex-wrap:wrap">
+            <span style="font:600 11px var(--font);color:var(--text-s)">${m.name}</span>
+            <span style="font:400 9px var(--mono);color:var(--text-xd)">${geoFlag}</span>
+            ${m.url ? `<a href="${m.url}" target="_blank" rel="noopener" style="font:400 8px var(--mono);color:var(--text-xd);text-decoration:none;opacity:.6">${urlDomain} ↗</a>` : ''}
+          </div>
+          <div style="font:400 9px var(--font);color:var(--text-d);margin-top:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${m.description}</div>
+        </div>
+        <div style="text-align:right;flex-shrink:0">${liveHtml}</div>
+      </div>`;
+    }).join('');
+
+    return `<div style="background:var(--card);border:1px solid var(--border);border-radius:8px;padding:8px 12px;border-left:3px solid ${catColor}">
+      <div style="font:600 9px var(--mono);color:${catColor};text-transform:uppercase;letter-spacing:.06em;margin-bottom:4px">${catLabel} <span style="color:var(--text-xd);font-weight:400">(${items.length})</span></div>
+      ${rows}
+    </div>`;
+  }).join('');
+}
 function renderProcurement() {
   const el = document.getElementById('procurement-inner');
   if (!el || !PROCUREMENT_DATA) return;

@@ -146,6 +146,7 @@ def fix_paths(html, depth=0):
         # PIE files
         html = html.replace("fetch('pie_flags.json')", f"fetch('{prefix}static/pie_flags.json')")
         html = html.replace("fetch('solicitations.json')", f"fetch('{prefix}static/solicitations.json')")
+        html = html.replace("fetch('miner_registry.json')", f"fetch('{prefix}static/miner_registry.json')")
         html = html.replace("fetch('/static/gap_analysis_latest.json')", f"fetch('{prefix}static/gap_analysis_latest.json')")
         html = html.replace("fetch('pie_predictions.json')", f"fetch('{prefix}static/pie_predictions.json')")
         html = html.replace("fetch('pie_brief.json')", f"fetch('{prefix}static/pie_brief.json')")
