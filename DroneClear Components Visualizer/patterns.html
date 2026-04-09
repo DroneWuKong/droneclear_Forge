@@ -1120,47 +1120,26 @@ async function loadData() {
     </div>`;
     return;
   }
-  // Merge PREDICTIONS into FLAGS as normalized flag objects
-  // Drives: badge count, regions map, component heatmap, grouped view
-  const predFlags = (PREDICTIONS || []).map((p, idx) => {
-    const impact = p.impact || 'medium';
-    const sev = (impact === 'critical') ? 'critical' : 'warning';
-    return {
-      id: p.id || ('pred_' + idx),
-      title: p.event || '',
-      detail: (p.drivers || []).slice(0,3).join(' · '),
-      prediction: p.event || '',
-      flag_type: 'prediction',
-      severity: sev,
-      region: p.region || 'global',
-      confidence: p.probability || 0.5,
-      probability: p.probability || 0.5,
-      timestamp: p.last_updated || '',
-      timeframe: p.timeframe || '',
-      cross_validated: p.cross_validated || false,
-      lead_time_signal: p.lead_time_signal || null,
-      co_occurrence_signal: p.co_occurrence_signal || null,
-      _is_prediction: true,
-    };
-  });
-  FLAGS = [...FLAGS, ...predFlags];
-
+  // FLAGS and PREDICTIONS are kept strictly separate:
+  //   FLAGS tab   → 210 real flags from parts-db + grayzone analysis
+  //   Predictions tab → LLM synthesis from intel articles
+  //   Brief tab   → brief_generator.py picks top 2-3 predictions inline
   document.getElementById("flag-count").textContent = FLAGS.length;
   var _savedTab = typeof activeTab !== "undefined" ? activeTab : "brief";
   renderAll();
-  // Data transparency footer — tells user what backs the flag count
+  // Data transparency footer
   const existingFooter = list.querySelector('.flags-transparency-footer');
   if (!existingFooter && flags.length) {
     const footer = document.createElement('div');
     footer.className = 'flags-transparency-footer';
     footer.style.cssText = 'margin-top:16px;padding:10px 12px;background:var(--surface);border-radius:8px;font:400 9px var(--mono);color:var(--text-d);line-height:1.6;border:1px solid var(--border)';
-    const realFlags = FLAGS.filter(f => !f._is_prediction).length;
-    const predFlags = FLAGS.filter(f => f._is_prediction).length;
+    const primary = FLAGS.filter(f => (f.confidence||0) >= 0.9).length;
+    const strong  = FLAGS.filter(f => (f.confidence||0) >= 0.8 && (f.confidence||0) < 0.9).length;
+    const analytical = FLAGS.filter(f => (f.confidence||0) < 0.8).length;
     footer.innerHTML = `<span style="color:var(--text-s);font-weight:600">Data basis:</span> `
-      + `${realFlags} flags from parts-db analysis (${(FLAGS.filter(f=>!f._is_prediction&&f.confidence>=0.9).length)} primary source · `
-      + `${FLAGS.filter(f=>!f._is_prediction&&f.confidence>=0.8&&f.confidence<0.9).length} strong inference · `
-      + `${FLAGS.filter(f=>!f._is_prediction&&f.confidence<0.8).length} analytical). `
-      + `${predFlags} LLM predictions from intel article synthesis. `
+      + `${FLAGS.length} flags from parts-db + grayzone + procurement analysis `
+      + `(${primary} primary source · ${strong} strong inference · ${analytical} analytical). `
+      + `LLM predictions are in the 🔮 Predictions tab. `
       + `<span style="color:var(--amber)">Confidence scores reflect evidence quality, not statistical probability.</span>`;
     list.appendChild(footer);
   }
@@ -1252,10 +1231,34 @@ function renderBriefPanel(b) {
         <div class="pred-body">
           <div class="pred-event">${p.event||''}</div>
           <div class="pred-timeframe"><span class="badge badge-purple">${p.timeframe||''}</span></div>
-          ${p.hedge ? `<div class="hedge-box"><div class="hedge-label">◎ Hedge</div><div class="hedge-text">${p.hedge}</div></div>` : ''}
+          ${p.hedge ? `<div class="hedge-box"><div class="hedge-label">◎ Action</div><div class="hedge-text">${p.hedge}</div></div>` : ''}
         </div>
       </div>`;
     }
+  }
+  // Top 2 live signals from PREDICTIONS[] — fresher than brief's own predictions
+  const liveSigs = (window.PREDICTIONS||[])
+    .filter(p => !b.predictions || !b.predictions.some(bp => bp.event === p.event))
+    .sort((a,b) => (b.probability||0) - (a.probability||0))
+    .slice(0, 2);
+  if (liveSigs.length) {
+    html += `<div class="brief-section-label" style="opacity:.7">📡 Live Signals</div>`;
+    for (const p of liveSigs) {
+      const pct = Math.round((p.probability||0)*100);
+      const etColor = p.evidence_type === 'validation' ? 'var(--green)' : 'var(--cyan)';
+      html += `<div class="brief-card pred" style="opacity:.85">
+        <div class="pred-prob"><span class="pct" style="color:${pctColorB(p.probability)}">${pct}%</span><span class="pct-lbl">prob</span></div>
+        <div class="pred-body">
+          <div class="pred-event">${p.event||''}</div>
+          <div style="display:flex;gap:4px;margin-top:3px;flex-wrap:wrap">
+            ${p.timeframe ? `<span class="badge badge-purple" style="font-size:8px">${p.timeframe}</span>` : ''}
+            ${p.evidence_type ? `<span class="badge" style="background:${etColor}15;color:${etColor};font-size:8px">${p.evidence_type === 'validation' ? '✓ validates flag' : '◎ new signal'}</span>` : ''}
+          </div>
+          ${p.evidence_basis ? `<div style="font:400 9px var(--font);color:var(--text-d);margin-top:4px;line-height:1.4">${p.evidence_basis}</div>` : ''}
+        </div>
+      </div>`;
+    }
+    html += `<div style="text-align:right;margin-top:4px"><a href="#" onclick="document.querySelector('.tab[data-tab=predictions]').click();return false;" style="font:400 9px var(--mono);color:var(--cyan);text-decoration:none">See all predictions →</a></div>`;
   }
   const gen = b.generated_at ? new Date(b.generated_at).toLocaleString() : '';
   html += `<div class="brief-footer">${b.pipeline_version||'PIE'} · ${gen}</div>`;
@@ -2202,7 +2205,7 @@ function renderDashboard() {
     {label:'TrellisWare', keys:['trellisware'], color:'#8b5cf6'},
     {label:'u-blox', keys:['u-blox','ublox'], color:'#a78bfa'},
   ];
-  const allPIEItems = [...FLAGS, ...(PREDICTIONS||[])];
+  const allPIEItems = FLAGS; // Heatmap counts real flags only — predictions are in Predictions tab
   const compCounts = compKeywords.map(c => {
     const count = allPIEItems.filter(f => {
       const text = ((f.title||'')+(f.detail||'')+(f.event||'')+(f.prediction||'')).toLowerCase();
