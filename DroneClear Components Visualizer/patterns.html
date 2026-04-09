@@ -310,6 +310,7 @@ a.brief-source-chip:hover{color:var(--text-s);border-color:var(--border-hi)}
         <option value="flat">All flags</option>
       </select>
       <span id="flag-count" style="font:10px var(--mono);color:var(--text-d);margin-left:auto"></span>
+      <button type="button" onclick="exportFlagsCSV()" style="font:500 10px var(--font);padding:4px 10px;border-radius:6px;border:1px solid var(--border);background:none;color:var(--text-d);cursor:pointer;white-space:nowrap">⬇ Export CSV</button>
     </div>
     <div id="flag-detail-container" style="display:none"></div>
     <div class="flag-list" id="flag-list"></div>
@@ -690,6 +691,47 @@ function buildPredModalBody(p) {
   if (p.model) {
     body += '<div style="margin-top:10px;font:400 9px var(--mono);color:var(--text-d)">Source: '+p.model+'</div>';
   }
+
+  // ── Article drill-through via entity graph ──
+  if (Object.keys(ENTITY_GRAPH).length) {
+    // Build search terms from the prediction text
+    var predText = ((p.event||'') + ' ' + (p.evidence_basis||'') + ' ' + (p.drivers||[]).join(' ')).toLowerCase();
+    var articleMap = {}; // aid → article, deduplicated
+    var matchedEntities = [];
+
+    for (var egKey in ENTITY_GRAPH) {
+      var egNode = ENTITY_GRAPH[egKey];
+      var nName = (egNode.name||'').toLowerCase();
+      if (nName.length < 3) continue;
+      // Match entity name against prediction text
+      var nameWords = nName.split(/[\s\-\/]+/).filter(function(w){return w.length > 3;});
+      var matched = nameWords.length > 0 && nameWords.some(function(w){ return predText.includes(w); });
+      if (!matched) matched = predText.includes(nName);
+      if (matched && (egNode.articles||[]).length) {
+        matchedEntities.push(egNode.name);
+        (egNode.articles||[]).forEach(function(a){
+          if (!articleMap[a.aid]) articleMap[a.aid] = a;
+        });
+      }
+    }
+
+    var dedupedArticles = Object.values(articleMap)
+      .sort(function(a,b){ return (b.pub_date||'').localeCompare(a.pub_date||''); })
+      .slice(0, 6);
+
+    if (dedupedArticles.length) {
+      body += '<div style="margin-top:12px;border-top:1px solid var(--border);padding-top:10px">';
+      body += '<div style="font:600 9px var(--mono);color:var(--cyan);text-transform:uppercase;letter-spacing:.08em;margin-bottom:6px">⟐ Source Articles ('+ dedupedArticles.length +(matchedEntities.length ? ' · '+matchedEntities.slice(0,3).join(', ')+(matchedEntities.length>3?' +more':'') : '')+')</div>';
+      body += '<div style="display:flex;flex-direction:column;gap:3px">';
+      dedupedArticles.forEach(function(a){
+        body += '<a href="'+(a.url||'#')+'" target="_blank" rel="noopener" style="font:400 11px var(--font);color:var(--text-s);text-decoration:none;padding:5px 7px;background:var(--surface);border-radius:5px;display:block;border:1px solid var(--border)">';
+        body += '<span style="color:var(--text);font-weight:500">'+(a.title||'').substring(0,76)+((a.title||'').length>76?'…':'')+'</span>';
+        body += ' <span style="font:9px var(--mono);color:var(--text-d)">'+(a.site||'')+' · '+(a.pub_date||'').slice(0,10)+'</span></a>';
+      });
+      body += '</div></div>';
+    }
+  }
+
   return body;
 }
 
@@ -4234,6 +4276,76 @@ function renderManufacturers() {
       if (m.funding) body += '<div style="background:var(--surface);border-radius:6px;padding:8px 10px;margin-bottom:8px"><div style="font:500 9px var(--mono);color:var(--text-d);margin-bottom:2px">FUNDING</div><div style="font:600 11px var(--font);color:var(--text)">'+m.funding+'</div>'+(m.last_round&&m.last_round!='none'?'<div style="font:400 10px var(--font);color:var(--text-d);margin-top:2px">Last round: '+m.last_round+'</div>':'')+'</div>';
       var relFlags = FLAGS.filter(function(f){return (f.title||"").toLowerCase().indexOf((m.name||"").split(" ")[0].toLowerCase())>-1;});
       if (relFlags.length) { body += '<div><div style="font:600 9px var(--mono);color:var(--text-d);margin-bottom:6px">Related Flags ('+relFlags.length+')</div>'+relFlags.slice(0,5).map(function(f){return '<div style="background:var(--surface);border-radius:6px;padding:6px 9px;margin-bottom:4px;font:400 10px var(--font);color:var(--text-s)">'+f.title+'</div>';}).join("")+'</div>'; }
+
+      // ── Entity Graph cross-ref ──
+      if (Object.keys(ENTITY_GRAPH).length) {
+        var mName = (m.name||'').toLowerCase();
+        var mKey = mName;
+        // Try exact key match first, then substring
+        var egNode = ENTITY_GRAPH[mKey] || ENTITY_GRAPH[mName.split(' ')[0]];
+        if (!egNode) {
+          for (var egKey in ENTITY_GRAPH) {
+            var n = ENTITY_GRAPH[egKey];
+            var nName = (n.name||'').toLowerCase();
+            if (nName === mName || mName.includes(nName) || nName.includes(mName.split(' ')[0])) {
+              egNode = n; break;
+            }
+          }
+        }
+        if (egNode) {
+          var hasEgData = (egNode.parts||[]).length || (egNode.articles||[]).length || (egNode.contracts||[]).length || (egNode.solicitations||[]).length;
+          if (hasEgData) {
+            body += '<div style="margin-top:12px;border-top:1px solid var(--border);padding-top:10px">';
+            body += '<div style="font:600 9px var(--mono);color:var(--cyan);text-transform:uppercase;letter-spacing:.08em;margin-bottom:8px">⟐ Intelligence Cross-Reference</div>';
+            body += '<div style="display:flex;gap:5px;flex-wrap:wrap;margin-bottom:8px">';
+            if ((egNode.parts||[]).length) body += '<span class="badge badge-amber">'+(egNode.parts.length)+' parts in DB</span>';
+            if ((egNode.articles||[]).length) body += '<span class="badge badge-blue">'+(egNode.articles.length)+' articles</span>';
+            if ((egNode.contracts||[]).length) body += '<span class="badge badge-green">'+(egNode.contracts.length)+' contracts</span>';
+            if ((egNode.solicitations||[]).length) {
+              var totalAmt = egNode.solicitations.reduce(function(a,s){return a+(s.amount||0);},0);
+              body += '<span class="badge badge-cyan">$'+(totalAmt/1e6).toFixed(0)+'M awards</span>';
+            }
+            body += '</div>';
+            // Articles
+            if ((egNode.articles||[]).length) {
+              body += '<div style="font:600 9px var(--font);color:var(--text-d);text-transform:uppercase;letter-spacing:.05em;margin-bottom:5px">Recent Coverage</div>';
+              body += '<div style="display:flex;flex-direction:column;gap:3px;margin-bottom:8px">';
+              egNode.articles.slice(0,4).forEach(function(a){
+                body += '<a href="'+(a.url||'#')+'" target="_blank" rel="noopener" style="font:400 11px var(--font);color:var(--text-s);text-decoration:none;padding:5px 7px;background:var(--surface);border-radius:5px;display:block;border:1px solid var(--border)">';
+                body += '<span style="color:var(--text);font-weight:500">'+(a.title||'').substring(0,72)+((a.title||'').length>72?'…':'')+'</span>';
+                body += '<span style="font:9px var(--mono);color:var(--text-d);margin-left:4px">'+(a.site||'')+' · '+(a.pub_date||'').slice(0,10)+'</span></a>';
+              });
+              body += '</div>';
+            }
+            // Contracts
+            if ((egNode.contracts||[]).length) {
+              body += '<div style="font:600 9px var(--font);color:var(--text-d);text-transform:uppercase;letter-spacing:.05em;margin-bottom:5px">Contracts</div>';
+              body += '<div style="display:flex;flex-direction:column;gap:3px;margin-bottom:8px">';
+              egNode.contracts.slice(0,3).forEach(function(c){
+                body += '<div style="font:400 11px var(--font);color:var(--text-s);padding:5px 7px;background:var(--surface);border-radius:5px;border-left:2px solid var(--green)">';
+                body += '<span style="color:var(--text);font-weight:500">'+(c.program||c.type||'')+'</span>';
+                if (c.value) body += '<span style="font:600 10px var(--mono);color:var(--green);margin-left:6px">'+c.value+'</span>';
+                if (c.date) body += '<span style="font:9px var(--mono);color:var(--text-d);margin-left:4px">'+c.date+'</span>';
+                body += '</div>';
+              });
+              body += '</div>';
+            }
+            // Parts breakdown
+            if ((egNode.parts||[]).length) {
+              var cats = {};
+              egNode.parts.forEach(function(p){cats[p.category]=(cats[p.category]||0)+1;});
+              var topCats = Object.entries(cats).sort(function(a,b){return b[1]-a[1];}).slice(0,4);
+              body += '<div style="font:600 9px var(--font);color:var(--text-d);text-transform:uppercase;letter-spacing:.05em;margin-bottom:5px">Parts in Database</div>';
+              body += '<div style="display:flex;gap:4px;flex-wrap:wrap">';
+              topCats.forEach(function(e){
+                body += '<span style="font:400 10px var(--font);color:var(--text-d);background:var(--surface);border-radius:4px;padding:2px 7px;border:1px solid var(--border)">'+e[0].replace(/_/g,' ')+' ×'+e[1]+'</span>';
+              });
+              body += '</div>';
+            }
+            body += '</div>';
+          }
+        }
+      }
       openDetailModal(m.name, (m.hq||"")+" · "+(m.status_label||m.status), body);
     });
   });
@@ -4927,6 +5039,49 @@ function exportProcurementCSV() {
   const a = document.createElement('a');
   a.href = URL.createObjectURL(blob);
   a.download = 'procurement_intel_'+new Date().toISOString().slice(0,10)+'.csv';
+  a.click();
+}
+
+function exportFlagsCSV() {
+  // Re-apply same filter logic as renderFlags() to export the current view
+  let flags = FLAGS;
+  if (hiddenSeverities.size > 0) flags = flags.filter(f => {
+    const sev = f.severity || (FLAG_META[f.flag_type]||{}).sev || '';
+    return !hiddenSeverities.has(sev);
+  });
+  if (hiddenTypes.size > 0) flags = flags.filter(f => !hiddenTypes.has(f.flag_type) && !hiddenTypes.has(f.category));
+  if (hiddenRegions.size > 0) flags = flags.filter(f => {
+    const regs = extractRegions(f);
+    return regs.length === 0 || regs.some(r => !hiddenRegions.has(r));
+  });
+  const searchQ = (document.getElementById('flag-search')?.value || '').toLowerCase().trim();
+  if (searchQ) flags = flags.filter(f =>
+    (f.title||'').toLowerCase().includes(searchQ) ||
+    (f.detail||'').toLowerCase().includes(searchQ) ||
+    (f.prediction||'').toLowerCase().includes(searchQ)
+  );
+
+  const esc = v => '"' + (v||'').toString().replace(/"/g, "''") + '"';
+  const header = 'id,timestamp,flag_type,severity,confidence,title,detail,prediction,platform_id,component_id,data_sources,sources';
+  const csv = [header, ...flags.map(f => [
+    esc(f.id),
+    esc((f.timestamp||'').slice(0,19).replace('T',' ')),
+    esc(f.flag_type),
+    esc(f.severity || (FLAG_META[f.flag_type]||{}).sev || ''),
+    Math.round((f.confidence||0)*100)+'%',
+    esc(f.title),
+    esc(f.detail),
+    esc(f.prediction),
+    esc(f.platform_id),
+    esc(f.component_id),
+    esc((f.data_sources||[]).join('; ')),
+    esc((f.sources||[]).map(s=>s.url||s.name||s).join('; '))
+  ].join(','))].join('\n');
+
+  const blob = new Blob([csv], {type:'text/csv'});
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'pie_flags_' + (searchQ ? searchQ.replace(/\s+/g,'_')+'_' : '') + new Date().toISOString().slice(0,10) + '.csv';
   a.click();
 }
 
