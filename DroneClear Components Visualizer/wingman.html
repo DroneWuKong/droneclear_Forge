@@ -2041,6 +2041,27 @@ document.addEventListener('DOMContentLoaded', () => {
   renderStarters();
   renderFileList();
   loadRAG(); // fire and forget — UI works immediately with fallback
+
+  // Auto-backfill: push any locally stored queries to the server query-log
+  // Runs once per session — ensures analytics.html shows real query data
+  if (!sessionStorage.getItem('wingman_backfill_done')) {
+    setTimeout(function() {
+      try {
+        var localData = JSON.parse(localStorage.getItem('wingman_analytics') || '{}');
+        var localQueries = (localData.queries || []).filter(function(q){ return q && q.q && q.q.trim(); });
+        if (localQueries.length > 0) {
+          fetch('/.netlify/functions/analytics', {
+            method: 'POST',
+            headers: {'Content-Type':'application/json'},
+            body: JSON.stringify({ type: 'backfill', queries: localQueries })
+          }).then(function(r){ return r.json(); }).then(function(res){
+            if (res.added > 0) console.log('[wingman] Backfilled', res.added, 'queries to analytics');
+          }).catch(function(){});
+        }
+      } catch(e) {}
+      sessionStorage.setItem('wingman_backfill_done', '1');
+    }, 3000); // delay 3s so it doesn't compete with initial page load
+  }
 });
 
 function renderStarters() {

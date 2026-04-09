@@ -91,6 +91,19 @@ export default async (req, context) => {
         dayData.push(event);
         await store.set(dayKey, JSON.stringify(dayData));
 
+        // Also maintain a persistent rolling query log (last 200 queries)
+        // This survives even if day buckets are empty/expired
+        if (event.q) {
+          let queryLog = [];
+          try {
+            const existing = await store.get('query-log');
+            if (existing) queryLog = JSON.parse(existing);
+          } catch (e) {}
+          queryLog.push({ q: event.q, cat: event.cat, img: event.img, ts: event.ts, mode: event.mode });
+          if (queryLog.length > 200) queryLog = queryLog.slice(-200);
+          await store.set('query-log', JSON.stringify(queryLog));
+        }
+
         // Update running totals
         let totals = {};
         try {
@@ -166,6 +179,39 @@ export default async (req, context) => {
         await store.set(dayKey, JSON.stringify(dayData));
         return new Response(JSON.stringify({ ok: true }), { status: 200, headers: CORS });
 
+      } else if (type === 'backfill') {
+        // Backfill query-log from localStorage data sent by analytics.html
+        // Accepts array of {q, cat, img, ts, mode} — merges into query-log deduped by ts
+        const queries = Array.isArray(body.queries) ? body.queries : [];
+        if (!queries.length) {
+          return new Response(JSON.stringify({ ok: true, added: 0 }), { status: 200, headers: CORS });
+        }
+        let queryLog = [];
+        try {
+          const existing = await store.get('query-log');
+          if (existing) queryLog = JSON.parse(existing);
+        } catch (e) {}
+
+        const existingTs = new Set(queryLog.map(e => e.ts));
+        let added = 0;
+        for (const q of queries) {
+          if (!q.q || !q.q.trim()) continue;
+          if (q.ts && existingTs.has(q.ts)) continue; // dedupe
+          queryLog.push({
+            q: (q.q || '').substring(0, 200),
+            cat: (q.cat || 'general').substring(0, 30),
+            img: !!q.img,
+            ts: q.ts || new Date().toISOString(),
+            mode: (q.mode || 'wingman').substring(0, 20),
+          });
+          added++;
+        }
+        // Keep last 200, sorted by ts
+        queryLog.sort((a, b) => (a.ts || '').localeCompare(b.ts || ''));
+        if (queryLog.length > 200) queryLog = queryLog.slice(-200);
+        await store.set('query-log', JSON.stringify(queryLog));
+        return new Response(JSON.stringify({ ok: true, added, total: queryLog.length }), { status: 200, headers: CORS });
+
       } else {
         return new Response(JSON.stringify({ error: 'Unknown type' }), { status: 400, headers: CORS });
       }
@@ -197,7 +243,7 @@ export default async (req, context) => {
 
       // Get daily data for the range
       const dailyData = {};
-      const recentQueries = [];
+      const recentQueriesFromDays = [];
       const now = new Date();
 
       for (let i = 0; i < days; i++) {
@@ -215,16 +261,29 @@ export default async (req, context) => {
               cats: queryEvents.reduce((acc, e) => { acc[e.cat] = (acc[e.cat] || 0) + 1; return acc; }, {}),
             };
             // Collect recent queries (last 50) — only entries with actual q text
-            // batch events (surface/type/action schema) don't have q field; skip them
-            if (recentQueries.length < 50) {
+            if (recentQueriesFromDays.length < 50) {
               parsed.filter(e => e.q && e.q.trim()).slice(-50).forEach(e => {
-                if (recentQueries.length < 50) {
-                  recentQueries.push({ q: e.q, cat: e.cat, img: e.img, ts: e.ts, mode: e.mode });
+                if (recentQueriesFromDays.length < 50) {
+                  recentQueriesFromDays.push({ q: e.q, cat: e.cat, img: e.img, ts: e.ts, mode: e.mode });
                 }
               });
             }
           }
         } catch (e) { /* no data for that day */ }
+      }
+
+      // Use persistent query-log as primary source (survives day bucket issues)
+      // Fall back to day bucket queries if log is empty
+      let recentQueries = [];
+      try {
+        const logData = await store.get('query-log');
+        if (logData) {
+          const log = JSON.parse(logData);
+          recentQueries = log.filter(e => e.q && e.q.trim()).slice(-50).reverse();
+        }
+      } catch (e) {}
+      if (recentQueries.length === 0) {
+        recentQueries = recentQueriesFromDays;
       }
 
       // Get session data for current month
