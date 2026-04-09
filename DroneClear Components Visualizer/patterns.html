@@ -1094,14 +1094,30 @@ const FLAG_META = {
 
 // ── Simulated platform + component data (in production: fetched from Forge API) ──
 const PLATFORMS = [
-  {id:"skydio-x10d",name:"Skydio X10D",mfr:"Skydio",tier:"blue",country:"US",combat:false,sbc:["NVIDIA Jetson Orin"],prod:380,yoy:42,contracts:["USSOCOM FY25","CBP Replicator"]},
-  {id:"teal-2",name:"Teal 2",mfr:"Red Cat / Teal",tier:"blue",country:"US",combat:true,sbc:["Snapdragon 845","PX4 FC"],prod:520,yoy:88,contracts:["SRR Tranche 2","USMC FPV","Drone Dominance"]},
-  {id:"freefly-astro",name:"Freefly Astro",mfr:"Freefly Systems",tier:"blue",country:"US",combat:false,sbc:["Auterion SkyNode (QRB5165)"],prod:145,yoy:18,contracts:["DOI Survey Fleet"]},
-  {id:"anduril-ghost-x",name:"Anduril Ghost-X",mfr:"Anduril Industries",tier:"blue",country:"US",combat:true,sbc:["Anduril Lattice AI Core"],prod:210,yoy:135,contracts:["USSOCOM MFWS","Replicator Phase 2"]},
-  {id:"shield-v-bat",name:"Shield AI V-BAT",mfr:"Shield AI",tier:"blue",country:"US",combat:true,sbc:["Custom edge compute (undisclosed)","Hivemind AI"],prod:85,yoy:67,contracts:["USMC Group 3"]},
-  {id:"neros-archer",name:"Neros Archer",mfr:"Neros Technologies",tier:"blue",country:"US",combat:true,sbc:["Custom Neros FC (undisclosed)"],prod:2200,yoy:310,contracts:["Drone Dominance FPV"]},
-  {id:"modalai-seeker",name:"ModalAI Seeker",mfr:"ModalAI",tier:"blue",country:"US",combat:true,sbc:["VOXL 2 (QRB5165)"],prod:340,yoy:95,contracts:["SRR Tranche 2","Army FTUAS"]},
-  {id:"aerovironment-switchblade",name:"Switchblade 600",mfr:"AeroVironment",tier:"blue",country:"US",combat:true,sbc:["Custom AV SoC"],prod:480,yoy:72,contracts:["USSOCOM","Ukraine USAI"]},
+  {id:"skydio-x10d",name:"Skydio X10D",mfr:"Skydio",tier:"blue",country:"US",combat:false,
+   sbc:["NVIDIA Jetson Orin"],sbc_confidence:"confirmed",sbc_source:"https://www.skydio.com/x10",
+   prod:380,yoy:42,contracts:["USSOCOM FY25","CBP Replicator"]},
+  {id:"teal-2",name:"Teal 2",mfr:"Red Cat / Teal",tier:"blue",country:"US",combat:true,
+   sbc:["Snapdragon 845","PX4 FC"],sbc_confidence:"confirmed",sbc_source:"https://toughstump.com/2023/09/27/exploring-the-pinnacle-of-drone-technology-teal-2/",
+   prod:520,yoy:88,contracts:["SRR Tranche 2","USMC FPV","Drone Dominance"]},
+  {id:"freefly-astro",name:"Freefly Astro",mfr:"Freefly Systems",tier:"blue",country:"US",combat:false,
+   sbc:["Auterion SkyNode (QRB5165)"],sbc_confidence:"confirmed",sbc_source:"https://freeflysystems.com/astro",
+   prod:145,yoy:18,contracts:["DOI Survey Fleet"]},
+  {id:"anduril-ghost-x",name:"Anduril Ghost-X",mfr:"Anduril Industries",tier:"blue",country:"US",combat:true,
+   sbc:["Anduril Lattice AI Core"],sbc_confidence:"inferred",sbc_source:"https://dronelife.com/2020/09/17/anduril-unleashes-ghost-defense-drone/",
+   prod:210,yoy:135,contracts:["USSOCOM MFWS","Replicator Phase 2"]},
+  {id:"shield-v-bat",name:"Shield AI V-BAT",mfr:"Shield AI",tier:"blue",country:"US",combat:true,
+   sbc:["Custom edge compute (undisclosed)","Hivemind AI"],sbc_confidence:"unknown",sbc_source:null,
+   prod:85,yoy:67,contracts:["USMC Group 3"]},
+  {id:"neros-archer",name:"Neros Archer",mfr:"Neros Technologies",tier:"blue",country:"US",combat:true,
+   sbc:["Custom Neros FC (undisclosed)"],sbc_confidence:"inferred",sbc_source:"https://en.wikipedia.org/wiki/Neros",
+   prod:2200,yoy:310,contracts:["Drone Dominance FPV"]},
+  {id:"modalai-seeker",name:"ModalAI Seeker",mfr:"ModalAI",tier:"blue",country:"US",combat:true,
+   sbc:["VOXL 2 (QRB5165)"],sbc_confidence:"confirmed",sbc_source:"https://www.modalai.com/products/voxl-2",
+   prod:340,yoy:95,contracts:["SRR Tranche 2","Army FTUAS"]},
+  {id:"aerovironment-switchblade",name:"Switchblade 600",mfr:"AeroVironment",tier:"blue",country:"US",combat:true,
+   sbc:["Custom AV SoC (classified)"],sbc_confidence:"unknown",sbc_source:null,
+   prod:480,yoy:72,contracts:["USSOCOM","Ukraine USAI"]},
 ];
 
 const COMPONENTS = [
@@ -2210,7 +2226,12 @@ function renderPlatforms() {
         <span class="badge ${p.yoy>0?"badge-green":"badge-red"}">${p.yoy>0?"+":""}${p.yoy}% YoY</span>
       </div>
     </div>
-    <div class="tags"><span style="font-size:10px;color:var(--text-d);margin-right:4px">SBC:</span>${p.sbc.map(s=>`<span class="badge badge-cyan">${s}</span>`).join("")}</div>
+    <div class="tags"><span style="font-size:10px;color:var(--text-d);margin-right:4px">SBC:</span>${p.sbc.map(s=>{
+      var conf = p.sbc_confidence||'unknown';
+      var col = conf==='confirmed'?'var(--cyan)':conf==='inferred'?'var(--amber)':'var(--text-d)';
+      var prefix = conf==='confirmed'?'':conf==='inferred'?'~':'?';
+      return `<span class="badge" style="background:${col}18;color:${col};border:1px solid ${col}30">${prefix}${s}</span>`;
+    }).join("")}</div>
     ${p.contracts.length?`<div class="tags"><span style="font-size:10px;color:var(--text-d);margin-right:4px">Contracts:</span>${p.contracts.map(cn=>`<span class="badge badge-amber">${cn}</span>`).join("")}</div>`:""}
   </div>`).join("");
   c.querySelectorAll("[data-plat-idx]").forEach(function(el) {
@@ -2229,7 +2250,24 @@ function renderPlatforms() {
       body += '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:8px;margin-bottom:12px">';
       body += '<div style="background:var(--surface);border-radius:6px;padding:8px 10px"><div style="font:500 9px var(--mono);color:var(--text-d);margin-bottom:2px">MANUFACTURER</div><div style="font:600 11px var(--font)">'+p.mfr+'</div></div>';
       body += '<div style="background:var(--surface);border-radius:6px;padding:8px 10px"><div style="font:500 9px var(--mono);color:var(--text-d);margin-bottom:2px">COUNTRY</div><div style="font:600 11px var(--font)">'+p.country+'</div></div></div>';
-      if (p.sbc&&p.sbc.length){body+='<div style="margin-bottom:10px"><div style="font:600 9px var(--mono);color:var(--text-d);margin-bottom:5px">SBC</div><div style="display:flex;gap:4px;flex-wrap:wrap">'+p.sbc.map(function(s){return '<span class="badge badge-cyan">'+s+'</span>';}).join("")+'</div></div>';}
+      if (p.sbc&&p.sbc.length){
+        var conf = p.sbc_confidence||'unknown';
+        var confColor = conf==='confirmed'?'var(--green)':conf==='inferred'?'var(--amber)':'var(--text-d)';
+        var confLabel = conf==='confirmed'?'✓ confirmed':conf==='inferred'?'~ inferred':'? undisclosed';
+        var prefix = conf==='confirmed'?'':conf==='inferred'?'~':'?';
+        body += '<div style="margin-bottom:10px">';
+        body += '<div style="display:flex;align-items:center;gap:6px;margin-bottom:5px">';
+        body += '<span style="font:600 9px var(--mono);color:var(--text-d)">COMPUTE / SBC</span>';
+        body += '<span style="font:500 8px var(--mono);color:'+confColor+';background:'+confColor+'18;padding:1px 6px;border-radius:3px">'+confLabel+'</span>';
+        if (p.sbc_source) body += '<a href="'+p.sbc_source+'" target="_blank" rel="noopener" style="font:500 8px var(--mono);color:var(--cyan);text-decoration:none">source ↗</a>';
+        body += '</div>';
+        body += '<div style="display:flex;gap:4px;flex-wrap:wrap">';
+        p.sbc.forEach(function(s){
+          var col = conf==='confirmed'?'var(--cyan)':conf==='inferred'?'var(--amber)':'var(--text-d)';
+          body += '<span class="badge" style="background:'+col+'18;color:'+col+';border:1px solid '+col+'30">'+prefix+s+'</span>';
+        });
+        body += '</div></div>';
+      }
       if (p.contracts&&p.contracts.length){body+='<div style="margin-bottom:10px"><div style="font:600 9px var(--mono);color:var(--text-d);margin-bottom:5px">Contracts</div><div style="display:flex;gap:4px;flex-wrap:wrap">'+p.contracts.map(function(cn){return '<span class="badge badge-amber">'+cn+'</span>';}).join("")+'</div></div>';}
       if (relFlags.length){body+='<div><div style="font:600 9px var(--mono);color:var(--text-d);margin-bottom:6px">Related Flags ('+relFlags.length+')</div>'+relFlags.slice(0,5).map(function(f){return '<div style="background:var(--surface);border-radius:6px;padding:6px 9px;margin-bottom:4px;font:400 10px var(--font);color:var(--text-s)">'+f.title+'</div>';}).join("")+'</div>';}
       // Dynamic reference links
