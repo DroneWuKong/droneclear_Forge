@@ -1524,7 +1524,29 @@ function deltaBadge(badge, days) {
 
 function renderBriefPanel(b){
   const el=document.getElementById("brief-inner");if(!el)return;
-  const sig=b.signal_summary||{};const lead=b.lead_story||{};let html="";
+  // Schema compat: new pie_brief emits flag_severities{id:sev} + flag_ids[];
+  //   old schema emitted signal_summary{critical,warning,new_today,total_flags}.
+  //   Fall back to live FLAGS array if brief lacks both (e.g. stale/free-tier response).
+  let sig = b.signal_summary || null;
+  if (!sig) {
+    const sev = b.flag_severities || {};
+    const ids = b.flag_ids || [];
+    const fromBrief = Object.values(sev);
+    // Prefer FLAGS array (loaded from pie_flags, always fresh) when available
+    const source = (typeof FLAGS !== 'undefined' && Array.isArray(FLAGS) && FLAGS.length)
+      ? FLAGS.map(f => f.severity || 'info')
+      : fromBrief;
+    const totalFlags = (typeof FLAGS !== 'undefined' && Array.isArray(FLAGS) && FLAGS.length)
+      ? FLAGS.length
+      : (ids.length || fromBrief.length);
+    sig = {
+      critical:    source.filter(s => s === 'critical').length,
+      warning:     source.filter(s => s === 'warning').length,
+      new_today:   (b.delta_summary && b.delta_summary.new_flags) || 0,
+      total_flags: totalFlags
+    };
+  }
+  const lead=b.lead_story||{};let html="";
 
   // Signal bar
   html+=`<div class="signal-bar">
