@@ -1,9 +1,30 @@
-// Netlify serverless function — centralized Wingman analytics collector
+// Netlify serverless function — unified analytics collector (Forge + Handbook)
 // Stores anonymized interaction data in Netlify Blobs (key-value store)
 // No PII collected — just query categories, image usage, session patterns
+// Accepts both Wingman query/session events AND structured batch events from all surfaces
 
 import { getStore } from "@netlify/blobs";
 
+const ALLOWED_ORIGINS = [
+  'https://forgeprole.netlify.app',
+  'https://nvmilldoitmyself.com',
+  'https://www.nvmilldoitmyself.com',
+  'https://thebluefairy.netlify.app',
+  'http://localhost:3000',
+  'http://localhost:8888',
+];
+
+function corsHeaders(origin) {
+  const allowed = ALLOWED_ORIGINS.includes(origin) ? origin : ALLOWED_ORIGINS[0];
+  return {
+    'Access-Control-Allow-Origin': allowed,
+    'Access-Control-Allow-Methods': 'POST, GET, OPTIONS',
+    'Access-Control-Allow-Headers': 'Content-Type, X-Admin-Key',
+    'Content-Type': 'application/json',
+  };
+}
+
+// Legacy alias — kept for internal same-origin calls that don't send Origin header
 const CORS = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Methods': 'POST, GET, OPTIONS',
@@ -12,8 +33,11 @@ const CORS = {
 };
 
 export default async (req, context) => {
+  const origin = req.headers.get('origin') || '';
+  const C = origin ? corsHeaders(origin) : CORS;
+
   if (req.method === 'OPTIONS') {
-    return new Response(null, { status: 204, headers: CORS });
+    return new Response(null, { status: 204, headers: C });
   }
 
   const store = getStore("wingman-analytics");
@@ -28,7 +52,7 @@ export default async (req, context) => {
       if (type === 'batch') {
         const events = body.events || [];
         if (!Array.isArray(events) || events.length === 0) {
-          return new Response(JSON.stringify({ error: 'empty batch' }), { status: 400, headers: CORS });
+          return new Response(JSON.stringify({ error: 'empty batch' }), { status: 400, headers: C });
         }
         const dayKey = `day-${new Date().toISOString().split('T')[0]}`;
         let dayData = [];
@@ -63,7 +87,7 @@ export default async (req, context) => {
         if (dayData.length > 5000) dayData = dayData.slice(-5000);
         await store.set(dayKey, JSON.stringify(dayData));
         await store.set('totals', JSON.stringify(totals));
-        return new Response(JSON.stringify({ ok: true, accepted: sanitized.length }), { status: 200, headers: CORS });
+        return new Response(JSON.stringify({ ok: true, accepted: sanitized.length }), { status: 200, headers: C });
       }
 
       if (type === 'query') {
@@ -119,7 +143,7 @@ export default async (req, context) => {
 
         await store.set('totals', JSON.stringify(totals));
 
-        return new Response(JSON.stringify({ ok: true }), { status: 200, headers: CORS });
+        return new Response(JSON.stringify({ ok: true }), { status: 200, headers: C });
 
       } else if (type === 'session') {
         // Track session summary
@@ -154,7 +178,7 @@ export default async (req, context) => {
 
         await store.set('totals', JSON.stringify(totals));
 
-        return new Response(JSON.stringify({ ok: true }), { status: 200, headers: CORS });
+        return new Response(JSON.stringify({ ok: true }), { status: 200, headers: C });
 
       } else if (type === 'gap_analysis') {
         // Track gap analyzer runs
@@ -177,14 +201,14 @@ export default async (req, context) => {
         try { const ex = await store.get(dayKey); if (ex) dayData = JSON.parse(ex); } catch(e) {}
         dayData.push({ ...event, type: 'gap_analysis', action: 'gap_analysis_run', surface: 'forge' });
         await store.set(dayKey, JSON.stringify(dayData));
-        return new Response(JSON.stringify({ ok: true }), { status: 200, headers: CORS });
+        return new Response(JSON.stringify({ ok: true }), { status: 200, headers: C });
 
       } else if (type === 'backfill') {
         // Backfill query-log from localStorage data sent by analytics.html
         // Accepts array of {q, cat, img, ts, mode} — merges into query-log deduped by ts
         const queries = Array.isArray(body.queries) ? body.queries : [];
         if (!queries.length) {
-          return new Response(JSON.stringify({ ok: true, added: 0 }), { status: 200, headers: CORS });
+          return new Response(JSON.stringify({ ok: true, added: 0 }), { status: 200, headers: C });
         }
         let queryLog = [];
         try {
@@ -210,14 +234,14 @@ export default async (req, context) => {
         queryLog.sort((a, b) => (a.ts || '').localeCompare(b.ts || ''));
         if (queryLog.length > 200) queryLog = queryLog.slice(-200);
         await store.set('query-log', JSON.stringify(queryLog));
-        return new Response(JSON.stringify({ ok: true, added, total: queryLog.length }), { status: 200, headers: CORS });
+        return new Response(JSON.stringify({ ok: true, added, total: queryLog.length }), { status: 200, headers: C });
 
       } else {
-        return new Response(JSON.stringify({ error: 'Unknown type' }), { status: 400, headers: CORS });
+        return new Response(JSON.stringify({ error: 'Unknown type' }), { status: 400, headers: C });
       }
 
     } catch (err) {
-      return new Response(JSON.stringify({ error: err.message }), { status: 500, headers: CORS });
+      return new Response(JSON.stringify({ error: err.message }), { status: 500, headers: C });
     }
   }
 
@@ -225,12 +249,12 @@ export default async (req, context) => {
   if (req.method === 'GET') {
     const adminKey = process.env.ANALYTICS_ADMIN_KEY;
     if (!adminKey) {
-      return new Response(JSON.stringify({ error: 'Analytics not configured' }), { status: 503, headers: CORS });
+      return new Response(JSON.stringify({ error: 'Analytics not configured' }), { status: 503, headers: C });
     }
     const reqKey = req.headers.get('x-admin-key') || new URL(req.url).searchParams.get('key');
 
     if (reqKey !== adminKey) {
-      return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401, headers: CORS });
+      return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401, headers: C });
     }
 
     try {
@@ -260,12 +284,27 @@ export default async (req, context) => {
             // Query events have q field; batch/page_view events have action field
             const queryEvents = parsed.filter(e => e.q && e.q.trim());
             const pageViewEvents = parsed.filter(e => e.action === 'page_view' || e.type === 'page_view');
+            // Surface breakdown from batch events
+            const batchEvents = parsed.filter(e => e.action && !e.q);
+            const forgeBatch = batchEvents.filter(e => (e.surface || 'forge') === 'forge');
+            const handbookBatch = batchEvents.filter(e => e.surface === 'handbook');
             dailyData[d.toISOString().split('T')[0]] = {
-              count: queryEvents.length,          // Wingman query count for this day
-              pageViews: pageViewEvents.length,    // Page view events for this day
-              total: parsed.length,               // All events
+              count: queryEvents.length,
+              pageViews: pageViewEvents.length,
+              total: parsed.length,
               images: queryEvents.filter(e => e.img).length,
               cats: queryEvents.reduce((acc, e) => { acc[e.cat] = (acc[e.cat] || 0) + 1; return acc; }, {}),
+              forge: {
+                searches: forgeBatch.filter(e => e.action === 'component_search').length,
+                compares: forgeBatch.filter(e => e.action === 'side_by_side').length,
+                filters:  forgeBatch.filter(e => e.action === 'apply_filter').length,
+                views:    forgeBatch.filter(e => e.action === 'component_detail').length,
+                gaps:     forgeBatch.filter(e => e.action === 'no_results').length,
+              },
+              handbook: {
+                views:    handbookBatch.filter(e => e.action === 'view').length,
+                searches: handbookBatch.filter(e => e.action === 'search').length,
+              },
             };
             // Collect recent queries (last 50) — only entries with actual q text
             if (recentQueriesFromDays.length < 50) {
@@ -323,14 +362,14 @@ export default async (req, context) => {
         generated: new Date().toISOString(),
       };
 
-      return new Response(JSON.stringify(result, null, 2), { status: 200, headers: CORS });
+      return new Response(JSON.stringify(result, null, 2), { status: 200, headers: C });
 
     } catch (err) {
-      return new Response(JSON.stringify({ error: err.message }), { status: 500, headers: CORS });
+      return new Response(JSON.stringify({ error: err.message }), { status: 500, headers: C });
     }
   }
 
-  return new Response(JSON.stringify({ error: 'Method not allowed' }), { status: 405, headers: CORS });
+  return new Response(JSON.stringify({ error: 'Method not allowed' }), { status: 405, headers: C });
 };
 
 export const config = {
