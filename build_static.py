@@ -74,6 +74,7 @@ PAGES = {
     'grants.html': 'grants/index.html',
     'regs.html': 'regs/index.html',
     'verify.html': 'verify/index.html',
+    'ddg-tracker.html': 'ddg/index.html',
 }
 
 # Static assets to copy (JS, CSS, JSON, images)
