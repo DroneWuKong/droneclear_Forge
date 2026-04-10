@@ -1270,8 +1270,7 @@ async function loadData() {
 
   try {
     const [fRes, pRes] = await Promise.all([
-      fetch("../static/pie_flags.json").then(r => {
-        if (!r.ok) throw new Error(`flags.json: HTTP ${r.status}`);
+      fetch('/.netlify/functions/forge-data?type=pie_flags&token='+encodeURIComponent(localStorage.getItem('forge_token')||localStorage.getItem('wingman_sub_token')||'')).then(r=>r.json()).then(d=>{const data=d.data||d; if(d.summary_only){FLAGS=[];FILTERED_FLAGS=[];renderFlagCount();return;} return data;}).then(flags=>{if(!flags)return;
         return r.json();
       }),
       fetch("../static/pie_predictions.json").then(r => {
@@ -1641,7 +1640,14 @@ function renderBriefPanel(b){
 async function loadBriefPanel(){
   try{
     let b=null;
-    for(const p of["../static/pie_brief.json","/static/pie_brief.json"]){try{const r=await fetch(p);if(r.ok){b=await r.json();break;}}catch(e){}}
+    // Try forge-data API (works with or without token — returns full or summary)
+    const tok = localStorage.getItem('forge_token')||localStorage.getItem('wingman_sub_token')||'';
+    try {
+      const r = await fetch('/.netlify/functions/forge-data?type=pie_brief&token='+encodeURIComponent(tok));
+      if (r.ok) { const d = await r.json(); b = d.data || d; }
+    } catch(e) {}
+    // Fallback to static if function unavailable
+    if (!b) { for(const p of["../static/pie_brief.json","/static/pie_brief.json"]){try{const r=await fetch(p);if(r.ok){b=await r.json();break;}}catch(e){}} }
     if(!b)throw new Error("no data");
     renderBriefPanel(b);
   }catch(e){
