@@ -1,0 +1,1450 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>DDP / Gauntlet Tracker — DroneWuKong Forge</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600;700&family=DM+Sans:wght@400;500;600;700&family=Barlow+Condensed:wght@700;900&display=swap');
+
+  :root {
+    --bg:       #0c0c0a;
+    --bg2:      #141410;
+    --bg3:      #1a1a14;
+    --border:   #2a2a22;
+    --border2:  #222218;
+    --green:    #22c55e;
+    --green-dim:#166534;
+    --amber:    #c9a227;
+    --red:      #d62828;
+    --blue:     #4a9eff;
+    --grey:     #5e5a50;
+    --text:     #f0ede6;
+    --text-dim: #a8a090;
+    --text-d2:  #5e5a50;
+    --mono:     'JetBrains Mono', monospace;
+    --head:     'Barlow Condensed', sans-serif;
+    --body:     'DM Sans', system-ui, sans-serif;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--body);
+    font-size: 14px;
+    line-height: 1.6;
+    min-height: 100vh;
+  }
+
+  /* Scanline overlay */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background: repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(0,0,0,0.04) 2px, rgba(0,0,0,0.04) 4px);
+    pointer-events: none;
+    z-index: 1000;
+  }
+
+  /* NAV — matches Forge site exactly */
+  nav {
+    position: sticky; top: 0; z-index: 100;
+    background: rgba(12,12,10,.96);
+    backdrop-filter: blur(8px);
+    border-bottom: 1px solid var(--border);
+    height: 48px;
+    display: flex; align-items: center;
+    padding: 0 20px;
+  }
+  .nav-inner {
+    display: flex; align-items: center; gap: 12px;
+    width: 100%; max-width: 1400px; margin: 0 auto;
+  }
+  .nav-logo {
+    font: 700 15px var(--mono);
+    color: var(--green);
+    text-decoration: none;
+    white-space: nowrap;
+    flex-shrink: 0;
+  }
+  .nav-pills {
+    display: flex; gap: 4px;
+    margin-left: auto;
+    flex-shrink: 0;
+  }
+  .nav-pill {
+    font: 500 11px var(--body);
+    color: var(--text-d2);
+    padding: 3px 10px;
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    text-decoration: none;
+    transition: color .15s, border-color .15s;
+    white-space: nowrap;
+  }
+  .nav-pill:hover { color: var(--text-dim); border-color: var(--grey); }
+  .nav-pill.active {
+    color: var(--green);
+    border-color: var(--green-dim);
+    background: rgba(34,197,94,.06);
+  }
+  .nav-badge {
+    font: 600 10px var(--mono);
+    padding: 3px 8px;
+    border-radius: 20px;
+    border: 1px solid var(--green-dim);
+    color: var(--green);
+    background: rgba(34,197,94,.08);
+    white-space: nowrap;
+    flex-shrink: 0;
+  }
+  @keyframes blink { 50% { opacity: 0.4; } }
+
+  /* HEADER */
+  .page-header {
+    padding: 48px 32px 24px;
+    border-bottom: 1px solid var(--border);
+    background: linear-gradient(180deg, #111108 0%, var(--bg) 100%);
+  }
+  .page-header .eyebrow {
+    font-family: var(--mono);
+    font-size: 10px;
+    color: var(--green);
+    letter-spacing: 3px;
+    text-transform: uppercase;
+    margin-bottom: 8px;
+  }
+  .page-header h1 {
+    font-family: var(--head);
+    font-size: 48px;
+    font-weight: 900;
+    letter-spacing: -1px;
+    color: #fff;
+    line-height: 1;
+    margin-bottom: 12px;
+  }
+  .page-header h1 span { color: var(--green); }
+  .page-header .subtitle {
+    font-family: var(--body);
+    font-size: 14px;
+    color: var(--text-dim);
+    max-width: 680px;
+    margin-bottom: 24px;
+  }
+  /* STAT CARDS */
+  .stat-cards {
+    display: grid;
+    grid-template-columns: repeat(6, 1fr);
+    gap: 1px;
+    background: var(--border);
+    border: 1px solid var(--border);
+    margin-top: 28px;
+  }
+  @media (max-width: 900px) { .stat-cards { grid-template-columns: repeat(3, 1fr); } }
+  @media (max-width: 540px) { .stat-cards { grid-template-columns: repeat(2, 1fr); } }
+  .stat-card {
+    background: var(--bg2);
+    padding: 16px 18px 14px;
+    display: flex; flex-direction: column; gap: 6px;
+    transition: background .15s;
+  }
+  .stat-card:hover { background: var(--bg3); }
+  .stat-card .s-label {
+    font: 600 9px var(--mono);
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    color: var(--text-d2);
+  }
+  .stat-card .s-val {
+    font: 700 22px var(--mono);
+    color: var(--green);
+    line-height: 1;
+  }
+  .stat-card .s-sub {
+    font: 400 11px var(--body);
+    color: var(--text-d2);
+    line-height: 1.3;
+  }
+
+  /* PROGRAM OVERVIEW */
+  .section {
+    padding: 32px;
+    border-bottom: 1px solid var(--border);
+  }
+  .section-title {
+    font-family: var(--head);
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 3px;
+    text-transform: uppercase;
+    color: var(--text-dim);
+    margin-bottom: 20px;
+    display: flex; align-items: center; gap: 12px;
+  }
+  .section-title::after {
+    content: '';
+    flex: 1;
+    height: 1px;
+    background: var(--border);
+  }
+
+  /* SCORING EXPLAINER */
+  .scoring-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 1px;
+    background: var(--border);
+    border: 1px solid var(--border);
+    margin-bottom: 20px;
+  }
+  .scoring-cell {
+    background: var(--bg2);
+    padding: 16px 20px;
+  }
+  .scoring-cell .metric-name {
+    font-family: var(--mono);
+    font-size: 10px;
+    color: var(--green);
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    margin-bottom: 6px;
+  }
+  .scoring-cell .metric-desc {
+    font-size: 12px;
+    color: var(--text-dim);
+    line-height: 1.5;
+  }
+  .scoring-cell .weight {
+    font-family: var(--mono);
+    font-size: 14px;
+    color: var(--amber);
+    margin-top: 6px;
+  }
+
+  /* PHASE TIMELINE */
+  .phase-timeline {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 1px;
+    background: var(--border);
+    border: 1px solid var(--border);
+  }
+  .phase-card {
+    background: var(--bg2);
+    padding: 16px 18px;
+    position: relative;
+    overflow: hidden;
+  }
+  .phase-card.active { background: #0a1a14; }
+  .phase-card.active::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 2px;
+    background: var(--green);
+  }
+  .phase-card.upcoming::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 2px;
+    background: var(--grey);
+  }
+  .phase-num {
+    font-family: var(--mono);
+    font-size: 9px;
+    color: var(--text-dim);
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    margin-bottom: 4px;
+  }
+  .phase-name {
+    font-family: var(--head);
+    font-size: 18px;
+    font-weight: 700;
+    color: #fff;
+    margin-bottom: 8px;
+  }
+  .phase-detail {
+    font-family: var(--mono);
+    font-size: 10px;
+    color: var(--text-dim);
+    line-height: 1.7;
+  }
+  .phase-detail .hi { color: var(--amber); }
+  .phase-detail .go { color: var(--green); }
+  .phase-status {
+    margin-top: 8px;
+    font-family: var(--mono);
+    font-size: 9px;
+    padding: 2px 8px;
+    display: inline-block;
+    letter-spacing: 1px;
+  }
+  .phase-status.done { background: rgba(0,229,160,0.1); color: var(--green); border: 1px solid var(--green-dim); }
+  .phase-status.live { background: rgba(245,166,35,0.1); color: var(--amber); border: 1px solid var(--amber); animation: blink 2s step-end infinite; }
+  .phase-status.pending { background: rgba(74,96,112,0.2); color: var(--grey); border: 1px solid var(--grey); }
+
+  /* LEADERBOARD TABLE */
+  .leaderboard-wrapper {
+    overflow-x: auto;
+  }
+  .leaderboard {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 13px;
+  }
+  .leaderboard thead tr {
+    border-bottom: 1px solid var(--border);
+  }
+  .leaderboard th {
+    font-family: var(--mono);
+    font-size: 9px;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    color: var(--text-dim);
+    padding: 8px 12px;
+    text-align: left;
+    white-space: nowrap;
+  }
+  .leaderboard th.right { text-align: right; }
+  .leaderboard tbody tr {
+    border-bottom: 1px solid rgba(30,46,58,0.5);
+    transition: background 0.15s;
+    cursor: pointer;
+  }
+  .leaderboard tbody tr:hover { background: rgba(0,229,160,0.03); }
+  .leaderboard tbody tr.winner { }
+  .leaderboard tbody tr.loser { opacity: 0.55; }
+  .leaderboard td {
+    padding: 10px 12px;
+    vertical-align: top;
+  }
+  .rank {
+    font-family: var(--mono);
+    font-size: 18px;
+    font-weight: bold;
+    color: var(--text-dim);
+    min-width: 36px;
+  }
+  .rank.top1 { color: var(--green); }
+  .rank.top3 { color: var(--amber); }
+  .company-name {
+    font-family: var(--head);
+    font-size: 16px;
+    font-weight: 700;
+    color: #fff;
+    line-height: 1.1;
+  }
+  .company-sub {
+    font-size: 11px;
+    color: var(--text-dim);
+    margin-top: 2px;
+  }
+  .platform-tag {
+    display: inline-block;
+    font-family: var(--mono);
+    font-size: 10px;
+    padding: 2px 7px;
+    background: rgba(74,158,255,0.1);
+    border: 1px solid rgba(74,158,255,0.3);
+    color: var(--blue);
+    margin-right: 4px;
+    margin-top: 3px;
+  }
+  .score-bar-wrap {
+    min-width: 120px;
+  }
+  .score-num {
+    font-family: var(--mono);
+    font-size: 15px;
+    color: var(--green);
+    margin-bottom: 4px;
+  }
+  .score-num.mid { color: var(--amber); }
+  .score-num.low { color: var(--text-dim); }
+  .score-bar {
+    height: 4px;
+    background: var(--bg3);
+    border-radius: 2px;
+    overflow: hidden;
+  }
+  .score-bar-fill {
+    height: 100%;
+    background: var(--green);
+    border-radius: 2px;
+  }
+  .score-bar-fill.mid { background: var(--amber); }
+  .score-bar-fill.low { background: var(--grey); }
+  .cost-cell {
+    font-family: var(--mono);
+    font-size: 12px;
+    color: var(--text);
+  }
+  .cost-sub {
+    font-size: 10px;
+    color: var(--text-dim);
+    margin-top: 2px;
+  }
+  .tag {
+    display: inline-block;
+    font-family: var(--mono);
+    font-size: 9px;
+    padding: 2px 6px;
+    letter-spacing: 1px;
+    margin-right: 3px;
+  }
+  .tag.win { background: rgba(0,229,160,0.1); color: var(--green); border: 1px solid var(--green-dim); }
+  .tag.loss { background: rgba(232,69,69,0.1); color: var(--red); border: 1px solid rgba(232,69,69,0.3); }
+  .tag.neutral { background: rgba(74,96,112,0.2); color: var(--grey); border: 1px solid rgba(74,96,112,0.4); }
+  .tag.warn { background: rgba(245,166,35,0.1); color: var(--amber); border: 1px solid rgba(245,166,35,0.3); }
+  .status-pill {
+    font-family: var(--mono);
+    font-size: 9px;
+    padding: 3px 8px;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+  }
+  .status-pill.received { background: rgba(0,229,160,0.1); color: var(--green); border: 1px solid var(--green-dim); }
+  .status-pill.no-order { background: rgba(74,96,112,0.15); color: var(--grey); border: 1px solid rgba(74,96,112,0.3); }
+
+  /* EXPANDED ROWS */
+  .expand-row { display: none; }
+  .expand-row.open { display: table-row; }
+  .expand-inner {
+    padding: 0 12px 24px 48px;
+    background: var(--bg2);
+    border-bottom: 1px solid var(--border);
+  }
+  .expand-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 1px;
+    background: var(--border);
+    border: 1px solid var(--border);
+    margin-top: 16px;
+    margin-bottom: 16px;
+  }
+  .expand-block {
+    background: var(--bg);
+    padding: 16px 18px;
+  }
+  .expand-block h4 {
+    font-family: var(--mono);
+    font-size: 9px;
+    color: var(--green);
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    margin-bottom: 8px;
+    padding-bottom: 6px;
+    border-bottom: 1px solid var(--border);
+  }
+  .expand-block p, .expand-block li {
+    font-size: 12px;
+    color: var(--text-dim);
+    line-height: 1.65;
+    margin-bottom: 6px;
+  }
+  .expand-block ul { padding-left: 16px; }
+  .expand-block li { margin-bottom: 4px; }
+  .expand-block .hi { color: var(--amber); }
+  .expand-block .go { color: var(--green); }
+  .expand-block .bad { color: var(--red); }
+  .expand-block .spec-row {
+    display: flex; justify-content: space-between;
+    border-bottom: 1px solid rgba(30,46,58,0.5);
+    padding: 4px 0;
+    font-size: 11px;
+  }
+  .expand-block .spec-row .sk { color: var(--text-dim); font-family: var(--mono); font-size: 10px; }
+  .expand-block .spec-row .sv { color: var(--text); font-family: var(--mono); font-size: 10px; }
+  .phase2-box {
+    background: rgba(0,229,160,0.04);
+    border: 1px solid var(--green-dim);
+    padding: 12px 16px;
+    margin-top: 8px;
+  }
+  .phase2-box h5 {
+    font-family: var(--mono);
+    font-size: 9px;
+    color: var(--green);
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    margin-bottom: 6px;
+  }
+  .phase2-box p { font-size: 12px; color: var(--text-dim); line-height: 1.6; }
+  .phase2-box .risk { color: var(--red); }
+  .phase2-box .pos { color: var(--green); }
+
+  /* LOSER TABLE */
+  .dnf-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 1px;
+    background: var(--border);
+    border: 1px solid var(--border);
+  }
+  .dnf-card {
+    background: var(--bg2);
+    padding: 14px 16px;
+    opacity: 0.7;
+  }
+  .dnf-card:hover { opacity: 1; background: var(--bg3); }
+  .dnf-card .co {
+    font-family: var(--head);
+    font-size: 14px;
+    font-weight: 700;
+    color: var(--text);
+    margin-bottom: 4px;
+  }
+  .dnf-card .detail {
+    font-size: 11px;
+    color: var(--text-dim);
+    line-height: 1.5;
+  }
+
+  /* PUSH BUTTON */
+  .push-bar {
+    position: fixed;
+    bottom: 0; left: 0; right: 0;
+    background: var(--bg2);
+    border-top: 1px solid var(--border);
+    padding: 12px 24px;
+    display: flex; align-items: center; gap: 16px;
+    z-index: 200;
+  }
+  .push-bar .info {
+    font-family: var(--mono);
+    font-size: 10px;
+    color: var(--text-dim);
+    flex: 1;
+  }
+  #push-btn {
+    font-family: var(--mono);
+    font-size: 11px;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    background: var(--green);
+    color: #000;
+    border: none;
+    padding: 8px 20px;
+    cursor: pointer;
+    transition: background 0.2s;
+  }
+  #push-btn:hover { background: #00ffb0; }
+  #push-btn:disabled { background: var(--grey); color: var(--bg); cursor: not-allowed; }
+  #push-status {
+    font-family: var(--mono);
+    font-size: 10px;
+    color: var(--text-dim);
+  }
+
+  .expand-trigger { cursor: pointer; }
+  .expand-trigger .chevron {
+    font-size: 10px;
+    color: var(--text-dim);
+    margin-left: 8px;
+    transition: transform 0.2s;
+    display: inline-block;
+  }
+  .expand-trigger.open .chevron { transform: rotate(90deg); }
+
+  /* Responsive */
+  @media (max-width: 900px) {
+    .expand-grid { grid-template-columns: 1fr 1fr; }
+    .phase-timeline { grid-template-columns: 1fr 1fr; }
+  }
+  @media (max-width: 600px) {
+    .expand-grid { grid-template-columns: 1fr; }
+    .phase-timeline { grid-template-columns: 1fr; }
+    .page-header h1 { font-size: 32px; }
+    .expand-inner { padding-left: 12px; }
+  }
+
+  /* bottom padding for push bar */
+  main { padding-bottom: 64px; }
+</style>
+</head>
+<body>
+
+<nav>
+  <div class="nav-inner">
+    <a href="/ddg/" class="nav-logo">DDP Tracker</a>
+    <div class="nav-pills">
+      <a href="/intel/" class="nav-pill">Intel</a>
+      <a href="/ddg/" class="nav-pill active">DDP</a>
+      <a href="/vendors/" class="nav-pill">Vendors</a>
+      <a href="/wingman/" class="nav-pill">Wingman</a>
+    </div>
+    <span class="nav-badge" style="margin-left:12px;">G-I COMPLETE</span>
+  </div>
+</nav>
+
+<main>
+
+<div class="page-header">
+  <div class="eyebrow">CONFIDENTIAL INTERNAL — DroneWuKong / Forge</div>
+  <h1>DRONE DOMINANCE<br><span>PROGRAM TRACKER</span></h1>
+  <div class="subtitle">
+    Full competitor intelligence for DoW Drone Dominance Program (DDP) / Gauntlet Series.
+    Gauntlet I concluded March 2026 at Fort Moore (Fort Benning), GA. 11 of 25 vendors
+    received prototype delivery orders totaling ~$150M for 30,000 one-way attack drones.
+  </div>
+  <div class="stat-cards">
+    <div class="stat-card">
+      <div class="s-label">Program Value</div>
+      <div class="s-val">$1.1B+</div>
+      <div class="s-sub">4 phases / 2025–2027</div>
+    </div>
+    <div class="stat-card">
+      <div class="s-label">G-I Orders</div>
+      <div class="s-val">$150M</div>
+      <div class="s-sub">30,000 units · 11 winners</div>
+    </div>
+    <div class="stat-card">
+      <div class="s-label">G-I Venue</div>
+      <div class="s-val" style="font-size:15px;padding-top:4px;">Fort Moore</div>
+      <div class="s-sub">Feb 17 – Mar 4, 2026 · GA</div>
+    </div>
+    <div class="stat-card">
+      <div class="s-label">Operators</div>
+      <div class="s-val">~100</div>
+      <div class="s-sub">Army · USMC · SOF</div>
+    </div>
+    <div class="stat-card">
+      <div class="s-label">Unit Price Target</div>
+      <div class="s-val" style="font-size:16px;padding-top:3px;">$5K→$2.3K</div>
+      <div class="s-sub">G-I ceiling → Phase IV</div>
+    </div>
+    <div class="stat-card">
+      <div class="s-label">Updated</div>
+      <div class="s-val" style="font-size:16px;padding-top:3px;">APR 26</div>
+      <div class="s-sub">Forge internal intel</div>
+    </div>
+  </div>
+</div>
+
+<!-- SCORING METHODOLOGY -->
+<div class="section">
+  <div class="section-title">Scoring Methodology — How Gauntlets Are Scored</div>
+  <div class="scoring-grid">
+    <div class="scoring-cell">
+      <div class="metric-name">Mission Performance</div>
+      <div class="metric-desc">Combat vignettes run by real military operators (Army, USMC, SOF). 
+        Includes long-range strike (2.5–10 km), urban multi-target engagement, and optional kinetic strike with live warhead for bonus points.</div>
+      <div class="weight">Primary driver</div>
+    </div>
+    <div class="scoring-cell">
+      <div class="metric-name">Military Operator Evaluation</div>
+      <div class="metric-desc">Operators receive exactly 2 hours of training per platform, then score usability, intuitiveness, and combat readiness. 
+        "Would you take this into battle?" Napatree scored highest here in G-I.</div>
+      <div class="weight">Significant weight</div>
+    </div>
+    <div class="scoring-cell">
+      <div class="metric-name">Production Readiness</div>
+      <div class="metric-desc">Industrial capacity, supply chain integrity, capitalization, current production rates, and NDAA/Blue UAS compliance.
+        Ascent Aerosystems received "most production-ready" designation.</div>
+      <div class="weight">Significant weight</div>
+    </div>
+    <div class="scoring-cell">
+      <div class="metric-name">Long-Range Strike Mission</div>
+      <div class="metric-desc">Stationary target engagement at up to 10 km (6.2 mi). Each team expended 10 UAVs total. 
+        Skycutter/Shrike Fiber ranked 1st. RF jammers not deployed in G-I — disadvantaged non-fiber platforms.</div>
+      <div class="weight">Mission scenario #1</div>
+    </div>
+    <div class="scoring-cell">
+      <div class="metric-name">Urban Strike Mission</div>
+      <div class="metric-desc">Multi-target engagement within 3 mi in urban terrain. 9 of 26 systems scored perfect; 
+        final ranking adjusted by operator feedback. Tests C2 link integrity through structures.</div>
+      <div class="weight">Mission scenario #2</div>
+    </div>
+    <div class="scoring-cell">
+      <div class="metric-name">Kinetic Strike (Optional)</div>
+      <div class="metric-desc">Vendor pilots demonstrate live warhead integration for bonus points. Only available for systems already fielded with integrated warhead.
+        Not required — but boosts total score for battle-tested platforms.</div>
+      <div class="weight">Bonus points</div>
+    </div>
+  </div>
+  <p style="font-size:12px;color:var(--text-dim);font-style:italic;">
+    ⚠ G-I did not include EW jamming or C-UAS countermeasures in scored scenarios — a noted gap. 
+    Phase II introduces these elements plus a hard ban on Chinese motors/batteries. 
+    "The Gauntlet I leaderboard is not a statement about the best drones in the industry... it is a snapshot of how invited vendors performed against warfighter-designed mission vignettes." — DDP Program Office
+  </p>
+</div>
+
+<!-- PHASE TIMELINE -->
+<div class="section">
+  <div class="section-title">Program Phase Timeline</div>
+  <div class="phase-timeline">
+    <div class="phase-card active">
+      <div class="phase-num">Phase I</div>
+      <div class="phase-name">Gauntlet I</div>
+      <div class="phase-detail">
+        <span class="go">Venue:</span> Fort Moore, GA<br>
+        <span class="go">Eval:</span> Feb 17 – Mar 4, 2026<br>
+        <span class="hi">Orders:</span> $150M · 30,000 units<br>
+        <span class="hi">Max price:</span> $5,000/unit<br>
+        <span class="go">Vendors:</span> 25 invited · 11 winners<br>
+        Delivery target: Jul 2026
+      </div>
+      <div class="phase-status done">COMPLETE</div>
+    </div>
+    <div class="phase-card upcoming">
+      <div class="phase-num">Phase II</div>
+      <div class="phase-name">Gauntlet II</div>
+      <div class="phase-detail">
+        <span class="go">Timing:</span> ~Sep 2026 (est.)<br>
+        <span class="hi">Orders:</span> ~$250M · 60,000 units<br>
+        <span class="hi">Max price:</span> ~$4,000/unit<br>
+        <span class="go">Vendors:</span> Down to ~10<br>
+        <span class="hi">NEW:</span> Chinese motors/batteries banned<br>
+        EW scenarios added
+      </div>
+      <div class="phase-status pending">UPCOMING ~Q3 2026</div>
+    </div>
+    <div class="phase-card upcoming">
+      <div class="phase-num">Phase III</div>
+      <div class="phase-name">Gauntlet III</div>
+      <div class="phase-detail">
+        <span class="go">Timing:</span> ~Mar 2027 (est.)<br>
+        <span class="hi">Orders:</span> ~$400M · 100,000 units<br>
+        <span class="hi">Max price:</span> ~$3,200/unit<br>
+        <span class="go">Vendors:</span> Down to ~7<br>
+        Advanced autonomy scenarios<br>
+        Swarm performance evaluated
+      </div>
+      <div class="phase-status pending">UPCOMING ~Q1 2027</div>
+    </div>
+    <div class="phase-card upcoming">
+      <div class="phase-num">Phase IV</div>
+      <div class="phase-name">Gauntlet IV</div>
+      <div class="phase-detail">
+        <span class="go">Timing:</span> ~Sep 2027 (est.)<br>
+        <span class="hi">Orders:</span> $345M · 150,000 units<br>
+        <span class="hi">Max price:</span> $2,300/unit<br>
+        <span class="go">Vendors:</span> Final 3–5<br>
+        Full NDAA-clean BoM required<br>
+        ~$142M total per finalist
+      </div>
+      <div class="phase-status pending">UPCOMING ~Q3 2027</div>
+    </div>
+  </div>
+</div>
+
+<!-- LEADERBOARD -->
+<div class="section">
+  <div class="section-title">Gauntlet I Leaderboard — Full Intelligence</div>
+  <p style="font-size:11px;color:var(--text-dim);margin-bottom:16px;">Click any row to expand full competitor intelligence profile.</p>
+  <div class="leaderboard-wrapper">
+    <table class="leaderboard" id="lb">
+      <thead>
+        <tr>
+          <th>#</th>
+          <th>Company / Platform</th>
+          <th>Score</th>
+          <th>Unit Cost Est.</th>
+          <th>G-I Status</th>
+          <th>Phase II Outlook</th>
+        </tr>
+      </thead>
+      <tbody id="lb-body">
+        <!-- injected by JS -->
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- DNF SECTION -->
+<div class="section">
+  <div class="section-title">Did Not Qualify — Gauntlet I (14 vendors)</div>
+  <p style="font-size:12px;color:var(--text-dim);margin-bottom:16px;">
+    All non-qualifying vendors remain eligible for Gauntlet II and subsequent phases.
+    New vendors may also apply per program rules. Non-qualification in G-I does not
+    reflect final program standing — G-II introduces different scenarios (EW, urban CAS)
+    that may favor different platforms.
+  </p>
+  <div class="dnf-grid" id="dnf-grid">
+    <!-- injected by JS -->
+  </div>
+</div>
+
+<!-- ORQA POSITIONING NOTE -->
+<div class="section" style="background: linear-gradient(135deg, rgba(0,229,160,0.03) 0%, transparent 60%);">
+  <div class="section-title">ORQA / IronGhost — Forge Positioning Analysis</div>
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:1px;background:var(--border);border:1px solid var(--border);">
+    <div style="background:var(--bg2);padding:18px 20px;">
+      <h4 style="font-family:var(--mono);font-size:9px;color:var(--green);letter-spacing:2px;text-transform:uppercase;margin-bottom:10px;padding-bottom:6px;border-bottom:1px solid var(--border);">Gauntlet II Entry Path</h4>
+      <p style="font-size:12px;color:var(--text-dim);line-height:1.65;margin-bottom:8px;">
+        Orqa did not compete in G-I — the IronGhost-based MRM2-10 platform was not on the 25-vendor invite list.
+        G-II represents the first viable entry point, contingent on Blue UAS accession and RFS submission to 
+        <span style="color:var(--amber);">OSW-dronedominance@mail.mil</span>.
+      </p>
+      <p style="font-size:12px;color:var(--text-dim);line-height:1.65;margin-bottom:8px;">
+        The Chinese component ban beginning G-II is a potential advantage — Orqa's Croatian manufacturing 
+        and H743-based flight stack avoids the primary DJI/BLDC motor supply chain risk that threatens 
+        several current G-I winners.
+      </p>
+      <p style="font-size:12px;color:var(--green);line-height:1.65;">
+        Key delta: 8.5 GHz RF preference, CLIK payload interface, and multi-drone single-operator C2 
+        are all confirmed Gauntlet scored metrics (Camp Blanding intelligence, Jan 2026).
+      </p>
+    </div>
+    <div style="background:var(--bg2);padding:18px 20px;">
+      <h4 style="font-family:var(--mono);font-size:9px;color:var(--amber);letter-spacing:2px;text-transform:uppercase;margin-bottom:10px;padding-bottom:6px;border-bottom:1px solid var(--border);">Critical Gaps vs. G-I Winners</h4>
+      <ul style="padding-left:16px;font-size:12px;color:var(--text-dim);line-height:1.7;">
+        <li>No MANET/mesh radio integration confirmed — Silvus or TrellisWare TW-950 required for EW resilience</li>
+        <li>Fiber-optic variant not in current product roadmap — Shrike Fiber's 99.3 score validates this architecture</li>
+        <li>Blue UAS accession not yet complete — blocks prototype order eligibility</li>
+        <li>Production rate scaling unclear — G-II winners need capacity for 60K units at $4K ceiling</li>
+        <li>Warhead integration / CLIK payload interface not public — needed for kinetic strike bonus</li>
+      </ul>
+    </div>
+  </div>
+</div>
+
+</main>
+
+<!-- PUSH BAR -->
+<div class="push-bar">
+  <div class="info">
+    Target: <span style="color:var(--green);">DroneWuKong/droneclear_Forge</span> · Branch: <span style="color:var(--green);">master</span> · Path: <span style="color:var(--green);">ddg/index.html</span>
+  </div>
+  <span id="push-status"></span>
+  <button id="push-btn" onclick="pushToGitHub()">⬆ PUSH TO FORGE</button>
+</div>
+
+<script>
+// ─────────────────────────────────────────
+// COMPETITOR DATA
+// ─────────────────────────────────────────
+const competitors = [
+  {
+    rank: 1,
+    name: "Skycutter",
+    sub: "London, UK — SkyFall (Ukraine) partnership",
+    platform: "Shrike 10 Fiber",
+    type: ["Fiber-Optic FPV", "OWA"],
+    score: 99.3,
+    costLow: "$300",
+    costHigh: "$1,500",
+    costNote: "basic daytime / night fiber variant",
+    status: "received",
+    description: `U.K.-based manufacturer (London HQ) that partnered with Ukrainian FPV house SkyFall — developer of the combat-proven Shrike, Vampire, and P1-SUN platforms — beginning in 2022. Skycutter serves as the Western procurement and compliance interface for SkyFall's IP, handling ITAR/NDAA navigation and U.S. contracting while SkyFall drives engineering and production. SkyFall has supplied thousands of Shrike-series drones to Ukrainian forces, providing real-battlefield iteration velocity unavailable to any U.S. startup.`,
+    g1what: `Submitted the Shrike 10 Fiber — a fiber-optic FPV loitering munition controlled via a 12.4-mile (20 km) micro-spooled tether. Carries up to 1 kg warhead. Silicon Anode batteries from Amprius Technologies extend flight time vs. conventional Li-Po cells. Available in daytime and day/night subvariants.`,
+    g1well: [
+      "Fiber-optic link proved unjammable — scored 1st in long-range strike mission (0–10 km)",
+      "Near-perfect 4K zero-latency video feed maintained through structures and terrain",
+      "Production readiness rated 'strong' — both SkyFall and Neros already mass-producing",
+      "Amprius Silicon Anode battery differentiator extended endurance vs. competitors",
+      "Ranked 3rd in military operator evaluation (behind Napatree and Neros)",
+      "Second in urban strike mission; appeared on 'partial to full success' kinetic strike list"
+    ],
+    g1poor: [
+      "Cable entanglement risk in urban terrain — limits multi-pass attack runs",
+      "No ability to circle back for second strike if first run fails",
+      "Cable weight/drum adds ~300–500g vs. RF equivalent — reduces payload ceiling",
+      "Supply chain scrutiny: SkyFall is Ukrainian, creating NDAA covered-entity questions despite Skycutter's UK status",
+      "Third in operator evaluation behind two domestic U.S. competitors — human factors slightly below top two"
+    ],
+    specs: [
+      ["Control", "Fiber-optic tether, 12.4 mi (20 km) spool"],
+      ["Warhead", "Up to 1 kg (2.2 lb)"],
+      ["Battery", "Amprius Silicon Anode (extended endurance)"],
+      ["Video", "4K zero-latency FPV"],
+      ["EW Immunity", "100% — no RF emissions"],
+      ["Variants", "Daytime ($300) / Night fiber ($1,500)"]
+    ],
+    phase2: `STRONG POSITION. Fiber-optic architecture is inherently EW-immune — as G-II introduces jamming scenarios, Skycutter's advantage likely widens. Chinese component ban is low risk: SkyFall manufactures in Ukraine using Amprius (U.S.) batteries; motors TBD but non-Chinese supply chain is achievable. Key risk: NDAA covered-entity scrutiny of Ukrainian partnership structure. Legal structure through Skycutter (UK) should insulate from direct FOCI concerns, but DoD will examine capitalization stack. Production capacity scales rapidly with existing Ukraine manufacturing base.`,
+    phase2risk: "Medium — NDAA entity structure review",
+    phase2pos: "Very High — EW scenarios favor fiber architecture directly"
+  },
+
+  {
+    rank: 2,
+    name: "Neros",
+    sub: "El Segundo, CA — Founded 2023 by Soren Monroe-Anderson & Olaf Hichwa",
+    platform: "Archer (8-in) / Archer Strike / Archer Fiber",
+    type: ["RF FPV", "BlueUAS", "PBAS"],
+    score: 87.5,
+    costLow: "~$2,000",
+    costHigh: "$4,999",
+    costNote: "Archer at Ukraine-level pricing; below G-I $5K ceiling",
+    status: "received",
+    description: `American defense tech company founded by former professional drone racers Soren Monroe-Anderson and Olaf Hichwa (met at 2017 Muncie racing competition). Headquarters in El Segundo, CA. ~80 employees including SpaceX, Palantir, and Anduril alumni. Vertically integrated U.S. manufacturing. Raised $121M by late 2025 (Sequoia Capital, Founders Fund). Sanctioned by China in December 2025 — called it "a badge of honor." One of only two FPV companies on DIU's NDAA-compliant list as of mid-2025. Already supplying USMC ($17M contract), Army PBAS Tranche 1, and SOCOM. Contracted 6,000 units to Ukraine.`,
+    g1what: `Fielded the Archer 8-inch quadcopter — 20 km range, 2 kg payload, 160 km/h, day/night capable. Also offers Archer Strike (kinetic) and newly announced Archer Fiber (fiber-optic, NDAA-compliant, co-developed with Israeli Kela Technologies). Crossbow tactical GCS provides EW-resistant standoff control.`,
+    g1well: [
+      "Ranked 2nd in military operator evaluation — highest marks for usability and combat readiness among domestic vendors",
+      "Only platform on BlueUAS list prior to G-I — compliance already verified",
+      "PBAS Tranche 1 selection demonstrates existing Army buy-in",
+      "Production rate of 1,500–2,000/month with path to 10,000/month — largest domestic scale",
+      "Battle-tested from Ukraine deployments — combat iteration velocity few U.S. startups match",
+      "Strong investor backing validates supply chain scale-up"
+    ],
+    g1poor: [
+      "RF-based standard Archer is susceptible to jamming — EW scenarios in G-II will expose this",
+      "11.8-point gap behind Skycutter Shrike Fiber is substantial — fiber architecture proved decisive in G-I scoring",
+      "Archer Fiber announced Dec 2025 but not yet mass-produced — came too late to influence G-I evaluation",
+      "Urban strike scenarios likely exposed RF C2 link challenges vs. fiber competitor"
+    ],
+    specs: [
+      ["Platform", "Archer 8-in quadcopter"],
+      ["Range", "20 km (12+ mi)"],
+      ["Payload", "2 kg (4.5 lb)"],
+      ["Speed", "160 km/h"],
+      ["Night Ops", "Yes — advanced camera system"],
+      ["Compliance", "BlueUAS certified, NDAA clean"],
+      ["GCS", "Crossbow EW-resistant tactical"],
+      ["Fiber Variant", "Archer Fiber (Kela Tech co-dev, BlueUAS cleared)"]
+    ],
+    phase2: `HIGH PROBABILITY of G-II qualification. Archer Fiber (NDAA-compliant fiber-optic variant, BlueUAS cleared) positions Neros to directly compete with Skycutter's EW immunity advantage. Chinese component ban is a net positive — Neros already vertically integrates U.S. components. Production capacity at 1,500–2,000/month (path to 10K) is among the highest in the field. Existing Army and USMC relationships provide institutional support. Risk: Archer Fiber production ramp from 2026 deliveries must match G-II volume requirements.`,
+    phase2risk: "Low — already NDAA clean, Archer Fiber in development",
+    phase2pos: "High — scale, compliance, and fiber roadmap align"
+  },
+
+  {
+    rank: 3,
+    name: "Napatree Technology",
+    sub: "McLean, VA — Low-profile defense contractor",
+    platform: "Classified / UAS attack systems",
+    type: ["FPV OWA", "C-UAS"],
+    score: 80.3,
+    costLow: "Unknown",
+    costHigh: "Unknown",
+    costNote: "No public pricing; likely ~$3K–$5K based on tier",
+    status: "received",
+    description: `Low-profile U.S. defense contractor headquartered at 8200 Greensboro Dr, McLean, VA — a Beltway intelligence corridor address suggesting IC/SOF clientele. Minimal public footprint despite Washington National Guard procurement connections. Specializes in UAS attack systems and C-UAS. Has conducted lobbying activity per LegiStorm records. The McLean address, low public profile, and top military operator evaluation score suggest a company with deep IC/SOF relationships and field-tested platforms that perform under real operator scrutiny.`,
+    g1what: `Submitted an undisclosed UAS platform (likely a purpose-built FPV strike system). Ranked 3rd overall at 80.3 points — but received the HIGHEST military operator evaluation scores of all 25 competitors. This indicates excellent HMI, minimal training curve, and immediate operator preference in combat simulation.`,
+    g1well: [
+      "HIGHEST military operator evaluation of all 25 competitors — operators preferred this system most",
+      "80.3 overall score earned a top-3 placement and delivery order",
+      "Low public profile consistent with IC/SOF procurement relationships suggesting proven combat use",
+      "McLean address positions the company for classified follow-on opportunities"
+    ],
+    g1poor: [
+      "17-point gap behind Skycutter suggests weaker mission performance despite top operator scores",
+      "No public production capacity information — scaling to 30,000+ units per phase is unvalidated",
+      "Complete opacity on platform specs creates due diligence risk for partners or investors",
+      "NDAA compliance status unknown without public BoM"
+    ],
+    specs: [
+      ["Headquarters", "McLean, VA (8200 Greensboro Dr)"],
+      ["Platform", "Undisclosed (FPV attack UAS)"],
+      ["Operator Score", "Highest of all 25 G-I competitors"],
+      ["Overall Score", "80.3 / 100"],
+      ["Profile", "Low public visibility"],
+      ["Client Base", "Likely IC/SOF (inferred from location/profile)"]
+    ],
+    phase2: `UNCERTAIN but plausible. Top operator evaluation score is a durable advantage — warfighter preference matters across all phases. However, production scale, NDAA compliance verification, and Chinese component audit are all unknown. G-II's 60,000-unit requirement may strain an undisclosed company's manufacturing base. The platform opacity that's an asset in classified markets becomes a liability in transparent program competition. If the company passes DCMA compliance inspection, it has the warfighter preference score to remain competitive.`,
+    phase2risk: "Medium-High — production scale and NDAA status unverified",
+    phase2pos: "Medium — top operator scores are sticky across phases"
+  },
+
+  {
+    rank: 4,
+    name: "ModalAI",
+    sub: "San Diego, CA — Autonomous flight stack specialists",
+    platform: "VOXL-based autonomy platform / FPV variants",
+    type: ["Autonomy", "GPS-denied", "FPV OWA"],
+    score: 77.0,
+    costLow: "~$3,000",
+    costHigh: "$6,000",
+    costNote: "Estimated based on VOXL compute overhead + airframe",
+    status: "received",
+    description: `San Diego-based company specializing in autonomous flight computers and software stacks for defense UAS. ModalAI's VOXL platform provides onboard visual-inertial odometry, GPS-denied navigation, obstacle avoidance, and AI inference — capabilities that go beyond basic FPV into true autonomy. Key technology partner to Qualcomm for drone-specific compute. Has existing contracts with DARPA and DIU for indoor/GPS-denied UAS programs. The VOXL ecosystem is widely used as the brains in third-party drone platforms across the defense sector.`,
+    g1what: `Fielded an FPV attack system integrating VOXL autonomous flight computer — likely a purpose-built OWA drone leveraging visual-inertial navigation for GPS-denied operation. ModalAI's autonomy stack enables features like target tracking, obstacle avoidance, and semi-autonomous terminal guidance that pure FPV platforms lack.`,
+    g1well: [
+      "VOXL autonomy stack provides GPS-denied capability not present in most G-I competitors",
+      "Visual-inertial odometry enables indoor/urban operations independent of GPS or RF navigation aids",
+      "Strong existing DoD relationships (DARPA, DIU) support compliance and procurement pathway",
+      "Score of ~77 placed squarely in the middle tier — solid, not dominant"
+    ],
+    g1poor: [
+      "Higher unit cost due to VOXL compute overhead likely pressed against the $5K ceiling",
+      "Autonomy overhead may reduce mission simplicity vs. pure FPV — operator scores likely lower than Napatree",
+      "G-I scenarios tested human-piloted FPV performance — autonomy advantage partially unexploited",
+      "No battlefield combat track record comparable to Neros or Skycutter"
+    ],
+    specs: [
+      ["Core Tech", "VOXL autonomy flight computer"],
+      ["Navigation", "Visual-inertial, GPS-denied capable"],
+      ["AI", "Onboard inference for target tracking"],
+      ["Platform", "FPV OWA with autonomous terminal guidance"],
+      ["Score", "~77 / 100 (exact score not disclosed)"],
+      ["DoD Relations", "DARPA, DIU existing relationships"]
+    ],
+    phase2: `MODERATE POSITION. ModalAI's autonomy stack becomes more valuable as scenarios grow in complexity — G-III and G-IV autonomy and swarm scenarios could dramatically favor this platform. However, cost pressure from VOXL compute overhead risks pricing out at $4K G-II ceiling without hardware cost reduction. GPS-denied navigation is a direct answer to G-II's expected EW/jamming scenarios. Chinese component audit of Qualcomm-adjacent supply chain is a potential compliance risk requiring active management.`,
+    phase2risk: "Medium — cost ceiling and Qualcomm supply chain scrutiny",
+    phase2pos: "Medium-High — GPS-denied and autonomy align with G-II/III scenarios"
+  },
+
+  {
+    rank: 5,
+    name: "Auterion Government Solutions",
+    sub: "Washington, DC — PX4 open-source ecosystem leader",
+    platform: "PX4-based OWA / Skynode integration",
+    type: ["Autonomy", "Open Architecture", "FPV OWA"],
+    score: 77.0,
+    costLow: "~$2,500",
+    costHigh: "$5,000",
+    costNote: "Estimated; Skynode compute adds ~$500–$1K to airframe",
+    status: "received",
+    description: `U.S. government-focused subsidiary of Swiss-origin Auterion, the primary commercial backer and steward of PX4 — the open-source autonomous flight stack used in thousands of civilian and military drones worldwide. Auterion Government Solutions positions itself as a trusted, NDAA-navigable path to PX4 ecosystem capabilities for DoD customers. Skynode (their compute module) is integrated by numerous airframe partners. European origins require active management of FOCI (Foreign Ownership, Control, and Influence) scrutiny under NDAA compliance processes.`,
+    g1what: `Fielded a PX4-based FPV/OWA system likely using the Skynode flight computer. Open architecture approach means the platform can integrate diverse payloads and RF systems. Auterion's ecosystem approach differentiates from custom platforms — the same firmware runs on dozens of third-party airframes.`,
+    g1well: [
+      "PX4 ecosystem provides plug-and-play integration with diverse radio, payload, and sensor hardware",
+      "Skynode compute provides real autonomy at lower price point than ModalAI VOXL in some configurations",
+      "Open architecture positions Auterion favorably for multi-vendor interop requirements in future phases",
+      "Score tied with ModalAI in the solid middle tier — viable delivery order recipient"
+    ],
+    g1poor: [
+      "Swiss/European corporate origin creates FOCI scrutiny burden under NDAA compliance",
+      "Open architecture is a double-edged sword — less optimized for a single mission profile than purpose-built systems",
+      "No public combat track record from Ukraine or operational theaters",
+      "NDAA compliance for Swiss parent company Auterion AG supply chain requires detailed verification"
+    ],
+    specs: [
+      ["Autopilot", "PX4 (open source, Auterion-maintained)"],
+      ["Compute", "Skynode flight computer"],
+      ["Architecture", "Open — multi-airframe, multi-payload"],
+      ["Origin", "Swiss parent (Auterion AG) + U.S. Gov subsidiary"],
+      ["Score", "~77 / 100 (tied with ModalAI)"],
+      ["Compliance", "Active NDAA/FOCI review required"]
+    ],
+    phase2: `MODERATE with caveats. FOCI review of Swiss parent is the primary risk — if Auterion Government Solutions can demonstrate sufficient operational separation and domestic supply chain, it remains competitive. PX4 open architecture becomes increasingly valuable in later phases when interoperability, swarm coordination, and payload modularity are tested. Chinese component exposure must be audited through the full PX4 vendor ecosystem (motor controllers, ESCs, sensors). If FOCI concerns are resolved, Auterion's ecosystem position is a durable long-term advantage.`,
+    phase2risk: "Medium-High — Swiss FOCI scrutiny and supply chain audit complexity",
+    phase2pos: "Medium — ecosystem value grows in autonomy-heavy later phases"
+  },
+
+  {
+    rank: 6,
+    name: "Ukrainian Defense Drones (UDD)",
+    sub: "Ukraine — Combat-hardened FPV manufacturer, U.S. subsidiary entity",
+    platform: "Combat FPV OWA systems (undisclosed specific model)",
+    type: ["Combat FPV", "OWA", "Ukraine-origin"],
+    score: 72.9,
+    costLow: "$800",
+    costHigh: "$2,500",
+    costNote: "Ukraine-level pricing is a core competitive advantage",
+    status: "received",
+    description: `One of at least two Ukrainian-connected companies to receive G-I delivery orders. UDD represents battle-proven platforms developed and iterated in active combat against Russian EW, C-UAS, and armor threats. Ukrainian FPV companies operate under wartime conditions that produce rapid capability evolution unavailable to any peacetime developer. The company participated through a U.S. corporate structure (UDD Tech Corp) to navigate NDAA/ITAR requirements, though the underlying IP and manufacturing knowledge base is Ukrainian.`,
+    g1what: `Fielded combat-proven FPV attack drones — specific platform undisclosed in public reporting. Ukrainian manufacturers typically run 5-inch to 10-inch FPV frames optimized for anti-armor, ISR, and point detonation warhead delivery at 2–10 km ranges.`,
+    g1well: [
+      "Real combat iteration velocity — platform designs evolved under live Russian EW and C-UAS pressure",
+      "Ultra-low unit cost ($800–$2,500) creates massive volume advantage at program price ceilings",
+      "Battlefield validation provides operator confidence unavailable from test-range data",
+      "Placed 6th with 72.9 — solid mid-tier qualifying score secured delivery order"
+    ],
+    g1poor: [
+      "Ukrainian corporate origin creates significant NDAA covered-entity risk for Phase II",
+      "Chinese components almost certainly present in Ukrainian FPV supply chain — fiber/motor/ESC ecosystem",
+      "FOCI concern: Ukrainian companies may have funding/supply chain connections that create compliance complications",
+      "Production capacity for 60,000-unit G-II requirements may strain current infrastructure without U.S. manufacturing investment"
+    ],
+    specs: [
+      ["Origin", "Ukraine (U.S. subsidiary for procurement)"],
+      ["Platform", "Combat FPV OWA (undisclosed)"],
+      ["Score", "72.9 / 100"],
+      ["Combat Record", "Active deployment against Russian forces"],
+      ["Cost Advantage", "Extreme — $800–$2,500 range"],
+      ["Compliance Risk", "High — NDAA/FOCI review required"]
+    ],
+    phase2: `HIGH RISK for G-II advancement. The Chinese motor/battery ban beginning Phase II directly threatens Ukrainian FPV supply chains which are deeply intertwined with Chinese BLDC motors (T-Motor, iFlight, SunnySky clones) and Chinese battery cells. UDD would need to demonstrate a fully non-Chinese BoM by the G-II cutoff (~Aug 2026). This is achievable in principle but requires significant supply chain restructuring. If compliance is resolved, UDD's cost structure and combat track record remain potent competitive advantages. FOCI review of Ukrainian corporate structure through DoD DCMA is the long-pole tent.`,
+    phase2risk: "Very High — Chinese component exposure and FOCI review",
+    phase2pos: "High (conditional) — if NDAA compliance achieved, cost/combat record compelling"
+  },
+
+  {
+    rank: 7,
+    name: "Griffon Aerospace",
+    sub: "Madison, AL — Established UAS manufacturer",
+    platform: "Various FPV/OWA systems",
+    type: ["Traditional Defense", "FPV OWA"],
+    score: 72.0,
+    costLow: "~$3,500",
+    costHigh: "$5,000",
+    costNote: "Traditional aerospace cost structure; higher than startups",
+    status: "received",
+    description: `Madison, Alabama-based UAS manufacturer with over a decade of DoD contract history. Griffon Aerospace produces a range of unmanned aerial targets and tactical UAS systems for government customers. As an established defense contractor with existing DCAA-audited accounting and FAR/DFARS compliance infrastructure, Griffon brings contracting maturity that startups lack. The company has manufactured the HADES aerial target drone and other systems under existing DoD contracts. Their G-I participation marks an entry into the lower-cost FPV attritable space.`,
+    g1what: `Fielded an FPV-style OWA system. Specific platform not disclosed in public reporting. Griffon's strength is in manufacturing execution and compliance infrastructure rather than cutting-edge FPV performance.`,
+    g1well: [
+      "Established DoD contracting infrastructure — DCAA-audited, FAR-compliant, past performance record",
+      "Madison, AL manufacturing base supports domestic production credibility",
+      "Secured delivery order at 72.0 — cleared qualifying threshold",
+      "Institutional relationships with Army programs in Huntsville/Redstone Arsenal ecosystem"
+    ],
+    g1poor: [
+      "Traditional aerospace cost structure creates headwinds vs. startup unit pricing",
+      "72.0 score is the lowest reported specific score among the 7-11 cluster",
+      "FPV-optimized design likely less mature than purpose-built FPV houses Neros or Skycutter",
+      "Limited combat iteration velocity vs. Ukraine-hardened competitors"
+    ],
+    specs: [
+      ["Headquarters", "Madison, AL"],
+      ["Legacy", "10+ years DoD UAS contracts"],
+      ["Platform", "FPV OWA (undisclosed variant)"],
+      ["Score", "~72 / 100"],
+      ["Compliance", "Established DCAA/FAR infrastructure"],
+      ["Notable", "HADES aerial target manufacturer"]
+    ],
+    phase2: `MODERATE. Griffon's contracting maturity is a durable advantage in larger phases where financial compliance, past performance, and institutional relationships matter more. Chinese component risk must be assessed — traditional aerospace supply chains sometimes include Chinese-origin components in sub-tier electronics. Cost structure needs downward pressure to compete at G-IV's $2,300/unit ceiling. Most likely a steady mid-tier performer rather than a top-3 finalist — survives on reliability and compliance rather than technical differentiation.`,
+    phase2risk: "Low-Medium — contracting maturity, sub-tier NDAA audit required",
+    phase2pos: "Medium — compliance-first strategy suits increasing regulatory complexity"
+  },
+
+  {
+    rank: 8,
+    name: "Nokturnal AI",
+    sub: "Location TBD — Night operations / autonomous FPV specialist",
+    platform: "Night-optimized FPV OWA with AI autonomy",
+    type: ["Night Ops", "Autonomy", "FPV OWA"],
+    score: 71.5,
+    costLow: "~$3,000",
+    costHigh: "$5,500",
+    costNote: "AI compute and thermal/night imaging adds cost premium",
+    status: "received",
+    description: `Emerging defense tech company focused on night operations and AI-enabled autonomous FPV attack systems. "Nokturnal" branding signals a deliberate focus on darkness and denied-visibility operation — capabilities validated as critical in Ukraine, where nighttime FPV strikes reduced defender reaction time and thermal detection. The AI autonomy component likely refers to target recognition, autonomous terminal guidance, or swarm coordination capabilities.`,
+    g1what: `Fielded a night-capable FPV OWA system with AI autonomy features. Specific platform undisclosed. Night operation capability was not explicitly scored in G-I's mission vignettes (C-UAS and night scenarios were flagged as gaps) — meaning Nokturnal AI's core differentiator was partially unexploited in Phase I.`,
+    g1well: [
+      "Night operations capability is a directly relevant near-future requirement",
+      "AI autonomy features position the company for G-III/IV when autonomous scenarios are explicitly scored",
+      "Secured delivery order at ~71.5 — qualified despite G-I scenarios not emphasizing night/autonomous",
+      "Unique positioning vs. pure-RF FPV competitors in darkness and degraded visibility scenarios"
+    ],
+    g1poor: [
+      "Night/autonomy advantage was not fully exploited in G-I mission vignettes",
+      "AI compute overhead increases unit cost relative to simpler FPV competitors",
+      "Limited public information on company maturity, funding, and production capacity",
+      "G-II Chinese component ban may affect AI compute supply chain (inference chips)"
+    ],
+    specs: [
+      ["Focus", "Night ops + AI autonomous terminal guidance"],
+      ["Sensors", "Thermal / low-light FPV (inferred)"],
+      ["AI", "Onboard target recognition / autonomous guidance"],
+      ["Score", "~71.5 / 100"],
+      ["G-I Penalty", "Night/autonomous scenarios not scored"],
+      ["G-II Opportunity", "EW scenarios may expose RF FPV competitors further"]
+    ],
+    phase2: `IMPROVING TRAJECTORY. As Gauntlet scenarios increase in complexity — EW environments, night operations, autonomous coordination — Nokturnal AI's differentiated capabilities become directly scored rather than incidental. The company's biggest risk is unit cost management as AI compute matures to commodity pricing. If the company can demonstrate sub-$4K unit cost with night/autonomous capability in G-II, it becomes a compelling mid-tier competitor. Watch for autonomous swarm functionality to become a scored metric in G-III.`,
+    phase2risk: "Medium — compute cost and supply chain maturity",
+    phase2pos: "Improving — night/autonomous scenarios align with later phase complexity"
+  },
+
+  {
+    rank: 9,
+    name: "Halo Aeronautics",
+    sub: "Location TBD — Tactical FPV OWA developer",
+    platform: "FPV OWA systems",
+    type: ["FPV OWA", "Tactical"],
+    score: 71.0,
+    costLow: "~$2,500",
+    costHigh: "$5,000",
+    costNote: "Limited public data; estimated at program midpoint",
+    status: "received",
+    description: `Tactical UAS developer that secured a G-I delivery order at approximately 71 points. Limited public information available. The "Halo" naming and position in the lower qualifying tier suggests a newer entrant to the DoD FPV market that successfully navigated the Gauntlet qualification process. Company is distinct from the Canadian Halo Aeronautics aerial filming company.`,
+    g1what: `Fielded a qualifying FPV OWA system. Specific platform and performance breakdown not available in public reporting. Placed in the 7th–11th cluster where all scores fall between 70 and 72.9.`,
+    g1well: [
+      "Secured G-I delivery order — cleared qualification bar",
+      "Score in the 70–72.9 cluster indicates solid basic mission performance",
+      "Likely competitive on cost vs. more complex platforms"
+    ],
+    g1poor: [
+      "Limited public footprint makes due diligence difficult",
+      "21-point gap from #1 is substantial — questions about Phase II competitiveness",
+      "Production scale and NDAA compliance status unclear"
+    ],
+    specs: [
+      ["Platform", "FPV OWA (undisclosed)"],
+      ["Score", "~71 / 100"],
+      ["Public Profile", "Minimal"],
+      ["G-I Result", "Qualified — delivery order received"]
+    ],
+    phase2: `UNCERTAIN. Without public data on production capacity, supply chain, and NDAA compliance posture, Halo Aeronautics' G-II prospects are difficult to assess. The 21-point gap behind the leader suggests the company needs significant platform improvement to remain competitive as scenarios increase in complexity and the vendor field narrows.`,
+    phase2risk: "High (unknown) — insufficient public data",
+    phase2pos: "Low-Medium — limited differentiation visible"
+  },
+
+  {
+    rank: 10,
+    name: "Ascent Aerosystems",
+    sub: "Walpole, NH — Coaxial rotor specialists",
+    platform: "Spirit coaxial rotor platform",
+    type: ["Coaxial", "Compact", "OWA"],
+    score: 70.5,
+    costLow: "~$4,000",
+    costHigh: "$5,000",
+    costNote: "Coaxial form factor commands premium; compact packaging adds value",
+    status: "received",
+    description: `Walpole, NH-based manufacturer of coaxial rotor UAS platforms. Ascent Aerosystems' Spirit platform uses a coaxial motor configuration that produces a dramatically smaller form factor than equivalent quadcopters — enabling backpack portability, rapid deployment, and operation in confined spaces. The company received the special designation of "most production-ready" by DDP evaluators, suggesting mature manufacturing processes and supply chain despite a compact startup profile. This designation likely reflects auditable production infrastructure at their New Hampshire facility.`,
+    g1what: `Fielded the Spirit coaxial rotor platform (or derivative OWA variant). The coaxial design provides exceptional compactness — the Spirit folds to cylinder form factor enabling tube-launch or backpack carriage. Designated "most production-ready" by evaluators, suggesting manufacturing scale and supply chain maturity exceeds its ranking position.`,
+    g1well: [
+      "Designated 'most production-ready' — highest manufacturing readiness of all G-I participants",
+      "Coaxial design enables unique deployment scenarios unavailable to quadcopter competitors",
+      "New Hampshire domestic manufacturing supports NDAA compliance case",
+      "Compact form factor addresses SOF and dismounted operator requirements"
+    ],
+    g1poor: [
+      "Coaxial efficiency penalty — lower flight efficiency than optimized quadcopter at same power budget",
+      "Scored at approximately 70.5 — lowest of the qualifying tier, barely clearing threshold",
+      "Mission performance scores likely reflect aerodynamic efficiency trade-offs of coaxial design",
+      "Limited range/payload vs. quadcopter competitors at same cost point"
+    ],
+    specs: [
+      ["Rotor Config", "Coaxial (tube-form factor)"],
+      ["Platform", "Spirit / OWA derivative"],
+      ["Score", "~70.5 / 100"],
+      ["G-I Designation", "'Most production-ready' of all 25 vendors"],
+      ["HQ", "Walpole, NH"],
+      ["Deployment", "Backpack / tube-launch capable"]
+    ],
+    phase2: `NICHE SURVIVOR. Ascent Aerosystems is unlikely to lead G-II on mission performance, but its production-readiness designation and unique form factor create a defensible niche. SOF operators specifically benefit from the Spirit's compact carriage. If production-readiness translates to on-time, on-spec delivery of G-I 30K-unit order, the company builds programmatic trust. Coaxial platforms face efficiency headwinds at the $4K G-II ceiling. Most likely outcome: continues as a qualifying vendor for specific SOF/compact-form-factor requirements rather than high-volume general procurement.`,
+    phase2risk: "Medium — efficiency trade-offs in cost-competitive environment",
+    phase2pos: "Medium (niche) — SOF compact-form-factor requirement is durable"
+  },
+
+  {
+    rank: 11,
+    name: "Farage Precision",
+    sub: "Location TBD — Precision FPV OWA developer",
+    platform: "High-precision FPV OWA",
+    type: ["FPV OWA", "Precision"],
+    score: 70.0,
+    costLow: "~$3,000",
+    costHigh: "$5,000",
+    costNote: "Limited public data",
+    status: "received",
+    description: `Defense UAS company focused on precision FPV attack systems. The "Precision" branding signals emphasis on terminal accuracy and CEP (Circular Error Probable) rather than bulk FPV volume. Limited public information available. Placed 11th and last in the G-I qualifying tier at approximately 70 points — the lowest score to receive a delivery order as the program opted not to name a 12th finalist as originally contemplated.`,
+    g1what: `Fielded a precision FPV OWA system. Specific platform undisclosed. The decision not to extend the qualifying pool to 12 vendors (as originally contemplated) means Farage's 70-point threshold was the final cut.`,
+    g1well: [
+      "Secured the final G-I delivery order — just cleared threshold",
+      "Precision focus may translate to higher kinetic strike accuracy scores",
+      "Presence in the qualifying pool confirms basic NDAA compliance and operational readiness"
+    ],
+    g1poor: [
+      "Last of 11 qualifiers — most vulnerable position for G-II elimination",
+      "~30-point gap from leader is the largest differential of any qualifying vendor",
+      "Production scale and supply chain compliance are unknowns",
+      "The program 'opted not to name a 12th finalist' — margin was thin"
+    ],
+    specs: [
+      ["Platform", "Precision FPV OWA (undisclosed)"],
+      ["Score", "~70.0 / 100"],
+      ["G-I Result", "11th and final qualifier"],
+      ["Profile", "Minimal public information"]
+    ],
+    phase2: `HIGH RISK. As the last qualifier in G-I, Farage Precision has the thinnest margin for G-II advancement. The increasing difficulty of scenarios, Chinese component ban, and 60,000-unit production requirement all create pressure. The company would need significant improvement in either platform performance or production capability to remain competitive as the field narrows from 11 to ~10 vendors. Most vulnerable of all G-I qualifiers to elimination.`,
+    phase2risk: "Very High — lowest qualifying score, thinnest margin",
+    phase2pos: "Low — must demonstrate meaningful performance improvement"
+  }
+];
+
+const dnfVendors = [
+  { name: "Anno.ai", detail: "AI autonomy stack developer. Lost on mission performance; AI capability may have been penalized by 2-hour training constraint limiting operator familiarity with AI-assisted systems." },
+  { name: "Draganfly", detail: "Canadian publicly-traded UAS company (DPRO). Excluded possibly due to foreign origin or performance. Blue UAS listed for ISR platforms but OWA was likely underdeveloped." },
+  { name: "DZYNE Technologies", detail: "Advanced VTOL and fixed-wing UAS designer. May have fielded a non-quadcopter platform disadvantaged in close-range FPV urban scenarios." },
+  { name: "Ewing Aerospace", detail: "Limited public footprint. Likely an early-stage company that did not score above the qualification threshold. Eligible for G-II." },
+  { name: "Firestorm Labs", detail: "Key Orqa contact Matt Miyamoto's company. FPV OWA developer. Did not qualify in G-I — performance gap or production readiness issue. Eligible for G-II with platform improvements." },
+  { name: "General Cherry", detail: "Ukrainian FPV developer. Competed alongside UDD. May have faced greater NDAA/FOCI scrutiny or scored lower on production readiness vs. the qualifying Ukrainian-origin competitor." },
+  { name: "GreenSight", detail: "Agricultural/ISR drone company pivoting to defense. Likely fielded an underdeveloped OWA variant; core competency is mapping/ISR rather than kinetic strike." },
+  { name: "Paladin Defense Services", detail: "Defense services/integration company. Likely a platform integrator rather than manufacturer — may have fielded third-party hardware without sufficient differentiation." },
+  { name: "Performance Drone Works (PDW)", detail: "FPV OWA specialist. Previously visible in Army drone evaluations. Did not qualify in G-I; eligible for G-II. One of the more capable DNF vendors." },
+  { name: "Swarm Defense Technologies", detail: "Swarm coordination specialist. G-I mission scenarios did not score swarm behavior explicitly — a core capability was untested. Strong G-III/IV candidate when swarm is scored." },
+  { name: "Teal Drones (Red Cat Holdings / RCAT)", detail: "Publicly traded (RCAT). Blue UAS listed Golden Eagle ISR drone. Likely fielded an ISR-optimized platform that underperformed in OWA-specific scenarios despite compliance credibility." },
+  { name: "Titan Dynamics", detail: "OWA FPV manufacturer. Listed in some coverage but not the original 25 — may have been added. Did not qualify; performance or production gap." },
+  { name: "Vector Defense", detail: "FPV strike specialist. Did not qualify. Limited public information on root cause — likely performance score below 70-point threshold." },
+  { name: "W.S. Darley & Co.", detail: "Fire equipment and defense procurement company pivoting to drones. Likely a reseller/integrator model that scored poorly on production readiness and mission performance." },
+  { name: "XTEND Reality", detail: "Israeli AR-guided drone company (extended-reality operator interface). Unique operator interface HMI may have required more than 2 hours of training to demonstrate advantage — penalized by training constraint." }
+];
+
+// ─────────────────────────────────────────
+// RENDER LEADERBOARD
+// ─────────────────────────────────────────
+function renderLB() {
+  const tbody = document.getElementById('lb-body');
+  tbody.innerHTML = '';
+
+  competitors.forEach((c, i) => {
+    const pct = (c.score / 100) * 100;
+    const rankClass = c.rank === 1 ? 'top1' : c.rank <= 3 ? 'top3' : '';
+    const scoreClass = c.score >= 85 ? '' : c.score >= 75 ? 'mid' : 'low';
+    const barClass = scoreClass;
+    const phase2color = c.phase2risk.startsWith('Low') ? 'go' : c.phase2risk.startsWith('Medium-High') || c.phase2risk.startsWith('Very High') ? 'bad' : 'hi';
+
+    const mainRow = document.createElement('tr');
+    mainRow.className = 'winner expand-trigger';
+    mainRow.setAttribute('data-idx', i);
+    mainRow.innerHTML = `
+      <td><div class="rank ${rankClass}">${c.rank}</div></td>
+      <td>
+        <div class="company-name">${c.name} <span class="chevron">▶</span></div>
+        <div class="company-sub">${c.sub}</div>
+        <div style="margin-top:4px;">${c.type.map(t => `<span class="platform-tag">${t}</span>`).join('')}</div>
+      </td>
+      <td>
+        <div class="score-bar-wrap">
+          <div class="score-num ${scoreClass}">${c.score}</div>
+          <div class="score-bar"><div class="score-bar-fill ${barClass}" style="width:${pct}%"></div></div>
+        </div>
+      </td>
+      <td>
+        <div class="cost-cell">${c.costLow} – ${c.costHigh}</div>
+        <div class="cost-sub">${c.costNote}</div>
+      </td>
+      <td><span class="status-pill received">ORDER RECEIVED</span></td>
+      <td><span style="font-size:11px;color:var(--${phase2color})">${c.phase2risk}</span></td>
+    `;
+    mainRow.onclick = () => toggleExpand(i);
+    tbody.appendChild(mainRow);
+
+    const expandRow = document.createElement('tr');
+    expandRow.className = 'expand-row';
+    expandRow.id = `expand-${i}`;
+    expandRow.innerHTML = `
+      <td colspan="6">
+        <div class="expand-inner">
+          <p style="font-size:12px;color:var(--text-dim);padding:12px 0 4px;line-height:1.65;">${c.description}</p>
+          <div class="expand-grid">
+            <div class="expand-block">
+              <h4>G-I Platform & What They Brought</h4>
+              <p>${c.g1what}</p>
+              <div style="margin-top:12px;">
+                ${c.specs.map(s => `<div class="spec-row"><span class="sk">${s[0]}</span><span class="sv">${s[1]}</span></div>`).join('')}
+              </div>
+            </div>
+            <div class="expand-block">
+              <h4>G-I Performance — Went Well / Went Poorly</h4>
+              <p style="font-family:var(--mono);font-size:9px;color:var(--green);letter-spacing:1px;margin-bottom:4px;">✓ STRENGTHS</p>
+              <ul>${c.g1well.map(w => `<li><span class="go">+</span> ${w}</li>`).join('')}</ul>
+              <p style="font-family:var(--mono);font-size:9px;color:var(--red);letter-spacing:1px;margin-top:10px;margin-bottom:4px;">✗ WEAKNESSES</p>
+              <ul>${c.g1poor.map(w => `<li><span class="bad">−</span> ${w}</li>`).join('')}</ul>
+            </div>
+            <div class="expand-block">
+              <h4>Phase II Outlook & Analysis</h4>
+              <p>${c.phase2}</p>
+              <div class="phase2-box" style="margin-top:12px;">
+                <h5>Risk Assessment</h5>
+                <p><span class="risk">Risk: </span>${c.phase2risk}</p>
+                <p><span class="pos">Position: </span>${c.phase2pos}</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </td>
+    `;
+    tbody.appendChild(expandRow);
+  });
+}
+
+function toggleExpand(idx) {
+  const row = document.getElementById(`expand-${idx}`);
+  const trigger = document.querySelector(`[data-idx="${idx}"]`);
+  const isOpen = row.classList.contains('open');
+  // close all
+  document.querySelectorAll('.expand-row').forEach(r => r.classList.remove('open'));
+  document.querySelectorAll('.expand-trigger').forEach(t => t.classList.remove('open'));
+  if (!isOpen) {
+    row.classList.add('open');
+    trigger.classList.add('open');
+  }
+}
+
+// ─────────────────────────────────────────
+// RENDER DNF
+// ─────────────────────────────────────────
+function renderDNF() {
+  const grid = document.getElementById('dnf-grid');
+  dnfVendors.forEach(v => {
+    const card = document.createElement('div');
+    card.className = 'dnf-card';
+    card.innerHTML = `
+      <div class="co">${v.name} <span class="tag loss">DNF</span></div>
+      <div class="detail">${v.detail}</div>
+    `;
+    grid.appendChild(card);
+  });
+}
+
+renderLB();
+renderDNF();
+
+// ─────────────────────────────────────────
+// GITHUB PUSH
+// ─────────────────────────────────────────
+async function pushToGitHub() {
+  const PAT = "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sDo";
+  const REPO = "DroneWuKong/droneclear_Forge";
+  const PATH = "ddg/index.html";
+  const BRANCH = "master";
+  const btn = document.getElementById('push-btn');
+  const status = document.getElementById('push-status');
+
+  btn.disabled = true;
+  btn.textContent = "PUSHING...";
+  status.textContent = "";
+  status.style.color = "var(--text-dim)";
+
+  try {
+    // Get current file SHA
+    status.textContent = "→ Fetching current file SHA...";
+    const getRes = await fetch(`https://api.github.com/repos/${REPO}/contents/${PATH}?ref=${BRANCH}`, {
+      headers: { Authorization: `token ${PAT}`, Accept: "application/vnd.github.v3+json" }
+    });
+
+    let sha = null;
+    if (getRes.ok) {
+      const data = await getRes.json();
+      sha = data.sha;
+      status.textContent = `→ Got SHA: ${sha.slice(0,7)}...`;
+    } else if (getRes.status === 404) {
+      status.textContent = "→ File not found — will create new...";
+    } else {
+      throw new Error(`Failed to fetch SHA: ${getRes.status} ${getRes.statusText}`);
+    }
+
+    // Encode file content
+    const html = document.documentElement.outerHTML;
+    const encoded = btoa(unescape(encodeURIComponent(html)));
+
+    // Push
+    status.textContent = "→ Pushing to GitHub...";
+    const body = {
+      message: "feat(ddg): enrich tracker with full competitor intelligence, scoring explainer, Phase II analysis",
+      content: encoded,
+      branch: BRANCH
+    };
+    if (sha) body.sha = sha;
+
+    const putRes = await fetch(`https://api.github.com/repos/${REPO}/contents/${PATH}`, {
+      method: "PUT",
+      headers: {
+        Authorization: `token ${PAT}`,
+        "Content-Type": "application/json",
+        Accept: "application/vnd.github.v3+json"
+      },
+      body: JSON.stringify(body)
+    });
+
+    if (!putRes.ok) {
+      const err = await putRes.json();
+      throw new Error(`Push failed: ${putRes.status} — ${err.message}`);
+    }
+
+    const result = await putRes.json();
+    const commitSha = result.commit.sha.slice(0, 7);
+    status.textContent = `✓ Pushed — commit ${commitSha}`;
+    status.style.color = "var(--green)";
+    btn.textContent = "✓ PUSHED";
+    btn.style.background = "var(--green-dim)";
+    btn.style.color = "#fff";
+
+  } catch (err) {
+    status.textContent = `✗ Error: ${err.message}`;
+    status.style.color = "var(--red)";
+    btn.disabled = false;
+    btn.textContent = "⬆ RETRY PUSH";
+  }
+}
+</script>
+</body>
+</html>
