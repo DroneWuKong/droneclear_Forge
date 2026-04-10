@@ -1,5 +1,15 @@
 # Changelog
 
+## [Session] - 2026-04-10 — PAT Hygiene + Session Opener Automation
+
+### Changed
+- Cleaned up 9 stale/orphaned classic PATs from DroneWuKong GitHub account (dfr, FORGE_PAT, Update, Sync pat handbook patterns, asdf, Newsync, Image_Mine, Parts_Miner, Git actions)
+- Active session PAT (`wingman-session-2026-04-10`, repo+workflow, expires 2026-05-10) stored in browser localStorage under key `wingman_github_pat`
+- Session opener flow: Claude can now read PAT from browser localStorage at session start — no manual paste required until May 10 expiry
+
+### Verified
+- `d33fda0 fix(patterns)` already live on master — patterns brief loads, flags chain, predictions fetch, token entry modal all confirmed deployed
+
 ## [Session] - 2026-04-07 — Platform Mining + Patterns Overhaul + DB Enrichment
 
 ### Added — Platform Mining (drone_models now 254)
