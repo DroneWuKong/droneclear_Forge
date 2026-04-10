@@ -44,11 +44,13 @@ def write(path, data):
     size = len(path.read_text())
     print(f"  {path.name}: {size:,} bytes")
 
-def main():
-    if len(sys.argv) < 2:
-        out = Path('build/static')
-    else:
+def main(args=None):
+    if args and len(args) >= 1:
+        out = Path(args[0])
+    elif len(sys.argv) >= 2:
         out = Path(sys.argv[1])
+    else:
+        out = Path('build/static')
 
     print("Generating free-tier data slices...")
 

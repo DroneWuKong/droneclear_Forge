@@ -237,8 +237,31 @@ a.brief-source-chip:hover{color:var(--text-s);border-color:var(--border-hi)}
 <body>
 <header style="display:flex;align-items:center;justify-content:space-between;gap:8px;padding:10px 16px;border-bottom:1px solid #2e2e26;background:#1c1c17;position:sticky;top:0;z-index:100;flex-shrink:0;">
   <a href="/patterns-home/" style="font:800 18px 'JetBrains Mono',monospace;color:#22c55e;letter-spacing:-0.03em;text-decoration:none;flex-shrink:0;">Patterns</a>
-  <div style="display:flex;gap:5px;align-items:center;flex-wrap:nowrap;"><a href="/" class="tp-pill tp-hide-sm">Forge</a><a href="/intel/" class="tp-pill tp-hide-sm">Intel</a><a href="/wingman/" class="tp-pill tp-hide-sm">Wingman</a><a href="/start/" class="tp-pill tp-hide-sm">Docs</a></div>
+  <div style="display:flex;gap:8px;align-items:center;flex-wrap:nowrap;">
+    <a href="/" class="tp-pill tp-hide-sm">Forge</a>
+    <a href="/intel/" class="tp-pill tp-hide-sm">Intel</a>
+    <a href="/wingman/" class="tp-pill tp-hide-sm">Wingman</a>
+    <a href="/start/" class="tp-pill tp-hide-sm">Docs</a>
+    <div id="nav-token-status" style="display:none;font:600 10px monospace;color:#22c55e;padding:3px 8px;border:1px solid #22c55e;border-radius:10px;cursor:pointer;" onclick="showTokenEntry()" title="Click to manage access"></div>
+    <button onclick="showTokenEntry()" id="nav-token-btn" style="font:600 10px monospace;background:none;border:1px solid #3e3e34;color:#6b6358;padding:4px 10px;border-radius:20px;cursor:pointer;white-space:nowrap;transition:all .15s" onmouseover="this.style.borderColor='#b8b0a0';this.style.color='#b8b0a0'" onmouseout="this.style.borderColor='#3e3e34';this.style.color='#6b6358'">🔑 Access</button>
+  </div>
 </header>
+
+<!-- Token entry modal -->
+<div id="token-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:999;align-items:center;justify-content:center;">
+  <div style="background:#1a1a14;border:1px solid #3e3e34;border-radius:10px;padding:24px;width:min(480px,90vw);position:relative;">
+    <div style="font:700 11px monospace;color:#22c55e;letter-spacing:.1em;text-transform:uppercase;margin-bottom:12px">// Access Token</div>
+    <p style="font-size:12px;color:#6b6358;line-height:1.6;margin-bottom:16px">Paste your token from <a href="/pro/" style="color:#22c55e">/pro/</a> or enter an access code. Commercial, DFR, and Agency tokens unlock full data.</p>
+    <div id="token-current" style="display:none;font:400 10px monospace;color:#22c55e;margin-bottom:10px;padding:6px 10px;background:rgba(34,197,94,.08);border-radius:6px;word-break:break-all;"></div>
+    <textarea id="token-input-field" rows="3" placeholder="Paste JWT token or enter access code (XXXX-XXXX-XXXX)" style="width:100%;background:#0c0c0a;border:1px solid #3e3e34;border-radius:6px;padding:10px;font:400 11px monospace;color:#f5f0e8;resize:vertical;box-sizing:border-box;outline:none;"></textarea>
+    <div style="display:flex;gap:8px;margin-top:12px;">
+      <button onclick="applyToken()" style="flex:1;padding:10px;background:#22c55e;color:#0c0c0a;border:none;border-radius:6px;font:700 12px monospace;cursor:pointer">Apply →</button>
+      <button onclick="clearToken()" style="padding:10px 16px;background:none;border:1px solid #3e3e34;color:#6b6358;border-radius:6px;font:600 11px monospace;cursor:pointer">Clear</button>
+      <button onclick="closeTokenModal()" style="padding:10px 16px;background:none;border:1px solid #3e3e34;color:#6b6358;border-radius:6px;font:600 11px monospace;cursor:pointer">✕</button>
+    </div>
+    <div id="token-apply-msg" style="font:400 10px monospace;color:#6b6358;margin-top:8px;min-height:14px;"></div>
+  </div>
+</div>
 <style>.tp-pill{font:500 10px 'DM Sans',system-ui,sans-serif;color:#6b6358;padding:4px 9px;border:1px solid #2e2e26;border-radius:20px;text-decoration:none;white-space:nowrap;transition:all .15s}.tp-pill:hover{border-color:#3e3e34;color:#b8b0a0}@media(max-width:520px){.tp-hide-sm{display:none}}</style>
 
 <!-- ═══ Forge Navigation Bar ═══ -->
@@ -6388,6 +6411,100 @@ fetch('../static/pie_flags.json').then(r=>r.json()).then(flags=>{
   // Expose for page-specific events
   window.__pageAnalytics={ev:ev,flush:fl,session:S};
 })();
+
+// ── Token Entry Modal ─────────────────────────────────────────────────────
+function showTokenEntry() {
+  var modal = document.getElementById('token-modal');
+  modal.style.display = 'flex';
+  var existing = localStorage.getItem('forge_token') || localStorage.getItem('wingman_sub_token') || '';
+  var current = document.getElementById('token-current');
+  if (existing) {
+    current.style.display = 'block';
+    try {
+      var p = JSON.parse(atob(JSON.parse(atob(existing)).payload ? atob(existing) : existing));
+      var payload = (p.payload || p);
+      current.textContent = '✓ Active: ' + (payload.tier||'').toUpperCase() + ' — ' + (payload.email||'');
+    } catch(e) { current.textContent = '✓ Token active'; }
+  } else {
+    current.style.display = 'none';
+  }
+}
+
+function closeTokenModal() {
+  document.getElementById('token-modal').style.display = 'none';
+}
+
+async function applyToken() {
+  var val = (document.getElementById('token-input-field').value || '').trim();
+  var msg = document.getElementById('token-apply-msg');
+  if (!val) { msg.textContent = 'Paste a token or access code first.'; msg.style.color='var(--warning)'; return; }
+
+  // Access code pattern: XXXX-XXXX-XXXX
+  if (/^[A-Z0-9]{4}-[A-Z0-9]{4}-[A-Z0-9]{4}$/.test(val)) {
+    msg.textContent = 'Verifying access code...'; msg.style.color='#6b6358';
+    try {
+      var r = await fetch('/.netlify/functions/forge-data?access_code=' + encodeURIComponent(val));
+      var d = await r.json();
+      if (d.token) {
+        localStorage.setItem('forge_token', d.token);
+        localStorage.setItem('wingman_sub_token', d.token);
+        msg.textContent = '✓ Access granted — ' + d.tier + ' tier. Reloading...'; msg.style.color='#22c55e';
+        setTimeout(() => location.reload(), 1200);
+      } else { msg.textContent = d.error || 'Invalid code.'; msg.style.color='var(--red)'; }
+    } catch(e) { msg.textContent = 'Error: ' + e.message; msg.style.color='var(--red)'; }
+    return;
+  }
+
+  // JWT token
+  try {
+    var decoded = JSON.parse(atob(val));
+    var payload = decoded.payload || decoded;
+    if (!payload.tier) throw new Error('Not a valid token');
+    if (payload.exp && Date.now() > payload.exp) { msg.textContent = 'Token expired. Get a new one at /pro/'; msg.style.color='var(--red)'; return; }
+    localStorage.setItem('forge_token', val);
+    localStorage.setItem('wingman_sub_token', val);
+    msg.textContent = '✓ ' + (payload.tier||'').toUpperCase() + ' access granted. Reloading...'; msg.style.color='#22c55e';
+    setTimeout(() => location.reload(), 1000);
+  } catch(e) { msg.textContent = 'Invalid token format. Paste the full JWT from /pro/'; msg.style.color='var(--red)'; }
+}
+
+function clearToken() {
+  localStorage.removeItem('forge_token');
+  localStorage.removeItem('wingman_sub_token');
+  localStorage.removeItem('wingman_proxy_secret');
+  document.getElementById('token-input-field').value = '';
+  document.getElementById('token-apply-msg').textContent = 'Token cleared. Reloading...';
+  setTimeout(() => location.reload(), 800);
+}
+
+function updateNavTokenStatus() {
+  var tok = localStorage.getItem('forge_token') || localStorage.getItem('wingman_sub_token') || '';
+  var statusEl = document.getElementById('nav-token-status');
+  var btnEl = document.getElementById('nav-token-btn');
+  if (tok) {
+    try {
+      var p = JSON.parse(atob(JSON.parse(atob(tok)).payload ? atob(tok) : tok));
+      var tier = ((p.payload||p).tier||'').toUpperCase();
+      statusEl.textContent = '✓ ' + tier;
+      statusEl.style.display = 'block';
+      btnEl.style.display = 'none';
+    } catch(e) {
+      statusEl.style.display = 'none';
+      btnEl.style.display = 'block';
+    }
+  } else {
+    statusEl.style.display = 'none';
+    btnEl.style.display = 'block';
+  }
+}
+
+// Close modal on backdrop click
+document.getElementById('token-modal').addEventListener('click', function(e) {
+  if (e.target === this) closeTokenModal();
+});
+
+// Run on load
+updateNavTokenStatus();
 </script>
 
 <!-- Flag / Detail Modal -->

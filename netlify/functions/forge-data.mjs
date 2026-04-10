@@ -75,21 +75,25 @@ const DATASETS = {
 // Free-tier: serve the public-safe static slice that's already in the build
 // These are truncated versions committed by the sync workflow — same data, less of it
 async function freeSummary(type) {
-  // Types that have a public-safe static slice in build/static/
+  // Free-tier slices are committed into static/ and built into /static/*.json
+  // They are truncated versions of the full data — same structure, less content
   const PUBLIC_SLICES = ['pie_flags','pie_brief','pie_predictions','pie_trends',
                          'pie_brief_history','pie_flags_summary','entity_graph',
-                         'gap_analysis_latest'];
-  if (PUBLIC_SLICES.includes(type)) {
-    try {
-      // Fetch the static file that's already in the public build
-      const res = await fetch(`https://forgeprole.netlify.app/static/${type}.json`);
-      if (res.ok) {
-        const data = await res.json();
-        return { data, _free_tier: true, _upgrade_note: `Full ${type} requires Commercial access or an access code.` };
-      }
-    } catch {}
+                         'gap_analysis_latest','miner_health','miner_registry',
+                         'topic_component_map'];
+  if (!PUBLIC_SLICES.includes(type)) {
+    return { summary_only: true, message: `${type} requires Commercial access or an access code.`, upgrade_url: '/pro/' };
   }
-  return { summary_only: true, message: `${type} requires Commercial access or an access code.`, upgrade_url: '/pro/' };
+  try {
+    // The function runs on forgeprole — fetch from same site's static files
+    const origin = 'https://forgeprole.netlify.app';
+    const res = await fetch(`${origin}/static/${type}.json`);
+    if (res.ok) {
+      const data = await res.json();
+      return { data, _free_tier: true };
+    }
+  } catch (e) {}
+  return { summary_only: true, message: `${type} not available. Try again shortly.`, upgrade_url: '/pro/' };
 }
 
 async function verifyToken(token, secret) {
