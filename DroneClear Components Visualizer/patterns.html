@@ -1280,8 +1280,9 @@ async function loadData() {
   }).catch(()=>{});
 
   // Load entity graph + miner health + procurement (fire-and-forget)
-  fetch("../static/entity_graph.json").then(r=>r.ok?r.json():null).then(d=>{
-    if(d && d.entities) { ENTITY_GRAPH = d.entities; }
+  fetch('/.netlify/functions/forge-data?type=entity_graph&token='+encodeURIComponent(localStorage.getItem('forge_token')||localStorage.getItem('wingman_sub_token')||'')).then(r=>r.json()).then(d=>{
+    const _d = d.summary_only ? null : (d.data||d);
+    if(_d && _d.entities) { ENTITY_GRAPH = _d.entities; }
   }).catch(()=>{});
   fetch("../static/miner_health.json").then(r=>r.ok?r.json():null).then(h=>{
     if(h) { window._minerHealth = h; renderPipelineHealth(h); }
@@ -1289,21 +1290,22 @@ async function loadData() {
   fetch("../static/miner_registry.json").then(r=>r.ok?r.json():null).then(reg=>{
     if(reg) { window._minerRegistry = reg; renderSources(); }
   }).catch(()=>{});
-  fetch("../static/solicitations.json").then(r=>r.ok?r.json():null).then(d=>{
-    if(d) { PROCUREMENT_DATA = d; renderProcurement(); }
+  fetch('/.netlify/functions/forge-data?type=solicitations&token='+encodeURIComponent(localStorage.getItem('forge_token')||localStorage.getItem('wingman_sub_token')||'')).then(r=>r.json()).then(d=>{
+    const _d = d.summary_only ? null : (d.data||d);
+    if(_d) { PROCUREMENT_DATA = _d; renderProcurement(); }
   }).catch(()=>{});
 
   try {
     const [fRes, pRes] = await Promise.all([
       fetch('/.netlify/functions/forge-data?type=pie_flags&token='+encodeURIComponent(localStorage.getItem('forge_token')||localStorage.getItem('wingman_sub_token')||'')).then(r=>r.json()).then(d=>{
         // unwrap envelope — {data:[...]} for all tiers, summary_only:true if function fails
-        if(d.summary_only){ return fetch('../static/pie_flags.json').then(r=>r.ok?r.json():[]); }
+        if(d.summary_only){ return []; }
         return d.data||d;
       }).then(flags=>{if(!flags)return [];
         return flags;
       }),
       fetch('/.netlify/functions/forge-data?type=pie_predictions&token='+encodeURIComponent(localStorage.getItem('forge_token')||localStorage.getItem('wingman_sub_token')||'')).then(r=>r.json()).then(d=>{
-        if(d.summary_only || d.error){ return fetch('../static/pie_predictions.json').then(r=>r.ok?r.json():[]); }
+        if(d.summary_only || d.error){ return []; }
         return d.data||d;
       }),
     ]);
@@ -1315,9 +1317,10 @@ async function loadData() {
     } else {
       // Live predictions sparse — load best archive as fallback
       try {
-        const bestRes = await fetch("../static/predictions_best.json");
+        const bestRes = await fetch('/.netlify/functions/forge-data?type=predictions_best&token='+encodeURIComponent(localStorage.getItem('forge_token')||localStorage.getItem('wingman_sub_token')||''));
         if (bestRes.ok) {
-          const best = await bestRes.json();
+          const bestRaw = await bestRes.json();
+          const best = bestRaw.summary_only ? null : (bestRaw.data||bestRaw);
           if (best && best.length > pRes.length) {
             PREDICTIONS = best;
             // Show staleness banner
@@ -1342,7 +1345,7 @@ async function loadData() {
     FLAGS = []; PREDICTIONS = [];
     flagList.innerHTML = `<div style="color:var(--red);font-size:12px;padding:20px;text-align:center">
       Failed to load pipeline data: ${e.message}<br>
-      <span style="color:var(--text-d)">Check browser console. Data should be at ../static/pie_flags.json</span>
+      <span style="color:var(--text-d)">Check browser console. Data served via /.netlify/functions/forge-data</span>
     </div>`;
     return;
   }
@@ -1494,11 +1497,12 @@ function renderBriefPanel(b) {
 
 async function loadBriefPanel() {
   try {
-    const paths = ['../static/pie_brief.json', '/static/pie_brief.json'];
     let b = null;
-    for (const p of paths) {
-      try { const r = await fetch(p); if (r.ok) { b = await r.json(); break; } } catch(e) {}
-    }
+    try {
+      const r = await fetch('/.netlify/functions/forge-data?type=pie_brief&token='+encodeURIComponent(localStorage.getItem('forge_token')||localStorage.getItem('wingman_sub_token')||''));
+      const d = await r.json();
+      if (!d.summary_only) b = d.data||d;
+    } catch(e) {}
     if (!b) throw new Error('No brief data found');
     renderBriefPanel(b);
   } catch(e) {
@@ -1682,8 +1686,7 @@ async function loadBriefPanel(){
         }
       }
     } catch(e) {}
-    // Fallback to static free-tier slice (committed by sync workflow)
-    if (!b) { for(const p of["../static/pie_brief.json","/static/pie_brief.json"]){try{const r=await fetch(p);if(r.ok){b=await r.json();break;}}catch(e){}} }
+    // No static fallback — pie_brief is gated; if forge-data returned summary_only, brief is unavailable
     if(!b)throw new Error("no data");
     renderBriefPanel(b);
   }catch(e){
@@ -2478,9 +2481,10 @@ let _historyRange   = 7;     // days to show
 async function loadHistoryData() {
   if (_historyData) return;
   try {
+    const tok = encodeURIComponent(localStorage.getItem('forge_token')||localStorage.getItem('wingman_sub_token')||'');
     const [trendsRes, predRes] = await Promise.all([
-      fetch('../static/pie_trends.json').then(r => r.ok ? r.json() : null),
-      fetch('../static/predictions_archive.json').then(r => r.ok ? r.json() : []),
+      fetch('/.netlify/functions/forge-data?type=pie_trends&token='+tok).then(r=>r.json()).then(d=>d.summary_only?null:(d.data||d)),
+      fetch('/.netlify/functions/forge-data?type=predictions_archive&token='+tok).then(r=>r.json()).then(d=>d.summary_only?[]:(d.data||d)),
     ]);
     _trendsData  = trendsRes;
     _predArchive = predRes || [];
@@ -4677,9 +4681,11 @@ async function loadWeeklyBrief() {
   el.innerHTML = '<div style="color:var(--text-d);font:400 11px var(--mono);padding:20px 0;text-align:center">Loading weekly summary...</div>';
   try {
     let w = null;
-    for (const p of ['../static/pie_weekly.json', '/static/pie_weekly.json']) {
-      try { const r = await fetch(p); if (r.ok) { w = await r.json(); break; } } catch(e) {}
-    }
+    try {
+      const r = await fetch('/.netlify/functions/forge-data?type=pie_weekly&token='+encodeURIComponent(localStorage.getItem('forge_token')||localStorage.getItem('wingman_sub_token')||''));
+      const d = await r.json();
+      if (!d.summary_only) w = d.data||d;
+    } catch(e) {}
     if (!w) throw new Error('no data');
     _weeklyData = w;
     renderWeeklyPanel(w);
@@ -5494,8 +5500,9 @@ const EXPLORER_DATASETS = {
     label: 'Articles',
     loader: async () => {
       if (window._explorerArticlesCache) return window._explorerArticlesCache;
-      const r = await fetch('../static/intel_articles.json');
-      const d = r.ok ? await r.json() : [];
+      const r = await fetch('/.netlify/functions/forge-data?type=intel_articles&token='+encodeURIComponent(localStorage.getItem('forge_token')||localStorage.getItem('wingman_sub_token')||''));
+      const raw = await r.json();
+      const d = raw.summary_only ? [] : (raw.data||raw);
       window._explorerArticlesCache = d;
       return d;
     },
@@ -5505,8 +5512,9 @@ const EXPLORER_DATASETS = {
     label: 'Companies',
     loader: async () => {
       if (window._explorerCompaniesCache) return window._explorerCompaniesCache;
-      const r = await fetch('../static/intel_companies.json');
-      const d = r.ok ? await r.json() : [];
+      const r = await fetch('/.netlify/functions/forge-data?type=intel_companies&token='+encodeURIComponent(localStorage.getItem('forge_token')||localStorage.getItem('wingman_sub_token')||''));
+      const raw = await r.json();
+      const d = raw.summary_only ? [] : (raw.data||raw);
       window._explorerCompaniesCache = d;
       return d;
     },
@@ -6383,10 +6391,15 @@ function fmtUpdated(iso) {
     if (el) el.textContent = 'Pipeline: ' + dt + ' · ' + timeStr;
   } catch(e) {}
 }
-fetch('../static/pie_flags.json').then(r=>r.json()).then(flags=>{
-    var ts = flags.map(f=>f.timestamp||'').filter(Boolean).sort().pop();
-    if(ts) fmtUpdated(ts);
-  }).catch(()=>{});
+// Timestamp from FLAGS global populated by loadData(), wait for it
+setTimeout(function(){
+    try {
+      if (window.FLAGS && FLAGS.length) {
+        var ts = FLAGS.map(f=>f.timestamp||'').filter(Boolean).sort().pop();
+        if(ts) fmtUpdated(ts);
+      }
+    } catch(e) {}
+  }, 2000);
 </script>
 
 <!-- Page Analytics — fires batch events to /.netlify/functions/analytics -->
