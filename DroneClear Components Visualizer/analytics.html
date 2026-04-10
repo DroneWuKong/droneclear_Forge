@@ -1,6 +1,7 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
+  <meta name="robots" content="noindex, nofollow">
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Analytics — Forge Mission Control</title>
@@ -331,7 +332,7 @@ a{color:var(--blue);text-decoration:none}a:hover{text-decoration:underline}
 var DB,INTEL=[],COS=[],PROGS=[],PLATS=[],LIVE,GAPS,TOPICMAP,DASH,TRENDS;
 var FN='/.netlify/functions/analytics';
 var DASH_FN='/.netlify/functions/analytics';
-var KEY=new URLSearchParams(location.search).get('key')||'';
+var KEY=''; // Key never stored client-side — auth is session-based
 var $=function(id){return document.getElementById(id)};
 var fmt=function(n){return n>=1e6?(n/1e6).toFixed(1)+'M':n>=1e3?(n/1e3).toFixed(1).replace(/\.0$/,'')+'k':String(n)};
 
@@ -343,12 +344,14 @@ function daysSince(s){try{return Math.floor((new Date()-new Date(s))/864e5)}catc
 
 
 // ── Admin gate for restricted tabs ───────────────────────────────────────────
-var ADMIN_KEY = (new URLSearchParams(location.search).get('akey')||new URLSearchParams(location.search).get('key')||'');
-var GATE_SESSION_KEY = 'forge_admin_unlocked';
+// ── Server-side auth gate — key is NEVER in client JS ──────────────────────
+// KEY comes from ?key= URL param, sent to server for verification each time.
+// sessionStorage holds a server-issued session token, not the raw key.
+var GATE_SESSION_KEY = 'forge_admin_session';
 var pendingTab = null;
 
 function isUnlocked(){
-  return sessionStorage.getItem(GATE_SESSION_KEY) === '1' || !!KEY;
+  return !!sessionStorage.getItem(GATE_SESSION_KEY);
 }
 
 function openGate(tab){
@@ -366,17 +369,26 @@ function closeGate(){
   pendingTab = null;
 }
 
-function checkGate(){
+async function checkGate(){
   var val = document.getElementById('gate-input').value.trim();
-  // Also accept the URL key param
-  var urlKey = new URLSearchParams(location.search).get('key') || '';
-  if(val === ADMIN_KEY || val === urlKey && urlKey){
-    sessionStorage.setItem(GATE_SESSION_KEY, '1');
-    closeGate();
-    if(pendingTab) activateTab(pendingTab);
-  } else {
-    document.getElementById('gate-err').textContent = 'Incorrect key';
-    document.getElementById('gate-input').select();
+  if(!val){ document.getElementById('gate-err').textContent = 'Enter admin key'; return; }
+  document.getElementById('gate-err').textContent = 'Verifying...';
+  try {
+    var r = await fetch('/.netlify/functions/analytics?verify=1', {
+      headers: { 'x-admin-key': val }
+    });
+    if(r.ok){
+      // Server confirmed key is valid — store a time-limited session token
+      var ts = Date.now().toString(36);
+      sessionStorage.setItem(GATE_SESSION_KEY, ts);
+      closeGate();
+      if(pendingTab) activateTab(pendingTab);
+    } else {
+      document.getElementById('gate-err').textContent = 'Incorrect key';
+      document.getElementById('gate-input').select();
+    }
+  } catch(e) {
+    document.getElementById('gate-err').textContent = 'Error — try again';
   }
 }
 
@@ -399,10 +411,18 @@ document.querySelectorAll('#tabs .tab').forEach(function(tab){
   });
 });
 
-// Auto-unlock if ?key= param matches
+// Auto-verify if ?key= param is present — sends to server, never stored client-side
 (function(){
   var urlKey = new URLSearchParams(location.search).get('key');
-  if(urlKey === ADMIN_KEY) sessionStorage.setItem(GATE_SESSION_KEY,'1');
+  if(urlKey){
+    fetch('/.netlify/functions/analytics?verify=1', {
+      headers: { 'x-admin-key': urlKey }
+    }).then(function(r){
+      if(r.ok) sessionStorage.setItem(GATE_SESSION_KEY, Date.now().toString(36));
+      // Scrub key from URL immediately
+      history.replaceState(null,'',location.pathname);
+    }).catch(function(){});
+  }
 })();
 
 
@@ -419,11 +439,11 @@ async function loadAll(){
         loadJSON('/static/topic_component_map.json').then(function(d){return d||loadJSON('/topic_component_map.json')}).catch(function(){return null}),
     ]);
     DB=results[0];INTEL=results[1]||[];COS=results[2]||[];PROGS=results[3]||[];PLATS=results[4]||[];TOPICMAP=results[5];
-    try{var r=await fetch(FN+'?key='+KEY+'&range=30');if(r.ok)LIVE=await r.json()}catch(e){}
+    try{var r=await fetch(FN+'?range=30',{headers:{'x-admin-key':sessionStorage.getItem(GATE_SESSION_KEY)||''}});if(r.ok)LIVE=await r.json()}catch(e){}
 
     // ── Auto-backfill: send any locally stored queries that aren't in the server log yet
     // Runs once per device — uses sessionStorage flag to avoid repeat on tab switch
-    if(KEY && !sessionStorage.getItem('forge_backfill_done')) {
+    if(isUnlocked() && !sessionStorage.getItem('forge_backfill_done')) {
       try {
         var localData = JSON.parse(localStorage.getItem('wingman_analytics') || '{}');
         var localQueries = (localData.queries || []).filter(function(q){ return q && q.q && q.q.trim(); });
@@ -439,7 +459,7 @@ async function loadAll(){
               if(res.added > 0) {
                 console.log('[analytics] Backfilled', res.added, 'queries from localStorage');
                 // Reload LIVE data to reflect backfilled queries
-                return fetch(FN+'?key='+KEY+'&range=30').then(function(r2){ return r2.ok ? r2.json() : null; }).then(function(fresh){
+                return fetch(FN+'?range=30',{headers:{'x-admin-key':sessionStorage.getItem(GATE_SESSION_KEY)||''}}).then(function(r2){ return r2.ok ? r2.json() : null; }).then(function(fresh){
                   if(fresh){ LIVE = fresh; try{renderUsers();}catch(e){} }
                 });
               }
@@ -449,7 +469,7 @@ async function loadAll(){
       } catch(e) {}
       sessionStorage.setItem('forge_backfill_done', '1');
     }
-    try{var d=await fetch(DASH_FN+'?key='+KEY+'&range=30');if(d.ok){var dr=await d.json();DASH={overview:{total_views:dr.totals&&dr.totals.pageViews||0,total_wingman_queries:dr.totals&&dr.totals.queries||0,total_gap_analyses:dr.totals&&dr.totals.gapAnalyses||0,unique_sessions:dr.totals&&dr.totals.sessions||0,days_with_data:Object.keys(dr.daily||{}).length},daily_activity:Object.entries(dr.daily||{}).map(function(e){return{date:e[0],views:e[1].count||0,wingman_queries:0,gap_analyses:0};}),wingman_categories:Object.entries((dr.totals&&dr.totals.cats)||{}).map(function(e){return{cat:e[0],count:e[1]};}),top_gap_pairs:[]}}}catch(e){}
+    try{var d=await fetch(DASH_FN+'?range=30',{headers:{'x-admin-key':sessionStorage.getItem(GATE_SESSION_KEY)||''}});if(d.ok){var dr=await d.json();DASH={overview:{total_views:dr.totals&&dr.totals.pageViews||0,total_wingman_queries:dr.totals&&dr.totals.queries||0,total_gap_analyses:dr.totals&&dr.totals.gapAnalyses||0,unique_sessions:dr.totals&&dr.totals.sessions||0,days_with_data:Object.keys(dr.daily||{}).length},daily_activity:Object.entries(dr.daily||{}).map(function(e){return{date:e[0],views:e[1].count||0,wingman_queries:0,gap_analyses:0};}),wingman_categories:Object.entries((dr.totals&&dr.totals.cats)||{}).map(function(e){return{cat:e[0],count:e[1]};}),top_gap_pairs:[]}}}catch(e){}
     try{var g=await fetch('/static/gap_analysis_latest.json');if(g.ok)GAPS=await g.json()}catch(e){}
     try{var tr=await fetch('/static/pie_trends.json');if(tr.ok)TRENDS=await tr.json()}catch(e){}
     if(!TRENDS)try{var tr2=await fetch('/pie_trends.json');if(tr2.ok)TRENDS=await tr2.json()}catch(e){}

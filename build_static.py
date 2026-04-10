@@ -30,7 +30,6 @@ PAGES = {
     'template.html': 'template/index.html',
     'platforms.html': 'platforms/index.html',
     'browse.html': 'browse/index.html',
-    'analytics.html': 'analytics/index.html',
     'contribute.html': 'contribute/index.html',
     'slam-selector.html': 'slam/index.html',
     'slam-guide.html': 'slam-guide/index.html',
