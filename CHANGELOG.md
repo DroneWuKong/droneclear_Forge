@@ -1,14 +1,35 @@
 # Changelog
 
-## [Session] - 2026-04-10 — PAT Hygiene + Session Opener Automation
+## [Session] - 2026-04-10 — Patterns Auth + Analytics Fixes
 
-### Changed
-- Cleaned up 9 stale/orphaned classic PATs from DroneWuKong GitHub account (dfr, FORGE_PAT, Update, Sync pat handbook patterns, asdf, Newsync, Image_Mine, Parts_Miner, Git actions)
-- Active session PAT (`wingman-session-2026-04-10`, repo+workflow, expires 2026-05-10) stored in browser localStorage under key `wingman_github_pat`
-- Session opener flow: Claude can now read PAT from browser localStorage at session start — no manual paste required until May 10 expiry
+### Fixed — patterns.html
+- `ReferenceError: r is not defined` in flags fetch chain — brief tab was stuck at "Loading brief..."
+- JWT decode broken — double `atob()` in `getUserTier()` was throwing on every valid token, silently returning `'commercial'` tier regardless of actual token. Agency users were seeing free-tier data
+- `'pro'`/`'full'` tier aliases now map to `'agency'` instead of being downgraded
+- `pie_predictions` and `pie_weekly` were hardcoded to `/static/` free-tier slices — now routed through `forge-data` function for authed users
 
-### Verified
-- `d33fda0 fix(patterns)` already live on master — patterns brief loads, flags chain, predictions fetch, token entry modal all confirmed deployed
+### Fixed — forge-data.mjs
+- `loadDataset()` was falling through to `/static/` (20 flags) when Netlify Blobs was empty
+- Added `DATASET_FILES` map + fallback to full committed build files (221 flags, full predictions etc.)
+- Agency/commercial tier users now served full datasets
+
+### Fixed — analytics
+- `analytics-ingest` was returning 500 on Blobs 401 (missing `NETLIFY_API_TOKEN`) — changed outer catch to 200 with `stored:false`, analytics no longer crashes page load
+- `analytics.mjs` admin gate now server-side only — key accepted via `x-admin-key` header only, never URL param
+- Added `?verify=1` endpoint for dashboard login gate (key never touches client JS)
+- Dashboard client gate was trivially bypassable (empty string unlocked it) — replaced with server-side verify flow
+- `/analytics/` removed from sitemap, `X-Robots-Tag: noindex` header added, redirect removed from netlify.toml
+- `ANALYTICS_ADMIN_KEY` = `AsdfAsdf` (set in Netlify env)
+
+### Fixed — GitHub Actions / Blobs pipeline
+- `sync-forge-data.yml` now uploads full intel datasets to `forge-datasets` Blobs store on every run
+- Covers: pie_flags, pie_predictions, pie_brief, pie_trends, pie_weekly, pie_brief_history, predictions_best, predictions_archive, intel_articles/companies/platforms/programs, entity_graph, solicitations
+
+### Fixed — PAT hygiene
+- Deleted 9 stale/orphaned classic PATs (dfr, FORGE_PAT, Update, Sync pat handbook patterns, asdf, Newsync, Image_Mine, Parts_Miner, Git actions)
+- `FORGE_PAT` Actions secret restored with new token after accidental deletion
+- Session PAT stored in browser localStorage — Claude reads it at session start, no manual paste needed
+- Session PAT: `ghp_fX2m...` expires 2026-05-10
 
 ## [Session] - 2026-04-07 — Platform Mining + Patterns Overhaul + DB Enrichment
 
