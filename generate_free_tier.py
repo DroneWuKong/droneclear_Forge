@@ -54,18 +54,23 @@ def main(args=None):
 
     print("Generating free-tier data slices...")
 
-    # ── PIE BRIEF — headline + lead_story only ────────────────────────────
+    # ── PIE BRIEF — headline + lead_story + signal counts ─────────────────
     brief = load('pie_brief.json')
     if brief:
+        # Preserve signal_summary (counts are not sensitive — the count itself
+        # communicates "something is happening" without exposing flag content).
+        # Frontend renders signal bar from this; without it, counters show 0/0/0/0.
         free_brief = {
             'date':             brief.get('date'),
             'generated_at':     brief.get('generated_at'),
+            'pipeline_version': brief.get('pipeline_version'),
             'headline':         brief.get('headline', ''),
+            'signal_summary':   brief.get('signal_summary', {}),
             'delta_summary':    brief.get('delta_summary', ''),
             'fcc_countdown':    brief.get('fcc_countdown'),
             'lead_story':       brief.get('lead_story'),   # full lead story
             'flag_severities':  brief.get('flag_severities', {}),
-            'flag_ids':         brief.get('flag_ids', [])[:5],  # just count signal
+            'flag_ids':         brief.get('flag_ids', []),  # full ordered list of featured flags
             # Gated sections — removed from free tier:
             # gray_zone, supply_chain, watch_list, predictions, intel_feed
             '_free_tier': True,

@@ -1524,21 +1524,19 @@ function deltaBadge(badge, days) {
 
 function renderBriefPanel(b){
   const el=document.getElementById("brief-inner");if(!el)return;
-  // Schema compat: new pie_brief emits flag_severities{id:sev} + flag_ids[];
-  //   old schema emitted signal_summary{critical,warning,new_today,total_flags}.
-  //   Fall back to live FLAGS array if brief lacks both (e.g. stale/free-tier response).
+  // ── Signal counts ──
+  // Canonical: signal_summary comes from the brief (full or free-tier). If both
+  // the brief and FLAGS agree, we prefer signal_summary (authoritative counts
+  // from pipeline, even if pie_flags slice is truncated). If the brief lacks
+  // signal_summary AND flag_severities, derive from the live FLAGS array.
   let sig = b.signal_summary || null;
   if (!sig) {
     const sev = b.flag_severities || {};
     const ids = b.flag_ids || [];
     const fromBrief = Object.values(sev);
-    // Prefer FLAGS array (loaded from pie_flags, always fresh) when available
-    const source = (typeof FLAGS !== 'undefined' && Array.isArray(FLAGS) && FLAGS.length)
-      ? FLAGS.map(f => f.severity || 'info')
-      : fromBrief;
-    const totalFlags = (typeof FLAGS !== 'undefined' && Array.isArray(FLAGS) && FLAGS.length)
-      ? FLAGS.length
-      : (ids.length || fromBrief.length);
+    const hasFlagsArr = (typeof FLAGS !== 'undefined' && Array.isArray(FLAGS) && FLAGS.length);
+    const source = fromBrief.length ? fromBrief : (hasFlagsArr ? FLAGS.map(f => f.severity || 'info') : []);
+    const totalFlags = (ids.length || fromBrief.length) || (hasFlagsArr ? FLAGS.length : 0);
     sig = {
       critical:    source.filter(s => s === 'critical').length,
       warning:     source.filter(s => s === 'warning').length,
@@ -1548,13 +1546,69 @@ function renderBriefPanel(b){
   }
   const lead=b.lead_story||{};let html="";
 
-  // Signal bar
+  // ── Freshness badge ──
+  // Show how recent the brief data is relative to current time. When >24h stale,
+  // display a yellow banner so demo viewers know they're seeing the last successful
+  // pipeline snapshot (pipeline runs daily; if it hasn't run today, data is 1d old).
+  try {
+    const genIso = b.generated_at || b.date;
+    if (genIso) {
+      const genDate = new Date(genIso);
+      const ageMs = Date.now() - genDate.getTime();
+      const ageHours = Math.floor(ageMs / 3600000);
+      const ageDays = Math.floor(ageHours / 24);
+      let ageLabel, badgeColor;
+      if (ageHours < 6)       { ageLabel = 'Fresh (<6h)';            badgeColor = 'var(--green)'; }
+      else if (ageHours < 24) { ageLabel = ageHours + 'h ago';       badgeColor = 'var(--green)'; }
+      else if (ageDays < 2)   { ageLabel = '1 day ago';              badgeColor = 'var(--amber)'; }
+      else                    { ageLabel = ageDays + ' days ago';    badgeColor = 'var(--amber)'; }
+      const staleNote = ageHours >= 24
+        ? ' · <span style="color:var(--text-d)">next pipeline run: daily 14:30 UTC</span>'
+        : '';
+      html += `<div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;padding:6px 10px;background:var(--surface);border-radius:6px;font:500 10px var(--mono);border-left:3px solid ${badgeColor}">
+        <span style="color:${badgeColor};font-weight:700">PIPELINE</span>
+        <span style="color:var(--text)">${ageLabel}</span>
+        <span style="color:var(--text-d)">· snapshot ${genDate.toISOString().slice(0,10)}</span>
+        ${staleNote}
+      </div>`;
+    }
+  } catch(e){}
+
+  // ── Signal bar ──
   html+=`<div class="signal-bar">
     <div class="signal-stat critical"><span class="num">${sig.critical||0}</span><span class="lbl">Critical</span></div>
     <div class="signal-stat warning"><span class="num">${sig.warning||0}</span><span class="lbl">Warning</span></div>
     <div class="signal-stat new"><span class="num">${sig.new_today||0}</span><span class="lbl">New</span></div>
     <div class="signal-stat"><span class="num">${sig.total_flags||0}</span><span class="lbl">Total</span></div>
   </div>`;
+
+  // ── Breaking callout: freshest flag newer than the brief snapshot ──
+  // When pie_flags has entries newer than the brief's generated_at (meaning new
+  // flags have landed since the last daily pipeline run), surface the newest
+  // critical flag at the top so the demo doesn't look frozen in time.
+  try {
+    const briefGenMs = b.generated_at ? new Date(b.generated_at).getTime() : 0;
+    if (briefGenMs && typeof FLAGS !== 'undefined' && Array.isArray(FLAGS) && FLAGS.length) {
+      const newerFlags = FLAGS.filter(f => f.timestamp && new Date(f.timestamp).getTime() > briefGenMs);
+      if (newerFlags.length) {
+        // Prefer critical, then warning, then anything
+        newerFlags.sort((a,b) => {
+          const rank = {critical:0, warning:1, info:2};
+          return (rank[a.severity]||3) - (rank[b.severity]||3) ||
+                 new Date(b.timestamp) - new Date(a.timestamp);
+        });
+        const freshest = newerFlags[0];
+        const sevColor = freshest.severity === 'critical' ? 'var(--red)' : freshest.severity === 'warning' ? 'var(--amber)' : 'var(--cyan)';
+        html += `<div style="margin-bottom:12px;padding:10px 14px;background:${sevColor}18;border-radius:8px;border-left:3px solid ${sevColor}">
+          <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px">
+            <span style="font:700 9px var(--mono);color:${sevColor};padding:2px 6px;background:${sevColor}28;border-radius:3px;text-transform:uppercase;letter-spacing:.05em">Latest flag</span>
+            <span style="font:500 10px var(--mono);color:var(--text-d)">${newerFlags.length} new since brief snapshot</span>
+          </div>
+          <div style="font:600 13px var(--font);color:var(--text);line-height:1.45">${(freshest.title||'').replace(/</g,'&lt;')}</div>
+        </div>`;
+      }
+    }
+  } catch(e){}
 
   // Delta summary bar
   const ds = b.delta_summary||{};
