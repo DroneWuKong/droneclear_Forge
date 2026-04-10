@@ -9,6 +9,8 @@ const ALLOWED_ORIGINS = [
   'https://forgeprole.netlify.app',
   'https://nvmilldoitmyself.com',
   'https://www.nvmilldoitmyself.com',
+  'https://nvmillfindoutmyself.com',
+  'https://www.nvmillfindoutmyself.com',
   'https://thebluefairy.netlify.app',
   'http://localhost:3000',
   'http://localhost:8888',

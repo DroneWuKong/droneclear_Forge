@@ -1302,9 +1302,9 @@ async function loadData() {
       }).then(flags=>{if(!flags)return [];
         return flags;
       }),
-      fetch("../static/pie_predictions.json").then(r => {
-        if (!r.ok) throw new Error(`predictions.json: HTTP ${r.status}`);
-        return r.json();
+      fetch('/.netlify/functions/forge-data?type=pie_predictions&token='+encodeURIComponent(localStorage.getItem('forge_token')||localStorage.getItem('wingman_sub_token')||'')).then(r=>r.json()).then(d=>{
+        if(d.summary_only || d.error){ return fetch('../static/pie_predictions.json').then(r=>r.ok?r.json():[]); }
+        return d.data||d;
       }),
     ]);
     FLAGS = fRes;
@@ -6423,7 +6423,7 @@ function showTokenEntry() {
   if (existing) {
     current.style.display = 'block';
     try {
-      var p = JSON.parse(atob(JSON.parse(atob(existing)).payload ? atob(existing) : existing));
+      var p = JSON.parse(atob(existing));
       var payload = (p.payload || p);
       current.textContent = '✓ Active: ' + (payload.tier||'').toUpperCase() + ' — ' + (payload.email||'');
     } catch(e) { current.textContent = '✓ Token active'; }
