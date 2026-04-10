@@ -9,7 +9,10 @@
 //   STRIPE_SECRET_KEY        — sk_live_... or sk_test_...
 //   STRIPE_WEBHOOK_SECRET    — whsec_... (for webhook endpoint)
 //   PRO_TOKEN_SECRET         — any random string, used to sign session tokens
-//   STRIPE_PRO_PRICE_ID      — price_... (your Pro product price ID)
+//   STRIPE_COMMERCIAL_PRICE_ID — price_... ($39/mo Commercial)
+//   STRIPE_DFR_PRICE_ID       — price_... ($49/mo DFR)
+//   STRIPE_AGENCY_PRICE_ID    — not used (manual provisioning via forge-access)
+//   Backwards compat: STRIPE_PRO_PRICE_ID still works as alias for STRIPE_COMMERCIAL_PRICE_ID
 
 const CORS = {
   'Access-Control-Allow-Origin':  '*',
@@ -55,8 +58,8 @@ export default async (req) => {
 
   const stripeKey   = process.env.STRIPE_SECRET_KEY;
   const tokenSecret = process.env.PRO_TOKEN_SECRET;
-  const proPriceId  = process.env.STRIPE_PRO_PRICE_ID;
-  const dfrPriceId  = process.env.STRIPE_DFR_PRICE_ID;
+  const commercialPriceId = process.env.STRIPE_COMMERCIAL_PRICE_ID || process.env.STRIPE_PRO_PRICE_ID;
+  const dfrPriceId        = process.env.STRIPE_DFR_PRICE_ID;
 
   if (!stripeKey || !tokenSecret) {
     return json({ error: 'Subscription service not configured' }, 500);
@@ -87,8 +90,8 @@ export default async (req) => {
       } catch { /* blob unavailable, fall through */ }
     }
 
-    // Backwards compat: old tokens with tier:'pro' map to 'dfr'
-    const tier = payload.tier === 'pro' ? 'dfr' : (payload.tier || 'commercial');
+    // Backwards compat: old tokens with tier:'pro' → 'commercial'
+    const tier = payload.tier === 'pro' ? 'commercial' : (payload.tier || 'commercial');
 
     return json({
       valid: true,
@@ -125,8 +128,8 @@ export default async (req) => {
 
     // Determine tier from price ID
     const priceId = sub?.items?.data?.[0]?.price?.id || '';
-    const tier = priceId === proPriceId ? 'dfr'
-               : priceId === dfrPriceId ? 'commercial'
+    const tier = priceId === commercialPriceId ? 'commercial'
+               : priceId === dfrPriceId ? 'dfr'
                : 'agency';
 
     // Issue 30-day token

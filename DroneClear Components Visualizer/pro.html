@@ -392,8 +392,8 @@
 
 <div class="hero">
   <div class="hero-eyebrow">// DroneClear Intelligence</div>
-  <h1 class="hero-title">Intelligence that pays for itself<br>the first time you use it</h1>
-  <p class="hero-sub">From commercial operator workflows to public safety DFR programs and DoD procurement signals — choose the tier that matches your mission. All plans include the free Forge platform.</p>
+  <h1 class="hero-title">Built to be free.<br><span>Some information needs the right hands.</span></h1>
+  <p class="hero-sub">Forge, the Handbook, and the parts database are free — always. The intelligence layer exists because supply chain risk, defense procurement signals, and gray zone scoring aren't public information for a reason. Tiers reflect need-to-know, not ability to pay. If price is a barrier, reach out.</p>
 </div>
 
 <!-- Activate section (shown when ?session_id= in URL) -->
@@ -405,11 +405,38 @@
   </div>
 </div>
 
+<!-- Donate / Access Code -->
+<div style="max-width:960px;margin:0 auto 32px;padding:0 24px;display:grid;grid-template-columns:1fr 1fr;gap:16px">
+
+  <!-- Donate -->
+  <div style="background:var(--card);border:1px solid var(--border);border-radius:10px;padding:20px 24px">
+    <div style="font:700 10px var(--mono);color:var(--g2);text-transform:uppercase;letter-spacing:.1em;margin-bottom:8px">// Support the work</div>
+    <div style="font:600 14px var(--sans);color:var(--white);margin-bottom:8px">This platform took years to build and costs real money to run.</div>
+    <p style="font-size:12px;color:var(--g2);line-height:1.6;margin-bottom:16px">If Forge helped you make a better procurement decision, avoid a bad part, or navigate DFR compliance — contribute what you can. No amount too small, no obligation.</p>
+    <a href="https://buy.stripe.com/donate" target="_blank" style="display:inline-block;padding:10px 20px;background:none;border:1px solid var(--cyan);color:var(--cyan);border-radius:6px;font:600 12px var(--sans);text-decoration:none">Donate →</a>
+    <div style="font:400 10px var(--mono);color:var(--g3);margin-top:8px">Processed securely via Stripe</div>
+  </div>
+
+  <!-- Access code -->
+  <div style="background:var(--card);border:1px solid var(--border);border-radius:10px;padding:20px 24px">
+    <div style="font:700 10px var(--mono);color:var(--g2);text-transform:uppercase;letter-spacing:.1em;margin-bottom:8px">// Have an access code?</div>
+    <div style="font:600 14px var(--sans);color:var(--white);margin-bottom:8px">No payment needed.</div>
+    <p style="font-size:12px;color:var(--g2);line-height:1.6;margin-bottom:16px">If someone gave you an access code, or you reached out and Jeremiah sent you one — enter it here. You get the same access as a paid subscriber at whatever tier was granted.</p>
+    <div style="display:flex;gap:8px">
+      <input id="access-code-input" type="text" placeholder="XXXX-XXXX-XXXX"
+        style="flex:1;background:var(--bg);border:1px solid var(--border);border-radius:6px;padding:8px 12px;font:500 13px var(--mono);color:var(--white);outline:none"
+        oninput="this.value=this.value.toUpperCase()">
+      <button onclick="redeemAccessCode()" style="padding:8px 16px;background:var(--cyan);color:#0c0c0a;border:none;border-radius:6px;font:600 12px var(--sans);cursor:pointer">Redeem</button>
+    </div>
+    <div id="access-code-status" style="font:400 11px var(--mono);color:var(--g2);margin-top:8px;min-height:16px"></div>
+  </div>
+</div>
+
 <div class="pricing" id="pricing-section" style="grid-template-columns:1fr 1fr 1fr;max-width:960px">
 
   <div class="plan">
     <div class="plan-name">// Commercial</div>
-    <div class="plan-price">$29<span>/month</span></div>
+    <div class="plan-price">$39<span>/month</span></div>
     <div class="plan-desc">For operators, integrators, dealers, and survey/inspection professionals who need the intelligence layer.</div>
     <ul class="plan-features">
       <li>Wingman AI with Claude (no key needed)</li>
@@ -446,7 +473,7 @@
 
   <div class="plan">
     <div class="plan-name">// Agency</div>
-    <div class="plan-price">$299<span>/month</span></div>
+    <div class="plan-price">Contact<span> for details</span></div>
     <div class="plan-desc">For government buyers, defense integrators, and Blue UAS program managers.</div>
     <ul class="plan-features">
       <li>Everything in DFR</li>
@@ -1074,8 +1101,8 @@ function showLoggedIn(data) {
   document.getElementById('pro-marketing').style.display = 'none';
   document.getElementById('status-bar').classList.remove('show');
 
-  // Backwards compat: old 'pro' tokens → 'dfr'
-  if (data.tier === 'pro') data.tier = 'dfr';
+  // Backwards compat: old 'pro' tokens → 'commercial'
+  if (data.tier === 'pro') data.tier = 'commercial';
 
   // Populate dashboard
   const emailName = (data.email || 'subscriber').split('@')[0];
@@ -1123,6 +1150,7 @@ async function activateSubscription(sessionId) {
       localStorage.setItem(SUB_DATA_KEY, JSON.stringify({ email: data.email, tier: data.tier }));
       // Also pre-fill wingman sub token
       localStorage.setItem('wingman_sub_token', data.token);
+      localStorage.setItem('forge_token', data.token);
       msg.innerHTML = `✓ Subscription activated! Welcome, ${data.email || 'subscriber'}. Claude is now available in Wingman. <a href='/start/' style='color:var(--cyan)'>Setup guide →</a>`;
       btn.style.display = 'inline-block';
       // Clean URL
@@ -1193,9 +1221,38 @@ function startCheckout(tier) {
   const links = {
     commercial: 'https://buy.stripe.com/6oUeVcaxL0AHaDO12K4Ni01',
     dfr:    'https://buy.stripe.com/cNieVc9tHbfleU4bHo4Ni00',
-    agency: 'mailto:Jeremiah@midwestniceuas.com?subject=Agency Plan',
+    agency: 'mailto:Jeremiah@midwestniceuas.com?subject=Agency+Plan+Inquiry',
   };
   window.location.href = links[tier] || links.commercial;
+}
+
+async function redeemAccessCode() {
+  const code = (document.getElementById('access-code-input').value || '').trim().toUpperCase();
+  const status = document.getElementById('access-code-status');
+  if (!code) { status.textContent = 'Enter your access code.'; status.style.color = 'var(--amber)'; return; }
+
+  status.textContent = 'Verifying…';
+  status.style.color = 'var(--g2)';
+
+  try {
+    const res = await fetch(`/.netlify/functions/forge-data?access_code=${encodeURIComponent(code)}`);
+    const data = await res.json();
+    if (data.token) {
+      localStorage.setItem(SUB_TOKEN_KEY, data.token);
+      localStorage.setItem('wingman_sub_token', data.token);
+      localStorage.setItem('forge_token', data.token);
+      localStorage.setItem('forge_token', data.token);
+      status.textContent = `✓ Access granted — ${data.tier} tier. Welcome.`;
+      status.style.color = 'var(--cyan)';
+      setTimeout(() => location.href = '/wingman/', 1500);
+    } else {
+      status.textContent = data.error || 'Invalid code. Contact Jeremiah@midwestniceuas.com';
+      status.style.color = 'var(--red)';
+    }
+  } catch (e) {
+    status.textContent = 'Error: ' + e.message;
+    status.style.color = 'var(--red)';
+  }
 }
 
 function goToWingman() {

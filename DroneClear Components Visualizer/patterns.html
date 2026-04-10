@@ -650,19 +650,38 @@ a.brief-source-chip:hover{color:var(--text-s);border-color:var(--border-hi)}
 <script>
 // ── Pro auth check ──────────────────────────────────────────────────
 function isSubscriber() {
-  var tok = localStorage.getItem('wingman_sub_token') || '';
+  // Check forge_token (new, tier-based) first, then fall back to old tokens
+  var ft  = localStorage.getItem('forge_token') || '';
+  var wst = localStorage.getItem('wingman_sub_token') || '';
   var ps  = localStorage.getItem('wingman_proxy_secret') || '';
-  if (ps) return true;
-  if (!tok) return false;
-  try { var outer = JSON.parse(atob(tok)); var p = outer.payload||outer; return !p.exp || Date.now() < p.exp; } catch { return false; }
+  return ft.length > 20 || wst.length > 20 || ps.length > 4;
 }
 
-function showProGate(containerId, featureName) {
+function getUserTier() {
+  var ft = localStorage.getItem('forge_token') || '';
+  if (!ft) return 'free';
+  try {
+    var payload = JSON.parse(atob(JSON.parse(atob(ft)).payload ? atob(ft) : ft));
+    var tier = (payload.payload || payload).tier || 'commercial';
+    return tier === 'pro' ? 'commercial' : tier;
+  } catch(e) { return 'commercial'; }  // has a token but can't decode = assume commercial
+}
+
+function tierAtLeast(required) {
+  var rank = { free:0, commercial:1, dfr:2, agency:3 };
+  return (rank[getUserTier()] || 0) >= (rank[required] || 999);
+}
+
+function showProGate(containerId, featureName, requiredTier) {
   var el = document.getElementById(containerId);
   if (!el) return;
+  var tierLabel = requiredTier === 'dfr' ? 'DFR ($49/mo)' : requiredTier === 'agency' ? 'Agency (contact)' : 'Commercial ($39/mo)';
   el.innerHTML = '<div style="display:flex;flex-direction:column;align-items:center;justify-content:center;padding:32px 20px;gap:10px;text-align:center">'
     + '<span style="font-size:22px">🔒</span>'
-    + '<span style="font:600 13px var(--sans);color:var(--text)">' + featureName + ' is a Pro feature</span>'
+    + '<span style="font:600 13px var(--sans);color:var(--text)">' + featureName + ' — ' + tierLabel + '</span>'
+    + '<span style="font:400 11px var(--font);color:var(--text-d);max-width:320px;line-height:1.5">Need access but price is a barrier? <a href="/pro/" style="color:var(--teal)">Reach out</a> \u2014 access codes are free if you need them.</span>'
+    + '<a href="/pro/" style="padding:8px 20px;background:var(--teal);color:#000;border-radius:6px;font:600 12px var(--sans);text-decoration:none;margin-top:4px">Get Access →</a>'
+    + '</div>';
     + '<span style="font-size:11px;color:var(--text-d);line-height:1.5;max-width:280px">Get PIE predictions with confidence scores, gray zone delta alerts, and procurement signals with a Pro subscription.</span>'
     + '<a href="/pro/" style="margin-top:6px;padding:8px 22px;background:var(--amber);color:#0c0c0a;border-radius:6px;font:600 12px var(--sans);text-decoration:none">Upgrade →</a>'
     + '</div>';
@@ -2842,7 +2861,7 @@ function generateReport() {
 // ── Predictions ──
 function renderPredictions() {
   var el = document.getElementById("prediction-list");
-  if (!isSubscriber()) { showProGate('prediction-list', 'PIE Predictions'); return; }
+  if (!isSubscriber()) { showProGate('prediction-list', 'PIE Predictions', 'commercial'); return; }
   var impactColor = {critical:"--red",high:"--warning",medium:"--blue",low:"--text-d"};
   el.innerHTML = PREDICTIONS.map(function(p,i) {
     var ic = impactColor[p.impact] || "--text-d";

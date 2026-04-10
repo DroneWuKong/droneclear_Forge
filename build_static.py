@@ -80,6 +80,26 @@ PAGES = {
 # Static assets to copy (JS, CSS, JSON, images)
 STATIC_EXTENSIONS = {'.js', '.css', '.json', '.png', '.jpg', '.svg', '.ico', '.gif', '.webp'}
 
+# Files that must NOT appear in the public build/ static/ directory.
+# These are served by forge-data.mjs with tier-based auth.
+# forge_orqa_configs.json is NEVER served at any tier.
+GATED_FROM_BUILD = {
+    # commercial tier
+    'intel_articles.json', 'intel_companies.json', 'intel_platforms.json', 'intel_programs.json',
+    'pie_flags.json', 'pie_brief.json', 'pie_brief_history.json',
+    'pie_predictions.json', 'pie_trends.json', 'pie_weekly.json',
+    'predictions_best.json', 'predictions_archive.json', 'llm_predictions.json',
+    'gap_analysis_latest.json', 'entity_graph.json',
+    'forge_intel.json', 'commercial_master.json',
+    'solicitations.json',
+    # dfr tier
+    'dfr_master.json',
+    # agency tier
+    'defense_master.json',
+    # NEVER served
+    'forge_orqa_configs.json',
+}
+
 
 def strip_django_tags(html):
     """Remove Django template tags and convert to plain HTML paths."""
@@ -180,7 +200,7 @@ def fix_paths(html, depth=0):
         html = html.replace("fetch('forge_database.json')", f"fetch('{prefix}static/forge_database.json')")
         html = html.replace("fetch('forge_intel.json')", f"fetch('{prefix}static/forge_intel.json')")
         html = html.replace("fetch('forge_troubleshooting.json')", f"fetch('{prefix}static/forge_troubleshooting.json')")
-        html = html.replace("fetch('intel_articles.json')", f"fetch('{prefix}static/intel_articles.json')")
+        html = html.replace("fetch('intel_articles.json')", "fetch('/.netlify/functions/forge-data?type=intel_articles&token='+encodeURIComponent(localStorage.getItem('forge_token')||''))")
         html = html.replace("fetch('intel_companies.json')", f"fetch('{prefix}static/intel_companies.json')")
         html = html.replace("fetch('intel_platforms.json')", f"fetch('{prefix}static/intel_platforms.json')")
         html = html.replace("fetch('intel_programs.json')", f"fetch('{prefix}static/intel_programs.json')")
@@ -191,17 +211,18 @@ def fix_paths(html, depth=0):
         html = html.replace("fetch('../data/commercial/commercial_master.json')", f"fetch('{prefix}static/commercial_master.json')")
         html = html.replace("fetch('../data/dfr/dfr_master.json')", f"fetch('{prefix}static/dfr_master.json')")
         # PIE files
-        html = html.replace("fetch('pie_flags.json')", f"fetch('{prefix}static/pie_flags.json')")
-        html = html.replace("fetch('solicitations.json')", f"fetch('{prefix}static/solicitations.json')")
+        html = html.replace("fetch('pie_flags.json')", "fetch('/.netlify/functions/forge-data?type=pie_flags&token='+encodeURIComponent(localStorage.getItem('forge_token')||''))")
+        html = html.replace("fetch('solicitations.json')", "fetch('/.netlify/functions/forge-data?type=solicitations&token='+encodeURIComponent(localStorage.getItem('forge_token')||''))")
         html = html.replace("fetch('miner_registry.json')", f"fetch('{prefix}static/miner_registry.json')")
         html = html.replace("fetch('/static/gap_analysis_latest.json')", f"fetch('{prefix}static/gap_analysis_latest.json')")
         html = html.replace("fetch('pie_predictions.json')", f"fetch('{prefix}static/pie_predictions.json')")
-        html = html.replace("fetch('pie_brief.json')", f"fetch('{prefix}static/pie_brief.json')")
+        html = html.replace("fetch('pie_brief.json')", "fetch('/.netlify/functions/forge-data?type=pie_brief&token='+encodeURIComponent(localStorage.getItem('forge_token')||''))")
         html = html.replace("fetch('pie_weekly.json')", f"fetch('{prefix}static/pie_weekly.json')")
         html = html.replace("fetch('forge_firmware_configs.json')", f"fetch('{prefix}static/forge_firmware_configs.json')")
         html = html.replace("fetch('forge_firmware_versions.json')", f"fetch('{prefix}static/forge_firmware_versions.json')")
         html = html.replace("fetch('forge_incompatibilities.json')", f"fetch('{prefix}static/forge_incompatibilities.json')")
-        html = html.replace("fetch('forge_orqa_configs.json')", f"fetch('{prefix}static/forge_orqa_configs.json')")
+        # forge_orqa_configs.json — NEVER served, rewrite to no-op
+        html = html.replace("fetch('forge_orqa_configs.json')", "fetch('/dev/null')")
     
     # Fix nav links to use clean URLs
     html = html.replace('href="/"', 'href="/"')
@@ -695,28 +716,24 @@ def build():
     os.makedirs(BUILD_DIR)
     os.makedirs(os.path.join(BUILD_DIR, 'static'))
     
-    # Copy static assets
+    # Copy static assets — skip gated files (served by forge-data.mjs instead)
+    copied = skipped = 0
     for fname in os.listdir(SRC_DIR):
         ext = os.path.splitext(fname)[1].lower()
-        if ext in STATIC_EXTENSIONS:
-            src = os.path.join(SRC_DIR, fname)
-            dst = os.path.join(BUILD_DIR, 'static', fname)
-            shutil.copy2(src, dst)
-    
-    print(f"Copied static assets to {BUILD_DIR}/static/")
+        if ext not in STATIC_EXTENSIONS:
+            continue
+        if fname in GATED_FROM_BUILD:
+            skipped += 1
+            continue
+        src = os.path.join(SRC_DIR, fname)
+        dst = os.path.join(BUILD_DIR, 'static', fname)
+        shutil.copy2(src, dst)
+        copied += 1
 
-    # Copy master DB JSON files from data/ dirs into static/
-    master_dbs = [
-        ('data/defense/defense_master.json', 'defense_master.json'),
-        ('data/commercial/commercial_master.json', 'commercial_master.json'),
-        ('data/dfr/dfr_master.json', 'dfr_master.json'),
-    ]
-    for src_rel, dst_name in master_dbs:
-        if os.path.exists(src_rel):
-            shutil.copy2(src_rel, os.path.join(BUILD_DIR, 'static', dst_name))
-            print(f"  Copied {src_rel} -> static/{dst_name}")
-        else:
-            print(f"  WARNING: {src_rel} not found - {dst_name} missing from build")
+    print(f"  Copied {copied} static assets, skipped {skipped} gated files")
+
+    # Master DB files are gated — served by forge-data.mjs, not in public build
+    # defense_master, commercial_master, dfr_master → never in build/static/
     
     # Process HTML pages
     for src_name, dst_path in PAGES.items():
