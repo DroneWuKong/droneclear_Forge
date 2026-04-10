@@ -198,8 +198,10 @@ export default async (req, context) => {
     });
 
   } catch (err) {
-    return new Response(JSON.stringify({ error: err.message }), {
-      status: 500, headers: { ...corsHeaders(req), 'Content-Type': 'application/json' },
+    // Never 500 analytics — silently fail so page load is never blocked
+    console.error('[ingest] unhandled error:', err.message);
+    return new Response(JSON.stringify({ accepted: 0, stored: false, error: err.message }), {
+      status: 200, headers: { ...corsHeaders(req), 'Content-Type': 'application/json' },
     });
   }
 };

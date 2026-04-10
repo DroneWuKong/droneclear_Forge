@@ -211,19 +211,59 @@ export default async (req) => {
   }
 };
 
-// Load dataset from Netlify Blobs (synced from Ai-Project via GitHub Actions)
+// Dataset filename map — full files committed into build root
+const DATASET_FILES = {
+  pie_flags:           'pie_flags.json',
+  pie_brief:           'pie_brief.json',
+  pie_predictions:     'pie_predictions.json',
+  pie_trends:          'pie_trends.json',
+  pie_weekly:          'pie_weekly.json',
+  pie_brief_history:   'pie_brief_history.json',
+  predictions_best:    'predictions_best.json',
+  predictions_archive: 'predictions_archive.json',
+  llm_predictions:     'llm_predictions.json',
+  gap_analysis_latest: 'gap_analysis_latest.json',
+  entity_graph:        'entity_graph.json',
+  forge_intel:         'forge_intel.json',
+  intel_articles:      'intel_articles.json',
+  intel_companies:     'intel_companies.json',
+  intel_platforms:     'intel_platforms.json',
+  intel_programs:      'intel_programs.json',
+  solicitations:       'solicitations.json',
+  miner_health:        'miner_health.json',
+  miner_registry:      'miner_registry.json',
+};
+
+// Load dataset — Blobs first (fresh pipeline output), then committed build file, then static slice
 async function loadDataset(type) {
+  // 1. Try Netlify Blobs (populated by sync workflow when available)
   try {
     const { getStore } = await import('@netlify/blobs');
     const store = getStore('forge-datasets');
     const data = await store.get(type, { type: 'json' });
     if (data) return data;
   } catch {}
-  // Fallback: try static file (for free-tier datasets that stay in build)
+
+  // 2. Fall back to full committed file in build root (always present)
+  const filename = DATASET_FILES[type];
+  if (filename) {
+    try {
+      const res = await fetch(`https://forgeprole.netlify.app/${filename}`);
+      if (res.ok) return await res.json();
+    } catch {}
+    try {
+      // Also try nvmillfindoutmyself.com domain
+      const res = await fetch(`https://nvmillfindoutmyself.com/${filename}`);
+      if (res.ok) return await res.json();
+    } catch {}
+  }
+
+  // 3. Last resort: static slice (free-tier truncated version)
   try {
     const res = await fetch(`https://forgeprole.netlify.app/static/${type}.json`);
     if (res.ok) return await res.json();
   } catch {}
+
   throw new Error(`Dataset ${type} not available`);
 }
 
