@@ -19,7 +19,7 @@ import subprocess
 SRC_DIR = 'DroneClear Components Visualizer'
 BUILD_DIR = 'build'
 
-# Pages to process
+# Pages to process  [rebuild 2026-04-10]
 PAGES = {
     'index.html': 'builder/index.html',      # /builder/
     'mission-control.html': 'index.html',      # / (home — The Bench)
