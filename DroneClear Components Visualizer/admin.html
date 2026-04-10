@@ -415,10 +415,10 @@
           <div class="field">
             <label>Tier</label>
             <select id="f-tier">
-              <option value="commercial">Commercial — $29/mo features</option>
-              <option value="dfr">DFR — $49/mo features</option>
-              <option value="agency">Agency — $299/mo features</option>
-              <option value="full">Full Access — everything</option>
+              <option value="commercial">Commercial — $39/mo</option>
+              <option value="dfr">DFR — $49/mo</option>
+              <option value="agency">Agency — contact/vetted</option>
+              <option value="full">Full Access — all tiers</option>
             </select>
           </div>
           <div class="field">
@@ -530,7 +530,7 @@
           <span style="color:var(--cyan);font-weight:700">// FULL ACCESS SCOPE</span><br>
           Wingman AI (Claude) · PIE predictions · DFR Intel Feed · Platform DB ·
           Grant Matrix · Waiver Library · Compliance Dashboard · Vault (grey-area parts) ·
-          Intel feeds (commercial + defense + finance) · Gap analyzer · All future modules
+          All tiers — commercial intel, DFR, defense master, grayzone, allied profiles · Agency-level access
         </div>
 
         <div class="form-grid">
@@ -559,7 +559,7 @@
 
         <button class="btn btn-primary" id="full-issue-btn" onclick="issueFullToken()"
                 style="border-color:var(--cyan);color:var(--cyan)">
-          GENERATE FULL ACCESS TOKEN →
+          GENERATE AGENCY / FULL ACCESS TOKEN →
         </button>
 
         <div class="token-out" id="full-token-out">
@@ -794,8 +794,13 @@ function renderList(entries) {
     var issuedStr = e.iat ? new Date(e.iat).toLocaleDateString('en-US', {month:'short',day:'numeric',year:'numeric'}) : '—';
     var expStr    = e.exp ? new Date(e.exp).toLocaleDateString('en-US', {month:'short',day:'numeric',year:'numeric'}) : '—';
 
-    var tierBadge = e.tier === 'full'
+    var tierBadge = (e.tier === 'full' || e.tier === 'agency')
       ? '<span style="font-size:10px;color:var(--cyan);border:1px solid var(--cyan);padding:1px 5px;margin-left:6px">FULL</span>'
+      : e.tier === 'dfr'
+      ? '<span style="font-size:10px;color:var(--amber);border:1px solid var(--amber);padding:1px 5px;margin-left:6px">DFR</span>'
+      : (e.tier === 'commercial' || e.tier === 'pro')
+      ? '<span style="font-size:10px;color:#aaa;border:1px solid #aaa;padding:1px 5px;margin-left:6px">COM</span>'
+      : '';color:var(--cyan);border:1px solid var(--cyan);padding:1px 5px;margin-left:6px">FULL</span>'
       : e.tier === 'pro' && e.scope && e.scope.includes('dfr')
       ? '<span style="font-size:10px;color:var(--amber);border:1px solid var(--amber);padding:1px 5px;margin-left:6px">DFR</span>'
       : '';
@@ -1002,12 +1007,12 @@ function issueFullToken() {
   fetch('/.netlify/functions/issue-demo?action=issue', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', 'X-Owner-Secret': SECRET },
-    body: JSON.stringify({ email, name, days: parseInt(days), note, tier: 'full' }),
+    body: JSON.stringify({ email, name, days: parseInt(days), note, tier: 'agency' }),
   })
   .then(function(r) { return r.json(); })
   .then(function(data) {
     btn.disabled = false;
-    btn.textContent = 'GENERATE FULL ACCESS TOKEN →';
+    btn.textContent = 'GENERATE AGENCY / FULL ACCESS TOKEN →';
     if (data.error) { toast(data.error, 'error'); return; }
     lastFullToken = data.token;
     lastFullEmail = email;
@@ -1028,7 +1033,7 @@ function issueFullToken() {
   })
   .catch(function(e) {
     btn.disabled = false;
-    btn.textContent = 'GENERATE FULL ACCESS TOKEN →';
+    btn.textContent = 'GENERATE AGENCY / FULL ACCESS TOKEN →';
     toast('Error: ' + e.message, 'error');
   });
 }
