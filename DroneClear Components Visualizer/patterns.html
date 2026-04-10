@@ -681,13 +681,15 @@ function isSubscriber() {
 }
 
 function getUserTier() {
-  var ft = localStorage.getItem('forge_token') || '';
+  var ft = localStorage.getItem('forge_token') || localStorage.getItem('wingman_sub_token') || '';
   if (!ft) return 'free';
   try {
-    var payload = JSON.parse(atob(JSON.parse(atob(ft)).payload ? atob(ft) : ft));
-    var tier = (payload.payload || payload).tier || 'commercial';
-    return tier === 'pro' ? 'commercial' : tier;
-  } catch(e) { return 'commercial'; }  // has a token but can't decode = assume commercial
+    var decoded = JSON.parse(atob(ft));
+    var payload = decoded.payload || decoded;
+    var tier = payload.tier || 'commercial';
+    if (tier === 'pro' || tier === 'full') tier = 'agency';
+    return tier;
+  } catch(e) { return 'commercial'; }
 }
 
 function tierAtLeast(required) {
@@ -6483,8 +6485,9 @@ function updateNavTokenStatus() {
   var btnEl = document.getElementById('nav-token-btn');
   if (tok) {
     try {
-      var p = JSON.parse(atob(JSON.parse(atob(tok)).payload ? atob(tok) : tok));
-      var tier = ((p.payload||p).tier||'').toUpperCase();
+      var decoded = JSON.parse(atob(tok));
+      var tier = ((decoded.payload||decoded).tier||'').toUpperCase();
+      if (tier === 'PRO' || tier === 'FULL') tier = 'FULL';
       statusEl.textContent = '✓ ' + tier;
       statusEl.style.display = 'block';
       btnEl.style.display = 'none';
