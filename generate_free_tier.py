@@ -11,11 +11,13 @@ not enough to replace the subscription.
 import json, os, sys
 from pathlib import Path
 
-# Try to load from Ai-Project clone or local data/
+# Try to load from Ai-Project clone, local data/, or the static/ folder in the repo
+# At Netlify build time, pie_*.json are committed into static/ by the sync workflow
 SEARCH_PATHS = [
     Path('/home/claude/Ai-Project/data'),
     Path('../Ai-Project/data'),
     Path('data'),
+    Path('DroneClear Components Visualizer/static'),  # pie_flags.json, pie_predictions.json live here
 ]
 
 def find_file(name):

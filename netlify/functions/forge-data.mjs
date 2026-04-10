@@ -72,18 +72,24 @@ const DATASETS = {
   defense_master:          { tier: 'agency' },
 };
 
-// Free-tier summaries for gated data (what anonymous visitors see)
+// Free-tier: serve the public-safe static slice that's already in the build
+// These are truncated versions committed by the sync workflow — same data, less of it
 async function freeSummary(type) {
-  if (type === 'pie_flags') {
-    return { summary_only: true, message: 'Flag counts require Commercial access or an access code.' };
+  // Types that have a public-safe static slice in build/static/
+  const PUBLIC_SLICES = ['pie_flags','pie_brief','pie_predictions','pie_trends',
+                         'pie_brief_history','pie_flags_summary','entity_graph',
+                         'gap_analysis_latest'];
+  if (PUBLIC_SLICES.includes(type)) {
+    try {
+      // Fetch the static file that's already in the public build
+      const res = await fetch(`https://forgeprole.netlify.app/static/${type}.json`);
+      if (res.ok) {
+        const data = await res.json();
+        return { data, _free_tier: true, _upgrade_note: `Full ${type} requires Commercial access or an access code.` };
+      }
+    } catch {}
   }
-  if (type === 'pie_brief') {
-    return { summary_only: true, message: 'Daily intelligence brief requires Commercial access or an access code.' };
-  }
-  if (type === 'intel_articles') {
-    return { summary_only: true, message: 'Full intel feed requires Commercial access or an access code.' };
-  }
-  return { summary_only: true, message: `${type} requires a higher access tier.` };
+  return { summary_only: true, message: `${type} requires Commercial access or an access code.`, upgrade_url: '/pro/' };
 }
 
 async function verifyToken(token, secret) {

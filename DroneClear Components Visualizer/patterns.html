@@ -1270,7 +1270,11 @@ async function loadData() {
 
   try {
     const [fRes, pRes] = await Promise.all([
-      fetch('/.netlify/functions/forge-data?type=pie_flags&token='+encodeURIComponent(localStorage.getItem('forge_token')||localStorage.getItem('wingman_sub_token')||'')).then(r=>r.json()).then(d=>{const data=d.data||d; if(d.summary_only){FLAGS=[];FILTERED_FLAGS=[];renderFlagCount();return;} return data;}).then(flags=>{if(!flags)return;
+      fetch('/.netlify/functions/forge-data?type=pie_flags&token='+encodeURIComponent(localStorage.getItem('forge_token')||localStorage.getItem('wingman_sub_token')||'')).then(r=>r.json()).then(d=>{
+        // unwrap envelope — {data:[...]} for all tiers, summary_only:true if function fails
+        if(d.summary_only){ return fetch('../static/pie_flags.json').then(r=>r.ok?r.json():[]); }
+        return d.data||d;
+      }).then(flags=>{if(!flags)return;
         return r.json();
       }),
       fetch("../static/pie_predictions.json").then(r => {
@@ -1640,13 +1644,20 @@ function renderBriefPanel(b){
 async function loadBriefPanel(){
   try{
     let b=null;
-    // Try forge-data API (works with or without token — returns full or summary)
+    // Try forge-data API — returns {data:...,_free_tier:true} for free, {data:...} for paid
     const tok = localStorage.getItem('forge_token')||localStorage.getItem('wingman_sub_token')||'';
     try {
       const r = await fetch('/.netlify/functions/forge-data?type=pie_brief&token='+encodeURIComponent(tok));
-      if (r.ok) { const d = await r.json(); b = d.data || d; }
+      if (r.ok) {
+        const d = await r.json();
+        if (d.summary_only) {
+          // Stub response — fall through to static
+        } else {
+          b = d.data || d;  // unwrap {data:...} envelope
+        }
+      }
     } catch(e) {}
-    // Fallback to static if function unavailable
+    // Fallback to static free-tier slice (committed by sync workflow)
     if (!b) { for(const p of["../static/pie_brief.json","/static/pie_brief.json"]){try{const r=await fetch(p);if(r.ok){b=await r.json();break;}}catch(e){}} }
     if(!b)throw new Error("no data");
     renderBriefPanel(b);
