@@ -128,6 +128,51 @@ export default async (req) => {
   if (!tokenSecret) return resp({ error: 'Service not configured' }, 503);
 
   const url = new URL(req.url);
+
+  // ── POST: admin Blobs write path ──────────────────────────────────────────
+  // Allows uploading fresh dataset content to the forge-datasets Blobs store
+  // without needing a valid NETLIFY_API_TOKEN (the @netlify/blobs SDK auto-
+  // authenticates from the function's deploy context). Gated by a one-off
+  // admin key stored as FORGE_BLOBS_ADMIN_KEY in Netlify env vars.
+  //
+  // Usage:
+  //   POST /.netlify/functions/forge-data?type=pie_brief
+  //   Authorization: Bearer <FORGE_BLOBS_ADMIN_KEY>
+  //   Content-Type: application/json
+  //   <full dataset JSON>
+  if (req.method === 'POST' && url.searchParams.get('type')) {
+    const adminKey = process.env.FORGE_BLOBS_ADMIN_KEY;
+    const authHeader = req.headers.get('authorization') || '';
+    const providedKey = authHeader.replace(/^Bearer\s+/i, '');
+    if (!adminKey) return resp({ error: 'FORGE_BLOBS_ADMIN_KEY not configured' }, 503);
+    if (providedKey !== adminKey) return resp({ error: 'Invalid admin key' }, 401);
+
+    const writeType = url.searchParams.get('type');
+    if (!DATASETS[writeType]) return resp({ error: `Unknown dataset: ${writeType}` }, 404);
+
+    try {
+      const body = await req.text();
+      if (!body || body.length < 2) return resp({ error: 'Empty body' }, 400);
+      let parsed;
+      try { parsed = JSON.parse(body); }
+      catch(e) { return resp({ error: 'Invalid JSON in body: ' + e.message }, 400); }
+
+      const { getStore } = await import('@netlify/blobs');
+      const store = getStore('forge-datasets');
+      await store.setJSON(writeType, parsed);
+
+      const size = body.length;
+      return resp({
+        ok: true,
+        type: writeType,
+        size,
+        message: `${writeType} written to Blobs (${size} bytes)`,
+      });
+    } catch (e) {
+      return resp({ error: 'Blobs write failed: ' + e.message }, 500);
+    }
+  }
+
   const type = url.searchParams.get('type') || '';
   const rawToken = url.searchParams.get('token') || req.headers.get('authorization')?.replace('Bearer ', '') || '';
   const accessCode = url.searchParams.get('access_code') || '';
