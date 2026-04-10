@@ -735,6 +735,16 @@ def build():
     # Master DB files are gated — served by forge-data.mjs, not in public build
     # defense_master, commercial_master, dfr_master → never in build/static/
     
+    # Generate free-tier data slices (same data, truncated — for public build)
+    try:
+        import generate_free_tier
+        import importlib
+        importlib.reload(generate_free_tier)
+        generate_free_tier.main([str(os.path.join(BUILD_DIR, 'static'))])
+        print("  Free-tier data slices generated")
+    except Exception as e:
+        print(f"  WARNING: free-tier generation failed: {e}")
+
     # Process HTML pages
     for src_name, dst_path in PAGES.items():
         src_file = os.path.join(SRC_DIR, src_name)
