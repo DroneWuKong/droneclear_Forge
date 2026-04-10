@@ -121,6 +121,53 @@ def inject_adapter(html, depth=0):
     return html
 
 
+# Minified Forge analytics snippet — injected into every page at build time
+# Tracks: page views, scroll depth, time on page, outbound clicks, tab switches,
+#         component views, searches, filters, Wingman queries, PIE flag views,
+#         intel article views. All anonymous, no cookies, no PII.
+_ANALYTICS_SNIPPET = r"""(function(){var E='https://nvmilldoitmyself.com/.netlify/functions/analytics-ingest',S='sess_'+crypto.randomUUID().replace(/-/g,'').slice(0,16),T=Date.now(),q=[],t=null,PG=typeof __FORGE_PAGE__!=='undefined'?__FORGE_PAGE__:'unknown';function reg(){try{var z=Intl.DateTimeFormat().resolvedOptions().timeZone;if(z.includes('America'))return'Americas';if(z.includes('Europe'))return'Europe';if(z.includes('Asia')||z.includes('Australia')||z.includes('Pacific'))return'Asia-Pacific';if(z.includes('Africa'))return'Africa';}catch(e){}return'Unknown';}function ev(tp,ac,p){q.push({event_id:crypto.randomUUID(),timestamp:new Date().toISOString(),surface:'forge',page:PG,event_type:tp,event_action:ac,context:{session_id:S,geo_region:reg(),platform:/Android|iPhone|iPad/i.test(navigator.userAgent)?'mobile':'web',viewport:innerWidth+'x'+innerHeight,path:location.pathname},payload:p,data_policy:{collection_tier:'anonymous',retention_days:90,anonymized:true}});if(q.length>=20)fl();else if(!t)t=setTimeout(fl,5e3);}function fl(){if(t){clearTimeout(t);t=null;}if(!q.length)return;var b=q.splice(0);fetch(E,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({events:b}),keepalive:true}).catch(function(){});}ev('page_view','view',{path:location.pathname,title:document.title,page:PG,referrer:document.referrer?new URL(document.referrer).hostname:'direct'});var ds=[25,50,75,100],ht=new Set;addEventListener('scroll',function(){var pct=Math.round(scrollY/(Math.max(document.body.scrollHeight-innerHeight,1))*100),el=(Date.now()-T)/1e3;ds.forEach(function(d){if(pct>=d&&!ht.has(d)){ht.add(d);ev('engagement','scroll_depth',{path:location.pathname,depth_pct:d,time_sec:Math.round(el)});}});},{passive:true});document.addEventListener('click',function(e){var a=e.target.closest('a[href]');if(!a)return;try{var u=new URL(a.href);if(u.hostname!==location.hostname)ev('click','outbound_link',{from:location.pathname,to:u.hostname,text:a.textContent.trim().slice(0,80)});}catch(e){}});addEventListener('visibilitychange',function(){if(document.visibilityState==='hidden'){ev('engagement','time_on_page',{path:location.pathname,duration_sec:Math.round((Date.now()-T)/1e3),deep_read:(Date.now()-T)>12e4});fl();}});addEventListener('pagehide',fl);window.__fa=window.__forgeAnalytics={search:function(q,cat,n){ev('search','component_search',{query:(q||'').slice(0,200),category:cat,result_count:n,had_results:n>0});if(!n)ev('search','no_results',{query:(q||'').slice(0,200),category:cat});},filter:function(cat,filters,n){ev('filter','apply_filter',{category:cat,filter_names:Object.keys(filters||{}),result_count:n,zero_results:!n});if(!n)ev('search','no_results',{query:'',category:cat,filters:filters});},view:function(pid,cat,mfr,country,ndaa){ev('page_view','component_detail',{pid:pid,category:cat,manufacturer:mfr,country:country,ndaa_compliant:ndaa});},compare:function(a,b,cat){ev('compare','side_by_side',{pid_a:a,pid_b:b,category:cat});},tab:function(name){ev('navigation','tab_switch',{tab:name,page:PG});},query:function(q,cat,img){ev('ai','wingman_query',{query:(q||'').slice(0,200),category:cat,has_image:!!img});},flag:function(id,sev,type){ev('intel','flag_view',{flag_id:id,severity:sev,flag_type:type});},intel:function(src,art){ev('intel','article_view',{source:src,article_id:art});},flush:fl};})();"""
+
+# Page slug mapping — used to set __FORGE_PAGE__ per page
+_PAGE_SLUGS = {
+    'index.html': 'builder', 'mission-control.html': 'home',
+    'patterns.html': 'patterns', 'patterns-home.html': 'patterns-home',
+    'intel.html': 'intel-feed', 'intel-home.html': 'intel-home',
+    'intel-defense.html': 'intel-defense', 'intel-commercial.html': 'intel-commercial',
+    'intel-dfr.html': 'intel-dfr', 'intel-financial.html': 'intel-financial',
+    'wingman.html': 'wingman', 'browse.html': 'browse',
+    'platforms.html': 'platforms', 'compare.html': 'compare',
+    'cost.html': 'cost', 'payload-compare.html': 'payload-compare',
+    'stack-builder.html': 'stack-builder', 'industry.html': 'industry',
+    'tools.html': 'tools', 'tools-home.html': 'tools-home',
+    'pro.html': 'pro', 'brief.html': 'brief', 'report.html': 'report',
+    'compliance.html': 'compliance', 'tracker.html': 'tracker',
+    'regs.html': 'regs', 'verify.html': 'verify', 'waiver.html': 'waiver',
+    'grants.html': 'grants', 'audit.html': 'audit', 'guide.html': 'guide',
+    'pid-tuning.html': 'pid-tuning', 'academy.html': 'academy',
+    'guides-hub.html': 'guides-hub', 'swarm-guide.html': 'swarm-guide',
+    'swarm-selector.html': 'swarm', 'slam-guide.html': 'slam-guide',
+    'slam-selector.html': 'slam', 'mesh-guide.html': 'mesh-guide',
+    'tak-guide.html': 'tak-guide', 'openhd-guide.html': 'openhd-guide',
+    'ai-guide.html': 'ai-guide', 'cuas-guide.html': 'cuas-guide',
+    'fc-firmware-guide.html': 'fc-firmware-guide', 'vault.html': 'vault',
+    'troubleshoot.html': 'troubleshoot', 'start.html': 'start',
+    'admin.html': 'admin', 'contribute.html': 'contribute',
+    'privacy.html': 'privacy', 'terms.html': 'terms',
+}
+
+
+def inject_analytics(html, src_name):
+    """Inject Forge analytics snippet before </body> on every page."""
+    slug = _PAGE_SLUGS.get(src_name, src_name.replace('.html', ''))
+    tag = (
+        f'\n<script>var __FORGE_PAGE__="{slug}";</script>\n'
+        f'<script>{_ANALYTICS_SNIPPET}</script>\n'
+    )
+    if '</body>' in html:
+        return html.replace('</body>', tag + '</body>', 1)
+    return html + tag
+
+
 def fix_paths(html, depth=0):
     """Fix static asset paths for the nested directory structure."""
     prefix = '../' * depth if depth > 0 else ''
@@ -688,6 +735,7 @@ def build():
         html = fix_paths(html, depth)
         html = inject_seo(html, src_name, dst_path)
         html = inject_adapter(html, depth)
+        html = inject_analytics(html, src_name)
         html = fix_nav_links(html, depth)
         
         with open(dst_file, 'w', encoding='utf-8') as f:
