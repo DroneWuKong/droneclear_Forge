@@ -692,7 +692,7 @@ function mapClockScore(cs) {
 const DATA_FALLBACK = {
   generated: "2026-04-11T01:34:44Z",
   ueri_score: 67.4,
-  minutes_to_midnight: 118,
+  minutes_to_midnight: 10,
   display: "11:02",
   threat_level: "ELEVATED",
   narrative: "Severe systemic pressure across supply chain, gray zone, and regulatory vectors. Immediate action required.",
@@ -790,19 +790,16 @@ function computeClockScore() {
 }
 
 function scoreToTime(score) {
-  // 0 = 6:00 (safe), 100 = 11:59 (midnight)
-  // Minutes to midnight: score=0 → 360min, score=100 → 1min
-  const minutesToMidnight = Math.round(360 - (score / 100) * 359);
-  const hours = Math.floor(minutesToMidnight / 60);
-  const mins = minutesToMidnight % 60;
-  const displayHour = (12 - hours) % 12 || 12;
-  const displayMin = 60 - mins;
-  const adjHour = displayMin === 60 ? (displayHour % 12) + 1 : displayHour;
-  const adjMin = displayMin === 60 ? 0 : displayMin;
+  // Scale: 30 min at UERI 0 → 1 min at UERI 100
+  // UERI 67.4 → ~10 min to midnight (hand at 11:50)
+  const minutesToMidnight = Math.max(1, Math.round((100 - score) / 100 * 30));
+  // Clock angle: 0 min = straight up (midnight), 30 min = ~11:30 area
+  // Full clock face = 720 min. minutesToMidnight/720 * 360 = degrees before 12
+  const angleDeg = (1 - minutesToMidnight / 720) * 360;
   return {
     minutesToMidnight,
-    display: `${adjHour}:${String(adjMin).padStart(2,'0')}`,
-    angleDeg: (360 - minutesToMidnight) / 360 * 360
+    display: `${minutesToMidnight}m`,
+    angleDeg
   };
 }
 
