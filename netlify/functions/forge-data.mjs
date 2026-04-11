@@ -284,10 +284,17 @@ async function loadDataset(type) {
   // 1. Try Netlify Blobs (populated by sync workflow when available)
   try {
     const { getStore } = await import('@netlify/blobs');
-    const store = getStore('forge-datasets');
+    // Use explicit siteID+token when available for cross-context reliability
+    const siteID = process.env.NETLIFY_SITE_ID;
+    const token = process.env.NETLIFY_API_TOKEN;
+    const storeOpts = (siteID && token)
+      ? { name: 'forge-datasets', siteID, token }
+      : 'forge-datasets';
+    const store = getStore(storeOpts);
     const data = await store.get(type, { type: 'json' });
-    if (data) return data;
-  } catch {}
+    if (data) { console.log(`[forge-data] Blobs hit: ${type} (${Array.isArray(data)?data.length:'obj'} items)`); return data; }
+    console.log(`[forge-data] Blobs miss: ${type}`);
+  } catch (e) { console.error(`[forge-data] Blobs error for ${type}:`, e.message); }
 
   // 2. Fall back to full committed file in build root (always present)
   const filename = DATASET_FILES[type];
