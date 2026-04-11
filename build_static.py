@@ -22,7 +22,7 @@ BUILD_DIR = 'build'
 # Pages to process  [rebuild 2026-04-10]
 PAGES = {
     'index.html': 'builder/index.html',      # /builder/
-    'mission-control.html': 'index.html',      # / (home Ã¢ÂÂ The Bench)
+    'mission-control.html': 'index.html',      # / (home — The Bench)
     'academy.html': 'academy/index.html',
     'audit.html': 'audit/index.html',
     'editor.html': 'library/index.html',
@@ -53,7 +53,7 @@ PAGES = {
     'intel.html': 'intel/feed/index.html',
     'ddg.html': 'ddg/index.html',
     'vault.html': 'vault/index.html',
-    'troubleshoot.html': 'troubleshoot/index.html',  # Unlisted Ã¢ÂÂ no nav links
+    'troubleshoot.html': 'troubleshoot/index.html',  # Unlisted — no nav links
     'industry.html': 'industry/index.html',
     'intel-defense.html': 'intel-defense/index.html',
     'intel-dfr.html': 'intel-dfr/index.html',
@@ -149,13 +149,13 @@ def inject_adapter(html, depth=0):
     return html
 
 
-# Minified Forge analytics snippet Ã¢ÂÂ injected into every page at build time
+# Minified Forge analytics snippet — injected into every page at build time
 # Tracks: page views, scroll depth, time on page, outbound clicks, tab switches,
 #         component views, searches, filters, Wingman queries, PIE flag views,
 #         intel article views. All anonymous, no cookies, no PII.
 _ANALYTICS_SNIPPET = r"""(function(){var E=(location.hostname==='localhost'||location.hostname==='127.0.0.1'?'http://localhost:8888':'https://thebluefairy.netlify.app')+'/.netlify/functions/analytics-ingest',S='sess_'+crypto.randomUUID().replace(/-/g,'').slice(0,16),T=Date.now(),q=[],t=null,PG=typeof __FORGE_PAGE__!=='undefined'?__FORGE_PAGE__:'unknown';function reg(){try{var z=Intl.DateTimeFormat().resolvedOptions().timeZone;if(z.includes('America'))return'Americas';if(z.includes('Europe'))return'Europe';if(z.includes('Asia')||z.includes('Australia')||z.includes('Pacific'))return'Asia-Pacific';if(z.includes('Africa'))return'Africa';}catch(e){}return'Unknown';}function ev(tp,ac,p){q.push({event_id:crypto.randomUUID(),timestamp:new Date().toISOString(),surface:'forge',page:PG,event_type:tp,event_action:ac,context:{session_id:S,geo_region:reg(),platform:/Android|iPhone|iPad/i.test(navigator.userAgent)?'mobile':'web',viewport:innerWidth+'x'+innerHeight,path:location.pathname},payload:p,data_policy:{collection_tier:'anonymous',retention_days:90,anonymized:true}});if(q.length>=20)fl();else if(!t)t=setTimeout(fl,5e3);}function fl(){if(t){clearTimeout(t);t=null;}if(!q.length)return;var b=q.splice(0);fetch(E,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({events:b}),keepalive:true}).catch(function(){});}ev('page_view','view',{path:location.pathname,title:document.title,page:PG,referrer:document.referrer?new URL(document.referrer).hostname:'direct'});var ds=[25,50,75,100],ht=new Set;addEventListener('scroll',function(){var pct=Math.round(scrollY/(Math.max(document.body.scrollHeight-innerHeight,1))*100),el=(Date.now()-T)/1e3;ds.forEach(function(d){if(pct>=d&&!ht.has(d)){ht.add(d);ev('engagement','scroll_depth',{path:location.pathname,depth_pct:d,time_sec:Math.round(el)});}});},{passive:true});document.addEventListener('click',function(e){var a=e.target.closest('a[href]');if(!a)return;try{var u=new URL(a.href);if(u.hostname!==location.hostname)ev('click','outbound_link',{from:location.pathname,to:u.hostname,text:a.textContent.trim().slice(0,80)});}catch(e){}});addEventListener('visibilitychange',function(){if(document.visibilityState==='hidden'){ev('engagement','time_on_page',{path:location.pathname,duration_sec:Math.round((Date.now()-T)/1e3),deep_read:(Date.now()-T)>12e4});fl();}});addEventListener('pagehide',fl);window.__fa=window.__forgeAnalytics={search:function(q,cat,n){ev('search','component_search',{query:(q||'').slice(0,200),category:cat,result_count:n,had_results:n>0});if(!n)ev('search','no_results',{query:(q||'').slice(0,200),category:cat});},filter:function(cat,filters,n){ev('filter','apply_filter',{category:cat,filter_names:Object.keys(filters||{}),result_count:n,zero_results:!n});if(!n)ev('search','no_results',{query:'',category:cat,filters:filters});},view:function(pid,cat,mfr,country,ndaa){ev('page_view','component_detail',{pid:pid,category:cat,manufacturer:mfr,country:country,ndaa_compliant:ndaa});},compare:function(a,b,cat){ev('compare','side_by_side',{pid_a:a,pid_b:b,category:cat});},tab:function(name){ev('navigation','tab_switch',{tab:name,page:PG});},query:function(q,cat,img){ev('ai','wingman_query',{query:(q||'').slice(0,200),category:cat,has_image:!!img});},flag:function(id,sev,type){ev('intel','flag_view',{flag_id:id,severity:sev,flag_type:type});},intel:function(src,art){ev('intel','article_view',{source:src,article_id:art});},flush:fl};})();"""
 
-# Page slug mapping Ã¢ÂÂ used to set __FORGE_PAGE__ per page
+# Page slug mapping — used to set __FORGE_PAGE__ per page
 _PAGE_SLUGS = {
     'index.html': 'builder', 'mission-control.html': 'home',
     'patterns.html': 'patterns', 'patterns-home.html': 'patterns-home',
@@ -237,7 +237,7 @@ def fix_paths(html, depth=0):
         html = html.replace("fetch('forge_alternatives.json')", f"fetch('{prefix}static/forge_alternatives.json')")
         html = html.replace("fetch('forge_848_spec_sheets.json')", f"fetch('{prefix}static/forge_848_spec_sheets.json')")
         html = html.replace("fetch('forge_compliance_events.json')", f"fetch('{prefix}static/forge_compliance_events.json')")
-        # forge_orqa_configs.json Ã¢ÂÂ NEVER served, rewrite to no-op
+        # forge_orqa_configs.json — NEVER served, rewrite to no-op
         html = html.replace("fetch('forge_orqa_configs.json')", "fetch('/dev/null')")
     
     # Fix nav links to use clean URLs
@@ -268,46 +268,46 @@ def fix_nav_links(html, depth=0):
 
 
 # Ã¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂ
-# SEO Ã¢ÂÂ Meta tags, Open Graph, Twitter Cards, Sitemap, robots.txt
+# SEO — Meta tags, Open Graph, Twitter Cards, Sitemap, robots.txt
 # Ã¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂ
 
 SITE_URL = 'https://nvmilldoitmyself.com'
-SITE_NAME = 'Forge Ã¢ÂÂ Drone Integration Handbook'
+SITE_NAME = 'Forge — Drone Integration Handbook'
 
 # SEO metadata per page: (title, description, keywords)
 SEO_META = {
     'mission-control.html': (
-        'Forge Ã¢ÂÂ Drone Build Planner & Intelligence Platform',
+        'Forge — Drone Build Planner & Intelligence Platform',
         'Browse 3,500+ vetted drone parts, validate build compatibility, assemble step-by-step guides, and access defense intelligence. The interactive companion to the Drone Integration Handbook.',
         'drone build planner, FPV parts database, drone compatibility, NDAA compliant drones, Blue UAS, drone components',
     ),
     'index.html': (
-        'Model Builder Ã¢ÂÂ Forge Drone Build Planner',
+        'Model Builder — Forge Drone Build Planner',
         'Assemble drone builds from 3,500+ vetted parts with real-time 12-check compatibility validation. Flight controllers, ESCs, motors, frames, and more.',
         'drone model builder, FPV build tool, drone parts compatibility, flight controller selector',
     ),
     'wingman.html': (
-        'Wingman AI Ã¢ÂÂ Drone Troubleshooter & Wiring Analyzer',
+        'Wingman AI — Drone Troubleshooter & Wiring Analyzer',
         'AI-powered FPV drone troubleshooter. Upload photos for wiring analysis, get PID tuning help, firmware guidance, and real-time web search. Powered by Gemini.',
         'drone troubleshooter AI, FPV wiring analyzer, Betaflight help, drone repair assistant, PID tuning AI',
     ),
     'pid-tuning.html': (
-        'PID Tuning Tool Ã¢ÂÂ Blackbox FFT Spectral Analysis & Calculator',
+        'PID Tuning Tool — Blackbox FFT Spectral Analysis & Calculator',
         'Interactive PID calculator with Blackbox FFT spectral analysis, symptom diagnostic, filter advisor, and AI tune advisor. Betaflight CLI generator with session logging.',
         'PID tuning calculator, Betaflight PID, Blackbox FFT analysis, drone filter tuning, propwash fix, D-term noise',
     ),
     'tools.html': (
-        'RF Tools & Calculators Ã¢ÂÂ FPV Channel Planner, Range Estimator',
+        'RF Tools & Calculators — FPV Channel Planner, Range Estimator',
         'FPV channel planner, harmonics calculator, range estimator, Fresnel zone, dipole antenna length, VTX unlocker, and FC target matcher.',
         'FPV channel planner, RF calculator, drone range estimator, VTX frequency, antenna calculator',
     ),
     'platforms.html': (
-        'Drone Platforms Database Ã¢ÂÂ 219 Defense & Commercial UAS',
+        'Drone Platforms Database — 219 Defense & Commercial UAS',
         'Searchable database of 219 drone platforms with specs, compliance status, country of origin, and Blue UAS certification. Filter by NDAA, propulsion, payload.',
         'drone platforms database, Blue UAS list, NDAA compliant drones, military drones, commercial UAS database',
     ),
     'compliance.html': (
-        'Drone Compliance Dashboard Ã¢ÂÂ NDAA, Blue UAS, ITAR Status',
+        'Drone Compliance Dashboard — NDAA, Blue UAS, ITAR Status',
         'Check NDAA 848 (FY2020), ASDA / FAR 52.240-1 (FY2024), Blue UAS certification, ITAR, FCC Covered List, and country-of-origin status for 219 drone platforms. Traffic-light compliance tiers.',
         'NDAA 848 drone compliance, ASDA drone, FAR 52.240-1, Blue UAS cleared drones, FCC covered list UAS, drone procurement compliance',
     ),
@@ -332,102 +332,102 @@ SEO_META = {
         'UAS regulatory timeline, NDAA 848 timeline, ASDA effective date, FCC drone ban, Blue UAS history, drone compliance history',
     ),
     'compare.html': (
-        'Drone Platform Compare Ã¢ÂÂ Side-by-Side Spec Comparison',
+        'Drone Platform Compare — Side-by-Side Spec Comparison',
         'Compare 2-3 drone platforms side by side. Specs, compliance, flight time, payload, thermal cameras, and MAVLink support with best/worst highlighting.',
         'drone comparison tool, compare drone specs, platform comparison, UAS specifications',
     ),
     'intel-home.html': (
-        'Intel Ã¢ÂÂ UAS Intelligence Hub',
+        'Intel — UAS Intelligence Hub',
         'Defense news, industry funding, platform intelligence and analytics across the UAS ecosystem.',
         'drone intelligence, UAS news, defense drone news',
     ),
     'intel.html': (
-        'Intel Feed Ã¢ÂÂ Live Defense & Drone Industry News',
+        'Intel Feed — Live Defense & Drone Industry News',
         'Curated defense drone news from DefenseScoop, Defense News, Breaking Defense, and The War Zone. Real-time feed with defense, financial, and commercial categories.',
         'drone defense news, UAS industry news, defense drone contracts, drone market intelligence',
     ),
     'industry.html': (
-        'Industry Intelligence Ã¢ÂÂ Drone Funding, Contracts & Market Data',
+        'Industry Intelligence — Drone Funding, Contracts & Market Data',
         'Curated funding rounds, defense contracts, government grants, and market data for the drone industry. Hand-verified from the Forge data pipeline.',
         'drone industry intelligence, UAS funding, defense drone contracts, drone market data',
     ),
     'slam-guide.html': (
-        'SLAM Integration Guide Ã¢ÂÂ Visual Odometry for Drones',
+        'SLAM Integration Guide — Visual Odometry for Drones',
         'Complete guide to SLAM integration on drones. ORB-SLAM3, VINS-Fusion, Kimera, and hardware selection.',
         'drone SLAM guide, visual odometry drone, ORB-SLAM3 drone, VINS-Fusion integration',
     ),
     'slam-selector.html': (
-        'SLAM Stack Selector Ã¢ÂÂ Choose the Right SLAM for Your Drone',
+        'SLAM Stack Selector — Choose the Right SLAM for Your Drone',
         'Interactive selector for SLAM stacks based on your drone, compute platform, sensors, and use case.',
         'SLAM selector, drone SLAM comparison, visual SLAM for drones, LiDAR SLAM',
     ),
     'swarm-guide.html': (
-        'Drone Swarm Integration Guide Ã¢ÂÂ Multi-Agent Coordination',
+        'Drone Swarm Integration Guide — Multi-Agent Coordination',
         'Technical guide to drone swarm coordination. Communication protocols, formation control, task allocation, and hardware.',
         'drone swarm guide, multi-drone coordination, swarm communication, drone formation control',
     ),
     'swarm-selector.html': (
-        'Swarm Stack Selector Ã¢ÂÂ Drone Swarm Architecture Planner',
+        'Swarm Stack Selector — Drone Swarm Architecture Planner',
         'Interactive selector for drone swarm communication and coordination stacks.',
         'drone swarm selector, swarm stack, multi-drone architecture',
     ),
     'tak-guide.html': (
-        'TAK Integration Guide Ã¢ÂÂ ATAK/WinTAK for Drone Operations',
+        'TAK Integration Guide — ATAK/WinTAK for Drone Operations',
         'Integrate drones with Team Awareness Kit. ATAK, WinTAK, TAK Server setup, CoT format, and video streaming.',
         'TAK drone integration, ATAK drone, WinTAK UAS, CoT drone, tactical drone feed',
     ),
     'mesh-guide.html': (
-        'Mesh Radio Integration Guide Ã¢ÂÂ Silvus, Doodle Labs, Rajant',
+        'Mesh Radio Integration Guide — Silvus, Doodle Labs, Rajant',
         'Guide to mesh radio networks for drones. Silvus StreamCaster, Doodle Labs Helix, Rajant Peregrine integration.',
         'drone mesh radio, Silvus drone, Doodle Labs Helix, mesh network drone, MANET drone',
     ),
     'openhd-guide.html': (
-        'OpenHD Integration Guide Ã¢ÂÂ Open Source HD FPV Video',
+        'OpenHD Integration Guide — Open Source HD FPV Video',
         'Set up OpenHD for low-latency HD digital FPV video on custom drones. Hardware selection and antenna setup.',
         'OpenHD setup guide, open source FPV, HD video drone, digital FPV DIY',
     ),
     'fc-firmware-guide.html': (
-        'Flight Controller Firmware Guide Ã¢ÂÂ Betaflight, iNav, ArduPilot, PX4',
+        'Flight Controller Firmware Guide — Betaflight, iNav, ArduPilot, PX4',
         'Complete comparison of drone flight controller firmware. Betaflight for racing, iNav for GPS, ArduPilot for autonomy, PX4 for enterprise.',
         'Betaflight vs iNav, drone firmware comparison, ArduPilot guide, PX4 setup, flight controller firmware',
     ),
     'academy.html': (
-        'FPV Academy Ã¢ÂÂ Learn Drone Building & Flight',
+        'FPV Academy — Learn Drone Building & Flight',
         'Educational modules for FPV drone building, soldering, firmware configuration, and flight.',
         'FPV drone tutorial, learn to build drone, FPV academy, drone building course',
     ),
     'guide.html': (
-        'Build Guide Ã¢ÂÂ Step-by-Step Drone Assembly',
+        'Build Guide — Step-by-Step Drone Assembly',
         'Step-by-step drone assembly instructions with photo capture, 3D STL viewer, media carousel, and build session tracking.',
         'drone build guide, FPV assembly instructions, drone wiring guide, step by step drone build',
     ),
     'editor.html': (
-        'Parts Library Ã¢ÂÂ 3,500+ Vetted Drone Components',
+        'Parts Library — 3,500+ Vetted Drone Components',
         'Browse and search the full parts library with specs, compatibility data, and filtering by category, manufacturer, and voltage.',
         'drone parts library, FPV component database, flight controller database, motor database',
     ),
     'audit.html': (
-        'Build Audit Ã¢ÂÂ Drone Build Quality Checklist',
+        'Build Audit — Drone Build Quality Checklist',
         'Immutable event log, build snapshots, SHA-256 photo hashing, and quality control tracking for drone builds.',
         'drone build audit, quality control drone, build verification, drone inspection checklist',
     ),
     'cost.html': (
-        'Cost Estimator Ã¢ÂÂ Drone Build BOM & Weight Breakdown',
+        'Cost Estimator — Drone Build BOM & Weight Breakdown',
         'Full bill of materials cost and weight breakdown for drone builds. Per-slot pricing and weight distribution.',
         'drone build cost, FPV build budget, drone BOM calculator, parts cost estimator',
     ),
     'troubleshoot.html': (
-        'Drone Troubleshooting Database Ã¢ÂÂ 52 Common Issues & Fixes',
+        'Drone Troubleshooting Database — 52 Common Issues & Fixes',
         'Searchable database of 52 drone troubleshooting entries across 13 categories. Symptoms, causes, and step-by-step fixes.',
         'drone troubleshooting, FPV problems fixes, Betaflight issues, drone repair guide',
     ),
     'cuas-guide.html': (
-        'Counter-UAS Guide Ã¢ÂÂ Drone Detection & Defeat Systems',
+        'Counter-UAS Guide — Drone Detection & Defeat Systems',
         'Technical guide to Counter-UAS systems. RF detection, radar, EO/IR, electronic warfare, and kinetic defeat.',
         'counter UAS guide, drone detection system, C-UAS, drone defeat, RF drone detection',
     ),
     'guides-hub.html': (
-        'Implementation Guides Ã¢ÂÂ SLAM, Mesh, TAK, Swarm & More',
+        'Implementation Guides — SLAM, Mesh, TAK, Swarm & More',
         'Technical implementation guides for drone systems: SLAM, mesh networking, TAK integration, swarm coordination, OpenHD, and counter-UAS.',
         'drone implementation guide, SLAM drone, mesh network drone, TAK drone, drone swarm',
     ),
@@ -437,7 +437,7 @@ SEO_META = {
         'drone AI guide, drone computer vision, YOLO drone, edge AI drone, companion computer',
     ),
     'browse.html': (
-        'Browse Components Ã¢ÂÂ Full Drone Parts Catalog',
+        'Browse Components — Full Drone Parts Catalog',
         'Browse the complete catalog of 3,500+ drone components with search, filtering, and detailed specifications.',
         'drone parts catalog, browse FPV parts, drone component search',
     ),
@@ -584,7 +584,7 @@ SEO_META = {
 }
 
 DEFAULT_SEO = (
-    'Forge Ã¢ÂÂ Drone Integration Handbook',
+    'Forge — Drone Integration Handbook',
     'Interactive build planner and intelligence platform for the Drone Integration Handbook. 3,500+ parts, 219 platforms, compliance tracking.',
     'drone build planner, FPV parts, drone intelligence platform',
 )
@@ -757,16 +757,16 @@ def sync_handbook_data():
     if os.path.exists(DATA_CLONE_DIR):
         shutil.rmtree(DATA_CLONE_DIR)
 
-    # Build clone URL Ã¢ÂÂ use GITHUB_PAT env var for private repo access
+    # Build clone URL — use GITHUB_PAT env var for private repo access
     clone_url = DATA_REPO
     pat = os.environ.get('GITHUB_PAT', '')
     if pat:
         clone_url = DATA_REPO.replace('https://', f'https://x-access-token:{pat}@')
         print("  Using GITHUB_PAT for private repo access")
     else:
-        print("  WARNING: No GITHUB_PAT set Ã¢ÂÂ clone may fail for private repos")
+        print("  WARNING: No GITHUB_PAT set — clone may fail for private repos")
 
-    # Shallow sparse clone Ã¢ÂÂ just data/parts-db
+    # Shallow sparse clone — just data/parts-db
     result = subprocess.run(
         ['git', 'clone', '--depth', '1', '--filter=blob:none', '--sparse', clone_url, DATA_CLONE_DIR],
         capture_output=True, text=True
@@ -847,7 +847,7 @@ def sync_handbook_data():
             platform_db = json.load(f)
         platforms = platform_db.get('platforms', [])
         if platforms:
-            # 1. Replace industry.platforms wholesale Ã¢ÂÂ primary source for /platforms/ page
+            # 1. Replace industry.platforms wholesale — primary source for /platforms/ page
             forge_db.setdefault('industry', {})['platforms'] = platforms
             print(f"  industry.platforms: {len(platforms)} platforms synced from drone_database.json")
 
@@ -907,7 +907,7 @@ def sync_handbook_data():
     print(f"\n  forge_database.json updated: {total_parts} parts, {len(forge_db['drone_models'])} models")
 
     # intel_*.json are committed directly into the repo by sync-forge-data.yml
-    # Just report what's already there Ã¢ÂÂ no network call needed
+    # Just report what's already there — no network call needed
     for fname in ['articles.json', 'companies.json', 'platforms.json', 'programs.json']:
         src = os.path.join(SRC_DIR, 'intel_' + fname)
         if os.path.exists(src):
@@ -916,9 +916,9 @@ def sync_handbook_data():
             count = len(data) if isinstance(data, list) else '?'
             print(f"  intel_{fname}: {count} entries")
         else:
-            print(f"  WARNING: {fname} not found in repo Ã¢ÂÂ intel pages will be empty")
+            print(f"  WARNING: {fname} not found in repo — intel pages will be empty")
 
-    # pie_trends.json Ã¢ÂÂ synced by pie-pipeline workflow via sync-forge-data
+    # pie_trends.json — synced by pie-pipeline workflow via sync-forge-data
     trends_src = os.path.join(SRC_DIR, 'pie_trends.json')
     if os.path.exists(trends_src):
         with open(trends_src) as f:
@@ -927,7 +927,7 @@ def sync_handbook_data():
         n_proj   = len(trends_data.get('projections', []))
         print(f"  pie_trends.json: {n_trends} trends, {n_proj} projections")
     else:
-        print("  pie_trends.json: not found Ã¢ÂÂ trends panel will show empty state (appears after first PIE run)")
+        print("  pie_trends.json: not found — trends panel will show empty state (appears after first PIE run)")
 
     for pf in ['pie_predictions.json', 'llm_predictions.json']:
         src = os.path.join(SRC_DIR, pf)
@@ -956,7 +956,7 @@ def build():
     os.makedirs(BUILD_DIR)
     os.makedirs(os.path.join(BUILD_DIR, 'static'))
     
-    # Copy static assets Ã¢ÂÂ skip gated files (served by forge-data.mjs instead)
+    # Copy static assets — skip gated files (served by forge-data.mjs instead)
     copied = skipped = 0
     for fname in os.listdir(SRC_DIR):
         ext = os.path.splitext(fname)[1].lower()
@@ -985,10 +985,10 @@ def build():
             shutil.copy2(src, dst)
     print(f"  Copied {len(ROOT_INTEL_FILES)} intel files to build root")
 
-    # Master DB files are gated Ã¢ÂÂ served by forge-data.mjs, not in public build
+    # Master DB files are gated — served by forge-data.mjs, not in public build
     # defense_master, commercial_master, dfr_master Ã¢ÂÂ never in build/static/
     
-    # Generate free-tier data slices (same data, truncated Ã¢ÂÂ for public build)
+    # Generate free-tier data slices (same data, truncated — for public build)
     try:
         import generate_free_tier
         import importlib
@@ -1040,7 +1040,7 @@ def build():
         shutil.copy2(sw_src, os.path.join(BUILD_DIR, 'sw.js'))
         print(f"  Copied sw.js to build root")
     
-    # netlify.toml lives in the repo root Ã¢ÂÂ do not overwrite it from the build script.
+    # netlify.toml lives in the repo root — do not overwrite it from the build script.
     # All redirect rules are maintained in the root netlify.toml.
     
     # Summary
