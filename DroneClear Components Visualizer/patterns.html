@@ -1298,11 +1298,15 @@ async function loadData() {
   try {
     const [fRes, pRes] = await Promise.all([
       fetch('/.netlify/functions/forge-data?type=pie_flags&token='+encodeURIComponent(localStorage.getItem('forge_token')||localStorage.getItem('wingman_sub_token')||'')).then(r=>r.json()).then(d=>{
-        // unwrap envelope — {data:[...]} for all tiers, summary_only:true if function fails
-        if(d.summary_only){ return []; }
-        return d.data||d;
-      }).then(flags=>{if(!flags)return [];
+        if(d.summary_only){ return null; }
+        const flags = d.data||d;
+        // If forge-data only returned the free slice (≤20), fetch the full file directly
+        if(!Array.isArray(flags) || flags.length <= 20) return null;
         return flags;
+      }).then(flags=>{
+        if(flags) return flags;
+        // Fallback: full pie_flags.json is served directly in the build
+        return fetch('/pie_flags.json').then(r=>r.ok?r.json():[]).catch(()=>[]);
       }),
       fetch('/.netlify/functions/forge-data?type=pie_predictions&token='+encodeURIComponent(localStorage.getItem('forge_token')||localStorage.getItem('wingman_sub_token')||'')).then(r=>r.json()).then(d=>{
         if(d.summary_only || d.error){ return []; }

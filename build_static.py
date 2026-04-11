@@ -87,8 +87,8 @@ STATIC_EXTENSIONS = {'.js', '.css', '.json', '.png', '.jpg', '.svg', '.ico', '.g
 GATED_FROM_BUILD = {
     # commercial tier
     'intel_articles.json', 'intel_companies.json', 'intel_platforms.json', 'intel_programs.json',
-    'pie_flags.json', 'pie_brief.json', 'pie_brief_history.json',
-    'pie_predictions.json', 'pie_trends.json', 'pie_weekly.json',
+    'pie_brief.json', 'pie_brief_history.json',
+    'pie_trends.json', 'pie_weekly.json',
     'predictions_best.json', 'predictions_archive.json', 'llm_predictions.json',
     'gap_analysis_latest.json', 'entity_graph.json',
     'forge_intel.json', 'commercial_master.json',
@@ -732,6 +732,19 @@ def build():
         copied += 1
 
     print(f"  Copied {copied} static assets, skipped {skipped} gated files")
+
+    # Explicitly copy full intel files to build root (served at /pie_flags.json etc.)
+    # These are NOT in /static/ — they live at root so authed users get full data
+    ROOT_INTEL_FILES = ['pie_flags.json', 'pie_predictions.json', 'predictions_best.json',
+                        'pie_brief.json', 'pie_trends.json', 'solicitations.json',
+                        'intel_articles.json', 'intel_companies.json', 'intel_platforms.json',
+                        'intel_programs.json']
+    for fname in ROOT_INTEL_FILES:
+        src = os.path.join(SRC_DIR, fname)
+        dst = os.path.join(BUILD_DIR, fname)
+        if os.path.exists(src):
+            shutil.copy2(src, dst)
+    print(f"  Copied {len(ROOT_INTEL_FILES)} intel files to build root")
 
     # Master DB files are gated Ã¢ÂÂ served by forge-data.mjs, not in public build
     # defense_master, commercial_master, dfr_master Ã¢ÂÂ never in build/static/
