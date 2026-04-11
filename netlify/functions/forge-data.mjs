@@ -177,6 +177,23 @@ export default async (req) => {
   const rawToken = url.searchParams.get('token') || req.headers.get('authorization')?.replace('Bearer ', '') || '';
   const accessCode = url.searchParams.get('access_code') || '';
 
+  // ── Owner shortcut — permanent full access, no token needed ────────────────
+  const OWNER_CODE = process.env.OWNER_ACCESS_CODE || 'MIDWEST-NICE-UAS';
+  if (accessCode === OWNER_CODE) {
+    const token = await signToken({
+      email: 'jeremiah@midwestniceuas.com',
+      tier: 'agency',
+      note: 'owner',
+      iat: Date.now(),
+      exp: Date.now() + 365 * 24 * 60 * 60 * 1000 * 10, // 10 years
+    }, tokenSecret);
+    if (type && DATASETS[type]) {
+      const data = await loadDataset(type);
+      return resp({ token, tier: 'agency', data });
+    }
+    return resp({ token, tier: 'agency', email: 'jeremiah@midwestniceuas.com' });
+  }
+
   // ── Access code path — mint a JWT, no Stripe needed ──────────────────────
   if (accessCode) {
     try {
