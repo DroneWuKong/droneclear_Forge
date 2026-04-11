@@ -45,6 +45,8 @@ PAGES = {
     'compliance.html': 'compliance/index.html',
     'spec-sheets.html': 'spec-sheets/index.html',
     'compliance-matrix.html': 'compliance-matrix/index.html',
+    'dossier.html': 'dossier/index.html',
+    'timeline.html': 'timeline/index.html',
     'compare.html': 'compare/index.html',
     'cost.html': 'cost/index.html',
     'intel-home.html': 'intel/index.html',
@@ -167,6 +169,8 @@ _PAGE_SLUGS = {
     'pro.html': 'pro', 'brief.html': 'brief', 'report.html': 'report',
     'compliance.html': 'compliance', 'tracker.html': 'tracker',
     'spec-sheets.html': 'spec-sheets', 'compliance-matrix.html': 'compliance-matrix',
+    'dossier.html': 'dossier',
+    'timeline.html': 'timeline',
     'regs.html': 'regs', 'verify.html': 'verify', 'waiver.html': 'waiver',
     'grants.html': 'grants', 'audit.html': 'audit', 'guide.html': 'guide',
     'pid-tuning.html': 'pid-tuning', 'academy.html': 'academy',
@@ -227,6 +231,11 @@ def fix_paths(html, depth=0):
         html = html.replace("fetch('forge_firmware_configs.json')", f"fetch('{prefix}static/forge_firmware_configs.json')")
         html = html.replace("fetch('forge_firmware_versions.json')", f"fetch('{prefix}static/forge_firmware_versions.json')")
         html = html.replace("fetch('forge_incompatibilities.json')", f"fetch('{prefix}static/forge_incompatibilities.json')")
+        # Dossier / compliance data files
+        html = html.replace("fetch('forge_manufacturer_status.json')", f"fetch('{prefix}static/forge_manufacturer_status.json')")
+        html = html.replace("fetch('forge_alternatives.json')", f"fetch('{prefix}static/forge_alternatives.json')")
+        html = html.replace("fetch('forge_848_spec_sheets.json')", f"fetch('{prefix}static/forge_848_spec_sheets.json')")
+        html = html.replace("fetch('forge_compliance_events.json')", f"fetch('{prefix}static/forge_compliance_events.json')")
         # forge_orqa_configs.json Ã¢ÂÂ NEVER served, rewrite to no-op
         html = html.replace("fetch('forge_orqa_configs.json')", "fetch('/dev/null')")
     
@@ -310,6 +319,16 @@ SEO_META = {
         'Drone Compliance Matrix - 848, 889, ASDA, Blue UAS, FCC',
         'Side-by-side reference for drone compliance regimes: NDAA 848, 889, 817, ASDA / FAR 52.240-1, Blue UAS Cleared, Blue UAS Framework, TAA, and FCC Covered List. Effective dates, scope, and citations.',
         'NDAA 848 vs ASDA, FAR 52.240-1, Blue UAS vs NDAA, FCC covered list drones, drone compliance explainer',
+    ),
+    'dossier.html': (
+        'Manufacturer Dossier - Drone Vendor Due Diligence',
+        'One-page dossier per drone vendor. Status, M&A history, corporate family, leadership, parts in the Forge DB, §848 spec sheets, alternatives graph, risk flags, and replacement suggestions. Built for defense procurement officers and integrators doing vendor due diligence.',
+        'drone manufacturer due diligence, UAS vendor dossier, drone company status, NDAA vendor check, Blue UAS vendor profile, drone supply chain intelligence',
+    ),
+    'timeline.html': (
+        'Regulatory Timeline - US UAS Compliance Milestones',
+        'Chronological ledger of US UAS compliance and regulatory milestones: NDAA §848, §817, ASDA / FAR 52.240-1, Blue UAS Cleared List, FCC equipment ban, and major M&A events shaping the procurement landscape.',
+        'UAS regulatory timeline, NDAA 848 timeline, ASDA effective date, FCC drone ban, Blue UAS history, drone compliance history',
     ),
     'compare.html': (
         'Drone Platform Compare Ã¢ÂÂ Side-by-Side Spec Comparison',

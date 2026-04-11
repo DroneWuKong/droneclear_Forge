@@ -1,0 +1,587 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Manufacturer Dossier — Forge</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <script src="https://unpkg.com/@phosphor-icons/web"></script>
+    <script>
+      (function(){
+        const saved = localStorage.getItem('dc-theme');
+        document.documentElement.setAttribute('data-theme', saved ? saved : 'dark');
+      })();
+    </script>
+    <style>
+      :root{
+        --bg:#0c0c0a;--surface:#141410;--card:#1c1c17;--card-hi:#242420;
+        --border:#2e2e26;--border-hi:#3e3e34;
+        --c-green:#22c55e;--c-green-d:#22c55e18;
+        --c-yellow:#eab308;--c-yellow-d:#eab30818;
+        --c-orange:#f97316;--c-orange-d:#f9731618;
+        --c-red:#ef4444;--c-red-d:#ef444418;
+        --c-purple:#a855f7;--c-purple-d:#a855f618;
+        --c-amber:#f59e0b;--c-amber-d:#f59e0b18;
+        --c-blue:#3b82f6;--c-blue-d:#3b82f618;
+        --c-teal:#14b8a6;--c-teal-d:#14b8a618;
+        --text:#f5f0e8;--text-s:#b8b0a0;--text-d:#8a8070;--text-xd:#6b6358;
+        --font:'DM Sans',system-ui,sans-serif;
+        --mono:'JetBrains Mono',monospace;
+      }
+      *{box-sizing:border-box;margin:0;padding:0}
+      body{background:var(--bg);color:var(--text);font-family:var(--font);line-height:1.5;-webkit-font-smoothing:antialiased;min-height:100vh}
+      a{text-decoration:none;color:inherit}
+
+      .tp-pill{font:500 10px var(--font);color:#6b6358;padding:4px 9px;border:1px solid #2e2e26;border-radius:20px;text-decoration:none;white-space:nowrap;transition:all .15s}
+      .tp-pill:hover{border-color:#3e3e34;color:#b8b0a0}
+      @media(max-width:520px){.tp-hide-sm{display:none}}
+
+      .page{max-width:1140px;margin:0 auto;padding:20px 16px 60px}
+
+      /* Picker view (when no ?m= given) */
+      .picker-header{margin-bottom:20px}
+      .picker-header h1{font:700 22px var(--font);color:var(--text);margin-bottom:4px}
+      .picker-header p{font-size:12px;color:var(--text-d);max-width:720px}
+      .picker-search{position:relative;margin:20px 0 10px}
+      .picker-search input{width:100%;padding:11px 12px 11px 38px;background:var(--surface);border:1px solid var(--border);color:var(--text);border-radius:8px;outline:none;font:13px var(--mono)}
+      .picker-search input:focus{border-color:var(--c-amber)}
+      .picker-search i{position:absolute;left:12px;top:50%;transform:translateY(-50%);color:var(--text-d);font-size:16px}
+      .picker-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:8px}
+      .picker-card{background:var(--card);border:1px solid var(--border);border-radius:8px;padding:12px 14px;cursor:pointer;transition:all .12s;border-left:3px solid transparent;display:block}
+      .picker-card:hover{background:var(--card-hi);border-color:var(--border-hi)}
+      .picker-card.s-active{border-left-color:var(--c-green)}
+      .picker-card.s-acquired{border-left-color:var(--c-blue)}
+      .picker-card.s-defunct{border-left-color:var(--c-red)}
+      .picker-card.s-active_restricted{border-left-color:var(--c-orange)}
+      .picker-card.s-supply_constrained{border-left-color:var(--c-yellow)}
+      .picker-card.s-eol{border-left-color:var(--text-xd)}
+      .picker-name{font:700 13px var(--font);color:var(--text)}
+      .picker-meta{font:500 10px var(--mono);color:var(--text-d);margin-top:3px;display:flex;gap:6px;flex-wrap:wrap}
+      .picker-country{color:var(--text-xd)}
+      .picker-status-pill{padding:1px 6px;border-radius:3px;font:600 9px var(--mono);text-transform:uppercase;letter-spacing:.04em}
+      .picker-card.s-active .picker-status-pill{background:var(--c-green-d);color:var(--c-green)}
+      .picker-card.s-acquired .picker-status-pill{background:var(--c-blue-d);color:var(--c-blue)}
+      .picker-card.s-defunct .picker-status-pill{background:var(--c-red-d);color:var(--c-red)}
+      .picker-card.s-active_restricted .picker-status-pill{background:var(--c-orange-d);color:var(--c-orange)}
+      .picker-card.s-supply_constrained .picker-status-pill{background:var(--c-yellow-d);color:var(--c-yellow)}
+      .picker-card.s-eol .picker-status-pill{background:rgba(100,100,100,.15);color:var(--text-d)}
+
+      /* Detail view */
+      .back-link{display:inline-flex;align-items:center;gap:4px;font:500 11px var(--font);color:var(--text-d);margin-bottom:14px;text-decoration:none;transition:color .12s}
+      .back-link:hover{color:var(--text-s)}
+
+      .hero{background:linear-gradient(135deg,var(--card),var(--surface));border:1px solid var(--border);border-radius:12px;padding:24px 28px;margin-bottom:20px;position:relative;overflow:hidden}
+      .hero::before{content:'';position:absolute;top:-30px;right:-30px;width:200px;height:200px;background:radial-gradient(ellipse,var(--c-amber-d),transparent 70%);pointer-events:none}
+      .hero-top{display:flex;justify-content:space-between;align-items:flex-start;gap:16px;flex-wrap:wrap;margin-bottom:10px;position:relative}
+      .hero-id{font:600 10px var(--mono);text-transform:uppercase;letter-spacing:.1em;color:var(--text-xd);margin-bottom:6px}
+      .hero-name{font:700 28px var(--font);color:var(--text);letter-spacing:-0.01em}
+      .hero-country{font:500 12px var(--mono);color:var(--text-s);margin-top:4px;display:flex;align-items:center;gap:6px}
+      .hero-status{font:700 11px var(--mono);text-transform:uppercase;letter-spacing:.07em;padding:6px 11px;border-radius:6px;white-space:nowrap;display:inline-flex;align-items:center;gap:5px}
+      .hs-active{background:var(--c-green-d);color:var(--c-green);border:1px solid rgba(34,197,94,.3)}
+      .hs-acquired{background:var(--c-blue-d);color:var(--c-blue);border:1px solid rgba(59,130,246,.3)}
+      .hs-defunct{background:var(--c-red-d);color:var(--c-red);border:1px solid rgba(239,68,68,.3)}
+      .hs-active_restricted{background:var(--c-orange-d);color:var(--c-orange);border:1px solid rgba(249,115,22,.3)}
+      .hs-supply_constrained{background:var(--c-yellow-d);color:var(--c-yellow);border:1px solid rgba(234,179,8,.3)}
+      .hs-eol{background:rgba(100,100,100,.15);color:var(--text-d);border:1px solid var(--border)}
+      .hs-unknown{background:rgba(100,100,100,.15);color:var(--text-d);border:1px solid var(--border)}
+      .hero-notes{font-size:13px;color:var(--text-s);line-height:1.65;max-width:780px;margin-top:10px;position:relative}
+
+      .hero-flags{display:flex;flex-wrap:wrap;gap:5px;margin-top:14px;position:relative}
+      .flag{font:600 10px var(--mono);padding:3px 8px;border-radius:4px;background:var(--c-red-d);color:var(--c-red);border:1px solid rgba(239,68,68,.25);text-transform:uppercase;letter-spacing:.03em}
+      .flag.soft{background:var(--c-yellow-d);color:var(--c-yellow);border-color:rgba(234,179,8,.25)}
+
+      /* Meta strip */
+      .meta-strip{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px;margin-bottom:20px}
+      .meta-cell{background:var(--card);border:1px solid var(--border);border-radius:8px;padding:11px 14px}
+      .meta-label{font:600 9px var(--mono);text-transform:uppercase;letter-spacing:.08em;color:var(--text-xd);margin-bottom:4px}
+      .meta-value{font:700 14px var(--font);color:var(--text)}
+      .meta-value.sm{font-size:12px;font-weight:600}
+      .meta-value a{color:var(--c-amber);text-decoration:none}
+      .meta-value a:hover{text-decoration:underline}
+
+      /* Sections */
+      .section{margin-bottom:26px}
+      .sec-title{font:700 13px var(--mono);text-transform:uppercase;letter-spacing:.1em;color:var(--text-d);margin-bottom:10px;display:flex;align-items:center;gap:8px;padding-bottom:6px;border-bottom:1px solid var(--border)}
+      .sec-title i{color:var(--c-amber);font-size:16px}
+      .sec-count{font:500 10px var(--mono);color:var(--text-xd);margin-left:auto}
+
+      /* Family tree */
+      .family{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:8px}
+      .family-card{background:var(--card);border:1px solid var(--border);border-radius:7px;padding:10px 12px;display:block;transition:all .12s;border-left:3px solid var(--c-blue)}
+      .family-card:hover{background:var(--card-hi);border-color:var(--border-hi)}
+      .family-card.is-parent{border-left-color:var(--c-amber)}
+      .family-role{font:600 9px var(--mono);color:var(--text-xd);text-transform:uppercase;letter-spacing:.06em}
+      .family-name{font:700 13px var(--font);color:var(--text);margin-top:2px}
+
+      /* Leadership */
+      .leaders{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:8px}
+      .leader-card{background:var(--card);border:1px solid var(--border);border-radius:8px;padding:12px 14px;border-left:3px solid var(--c-teal)}
+      .leader-name{font:700 13px var(--font);color:var(--text)}
+      .leader-title{font:600 10px var(--mono);text-transform:uppercase;letter-spacing:.06em;color:var(--c-teal);margin-top:2px}
+      .leader-bg{font-size:11px;color:var(--text-d);margin-top:7px;line-height:1.55}
+      .leader-conf{font:500 9px var(--mono);color:var(--text-xd);margin-top:6px;text-transform:uppercase;letter-spacing:.05em}
+      .leader-conf.low{color:var(--c-orange)}
+      .leader-conf.medium{color:var(--c-yellow)}
+      .leader-conf.high{color:var(--c-green)}
+
+      /* M&A timeline */
+      .timeline{position:relative;padding-left:18px}
+      .timeline::before{content:'';position:absolute;left:4px;top:4px;bottom:4px;width:2px;background:var(--border)}
+      .ma-event{position:relative;padding:0 0 12px 16px}
+      .ma-event::before{content:'';position:absolute;left:-18px;top:5px;width:10px;height:10px;border-radius:50%;background:var(--c-amber);border:2px solid var(--bg);box-shadow:0 0 0 1px var(--c-amber)}
+      .ma-year{font:700 11px var(--mono);color:var(--c-amber)}
+      .ma-type{font:600 10px var(--mono);color:var(--text-d);text-transform:uppercase;letter-spacing:.05em;margin-left:5px}
+      .ma-target{font:600 13px var(--font);color:var(--text);margin:2px 0}
+      .ma-rationale{font-size:11px;color:var(--text-d);line-height:1.5}
+
+      /* Parts grid */
+      .parts-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:6px;max-height:420px;overflow-y:auto;padding-right:4px}
+      .parts-grid::-webkit-scrollbar{width:6px}
+      .parts-grid::-webkit-scrollbar-track{background:transparent}
+      .parts-grid::-webkit-scrollbar-thumb{background:var(--border-hi);border-radius:3px}
+      .part-row{background:var(--card);border:1px solid var(--border);border-radius:6px;padding:8px 11px;display:flex;justify-content:space-between;align-items:center;gap:8px;transition:background .12s}
+      .part-row:hover{background:var(--card-hi)}
+      .part-left{min-width:0;flex:1}
+      .part-name{font:600 12px var(--font);color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+      .part-cat{font:500 10px var(--mono);color:var(--text-xd);text-transform:uppercase;letter-spacing:.04em;margin-top:1px}
+      .part-flags{display:flex;gap:3px;flex-shrink:0}
+      .part-flag{font:600 9px var(--mono);padding:1px 5px;border-radius:3px;text-transform:uppercase}
+      .pf-ndaa{background:var(--c-green-d);color:var(--c-green)}
+      .pf-blue{background:var(--c-blue-d);color:var(--c-blue)}
+
+      /* Spec sheets */
+      .sheets-list{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:8px}
+      .sheet-card{background:var(--card);border:1px solid var(--border);border-left:3px solid var(--c-amber);border-radius:8px;padding:12px 14px;display:block;transition:all .12s}
+      .sheet-card:hover{background:var(--card-hi);border-color:var(--border-hi)}
+      .sheet-product{font:700 13px var(--font);color:var(--text)}
+      .sheet-bundle{font-size:11px;color:var(--text-d);margin-top:2px}
+      .sheet-meta{display:flex;gap:6px;margin-top:8px;font:500 10px var(--mono);color:var(--text-xd)}
+      .sheet-meta i{margin-right:3px}
+      .sheet-link{margin-top:8px;font:600 11px var(--font);color:var(--c-amber);display:inline-flex;align-items:center;gap:4px}
+
+      /* Alternatives */
+      .alt-list{display:flex;flex-direction:column;gap:6px}
+      .alt-row{background:var(--card);border:1px solid var(--border);border-radius:6px;padding:10px 13px}
+      .alt-cat{font:600 10px var(--mono);text-transform:uppercase;letter-spacing:.06em;color:var(--text-d);margin-bottom:4px}
+      .alt-role{font-size:11px;color:var(--text-s)}
+      .alt-role .role-hi{color:var(--c-amber);font-weight:600}
+
+      /* Empty state */
+      .empty{padding:20px;text-align:center;color:var(--text-xd);font-size:12px;background:var(--card);border:1px dashed var(--border);border-radius:8px}
+
+      /* Trust footer */
+      .trust{font:500 10px var(--mono);color:var(--text-xd);margin-top:24px;padding:12px 14px;background:var(--surface);border:1px solid var(--border);border-radius:8px;line-height:1.7}
+      .trust .trust-label{color:var(--text-d);font-weight:600}
+      .trust a{color:var(--c-amber)}
+
+      .hidden{display:none}
+    </style>
+</head>
+<body>
+<header style="display:flex;align-items:center;justify-content:space-between;gap:8px;padding:10px 16px;border-bottom:1px solid #2e2e26;background:#1c1c17;position:sticky;top:0;z-index:100;">
+  <a href="/" style="font:800 18px 'JetBrains Mono',monospace;color:#f59e0b;letter-spacing:-0.03em;text-decoration:none;">Forge</a>
+  <div style="display:flex;gap:5px;align-items:center;">
+    <a href="/compliance/" class="tp-pill tp-hide-sm">Compliance</a>
+    <a href="/spec-sheets/" class="tp-pill tp-hide-sm">Spec Sheets</a>
+    <a href="/compliance-matrix/" class="tp-pill tp-hide-sm">Matrix</a>
+    <a href="/wingman/" class="tp-pill">Wingman</a>
+  </div>
+</header>
+
+<main class="page">
+    <!-- Picker view -->
+    <div id="picker-view">
+        <div class="picker-header">
+            <h1>Manufacturer Dossier</h1>
+            <p>One page per vendor — status, M&amp;A history, parts, spec sheets, alternatives, and risk flags. Pulls from the Forge manufacturer registry, the §848 spec sheet index, the alternatives map, and the 3,800+ part database. Click any vendor to open their full dossier.</p>
+        </div>
+        <div class="picker-search">
+            <i class="ph ph-magnifying-glass"></i>
+            <label for="picker-search-input" style="position:absolute;left:-9999px">Search manufacturers</label>
+            <input id="picker-search-input" type="text" placeholder="Search manufacturers, subsidiaries, countries, statuses...">
+        </div>
+        <div class="picker-grid" id="picker-grid"></div>
+    </div>
+
+    <!-- Detail view -->
+    <div id="detail-view" class="hidden">
+        <a href="/dossier/" class="back-link"><i class="ph ph-arrow-left"></i> All manufacturers</a>
+        <div id="detail-body"></div>
+    </div>
+</main>
+
+<script>
+(function(){
+  'use strict';
+
+  const $ = (id) => document.getElementById(id);
+  const ESC = (s) => {
+    if (s == null) return '';
+    const d = document.createElement('div');
+    d.textContent = String(s);
+    return d.innerHTML;
+  };
+
+  let mfgData = null;    // forge_manufacturer_status.json
+  let sheetsData = null; // forge_848_spec_sheets.json
+  let altData = null;    // forge_alternatives.json
+  let partsBySlug = {};  // slug → [parts]
+  let allMfgs = [];      // [{slug, rec}]
+
+  // Normalize a manufacturer string to a slug (same rule used by Wingman's alias map).
+  function normSlug(s) {
+    return (s || '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+  }
+
+  // Load all four data sources in parallel.
+  async function loadData() {
+    const [mfgRes, sheetsRes, altRes, dbRes] = await Promise.all([
+      fetch('forge_manufacturer_status.json').catch(() => null),
+      fetch('forge_848_spec_sheets.json').catch(() => null),
+      fetch('forge_alternatives.json').catch(() => null),
+      fetch('forge_database.json').catch(() => null),
+    ]);
+
+    mfgData = mfgRes && mfgRes.ok ? await mfgRes.json() : { manufacturers: {} };
+    sheetsData = sheetsRes && sheetsRes.ok ? await sheetsRes.json() : { spec_sheets: [] };
+    altData = altRes && altRes.ok ? await altRes.json() : { categories: {} };
+    const db = dbRes && dbRes.ok ? await dbRes.json() : { components: {} };
+
+    // Index parts by manufacturer slug
+    for (const [cat, items] of Object.entries(db.components || {})) {
+      if (!Array.isArray(items)) continue;
+      for (const item of items) {
+        const mfr = item.manufacturer || '';
+        if (!mfr) continue;
+        const slug = normSlug(mfr);
+        if (!partsBySlug[slug]) partsBySlug[slug] = [];
+        partsBySlug[slug].push({
+          name: item.name || '?',
+          category: cat,
+          pid: item.pid,
+          ndaa: item.ndaa_compliant === true || item.compliance?.ndaa_compliant === true,
+          blue_uas: item.blue_uas === true || item.compliance?.blue_uas === true,
+        });
+      }
+    }
+
+    // Build the master list
+    for (const [slug, rec] of Object.entries(mfgData.manufacturers || {})) {
+      allMfgs.push({ slug, rec });
+    }
+    allMfgs.sort((a, b) => (a.rec.name || a.slug).localeCompare(b.rec.name || b.slug));
+  }
+
+  // ---- Picker view ----
+  function renderPicker(filter) {
+    const q = (filter || '').toLowerCase();
+    const grid = $('picker-grid');
+    const filtered = !q ? allMfgs : allMfgs.filter(({ slug, rec }) => {
+      const hay = [rec.name, rec.country, rec.status, rec.notes, slug, (rec.subsidiaries || []).join(' ')].join(' ').toLowerCase();
+      return hay.includes(q);
+    });
+    if (!filtered.length) {
+      grid.innerHTML = '<div class="empty">No vendors match. Try a broader search.</div>';
+      return;
+    }
+    grid.innerHTML = filtered.map(({ slug, rec }) => {
+      const statusClass = `s-${(rec.status || 'unknown').replace(/\s+/g, '_')}`;
+      const partCount = (partsBySlug[slug] || []).length;
+      return `
+        <a class="picker-card ${statusClass}" href="/dossier/?m=${ESC(slug)}">
+          <div class="picker-name">${ESC(rec.name || slug)}</div>
+          <div class="picker-meta">
+            <span class="picker-status-pill">${ESC(rec.status || 'unknown')}</span>
+            <span class="picker-country">${ESC(rec.country || '—')}</span>
+            ${partCount ? `<span class="picker-country">· ${partCount} parts</span>` : ''}
+          </div>
+        </a>
+      `;
+    }).join('');
+  }
+
+  // ---- Detail view ----
+  function findSheetsFor(slug, rec) {
+    const name = (rec.name || slug).toLowerCase();
+    return (sheetsData.spec_sheets || []).filter(s => {
+      const mfr = (s.manufacturer || '').toLowerCase();
+      return mfr.includes(name.split(/\s*\(/)[0]) || name.includes(mfr);
+    });
+  }
+
+  function findAltMentions(slug, rec) {
+    const mentions = [];
+    const name = (rec.name || slug).toLowerCase();
+    for (const [catKey, cat] of Object.entries(altData.categories || {})) {
+      for (const [optKey, opt] of Object.entries(cat.options || {})) {
+        const blob = [opt.name, opt.notes, opt.vendor, opt.parent_vendor].filter(Boolean).join(' ').toLowerCase();
+        if (blob.includes(name) || blob.includes(slug)) {
+          mentions.push({ catKey, catDesc: cat.description || '', optKey, opt });
+        }
+      }
+    }
+    return mentions;
+  }
+
+  function renderDetail(slug) {
+    const rec = (mfgData.manufacturers || {})[slug];
+    const container = $('detail-body');
+    if (!rec) {
+      container.innerHTML = `
+        <div class="empty" style="padding:32px">
+          <i class="ph ph-warning" style="font-size:24px;display:block;margin-bottom:8px;color:var(--c-orange)"></i>
+          No dossier found for <code>${ESC(slug)}</code>.<br>
+          <a href="/dossier/" style="color:var(--c-amber);margin-top:8px;display:inline-block">← Browse all manufacturers</a>
+        </div>`;
+      return;
+    }
+
+    const statusClass = `hs-${(rec.status || 'unknown').replace(/\s+/g, '_')}`;
+    const statusIcon = {
+      active: 'ph-seal-check',
+      acquired: 'ph-arrow-bend-right-up',
+      defunct: 'ph-x-circle',
+      active_restricted: 'ph-warning-circle',
+      supply_constrained: 'ph-clock-countdown',
+      eol: 'ph-prohibit',
+      unknown: 'ph-question'
+    }[rec.status] || 'ph-info';
+
+    const parts = partsBySlug[slug] || [];
+    // Fallback: parts match on name-string if slug doesn't match
+    const partsByName = parts.length ? parts : Object.entries(partsBySlug).find(([s, p]) =>
+      (mfgData.manufacturers[s]?.name || '').toLowerCase() === (rec.name || '').toLowerCase()
+    )?.[1] || [];
+    // Extra fallback: match on alias name substring
+    let allParts = partsByName;
+    if (!allParts.length) {
+      const nameLower = (rec.name || slug).toLowerCase().split(/\s*\(/)[0].trim();
+      for (const [s, p] of Object.entries(partsBySlug)) {
+        if (s.includes(slug) || slug.includes(s) || s.includes(nameLower.replace(/\s+/g, '-'))) {
+          allParts = allParts.concat(p);
+        }
+      }
+    }
+    // De-duplicate by pid/name
+    const seen = new Set();
+    allParts = allParts.filter(p => {
+      const key = p.pid || p.name;
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    });
+
+    const sheets = findSheetsFor(slug, rec);
+    const altMentions = findAltMentions(slug, rec);
+
+    // Build parent + subsidiaries family tree
+    const parentSlug = rec.parent || rec.acquired_by;
+    const parentRec = parentSlug ? (mfgData.manufacturers || {})[parentSlug] : null;
+    const subsidiaries = (rec.subsidiaries || []).map(s => ({ slug: s, rec: (mfgData.manufacturers || {})[s] })).filter(x => x.rec || x.slug);
+
+    // Risk flags
+    const flags = rec.risk_flags || [];
+
+    // Part category breakdown
+    const partCats = {};
+    for (const p of allParts) { partCats[p.category] = (partCats[p.category] || 0) + 1; }
+    const catBreakdown = Object.entries(partCats).sort((a, b) => b[1] - a[1]);
+
+    // NDAA / Blue UAS counts in parts
+    const ndaaCount = allParts.filter(p => p.ndaa).length;
+    const blueCount = allParts.filter(p => p.blue_uas).length;
+
+    container.innerHTML = `
+      <div class="hero">
+        <div class="hero-top">
+          <div>
+            <div class="hero-id">Manufacturer · ${ESC(slug)}</div>
+            <div class="hero-name">${ESC(rec.name || slug)}</div>
+            <div class="hero-country"><i class="ph ph-globe-hemisphere-west"></i>${ESC(rec.country || 'Unknown country')}</div>
+          </div>
+          <div class="hero-status ${statusClass}">
+            <i class="ph ${statusIcon}"></i>${ESC((rec.status || 'unknown').replace(/_/g, ' '))}
+          </div>
+        </div>
+        ${rec.notes ? `<div class="hero-notes">${ESC(rec.notes)}</div>` : ''}
+        ${flags.length ? `<div class="hero-flags">${flags.map(f => `<span class="flag ${String(f).startsWith('verify') || String(f).startsWith('declining') ? 'soft' : ''}">${ESC(f)}</span>`).join('')}</div>` : ''}
+      </div>
+
+      <div class="meta-strip">
+        <div class="meta-cell">
+          <div class="meta-label">Confidence</div>
+          <div class="meta-value sm">${ESC(rec.confidence || '—')}</div>
+        </div>
+        <div class="meta-cell">
+          <div class="meta-label">Last verified</div>
+          <div class="meta-value sm">${ESC(rec.last_verified || '—')}</div>
+        </div>
+        <div class="meta-cell">
+          <div class="meta-label">Parts in DB</div>
+          <div class="meta-value">${allParts.length}</div>
+        </div>
+        <div class="meta-cell">
+          <div class="meta-label">Spec sheets</div>
+          <div class="meta-value">${sheets.length}</div>
+        </div>
+        <div class="meta-cell">
+          <div class="meta-label">NDAA / Blue UAS parts</div>
+          <div class="meta-value sm">${ndaaCount} / ${blueCount}</div>
+        </div>
+        ${rec.ticker ? `<div class="meta-cell"><div class="meta-label">Ticker</div><div class="meta-value sm">${ESC(rec.ticker)}</div></div>` : ''}
+        ${rec.replacement_suggestion ? `<div class="meta-cell" style="grid-column:1 / -1"><div class="meta-label">Replacement suggestion</div><div class="meta-value sm">${ESC(rec.replacement_suggestion)}</div></div>` : ''}
+      </div>
+
+      ${parentRec || subsidiaries.length ? `
+        <div class="section">
+          <div class="sec-title"><i class="ph ph-tree-structure"></i> Corporate Family</div>
+          <div class="family">
+            ${parentRec ? `
+              <a class="family-card is-parent" href="/dossier/?m=${ESC(parentSlug)}">
+                <div class="family-role">Parent</div>
+                <div class="family-name">${ESC(parentRec.name || parentSlug)}</div>
+              </a>
+            ` : ''}
+            ${subsidiaries.map(s => `
+              <a class="family-card" href="/dossier/?m=${ESC(s.slug)}">
+                <div class="family-role">Subsidiary</div>
+                <div class="family-name">${ESC(s.rec ? s.rec.name : s.slug)}</div>
+              </a>
+            `).join('')}
+          </div>
+        </div>
+      ` : ''}
+
+      ${(rec.leadership || []).length ? `
+        <div class="section">
+          <div class="sec-title"><i class="ph ph-users-three"></i> Leadership <span class="sec-count">${rec.leadership.length}</span></div>
+          <div class="leaders">
+            ${rec.leadership.map(l => `
+              <div class="leader-card">
+                <div class="leader-name">${ESC(l.name || '—')}</div>
+                <div class="leader-title">${ESC(l.title || '')}</div>
+                ${l.background ? `<div class="leader-bg">${ESC(l.background)}</div>` : ''}
+                ${l.confidence ? `<div class="leader-conf ${ESC(l.confidence)}">Confidence: ${ESC(l.confidence)}</div>` : ''}
+              </div>
+            `).join('')}
+          </div>
+        </div>
+      ` : ''}
+
+      ${(rec.m_a_history || []).length ? `
+        <div class="section">
+          <div class="sec-title"><i class="ph ph-flag"></i> M&amp;A History</div>
+          <div class="timeline">
+            ${rec.m_a_history.map(ev => `
+              <div class="ma-event">
+                <span class="ma-year">${ESC(ev.approx_year || '—')}</span><span class="ma-type">· ${ESC(ev.event || 'event')}</span>
+                <div class="ma-target">${ESC(ev.target || '')}</div>
+                ${ev.rationale ? `<div class="ma-rationale">${ESC(ev.rationale)}</div>` : ''}
+              </div>
+            `).join('')}
+          </div>
+        </div>
+      ` : ''}
+
+      ${sheets.length ? `
+        <div class="section">
+          <div class="sec-title"><i class="ph ph-file-pdf"></i> §848 Spec Sheets <span class="sec-count">${sheets.length}</span></div>
+          <div class="sheets-list">
+            ${sheets.map(s => `
+              <a class="sheet-card" href="${ESC(s.spec_sheet_url)}" target="_blank" rel="noopener">
+                <div class="sheet-product">${ESC(s.product || '')}</div>
+                <div class="sheet-bundle">${ESC(s.bundle || '')}</div>
+                <div class="sheet-meta">
+                  ${s.attestation_date ? `<span><i class="ph ph-calendar"></i>${ESC(s.attestation_date)}</span>` : ''}
+                  ${s.doc_type ? `<span><i class="ph ph-scroll"></i>${ESC(s.doc_type.replace(/-/g, ' '))}</span>` : ''}
+                </div>
+                <div class="sheet-link">Open PDF <i class="ph ph-arrow-up-right"></i></div>
+              </a>
+            `).join('')}
+          </div>
+        </div>
+      ` : ''}
+
+      ${altMentions.length ? `
+        <div class="section">
+          <div class="sec-title"><i class="ph ph-arrows-counter-clockwise"></i> Alternatives Graph <span class="sec-count">${altMentions.length}</span></div>
+          <div class="alt-list">
+            ${altMentions.map(m => `
+              <div class="alt-row">
+                <div class="alt-cat">${ESC(m.catKey)}</div>
+                <div class="alt-role"><span class="role-hi">${ESC(m.opt.name || m.optKey)}</span>${m.opt.notes ? ' — ' + ESC(m.opt.notes) : ''}</div>
+              </div>
+            `).join('')}
+          </div>
+        </div>
+      ` : ''}
+
+      <div class="section">
+        <div class="sec-title"><i class="ph ph-package"></i> Parts in Forge DB <span class="sec-count">${allParts.length} total · ${catBreakdown.length} categories</span></div>
+        ${allParts.length ? `
+          <div class="parts-grid">
+            ${allParts.slice(0, 200).map(p => `
+              <div class="part-row">
+                <div class="part-left">
+                  <div class="part-name" title="${ESC(p.name)}">${ESC(p.name)}</div>
+                  <div class="part-cat">${ESC(p.category)}</div>
+                </div>
+                <div class="part-flags">
+                  ${p.ndaa ? '<span class="part-flag pf-ndaa">NDAA</span>' : ''}
+                  ${p.blue_uas ? '<span class="part-flag pf-blue">BLUE</span>' : ''}
+                </div>
+              </div>
+            `).join('')}
+          </div>
+          ${allParts.length > 200 ? `<div style="font:500 10px var(--mono);color:var(--text-xd);margin-top:8px">Showing first 200 of ${allParts.length}</div>` : ''}
+        ` : `
+          <div class="empty">No parts from this vendor in the Forge DB yet. Contributions welcome — <a href="/contribute/" style="color:var(--c-amber)">submit here</a>.</div>
+        `}
+      </div>
+
+      <div class="trust">
+        <span class="trust-label">Data sources for this dossier:</span>
+        forge_manufacturer_status.json · forge_848_spec_sheets.json · forge_alternatives.json · forge_database.json.
+        Confidence: <strong>${ESC(rec.confidence || 'unknown')}</strong>.
+        Entries marked <code>confidence: medium</code> or with <code>verify_status</code> flags need audit.
+        <br>Spot an error? <a href="/contribute/">File a correction →</a>
+      </div>
+    `;
+  }
+
+  // ---- Routing ----
+  function route() {
+    const params = new URLSearchParams(location.search);
+    const slug = params.get('m');
+    if (slug) {
+      $('picker-view').classList.add('hidden');
+      $('detail-view').classList.remove('hidden');
+      renderDetail(slug);
+      if (typeof window.__fa?.view === 'function') {
+        window.__fa.view('dossier:' + slug, 'manufacturer', slug, mfgData.manufacturers?.[slug]?.country || '', mfgData.manufacturers?.[slug]?.status || '');
+      }
+    } else {
+      $('picker-view').classList.remove('hidden');
+      $('detail-view').classList.add('hidden');
+      renderPicker('');
+    }
+  }
+
+  // ---- Init ----
+  (async function init() {
+    try {
+      await loadData();
+      route();
+      $('picker-search-input')?.addEventListener('input', (e) => renderPicker(e.target.value.trim()));
+      window.addEventListener('popstate', route);
+    } catch (err) {
+      console.error('Dossier init failed', err);
+      document.querySelector('main').innerHTML = '<div class="empty" style="padding:32px">Failed to load dossier data. Check console.</div>';
+    }
+  })();
+})();
+</script>
+</body>
+</html>

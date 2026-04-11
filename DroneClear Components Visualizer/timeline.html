@@ -1,0 +1,281 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Regulatory Timeline — Forge</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <script src="https://unpkg.com/@phosphor-icons/web"></script>
+    <script>
+      (function(){
+        const saved = localStorage.getItem('dc-theme');
+        document.documentElement.setAttribute('data-theme', saved ? saved : 'dark');
+      })();
+    </script>
+    <style>
+      :root{
+        --bg:#0c0c0a;--surface:#141410;--card:#1c1c17;--card-hi:#242420;
+        --border:#2e2e26;--border-hi:#3e3e34;
+        --c-law:#a855f7;--c-law-d:#a855f618;
+        --c-regulation:#22c55e;--c-regulation-d:#22c55e18;
+        --c-list_update:#3b82f6;--c-list_update-d:#3b82f618;
+        --c-ma:#f59e0b;--c-ma-d:#f59e0b18;
+        --c-program:#14b8a6;--c-program-d:#14b8a618;
+        --c-enforcement:#ef4444;--c-enforcement-d:#ef444418;
+        --text:#f5f0e8;--text-s:#b8b0a0;--text-d:#8a8070;--text-xd:#6b6358;
+        --font:'DM Sans',system-ui,sans-serif;
+        --mono:'JetBrains Mono',monospace;
+      }
+      *{box-sizing:border-box;margin:0;padding:0}
+      body{background:var(--bg);color:var(--text);font-family:var(--font);line-height:1.5;-webkit-font-smoothing:antialiased;min-height:100vh}
+      a{text-decoration:none;color:inherit}
+
+      .tp-pill{font:500 10px var(--font);color:#6b6358;padding:4px 9px;border:1px solid #2e2e26;border-radius:20px;text-decoration:none;white-space:nowrap;transition:all .15s}
+      .tp-pill:hover{border-color:#3e3e34;color:#b8b0a0}
+      @media(max-width:520px){.tp-hide-sm{display:none}}
+
+      .page{max-width:800px;margin:0 auto;padding:24px 16px 72px}
+
+      /* Page header */
+      .page-head{margin-bottom:28px}
+      .page-head h1{font:800 24px var(--font);color:var(--text);letter-spacing:-0.015em;margin-bottom:6px}
+      .page-head p{font-size:13px;color:var(--text-d);max-width:640px;line-height:1.65}
+
+      /* Filter row */
+      .filter-row{display:flex;gap:5px;flex-wrap:wrap;margin-bottom:24px;align-items:center}
+      .filter-label{font:600 10px var(--mono);color:var(--text-xd);text-transform:uppercase;letter-spacing:.1em;margin-right:4px}
+      .filter-btn{font:600 10px var(--mono);padding:5px 10px;border:1px solid var(--border);border-radius:20px;background:none;color:var(--text-d);cursor:pointer;transition:all .15s;text-transform:uppercase;letter-spacing:.04em}
+      .filter-btn:hover{border-color:var(--border-hi);color:var(--text-s)}
+      .filter-btn.active{color:var(--text);border-color:var(--border-hi);background:var(--card)}
+      .filter-btn[data-type="law"].active{border-color:var(--c-law);color:var(--c-law);background:var(--c-law-d)}
+      .filter-btn[data-type="regulation"].active{border-color:var(--c-regulation);color:var(--c-regulation);background:var(--c-regulation-d)}
+      .filter-btn[data-type="list_update"].active{border-color:var(--c-list_update);color:var(--c-list_update);background:var(--c-list_update-d)}
+      .filter-btn[data-type="ma"].active{border-color:var(--c-ma);color:var(--c-ma);background:var(--c-ma-d)}
+      .filter-btn[data-type="program"].active{border-color:var(--c-program);color:var(--c-program);background:var(--c-program-d)}
+      .filter-btn[data-type="enforcement"].active{border-color:var(--c-enforcement);color:var(--c-enforcement);background:var(--c-enforcement-d)}
+
+      /* Timeline */
+      .timeline-wrap{position:relative;padding-left:32px}
+      .timeline-wrap::before{content:'';position:absolute;left:10px;top:0;bottom:0;width:2px;background:linear-gradient(to bottom,var(--border),var(--border) 90%,transparent)}
+
+      /* Year group */
+      .year-group{margin-bottom:4px}
+      .year-marker{position:relative;margin-bottom:14px}
+      .year-marker::before{content:'';position:absolute;left:-32px;top:50%;transform:translateY(-50%) translateX(4px);width:14px;height:14px;border-radius:50%;background:var(--surface);border:2px solid var(--border-hi)}
+      .year-label{font:800 13px var(--mono);color:var(--text-xd);letter-spacing:.1em;text-transform:uppercase}
+
+      /* Event card */
+      .ev-card{position:relative;background:var(--card);border:1px solid var(--border);border-radius:9px;padding:14px 16px;margin-bottom:10px;border-left:3px solid var(--border-hi);transition:border-color .12s}
+      .ev-card:hover{background:var(--card-hi);border-color:var(--border-hi)}
+      .ev-card::before{content:'';position:absolute;left:-32px;top:18px;width:10px;height:10px;border-radius:50%;border:2px solid var(--bg);box-shadow:0 0 0 1px var(--c-law)}
+      .ev-card[data-type="law"]{border-left-color:var(--c-law)}
+      .ev-card[data-type="law"]::before{box-shadow:0 0 0 1px var(--c-law);background:var(--c-law)}
+      .ev-card[data-type="regulation"]{border-left-color:var(--c-regulation)}
+      .ev-card[data-type="regulation"]::before{box-shadow:0 0 0 1px var(--c-regulation);background:var(--c-regulation)}
+      .ev-card[data-type="list_update"]{border-left-color:var(--c-list_update)}
+      .ev-card[data-type="list_update"]::before{box-shadow:0 0 0 1px var(--c-list_update);background:var(--c-list_update)}
+      .ev-card[data-type="ma"]{border-left-color:var(--c-ma)}
+      .ev-card[data-type="ma"]::before{box-shadow:0 0 0 1px var(--c-ma);background:var(--c-ma)}
+      .ev-card[data-type="program"]{border-left-color:var(--c-program)}
+      .ev-card[data-type="program"]::before{box-shadow:0 0 0 1px var(--c-program);background:var(--c-program)}
+      .ev-card[data-type="enforcement"]{border-left-color:var(--c-enforcement)}
+      .ev-card[data-type="enforcement"]::before{box-shadow:0 0 0 1px var(--c-enforcement);background:var(--c-enforcement)}
+
+      .ev-head{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;flex-wrap:wrap;margin-bottom:6px}
+      .ev-meta{display:flex;align-items:center;gap:7px;flex-wrap:wrap}
+      .ev-date{font:600 11px var(--mono);color:var(--text-xd)}
+      .ev-type-pill{font:700 9px var(--mono);padding:2px 7px;border-radius:4px;text-transform:uppercase;letter-spacing:.06em;white-space:nowrap}
+      .tp-law{background:var(--c-law-d);color:var(--c-law)}
+      .tp-regulation{background:var(--c-regulation-d);color:var(--c-regulation)}
+      .tp-list_update{background:var(--c-list_update-d);color:var(--c-list_update)}
+      .tp-ma{background:var(--c-ma-d);color:var(--c-ma)}
+      .tp-program{background:var(--c-program-d);color:var(--c-program)}
+      .tp-enforcement{background:var(--c-enforcement-d);color:var(--c-enforcement)}
+
+      .ev-future-badge{font:700 9px var(--mono);padding:2px 7px;border-radius:4px;background:rgba(245,158,11,.12);color:#f59e0b;border:1px solid rgba(245,158,11,.3);text-transform:uppercase;letter-spacing:.06em}
+
+      .ev-title{font:700 14px var(--font);color:var(--text);line-height:1.35;flex:1}
+      .ev-summary{font-size:12px;color:var(--text-s);line-height:1.65;margin-bottom:8px}
+      .ev-authority{font:500 11px var(--mono);color:var(--text-xd)}
+      .ev-tags{display:flex;flex-wrap:wrap;gap:4px;margin-top:8px}
+      .ev-tag{font:500 9px var(--mono);padding:2px 6px;border-radius:3px;background:var(--surface);border:1px solid var(--border);color:var(--text-xd);text-transform:lowercase}
+      .ev-vendors{margin-top:6px;display:flex;gap:4px;flex-wrap:wrap}
+      .ev-vendor{font:600 10px var(--mono);padding:2px 7px;border-radius:4px;background:var(--c-ma-d);color:var(--c-ma);text-transform:uppercase}
+      .ev-conf{font:500 9px var(--mono);color:var(--text-xd);margin-top:6px;text-transform:uppercase;letter-spacing:.05em}
+      .ev-conf.medium{color:#f59e0b}
+      .ev-conf.low{color:#ef4444}
+
+      /* Future events get a subtle glow */
+      .ev-card.is-future{background:rgba(245,158,11,.04);border-color:rgba(245,158,11,.2)}
+      .ev-card.is-future::after{content:'UPCOMING';position:absolute;right:12px;top:10px;font:700 8px var(--mono);color:#f59e0b;letter-spacing:.1em;opacity:.5}
+
+      /* Empty */
+      .empty{padding:32px;text-align:center;color:var(--text-xd);font-size:12px;background:var(--card);border:1px dashed var(--border);border-radius:8px}
+
+      /* Footer note */
+      .foot-note{font:500 10px var(--mono);color:var(--text-xd);margin-top:28px;padding:12px 14px;background:var(--surface);border:1px solid var(--border);border-radius:8px;line-height:1.7}
+      .foot-note a{color:#f59e0b}
+    </style>
+</head>
+<body>
+<header style="display:flex;align-items:center;justify-content:space-between;gap:8px;padding:10px 16px;border-bottom:1px solid #2e2e26;background:#1c1c17;position:sticky;top:0;z-index:100;">
+  <a href="/" style="font:800 18px 'JetBrains Mono',monospace;color:#f59e0b;letter-spacing:-0.03em;text-decoration:none;">Forge</a>
+  <div style="display:flex;gap:5px;align-items:center;">
+    <a href="/compliance/" class="tp-pill tp-hide-sm">Compliance</a>
+    <a href="/compliance-matrix/" class="tp-pill tp-hide-sm">Matrix</a>
+    <a href="/dossier/" class="tp-pill tp-hide-sm">Dossier</a>
+    <a href="/wingman/" class="tp-pill">Wingman</a>
+  </div>
+</header>
+
+<main class="page">
+  <div class="page-head">
+    <h1>Regulatory Timeline</h1>
+    <p>Chronological ledger of compliance milestones shaping US UAS procurement — from NDAA §848 through ASDA, Blue UAS, and the FCC equipment ban. Past and upcoming events tracked.</p>
+  </div>
+
+  <div class="filter-row">
+    <span class="filter-label">Filter</span>
+    <button class="filter-btn active" data-type="all" onclick="setFilter('all',this)">All</button>
+    <button class="filter-btn" data-type="law" onclick="setFilter('law',this)">Law</button>
+    <button class="filter-btn" data-type="regulation" onclick="setFilter('regulation',this)">Regulation</button>
+    <button class="filter-btn" data-type="list_update" onclick="setFilter('list_update',this)">List Update</button>
+    <button class="filter-btn" data-type="ma" onclick="setFilter('ma',this)">M&amp;A</button>
+    <button class="filter-btn" data-type="program" onclick="setFilter('program',this)">Program</button>
+  </div>
+
+  <div id="timeline-root"></div>
+
+  <div class="foot-note">
+    <strong>Data:</strong> forge_compliance_events.json — hand-seeded, AUDIT REQUIRED on exact dates and scopes.
+    Events marked <code>confidence: medium</code> need verification.
+    Spot an error? <a href="/contribute/">File a correction →</a>
+  </div>
+</main>
+
+<script>
+(function(){
+  'use strict';
+
+  const ESC = (s) => {
+    if (s == null) return '';
+    const d = document.createElement('div');
+    d.textContent = String(s);
+    return d.innerHTML;
+  };
+
+  const TODAY = new Date();
+  const TODAY_STR = TODAY.toISOString().slice(0,10);
+
+  const TYPE_LABELS = {
+    law: 'Law',
+    regulation: 'Regulation',
+    list_update: 'List Update',
+    ma: 'M&A',
+    program: 'Program',
+    enforcement: 'Enforcement',
+  };
+
+  let allEvents = [];
+  let activeFilter = 'all';
+
+  async function loadData() {
+    let res;
+    try {
+      res = await fetch('forge_compliance_events.json');
+    } catch (e) {
+      res = null;
+    }
+    const data = res && res.ok ? await res.json() : { events: [] };
+    // Sort chronologically (oldest first, future events at bottom)
+    allEvents = (data.events || []).sort((a, b) => (a.date || '9999') < (b.date || '9999') ? -1 : 1);
+  }
+
+  function setFilter(type, btn) {
+    activeFilter = type;
+    document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    render();
+  }
+  window.setFilter = setFilter;
+
+  function formatDate(d) {
+    if (!d) return '—';
+    const parts = d.split('-');
+    const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+    if (parts.length === 3) {
+      return `${months[parseInt(parts[1])-1]} ${parseInt(parts[2])}, ${parts[0]}`;
+    }
+    return d;
+  }
+
+  function renderCard(ev) {
+    const isFuture = ev.date && ev.date > TODAY_STR;
+    const futurePart = isFuture ? `<span class="ev-future-badge">Upcoming</span>` : '';
+    const typeLabel = TYPE_LABELS[ev.type] || ev.type || '?';
+    const vendorPills = (ev.vendors || []).map(v => `<span class="ev-vendor">${ESC(v)}</span>`).join('');
+    const tags = (ev.tags || []).map(t => `<span class="ev-tag">${ESC(t)}</span>`).join('');
+    const confPart = ev.confidence ? `<div class="ev-conf ${ESC(ev.confidence)}">confidence: ${ESC(ev.confidence)}</div>` : '';
+
+    return `
+      <div class="ev-card${isFuture ? ' is-future' : ''}" data-type="${ESC(ev.type)}">
+        <div class="ev-head">
+          <div class="ev-meta">
+            <span class="ev-date">${ESC(formatDate(ev.date))}</span>
+            <span class="ev-type-pill tp-${ESC(ev.type)}">${ESC(typeLabel)}</span>
+            ${futurePart}
+          </div>
+        </div>
+        <div class="ev-title">${ESC(ev.title || '—')}</div>
+        ${ev.summary ? `<div class="ev-summary">${ESC(ev.summary)}</div>` : ''}
+        ${ev.authority ? `<div class="ev-authority"><i class="ph ph-scales" style="vertical-align:middle;margin-right:3px"></i>${ESC(ev.authority)}</div>` : ''}
+        ${vendorPills ? `<div class="ev-vendors">${vendorPills}</div>` : ''}
+        ${confPart}
+        ${tags ? `<div class="ev-tags">${tags}</div>` : ''}
+      </div>
+    `;
+  }
+
+  function render() {
+    const filtered = activeFilter === 'all'
+      ? allEvents
+      : allEvents.filter(ev => ev.type === activeFilter);
+
+    if (!filtered.length) {
+      document.getElementById('timeline-root').innerHTML = '<div class="empty">No events match this filter.</div>';
+      return;
+    }
+
+    // Group by year
+    const byYear = {};
+    for (const ev of filtered) {
+      const year = ev.date ? ev.date.slice(0,4) : 'Unknown';
+      if (!byYear[year]) byYear[year] = [];
+      byYear[year].push(ev);
+    }
+
+    const html = Object.entries(byYear).map(([year, evs]) => `
+      <div class="year-group">
+        <div class="year-marker"><span class="year-label">${ESC(year)}</span></div>
+        ${evs.map(renderCard).join('')}
+      </div>
+    `).join('');
+
+    document.getElementById('timeline-root').innerHTML = `<div class="timeline-wrap">${html}</div>`;
+  }
+
+  (async function init() {
+    try {
+      await loadData();
+      render();
+    } catch (err) {
+      console.error('Timeline init failed', err);
+      document.getElementById('timeline-root').innerHTML = '<div class="empty">Failed to load timeline data.</div>';
+    }
+  })();
+})();
+</script>
+</body>
+</html>

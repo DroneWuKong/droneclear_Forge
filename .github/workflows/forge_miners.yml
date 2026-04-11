@@ -1,0 +1,202 @@
+name: Forge Miners
+
+on:
+  schedule:
+    # 12:37 UTC = 7:37 AM CDT (DST) / 6:37 AM CST. Lands before 8 AM wake-up
+    # even with GH Actions' usual 5-20 min scheduled-run queue delay. Minute
+    # picked off :00/:30 to avoid global fleet pile-up.
+    - cron: '37 12 * * *'
+  workflow_dispatch:
+    inputs:
+      miner:
+        description: 'Which miner to run (default: all)'
+        required: false
+        default: 'all'
+        type: choice
+        options:
+          - all
+          - rotorbuilds
+          - ardupilot_discourse
+          - blue_uas
+          - sam_gov
+      max_records:
+        description: 'Per-miner record cap (safety for DOM-unwired scaffolds)'
+        required: false
+        default: '25'
+        type: string
+      dry_run:
+        description: 'Miners only, skip normalizers'
+        required: false
+        default: false
+        type: boolean
+
+permissions:
+  contents: read
+
+jobs:
+  # ─── Validate: seeded JSON files parse and have expected shape ──────────
+  validate-data:
+    name: 'Validate seeded data files'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Check data files parse as JSON
+        run: |
+          set -e
+          cd "DroneClear Components Visualizer"
+          for f in forge_manufacturer_status.json forge_alternatives.json forge_848_spec_sheets.json forge_compliance_events.json; do
+            if [ -f "$f" ]; then
+              python3 -c "import json; d=json.load(open('$f')); print(f'$f OK')"
+            else
+              echo "$f missing (may be optional)"
+            fi
+          done
+      - name: Summarize manufacturer status roster
+        run: |
+          cd "DroneClear Components Visualizer"
+          python3 - <<'PY'
+          import json
+          d = json.load(open('forge_manufacturer_status.json'))
+          mfgs = d.get('manufacturers', {})
+          from collections import Counter
+          status_counts = Counter(r.get('status', 'unknown') for r in mfgs.values())
+          low_conf = [s for s, r in mfgs.items() if r.get('confidence') == 'medium' or r.get('confidence') == 'low']
+          print(f"Total vendors: {len(mfgs)}")
+          print(f"Status breakdown: {dict(status_counts)}")
+          print(f"Needs audit (low/medium confidence): {len(low_conf)}")
+          for s in low_conf[:15]:
+              print(f"  - {s}")
+          PY
+
+  # ─── Smoke: mining framework imports and configures cleanly ─────────────
+  smoke-miners:
+    name: 'Smoke-check mining framework'
+    runs-on: ubuntu-latest
+    needs: validate-data
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install mining deps
+        run: pip install -r tools/mining/requirements.txt
+      - name: Import check all miners
+        run: |
+          set -e
+          cd tools/mining
+          python3 -c "
+          from miners.rotorbuilds import RotorBuildsMiner
+          from miners.ardupilot_discourse import ArduPilotDiscourseMiner
+          from miners.blue_uas import BlueUASMiner
+          from miners.sam_gov import SamGovMiner
+          for cls in [RotorBuildsMiner, ArduPilotDiscourseMiner, BlueUASMiner, SamGovMiner]:
+              cfg = cls.default_config()
+              print(f'{cls.__name__:32s} base={cfg.base_url:42s} min_interval={cfg.min_request_interval_sec}s')
+          print('ALL MINER CONFIGS VALID')
+          "
+      - name: Validate orchestrator
+        run: |
+          python3 tools/mining/run_all.py --help || echo "orchestrator --help exited non-zero (scaffold)"
+
+  # ─── Daily report: auto-generated markdown summary for wake-up review ──
+  daily-report:
+    name: 'Generate daily roster report'
+    runs-on: ubuntu-latest
+    needs: [validate-data, smoke-miners]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Generate report
+        run: |
+          mkdir -p .reports
+          python3 - <<'PY'
+          import json, os
+          from datetime import datetime
+          from collections import Counter
+
+          d = json.load(open('DroneClear Components Visualizer/forge_manufacturer_status.json'))
+          mfgs = d.get('manufacturers', {})
+          sheets = json.load(open('DroneClear Components Visualizer/forge_848_spec_sheets.json'))
+
+          lines = []
+          lines.append(f"# Forge Roster Report — {datetime.utcnow().strftime('%Y-%m-%d %H:%M UTC')}")
+          lines.append("")
+          lines.append(f"**Total vendors tracked:** {len(mfgs)}  ")
+          lines.append(f"**§848 spec sheets indexed:** {len(sheets.get('spec_sheets', []))}")
+          lines.append("")
+
+          lines.append("## Status breakdown")
+          status_counts = Counter(r.get('status', 'unknown') for r in mfgs.values())
+          for k, v in sorted(status_counts.items(), key=lambda x: -x[1]):
+              lines.append(f"- **{k}**: {v}")
+          lines.append("")
+
+          lines.append("## Vendors needing audit")
+          low_conf = [(s, r) for s, r in mfgs.items() if r.get('confidence') in ('medium', 'low')]
+          if low_conf:
+              for s, r in low_conf:
+                  flags = ', '.join(r.get('risk_flags', []) or ['—'])
+                  lines.append(f"- **{r.get('name', s)}** — confidence: {r.get('confidence')} — flags: {flags}")
+          else:
+              lines.append("_None — all entries have high confidence._")
+          lines.append("")
+
+          lines.append("## Recent M&A events")
+          ma_events = []
+          for s, r in mfgs.items():
+              for ev in (r.get('m_a_history') or []):
+                  ma_events.append((ev.get('approx_year', '?'), r.get('name', s), ev))
+          for year, name, ev in sorted(ma_events, key=lambda x: str(x[0]), reverse=True):
+              lines.append(f"- **{year}** — {name}: {ev.get('event', 'event')} of {ev.get('target', '?')}")
+          lines.append("")
+
+          lines.append("## Vendors with leadership data")
+          with_leaders = [(s, r) for s, r in mfgs.items() if r.get('leadership')]
+          for s, r in with_leaders:
+              leaders = r['leadership']
+              lines.append(f"- **{r.get('name', s)}** — {', '.join(l.get('title', '?') + ': ' + l.get('name', '?') for l in leaders)}")
+          lines.append("")
+
+          report = "\n".join(lines)
+          with open('.reports/roster-report.md', 'w') as f:
+              f.write(report)
+          print(report)
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: forge-roster-report-${{ github.run_id }}
+          path: .reports/roster-report.md
+          if-no-files-found: warn
+
+  # ─── Mining run: actual scrape (DRY by default since DOM isn't wired) ──
+  mining-run:
+    name: 'Mining scaffold dry-run'
+    runs-on: ubuntu-latest
+    needs: smoke-miners
+    # Only run when DOM is wired — gated behind workflow_dispatch for now
+    if: github.event_name == 'workflow_dispatch'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - run: pip install -r tools/mining/requirements.txt
+      - name: Run selected miner
+        env:
+          SAM_GOV_API_KEY: ${{ secrets.SAM_GOV_API_KEY }}
+        run: |
+          MINER="${{ inputs.miner }}"
+          MAX="${{ inputs.max_records }}"
+          DRY="${{ inputs.dry_run }}"
+          ARGS="--max $MAX"
+          if [ "$MINER" != "all" ]; then ARGS="$ARGS --miner $MINER"; fi
+          if [ "$DRY" = "true" ]; then ARGS="$ARGS --dry"; fi
+          python3 tools/mining/run_all.py $ARGS
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: mining-output-${{ github.run_id }}
+          path: tools/mining/output/raw/
+          if-no-files-found: warn
