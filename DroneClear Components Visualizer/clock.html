@@ -160,12 +160,27 @@ body {
 .clock-caption {
   text-align: center;
 }
-.clock-time-display {
+.clock-countdown {
+  display: flex;
+  align-items: baseline;
+  gap: 1px;
+  line-height: 1;
+}
+.clock-countdown-val {
   font-family: 'Bebas Neue', sans-serif;
-  font-size: 42px;
+  font-size: 48px;
   letter-spacing: 0.02em;
   color: var(--red);
-  line-height: 1;
+  min-width: 2ch;
+  text-align: right;
+}
+.clock-countdown-sep {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 14px;
+  color: var(--muted);
+  letter-spacing: 0.08em;
+  padding-bottom: 4px;
+  padding-right: 4px;
 }
 .clock-time-label {
   font-family: 'IBM Plex Mono', monospace;
@@ -573,8 +588,10 @@ body {
     </div>
 
     <div class="clock-caption">
-      <div class="clock-time-display" id="clock-time">—:—</div>
-      <div class="clock-time-label">minutes to midnight</div>
+      <div class="clock-countdown" id="clock-countdown">
+        <span class="clock-countdown-val" id="countdown-mins">—</span><span class="clock-countdown-sep">m</span><span class="clock-countdown-val" id="countdown-secs">00</span><span class="clock-countdown-sep">s</span>
+      </div>
+      <div class="clock-time-label">to midnight</div>
       <div class="clock-verdict" id="clock-verdict">Computing ecosystem risk…</div>
     </div>
 
@@ -798,6 +815,32 @@ function getVerdict(score) {
   return "Low threat. Ecosystem operating within normal parameters.";
 }
 
+// ── COUNTDOWN TICKER ─────────────────────────────────────────────────────────
+let _countdownInterval = null;
+let _countdownTotal = 0;   // seconds remaining at start
+
+function _startCountdown(minutesToMidnight) {
+  if (_countdownInterval) clearInterval(_countdownInterval);
+  // Use minutesToMidnight as starting point, tick down from there
+  _countdownTotal = minutesToMidnight * 60;
+  const start = Date.now();
+
+  function tick() {
+    // Elapsed since countdown started
+    const elapsed = Math.floor((Date.now() - start) / 1000);
+    const remaining = Math.max(0, _countdownTotal - elapsed);
+    const m = Math.floor(remaining / 60);
+    const s = remaining % 60;
+    const mEl = document.getElementById('countdown-mins');
+    const sEl = document.getElementById('countdown-secs');
+    if (mEl) mEl.textContent = m;
+    if (sEl) sEl.textContent = String(s).padStart(2, '0');
+  }
+
+  tick(); // immediate
+  _countdownInterval = setInterval(tick, 1000);
+}
+
 // ── RENDER CLOCK ─────────────────────────────────────────────────────────────
 function renderClock() {
   // Use live UERI score if available, otherwise compute from embedded data
@@ -814,7 +857,8 @@ function renderClock() {
   }
 
   // Update time display
-  document.getElementById('clock-time').textContent = display;
+  // Start live countdown from minutesToMidnight
+  _startCountdown(minutesToMidnight);
   document.getElementById('clock-verdict').textContent = getVerdict(normalized);
 
   // Update hands
