@@ -186,12 +186,36 @@ _PAGE_SLUGS = {
 }
 
 
+_MOBILE_CSS = """<style>
+@media(max-width:640px){
+  /* Global card/grid overflow fix — prevents horizontal scroll on all pages */
+  *{max-width:100%;box-sizing:border-box}
+  img,video,iframe,table{max-width:100%!important}
+  /* Force 2-col grids to single column on mobile */
+  [style*="grid-template-columns:1fr 1fr"],[style*="grid-template-columns: 1fr 1fr"]{grid-template-columns:1fr!important}
+  [style*="grid-template-columns:repeat(3"],[style*="grid-template-columns: repeat(3"]{grid-template-columns:1fr 1fr!important}
+  [style*="grid-template-columns:repeat(4"],[style*="grid-template-columns: repeat(4"]{grid-template-columns:1fr 1fr!important}
+  /* Stat tiles: 2-up on mobile */
+  .an-stats,.stat-grid,.stats-grid{grid-template-columns:repeat(2,1fr)!important}
+  /* Content padding tighten */
+  .content{padding:12px 12px!important}
+  /* Prevent wide modals/cards */
+  .modal,.pred-modal,.flag-detail,[class*="-modal"]{width:calc(100vw - 24px)!important;max-width:calc(100vw - 24px)!important;left:12px!important;right:12px!important}
+}
+@media(max-width:400px){
+  [style*="grid-template-columns:1fr 1fr"],[style*="grid-template-columns: 1fr 1fr"]{grid-template-columns:1fr!important}
+  .an-stats,.stat-grid,.stats-grid{grid-template-columns:repeat(2,1fr)!important}
+}
+</style>"""
+
+
 def inject_analytics(html, src_name):
-    """Inject Forge analytics snippet before </body> on every page."""
+    """Inject Forge analytics snippet and global mobile CSS before </body> on every page."""
     slug = _PAGE_SLUGS.get(src_name, src_name.replace('.html', ''))
     tag = (
         f'\n<script>var __FORGE_PAGE__="{slug}";</script>\n'
         f'<script>{_ANALYTICS_SNIPPET}</script>\n'
+        f'{_MOBILE_CSS}\n'
     )
     if '</body>' in html:
         return html.replace('</body>', tag + '</body>', 1)
