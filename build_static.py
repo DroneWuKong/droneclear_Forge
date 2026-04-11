@@ -441,6 +441,31 @@ SEO_META = {
         'Browse the complete catalog of 3,500+ drone components with search, filtering, and detailed specifications.',
         'drone parts catalog, browse FPV parts, drone component search',
     ),
+    'clock.html': (
+        'UAS Ecosystem Clock — How Close Is the US Drone Industry to Midnight?',
+        'Live threat assessment for the US drone supply chain. Tracks NDAA compliance gaps, gray zone vendors, regulatory pressure, and procurement velocity. Updated daily by the P.I.E. pipeline.',
+        'UAS ecosystem clock, drone supply chain risk, NDAA compliance tracker, gray zone drones, Blue UAS threat assessment, drone industry intelligence',
+    ),
+    'patterns.html': (
+        'P.I.E. Pattern Intelligence — Drone Supply Chain Flags & Predictions',
+        'Live PIE flags, predictions, and gray zone entity tracking for the US drone industry. 250+ active signals across supply chain, regulatory, and procurement vectors.',
+        'drone supply chain intelligence, PIE flags, NDAA procurement signals, gray zone drones, drone industry predictions, UAS threat assessment',
+    ),
+    'patterns-home.html': (
+        'P.I.E. Pattern Intelligence Engine — Drone Industry Threat Assessment',
+        'The Pattern Intelligence Engine tracks supply chain concentration, gray zone vendors, regulatory pressure, and procurement signals across the US UAS ecosystem.',
+        'drone intelligence platform, PIE engine, UAS supply chain, drone procurement intelligence, NDAA threat tracking',
+    ),
+    'brief.html': (
+        'Daily PIE Brief — UAS Ecosystem Intelligence Report',
+        'Daily AI-synthesized intelligence brief covering drone supply chain signals, gray zone entity activity, regulatory developments, and procurement velocity.',
+        'drone intelligence brief, daily UAS report, PIE brief, drone supply chain news, NDAA procurement signals',
+    ),
+    'analytics.html': (
+        'Mission Control — Forge Analytics Dashboard',
+        'Analytics dashboard for the Forge ecosystem. Wingman query patterns, parts database health, intel source velocity, and user signals.',
+        'drone analytics dashboard, Forge mission control, UAS intelligence analytics',
+    ),
 }
 
 DEFAULT_SEO = (
@@ -475,6 +500,10 @@ def inject_seo(html, src_name, dst_path):
     <meta property="og:title" content="{title}">
     <meta property="og:description" content="{description}">
     <meta property="og:url" content="{canonical}">
+
+    <!-- Open Graph Image -->
+    <meta property="og:image" content="https://forgeprole.netlify.app/static/og-image.png">
+    <meta name="twitter:image" content="https://forgeprole.netlify.app/static/og-image.png">
 
     <!-- Twitter Card -->
     <meta name="twitter:card" content="summary_large_image">
