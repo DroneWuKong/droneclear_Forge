@@ -602,6 +602,175 @@
 </style>
 </head>
 <body>
+<!-- ── Unified DroneClear Nav ───────────────────────────────────────── -->
+<style id="dc-unified-nav-styles">
+#dc-nav{display:flex;align-items:center;justify-content:space-between;padding:0 16px;height:44px;background:#0c0c0a;border-bottom:1px solid #1e1e18;position:sticky;top:0;z-index:500;font-family:'DM Sans',system-ui,sans-serif}
+#dc-nav-left{display:flex;align-items:center;gap:10px;min-width:0}
+#dc-nav-brand{font:700 13px 'JetBrains Mono',monospace;color:#f59e0b;text-decoration:none;letter-spacing:-.02em;flex-shrink:0}
+#dc-nav-sep{color:#2e2e26;font-size:12px;flex-shrink:0}
+#dc-nav-page{font:600 11px 'DM Sans',system-ui;color:#b8b0a0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:160px}
+#dc-nav-right{display:flex;align-items:center;gap:6px;flex-shrink:0}
+.dc-nav-pill{font:500 10px 'DM Sans',system-ui;color:#6b6358;padding:4px 10px;border:1px solid #2a2a22;border-radius:20px;text-decoration:none;white-space:nowrap;transition:all .15s;display:none}
+.dc-nav-pill:hover{border-color:#3e3e34;color:#b8b0a0}
+.dc-nav-pill.dc-active{color:#22c55e;border-color:#22c55e;font-weight:700}
+@media(min-width:540px){.dc-nav-pill{display:inline-flex}}
+#dc-hamburger{display:flex;align-items:center;justify-content:center;width:32px;height:32px;border-radius:6px;border:1px solid #2a2a22;background:none;color:#6b6358;cursor:pointer;transition:all .15s;flex-shrink:0}
+#dc-hamburger:hover{border-color:#3e3e34;color:#b8b0a0}
+#dc-hamburger.open{border-color:#f59e0b;color:#f59e0b;background:rgba(245,158,11,.08)}
+#dc-overlay{position:fixed;inset:0;z-index:498;background:rgba(0,0,0,.6);backdrop-filter:blur(4px);opacity:0;pointer-events:none;transition:opacity .25s}
+#dc-overlay.open{opacity:1;pointer-events:auto}
+#dc-drawer{position:fixed;top:0;left:0;bottom:0;z-index:499;width:260px;max-width:85vw;background:#111110;border-right:1px solid #2a2a22;transform:translateX(-100%);transition:transform .3s cubic-bezier(.4,0,.2,1);display:flex;flex-direction:column;overflow-y:auto}
+#dc-drawer.open{transform:translateX(0)}
+#dc-drawer-head{padding:16px;border-bottom:1px solid #1e1e18;display:flex;align-items:center;justify-content:space-between}
+#dc-drawer-brand{font:700 14px 'JetBrains Mono',monospace;color:#f59e0b;letter-spacing:-.02em}
+#dc-drawer-close{width:28px;height:28px;border-radius:6px;border:1px solid #2a2a22;background:none;color:#6b6358;cursor:pointer;font-size:16px;display:flex;align-items:center;justify-content:center;transition:all .15s}
+#dc-drawer-close:hover{color:#d62828;border-color:rgba(214,40,40,.3)}
+.dc-drawer-section{padding:12px 16px 4px;font:700 9px 'JetBrains Mono',monospace;color:#3e3e34;text-transform:uppercase;letter-spacing:.1em}
+.dc-drawer-item{display:flex;align-items:center;gap:10px;padding:9px 16px;color:#6b6358;text-decoration:none;font:400 12px 'DM Sans',system-ui;transition:all .15s;border-left:2px solid transparent}
+.dc-drawer-item:hover{color:#b8b0a0;background:rgba(255,255,255,.02);border-left-color:#2e2e26}
+.dc-drawer-item.dc-active{color:#22c55e;border-left-color:#22c55e;background:rgba(34,197,94,.04)}
+.dc-drawer-item.dc-ext{color:#3e3e34}
+.dc-drawer-item.dc-ext:hover{color:#6b6358}
+.dc-drawer-divider{height:1px;background:#1e1e18;margin:8px 16px}
+#dc-drawer-foot{margin-top:auto;padding:16px;border-top:1px solid #1e1e18;font:400 10px 'JetBrains Mono',monospace;color:#2e2e26}
+</style>
+
+<nav id="dc-nav">
+  <div id="dc-nav-left">
+    <button id="dc-hamburger" onclick="dcNavToggle()" aria-label="Menu">
+      <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round">
+        <line x1="1" y1="3" x2="13" y2="3"/><line x1="1" y1="7" x2="13" y2="7"/><line x1="1" y1="11" x2="13" y2="11"/>
+      </svg>
+    </button>
+    <a id="dc-nav-brand" href="/" onclick="return dcNavBrandClick(event)">—</a>
+    <span id="dc-nav-sep">/</span>
+    <span id="dc-nav-page">—</span>
+  </div>
+  <div id="dc-nav-right">
+    <!-- Forge pills -->
+    <a class="dc-nav-pill dc-forge-pill" href="https://nvmillbuilditmyself.com/browse/" data-page="browse">Browse</a>
+    <a class="dc-nav-pill dc-forge-pill" href="https://nvmillbuilditmyself.com/wingman/" data-page="wingman">Wingman</a>
+    <a class="dc-nav-pill dc-forge-pill" href="https://nvmillbuilditmyself.com/intel/" data-page="intel">Intel</a>
+    <!-- PIE pills -->
+    <a class="dc-nav-pill dc-pie-pill" href="https://nvmillfindoutmyself.com/clock/" data-page="clock">Clock</a>
+    <a class="dc-nav-pill dc-pie-pill" href="https://nvmillfindoutmyself.com/ddg/" data-page="ddg">DDG</a>
+    <a class="dc-nav-pill dc-pie-pill" href="https://nvmillfindoutmyself.com/patterns/" data-page="patterns">Flags</a>
+  </div>
+</nav>
+
+<div id="dc-overlay" onclick="dcNavClose()"></div>
+<div id="dc-drawer">
+  <div id="dc-drawer-head">
+    <span id="dc-drawer-brand">—</span>
+    <button id="dc-drawer-close" onclick="dcNavClose()">✕</button>
+  </div>
+
+  <div class="dc-drawer-section">Forge — Intelligence</div>
+  <a class="dc-drawer-item" href="https://nvmillbuilditmyself.com/browse/" data-page="browse">Browse Components</a>
+  <a class="dc-drawer-item" href="https://nvmillbuilditmyself.com/compare/" data-page="compare">Compare</a>
+  <a class="dc-drawer-item" href="https://nvmillbuilditmyself.com/compliance/" data-page="compliance">Compliance</a>
+  <a class="dc-drawer-item" href="https://nvmillbuilditmyself.com/dossier/" data-page="dossier">Dossier</a>
+  <a class="dc-drawer-item" href="https://nvmillbuilditmyself.com/platforms/" data-page="platforms">Platforms</a>
+  <a class="dc-drawer-item" href="https://nvmillbuilditmyself.com/regs/" data-page="regs">Regs</a>
+
+  <div class="dc-drawer-section">Forge — Tools</div>
+  <a class="dc-drawer-item" href="https://nvmillbuilditmyself.com/wingman/" data-page="wingman">Wingman AI</a>
+  <a class="dc-drawer-item" href="https://nvmillbuilditmyself.com/stack-builder/" data-page="stack-builder">Stack Builder</a>
+  <a class="dc-drawer-item" href="https://nvmillbuilditmyself.com/report/" data-page="report">Compliance Report</a>
+  <a class="dc-drawer-item" href="https://nvmillbuilditmyself.com/tools-home/" data-page="tools-home">All Tools</a>
+
+  <div class="dc-drawer-section">Forge — Intel</div>
+  <a class="dc-drawer-item" href="https://nvmillbuilditmyself.com/intel/" data-page="intel">Intel Hub</a>
+  <a class="dc-drawer-item" href="https://nvmillbuilditmyself.com/industry/" data-page="industry">Industry</a>
+  <a class="dc-drawer-item" href="https://nvmillbuilditmyself.com/tracker/" data-page="tracker">Contract Tracker</a>
+
+  <div class="dc-drawer-divider"></div>
+
+  <div class="dc-drawer-section">PIE — Pattern Intelligence</div>
+  <a class="dc-drawer-item" href="https://nvmillfindoutmyself.com/patterns-home/" data-page="patterns-home">P.I.E Hub</a>
+  <a class="dc-drawer-item" href="https://nvmillfindoutmyself.com/brief/" data-page="brief">Brief</a>
+  <a class="dc-drawer-item" href="https://nvmillfindoutmyself.com/patterns/" data-page="patterns">Flags</a>
+  <a class="dc-drawer-item" href="https://nvmillfindoutmyself.com/clock/" data-page="clock">UAS Clock</a>
+  <a class="dc-drawer-item" href="https://nvmillfindoutmyself.com/ddg/" data-page="ddg">DDG Tracker</a>
+
+  <div class="dc-drawer-foot">Midwest Nice Advisory LLC</div>
+</div>
+
+<script>
+(function(){
+  var path = location.pathname.replace(/\/$/, '').split('/').pop() || 'home';
+  var isPro = (function(){
+    try {
+      var tok = localStorage.getItem('forge_token') || localStorage.getItem('wingman_sub_token') || '';
+      if(!tok || tok.length < 20) return false;
+      var p = JSON.parse(atob(tok.split('.')[1] || tok));
+      var payload = p.payload || p;
+      return !!(payload.tier && payload.tier !== 'free' && (!payload.exp || payload.exp > Date.now()));
+    } catch(e){ return false; }
+  })();
+  var host = location.hostname;
+  var isForge = host.includes('builditmyself') || host === 'localhost';
+  var isPIE   = host.includes('findoutmyself');
+
+  // Set page label
+  var labels = {
+    'browse':'Browse','wingman':'Wingman','intel':'Intel Hub','compare':'Compare',
+    'compliance':'Compliance','dossier':'Dossier','platforms':'Platforms','regs':'Regs',
+    'stack-builder':'Stack Builder','report':'Compliance Report','tools-home':'Tools',
+    'industry':'Industry','tracker':'Contract Tracker','patterns-home':'P.I.E Hub',
+    'brief':'Brief','patterns':'Flags','clock':'UAS Clock','ddg':'DDG Tracker',
+    'pro':'Pro','start':'Getting Started','grants':'Grants','waiver':'Doc Builder',
+    'verify':'Verify','vault':'Vault','troubleshoot':'Troubleshoot'
+  };
+  var pageEl = document.getElementById('dc-nav-page');
+  if(pageEl) pageEl.textContent = labels[path] || document.title.split('—')[0].trim().split('·')[0].trim() || path;
+
+  // Brand link — goes to home of current domain
+  // Set brand name: Forge / Patterns / Patterns Pro
+  var brandName = isForge ? 'Forge' : (isPIE && (isPro || path === 'pro')) ? 'Patterns Pro' : isPIE ? 'Patterns' : 'DroneClear';
+  var brandEl = document.getElementById('dc-nav-brand');
+  var drawerBrandEl = document.getElementById('dc-drawer-brand');
+  if(brandEl){ brandEl.textContent = brandName; if(isPIE && isPro) brandEl.style.color='#a78bfa'; }
+  if(drawerBrandEl){ drawerBrandEl.textContent = brandName; if(isPIE && isPro) drawerBrandEl.style.color='#a78bfa'; }
+
+  window.dcNavBrandClick = function(e){
+    e.preventDefault();
+    location.href = isForge ? 'https://nvmillbuilditmyself.com/' : isPIE ? 'https://nvmillfindoutmyself.com/patterns-home/' : '/';
+  };
+
+  // Show correct pills for domain, mark active
+  var pills = document.querySelectorAll('.dc-nav-pill');
+  pills.forEach(function(p){
+    var isForgeP = p.classList.contains('dc-forge-pill');
+    var isPIEP   = p.classList.contains('dc-pie-pill');
+    if(isForge && isForgeP) p.style.display = 'inline-flex';
+    if(isPIE   && isPIEP)   p.style.display = 'inline-flex';
+    if(!isForge && !isPIE)  p.style.display = 'inline-flex'; // show all on unknown
+    if(p.dataset.page === path) p.classList.add('dc-active');
+  });
+
+  // Mark active drawer items
+  document.querySelectorAll('.dc-drawer-item').forEach(function(a){
+    if(a.dataset.page === path) a.classList.add('dc-active');
+  });
+
+  // Hamburger toggle
+  window.dcNavToggle = function(){
+    var open = document.getElementById('dc-drawer').classList.toggle('open');
+    document.getElementById('dc-overlay').classList.toggle('open', open);
+    document.getElementById('dc-hamburger').classList.toggle('open', open);
+  };
+  window.dcNavClose = function(){
+    document.getElementById('dc-drawer').classList.remove('open');
+    document.getElementById('dc-overlay').classList.remove('open');
+    document.getElementById('dc-hamburger').classList.remove('open');
+  };
+  // Esc to close
+  document.addEventListener('keydown', function(e){ if(e.key==='Escape') dcNavClose(); });
+})();
+</script>
+<!-- ── /Unified DroneClear Nav ─────────────────────────────────────── -->
+
 
 <nav style="background:#0a0b10;border-bottom:1px solid #2e2e26;padding:10px 16px;display:flex;align-items:center;justify-content:space-between;gap:8px;position:sticky;top:0;z-index:100;">
   <a href="/patterns-home/" style="font:800 14px 'JetBrains Mono',monospace;color:#22c55e;letter-spacing:-0.03em;text-decoration:none;flex-shrink:0;">Patterns</a>
