@@ -332,7 +332,7 @@ a{color:var(--blue);text-decoration:none}a:hover{text-decoration:underline}
 var DB,INTEL=[],COS=[],PROGS=[],PLATS=[],LIVE,GAPS,TOPICMAP,DASH,TRENDS;
 var FN='/.netlify/functions/analytics';                    // Forge: Wingman query/session data
 var DASH_FN='https://thebluefairy.netlify.app/.netlify/functions/analytics-dashboard'; // Ai-Project: page/UI behavior data
-var KEY=''; // Key never stored client-side — auth is session-based
+var KEY=sessionStorage.getItem('forge_admin_session')||''; // restored from session
 var $=function(id){return document.getElementById(id)};
 var fmt=function(n){return n>=1e6?(n/1e6).toFixed(1)+'M':n>=1e3?(n/1e3).toFixed(1).replace(/\.0$/,'')+'k':String(n)};
 
@@ -380,7 +380,7 @@ async function checkGate(){
     if(r.ok){
       // Server confirmed key is valid — store a time-limited session token
       var ts = Date.now().toString(36);
-      sessionStorage.setItem(GATE_SESSION_KEY, ts);
+      sessionStorage.setItem(GATE_SESSION_KEY, val);  // store actual key for subsequent requests
       closeGate();
       if(pendingTab) activateTab(pendingTab);
     } else {
@@ -418,7 +418,7 @@ document.querySelectorAll('#tabs .tab').forEach(function(tab){
     fetch('/.netlify/functions/analytics?verify=1', {
       headers: { 'x-admin-key': urlKey }
     }).then(function(r){
-      if(r.ok) sessionStorage.setItem(GATE_SESSION_KEY, Date.now().toString(36));
+      if(r.ok) sessionStorage.setItem(GATE_SESSION_KEY, urlKey);
       // Scrub key from URL immediately
       history.replaceState(null,'',location.pathname);
     }).catch(function(){});
