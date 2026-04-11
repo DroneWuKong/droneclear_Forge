@@ -99,7 +99,7 @@
     <div class="st"><span class="st-n" id="s-flags">251</span><span class="st-l">Flags</span></div>
     <div class="st"><span class="st-n" id="s-crit">41</span><span class="st-l">Critical</span></div>
     <div class="st"><span class="st-n amber" id="s-pred">10</span><span class="st-l">Predictions</span></div>
-    <div class="st"><span class="st-n green">4</span><span class="st-l">Gray Zone</span></div>
+    <div class="st"><span class="st-n green" id="s-gz">4</span><span class="st-l">Gray Zone</span></div>
   </div>
 
   <div class="grp">
@@ -134,13 +134,29 @@
 
 <script>
 (function(){
-  fetch('../static/pie_flags.json').then(r=>r.json()).then(f=>{
-    document.getElementById('s-flags').textContent=f.length; var pc=document.getElementById('pie-count'); if(pc) pc.textContent=f.length+' active';
-    document.getElementById('s-crit').textContent=f.filter(x=>x.severity==='critical').length;
-  }).catch(()=>{});
-  fetch('../static/pie_predictions.json').then(r=>r.json()).then(p=>{
-    document.getElementById('s-pred').textContent=p.length;
-  }).catch(()=>{});
+  // Try root (full data) first, fall back to /static/ (free slice)
+  var tok=encodeURIComponent(localStorage.getItem('forge_token')||'');
+  fetch('/.netlify/functions/forge-data?type=pie_flags&token='+tok)
+    .then(r=>r.json()).then(d=>{
+      var f=d.data||d;
+      if(!Array.isArray(f)||f.length===0) return fetch('/pie_flags.json').then(r=>r.ok?r.json():[]).catch(()=>[]);
+      return f;
+    }).then(f=>{
+      if(!f.length) return;
+      document.getElementById('s-flags').textContent=f.length;
+      var pc=document.getElementById('pie-count'); if(pc) pc.textContent=f.length+' active';
+      document.getElementById('s-crit').textContent=f.filter(x=>x.severity==='critical'||x.severity==='high').length;
+      var gz=f.filter(x=>x.flag_type==='gray_zone'||x.flag_type==='gray_zone_entity'||(x.tags&&x.tags.includes('gray_zone')));
+      var gel=document.getElementById('s-gz'); if(gel&&gz.length) gel.textContent=gz.length;
+    }).catch(()=>{});
+  fetch('/.netlify/functions/forge-data?type=pie_predictions&token='+tok)
+    .then(r=>r.json()).then(d=>{
+      var p=d.data||d;
+      if(!Array.isArray(p)||p.length===0) return fetch('/pie_predictions.json').then(r=>r.ok?r.json():[]).catch(()=>[]);
+      return p;
+    }).then(p=>{
+      if(p.length) document.getElementById('s-pred').textContent=p.length;
+    }).catch(()=>{});
 })();
 </script>
 
