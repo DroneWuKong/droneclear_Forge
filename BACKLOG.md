@@ -54,7 +54,15 @@
 | FEAT-003 | Photo AI analysis | Run CV models on captured step photos for quality assurance. Needs backend CV server. | 2026-03-06 |
 | FEAT-004 | Schema audit logging | Track who changed what in the schema and parts library. Needs database persistence. | 2026-03-06 |
 | FEAT-005 | Tag vocabulary | Controlled tag taxonomy per category instead of free-form strings. Needs schema changes. | 2026-03-06 |
-| FEAT-006 | Additional data sources | Scrape GetFPV, RaceDayQuads, or manufacturer sites for broader coverage. Needs scraping pipeline. | 2026-03-06 |
+| FEAT-006 | Additional data sources | Scraping pipeline scaffolded at `tools/mining/` (2026-04-11). RotorBuilds + ArduPilot Discourse + DIU Blue UAS + SAM.gov miners stubbed. DOM extraction for RotorBuilds is the next concrete step. See tools/mining/README.md. | 2026-03-06 |
+| FEAT-020 | RotorBuilds DOM extraction | Wire `parse()` in `tools/mining/miners/rotorbuilds.py` with real DOM selectors after saving sample pages to cache. Target: emit structured `parts` arrays with category + name + vendor + price. | 2026-04-11 |
+| FEAT-021 | Blue UAS authoritative registry | Wire `tools/mining/miners/blue_uas.py` to pull the DIU Cleared List + Framework list and emit `forge_blue_uas_cleared.json`. US Government public domain — lowest legal risk, highest authority value. | 2026-04-11 |
+| FEAT-022 | Wingman co-occurrence signal | Once `forge_co_occurrence.json` is populated, extend `wingman.html` buildPrompt() with a 5th check: "is this combo common in actual builds?" Complements existing vendor-alive / PIE-flag / alternatives checks. | 2026-04-11 |
+| FEAT-023 | Manufacturer Dossier page | `/patterns/dossier/?m=<slug>` — single page showing all parts + intel articles + PIE flags + spec sheets + subsidiaries for a given manufacturer. Pulls from `forge_manufacturer_status.json` + `forge_database.json`. Natural click-through from any product page or PIE flag. | 2026-04-11 |
+| FEAT-024 | Entity graph visualizer | `/patterns/graph/` — force-directed graph of `entity_graph.json` (manufacturers ↔ parts ↔ contracts ↔ articles). Data already exists; nothing renders it today. | 2026-04-11 |
+| FEAT-025 | Lifecycle timeline | `/patterns/timeline/` — chronological feed of company closures, acquisitions, Blue UAS additions/removals, program cancellations. Pulls from manufacturer_status + intel_articles. | 2026-04-11 |
+| FEAT-026 | Shareable build URLs | `/builder/?b=<compressed-json>` — encode builder state into a URL for no-auth shareable builds. Complements the Forge-vs-RotorBuilds analysis (RotorBuilds borrows). | 2026-04-11 |
+| FEAT-027 | Featured builds gallery | `/gallery/` — hand-curated `forge_featured_builds.json` with 10-30 reference builds (7" NDAA long-range, cinelifter, Blue UAS Framework reference, ORQA NDAA FPV, etc.). Each deep-links into `/builder/?b=`. | 2026-04-11 |
 | FEAT-008 | Build guide versioning | Track guide revisions so sessions reference a specific version. Needs database versioning. | 2026-03-06 |
 | ~~FEAT-013~~ | ~~Mission Control dashboard~~ | ~~Resolved — see Completed section~~ | 2026-03-08 |
 | ~~FEAT-014~~ | ~~FPV Academy educational module~~ | ~~Resolved — see Completed section~~ | 2026-03-08 |

@@ -40,3 +40,19 @@
 ## Hangar / Wingman Private
 - [ ] Tooth Phase 1 SQLite implementation
 - [ ] Hangar FC write-back via MSP/MAVLink
+
+## Mining framework (scaffolded 2026-04-11 — see tools/mining/README.md)
+- [ ] **Inspect RotorBuilds build-page DOM** — save 3-5 sample pages to `tools/mining/output/.cache/` and fill in real selectors in `rotorbuilds.py` `parse()`. Without this, every build parses to an empty shell.
+- [ ] First real run: `python tools/mining/run_all.py --miner rotorbuilds --max 50 --dry` — verify output by eye
+- [ ] Confirm `aggregate_cooccurrence.py` produces meaningful `forge_co_occurrence.json`
+- [ ] Wire `wingman.html` to fetch and use `forge_co_occurrence.json` as 5th check in build-validity logic
+- [ ] Blue UAS miner: inspect bluelist.dcma.mil DOM, fill in parse()
+- [ ] ArduPilot Discourse miner: test against live `/tags.json`; expand hardware tag list
+- [ ] SAM.gov miner: register for `SAM_GOV_API_KEY` at api.sam.gov, test opportunity search
+
+## Wingman / Compliance (added this session)
+- [ ] Audit `forge_manufacturer_status.json` — verify Brain FPV closure date, Draganfly acquisition status, Yuneec FCC exposure, FrSky ecosystem-share claim
+- [ ] Add subsidiaries/parent cross-linking UX in `/spec-sheets/` card (show "part of ORQA ecosystem" for ImmersionRC, etc.)
+- [ ] Audit `forge_alternatives.json` — verify recommendations against real prices / availability
+- [ ] Extend `forge_manufacturer_status.json` with Unusual Machines' full subsidiary tree (Brave FPV, any post-2024 acquisitions)
+- [ ] Add Brave FPV as its own entry when line details are verifiable
