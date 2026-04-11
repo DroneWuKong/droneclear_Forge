@@ -77,6 +77,7 @@ PAGES = {
     'verify.html': 'verify/index.html',
     'ddg-tracker.html': 'ddg/index.html',
     'analytics.html': 'analytics/index.html',
+    'clock.html': 'clock/index.html',
 }
 
 # Static assets to copy (JS, CSS, JSON, images)

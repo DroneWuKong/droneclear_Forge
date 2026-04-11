@@ -1,0 +1,997 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="robots" content="noindex, nofollow">
+<title>UAS Ecosystem Clock — PIE Intelligence</title>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=IBM+Plex+Mono:wght@300;400;500;700&family=IBM+Plex+Sans:ital,wght@0,300;0,400;0,600;1,300&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="{% static 'base.css' %}?v=2">
+<style>
+:root {
+  --ink: #0d0d0b;
+  --paper: #f2ede4;
+  --paper2: #e8e2d6;
+  --red: #c41e1e;
+  --red-d: #8b0000;
+  --amber: #c47c00;
+  --green: #1a5c2a;
+  --steel: #2c3e50;
+  --muted: #7a7060;
+  --rule: #b0a898;
+}
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+body {
+  background: var(--paper);
+  color: var(--ink);
+  font-family: 'IBM Plex Sans', sans-serif;
+  min-height: 100vh;
+  padding: 0;
+  overflow-x: hidden;
+}
+
+/* ── Masthead ── */
+.masthead {
+  background: var(--ink);
+  color: var(--paper);
+  padding: 16px 24px 12px;
+  border-bottom: 4px solid var(--red);
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.masthead-title {
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: clamp(22px, 5vw, 38px);
+  letter-spacing: 0.04em;
+  line-height: 1;
+  color: var(--paper);
+}
+.masthead-sub {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 9px;
+  color: #b0a898;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  margin-top: 4px;
+}
+.masthead-date {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 10px;
+  color: #b0a898;
+  text-align: right;
+}
+
+/* ── Ticker ── */
+.ticker-wrap {
+  background: var(--red);
+  overflow: hidden;
+  height: 30px;
+  display: flex;
+  align-items: center;
+}
+.ticker-label {
+  background: var(--red-d);
+  color: #fff;
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 13px;
+  letter-spacing: 0.1em;
+  padding: 0 14px;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+.ticker-track {
+  display: flex;
+  gap: 0;
+  animation: ticker 40s linear infinite;
+  white-space: nowrap;
+}
+.ticker-track:hover { animation-play-state: paused; }
+.ticker-item {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 10px;
+  color: #fff;
+  font-weight: 500;
+  padding: 0 32px 0 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+.ticker-dot { width: 5px; height: 5px; border-radius: 50%; background: rgba(255,255,255,0.5); flex-shrink: 0; }
+@keyframes ticker {
+  0% { transform: translateX(0); }
+  100% { transform: translateX(-50%); }
+}
+
+/* ── Main grid ── */
+.main {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0;
+  max-width: 960px;
+  margin: 0 auto;
+  padding: 0;
+}
+@media(max-width: 640px) { .main { grid-template-columns: 1fr; } }
+
+/* ── Left: Clock panel ── */
+.clock-panel {
+  padding: 28px 28px 24px;
+  border-right: 1px solid var(--rule);
+  border-bottom: 1px solid var(--rule);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 20px;
+}
+
+.section-label {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 9px;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  color: var(--muted);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+}
+.section-label::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: var(--rule);
+}
+
+/* Clock SVG */
+.clock-svg-wrap {
+  position: relative;
+  width: 220px;
+  height: 220px;
+}
+
+.clock-caption {
+  text-align: center;
+}
+.clock-time-display {
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 42px;
+  letter-spacing: 0.02em;
+  color: var(--red);
+  line-height: 1;
+}
+.clock-time-label {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 9px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--muted);
+  margin-top: 4px;
+}
+.clock-verdict {
+  font-family: 'IBM Plex Sans', sans-serif;
+  font-size: 12px;
+  font-style: italic;
+  color: var(--steel);
+  margin-top: 8px;
+  line-height: 1.5;
+  text-align: center;
+  max-width: 200px;
+}
+
+/* Score breakdown */
+.score-grid {
+  width: 100%;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px;
+}
+.score-item {
+  background: var(--paper2);
+  padding: 8px 10px;
+  border-left: 3px solid var(--rule);
+}
+.score-item.crit { border-left-color: var(--red); }
+.score-item.warn { border-left-color: var(--amber); }
+.score-item.good { border-left-color: var(--green); }
+.score-item.info { border-left-color: var(--steel); }
+.si-val {
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 22px;
+  line-height: 1;
+  color: var(--ink);
+}
+.score-item.crit .si-val { color: var(--red); }
+.score-item.warn .si-val { color: var(--amber); }
+.score-item.good .si-val { color: var(--green); }
+.si-label {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 8px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--muted);
+  margin-top: 2px;
+}
+
+/* ── Right: Intelligence panel ── */
+.intel-panel {
+  border-bottom: 1px solid var(--rule);
+}
+
+.intel-tabs {
+  display: flex;
+  border-bottom: 1px solid var(--rule);
+}
+.itab {
+  flex: 1;
+  padding: 10px 8px;
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 9px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  text-align: center;
+  cursor: pointer;
+  border: none;
+  background: var(--paper2);
+  color: var(--muted);
+  border-right: 1px solid var(--rule);
+  transition: all 0.15s;
+}
+.itab:last-child { border-right: none; }
+.itab.active { background: var(--paper); color: var(--ink); font-weight: 700; }
+.itab:hover:not(.active) { background: var(--paper); }
+
+.intel-content {
+  padding: 16px 20px;
+  min-height: 280px;
+}
+.ipanel { display: none; }
+.ipanel.active { display: block; }
+
+/* Prediction cards */
+.pred-card {
+  padding: 12px 0;
+  border-bottom: 1px solid var(--rule);
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  gap: 10px;
+  align-items: start;
+  cursor: default;
+  transition: background 0.1s;
+}
+.pred-card:last-child { border-bottom: none; }
+.pred-card:hover { background: var(--paper2); margin: 0 -8px; padding: 12px 8px; border-radius: 2px; }
+.pred-impact {
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  padding: 2px 6px;
+  border-radius: 2px;
+  background: var(--paper2);
+  color: var(--ink);
+  white-space: nowrap;
+  margin-top: 1px;
+}
+.pred-impact.critical { background: var(--red); color: #fff; }
+.pred-impact.high { background: var(--ink); color: var(--paper); }
+.pred-impact.medium { background: var(--amber); color: #fff; }
+.pred-impact.low { background: var(--steel); color: #fff; }
+.pred-text {
+  font-size: 11px;
+  line-height: 1.5;
+  color: var(--ink);
+}
+.pred-meta {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 9px;
+  color: var(--muted);
+  margin-top: 3px;
+}
+.pred-prob {
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 20px;
+  color: var(--ink);
+  line-height: 1;
+  white-space: nowrap;
+}
+.pred-prob.hi { color: var(--red); }
+
+/* Flag rows */
+.flag-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 9px 0;
+  border-bottom: 1px solid var(--rule);
+  font-size: 11px;
+  line-height: 1.5;
+}
+.flag-row:last-child { border-bottom: none; }
+.flag-sev {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 8px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  padding: 2px 5px;
+  border-radius: 2px;
+  flex-shrink: 0;
+  margin-top: 1px;
+}
+.flag-sev.critical { background: var(--red); color: #fff; }
+.flag-sev.warning { background: var(--amber); color: #fff; }
+.flag-sev.info { background: var(--steel); color: #fff; }
+.flag-sev.high { background: var(--red-d); color: #fff; }
+
+/* Gray zone */
+.gz-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--rule);
+}
+.gz-row:last-child { border-bottom: none; }
+.gz-name {
+  font-size: 11px;
+  font-weight: 600;
+  min-width: 130px;
+  color: var(--ink);
+}
+.gz-bar-wrap { flex: 1; height: 6px; background: var(--paper2); border-radius: 1px; overflow: hidden; }
+.gz-bar { height: 100%; background: var(--red); border-radius: 1px; transition: width 1s ease; }
+.gz-score {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--red);
+  min-width: 36px;
+  text-align: right;
+}
+
+/* ── Bottom: Rolling predictions ── */
+.rolling-panel {
+  max-width: 960px;
+  margin: 0 auto;
+  padding: 20px 28px;
+  border-bottom: 1px solid var(--rule);
+}
+.rolling-label {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 9px;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  color: var(--muted);
+  margin-bottom: 14px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.rolling-label::after { content: ''; flex: 1; height: 1px; background: var(--rule); }
+.rolling-track {
+  display: flex;
+  gap: 12px;
+  overflow-x: auto;
+  padding-bottom: 8px;
+  scrollbar-width: thin;
+  scrollbar-color: var(--rule) transparent;
+}
+.rolling-card {
+  flex-shrink: 0;
+  width: 220px;
+  background: var(--paper2);
+  padding: 14px;
+  border-top: 3px solid var(--rule);
+  position: relative;
+  overflow: hidden;
+}
+.rolling-card.critical { border-top-color: var(--red); }
+.rolling-card.high { border-top-color: var(--ink); }
+.rolling-card.medium { border-top-color: var(--amber); }
+.rc-prob {
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 36px;
+  color: var(--ink);
+  line-height: 1;
+  opacity: 0.12;
+  position: absolute;
+  top: 8px;
+  right: 10px;
+}
+.rolling-card.critical .rc-prob { color: var(--red); opacity: 0.2; }
+.rc-impact {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 8px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--muted);
+  margin-bottom: 6px;
+}
+.rolling-card.critical .rc-impact { color: var(--red); }
+.rolling-card.high .rc-impact { color: var(--ink); }
+.rc-text {
+  font-size: 11px;
+  line-height: 1.5;
+  color: var(--ink);
+  font-weight: 400;
+}
+.rc-meta {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 8px;
+  color: var(--muted);
+  margin-top: 8px;
+}
+.rc-bar {
+  height: 2px;
+  background: var(--rule);
+  margin-top: 10px;
+  border-radius: 1px;
+  overflow: hidden;
+}
+.rc-bar-fill {
+  height: 100%;
+  background: var(--red);
+  border-radius: 1px;
+}
+.rolling-card.high .rc-bar-fill { background: var(--ink); }
+.rolling-card.medium .rc-bar-fill { background: var(--amber); }
+
+/* ── History trend ── */
+.history-panel {
+  max-width: 960px;
+  margin: 0 auto;
+  padding: 20px 28px 28px;
+}
+.history-chart {
+  display: flex;
+  align-items: flex-end;
+  gap: 4px;
+  height: 60px;
+  margin-top: 12px;
+}
+.hbar-col {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+  height: 100%;
+  justify-content: flex-end;
+}
+.hbar-seg-wrap {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  gap: 1px;
+}
+.hbar-seg {
+  width: 100%;
+  border-radius: 1px 1px 0 0;
+  min-height: 2px;
+  transition: height 0.8s ease;
+}
+.hbar-seg.crit { background: var(--red); }
+.hbar-seg.warn { background: var(--amber); }
+.hbar-seg.info { background: #c8bfb0; }
+.hbar-date {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 7px;
+  color: var(--muted);
+  white-space: nowrap;
+  transform: rotate(-30deg);
+  transform-origin: top center;
+  margin-top: 4px;
+}
+.history-legend {
+  display: flex;
+  gap: 16px;
+  margin-top: 16px;
+}
+.hl-item {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 8px;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+.hl-dot { width: 8px; height: 8px; border-radius: 1px; }
+
+/* Footer */
+.footer {
+  background: var(--ink);
+  color: #7a7060;
+  padding: 12px 24px;
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 8px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  display: flex;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+</style>
+</head>
+<body>
+
+<div class="masthead">
+  <div>
+    <div class="masthead-title">UAS ECOSYSTEM CLOCK</div>
+    <div class="masthead-sub">Pattern Intelligence Engine · DroneClear · Threat Assessment</div>
+  </div>
+  <div class="masthead-date" id="masthead-date"></div>
+</div>
+
+<div class="ticker-wrap">
+  <div class="ticker-label">LIVE SIGNALS</div>
+  <div style="overflow:hidden;flex:1">
+    <div class="ticker-track" id="ticker"></div>
+  </div>
+</div>
+
+<div class="main">
+  <!-- LEFT: Clock -->
+  <div class="clock-panel">
+    <div class="section-label">Ecosystem Risk Clock</div>
+
+    <div class="clock-svg-wrap">
+      <svg viewBox="0 0 220 220" width="220" height="220" id="clock-svg">
+        <!-- Background rings -->
+        <circle cx="110" cy="110" r="100" fill="none" stroke="#d4cfc6" stroke-width="1"/>
+        <circle cx="110" cy="110" r="90" fill="none" stroke="#e2ddd5" stroke-width="0.5"/>
+        <!-- Risk arc (track) -->
+        <circle cx="110" cy="110" r="88" fill="none" stroke="#ede8df" stroke-width="14" stroke-dasharray="553" stroke-dashoffset="0" stroke-linecap="butt" transform="rotate(-90 110 110)"/>
+        <!-- Risk arc (fill) — computed by JS -->
+        <circle cx="110" cy="110" r="88" fill="none" stroke="#c41e1e" stroke-width="14" stroke-dasharray="553" id="risk-arc" stroke-linecap="butt" transform="rotate(-90 110 110)" style="transition: stroke-dashoffset 2s ease;"/>
+        <!-- Minute markers -->
+        <g id="minute-markers"></g>
+        <!-- Center -->
+        <circle cx="110" cy="110" r="68" fill="#f2ede4"/>
+        <circle cx="110" cy="110" r="4" fill="#c41e1e"/>
+        <!-- Clock hands -->
+        <line id="minute-hand" x1="110" y1="110" x2="110" y2="52" stroke="#0d0d0b" stroke-width="3" stroke-linecap="round" style="transition: transform 2s ease; transform-origin: 110px 110px;"/>
+        <line id="hour-hand" x1="110" y1="110" x2="110" y2="68" stroke="#c41e1e" stroke-width="5" stroke-linecap="round" style="transition: transform 2s ease; transform-origin: 110px 110px;"/>
+        <circle cx="110" cy="110" r="6" fill="#0d0d0b"/>
+        <!-- "MIDNIGHT" label -->
+        <text x="110" y="30" text-anchor="middle" font-family="IBM Plex Mono" font-size="7" fill="#7a7060" letter-spacing="2">MIDNIGHT</text>
+        <text x="110" y="195" text-anchor="middle" font-family="IBM Plex Mono" font-size="6" fill="#b0a898" letter-spacing="1">06:00</text>
+        <text x="22" y="115" text-anchor="middle" font-family="IBM Plex Mono" font-size="6" fill="#b0a898" letter-spacing="1">09</text>
+        <text x="198" y="115" text-anchor="middle" font-family="IBM Plex Mono" font-size="6" fill="#b0a898" letter-spacing="1">03</text>
+      </svg>
+    </div>
+
+    <div class="clock-caption">
+      <div class="clock-time-display" id="clock-time">—:—</div>
+      <div class="clock-time-label">minutes to midnight</div>
+      <div class="clock-verdict" id="clock-verdict">Computing ecosystem risk…</div>
+    </div>
+
+    <div class="score-grid" id="score-grid"></div>
+  </div>
+
+  <!-- RIGHT: Intel tabs -->
+  <div class="intel-panel">
+    <div class="intel-tabs">
+      <button class="itab active" onclick="switchTab('predictions',this)">Predictions</button>
+      <button class="itab" onclick="switchTab('flags',this)">Flags</button>
+      <button class="itab" onclick="switchTab('grayzone',this)">Gray Zone</button>
+    </div>
+    <div class="intel-content">
+      <div class="ipanel active" id="tab-predictions"></div>
+      <div class="ipanel" id="tab-flags"></div>
+      <div class="ipanel" id="tab-grayzone"></div>
+    </div>
+  </div>
+</div>
+
+<!-- Rolling predictions -->
+<div class="rolling-panel">
+  <div class="rolling-label">Rolling Prediction Log</div>
+  <div class="rolling-track" id="rolling-track"></div>
+</div>
+
+<!-- History trend -->
+<div class="history-panel">
+  <div class="section-label">Flag Severity History</div>
+  <div class="history-chart" id="history-chart"></div>
+  <div class="history-legend">
+    <div class="hl-item"><div class="hl-dot" style="background:var(--red)"></div> Critical</div>
+    <div class="hl-item"><div class="hl-dot" style="background:var(--amber)"></div> Warning</div>
+    <div class="hl-item"><div class="hl-dot" style="background:#c8bfb0"></div> Info</div>
+  </div>
+</div>
+
+<div class="footer">
+  <span>PIE — Pattern Intelligence Engine · DroneClear</span>
+  <span id="footer-ts">—</span>
+  <span>No cookies · No PII · Intelligence only</span>
+</div>
+
+<script>
+// ── DATA — loaded from live pipeline output ───────────────────────────────────
+// Falls back to hardcoded snapshot if fetch fails
+let DATA = null;
+
+async function loadData() {
+  // Try to load from Forge static files (deployed by pipeline)
+  const sources = [
+    '/static/clock_score.json',
+    '../static/clock_score.json',
+  ];
+  for (const src of sources) {
+    try {
+      const r = await fetch(src);
+      if (r.ok) {
+        const cs = await r.json();
+        // Map clock_score.json shape to widget DATA shape
+        DATA = mapClockScore(cs);
+        console.log('[UAS Clock] Loaded live data:', cs.ueri_score, cs.threat_level);
+        return;
+      }
+    } catch(e) {}
+  }
+  console.log('[UAS Clock] Using embedded snapshot');
+  DATA = FALLBACK_DATA;
+}
+
+function mapClockScore(cs) {
+  const f = cs.factors || {};
+  return {
+    generated: cs.generated,
+    ueri_score: cs.ueri_score,
+    minutes_to_midnight: cs.minutes_to_midnight,
+    threat_level: cs.threat_level,
+    narrative: cs.narrative,
+    flags: {
+      total: f.flag_severity?.total || DATA_FALLBACK.flags.total,
+      by_severity: {
+        critical: f.flag_severity?.critical || 0,
+        warning:  f.flag_severity?.warning || 0,
+        info:     80,
+      }
+    },
+    gray_zone: Object.fromEntries(
+      (f.grayzone?.top_entities || []).map(e => [e.entity, e.score])
+    ),
+    predictions: DATA_FALLBACK.predictions,
+    top_flags:   DATA_FALLBACK.top_flags,
+    history:     DATA_FALLBACK.history,
+  };
+}
+
+// ── FALLBACK embedded snapshot ────────────────────────────────────────────────
+const DATA_FALLBACK = {
+  generated: "2026-04-11T01:34:44Z",
+  flags: {
+    total: 223,
+    by_severity: { critical: 40, warning: 95, info: 80, high: 8 },
+    by_type: {
+      grayzone: 34, supply_constraint: 22, diversion_risk: 11,
+      contract_signal: 48, procurement_spike: 23, correlation: 52,
+      regulatory: 5, price_anomaly: 4, legislation: 1
+    }
+  },
+  gray_zone: {
+    "DJI": 0.897,
+    "Autel Robotics": 0.868,
+    "Anzu Robotics": 0.859,
+    "Cogito Tech": 0.856,
+    "SPECTA": 0.856,
+    "SkyRover / Knowact": 0.854
+  },
+  predictions: [
+    { event: "FLIR Boson 640 tightens — 3 Boson units tracked, AeroV Switchblade ramp drives demand surge", probability: 0.87, impact: "high", timeframe: "Q2 2026", drivers: ["AeroV Switchblade ramp", "limited Boson 640 supply"] },
+    { event: "Jetson Orin NX goes allocation-only for defense (13 boards in Forge DB at risk)", probability: 0.82, impact: "critical", timeframe: "Q2-Q3 2026", drivers: ["NVIDIA allocation policy", "defense demand surge"] },
+    { event: "Mesh radio supply bottleneck — 29 options tracked, only 29 NDAA-compliant", probability: 0.81, impact: "high", timeframe: "Q2 2026", drivers: ["NDAA compliance gate", "limited domestic mesh supply"] },
+    { event: "QRB5165 successor enters Blue UAS Framework (5 boards currently depend on QRB5165)", probability: 0.80, impact: "medium", timeframe: "H2 2026", drivers: ["Qualcomm roadmap", "Blue UAS integration cycle"] },
+    { event: "FCC firmware cliff — 3 simultaneous deadlines ground uncertified gray zone drones", probability: 0.79, impact: "critical", timeframe: "Jan 2027", drivers: ["FCC Covered List enforcement", "467 grounded airframes"] },
+    { event: "467 grounded airframes create $50M–$2B national replacement exposure across 25 states", probability: 0.75, impact: "critical", timeframe: "2026-2027", drivers: ["gray zone vendor regulatory extinction", "state procurement gaps"] },
+    { event: "Raspberry Pi diversion to Russian drones reaches 40,000+ units — supply chain integrity risk", probability: 0.74, impact: "high", timeframe: "Ongoing 2026", drivers: ["dual-use diversion", "sanctions evasion networks"] },
+    { event: "Domestic FC manufacturing ramp fails to meet NDAA demand — import dependency persists through 2027", probability: 0.69, impact: "high", timeframe: "2026-2027", drivers: ["reshoring timeline slippage", "Asian supply chain dominance"] },
+    { event: "DJI Ninth Circuit case 26-1029 outcome shifts entire gray zone entity landscape", probability: 0.59, impact: "critical", timeframe: "Q3-Q4 2026", drivers: ["court ruling", "FCC Covered List precedent"] },
+    { event: "Blue UAS expansion adds 8-12 new platforms as gray zone vendors exit market", probability: 0.25, impact: "medium", timeframe: "2026-2027", drivers: ["DIU mandate", "vendor attrition"] }
+  ],
+  top_flags: [
+    { title: "467 grounded airframes — $2B national exposure", severity: "critical", type: "buyer_exposure" },
+    { title: "DJI gray zone score 0.897 — Ninth Circuit litigation pending", severity: "critical", type: "grayzone" },
+    { title: "Jetson Orin NX allocation risk — 13 defense boards at risk", severity: "critical", type: "supply_constraint" },
+    { title: "Raspberry Pi diversion to Russia — 40,000+ units tracked", severity: "critical", type: "diversion_risk" },
+    { title: "FCC firmware deadline Jan 2027 — 3 concurrent certification cliffs", severity: "critical", type: "regulatory_deadline" },
+    { title: "AeroV Switchblade demand ramp — FLIR Boson 640 tightening", severity: "warning", type: "procurement_spike" },
+    { title: "NDAA §848 enforcement escalation — contractor compliance gaps", severity: "warning", type: "regulatory" },
+    { title: "Autel Robotics risk trajectory rising — 0.868 gray zone score", severity: "warning", type: "grayzone" },
+    { title: "Mesh radio NDAA gap — only 29 of 29 options compliant", severity: "warning", type: "supply_constraint" },
+    { title: "Chinese ESC market dominance — 68% of DB from PRC suppliers", severity: "warning", type: "correlation" },
+    { title: "TX AG passthrough template spreading to 12+ states", severity: "warning", type: "legislation" },
+    { title: "QRB5165 EOL — 5 Blue UAS platforms affected", severity: "info", type: "component_analysis" }
+  ],
+  history: [
+    { date: "Apr 3", critical: 0, warning: 0, info: 0 },
+    { date: "Apr 4", critical: 0, warning: 0, info: 0 },
+    { date: "Apr 5", critical: 0, warning: 0, info: 30 },
+    { date: "Apr 6", critical: 0, warning: 0, info: 30 },
+    { date: "Apr 7", critical: 0, warning: 0, info: 30 },
+    { date: "Apr 8", critical: 0, warning: 0, info: 30 },
+    { date: "Apr 9", critical: 41, warning: 94, info: 86 },
+    { date: "Apr 10", critical: 40, warning: 95, info: 88 },
+    { date: "Apr 11", critical: 40, warning: 95, info: 88 }
+  ]
+};
+
+};
+DATA = DATA_FALLBACK; // default until loadData() resolves
+
+// ── CLOCK COMPUTATION ─────────────────────────────────────────────────────────
+function computeClockScore() {
+  const flags = DATA.flags;
+  const preds = DATA.predictions;
+  const gz = DATA.gray_zone;
+
+  // Factor 1: Flag severity pressure (0-40 points)
+  const critCount = flags.by_severity.critical || 0;
+  const warnCount = flags.by_severity.warning || 0;
+  const total = flags.total || 1;
+  const flagScore = Math.min(40,
+    (critCount / total) * 25 +
+    (warnCount / total) * 10 +
+    (critCount > 30 ? 5 : 0)
+  );
+
+  // Factor 2: Prediction risk weighted average (0-25 points)
+  const critPreds = preds.filter(p => p.impact === 'critical');
+  const predScore = Math.min(25,
+    critPreds.reduce((s, p) => s + p.probability * 10, 0) +
+    preds.filter(p => p.impact === 'high').reduce((s, p) => s + p.probability * 4, 0)
+  );
+
+  // Factor 3: Gray zone saturation (0-20 points)
+  const gzVals = Object.values(gz);
+  const gzAvg = gzVals.reduce((a, b) => a + b, 0) / gzVals.length;
+  const gzScore = Math.min(20, gzAvg * 22);
+
+  // Factor 4: Supply chain flags (0-15 points)
+  const supplyFlags = (flags.by_type.supply_constraint || 0) + (flags.by_type.diversion_risk || 0);
+  const supplyScore = Math.min(15, supplyFlags * 0.4);
+
+  const total_score = flagScore + predScore + gzScore + supplyScore;
+  const normalized = Math.min(100, total_score); // 0-100
+
+  return { normalized, flagScore, predScore, gzScore, supplyScore };
+}
+
+function scoreToTime(score) {
+  // 0 = 6:00 (safe), 100 = 11:59 (midnight)
+  // Minutes to midnight: score=0 → 360min, score=100 → 1min
+  const minutesToMidnight = Math.round(360 - (score / 100) * 359);
+  const hours = Math.floor(minutesToMidnight / 60);
+  const mins = minutesToMidnight % 60;
+  const displayHour = (12 - hours) % 12 || 12;
+  const displayMin = 60 - mins;
+  const adjHour = displayMin === 60 ? (displayHour % 12) + 1 : displayHour;
+  const adjMin = displayMin === 60 ? 0 : displayMin;
+  return {
+    minutesToMidnight,
+    display: `${adjHour}:${String(adjMin).padStart(2,'0')}`,
+    angleDeg: (360 - minutesToMidnight) / 360 * 360
+  };
+}
+
+function getVerdict(score) {
+  if (score >= 85) return "Existential risk to US UAS sovereignty — procurement collapse imminent.";
+  if (score >= 70) return "Severe systemic pressure. Gray zone saturation and supply chain concentration demand immediate action.";
+  if (score >= 55) return "Elevated threat environment. Critical flags accumulating across supply, regulatory, and gray zone vectors.";
+  if (score >= 40) return "Moderate concern. Active signals in supply chain and compliance domains require monitoring.";
+  if (score >= 25) return "Cautionary. Early signals present but ecosystem remains functional with manageable risk.";
+  return "Low threat. Ecosystem operating within normal parameters.";
+}
+
+// ── RENDER CLOCK ─────────────────────────────────────────────────────────────
+function renderClock() {
+  // Use live UERI score if available, otherwise compute from embedded data
+  let normalized, minutesToMidnight, display, angleDeg;
+  if (DATA && DATA.ueri_score != null) {
+    normalized = DATA.ueri_score;
+    minutesToMidnight = DATA.minutes_to_midnight || scoreToTime(normalized).minutesToMidnight;
+    display = scoreToTime(normalized).display;
+    angleDeg = scoreToTime(normalized).angleDeg;
+  } else {
+    const computed = computeClockScore();
+    normalized = computed.normalized;
+    ({ minutesToMidnight, display, angleDeg } = scoreToTime(normalized));
+  }
+
+  // Update time display
+  document.getElementById('clock-time').textContent = display;
+  document.getElementById('clock-verdict').textContent = getVerdict(normalized);
+
+  // Update hands
+  const minuteAngle = angleDeg;
+  const hourAngle = angleDeg / 12;
+  document.getElementById('minute-hand').style.transform = `rotate(${minuteAngle}deg)`;
+  document.getElementById('hour-hand').style.transform = `rotate(${hourAngle}deg)`;
+
+  // Update risk arc
+  const circumference = 2 * Math.PI * 88;
+  const fillFraction = normalized / 100;
+  const dashOffset = circumference * (1 - fillFraction);
+  document.getElementById('risk-arc').setAttribute('stroke-dashoffset', dashOffset);
+  document.getElementById('risk-arc').setAttribute('stroke-dasharray', circumference);
+
+  // Color arc by severity
+  const arcColor = normalized >= 70 ? '#c41e1e' : normalized >= 45 ? '#c47c00' : '#1a5c2a';
+  document.getElementById('risk-arc').style.stroke = arcColor;
+
+  // Score grid
+  const sg = document.getElementById('score-grid');
+  sg.innerHTML = `
+    <div class="score-item crit">
+      <div class="si-val">${DATA.flags.by_severity.critical}</div>
+      <div class="si-label">Critical Flags</div>
+    </div>
+    <div class="score-item warn">
+      <div class="si-val">${DATA.flags.by_severity.warning}</div>
+      <div class="si-label">Warning Flags</div>
+    </div>
+    <div class="score-item crit">
+      <div class="si-val">${(Object.values(DATA.gray_zone).reduce((a,b)=>a+b,0)/Object.values(DATA.gray_zone).length*100).toFixed(0)}%</div>
+      <div class="si-label">GZ Avg Score</div>
+    </div>
+    <div class="score-item info">
+      <div class="si-val">${DATA.flags.total}</div>
+      <div class="si-label">Total Flags</div>
+    </div>
+  `;
+
+  // Minute markers
+  const mg = document.getElementById('minute-markers');
+  for (let i = 0; i < 60; i++) {
+    const angle = (i / 60) * 360 - 90;
+    const rad = angle * Math.PI / 180;
+    const len = i % 5 === 0 ? 8 : 4;
+    const r = 100;
+    const x1 = 110 + r * Math.cos(rad);
+    const y1 = 110 + r * Math.sin(rad);
+    const x2 = 110 + (r - len) * Math.cos(rad);
+    const y2 = 110 + (r - len) * Math.sin(rad);
+    mg.innerHTML += `<line x1="${x1.toFixed(1)}" y1="${y1.toFixed(1)}" x2="${x2.toFixed(1)}" y2="${y2.toFixed(1)}" stroke="${i % 5 === 0 ? '#7a7060' : '#c8bfb0'}" stroke-width="${i % 5 === 0 ? 1.5 : 0.8}"/>`;
+  }
+}
+
+// ── RENDER TABS ───────────────────────────────────────────────────────────────
+function renderPredictions() {
+  const el = document.getElementById('tab-predictions');
+  el.innerHTML = DATA.predictions.slice(0, 6).map(p => `
+    <div class="pred-card">
+      <span class="pred-impact ${p.impact}">${p.impact.toUpperCase()}</span>
+      <div>
+        <div class="pred-text">${p.event}</div>
+        <div class="pred-meta">${p.timeframe} · ${p.drivers[0]}</div>
+      </div>
+      <div class="pred-prob ${p.probability >= 0.75 ? 'hi' : ''}">${Math.round(p.probability * 100)}%</div>
+    </div>
+  `).join('');
+}
+
+function renderFlags() {
+  const el = document.getElementById('tab-flags');
+  el.innerHTML = DATA.top_flags.map(f => `
+    <div class="flag-row">
+      <span class="flag-sev ${f.severity}">${f.severity.toUpperCase()}</span>
+      <span>${f.title}</span>
+    </div>
+  `).join('');
+}
+
+function renderGrayZone() {
+  const el = document.getElementById('tab-grayzone');
+  el.innerHTML = Object.entries(DATA.gray_zone)
+    .sort((a, b) => b[1] - a[1])
+    .map(([name, score]) => `
+    <div class="gz-row">
+      <div class="gz-name">${name}</div>
+      <div class="gz-bar-wrap"><div class="gz-bar" style="width:${score * 100}%"></div></div>
+      <div class="gz-score">${(score * 100).toFixed(1)}%</div>
+    </div>
+  `).join('');
+}
+
+function switchTab(name, btn) {
+  document.querySelectorAll('.itab').forEach(b => b.classList.remove('active'));
+  document.querySelectorAll('.ipanel').forEach(p => p.classList.remove('active'));
+  btn.classList.add('active');
+  document.getElementById('tab-' + name).classList.add('active');
+}
+
+// ── ROLLING PREDICTIONS ───────────────────────────────────────────────────────
+function renderRolling() {
+  const sorted = [...DATA.predictions].sort((a, b) => b.probability - a.probability);
+  const el = document.getElementById('rolling-track');
+  // Duplicate for seamless appearance
+  const cards = [...sorted, ...sorted].map(p => `
+    <div class="rolling-card ${p.impact}">
+      <div class="rc-prob">${Math.round(p.probability * 100)}%</div>
+      <div class="rc-impact">${p.impact} · ${p.timeframe}</div>
+      <div class="rc-text">${p.event}</div>
+      <div class="rc-meta">${p.drivers[0]}</div>
+      <div class="rc-bar"><div class="rc-bar-fill" style="width:${p.probability * 100}%"></div></div>
+    </div>
+  `).join('');
+  el.innerHTML = cards;
+}
+
+// ── HISTORY CHART ─────────────────────────────────────────────────────────────
+function renderHistory() {
+  const el = document.getElementById('history-chart');
+  const maxTotal = Math.max(...DATA.history.map(h => h.critical + h.warning + h.info), 1);
+  el.innerHTML = DATA.history.map(h => {
+    const totalH = h.critical + h.warning + h.info;
+    const chartH = 56;
+    const critH = Math.round((h.critical / maxTotal) * chartH);
+    const warnH = Math.round((h.warning / maxTotal) * chartH);
+    const infoH = Math.round((h.info / maxTotal) * chartH);
+    return `
+      <div class="hbar-col">
+        <div class="hbar-seg-wrap">
+          ${critH > 0 ? `<div class="hbar-seg crit" style="height:${critH}px"></div>` : ''}
+          ${warnH > 0 ? `<div class="hbar-seg warn" style="height:${warnH}px"></div>` : ''}
+          ${infoH > 0 ? `<div class="hbar-seg info" style="height:${infoH}px"></div>` : ''}
+        </div>
+        <div class="hbar-date">${h.date}</div>
+      </div>
+    `;
+  }).join('');
+}
+
+// ── TICKER ────────────────────────────────────────────────────────────────────
+function renderTicker() {
+  const signals = [
+    ...DATA.predictions.filter(p => p.probability > 0.7).map(p =>
+      `⚠ ${p.event.substring(0, 70)}`),
+    ...DATA.top_flags.filter(f => f.severity === 'critical').map(f =>
+      `◆ CRITICAL: ${f.title}`),
+    `Gray zone avg: ${(Object.values(DATA.gray_zone).reduce((a,b)=>a+b,0)/Object.values(DATA.gray_zone).length*100).toFixed(1)}% risk score`,
+    `${DATA.flags.total} active PIE flags — ${DATA.flags.by_severity.critical} critical`,
+  ];
+  const doubled = [...signals, ...signals];
+  const el = document.getElementById('ticker');
+  el.innerHTML = doubled.map(s =>
+    `<span class="ticker-item"><span class="ticker-dot"></span>${s}</span>`
+  ).join('');
+}
+
+// ── DATES ─────────────────────────────────────────────────────────────────────
+function renderDates() {
+  const now = new Date(DATA.generated);
+  document.getElementById('masthead-date').innerHTML =
+    `PIE Run: ${now.toISOString().slice(0,10)}<br>` +
+    `${now.toISOString().slice(11,16)} UTC`;
+  document.getElementById('footer-ts').textContent =
+    `Generated: ${now.toISOString().replace('T',' ').slice(0,19)} UTC`;
+}
+
+// ── INIT ──────────────────────────────────────────────────────────────────────
+loadData().then(() => {
+  renderClock();
+  renderPredictions();
+  renderFlags();
+  renderGrayZone();
+  renderRolling();
+  renderHistory();
+  renderTicker();
+  renderDates();
+});
+</script>
+</body>
+</html>
