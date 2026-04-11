@@ -855,6 +855,14 @@
     </div>
   </div>
 
+  <!-- PROGRAMMATIC G-II OUTCOME PREDICTIONS -->
+  <div style="margin-bottom:1px;">
+    <div style="font:600 9px var(--mono);letter-spacing:2px;text-transform:uppercase;color:var(--text-dim);padding:14px 18px 10px;background:var(--bg2);border-bottom:1px solid var(--border);">
+      G-II Outcome Predictions — Forge Intel Assessment
+    </div>
+    <div id="g2-outcome-preds" style="background:var(--border);display:grid;grid-template-columns:1fr 1fr;gap:1px;"></div>
+  </div>
+
   <!-- WIN PROBABILITY RANKING -->
   <div id="g2-pred-grid" style="background:var(--border);border:1px solid var(--border);display:flex;flex-direction:column;gap:1px;"></div>
 </div>
@@ -1567,7 +1575,27 @@ function renderLB() {
           </div>
 
           <!-- SCORE BREAKDOWN -->
-          <div style="margin-top:1px;border-top:1px solid var(--border);display:grid;grid-template-columns:1fr 1fr;gap:1px;background:var(--border);">
+          <div style="margin-top:1px;border-top:1px solid var(--border);">
+            <!-- Scoring methodology explainer -->
+            <div style="background:var(--bg3);padding:14px 18px;border-bottom:1px solid var(--border);">
+              <div style="font:600 9px var(--mono);letter-spacing:2px;text-transform:uppercase;color:var(--text-dim);margin-bottom:10px;">How These Scores Are Derived</div>
+              <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:1px;background:var(--border);border:1px solid var(--border);">
+                ${[
+                  ['MFG Readiness','Current production rate (units/month), facility ownership, DoD manufacturing audit status, and demonstrated ability to scale to G-II 60K unit requirement. Ascent Aerosystems rated highest by DDP evaluators.'],
+                  ['Supply Chain','Component-level NDAA compliance posture. Chinese BLDC motor and battery exposure is the primary G-II gate risk. Scored on known BoM transparency, sub-tier audit history, and domestic/allied sourcing depth.'],
+                  ['NDAA Depth','Depth of compliance verification — Blue UAS listing, DCMA audit completion, FOCI (Foreign Ownership/Control/Influence) exposure, and covered-entity risk under §848. Binary gate for G-II participation.'],
+                  ['Flight Perf','Anchored directly to G-I Gauntlet score (0–100), adjusted for G-II scenario changes: EW resistance, night ops capability, and GPS-denied navigation. Fiber-optic platforms gain; RF-only platforms risk scoring lower.'],
+                  ['Funding','Total disclosed capital raised, existing contract revenue, and demonstrated ability to finance 60K unit production ramp without supply chain disruption. Neros ($121M raised) scores highest; unknown/undisclosed companies score lowest.'],
+                  ['Team','Engineering depth and combat iteration velocity. Scored on: team size, defense/aerospace pedigree, battlefield testing access (Ukraine deployments), and proximity to the warfighter feedback loop that accelerates platform evolution.'],
+                ].map(([label, desc]) => `
+                  <div style="background:var(--bg2);padding:12px 14px;">
+                    <div style="font:600 9px var(--mono);letter-spacing:1px;text-transform:uppercase;color:var(--green);margin-bottom:5px;">${label}</div>
+                    <div style="font:400 11px var(--body);color:var(--text);line-height:1.55;">${desc}</div>
+                  </div>`).join('')}
+              </div>
+            </div>
+            <!-- Score bars + win prob -->
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:1px;background:var(--border);">
             <div style="background:var(--bg2);padding:16px 18px;">
               <div style="font:600 9px var(--mono);letter-spacing:2px;text-transform:uppercase;color:var(--text-dim);margin-bottom:12px;">Score Dimensions — G-II Outlook</div>
               <div class="subdim-grid">${dimsHtml}</div>
@@ -1583,6 +1611,7 @@ function renderLB() {
                 <strong style="color:var(--text-dim)">How this is derived:</strong> Win probability is a qualitative Bayesian estimate weighted across the 6 score dimensions above, anchored to: (1) G-I raw score as a flight performance baseline, (2) NDAA/supply chain compliance gate risk (binary — fail = disqualified), (3) production scale vs. G-II 60K unit requirement, (4) capitalization depth to sustain delivery. Scores are analyst assessments based on public information, DoD program documentation, and Forge intel database — not official program data.
               </div>
             </div>
+          </div>
           </div>
         </div>
       </td>
@@ -1622,10 +1651,141 @@ function renderDNF() {
 
 renderLB();
 renderDNF();
+renderG2OutcomePredictions();
 renderG2Predictions();
 
 // ─────────────────────────────────────────
-// G-II PREDICTIONS
+// G-II OUTCOME PREDICTIONS
+// ─────────────────────────────────────────
+function renderG2OutcomePredictions() {
+  const grid = document.getElementById('g2-outcome-preds');
+  if (!grid) return;
+
+  const predictions = [
+    {
+      prob: 91,
+      title: "2–3 G-I vendors eliminated by Chinese component ban",
+      timeframe: "Aug 2026",
+      impact: "critical",
+      summary: "The Phase II motor/battery ban from covered countries (China) will disqualify multiple current G-I winners. Ukrainian Defense Drones (UDD) is the highest-risk vendor — Ukrainian FPV supply chains are deeply Chinese-dependent, using T-Motor/iFlight BLDC motors and Chinese Li-Po cells at scale. Auterion's open-architecture PX4 ecosystem also contains sub-tier components requiring audit. Any vendor that cannot demonstrate a clean BoM to DCMA by the August 2026 cutoff loses G-II eligibility regardless of G-I performance.",
+      derivation: "Derived from: (1) Known Ukrainian FPV supply chain dependency on Chinese BLDC motor manufacturers documented in trade press, (2) DDP program testimony explicitly flagging motor/battery ban as a hard gate, (3) UDD supply chain score of 3/10 in Forge intelligence assessment, (4) Auterion supply chain score of 5/10 reflecting open-architecture complexity. Probability set at 91% because at least one vendor (UDD) has near-certain exposure; second elimination at ~65%.",
+      color: "var(--red)"
+    },
+    {
+      prob: 84,
+      title: "Neros Archer Fiber becomes the G-II performance baseline",
+      timeframe: "Sep 2026",
+      impact: "high",
+      summary: "The Archer Fiber (announced Dec 2025, BlueUAS cleared, fiber-optic, NDAA-clean, co-developed with Kela Technologies) directly addresses the G-I gap where Skycutter's EW immunity drove its 11.8-point lead. As G-II adds active EW/jamming scenarios, Neros transitions from the best RF platform to a fiber-capable competitor. With $121M raised, 1,500+ units/month production, and existing Army/USMC contracts, Neros is positioned to lead on all four scored dimensions: compliance, production, performance, and operator usability.",
+      derivation: "Derived from: (1) Archer Fiber BlueUAS clearance confirmed Dec 2025, (2) Neros production scale (largest domestic FPV manufacturer), (3) G-I operator evaluation rank of #1 among domestic competitors, (4) EW scenario introduction directly addresses the single gap that cost Neros the G-I top position. Discounted to 84% vs. 100% because Archer Fiber production ramp from 2026 deliveries must match G-II 60K unit volume — still unvalidated at scale.",
+      color: "var(--green)"
+    },
+    {
+      prob: 78,
+      title: "5–8 new vendors enter G-II competition",
+      timeframe: "Apr–Aug 2026",
+      impact: "high",
+      summary: "DDP program rules explicitly allow new entrants at each Gauntlet. Hundreds of companies applied to G-I but only 25 were invited. G-II RFS publication (expected April 2026 per accelerated SASC timeline) will trigger a new application wave. New entrant profile: likely 2–3 domestic startups building EW-resistant platforms specifically designed for G-II scenarios, 1–2 allied-nation companies (UK, Israel, Australia) with combat-proven hardware, and possibly 1–2 G-I DNF companies that improved platforms (Performance Drone Works, Firestorm Labs). This reshapes the competitive landscape significantly.",
+      derivation: "Derived from: (1) DDP program explicitly stated open entry policy, (2) 'hundreds' of applications for G-I per DIU testimony, (3) G-I DNF list includes companies with competitive platforms (PDW, Firestorm), (4) 5-month runway between G-I results and G-II evaluation provides enough time for platform iteration. Probability 78% reflects certainty that some new entrants will qualify; uncertainty is around whether they meaningfully displace existing G-I holders.",
+      color: "var(--amber)"
+    },
+    {
+      prob: 73,
+      title: "Skycutter FOCI review creates G-II participation uncertainty",
+      timeframe: "Jun–Aug 2026",
+      impact: "high",
+      summary: "Skycutter's win with the Ukrainian-designed Shrike 10 Fiber put the program's foreign origin provisions under immediate scrutiny. DCMA will conduct a full FOCI (Foreign Ownership, Control, and Influence) review of Skycutter's capitalization structure, its relationship with SkyFall, and the chain of custody for IP and manufacturing. The UK corporate structure provides a degree of separation, but any undisclosed Ukrainian government funding, Russian-adjacent capital, or ITAR-controlled technology transfer to a non-Five-Eyes entity could trigger a compliance hold. DoD has delayed awards over FOCI for far less complicated structures.",
+      derivation: "Derived from: (1) Skycutter NDAA depth score of 5/10 reflecting Ukrainian partnership structure complexity, (2) Precedent of DoD FOCI holds on allied-nation companies with complex ownership chains, (3) SkyFall's Ukrainian origin creates inherent ITAR technology transfer questions, (4) DDP program testimony flagging increasing scrutiny of capitalization stacks. Probability 73% — lower than 91% because the UK structure is legitimate insulation; not guaranteed to create a hold, but generates friction that other vendors won't face.",
+      color: "var(--amber)"
+    },
+    {
+      prob: 68,
+      title: "G-II unit price pressure drops floor to $3,200–$3,800",
+      timeframe: "Oct 2026",
+      impact: "medium",
+      summary: "The official G-II ceiling is ~$4,000/unit. But competitive pressure from multiple vendors capable of delivering at $1,500–$2,500 (Skycutter/Shrike daytime variants, Ukrainian-connected platforms) will push effective pricing below ceiling. Vendors that anchor to the $4K ceiling risk being outcompeted on cost in scoring. Neros' Ukraine pricing precedent ($2,000–$4,999 range) and the program's explicit downward price trajectory signal that vendors must demonstrate a credible path to sub-$3,500 to be competitive for largest order allocation, even if ceiling is $4,000.",
+      derivation: "Derived from: (1) DDP program design explicitly targets cost reduction across phases, (2) Shrike daytime variant at $300–$1,500 sets a market floor far below G-II ceiling, (3) Neros' Ukraine-level pricing demonstrates $2K–$3K is achievable at scale for U.S. manufacturer, (4) Program testimony that 'price pressure is the point' of multi-phase competition. Probability 68% reflects that ceiling compliance ≠ competitive pricing; some vendors will anchor high.",
+      color: "var(--amber)"
+    },
+    {
+      prob: 62,
+      title: "G-II introduces multi-drone single-operator scoring",
+      timeframe: "Sep 2026",
+      impact: "high",
+      summary: "Camp Blanding Industry Day intelligence (Jan 2026) confirmed that multi-drone single-operator C2 is a scored G-II metric — one operator controlling multiple simultaneous drone flights. This is a significant capability threshold that no G-I platform demonstrated explicitly (it wasn't scored). Platforms with autonomous waypointing, formation hold, and distributed targeting — ModalAI (VOXL autonomy), Nokturnal AI (AI terminal guidance), and potentially new entrants with swarm capability — gain a meaningful scoring advantage over pure FPV platforms that require one operator per drone.",
+      derivation: "Derived from: (1) Camp Blanding Industry Day direct intelligence on multi-drone single-operator as a scored metric, (2) G-I mission scenarios were explicitly single-drone, making this a new capability gate, (3) DoD stated swarm/autonomy as increasing priority in testimony, (4) ModalAI VOXL autonomy and Nokturnal AI's autonomous guidance directly address this requirement. Probability 62% — confident the requirement exists; less certain about weighting vs. pure flight performance.",
+      color: "var(--blue)"
+    },
+    {
+      prob: 57,
+      title: "At least one G-I DNF vendor qualifies in G-II",
+      timeframe: "Oct 2026",
+      impact: "medium",
+      summary: "Fourteen vendors competed in G-I but didn't receive orders. Performance Drone Works (PDW), Firestorm Labs, and XTEND Reality are the strongest DNF candidates for G-II qualification. PDW has existing Army drone evaluation history and a purpose-built FPV platform. Firestorm Labs (key Orqa contact Matt Miyamoto) has an FPV strike system that missed G-I threshold. XTEND's AR-guided interface was penalized by G-I's 2-hour training constraint — EW and autonomy scenarios in G-II may reward its HMI differentiation. G-II scenario changes create genuine opportunities for platforms that underperformed in G-I's specific vignettes.",
+      derivation: "Derived from: (1) Firestorm Labs DNF analysis showing performance gap rather than compliance failure, (2) PDW's prior Army evaluation history suggests competitive platform, (3) G-II scenario changes (EW, multi-drone) directly address weaknesses that penalized some DNF vendors in G-I, (4) 5-month gap between G-I results and G-II evaluation allows targeted platform improvements. Probability 57% — more likely than not that at least one DNF vendor improves enough; uncertain which specific vendor.",
+      color: "var(--blue)"
+    },
+    {
+      prob: 44,
+      title: "Fiber-optic platforms take top 3 positions in G-II",
+      timeframe: "Oct 2026",
+      impact: "high",
+      summary: "G-I proved fiber-optic EW immunity is decisive when scored. G-II adds active jamming scenarios, which directly rewards fiber. Currently only Skycutter (Shrike 10 Fiber) and Neros (Archer Fiber, early production) have fiber variants. If a third fiber-capable platform enters or scales — from new entrants, or from existing vendors (Griffon, ModalAI) adopting Kela Technologies' fiber interface — the top 3 positions could be swept by fiber platforms. This would signal a permanent architectural shift in the OWA drone market. Probability anchored below 50% because Archer Fiber's production scale is unverified and new fiber entrants are uncertain.",
+      derivation: "Derived from: (1) G-I empirical evidence that fiber-optic won by 11.8 points with active jamming absent — advantage grows with EW present, (2) Only 2 confirmed fiber platforms in competition (Skycutter, Neros Archer Fiber), (3) Kela Technologies fiber interface is available for integration by other vendors, (4) G-II timeline is tight for new fiber platform development. Probability 44% reflects high plausibility but execution uncertainty — requires third fiber platform to emerge.",
+      color: "var(--text-dim)"
+    },
+  ];
+
+  predictions.forEach(p => {
+    const pct = p.prob;
+    const impactColor = p.impact === 'critical' ? 'var(--red)' : p.impact === 'high' ? 'var(--amber)' : 'var(--blue)';
+    const card = document.createElement('div');
+    card.style.cssText = 'background:var(--bg2);padding:16px 18px;';
+
+    const drawer = document.createElement('div');
+    drawer.style.cssText = 'display:none;margin-top:12px;padding-top:12px;border-top:1px solid var(--border);';
+    drawer.innerHTML = `
+      <div style="font:600 9px var(--mono);letter-spacing:2px;text-transform:uppercase;color:var(--text-dim);margin-bottom:8px;">Full Analysis</div>
+      <div style="font:400 12px var(--body);color:var(--text);line-height:1.65;margin-bottom:12px;">${p.summary}</div>
+      <div style="background:var(--bg3);border:1px solid var(--border);padding:12px 14px;">
+        <div style="font:600 9px var(--mono);letter-spacing:2px;text-transform:uppercase;color:var(--green);margin-bottom:6px;">How Probability Was Derived</div>
+        <div style="font:400 12px var(--body);color:var(--text);line-height:1.65;">${p.derivation}</div>
+      </div>
+    `;
+
+    let open = false;
+    card.innerHTML = `
+      <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:16px;cursor:pointer;">
+        <div style="flex:1;">
+          <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;">
+            <span style="font:600 8px var(--mono);letter-spacing:1px;padding:2px 6px;background:rgba(34,197,94,.08);border:1px solid ${impactColor};color:${impactColor};text-transform:uppercase;">${p.impact}</span>
+            <span style="font:600 9px var(--mono);color:var(--text-d2);">${p.timeframe}</span>
+          </div>
+          <div style="font:700 13px var(--head);color:#fff;letter-spacing:.3px;margin-bottom:4px;">${p.title}</div>
+          <div style="height:2px;background:var(--border);border-radius:2px;margin-top:8px;">
+            <div style="height:100%;width:${pct}%;background:${p.color};border-radius:2px;"></div>
+          </div>
+        </div>
+        <div style="flex-shrink:0;text-align:right;">
+          <div style="font:700 24px var(--mono);color:${p.color};line-height:1;">${pct}%</div>
+          <div style="font:600 8px var(--mono);letter-spacing:1px;color:var(--text-d2);margin-top:3px;">probability</div>
+          <div style="font:600 9px var(--mono);color:var(--text-d2);margin-top:4px;" class="chevron-lbl">▶ details</div>
+        </div>
+      </div>
+    `;
+
+    card.querySelector('div').onclick = () => {
+      open = !open;
+      drawer.style.display = open ? 'block' : 'none';
+      card.querySelector('.chevron-lbl').textContent = open ? '▼ details' : '▶ details';
+      card.style.background = open ? 'var(--bg3)' : 'var(--bg2)';
+    };
+
+    card.appendChild(drawer);
+    grid.appendChild(card);
+  });
+}
+
 function renderG2Predictions() {
   const grid = document.getElementById('g2-pred-grid');
   if (!grid) return;
