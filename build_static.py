@@ -482,9 +482,17 @@ def inject_seo(html, src_name, dst_path):
     clean_path = dst_path.replace('index.html', '')
     # patterns pages live on nvmillfindoutmyself.com, not nvmilldoitmyself.com
     CANONICAL_OVERRIDES = {
+        # PIE / patterns domain
         'patterns/': 'https://nvmillfindoutmyself.com/patterns/',
         'patterns-home/': 'https://nvmillfindoutmyself.com/patterns-home/',
         'analytics/': 'https://nvmillfindoutmyself.com/analytics/',
+        # Main Forge domain
+        'clock/': 'https://nvmillbuilditmyself.com/clock/',
+        'ddg/': 'https://nvmillbuilditmyself.com/ddg/',
+        'browse/': 'https://nvmillbuilditmyself.com/browse/',
+        'wingman/': 'https://nvmillbuilditmyself.com/wingman/',
+        'platforms/': 'https://nvmillbuilditmyself.com/platforms/',
+        'compliance/': 'https://nvmillbuilditmyself.com/compliance/',
     }
     canonical = CANONICAL_OVERRIDES.get(clean_path, f'{SITE_URL}/{clean_path}')
 
