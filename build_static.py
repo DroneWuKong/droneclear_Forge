@@ -43,6 +43,8 @@ PAGES = {
     'guides-hub.html': 'guides/index.html',
     'fc-firmware-guide.html': 'fc-firmware-guide/index.html',
     'compliance.html': 'compliance/index.html',
+    'spec-sheets.html': 'spec-sheets/index.html',
+    'compliance-matrix.html': 'compliance-matrix/index.html',
     'compare.html': 'compare/index.html',
     'cost.html': 'cost/index.html',
     'intel-home.html': 'intel/index.html',
@@ -164,6 +166,7 @@ _PAGE_SLUGS = {
     'tools.html': 'tools', 'tools-home.html': 'tools-home',
     'pro.html': 'pro', 'brief.html': 'brief', 'report.html': 'report',
     'compliance.html': 'compliance', 'tracker.html': 'tracker',
+    'spec-sheets.html': 'spec-sheets', 'compliance-matrix.html': 'compliance-matrix',
     'regs.html': 'regs', 'verify.html': 'verify', 'waiver.html': 'waiver',
     'grants.html': 'grants', 'audit.html': 'audit', 'guide.html': 'guide',
     'pid-tuning.html': 'pid-tuning', 'academy.html': 'academy',
@@ -295,8 +298,18 @@ SEO_META = {
     ),
     'compliance.html': (
         'Drone Compliance Dashboard Ã¢ÂÂ NDAA, Blue UAS, ITAR Status',
-        'Check NDAA 848 compliance, Blue UAS certification, ITAR restrictions, and country-of-origin status for all drone platforms. Traffic-light compliance tiers.',
-        'NDAA drone compliance, Blue UAS cleared drones, drone ITAR, drone procurement compliance',
+        'Check NDAA 848 (FY2020), ASDA / FAR 52.240-1 (FY2024), Blue UAS certification, ITAR, FCC Covered List, and country-of-origin status for 219 drone platforms. Traffic-light compliance tiers.',
+        'NDAA 848 drone compliance, ASDA drone, FAR 52.240-1, Blue UAS cleared drones, FCC covered list UAS, drone procurement compliance',
+    ),
+    'spec-sheets.html': (
+        'NDAA 848 Spec Sheet Viewer - Drone Component Compliance PDFs',
+        'Searchable cross-vendor index of NDAA 848 compliance spec sheets and component-origin declarations from UAS manufacturers. Freefly, Inspired Flight, Hylio, ORQA, Skydio and more. The first free aggregator - no such database exists at DoD, DIU, or SAM.gov.',
+        'NDAA 848 spec sheet, drone compliance PDF, component origin compliance, Blue UAS framework, FPV NDAA compliance, Freefly compliance PDF',
+    ),
+    'compliance-matrix.html': (
+        'Drone Compliance Matrix - 848, 889, ASDA, Blue UAS, FCC',
+        'Side-by-side reference for drone compliance regimes: NDAA 848, 889, 817, ASDA / FAR 52.240-1, Blue UAS Cleared, Blue UAS Framework, TAA, and FCC Covered List. Effective dates, scope, and citations.',
+        'NDAA 848 vs ASDA, FAR 52.240-1, Blue UAS vs NDAA, FCC covered list drones, drone compliance explainer',
     ),
     'compare.html': (
         'Drone Platform Compare Ã¢ÂÂ Side-by-Side Spec Comparison',

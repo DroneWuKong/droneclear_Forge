@@ -1,0 +1,391 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NDAA §848 Spec Sheet Viewer — Forge</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <script src="https://unpkg.com/@phosphor-icons/web"></script>
+    <script>
+      (function(){
+        const saved = localStorage.getItem('dc-theme');
+        document.documentElement.setAttribute('data-theme', saved ? saved : 'dark');
+      })();
+    </script>
+    <style>
+      :root{
+        --bg:#0c0c0a;--surface:#141410;--card:#1c1c17;--card-hi:#242420;
+        --border:#2e2e26;--border-hi:#3e3e34;
+        --c-green:#22c55e;--c-green-d:#22c55e18;
+        --c-yellow:#eab308;--c-yellow-d:#eab30818;
+        --c-orange:#f97316;--c-orange-d:#f9731618;
+        --c-red:#ef4444;--c-red-d:#ef444418;
+        --c-purple:#a855f7;--c-purple-d:#a855f718;
+        --c-amber:#f59e0b;--c-amber-d:#f59e0b18;
+        --c-blue:#3b82f6;--c-blue-d:#3b82f618;
+        --text:#f5f0e8;--text-s:#b8b0a0;--text-d:#8a8070;--text-xd:#6b6358;
+        --font:'DM Sans',system-ui,sans-serif;
+        --mono:'JetBrains Mono',monospace;
+      }
+      *{box-sizing:border-box;margin:0;padding:0}
+      body{background:var(--bg);color:var(--text);font-family:var(--font);line-height:1.5;-webkit-font-smoothing:antialiased;overflow-x:hidden}
+      a{text-decoration:none;color:inherit}
+
+      .tp-pill{font:500 10px var(--font);color:#6b6358;padding:4px 9px;border:1px solid #2e2e26;border-radius:20px;text-decoration:none;white-space:nowrap;transition:all .15s}
+      .tp-pill:hover{border-color:#3e3e34;color:#b8b0a0}
+      @media(max-width:520px){.tp-hide-sm{display:none}}
+
+      .page{max-width:1100px;margin:0 auto;padding:20px 16px 60px}
+      .page-header{margin-bottom:20px}
+      .page-header h1{font:700 22px var(--font);color:var(--text);margin-bottom:4px}
+      .page-header p{font-size:12px;color:var(--text-d);max-width:780px}
+      .page-header .lede{font-size:13px;color:var(--text-s);margin-top:8px;max-width:780px;line-height:1.6}
+
+      /* Advisory banner */
+      .advisory{background:linear-gradient(90deg,var(--c-red-d),transparent);border:1px solid rgba(239,68,68,.3);border-left:3px solid var(--c-red);border-radius:6px;padding:10px 14px;margin-bottom:20px;display:flex;gap:10px;align-items:flex-start;font-size:12px;color:var(--text-s)}
+      .advisory i{color:var(--c-red);font-size:16px;flex-shrink:0;margin-top:1px}
+      .advisory strong{color:var(--text);font-weight:600}
+      .advisory a{color:var(--c-amber);text-decoration:underline}
+
+      /* Stats row */
+      .stat-row{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:20px}
+      @media(max-width:600px){.stat-row{grid-template-columns:repeat(2,1fr)}}
+      .stat-card{background:var(--card);border:1px solid var(--border);border-radius:8px;padding:12px 10px;text-align:center}
+      .stat-num{font:700 20px var(--mono);line-height:1;color:var(--c-amber)}
+      .stat-lbl{font:600 10px var(--mono);text-transform:uppercase;letter-spacing:.06em;color:var(--text-d);margin-top:4px}
+
+      /* Controls */
+      .controls{display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap;align-items:center}
+      .search{flex:1;min-width:200px;position:relative}
+      .search input{width:100%;padding:9px 10px 9px 32px;background:var(--surface);border:1px solid var(--border);color:var(--text);border-radius:6px;outline:none;font:12px var(--mono)}
+      .search input:focus{border-color:var(--c-amber)}
+      .search i{position:absolute;left:10px;top:50%;transform:translateY(-50%);color:var(--text-d);font-size:14px}
+      .chip{padding:5px 9px;font:500 10px var(--font);border-radius:5px;border:1px solid var(--border);background:none;color:var(--text-d);cursor:pointer;transition:all .12s;white-space:nowrap}
+      .chip:hover{border-color:var(--border-hi);color:var(--text-s)}
+      .chip.active{border-color:var(--c-amber);color:var(--c-amber);background:var(--c-amber-d)}
+      .chips{display:flex;gap:4px;flex-wrap:wrap}
+
+      .results-count{font:500 10px var(--mono);color:var(--text-d);margin-bottom:10px}
+
+      /* Card grid */
+      .sheet-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(340px,1fr));gap:12px}
+      .sheet-card{background:var(--card);border:1px solid var(--border);border-radius:8px;padding:14px;transition:all .12s;border-left:3px solid transparent;display:flex;flex-direction:column}
+      .sheet-card:hover{background:var(--card-hi);border-color:var(--border-hi)}
+      .sheet-card.tier-green{border-left-color:var(--c-green)}
+      .sheet-card.tier-yellow{border-left-color:var(--c-yellow)}
+      .sheet-card.tier-orange{border-left-color:var(--c-orange)}
+
+      .sheet-top{display:flex;justify-content:space-between;align-items:flex-start;gap:10px;margin-bottom:6px}
+      .sheet-mfr{font:600 10px var(--mono);text-transform:uppercase;letter-spacing:.05em;color:var(--text-d)}
+      .sheet-country{font:500 10px var(--mono);color:var(--text-xd);white-space:nowrap}
+      .sheet-name{font:700 14px var(--font);color:var(--text);margin-bottom:2px}
+      .sheet-bundle{font:400 11px var(--font);color:var(--text-s);margin-bottom:8px}
+      .sheet-meta{display:flex;gap:8px;flex-wrap:wrap;font-size:10px;color:var(--text-d);margin-bottom:10px}
+      .sheet-meta span i{margin-right:3px}
+
+      /* Compliance grid inside card */
+      .comply-row{display:grid;grid-template-columns:repeat(4,1fr);gap:4px;margin-bottom:10px}
+      .comply-cell{background:var(--surface);border:1px solid var(--border);border-radius:4px;padding:5px 4px;text-align:center;font:600 9px var(--mono);text-transform:uppercase;letter-spacing:.03em}
+      .comply-cell.yes{color:var(--c-green);border-color:rgba(34,197,94,.25);background:var(--c-green-d)}
+      .comply-cell.no{color:var(--c-red);border-color:rgba(239,68,68,.25);background:var(--c-red-d)}
+      .comply-cell.unknown{color:var(--text-xd)}
+
+      .sheet-badges{display:flex;gap:4px;flex-wrap:wrap;margin-bottom:8px}
+      .badge{display:inline-flex;align-items:center;gap:3px;padding:2px 7px;border-radius:4px;font:600 9px var(--mono);white-space:nowrap}
+      .b-green{background:var(--c-green-d);color:var(--c-green);border:1px solid rgba(34,197,94,.25)}
+      .b-blue{background:var(--c-blue-d);color:var(--c-blue);border:1px solid rgba(59,130,246,.25)}
+      .b-purple{background:var(--c-purple-d);color:var(--c-purple);border:1px solid rgba(168,85,247,.25)}
+      .b-amber{background:var(--c-amber-d);color:var(--c-amber);border:1px solid rgba(245,158,11,.25)}
+      .b-muted{background:rgba(100,100,100,.1);color:var(--text-d);border:1px solid var(--border)}
+
+      .sheet-notes{font-size:11px;color:var(--text-d);margin-bottom:10px;line-height:1.5;flex:1}
+
+      .sheet-components{margin-bottom:10px}
+      .sheet-components summary{font:600 10px var(--mono);text-transform:uppercase;letter-spacing:.05em;color:var(--text-d);cursor:pointer;padding:4px 0}
+      .sheet-components summary:hover{color:var(--text-s)}
+      .component-list{margin-top:4px;font-size:11px}
+      .component-item{display:flex;justify-content:space-between;padding:3px 0;border-bottom:1px dashed var(--border);color:var(--text-s)}
+      .component-item:last-child{border-bottom:none}
+      .component-role{color:var(--text-d);font:600 10px var(--mono)}
+
+      .sheet-actions{display:flex;gap:6px;margin-top:auto}
+      .btn{padding:6px 10px;border-radius:5px;font:600 11px var(--font);text-decoration:none;display:inline-flex;align-items:center;gap:5px;transition:all .12s;border:1px solid}
+      .btn-primary{background:var(--c-amber-d);color:var(--c-amber);border-color:rgba(245,158,11,.35)}
+      .btn-primary:hover{background:var(--c-amber);color:var(--bg);border-color:var(--c-amber)}
+      .btn-sec{background:none;color:var(--text-d);border-color:var(--border)}
+      .btn-sec:hover{color:var(--text-s);border-color:var(--border-hi)}
+
+      .empty{padding:40px;text-align:center;color:var(--text-d);font-size:13px;grid-column:1/-1}
+
+      /* Disclosure box */
+      .disclosure{background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:14px;margin-top:24px;font-size:11px;color:var(--text-d);line-height:1.6}
+      .disclosure strong{color:var(--text-s)}
+      .disclosure a{color:var(--c-amber)}
+
+      @media(max-width:640px){
+        .comply-row{grid-template-columns:repeat(2,1fr)}
+        .stat-row{grid-template-columns:repeat(2,1fr)}
+      }
+    </style>
+</head>
+<body>
+<header style="display:flex;align-items:center;justify-content:space-between;gap:8px;padding:10px 16px;border-bottom:1px solid #2e2e26;background:#1c1c17;position:sticky;top:0;z-index:100;">
+  <a href="/" style="font:800 18px 'JetBrains Mono',monospace;color:#f59e0b;letter-spacing:-0.03em;text-decoration:none;">Forge</a>
+  <div style="display:flex;gap:5px;align-items:center;">
+    <a href="/compliance/" class="tp-pill tp-hide-sm">Compliance</a>
+    <a href="/compliance-matrix/" class="tp-pill tp-hide-sm">Matrix</a>
+    <a href="/platforms/" class="tp-pill tp-hide-sm">Platforms</a>
+    <a href="/wingman/" class="tp-pill">Wingman</a>
+  </div>
+</header>
+
+<main class="page">
+    <div class="page-header">
+        <h1>NDAA §848 Spec Sheet Viewer</h1>
+        <p>Searchable index of public component-origin compliance documents from UAS manufacturers. The first free cross-vendor aggregator — no such database exists at DoD, DIU, or SAM.gov.</p>
+        <div class="lede">
+            NDAA §848 (FY2020) + ASDA / FAR 52.240-1 (FY2024, effective Dec 22, 2025) + FCC Covered List (Dec 22, 2025)
+            together form the compliance stack that every US UAS buyer must now navigate. Vendors publish their own self-attested
+            PDFs — there is no DoD-issued form. This page links directly to each vendor's source document with no re-hosting.
+        </div>
+    </div>
+
+    <div class="advisory">
+        <i class="ph ph-warning-octagon"></i>
+        <div>
+            <strong>FCC Covered List update, Dec 22 2025:</strong> The FCC has added <em>all</em> foreign-produced UAS and
+            critical UAS components to the Covered List, making it illegal to authorize them for US use — regardless of who
+            the buyer is. DJI and Autel are named explicitly. Blue UAS / Blue UAS Framework items are narrowly exempt.
+            This affects every commercial US buyer, not just federal procurement.
+            <a href="https://docs.fcc.gov/public/attachments/DA-25-1086A1.pdf" target="_blank" rel="noopener">FCC DA-25-1086 →</a>
+        </div>
+    </div>
+
+    <div class="stat-row">
+        <div class="stat-card"><div class="stat-num" id="stat-total">0</div><div class="stat-lbl">Spec Sheets</div></div>
+        <div class="stat-card"><div class="stat-num" id="stat-vendors">0</div><div class="stat-lbl">Vendors</div></div>
+        <div class="stat-card"><div class="stat-num" id="stat-blue">0</div><div class="stat-lbl">Blue UAS</div></div>
+        <div class="stat-card"><div class="stat-num" id="stat-fpv">0</div><div class="stat-lbl">FPV Stacks</div></div>
+    </div>
+
+    <div class="controls">
+        <div class="search">
+            <i class="ph ph-magnifying-glass"></i>
+            <label for="sheet-search" class="sr-only">Search spec sheets</label>
+            <input type="text" id="sheet-search" placeholder="Search vendor, product, component, country...">
+        </div>
+    </div>
+    <div class="controls">
+        <div class="chips" id="filter-chips"></div>
+    </div>
+
+    <div class="results-count" id="results-count"></div>
+
+    <div class="sheet-grid" id="sheet-grid"></div>
+
+    <div class="disclosure">
+        <strong>About this index.</strong> All documents linked here are self-attested by their manufacturers unless marked as
+        Blue UAS or Blue UAS Framework (which adds DoD cybersecurity and hardware review). There is no government-issued §848
+        spec sheet template — each vendor rolls their own. Forge does not re-host PDFs; every link points to the vendor's
+        original. Missing data (null values) means the vendor has not publicly addressed that statute, not that they are non-compliant.
+        Dates reflect the attestation date on the source document, not today's status. <br><br>
+        <strong>Spotted a missing spec sheet or an error?</strong>
+        <a href="/contribute/">Contribute →</a>
+    </div>
+</main>
+
+<script>
+(function() {
+    'use strict';
+
+    let sheets = [];
+    let legalStack = {};
+    let criticalRoles = [];
+    let searchTerm = '';
+    let currentFilter = 'all';
+
+    const ESC = s => {
+        if (s == null) return '';
+        const d = document.createElement('div');
+        d.textContent = String(s);
+        return d.innerHTML;
+    };
+
+    const STATUS_LABEL = {
+        ndaa_848: '§848',
+        section_889: '§889',
+        section_817: '§817',
+        asda: 'ASDA',
+        blue_uas_cleared: 'BLUE',
+        blue_uas_framework: 'FRMWK',
+        taa: 'TAA',
+        fcc_covered_list_exempt: 'FCC'
+    };
+
+    const STATUS_ORDER = ['ndaa_848', 'section_889', 'section_817', 'asda', 'blue_uas_cleared', 'blue_uas_framework', 'taa', 'fcc_covered_list_exempt'];
+
+    function renderSheet(s) {
+        const complyCells = STATUS_ORDER.map(k => {
+            const v = s.compliance?.[k];
+            const cls = v === true ? 'yes' : v === false ? 'no' : 'unknown';
+            const symbol = v === true ? '✓' : v === false ? '✗' : '—';
+            return `<div class="comply-cell ${cls}" title="${ESC(k)}">${STATUS_LABEL[k]} ${symbol}</div>`;
+        }).join('');
+
+        const badges = [];
+        if (s.compliance?.blue_uas_cleared) badges.push('<span class="badge b-blue"><i class="ph ph-seal-check"></i> Blue UAS</span>');
+        if (s.compliance?.blue_uas_framework) badges.push('<span class="badge b-purple"><i class="ph ph-cube"></i> Framework</span>');
+        if (!s.self_attested) badges.push('<span class="badge b-green"><i class="ph ph-shield-check"></i> 3rd-party</span>');
+        if (s.self_attested) badges.push('<span class="badge b-muted">self-attested</span>');
+        if (s.segment?.includes('FPV')) badges.push('<span class="badge b-amber"><i class="ph ph-target"></i> FPV</span>');
+
+        const components = (s.critical_components || []).length ? `
+            <details class="sheet-components">
+                <summary>Critical components (${s.critical_components.length})</summary>
+                <div class="component-list">
+                    ${s.critical_components.map(c => `
+                        <div class="component-item">
+                            <span class="component-role">${ESC(c.role)}</span>
+                            <span>${ESC(c.vendor)} ${ESC(c.model)} <span style="color:var(--text-xd)">(${ESC(c.country)})</span></span>
+                        </div>
+                    `).join('')}
+                </div>
+            </details>
+        ` : '';
+
+        const metaBits = [];
+        if (s.attestation_date) metaBits.push(`<span><i class="ph ph-calendar"></i>${ESC(s.attestation_date)}</span>`);
+        if (s.category) metaBits.push(`<span><i class="ph ph-tag"></i>${ESC(s.category)}</span>`);
+        if (s.part_number && s.part_number !== 'multi-sku') metaBits.push(`<span><i class="ph ph-barcode"></i>${ESC(s.part_number)}</span>`);
+
+        return `
+            <div class="sheet-card tier-${s.tier}">
+                <div class="sheet-top">
+                    <div>
+                        <div class="sheet-mfr">${ESC(s.manufacturer)}</div>
+                    </div>
+                    <div class="sheet-country">${ESC(s.manufacturer_country)}</div>
+                </div>
+                <div class="sheet-name">${ESC(s.product)}</div>
+                <div class="sheet-bundle">${ESC(s.bundle)}</div>
+                <div class="sheet-meta">${metaBits.join('')}</div>
+                <div class="comply-row">${complyCells}</div>
+                <div class="sheet-badges">${badges.join('')}</div>
+                <div class="sheet-notes">${ESC(s.notes)}</div>
+                ${components}
+                <div class="sheet-actions">
+                    <a href="${ESC(s.spec_sheet_url)}" target="_blank" rel="noopener" class="btn btn-primary">
+                        <i class="ph ph-file-pdf"></i> Open Spec Sheet
+                    </a>
+                    ${s.source_page && s.source_page !== s.spec_sheet_url ? `
+                        <a href="${ESC(s.source_page)}" target="_blank" rel="noopener" class="btn btn-sec">
+                            <i class="ph ph-arrow-square-out"></i> Vendor
+                        </a>
+                    ` : ''}
+                </div>
+            </div>
+        `;
+    }
+
+    function render() {
+        let filtered = sheets.filter(s => {
+            if (currentFilter === 'blue_uas' && !s.compliance?.blue_uas_cleared) return false;
+            if (currentFilter === 'framework' && !s.compliance?.blue_uas_framework) return false;
+            if (currentFilter === 'fpv' && !(s.segment || '').includes('FPV')) return false;
+            if (currentFilter === 'third_party' && s.self_attested !== false) return false;
+            if (currentFilter === 'per_sku' && s.doc_type !== 'per-sku-spec-sheet') return false;
+
+            if (searchTerm) {
+                const q = searchTerm.toLowerCase();
+                const hay = [
+                    s.manufacturer, s.product, s.bundle, s.category, s.notes,
+                    s.manufacturer_country, s.segment,
+                    (s.critical_components || []).map(c => `${c.vendor} ${c.model} ${c.country} ${c.role}`).join(' ')
+                ].join(' ').toLowerCase();
+                if (!hay.includes(q)) return false;
+            }
+            return true;
+        });
+
+        // Sort: tier then date desc then manufacturer
+        const tierRank = { green: 0, yellow: 1, orange: 2 };
+        filtered.sort((a, b) => {
+            const tr = (tierRank[a.tier] ?? 9) - (tierRank[b.tier] ?? 9);
+            if (tr !== 0) return tr;
+            const da = a.attestation_date || '';
+            const db = b.attestation_date || '';
+            if (da !== db) return db.localeCompare(da);
+            return (a.manufacturer || '').localeCompare(b.manufacturer || '');
+        });
+
+        document.getElementById('results-count').textContent = `Showing ${filtered.length} of ${sheets.length} spec sheets`;
+
+        const grid = document.getElementById('sheet-grid');
+        if (!filtered.length) {
+            grid.innerHTML = '<div class="empty"><i class="ph ph-magnifying-glass" style="font-size:32px;display:block;margin-bottom:8px;"></i>No spec sheets match your filters.</div>';
+            return;
+        }
+        grid.innerHTML = filtered.map(renderSheet).join('');
+    }
+
+    function renderStats() {
+        const total = sheets.length;
+        const vendors = new Set(sheets.map(s => s.manufacturer)).size;
+        const blue = sheets.filter(s => s.compliance?.blue_uas_cleared || s.compliance?.blue_uas_framework).length;
+        const fpv = sheets.filter(s => (s.segment || '').includes('FPV')).length;
+        document.getElementById('stat-total').textContent = total;
+        document.getElementById('stat-vendors').textContent = vendors;
+        document.getElementById('stat-blue').textContent = blue;
+        document.getElementById('stat-fpv').textContent = fpv;
+    }
+
+    function renderFilters() {
+        const filters = [
+            { id: 'all', label: 'All' },
+            { id: 'per_sku', label: 'Per-SKU PDFs' },
+            { id: 'blue_uas', label: 'Blue UAS Cleared' },
+            { id: 'framework', label: 'Blue UAS Framework' },
+            { id: 'third_party', label: '3rd-party verified' },
+            { id: 'fpv', label: 'FPV stacks' }
+        ];
+        document.getElementById('filter-chips').innerHTML = filters.map(f =>
+            `<button class="chip ${currentFilter === f.id ? 'active' : ''}" data-filter="${f.id}">${f.label}</button>`
+        ).join('');
+        document.querySelectorAll('.chip').forEach(c => {
+            c.addEventListener('click', () => {
+                currentFilter = c.dataset.filter;
+                renderFilters();
+                render();
+            });
+        });
+    }
+
+    async function init() {
+        try {
+            const res = await fetch('forge_848_spec_sheets.json');
+            if (!res.ok) throw new Error('Failed to load spec sheet index');
+            const db = await res.json();
+            sheets = db.spec_sheets || [];
+            legalStack = db.legal_stack || {};
+            criticalRoles = db.critical_component_roles || [];
+            renderStats();
+            renderFilters();
+            render();
+        } catch (err) {
+            console.error(err);
+            document.getElementById('sheet-grid').innerHTML = '<div class="empty">Failed to load spec sheet index.</div>';
+        }
+    }
+
+    document.getElementById('sheet-search').addEventListener('input', (e) => {
+        searchTerm = e.target.value.trim();
+        render();
+    });
+
+    init();
+})();
+</script>
+</body>
+</html>
