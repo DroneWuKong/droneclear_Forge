@@ -330,8 +330,8 @@ a{color:var(--blue);text-decoration:none}a:hover{text-decoration:underline}
 <script>
 (function(){'use strict';
 var DB,INTEL=[],COS=[],PROGS=[],PLATS=[],LIVE,GAPS,TOPICMAP,DASH,TRENDS;
-var FN='/.netlify/functions/analytics';
-var DASH_FN='/.netlify/functions/analytics';
+var FN='/.netlify/functions/analytics';                    // Forge: Wingman query/session data
+var DASH_FN='https://thebluefairy.netlify.app/.netlify/functions/analytics-dashboard'; // Ai-Project: page/UI behavior data
 var KEY=''; // Key never stored client-side — auth is session-based
 var $=function(id){return document.getElementById(id)};
 var fmt=function(n){return n>=1e6?(n/1e6).toFixed(1)+'M':n>=1e3?(n/1e3).toFixed(1).replace(/\.0$/,'')+'k':String(n)};
@@ -469,7 +469,7 @@ async function loadAll(){
       } catch(e) {}
       sessionStorage.setItem('forge_backfill_done', '1');
     }
-    try{var d=await fetch(DASH_FN+'?range=30',{headers:{'x-admin-key':sessionStorage.getItem(GATE_SESSION_KEY)||''}});if(d.ok){var dr=await d.json();DASH={overview:{total_views:dr.totals&&dr.totals.pageViews||0,total_wingman_queries:dr.totals&&dr.totals.queries||0,total_gap_analyses:dr.totals&&dr.totals.gapAnalyses||0,unique_sessions:dr.totals&&dr.totals.sessions||0,days_with_data:Object.keys(dr.daily||{}).length},daily_activity:Object.entries(dr.daily||{}).map(function(e){return{date:e[0],views:e[1].count||0,wingman_queries:0,gap_analyses:0};}),wingman_categories:Object.entries((dr.totals&&dr.totals.cats)||{}).map(function(e){return{cat:e[0],count:e[1]};}),top_gap_pairs:[]}}}catch(e){}
+    try{var d=await fetch(DASH_FN+'?days=30&key='+encodeURIComponent(KEY));if(d.ok){DASH=await d.json();}}catch(e){}
     try{var g=await fetch('/static/gap_analysis_latest.json');if(g.ok)GAPS=await g.json()}catch(e){}
     try{var tr=await fetch('/static/pie_trends.json');if(tr.ok)TRENDS=await tr.json()}catch(e){}
     if(!TRENDS)try{var tr2=await fetch('/pie_trends.json');if(tr2.ok)TRENDS=await tr2.json()}catch(e){}
@@ -569,13 +569,17 @@ function renderIntel(m){
 }
 
 function renderUsers(){
-    if(!LIVE){$('us-stats').innerHTML='';['us-queries','us-zeros','us-cats','us-daily'].forEach(function(id){$(id).innerHTML='<div class="an-empty">Live analytics unavailable — connect the analytics function to see user behavior</div>'});return}
+    // Supplement LIVE with DASH wingman data from thebluefairy
+    var wmDash=DASH&&DASH.wingman||null;
+    if(!LIVE&&!wmDash){$('us-stats').innerHTML='';['us-queries','us-zeros','us-cats','us-daily'].forEach(function(id){$(id).innerHTML='<div class="an-empty">Live analytics unavailable — connect the analytics function to see user behavior</div>'});return}
     var tot=LIVE.totals||{},daily=LIVE.daily||{},queries=LIVE.recentQueries||[],sess=LIVE.thisMonth||{};
     $('us-stats').innerHTML=[sc(fmt(tot.queries||0),'Total Queries'),sc(fmt(tot.sessions||0),'Sessions','','accent-blue'),sc(fmt(tot.imageQueries||0),'Image Queries','','accent-purple'),sc(sess.avgTurns||'—','Avg Turns','','accent-green'),sc(Object.keys(daily).length,'Active Days','','accent-amber'),sc(queries.length,'Recent','last 50','')].join('');
     var bu=$('badge-users');if(bu)bu.innerHTML='<span class="an-pulse"></span> '+fmt(tot.queries||0);
     // Queries
     var qm={};queries.forEach(function(q){var k=(q.q||'').toLowerCase().trim();if(!k)return;if(!qm[k])qm[k]={q:q.q,n:0,c:q.cat};qm[k].n++});
     var sq=Object.values(qm).sort(function(a,b){return b.n-a.n}).slice(0,15),mq=sq[0]?sq[0].n:1;
+    // Use thebluefairy wingman recent queries if available
+    if(!sq.length&&wmDash&&wmDash.recent&&wmDash.recent.length){var rq=wmDash.recent.slice(0,15);var rqm={};rq.forEach(function(q){var k=(q.q||'').toLowerCase().trim();if(!k)return;if(!rqm[k])rqm[k]={q:q.q,n:1,c:q.cat};else rqm[k].n++;});sq=Object.values(rqm).sort(function(a,b){return b.n-a.n});mq=sq[0]?sq[0].n:1;}
     $('us-queries').innerHTML=sq.length?sq.map(function(q){return bar(q.q,q.n,mq,'blue',q.c||'general')}).join(''):'<div class="an-empty">No queries yet</div>';
     $('us-zeros').innerHTML='<div class="an-empty">Zero-result signals populate as users search — each is a cue to add missing data</div>';
     var cats=tot.cats||{},sc2=sortObj(cats,10),mc=sc2[0]?sc2[0][1]:1;
@@ -682,13 +686,19 @@ function renderTrends(){
 }
 
 function renderUsage(){
-  var ov=DASH?DASH.overview:{};
-  var daily=DASH?DASH.daily_activity||[]:[]; 
-  var gapPairs=DASH?DASH.top_gap_pairs||[]:[]; 
-  var wingCats=DASH?DASH.wingman_categories||[]:[]; 
+  // DASH = full thebluefairy analytics-dashboard response
+  var fg=DASH?DASH.forge||{}:{};
+  var hb=DASH?DASH.handbook||{}:{};
+  var wm=DASH?DASH.wingman||{}:{};
+  var at=DASH?DASH.all_time||{}:{};
   var liveT=LIVE?LIVE.totals||{}:{};
   var liveSurf=liveT.surfaces||{};
   var hasData=DASH||LIVE;
+  // Back-compat shims
+  var ov={total_views:(fg.total_views||0)+(hb.total_views||0),total_wingman_queries:at.wingman_queries||wm.total||0,total_gap_analyses:at.gap_analyses||0,unique_sessions:(fg.unique_sessions||0)+(hb.unique_sessions||0),days_with_data:DASH?DASH.days_with_data||0:0};
+  var daily=fg.daily||[];
+  var wingCats=wm.top_cats||[];
+  var gapPairs=[];
   if(!hasData){
     document.getElementById('ug-stats').innerHTML='<div class="an-empty" style="grid-column:1/-1">Usage data not yet available</div>';
     ['ug-daily','ug-wingman-cats','ug-gap-pairs','ug-surfaces','ug-pages'].forEach(function(id){document.getElementById(id).innerHTML='<div class="an-empty">No data yet</div>';});
@@ -703,29 +713,32 @@ function renderUsage(){
   $('ug-stats').innerHTML=[
     sc(fmt(totalViews),'Page Views','30 days','accent-blue'),
     sc(fmt(totalSess),'Sessions','','accent-green'),
-    sc(fmt(totalWingman),'Wingman Queries','','accent-purple'),
-    sc(fmt(totalGaps),'Gap Analyses','','accent-amber'),
-    sc(fmt(totalCritical),'Critical Gaps Found','across all runs','accent-red'),
+    sc(fmt(totalWingman),'Wingman Queries','all-time','accent-purple'),
+    sc(fmt(fg.total_searches||0),'Searches','forge','accent-amber'),
+    sc(fmt(fg.total_flag_views||0),'Flag Views','PIE signals','accent-red'),
+    sc(fmt(fg.total_intel_views||0),'Intel Opens','articles','accent-blue'),
+    sc(fmt(fg.total_no_results||0),'Gap Signals','zero results','accent-red'),
     sc(ov.days_with_data||0,'Days w/ Data','',''),
   ].join('');
   var bua=$('badge-usage');if(bua)bua.textContent=fmt(totalViews+totalWingman+totalGaps);
   // Daily spark
   if(daily.length){
     var dk=daily.map(function(d){return(d.date||'').substring(5);});
-    var dv=daily.map(function(d){return(d.views||0)+(d.wingman_queries||0)+(d.gap_analyses||0);});
-    $('ug-daily').innerHTML=spark(dv,dk)+'<div style="font-size:10px;color:var(--an-text-muted);margin-top:6px">Views + Wingman + Gap runs per day</div>';
+    var dv=daily.map(function(d){return(d.views||0)+(d.wingman_queries||d.wingman||0);});
+    $('ug-daily').innerHTML=spark(dv,dk)+'<div style="font-size:10px;color:var(--an-text-muted);margin-top:6px">Page views + Wingman queries per day</div>';
   } else { $('ug-daily').innerHTML='<div class="an-empty">Builds over time</div>'; }
   // Wingman categories
-  var cats2=wingCats.length?wingCats.map(function(c){return[c.cat,c.count];}):sortObj(liveT.cats||{},12);
+  var cats2=wingCats.length?wingCats.map(function(c){return[c.key||c.cat,c.count];}):sortObj(liveT.cats||{},12);
   if(cats2.length){var mc=cats2[0][1];$('ug-wingman-cats').innerHTML=cats2.slice(0,12).map(function(e){return bar(e[0],e[1],mc,'teal');}).join('');}
   else{$('ug-wingman-cats').innerHTML='<div class="an-empty">Builds as Wingman is used</div>';}
   // Gap pairs
   if(gapPairs.length){var mg=gapPairs[0].count;$('ug-gap-pairs').innerHTML=gapPairs.slice(0,10).map(function(p){return bar(p.pair,p.count,mg,'orange');}).join('');}
   else{$('ug-gap-pairs').innerHTML='<div class="an-empty">Top entity pairs appear after gap runs</div>';}
-  // Surface breakdown
-  var surfEntries=Object.entries(liveSurf);
+  // Surface breakdown — prefer thebluefairy geo regions
+  var surfObj=Object.keys(fg.regions||{}).length?fg.regions:liveSurf;
+  var surfEntries=Object.entries(surfObj);
   if(surfEntries.length){var ms=Math.max.apply(null,surfEntries.map(function(e){return e[1];}));$('ug-surfaces').innerHTML=surfEntries.sort(function(a,b){return b[1]-a[1];}).map(function(e){return bar(e[0],e[1],ms,'blue');}).join('');}
-  else{$('ug-surfaces').innerHTML='<div class="an-empty">Forge · Patterns · Intel · Platforms · Wingman</div>';}
+  else{$('ug-surfaces').innerHTML='<div class="an-empty">Geographic data builds as traffic accumulates</div>';}
   // Recent pages from LIVE daily
   var recentPages=[];
   if(LIVE&&LIVE.daily){Object.values(LIVE.daily).forEach(function(day){if(day&&day.cats)Object.entries(day.cats).forEach(function(e){recentPages.push({path:e[0],count:e[1]});});});}
