@@ -656,6 +656,9 @@ var STARTERS = [
 var ragIndex = [];
 var pieIndex = [];    // PIE flags for Wingman context injection
 var pieByKeyword = {}; // keyword → Set of flag ids
+var mfgStatus = {};   // manufacturer slug → status record (forge_manufacturer_status.json)
+var mfgAliases = {};  // alias lowercase → canonical slug (for fuzzy matching)
+var altMap = {};      // category name → alternatives block (forge_alternatives.json)
 var handbookChunks = []; // {title, text, src}
 var ragStats = { platforms: 0, components: 0, handbook: 0, firmware: 0, categories: new Set() };
 
@@ -965,6 +968,41 @@ async function loadRAG() {
       }
     }
   } catch(e) { /* PIE unavailable */ }
+
+  // Load manufacturer status registry (forge_manufacturer_status.json)
+  try {
+    const res = await fetch('forge_manufacturer_status.json');
+    if (res.ok) {
+      const msData = await res.json();
+      mfgStatus = msData.manufacturers || {};
+      // Build alias → slug reverse map for fuzzy matching
+      const aliases = msData.canonical_aliases || {};
+      for (const [slug, aliasList] of Object.entries(aliases)) {
+        mfgAliases[slug] = slug;
+        for (const a of (aliasList || [])) {
+          mfgAliases[a.toLowerCase().replace(/[^a-z0-9]+/g, '-')] = slug;
+        }
+      }
+      // Also add direct name → slug for each manufacturer
+      for (const [slug, rec] of Object.entries(mfgStatus)) {
+        mfgAliases[slug] = slug;
+        if (rec.name) mfgAliases[rec.name.toLowerCase().replace(/[^a-z0-9]+/g, '-')] = slug;
+      }
+      console.log(`Manufacturer status loaded: ${Object.keys(mfgStatus).length} vendors`);
+      if (!kbSources.includes('mfg-status')) kbSources.push('mfg-status');
+    }
+  } catch(e) { console.warn('Mfg status load skipped:', e.message); }
+
+  // Load alternatives / drop-in map (forge_alternatives.json)
+  try {
+    const res = await fetch('forge_alternatives.json');
+    if (res.ok) {
+      const altData = await res.json();
+      altMap = altData.categories || {};
+      console.log(`Alternatives loaded: ${Object.keys(altMap).length} categories`);
+      if (!kbSources.includes('alternatives')) kbSources.push('alternatives');
+    }
+  } catch(e) { console.warn('Alternatives load skipped:', e.message); }
 
   updateSourcePills();
   console.log(`RAG loaded: ${ragIndex.length} items, ${handbookChunks.length} handbook chunks in ${Date.now()-t0}ms`);
@@ -1916,6 +1954,94 @@ function buildValidationContext(query) {
 }
 
 // ─── SYSTEM PROMPT ────────────────────────────────────────────
+// Find manufacturer slugs mentioned in the query (via aliases map)
+function findMentionedManufacturers(query) {
+  if (!query || !Object.keys(mfgStatus).length) return [];
+  const q = ' ' + query.toLowerCase().replace(/[^a-z0-9 ]/g, ' ').replace(/\s+/g, ' ') + ' ';
+  const hits = new Set();
+  // Check each alias — longest first so "brain fpv" wins over "brain"
+  const aliasList = Object.keys(mfgAliases).sort((a, b) => b.length - a.length);
+  for (const alias of aliasList) {
+    // alias is kebab-cased; convert to space-search and also dash-search
+    const needleSpace = ' ' + alias.replace(/-/g, ' ') + ' ';
+    const needleDash  = ' ' + alias + ' ';
+    if (q.includes(needleSpace) || q.includes(needleDash)) {
+      hits.add(mfgAliases[alias]);
+    }
+  }
+  return Array.from(hits);
+}
+
+function buildManufacturerContext(query) {
+  const hits = findMentionedManufacturers(query);
+  if (!hits.length) return '';
+  const lines = [];
+  for (const slug of hits) {
+    const rec = mfgStatus[slug];
+    if (!rec) continue;
+    const flagStr = (rec.risk_flags || []).length ? ` [${rec.risk_flags.join(', ')}]` : '';
+    const replStr = rec.replacement_suggestion ? ` → recommended substitute: ${rec.replacement_suggestion}` : '';
+    const conf = rec.confidence ? ` (confidence: ${rec.confidence})` : '';
+    lines.push(`• ${rec.name} — STATUS: ${rec.status.toUpperCase()}${flagStr}${conf}${replStr}`);
+    if (rec.notes) lines.push(`  ${rec.notes.slice(0, 240)}`);
+  }
+  if (!lines.length) return '';
+  return '\nMANUFACTURER STATUS (Wingman MUST cite these facts if relevant to the answer, even if user didn\'t ask):\n' + lines.join('\n') + '\n';
+}
+
+function buildAlternativesContext(query) {
+  if (!query || !Object.keys(altMap).length) return '';
+  const q = query.toLowerCase();
+  const matchedCategories = [];
+  // Match categories by name or by a few obvious keywords
+  const CATEGORY_KEYWORDS = {
+    companion_computers: ['companion computer', 'rpi', 'raspberry pi', 'radxa', 'jetson', 'pine64', 'sbc', 'onboard computer', 'compute module'],
+    hd_vtx_air_units: ['hd vtx', 'air unit', 'dji o3', 'dji o4', 'walksnail', 'hdzero', 'digital fpv', 'hd fpv'],
+    motors_7inch: ['7 inch motor', '7" motor', '7in motor', '2806', '2807', 'cinelifter motor', 'long range motor'],
+    flight_controllers_7inch: ['flight controller', ' fc ', 'fc for', 'kakute', 'matek h743', 'speedybee f'],
+    rc_long_range_link: ['long range control', 'elrs', 'expresslrs', 'crossfire', 'tbs tracer', 'ghost rc', 'rc link'],
+    esc_4in1_60a: ['4in1 esc', '4-in-1 esc', '55a', '60a esc', '65a esc', 'bl32'],
+    gps_modules: ['gps module', 'm10q', 'm9n', 'rtk gps', 'gnss'],
+    datalinks_mesh_defense: ['mesh radio', 'doodle labs', 'silvus', 'manet', 'rajant', 'datalink'],
+    fpv_cameras_analog: ['analog fpv cam', 'analog camera', 'foxeer razer', 'runcam phoenix', 'caddx ratel']
+  };
+  for (const [cat, kws] of Object.entries(CATEGORY_KEYWORDS)) {
+    if (!altMap[cat]) continue;
+    if (kws.some(kw => q.includes(kw))) {
+      matchedCategories.push(cat);
+    }
+  }
+  // Also consider a build-size hint like 7" — if present, pull 7-inch categories
+  if (q.includes('7"') || q.includes('7-inch') || q.includes('7 inch') || q.includes('7in ')) {
+    for (const cat of ['motors_7inch', 'flight_controllers_7inch', 'esc_4in1_60a', 'gps_modules', 'companion_computers', 'rc_long_range_link']) {
+      if (altMap[cat] && !matchedCategories.includes(cat)) matchedCategories.push(cat);
+    }
+  }
+  if (!matchedCategories.length) return '';
+  const blocks = [];
+  for (const cat of matchedCategories.slice(0, 4)) { // cap at 4 categories to keep prompt size reasonable
+    const c = altMap[cat];
+    if (!c) continue;
+    const lines = [`CATEGORY: ${cat} — ${c.description || ''}`];
+    // Include the recommendations block — that's the gold
+    if (c.recommendations) {
+      for (const [scenario, rec] of Object.entries(c.recommendations)) {
+        const alt = rec.alt ? ` (alt: ${rec.alt})` : '';
+        lines.push(`  ▸ ${scenario}: ${rec.primary}${alt} — ${rec.reasoning || ''}`);
+      }
+    }
+    // Include 5 canonical options with status so Wingman knows what's available/flagged
+    const opts = Object.entries(c.options || {}).slice(0, 8);
+    for (const [key, opt] of opts) {
+      const status = opt.status ? `[${opt.status}]` : '';
+      const dropIn = opt.drop_in?.length ? ` drop-in: ${opt.drop_in.join('/')}` : '';
+      lines.push(`    - ${opt.name || key} ${status}${dropIn}`);
+    }
+    blocks.push(lines.join('\n'));
+  }
+  return '\nALTERNATIVES / SUBSTITUTES (cross-reference with pie_flags and mfg_status before recommending):\n' + blocks.join('\n\n') + '\n';
+}
+
 function buildPieContext(query) {
   if (!pieIndex.length || !query) return '';
   const words = query.toLowerCase().replace(/[^a-z0-9 ]/g,' ').split(/\s+/).filter(w => w.length > 3);
@@ -2028,11 +2154,19 @@ HOW TO RESPOND:
 - Code blocks for commands only. Bold for key terms. No walls of text.
 ${mode === 'orqa' ? '- Orqa hardware: QuadCore H7, 3030 Lite F405, WingCore H7 (PX4), DTK APB, 3030 70A ESC, FPV.One, FPV.Connect, MRM2-10/MRM1-5, spiroNET antennas.' : ''}
 
+BUILD-VALIDITY CHECK (always run for ANY question mentioning parts, vendors, or build recommendations):
+  Step 1 — VENDOR ALIVE? Look up every manufacturer in MANUFACTURER STATUS context below. If a mentioned vendor is defunct, acquired, eol, or active_restricted, SURFACE that fact even if the user didn't ask. Answer the user's actual question first, then add the status warning in a second short sentence.
+  Step 2 — PART FLAGGED? Cross-check mentioned parts against PIE INTELLIGENCE (supply/diversion/compliance flags). If a flag applies, mention it.
+  Step 3 — BETTER ALTERNATIVE? If the primary pick has a supply_constrained flag, a covered_foreign_entity flag, or an eol status, pull the drop-in or equivalent from ALTERNATIVES context and recommend it by name. Briefly justify ("RPi 5 is supply-constrained per our intel — Radxa Rock 5B is the drop-in").
+  Step 4 — UNKNOWN VENDOR? If a user mentions a part vendor not in MANUFACTURER STATUS, and you're on Claude, use web_search before claiming a vendor is active. On Gemini/Groq, state plainly "I don't have current status on $VENDOR — verify availability before ordering."
+
+TONE FOR STATUS WARNINGS: Don't scold. "Yes, that combo works electrically — heads up though, Brain FPV shut down around 2020-2021, so no firmware updates or RMAs. If you have a working Radix, run it; for a new build grab a Matek/Holybro/SpeedyBee F7 AIO instead."
+
 KNOWLEDGE BASE:
 ${FALLBACK_KB}
 ${kbData !== FALLBACK_KB ? kbData : ''}
 ${validationCtx ? validationCtx : ''}
-${ragCtx ? '\nRELEVANT DB ENTRIES:' + ragCtx : ''}${buildPieContext(query)}
+${ragCtx ? '\nRELEVANT DB ENTRIES:' + ragCtx : ''}${buildManufacturerContext(query)}${buildAlternativesContext(query)}${buildPieContext(query)}
 ${imageInstructions}`;
 }
 
