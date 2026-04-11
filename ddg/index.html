@@ -1743,5 +1743,91 @@ function renderG2Predictions() {
 }
 
 </script>
+<!-- Page Analytics — fires batch events to /.netlify/functions/analytics -->
+<script>
+(function(){
+  var E='https://thebluefairy.netlify.app/.netlify/functions/analytics-ingest';
+  var S='sess_'+crypto.randomUUID().replace(/-/g,'').slice(0,16);
+  var surface='ddg_root';
+  var q=[],t=null,ps=Date.now(),ms=0,ix=0;
+  function rg(){try{var z=Intl.DateTimeFormat().resolvedOptions().timeZone;if(z.includes('America'))return'Americas';if(z.includes('Europe'))return'Europe';if(z.includes('Asia')||z.includes('Australia')||z.includes('Pacific'))return'Asia-Pacific';}catch(e){}return'Unknown';}
+  function mkEvent(type,action,payload){return{event_id:crypto.randomUUID(),timestamp:new Date().toISOString(),surface:surface,event_type:type,event_action:action,context:{session_id:S,geo_region:rg(),platform:/Android|iPhone|iPad/i.test(navigator.userAgent)?'mobile':'web',path:location.pathname},payload:payload||{},data_policy:{collection_tier:'anonymous'}};}
+  function fl(){if(t){clearTimeout(t);t=null;}if(!q.length)return;var b=q.splice(0);navigator.sendBeacon?navigator.sendBeacon(E,JSON.stringify({type:'batch',events:b})):fetch(E,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({type:'batch',events:b}),keepalive:true}).catch(function(){});}
+  function ev(type,action,payload){q.push(mkEvent(type,action,payload));if(q.length>=20)fl();else if(!t)t=setTimeout(fl,5000);}
+  // Page view
+  ev('page_view','view',{path:location.pathname,title:document.title});
+  // Scroll depth
+  var st=null;addEventListener('scroll',function(){var h=document.documentElement.scrollHeight-innerHeight;if(h>0){var p=Math.round(100*scrollY/h);if(p>ms)ms=p;}if(st)clearTimeout(st);st=setTimeout(function(){ev('engagement','scroll_depth',{depth_pct:ms,path:location.pathname});},2000);},{passive:true});
+  // Click tracking
+  addEventListener('click',function(e){ix++;var el=e.target.closest('a,button,[data-track]');if(!el)return;ev('interaction','click',{label:(el.dataset.track||el.textContent.trim()).substring(0,50),href:(el.href||'').substring(0,200),element:el.tagName.toLowerCase(),path:location.pathname});},{passive:true});
+  // Exit
+  function end(){ev('engagement','page_exit',{duration_sec:Math.round((Date.now()-ps)/1e3),max_scroll_pct:ms,interactions:ix,path:location.pathname});fl();}
+  addEventListener('visibilitychange',function(){if(document.visibilityState==='hidden')end();});
+  addEventListener('pagehide',end);
+  // Expose for page-specific events
+  window.__pageAnalytics={ev:ev,flush:fl,session:S};
+})();
+</script>
+<script>
+// ── DDG page-specific analytics ───────────────────────────────────────────
+(function(){
+  function waitPA(cb){ if(window.__pageAnalytics) cb(); else setTimeout(function(){ waitPA(cb); }, 50); }
+  waitPA(function(){
+    var _ev = window.__pageAnalytics.ev;
+
+    // 1. Patch toggleExpand (leaderboard row expand)
+    var _te = window.toggleExpand;
+    if(typeof _te === 'function') {
+      window.toggleExpand = function(idx){
+        _te.apply(this, arguments);
+        try {
+          // Try to get company name from rendered leaderboard
+          var rows = document.querySelectorAll('.lb-row, .lb-main, [data-company]');
+          var name = (rows[idx] && (rows[idx].dataset.company || rows[idx].querySelector('.lb-name,.company-name'))) ?
+            (rows[idx].dataset.company || rows[idx].querySelector('.lb-name,.company-name').textContent.trim()) : 'idx_'+idx;
+          _ev('interaction','leaderboard_expand',{ company: name, index: idx, path: location.pathname });
+        } catch(e){
+          _ev('interaction','leaderboard_expand',{ index: idx, path: location.pathname });
+        }
+      };
+    }
+
+    // 2. Track G2 prediction card clicks via event delegation
+    document.addEventListener('click', function(e){
+      var card = e.target.closest('.pred-card, .prediction-card, [data-pred]');
+      if(card){
+        _ev('interaction','prediction_card_click',{
+          label: (card.dataset.pred || card.querySelector('h3,h4,.pred-title') && card.querySelector('h3,h4,.pred-title').textContent || '').substring(0,60).trim(),
+          path: location.pathname
+        });
+      }
+    }, { passive: true });
+
+    // 3. Track accordion headers (G2 outcome predictions)
+    document.addEventListener('click', function(e){
+      var hdr = e.target.closest('.acc-header, .accordion-header, .outcome-header');
+      if(hdr){
+        _ev('interaction','accordion_expand',{
+          label: hdr.textContent.trim().substring(0,60),
+          path: location.pathname
+        });
+      }
+    }, { passive: true });
+
+    // 4. Track tab switches (if DDG has tabs)
+    document.querySelectorAll('.tab, .itab, [role="tab"]').forEach(function(tab){
+      tab.addEventListener('click', function(){
+        _ev('interaction','tab_view',{ tab: tab.textContent.trim().substring(0,30), path: location.pathname });
+      });
+    });
+
+    // 5. Fire page_loaded event with visible leaderboard count
+    setTimeout(function(){
+      var rows = document.querySelectorAll('.lb-row, .lb-main');
+      _ev('feature','ddg_loaded',{ competitor_rows: rows.length, path: location.pathname });
+    }, 1500);
+  });
+})();
+</script>
 </body>
 </html>
