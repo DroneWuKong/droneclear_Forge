@@ -455,7 +455,13 @@ def inject_seo(html, src_name, dst_path):
     title, description, keywords = SEO_META.get(src_name, DEFAULT_SEO)
 
     clean_path = dst_path.replace('index.html', '')
-    canonical = f'{SITE_URL}/{clean_path}'
+    # patterns pages live on nvmillfindoutmyself.com, not nvmilldoitmyself.com
+    CANONICAL_OVERRIDES = {
+        'patterns/': 'https://nvmillfindoutmyself.com/patterns/',
+        'patterns-home/': 'https://nvmillfindoutmyself.com/patterns-home/',
+        'analytics/': 'https://nvmillfindoutmyself.com/analytics/',
+    }
+    canonical = CANONICAL_OVERRIDES.get(clean_path, f'{SITE_URL}/{clean_path}')
 
     seo_tags = f'''
     <!-- SEO -->
