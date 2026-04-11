@@ -62,11 +62,9 @@ body {
   font-family: 'IBM Plex Mono', monospace;
   font-size: clamp(7px, 1.8vw, 9px);
   color: #b0a898;
-  letter-spacing: 0.08em;
+  letter-spacing: 0.06em;
   text-transform: uppercase;
   white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
 }
 .masthead-date {
   font-family: 'IBM Plex Mono', monospace;
@@ -175,20 +173,21 @@ body {
 
 /* Score breakdown */
 .score-grid {
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: center;
-  gap: 8px 20px;
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 0;
   width: 100%;
-  max-width: 500px;
+  max-width: 360px;
+  border: 1px solid var(--rule);
   grid-template-columns: 1fr 1fr;
   gap: 6px;
 }
 .score-item {
-  background: var(--paper2);
-  padding: 8px 10px;
-  border-left: 3px solid var(--rule);
+  padding: 12px 8px 10px;
+  text-align: center;
+  border-right: 1px solid var(--rule);
 }
+.score-item:last-child { border-right: none; }
 .score-item.crit { border-left-color: var(--red); }
 .score-item.warn { border-left-color: var(--amber); }
 .score-item.good { border-left-color: var(--green); }
@@ -200,6 +199,7 @@ body {
   color: var(--ink);
 }
 .score-item.crit .si-val { color: var(--red); }
+.score-item.gz .si-val { color: var(--red); }
 .score-item.warn .si-val { color: var(--amber); }
 .score-item.good .si-val { color: var(--green); }
 .si-label {
@@ -588,7 +588,7 @@ body {
 <div class="masthead">
   <div class="masthead-left">
     <div class="masthead-title">UAS ECOSYSTEM CLOCK</div>
-    <div class="masthead-sub">Pattern Intelligence Engine · Threat Assessment</div>
+    <div class="masthead-sub">P.I.E · THREAT ASSESSMENT</div>
   </div>
   <div class="masthead-date" id="masthead-date"></div>
 </div>
@@ -943,19 +943,15 @@ function renderClock() {
   sg.innerHTML = `
     <div class="score-item crit">
       <div class="si-val">${DATA.flags.by_severity.critical}</div>
-      <div class="si-label">Critical Flags</div>
+      <div class="si-label">Critical</div>
     </div>
     <div class="score-item warn">
       <div class="si-val">${DATA.flags.by_severity.warning}</div>
-      <div class="si-label">Warning Flags</div>
+      <div class="si-label">Warning</div>
     </div>
-    <div class="score-item crit">
+    <div class="score-item gz">
       <div class="si-val">${(Object.values(DATA.gray_zone).reduce((a,b)=>a+b,0)/Object.values(DATA.gray_zone).length*100).toFixed(0)}%</div>
-      <div class="si-label">GZ Avg Score</div>
-    </div>
-    <div class="score-item info">
-      <div class="si-val">${DATA.flags.total}</div>
-      <div class="si-label">Total Flags</div>
+      <div class="si-label">GZ Score</div>
     </div>
   `;
 
