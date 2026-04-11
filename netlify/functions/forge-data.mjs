@@ -296,23 +296,30 @@ async function loadDataset(type) {
     console.log(`[forge-data] Blobs miss: ${type}`);
   } catch (e) { console.error(`[forge-data] Blobs error for ${type}:`, e.message); }
 
-  // 2. Fall back to committed file in /static/ (always present after build)
+  // 2. Fall back to committed files in build (always present after build)
   const filename = DATASET_FILES[type];
+  const origin = 'https://forgeprole.netlify.app';
   if (filename) {
     try {
-      const res = await fetch(`https://forgeprole.netlify.app/static/${filename}`);
-      if (res.ok) return await res.json();
+      // Try root first — full data (221 flags, full predictions, full brief)
+      const res = await fetch(`${origin}/${filename}`);
+      if (res.ok) {
+        const data = await res.json();
+        // Validate it's real data not an error page
+        if (Array.isArray(data) ? data.length > 0 : (data && typeof data === 'object'))
+          return data;
+      }
     } catch {}
     try {
-      // Also try root path (some files committed to root)
-      const res = await fetch(`https://forgeprole.netlify.app/${filename}`);
+      // Try /static/ — may be truncated free slice but better than nothing
+      const res = await fetch(`${origin}/static/${filename}`);
       if (res.ok) return await res.json();
     } catch {}
   }
 
-  // 3. Last resort: static slice (same path, belt-and-suspenders)
+  // 3. Last resort: static slice by type name
   try {
-    const res = await fetch(`https://forgeprole.netlify.app/static/${type}.json`);
+    const res = await fetch(`${origin}/static/${type}.json`);
     if (res.ok) return await res.json();
   } catch {}
 
