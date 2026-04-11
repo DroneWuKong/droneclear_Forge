@@ -296,21 +296,21 @@ async function loadDataset(type) {
     console.log(`[forge-data] Blobs miss: ${type}`);
   } catch (e) { console.error(`[forge-data] Blobs error for ${type}:`, e.message); }
 
-  // 2. Fall back to full committed file in build root (always present)
+  // 2. Fall back to committed file in /static/ (always present after build)
   const filename = DATASET_FILES[type];
   if (filename) {
     try {
-      const res = await fetch(`https://forgeprole.netlify.app/${filename}`);
+      const res = await fetch(`https://forgeprole.netlify.app/static/${filename}`);
       if (res.ok) return await res.json();
     } catch {}
     try {
-      // Also try nvmillfindoutmyself.com domain
-      const res = await fetch(`https://nvmillfindoutmyself.com/${filename}`);
+      // Also try root path (some files committed to root)
+      const res = await fetch(`https://forgeprole.netlify.app/${filename}`);
       if (res.ok) return await res.json();
     } catch {}
   }
 
-  // 3. Last resort: static slice (free-tier truncated version)
+  // 3. Last resort: static slice (same path, belt-and-suspenders)
   try {
     const res = await fetch(`https://forgeprole.netlify.app/static/${type}.json`);
     if (res.ok) return await res.json();
