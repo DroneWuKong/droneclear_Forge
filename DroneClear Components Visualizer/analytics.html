@@ -363,24 +363,29 @@ function openGate(tab){
 }
 
 function closeGate(){
+  if(_gateAbort){ _gateAbort.abort(); _gateAbort = null; }
   document.getElementById('admin-gate').style.display = 'none';
   document.getElementById('gate-input').value = '';
   document.getElementById('gate-err').textContent = '';
   pendingTab = null;
 }
 
+var _gateAbort = null;
 async function checkGate(){
   var val = document.getElementById('gate-input').value.trim();
   if(!val){ document.getElementById('gate-err').textContent = 'Enter admin key'; return; }
   document.getElementById('gate-err').textContent = 'Verifying...';
+  if(_gateAbort) _gateAbort.abort();
+  _gateAbort = new AbortController();
+  var timer = setTimeout(function(){ _gateAbort.abort(); }, 8000);
   try {
     var r = await fetch('/.netlify/functions/analytics?verify=1', {
-      headers: { 'x-admin-key': val }
+      headers: { 'x-admin-key': val },
+      signal: _gateAbort.signal
     });
+    clearTimeout(timer);
     if(r.ok){
-      // Server confirmed key is valid — store a time-limited session token
-      var ts = Date.now().toString(36);
-      sessionStorage.setItem(GATE_SESSION_KEY, val);  // store actual key for subsequent requests
+      sessionStorage.setItem(GATE_SESSION_KEY, val);
       closeGate();
       if(pendingTab) activateTab(pendingTab);
     } else {
@@ -388,7 +393,12 @@ async function checkGate(){
       document.getElementById('gate-input').select();
     }
   } catch(e) {
-    document.getElementById('gate-err').textContent = 'Error — try again';
+    clearTimeout(timer);
+    if(e.name === 'AbortError') {
+      document.getElementById('gate-err').textContent = 'Timeout — check connection';
+    } else {
+      document.getElementById('gate-err').textContent = 'Error — try again';
+    }
   }
 }
 
