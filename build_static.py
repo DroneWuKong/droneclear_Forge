@@ -466,6 +466,121 @@ SEO_META = {
         'Analytics dashboard for the Forge ecosystem. Wingman query patterns, parts database health, intel source velocity, and user signals.',
         'drone analytics dashboard, Forge mission control, UAS intelligence analytics',
     ),
+    'ddg.html': (
+        'Defense Drone Gauntlet Tracker — G-I & G-II Program Analysis',
+        'Live tracker for the Defense Drone Gauntlet (DDG) program. Competitor scoring, NDAA compliance posture, production readiness, funding depth, and G-II phase predictions for all 8 awardees.',
+        'Defense Drone Gauntlet, DDG program, drone procurement, NDAA compliant drones, DoD drone competition, G-I G-II tracker',
+    ),
+    'ddg-tracker.html': (
+        'Defense Drone Gauntlet Tracker — G-I & G-II Program Analysis',
+        'Live tracker for the Defense Drone Gauntlet (DDG) program. Competitor scoring, NDAA compliance posture, production readiness, funding depth, and G-II phase predictions for all 8 awardees.',
+        'Defense Drone Gauntlet, DDG program, drone procurement, NDAA compliant drones, DoD drone competition',
+    ),
+    'waiver.html': (
+        'Drone Document Builder — Part 107, COI, Ops Manuals & More',
+        'Generate drone operations documents: Part 107 Ops Manual, Certificate of Insurance summary, Drone Services Agreement, Property Access, Incident Report, Client NDA, and DFR-specific templates.',
+        'drone document builder, Part 107 operations manual, drone COI, drone services agreement, DFR documents, UAS legal templates',
+    ),
+    'stack-builder.html': (
+        'Drone Stack Builder — FC + ESC + Motor Compatibility Checker',
+        'Build a complete drone stack from verified components. Real-time compatibility validation across flight controller, ESC, motor, propeller, and battery combinations.',
+        'drone stack builder, FC ESC compatibility, drone parts selector, FPV build tool, motor ESC combo',
+    ),
+    'payload-compare.html': (
+        'Drone Payload Comparison Tool — NDAA-Compliant Platforms',
+        'Compare payload capacity, flight time, and mission profiles across 219 drone platforms. Filter by Blue UAS clearance, payload weight, thermal capability, and NDAA compliance.',
+        'drone payload comparison, Blue UAS payload, NDAA drone specs, drone mission planner, UAS payload capacity',
+    ),
+    'tracker.html': (
+        'UAS Program Tracker — DoD Contracts & Platform Status',
+        'Track active DoD and federal UAS procurement programs, contract awards, platform lifecycle status, and Blue UAS framework adoption across agencies.',
+        'UAS program tracker, DoD drone contracts, drone procurement tracker, Blue UAS adoption, federal drone programs',
+    ),
+    'regs.html': (
+        'Drone Regulations Reference — Part 107, NDAA, FCC Covered List',
+        'Searchable reference for drone regulations: FAA Part 107, NDAA Sections 848/817/1821, FCC Covered List, ASDA/FAR 52.240-1, ITAR, and state-level drone laws.',
+        'drone regulations, FAA Part 107, NDAA 848, FCC covered list drones, drone law reference, UAS regulations',
+    ),
+    'verify.html': (
+        'NDAA Compliance Verifier — Check Drone & Component Status',
+        'Verify NDAA compliance status for drone platforms and components. Cross-reference FCC Covered List, Blue UAS Framework, NDAA Section 848, and country-of-origin data.',
+        'NDAA compliance check, drone compliance verifier, FCC covered list lookup, Blue UAS status, drone NDAA status',
+    ),
+    'report.html': (
+        'Drone Intelligence Report Generator — PIE Briefing Tool',
+        'Generate custom drone industry intelligence reports from PIE flag data. Export procurement signals, supply chain analysis, and gray zone entity summaries.',
+        'drone intelligence report, PIE briefing, drone procurement report, UAS supply chain analysis, NDAA compliance report',
+    ),
+    'pro.html': (
+        'Forge Pro — Full Access to PIE Intelligence & Analytics',
+        'Upgrade to Forge Pro for full PIE flag access, daily intelligence briefs, gray zone entity tracking, procurement signal analysis, and Document Builder templates.',
+        'Forge Pro, drone intelligence subscription, PIE flags, UAS procurement intelligence, drone compliance subscription',
+    ),
+    'start.html': (
+        'Get Started with Forge — Drone Intelligence Platform',
+        'Start using Forge: browse 3,700+ vetted drone parts, check NDAA compliance, build your stack, access PIE intelligence flags, and chat with Wingman AI.',
+        'drone intelligence platform, Forge onboarding, drone parts database, NDAA compliance tool, FPV build planner',
+    ),
+    'grants.html': (
+        'SBIR/STTR Grants Tracker — Drone & UAS Funding',
+        'Track active SBIR and STTR grants for drone and UAS technology development. Filter by agency, phase, topic area, and award amount.',
+        'SBIR drone grants, STTR UAS funding, drone R&D grants, DoD drone SBIR, UAS technology funding',
+    ),
+    'vault.html': (
+        'Forge Vault — Combat & Gray-Area UAS Components',
+        'Restricted access database of 580+ combat, tactical, and gray-area drone components including MAFIA FPV, Ukrainian wartime hardware, and loitering munition subsystems.',
+        'combat drone parts, FPV wartime components, MAFIA drone, Ukrainian FPV, loitering munition components',
+    ),
+    'intel-defense.html': (
+        'Defense Intel Feed — DoD UAS Contracts & Programs',
+        'Defense-focused drone intelligence: DoD contract awards, program updates, NDAA procurement signals, Blue UAS adoption, and military UAS developments.',
+        'DoD drone contracts, military UAS intelligence, drone defense procurement, NDAA programs, Blue UAS contracts',
+    ),
+    'intel-commercial.html': (
+        'Commercial Intel Feed — UAS Industry News & Signals',
+        'Commercial drone intelligence: funding rounds, M&A activity, product launches, market signals, and supply chain developments across the civilian UAS sector.',
+        'commercial drone news, UAS industry intelligence, drone funding, FPV market signals, drone M&A',
+    ),
+    'intel-dfr.html': (
+        'DFR Intel Feed — Drone as First Responder Programs',
+        'Intelligence feed for Drone as First Responder programs: public safety procurement, DFR platform deployments, regulatory approvals, and agency adoption.',
+        'drone first responder, DFR program, public safety drone, police drone procurement, DFR platform',
+    ),
+    'intel-financial.html': (
+        'Financial Intel Feed — Drone Industry Funding & M&A',
+        'Drone industry financial intelligence: funding rounds, valuations, M&A deals, SPAC activity, earnings signals, and investor activity across the UAS sector.',
+        'drone funding rounds, UAS investment, drone M&A, FPV industry finance, drone startup funding',
+    ),
+    'contribute.html': (
+        'Contribute to Forge — Submit Parts & Intelligence',
+        'Submit new drone parts, flag incorrect data, or contribute intelligence to the Forge database. Community submissions are reviewed and merged into the vetted parts database.',
+        'contribute drone parts, Forge community, drone database submission, FPV parts database, drone intelligence contribution',
+    ),
+    'tools-home.html': (
+        'Forge Tools — FPV Calculators, RF Planners & More',
+        'Suite of drone and FPV tools: PID calculator, RF channel planner, range estimator, firmware target matcher, VTX frequency planner, and antenna length calculator.',
+        'drone tools, FPV calculator, RF channel planner, PID tuning tool, drone range calculator, VTX planner',
+    ),
+    'privacy.html': (
+        'Privacy Policy — Forge Drone Intelligence Platform',
+        'Forge privacy policy. No cookies, no PII collection, no tracking. Analytics are anonymized session data only.',
+        'Forge privacy policy, drone platform privacy, no tracking, anonymous analytics',
+    ),
+    'terms.html': (
+        'Terms of Service — Forge Drone Intelligence Platform',
+        'Terms of service for the Forge drone intelligence platform, including data usage, subscription terms, and acceptable use policy.',
+        'Forge terms of service, drone platform terms, subscription terms',
+    ),
+    'admin.html': (
+        'Forge Admin — Internal Dashboard',
+        'Internal Forge administration dashboard.',
+        'Forge admin',
+    ),
+    'template.html': (
+        'Forge — Page Template',
+        'Forge drone intelligence platform.',
+        'Forge drone platform',
+    ),
 }
 
 DEFAULT_SEO = (
@@ -482,17 +597,63 @@ def inject_seo(html, src_name, dst_path):
     clean_path = dst_path.replace('index.html', '')
     # patterns pages live on nvmillfindoutmyself.com, not nvmilldoitmyself.com
     CANONICAL_OVERRIDES = {
-        # PIE / patterns domain
+        # PIE / patterns domain (nvmillfindoutmyself.com)
         'patterns/': 'https://nvmillfindoutmyself.com/patterns/',
         'patterns-home/': 'https://nvmillfindoutmyself.com/patterns-home/',
-        'analytics/': 'https://nvmillfindoutmyself.com/analytics/',
-        # Main Forge domain
-        'clock/': 'https://nvmillbuilditmyself.com/clock/',
-        'ddg/': 'https://nvmillbuilditmyself.com/ddg/',
+        # All other Forge pages (nvmillbuilditmyself.com)
+        'builder/': 'https://nvmillbuilditmyself.com/builder/',
         'browse/': 'https://nvmillbuilditmyself.com/browse/',
-        'wingman/': 'https://nvmillbuilditmyself.com/wingman/',
-        'platforms/': 'https://nvmillbuilditmyself.com/platforms/',
+        'compare/': 'https://nvmillbuilditmyself.com/compare/',
         'compliance/': 'https://nvmillbuilditmyself.com/compliance/',
+        'compliance-matrix/': 'https://nvmillbuilditmyself.com/compliance-matrix/',
+        'cost/': 'https://nvmillbuilditmyself.com/cost/',
+        'payload-compare/': 'https://nvmillbuilditmyself.com/payload-compare/',
+        'platforms/': 'https://nvmillbuilditmyself.com/platforms/',
+        'stack-builder/': 'https://nvmillbuilditmyself.com/stack-builder/',
+        'spec-sheets/': 'https://nvmillbuilditmyself.com/spec-sheets/',
+        'intel/': 'https://nvmillbuilditmyself.com/intel/',
+        'intel/feed/': 'https://nvmillbuilditmyself.com/intel/feed/',
+        'intel-defense/': 'https://nvmillbuilditmyself.com/intel-defense/',
+        'intel-commercial/': 'https://nvmillbuilditmyself.com/intel-commercial/',
+        'intel-dfr/': 'https://nvmillbuilditmyself.com/intel-dfr/',
+        'intel-financial/': 'https://nvmillbuilditmyself.com/intel-financial/',
+        'ddg/': 'https://nvmillbuilditmyself.com/ddg/',
+        'clock/': 'https://nvmillbuilditmyself.com/clock/',
+        'brief/': 'https://nvmillbuilditmyself.com/brief/',
+        'timeline/': 'https://nvmillbuilditmyself.com/timeline/',
+        'industry/': 'https://nvmillbuilditmyself.com/industry/',
+        'tracker/': 'https://nvmillbuilditmyself.com/tracker/',
+        'dossier/': 'https://nvmillbuilditmyself.com/dossier/',
+        'grants/': 'https://nvmillbuilditmyself.com/grants/',
+        'regs/': 'https://nvmillbuilditmyself.com/regs/',
+        'verify/': 'https://nvmillbuilditmyself.com/verify/',
+        'audit/': 'https://nvmillbuilditmyself.com/audit/',
+        'report/': 'https://nvmillbuilditmyself.com/report/',
+        'waiver/': 'https://nvmillbuilditmyself.com/waiver/',
+        'wingman/': 'https://nvmillbuilditmyself.com/wingman/',
+        'tools/': 'https://nvmillbuilditmyself.com/tools/',
+        'tools-home/': 'https://nvmillbuilditmyself.com/tools-home/',
+        'pid-tuning/': 'https://nvmillbuilditmyself.com/pid-tuning/',
+        'guides/': 'https://nvmillbuilditmyself.com/guides/',
+        'guide/': 'https://nvmillbuilditmyself.com/guide/',
+        'swarm/': 'https://nvmillbuilditmyself.com/swarm/',
+        'swarm-guide/': 'https://nvmillbuilditmyself.com/swarm-guide/',
+        'slam/': 'https://nvmillbuilditmyself.com/slam/',
+        'slam-guide/': 'https://nvmillbuilditmyself.com/slam-guide/',
+        'mesh-guide/': 'https://nvmillbuilditmyself.com/mesh-guide/',
+        'tak-guide/': 'https://nvmillbuilditmyself.com/tak-guide/',
+        'openhd-guide/': 'https://nvmillbuilditmyself.com/openhd-guide/',
+        'ai-guide/': 'https://nvmillbuilditmyself.com/ai-guide/',
+        'cuas-guide/': 'https://nvmillbuilditmyself.com/cuas-guide/',
+        'fc-firmware-guide/': 'https://nvmillbuilditmyself.com/fc-firmware-guide/',
+        'academy/': 'https://nvmillbuilditmyself.com/academy/',
+        'pro/': 'https://nvmillbuilditmyself.com/pro/',
+        'start/': 'https://nvmillbuilditmyself.com/start/',
+        'library/': 'https://nvmillbuilditmyself.com/library/',
+        'vault/': 'https://nvmillbuilditmyself.com/vault/',
+        'contribute/': 'https://nvmillbuilditmyself.com/contribute/',
+        'analytics/': 'https://nvmillbuilditmyself.com/analytics/',
+        'admin/': 'https://nvmillbuilditmyself.com/admin/',
     }
     canonical = CANONICAL_OVERRIDES.get(clean_path, f'{SITE_URL}/{clean_path}')
 
