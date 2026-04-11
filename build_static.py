@@ -93,7 +93,8 @@ STATIC_EXTENSIONS = {'.js', '.css', '.json', '.png', '.jpg', '.svg', '.ico', '.g
 GATED_FROM_BUILD = {
     # commercial tier
     'intel_articles.json', 'intel_companies.json', 'intel_platforms.json', 'intel_programs.json',
-    'pie_brief.json', 'pie_brief_history.json',
+    # pie_brief.json and pie_brief_history.json are in PUBLIC_SLICES in forge-data.mjs
+    # and must be present at /static/ for the free-tier freeSummary path to work.
     'pie_trends.json', 'pie_weekly.json',
     'predictions_best.json', 'predictions_archive.json', 'llm_predictions.json',
     'gap_analysis_latest.json', 'entity_graph.json',
