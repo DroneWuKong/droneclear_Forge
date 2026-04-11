@@ -153,8 +153,8 @@ body {
 /* Clock SVG */
 .clock-svg-wrap {
   position: relative;
-  width: 220px;
-  height: 220px;
+  width: 260px;
+  height: 260px;
 }
 
 .clock-caption {
@@ -168,10 +168,10 @@ body {
 }
 .clock-countdown-val {
   font-family: 'Bebas Neue', sans-serif;
-  font-size: 48px;
-  letter-spacing: 0.02em;
-  color: var(--red);
-  min-width: 2ch;
+  font-size: 64px;
+  letter-spacing: 0.01em;
+  color: var(--ink);
+  min-width: 1.8ch;
   text-align: right;
 }
 .clock-countdown-sep {
@@ -562,28 +562,29 @@ body {
     <div class="section-label">Ecosystem Risk Clock</div>
 
     <div class="clock-svg-wrap">
-      <svg viewBox="0 0 220 220" width="220" height="220" id="clock-svg">
-        <!-- Background rings -->
-        <circle cx="110" cy="110" r="100" fill="none" stroke="#d4cfc6" stroke-width="1"/>
-        <circle cx="110" cy="110" r="90" fill="none" stroke="#e2ddd5" stroke-width="0.5"/>
-        <!-- Risk arc (track) -->
-        <circle cx="110" cy="110" r="88" fill="none" stroke="#ede8df" stroke-width="14" stroke-dasharray="553" stroke-dashoffset="0" stroke-linecap="butt" transform="rotate(-90 110 110)"/>
-        <!-- Risk arc (fill) — computed by JS -->
-        <circle cx="110" cy="110" r="88" fill="none" stroke="#c41e1e" stroke-width="14" stroke-dasharray="553" id="risk-arc" stroke-linecap="butt" transform="rotate(-90 110 110)" style="transition: stroke-dashoffset 2s ease;"/>
-        <!-- Minute markers -->
+      <svg viewBox="0 0 260 260" width="260" height="260" id="clock-svg">
+        <!-- Outer bezel -->
+        <circle cx="130" cy="130" r="128" fill="#1c1c1a"/>
+        <circle cx="130" cy="130" r="123" fill="none" stroke="#2e2e2a" stroke-width="1.5"/>
+        <!-- Dark face -->
+        <circle cx="130" cy="130" r="120" fill="#111110"/>
+        <!-- Inner groove -->
+        <circle cx="130" cy="130" r="112" fill="none" stroke="#1e1e1c" stroke-width="0.5"/>
+        <!-- Tick marks — JS rendered -->
         <g id="minute-markers"></g>
-        <!-- Center -->
-        <circle cx="110" cy="110" r="68" fill="#f2ede4"/>
-        <circle cx="110" cy="110" r="4" fill="#c41e1e"/>
-        <!-- Clock hands -->
-        <line id="minute-hand" x1="110" y1="110" x2="110" y2="52" stroke="#0d0d0b" stroke-width="3" stroke-linecap="round" style="transition: transform 2s ease; transform-origin: 110px 110px;"/>
-        <line id="hour-hand" x1="110" y1="110" x2="110" y2="68" stroke="#c41e1e" stroke-width="5" stroke-linecap="round" style="transition: transform 2s ease; transform-origin: 110px 110px;"/>
-        <circle cx="110" cy="110" r="6" fill="#0d0d0b"/>
-        <!-- "MIDNIGHT" label -->
-        <text x="110" y="30" text-anchor="middle" font-family="IBM Plex Mono" font-size="7" fill="#7a7060" letter-spacing="2">MIDNIGHT</text>
-        <text x="110" y="195" text-anchor="middle" font-family="IBM Plex Mono" font-size="6" fill="#b0a898" letter-spacing="1">06:00</text>
-        <text x="22" y="115" text-anchor="middle" font-family="IBM Plex Mono" font-size="6" fill="#b0a898" letter-spacing="1">09</text>
-        <text x="198" y="115" text-anchor="middle" font-family="IBM Plex Mono" font-size="6" fill="#b0a898" letter-spacing="1">03</text>
+        <!-- Roman numerals -->
+        <text x="130" y="26" text-anchor="middle" font-family="IBM Plex Mono" font-size="14" font-weight="700" fill="#d4ccc0" letter-spacing="1">XII</text>
+        <text x="130" y="246" text-anchor="middle" font-family="IBM Plex Mono" font-size="11" fill="#3a3830">VI</text>
+        <text x="18" y="135" text-anchor="middle" font-family="IBM Plex Mono" font-size="11" fill="#3a3830">IX</text>
+        <text x="242" y="135" text-anchor="middle" font-family="IBM Plex Mono" font-size="11" fill="#3a3830">III</text>
+        <!-- Single bold red hand with counterweight tail -->
+        <line id="minute-hand"
+          x1="130" y1="152" x2="130" y2="36"
+          stroke="#c41e1e" stroke-width="4.5" stroke-linecap="round"
+          style="transition: transform 2.5s cubic-bezier(.4,0,.2,1); transform-origin: 130px 130px;"/>
+        <!-- Center boss -->
+        <circle cx="130" cy="130" r="8" fill="#c41e1e"/>
+        <circle cx="130" cy="130" r="3.5" fill="#1c1c1a"/>
       </svg>
     </div>
 
@@ -862,18 +863,8 @@ function renderClock() {
   const minuteAngle = angleDeg;
   const hourAngle = angleDeg / 12;
   document.getElementById('minute-hand').style.transform = `rotate(${minuteAngle}deg)`;
-  document.getElementById('hour-hand').style.transform = `rotate(${hourAngle}deg)`;
 
-  // Update risk arc
-  const circumference = 2 * Math.PI * 88;
-  const fillFraction = normalized / 100;
-  const dashOffset = circumference * (1 - fillFraction);
-  document.getElementById('risk-arc').setAttribute('stroke-dashoffset', dashOffset);
-  document.getElementById('risk-arc').setAttribute('stroke-dasharray', circumference);
 
-  // Color arc by severity
-  const arcColor = normalized >= 70 ? '#c41e1e' : normalized >= 45 ? '#c47c00' : '#1a5c2a';
-  document.getElementById('risk-arc').style.stroke = arcColor;
 
   // Score grid
   const sg = document.getElementById('score-grid');
@@ -896,18 +887,22 @@ function renderClock() {
     </div>
   `;
 
-  // Minute markers
+  // Minute markers — cream/white ticks on dark face
   const mg = document.getElementById('minute-markers');
   for (let i = 0; i < 60; i++) {
     const angle = (i / 60) * 360 - 90;
     const rad = angle * Math.PI / 180;
-    const len = i % 5 === 0 ? 8 : 4;
-    const r = 100;
-    const x1 = 110 + r * Math.cos(rad);
-    const y1 = 110 + r * Math.sin(rad);
-    const x2 = 110 + (r - len) * Math.cos(rad);
-    const y2 = 110 + (r - len) * Math.sin(rad);
-    mg.innerHTML += `<line x1="${x1.toFixed(1)}" y1="${y1.toFixed(1)}" x2="${x2.toFixed(1)}" y2="${y2.toFixed(1)}" stroke="${i % 5 === 0 ? '#7a7060' : '#c8bfb0'}" stroke-width="${i % 5 === 0 ? 1.5 : 0.8}"/>`;
+    const isHour = i % 5 === 0;
+    const isQuarter = i % 15 === 0;
+    const r_outer = 110;
+    const len = isQuarter ? 13 : isHour ? 9 : 5;
+    const x1 = 130 + r_outer * Math.cos(rad);
+    const y1 = 130 + r_outer * Math.sin(rad);
+    const x2 = 130 + (r_outer - len) * Math.cos(rad);
+    const y2 = 130 + (r_outer - len) * Math.sin(rad);
+    const color = isQuarter ? '#c8c0b0' : isHour ? '#5a5650' : '#2e2e2c';
+    const width = isQuarter ? 2.5 : isHour ? 1.5 : 0.8;
+    mg.innerHTML += `<line x1="${x1.toFixed(1)}" y1="${y1.toFixed(1)}" x2="${x2.toFixed(1)}" y2="${y2.toFixed(1)}" stroke="${color}" stroke-width="${width}" stroke-linecap="round"/>`;
   }
 }
 
