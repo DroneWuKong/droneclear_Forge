@@ -113,7 +113,18 @@ body {
   100% { transform: translateX(-50%); }
 }
 
-/* ── Main grid ── */
+/* ── Clock hero — full width, centred ── */
+.clock-panel {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 32px 24px 28px;
+  border-bottom: 1px solid var(--rule);
+  gap: 12px;
+  background: var(--paper);
+}
+
+/* ── Below-clock content grid ── */
 .main {
   display: grid;
   grid-template-columns: 1fr 1fr;
@@ -124,17 +135,6 @@ body {
   overflow-x: hidden;
 }
 @media(max-width: 640px) { .main { grid-template-columns: 1fr; } }
-
-/* ── Left: Clock panel ── */
-.clock-panel {
-  padding: 28px 28px 24px;
-  border-right: 1px solid var(--rule);
-  border-bottom: 1px solid var(--rule);
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 20px;
-}
 
 .section-label {
   font-family: 'IBM Plex Mono', monospace;
@@ -157,8 +157,8 @@ body {
 /* Clock SVG */
 .clock-svg-wrap {
   position: relative;
-  width: min(260px, 85vw);
-  height: min(260px, 85vw);
+  width: min(280px, 80vw);
+  height: min(280px, 80vw);
 }
 .clock-svg-wrap svg {
   width: 100%;
@@ -176,7 +176,7 @@ body {
 }
 .clock-countdown-val {
   font-family: 'Bebas Neue', sans-serif;
-  font-size: 64px;
+  font-size: 72px;
   letter-spacing: 0.01em;
   color: var(--ink);
   min-width: 1.8ch;
@@ -211,8 +211,12 @@ body {
 
 /* Score breakdown */
 .score-grid {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 8px 20px;
   width: 100%;
-  display: grid;
+  max-width: 500px;
   grid-template-columns: 1fr 1fr;
   gap: 6px;
 }
@@ -534,23 +538,6 @@ body {
 .hl-dot { width: 8px; height: 8px; border-radius: 1px; }
 
 /* Footer */
-.clock-about {
-  width: 100%;
-  padding: 0 4px;
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-}
-.clock-about p {
-  font-family: 'IBM Plex Sans', sans-serif;
-  font-size: 11px;
-  line-height: 1.6;
-  color: var(--steel);
-}
-.clock-about p:first-child {
-  font-style: italic;
-}
-
 .methodology-panel {
   border-top: 2px solid var(--ink);
   padding: 28px 24px 32px;
@@ -649,17 +636,8 @@ body {
   </div>
 </div>
 
-<div class="main">
-  <!-- LEFT: Clock -->
-  <div class="clock-panel">
-    <div class="section-label">Ecosystem Risk Clock</div>
-
-    <div class="clock-about">
-      <p>The UAS Ecosystem Clock measures how close the US drone industry is to a sovereignty crisis — a point where domestic operators can no longer source, fly, or field NDAA-compliant platforms without foreign dependency or regulatory disruption.</p>
-      <p>Midnight = ecosystem failure. The hand moves daily based on live intelligence.</p>
-    </div>
-
-    <div class="clock-svg-wrap">
+<div class="clock-panel">
+  <div class="clock-svg-wrap">
       <svg viewBox="0 0 260 260" width="260" height="260" id="clock-svg">
         <!-- Outer bezel -->
         <circle cx="130" cy="130" r="128" fill="#1c1c1a"/>
@@ -688,16 +666,17 @@ body {
 
     <div class="clock-caption">
       <div class="clock-countdown" id="clock-countdown">
-        <span class="clock-countdown-val" id="countdown-mins">—</span>
+        <span class="clock-countdown-val" id="countdown-mins">—</span><span class="clock-countdown-sep">m</span><span class="clock-countdown-val" id="countdown-secs">00</span><span class="clock-countdown-sep">s</span>
       </div>
-      <div class="clock-time-label">minutes to midnight</div>
+      <div class="clock-time-label">to midnight</div>
       <div class="clock-verdict" id="clock-verdict">Computing ecosystem risk…</div>
     </div>
 
     <div class="score-grid" id="score-grid"></div>
-  </div>
+</div>
 
-  <!-- RIGHT: Intel tabs -->
+<div class="main">
+  <!-- LEFT: Intel tabs -->
   <div class="intel-panel">
     <div class="intel-tabs">
       <button class="itab active" onclick="switchTab('predictions',this)">Predictions</button>
@@ -969,7 +948,6 @@ function getVerdict(score) {
 
 // ── STATIC TIME DISPLAY ──────────────────────────────────────────────────────
 function _startCountdown(minutesToMidnight) {
-  // Static display — no ticking, just show the current risk value
   const mEl = document.getElementById('countdown-mins');
   const sEl = document.getElementById('countdown-secs');
   if (mEl) mEl.textContent = minutesToMidnight;
