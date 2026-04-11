@@ -171,42 +171,56 @@ body {
 
 /* Score breakdown */
 .score-grid {
-  display: grid;
-  grid-template-columns: 1fr 1fr 1fr;
-  gap: 0;
+  display: flex;
+  flex-direction: row;
+  gap: 8px;
   width: 100%;
-  max-width: 360px;
-  border: 1px solid var(--rule);
-  grid-template-columns: 1fr 1fr;
-  gap: 6px;
+  max-width: 340px;
+  justify-content: center;
 }
 .score-item {
-  padding: 12px 8px 10px;
-  text-align: center;
-  border-right: 1px solid var(--rule);
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+  flex: 1;
+  min-width: 0;
+  padding: 8px 10px;
+  background: var(--paper2);
+  border-top: 2px solid var(--rule);
 }
-.score-item:last-child { border-right: none; }
-.score-item.crit { border-left-color: var(--red); }
-.score-item.warn { border-left-color: var(--amber); }
-.score-item.good { border-left-color: var(--green); }
-.score-item.info { border-left-color: var(--steel); }
+.score-item.crit { border-top-color: var(--red); }
+.score-item.warn { border-top-color: var(--amber); }
+.score-item.gz   { border-top-color: var(--red); }
+.si-pill {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 7px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  padding: 2px 5px;
+  color: var(--paper);
+  background: var(--ink);
+  display: inline-block;
+}
+.score-item.crit .si-pill { background: var(--red); }
+.score-item.warn .si-pill { background: var(--amber); color: var(--ink); }
+.score-item.gz   .si-pill { background: var(--ink); }
 .si-val {
   font-family: 'Bebas Neue', sans-serif;
-  font-size: 22px;
+  font-size: 28px;
   line-height: 1;
   color: var(--ink);
 }
 .score-item.crit .si-val { color: var(--red); }
-.score-item.gz .si-val { color: var(--red); }
+.score-item.gz   .si-val { color: var(--red); }
 .score-item.warn .si-val { color: var(--amber); }
-.score-item.good .si-val { color: var(--green); }
 .si-label {
   font-family: 'IBM Plex Mono', monospace;
-  font-size: 8px;
+  font-size: 7px;
   letter-spacing: 0.08em;
   text-transform: uppercase;
   color: var(--muted);
-  margin-top: 2px;
 }
 
 /* ── Right: Intelligence panel ── */
@@ -940,16 +954,19 @@ function renderClock() {
   const sg = document.getElementById('score-grid');
   sg.innerHTML = `
     <div class="score-item crit">
+      <span class="si-pill">Critical</span>
       <div class="si-val">${DATA.flags.by_severity.critical}</div>
-      <div class="si-label">Critical</div>
+      <div class="si-label">flags</div>
     </div>
     <div class="score-item warn">
+      <span class="si-pill">Warning</span>
       <div class="si-val">${DATA.flags.by_severity.warning}</div>
-      <div class="si-label">Warning</div>
+      <div class="si-label">flags</div>
     </div>
     <div class="score-item gz">
+      <span class="si-pill">Gray Zone</span>
       <div class="si-val">${(Object.values(DATA.gray_zone).reduce((a,b)=>a+b,0)/Object.values(DATA.gray_zone).length*100).toFixed(0)}%</div>
-      <div class="si-label">GZ Score</div>
+      <div class="si-label">avg score</div>
     </div>
   `;
 
