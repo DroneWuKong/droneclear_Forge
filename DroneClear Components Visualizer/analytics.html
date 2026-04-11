@@ -153,6 +153,7 @@ a{color:var(--blue);text-decoration:none}a:hover{text-decoration:underline}
   <button class="tab" data-tab="users" data-locked="1">User Signals <i class="ph ph-lock-simple" style="font-size:10px;opacity:.5;margin-left:2px"></i></button>
   <button class="tab" data-tab="landscape">UAS Landscape</button>
   <button class="tab" data-tab="usage" data-locked="1">Usage <i class="ph ph-lock-simple" style="font-size:10px;opacity:.5;margin-left:2px"></i></button>
+  <button class="tab" data-tab="pie" data-locked="1">PIE Traffic <span class="count" id="badge-pie">—</span></button>
   <button class="tab" data-tab="trends">Trends <span class="count" id="badge-trends">—</span></button>
 </div>
 
@@ -298,7 +299,43 @@ a{color:var(--blue);text-decoration:none}a:hover{text-decoration:underline}
   <div class="an-footer">Mission Control · No cookies · No PII · No fingerprinting · <span class="teal">DroneClear Intelligence</span></div>
 </div>
 
-  <div class="panel" id="panel-usage">
+  <div class="panel" id="panel-pie">
+    <div class="an-stats" id="pie-stats"></div>
+    <div class="an-grid-2">
+      <div class="an-section">
+        <h3 class="an-section-title"><i class="ph ph-chart-line-up"></i> Daily Activity</h3>
+        <div id="pie-daily"></div>
+      </div>
+      <div class="an-section">
+        <h3 class="an-section-title"><i class="ph ph-map-pin-area"></i> Traffic by Region</h3>
+        <div id="pie-regions"></div>
+      </div>
+    </div>
+    <div class="an-grid-2">
+      <div class="an-section">
+        <h3 class="an-section-title"><i class="ph ph-layout"></i> Top Pages</h3>
+        <div id="pie-pages"></div>
+      </div>
+      <div class="an-section">
+        <h3 class="an-section-title"><i class="ph ph-tabs"></i> Top Tab Interactions</h3>
+        <div id="pie-tabs"></div>
+      </div>
+    </div>
+    <div class="an-grid-2">
+      <div class="an-section">
+        <h3 class="an-section-title"><i class="ph ph-clock-countdown"></i> Clock Engagement</h3>
+        <div id="pie-clock"></div>
+      </div>
+      <div class="an-section">
+        <h3 class="an-section-title"><i class="ph ph-target"></i> DDG Engagement</h3>
+        <div id="pie-ddg"></div>
+      </div>
+    </div>
+    <div class="an-section">
+      <h3 class="an-section-title"><i class="ph ph-funnel"></i> Scroll Depth Funnel</h3>
+      <div id="pie-scroll"></div>
+    </div>
+  </div>
     <div class="an-stats" id="ug-stats"></div>
     <div class="an-grid-2">
       <div class="an-section">
@@ -510,7 +547,7 @@ function metrics(){
 
 function renderAll(){if(!DB){$('panel-overview').innerHTML='<div class="an-empty">Failed to load database</div>';return}
     var m=metrics();$('badge-parts').textContent=fmt(m.tp);$('badge-intel').textContent=fmt(INTEL.length);
-    renderOverview(m);renderParts(m);renderIntel(m);try{renderUsers()}catch(e){console.warn('renderUsers:',e)}try{renderLandscape(m)}catch(e){console.warn('renderLandscape:',e)}try{renderUsage()}catch(e){console.warn('renderUsage:',e)}try{renderTrends()}catch(e){console.warn('renderTrends:',e)}
+    renderOverview(m);renderParts(m);renderIntel(m);try{renderUsers()}catch(e){console.warn('renderUsers:',e)}try{renderLandscape(m)}catch(e){console.warn('renderLandscape:',e)}try{renderUsage()}catch(e){console.warn('renderUsage:',e)}try{renderPIE()}catch(e){console.warn('renderPIE:',e)}try{renderTrends()}catch(e){console.warn('renderTrends:',e)}
 }
 
 function renderOverview(m){
@@ -754,6 +791,72 @@ function renderUsage(){
   if(LIVE&&LIVE.daily){Object.values(LIVE.daily).forEach(function(day){if(day&&day.cats)Object.entries(day.cats).forEach(function(e){recentPages.push({path:e[0],count:e[1]});});});}
   if(recentPages.length){recentPages.sort(function(a,b){return b.count-a.count;});var mp=recentPages[0].count;$('ug-pages').innerHTML=recentPages.slice(0,15).map(function(p){return bar(p.path,p.count,mp,'blue');}).join('');}
   else{$('ug-pages').innerHTML='<div class="an-empty">Page breakdown populates as traffic accumulates</div>';}
+}
+
+function renderPIE(){
+  var pie=DASH?DASH.pie||{}:{};
+  var hasData=DASH&&pie.total_views!=null;
+  var noData='<div class="an-empty">Data accumulates from today — check back after some traffic</div>';
+  // Badge
+  var badge=$('badge-pie');if(badge)badge.textContent=hasData?fmt(pie.total_views||0):'0';
+  if(!hasData){
+    $('pie-stats').innerHTML='<div class="an-empty" style="grid-column:1/-1">PIE traffic data not yet available — CORS fix deployed today, data builds from here.</div>';
+    ['pie-daily','pie-regions','pie-pages','pie-tabs','pie-clock','pie-ddg','pie-scroll'].forEach(function(id){$(id).innerHTML=noData;});
+    return;
+  }
+  // Stats row
+  var clk=pie.clock||{},ddg=pie.ddg||{},scr=pie.scroll_funnel||{};
+  $('pie-stats').innerHTML=[
+    sc(fmt(pie.total_views||0),'PIE Page Views','30 days','accent-blue'),
+    sc(fmt(pie.unique_sessions||0),'Sessions','','accent-green'),
+    sc(fmt(pie.total_clicks||0),'Clicks','interactions','accent-amber'),
+    sc(fmt(clk.renders||0),'Clock Renders','','accent-red'),
+    sc(clk.avg_ueri!=null?clk.avg_ueri:'—','Avg UERI Seen','by visitors','accent-red'),
+    sc(fmt(ddg.leaderboard_expands||0),'LB Expands','DDG','accent-purple'),
+    sc(fmt(clk.methodology_views||0),'Methodology Views','clock','accent-blue'),
+    sc(fmt(clk.share_clicks||0),'Share Clicks','clock','accent-green'),
+  ].join('');
+  // Daily spark
+  var daily=pie.daily||[];
+  if(daily.length){
+    var dk=daily.map(function(d){return(d.date||'').substring(5);});
+    var dv=daily.map(function(d){return d.views||0;});
+    $('pie-daily').innerHTML=spark(dv,dk)+'<div style="font-size:10px;color:var(--an-text-muted);margin-top:6px">Page views per day</div>';
+  }else{$('pie-daily').innerHTML=noData;}
+  // Regions
+  var regions=Object.entries(pie.regions||{});
+  if(regions.length){var mr=Math.max.apply(null,regions.map(function(e){return e[1];}));$('pie-regions').innerHTML=regions.sort(function(a,b){return b[1]-a[1];}).map(function(e){return bar(e[0],e[1],mr,'blue');}).join('');}
+  else{$('pie-regions').innerHTML=noData;}
+  // Top pages
+  var pages=pie.top_pages||[];
+  if(pages.length){var mp=pages[0].count||1;$('pie-pages').innerHTML=pages.slice(0,15).map(function(p){return bar(p.key,p.count,mp,'teal');}).join('');}
+  else{$('pie-pages').innerHTML=noData;}
+  // Top tabs
+  var tabs=pie.top_tabs||[];
+  if(tabs.length){var mt=tabs[0].count||1;$('pie-tabs').innerHTML=tabs.slice(0,15).map(function(t){return bar(t.key,t.count,mt,'amber');}).join('');}
+  else{$('pie-tabs').innerHTML=noData;}
+  // Clock detail
+  $('pie-clock').innerHTML=[
+    bar('Renders',clk.renders||0,Math.max(clk.renders||1,1),'red'),
+    bar('Methodology Views',clk.methodology_views||0,Math.max(clk.renders||1,1),'amber'),
+    bar('Share Clicks',clk.share_clicks||0,Math.max(clk.renders||1,1),'green'),
+    clk.avg_ueri!=null?'<div style="margin-top:8px;font-size:11px;color:var(--an-text-muted)">Avg UERI seen by visitors: <span style="color:var(--an-red);font-weight:600">'+clk.avg_ueri+'</span></div>':'',
+  ].join('');
+  // DDG detail
+  $('pie-ddg').innerHTML=[
+    bar('Page Loads',ddg.loads||0,Math.max(ddg.loads||1,1),'blue'),
+    bar('Leaderboard Expands',ddg.leaderboard_expands||0,Math.max(ddg.loads||1,1),'teal'),
+    bar('Prediction Card Clicks',ddg.prediction_clicks||0,Math.max(ddg.loads||1,1),'amber'),
+    bar('Accordion Expands',ddg.accordion_expands||0,Math.max(ddg.loads||1,1),'orange'),
+  ].join('');
+  // Scroll funnel
+  var sv=pie.total_views||1;
+  $('pie-scroll').innerHTML=[
+    bar('25% depth',scr.d25||0,sv,'green','of visitors'),
+    bar('50% depth',scr.d50||0,sv,'teal','of visitors'),
+    bar('75% depth',scr.d75||0,sv,'amber','of visitors'),
+    bar('100% depth',scr.d100||0,sv,'red','of visitors'),
+  ].join('');
 }
 
 function renderLandscape(m){
