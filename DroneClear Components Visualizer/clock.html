@@ -802,11 +802,13 @@ async function loadData() {
     } catch(e) {}
   }
   console.log('[UAS Clock] Using embedded snapshot');
-  DATA = FALLBACK_DATA;
+  DATA = DATA_FALLBACK;
 }
 
 function mapClockScore(cs) {
   const f = cs.factors || {};
+  // DATA_FALLBACK used for fields not in clock_score.json
+  const fb = (typeof DATA_FALLBACK !== 'undefined') ? DATA_FALLBACK : {};
   return {
     generated: cs.generated,
     ueri_score: cs.ueri_score,
@@ -814,19 +816,19 @@ function mapClockScore(cs) {
     threat_level: cs.threat_level,
     narrative: cs.narrative,
     flags: {
-      total: f.flag_severity?.total || DATA_FALLBACK.flags.total,
+      total: (f.flag_severity && f.flag_severity.total) || (fb.flags && fb.flags.total) || 243,
       by_severity: {
-        critical: f.flag_severity?.critical || 0,
-        warning:  f.flag_severity?.warning || 0,
+        critical: (f.flag_severity && f.flag_severity.critical) || 0,
+        warning:  (f.flag_severity && f.flag_severity.warning)  || 0,
         info:     80,
       }
     },
     gray_zone: Object.fromEntries(
-      (f.grayzone?.top_entities || []).map(e => [e.entity, e.score])
+      ((f.grayzone && f.grayzone.top_entities) || []).map(e => [e.entity, e.score])
     ),
-    predictions: DATA_FALLBACK.predictions,
-    top_flags:   DATA_FALLBACK.top_flags,
-    history:     DATA_FALLBACK.history,
+    predictions: (fb.predictions) || [],
+    top_flags:   (fb.top_flags)   || [],
+    history:     (fb.history)     || [],
   };
 }
 
@@ -933,11 +935,12 @@ function computeClockScore() {
 
 function scoreToTime(score) {
   // Scale: 30 min at UERI 0 → 1 min at UERI 100
-  // UERI 67.4 → ~10 min to midnight (hand at 11:50)
+  // UERI 67.4 → ~10 min to midnight (hand just before XII)
   const minutesToMidnight = Math.max(1, Math.round((100 - score) / 100 * 30));
-  // Clock angle: 0 min = straight up (midnight), 30 min = ~11:30 area
-  // Full clock face = 720 min. minutesToMidnight/720 * 360 = degrees before 12
-  const angleDeg = (1 - minutesToMidnight / 720) * 360;
+  // SVG hand drawn pointing up (XII = 0°).
+  // Minutes before midnight → rotate CCW: -(min/60)*360
+  // UERI 67 → 10 min → -60° (hand at 11:50 position)
+  const angleDeg = -(minutesToMidnight / 60) * 360;
   return {
     minutesToMidnight,
     display: `${minutesToMidnight}m`,
