@@ -892,16 +892,17 @@ function computeClockScore() {
 }
 
 function scoreToTime(score) {
-  // Scale: 30 min at UERI 0 → 1 min at UERI 100
-  // UERI 67.4 → ~10 min to midnight (hand just before XII)
-  const minutesToMidnight = Math.max(1, Math.round((100 - score) / 100 * 30));
-  // SVG hand drawn pointing up (XII = 0°).
-  // Minutes before midnight → rotate CCW: -(min/60)*360
-  // UERI 67 → 10 min → -60° (hand at 11:50 position)
-  const angleDeg = -(minutesToMidnight / 60) * 360;
+  // Scale: 30 min at UERI 0 → 1 min at UERI 100 (fractional, not rounded)
+  const totalMinutesExact = Math.max(0.1, (100 - score) / 100 * 30);
+  const minutesToMidnight = Math.floor(totalMinutesExact);
+  const secondsComponent = Math.round((totalMinutesExact - minutesToMidnight) * 60);
+  // SVG hand uses exact fractional minutes for accurate positioning
+  const angleDeg = -(totalMinutesExact / 60) * 360;
   return {
     minutesToMidnight,
-    display: `${minutesToMidnight}m`,
+    secondsComponent,
+    totalMinutesExact,
+    display: `${minutesToMidnight}m ${secondsComponent.toString().padStart(2,'0')}s`,
     angleDeg
   };
 }
@@ -916,31 +917,33 @@ function getVerdict(score) {
 }
 
 // ── STATIC TIME DISPLAY ──────────────────────────────────────────────────────
-function _startCountdown(minutesToMidnight) {
+function _startCountdown(minutesToMidnight, secondsComponent) {
   const mEl = document.getElementById('countdown-mins');
   const sEl = document.getElementById('countdown-secs');
   if (mEl) mEl.textContent = minutesToMidnight;
-  if (sEl) sEl.textContent = '00';
+  if (sEl) sEl.textContent = (secondsComponent || 0).toString().padStart(2, '0');
 }
 
 // ── RENDER CLOCK ─────────────────────────────────────────────────────────────
 function renderClock() {
   // Use live UERI score if available, otherwise compute from embedded data
-  let normalized, minutesToMidnight, display, angleDeg;
+  let normalized, minutesToMidnight, secondsComponent, display, angleDeg;
   if (DATA && DATA.ueri_score != null) {
     normalized = DATA.ueri_score;
-    minutesToMidnight = DATA.minutes_to_midnight || scoreToTime(normalized).minutesToMidnight;
-    display = scoreToTime(normalized).display;
-    angleDeg = scoreToTime(normalized).angleDeg;
+    // Always derive from scoreToTime for fractional accuracy
+    const t = scoreToTime(normalized);
+    minutesToMidnight = t.minutesToMidnight;
+    secondsComponent = t.secondsComponent;
+    display = t.display;
+    angleDeg = t.angleDeg;
   } else {
     const computed = computeClockScore();
     normalized = computed.normalized;
-    ({ minutesToMidnight, display, angleDeg } = scoreToTime(normalized));
+    ({ minutesToMidnight, secondsComponent, display, angleDeg } = scoreToTime(normalized));
   }
 
-  // Update time display
-  // Start live countdown from minutesToMidnight
-  _startCountdown(minutesToMidnight);
+  // Update time display with real fractional precision
+  _startCountdown(minutesToMidnight, secondsComponent);
   document.getElementById('clock-verdict').textContent = getVerdict(normalized);
 
   // Update hands
