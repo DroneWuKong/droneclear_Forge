@@ -2650,6 +2650,15 @@ function renderComponents() {
   const statusColor = {available:"var(--green)",constrained:"var(--amber)",allocated:"var(--red)"};
   const cats = {};
   COMPONENTS.forEach(c => { if (!cats[c.cat]) cats[c.cat] = []; cats[c.cat].push(c); });
+  // Sort each category by prevalence (user count desc), then by severity
+  const sevRank = {allocated:0, constrained:1, available:2};
+  Object.keys(cats).forEach(cat => {
+    cats[cat].sort((a,b) => {
+      const ua = (a.users||[]).length, ub = (b.users||[]).length;
+      if (ub !== ua) return ub - ua; // most users first
+      return (sevRank[a.status]||9) - (sevRank[b.status]||9); // then worst status
+    });
+  });
   const SHOW = 5;
   let html = '';
   Object.entries(cats).forEach(([cat, items]) => {
