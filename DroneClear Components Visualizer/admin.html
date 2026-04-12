@@ -1,1258 +1,575 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8"/>
-<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-<title>// ADMIN — Wingman Token Console</title>
-<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet"/>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Admin — Forge Access</title>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
-  :root {
-    --bg:      #080809;
-    --surface: #0f0f11;
-    --card:    #141416;
-    --border:  #1e1e22;
-    --border2: #2a2a30;
-    --cyan:    #00ffe0;
-    --cyan-d:  #00bfa8;
-    --amber:   #f0a500;
-    --red:     #ff3b3b;
-    --green:   #00e676;
-    --white:   #e8e8f0;
-    --g1:      #9090a0;
-    --g2:      #505060;
-    --g3:      #282830;
-    --mono:    'JetBrains Mono', monospace;
-  }
-
-  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-  html, body { background: var(--bg); color: var(--g1); font-family: var(--mono); font-size: 13px; min-height: 100vh; }
-
-  /* ── LOCK SCREEN ─────────────────────────────────────────────────────────── */
-  #lock {
-    position: fixed; inset: 0; background: var(--bg);
-    display: flex; flex-direction: column; align-items: center; justify-content: center;
-    z-index: 100; gap: 0;
-  }
-  .lock-glyph {
-    font-size: 11px; color: var(--g2); letter-spacing: 2px;
-    margin-bottom: 32px; text-align: center; line-height: 1.8;
-    animation: fadeIn .6s ease;
-  }
-  .lock-glyph span { color: var(--cyan); }
-  .lock-box {
-    background: var(--card); border: 1px solid var(--border2);
-    border-radius: 2px; padding: 32px 36px; width: 320px;
-    animation: slideUp .4s ease;
-  }
-  .lock-label {
-    font-size: 10px; color: var(--g2); letter-spacing: 3px;
-    text-transform: uppercase; margin-bottom: 10px; display: block;
-  }
-  .lock-input {
-    width: 100%; background: var(--bg); border: 1px solid var(--border2);
-    color: var(--white); font-family: var(--mono); font-size: 13px;
-    padding: 10px 12px; border-radius: 1px; outline: none;
-    letter-spacing: 2px; transition: border-color .2s;
-  }
-  .lock-input:focus { border-color: var(--cyan); }
-  .lock-input::placeholder { letter-spacing: 0; color: var(--g3); }
-  .lock-btn {
-    width: 100%; margin-top: 14px; padding: 11px;
-    background: var(--cyan); color: #000; font-family: var(--mono);
-    font-size: 11px; font-weight: 700; letter-spacing: 2px;
-    border: none; border-radius: 1px; cursor: pointer;
-    text-transform: uppercase; transition: opacity .15s;
-  }
-  .lock-btn:hover { opacity: .85; }
-  .lock-err {
-    margin-top: 10px; font-size: 10px; color: var(--red);
-    text-align: center; min-height: 14px; letter-spacing: 1px;
-  }
-
-  /* ── MAIN CONSOLE ────────────────────────────────────────────────────────── */
-  #app { display: none; min-height: 100vh; }
-
-  /* Scanline overlay */
-  #app::before {
-    content: ''; position: fixed; inset: 0; pointer-events: none; z-index: 50;
-    background: repeating-linear-gradient(0deg,
-      transparent, transparent 2px,
-      rgba(0,255,224,.012) 2px, rgba(0,255,224,.012) 4px);
-  }
-
-  /* Top bar */
-  .topbar {
-    position: sticky; top: 0; z-index: 40;
-    background: rgba(8,8,9,.95); backdrop-filter: blur(8px);
-    border-bottom: 1px solid var(--border);
-    padding: 0 24px; height: 44px;
-    display: flex; align-items: center; gap: 16px;
-  }
-  .topbar-logo { font-size: 11px; font-weight: 700; color: var(--cyan); letter-spacing: 2px; }
-  .topbar-sep  { color: var(--border2); }
-  .topbar-sub  { font-size: 10px; color: var(--g2); letter-spacing: 2px; text-transform: uppercase; }
-  .topbar-right { margin-left: auto; display: flex; align-items: center; gap: 12px; }
-  .status-dot  { width: 6px; height: 6px; border-radius: 50%; background: var(--green); box-shadow: 0 0 6px var(--green); }
-  .topbar-lock {
-    font-size: 10px; color: var(--g2); letter-spacing: 1px; cursor: pointer;
-    padding: 4px 10px; border: 1px solid var(--border); border-radius: 1px;
-    transition: all .15s; text-transform: uppercase;
-  }
-  .topbar-lock:hover { color: var(--red); border-color: var(--red); }
-
-  /* Layout */
-  .layout { display: grid; grid-template-columns: 260px 1fr; min-height: calc(100vh - 44px); }
-
-  /* Sidebar */
-  .sidebar {
-    border-right: 1px solid var(--border); padding: 24px 0;
-    background: var(--surface);
-  }
-  .sidebar-section {
-    font-size: 10px; color: var(--g2); letter-spacing: 3px; text-transform: uppercase;
-    padding: 0 20px; margin-bottom: 6px; margin-top: 20px;
-  }
-  .sidebar-section:first-child { margin-top: 0; }
-  .nav-item {
-    display: flex; align-items: center; gap: 10px;
-    padding: 9px 20px; cursor: pointer; font-size: 11px;
-    color: var(--g1); letter-spacing: 1px; transition: all .15s;
-    border-left: 2px solid transparent;
-  }
-  .nav-item:hover { color: var(--white); background: var(--card); }
-  .nav-item.active { color: var(--cyan); border-left-color: var(--cyan); background: rgba(0,255,224,.04); }
-  .nav-dot { width: 5px; height: 5px; border-radius: 50%; background: var(--g2); flex-shrink: 0; }
-  .nav-item.active .nav-dot { background: var(--cyan); box-shadow: 0 0 5px var(--cyan); }
-
-  .sidebar-stats { padding: 16px 20px; margin-top: 20px; border-top: 1px solid var(--border); }
-  .stat-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
-  .stat-label { font-size: 10px; color: var(--g2); letter-spacing: 1px; }
-  .stat-val   { font-size: 13px; font-weight: 700; color: var(--white); }
-  .stat-val.cyan   { color: var(--cyan); }
-  .stat-val.amber  { color: var(--amber); }
-  .stat-val.green  { color: var(--green); }
-
-  /* Main content */
-  .main { padding: 28px 32px; }
-
-  /* Panel header */
-  .panel-header {
-    display: flex; align-items: baseline; gap: 12px; margin-bottom: 24px;
-    padding-bottom: 14px; border-bottom: 1px solid var(--border);
-  }
-  .panel-title { font-size: 13px; font-weight: 700; color: var(--white); letter-spacing: 1px; }
-  .panel-title::before { content: '// '; color: var(--cyan); }
-  .panel-subtitle { font-size: 10px; color: var(--g2); }
-
-  /* Issue form */
-  .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-bottom: 14px; }
-  .form-full  { grid-column: 1 / -1; }
-  .field { display: flex; flex-direction: column; gap: 5px; }
-  .field label { font-size: 10px; color: var(--g2); letter-spacing: 2px; text-transform: uppercase; }
-  .field input, .field select, .field textarea {
-    background: var(--surface); border: 1px solid var(--border2);
-    color: var(--white); font-family: var(--mono); font-size: 12px;
-    padding: 9px 12px; border-radius: 1px; outline: none;
-    transition: border-color .2s; resize: none;
-  }
-  .field input:focus, .field select:focus, .field textarea:focus { border-color: var(--cyan); }
-  .field input::placeholder, .field textarea::placeholder { color: var(--g3); }
-  .field select option { background: var(--card); }
-
-  .btn {
-    padding: 10px 22px; font-family: var(--mono); font-size: 11px; font-weight: 700;
-    letter-spacing: 2px; text-transform: uppercase; border: none; cursor: pointer;
-    border-radius: 1px; transition: all .15s;
-  }
-  .btn-primary { background: var(--cyan); color: #000; }
-  .btn-primary:hover { opacity: .85; }
-  .btn-primary:disabled { opacity: .4; cursor: default; }
-  .btn-danger  { background: transparent; color: var(--red); border: 1px solid var(--red); font-size: 10px; padding: 5px 12px; }
-  .btn-danger:hover { background: rgba(255,59,59,.1); }
-  .btn-ghost   { background: transparent; color: var(--g1); border: 1px solid var(--border2); }
-  .btn-ghost:hover { border-color: var(--g1); color: var(--white); }
-
-  /* Token output */
-  .token-out {
-    margin-top: 16px; background: var(--surface); border: 1px solid var(--cyan);
-    border-radius: 1px; padding: 16px; display: none;
-  }
-  .token-out.show { display: block; animation: fadeIn .3s ease; }
-  .token-out-label { font-size: 10px; color: var(--cyan); letter-spacing: 2px; margin-bottom: 8px; }
-  .token-val {
-    font-size: 10px; color: var(--g1); word-break: break-all; line-height: 1.6;
-    background: var(--bg); padding: 10px; border: 1px solid var(--border);
-    border-radius: 1px; margin-bottom: 10px; max-height: 80px; overflow-y: auto;
-  }
-  .token-meta { display: flex; gap: 20px; flex-wrap: wrap; margin-bottom: 10px; }
-  .token-meta-item { font-size: 10px; }
-  .token-meta-item span { color: var(--g2); }
-  .token-meta-item strong { color: var(--white); }
-  .copy-btn {
-    font-size: 10px; padding: 6px 14px; background: var(--g3);
-    color: var(--white); border: none; cursor: pointer; font-family: var(--mono);
-    border-radius: 1px; letter-spacing: 1px; transition: background .15s;
-  }
-  .copy-btn:hover { background: var(--border2); }
-  .copy-btn.copied { background: var(--green); color: #000; }
-
-  /* Token list */
-  .list-controls {
-    display: flex; gap: 10px; margin-bottom: 16px; align-items: center;
-  }
-  .search-input {
-    background: var(--surface); border: 1px solid var(--border2);
-    color: var(--white); font-family: var(--mono); font-size: 11px;
-    padding: 7px 12px; border-radius: 1px; outline: none; flex: 1;
-    transition: border-color .2s;
-  }
-  .search-input:focus { border-color: var(--cyan); }
-  .search-input::placeholder { color: var(--g3); }
-
-  .token-row {
-    background: var(--card); border: 1px solid var(--border);
-    border-radius: 1px; padding: 14px 16px; margin-bottom: 8px;
-    display: grid; grid-template-columns: 1fr auto;
-    gap: 12px; align-items: start;
-    animation: fadeIn .2s ease;
-    transition: border-color .15s;
-  }
-  .token-row:hover { border-color: var(--border2); }
-  .token-row.active  { border-left: 2px solid var(--green); }
-  .token-row.expired { border-left: 2px solid var(--g2); opacity: .6; }
-  .token-row.revoked { border-left: 2px solid var(--red); opacity: .5; }
-
-  .tr-name   { font-size: 12px; font-weight: 700; color: var(--white); margin-bottom: 3px; }
-  .tr-email  { font-size: 10px; color: var(--g2); margin-bottom: 6px; }
-  .tr-note   { font-size: 10px; color: var(--amber); margin-bottom: 6px; font-style: italic; }
-  .tr-meta   { display: flex; gap: 12px; flex-wrap: wrap; }
-  .tr-badge  {
-    font-size: 10px; letter-spacing: 1px; padding: 2px 7px;
-    border-radius: 1px; font-weight: 700; text-transform: uppercase;
-  }
-  .badge-active  { background: rgba(0,230,118,.12); color: var(--green); border: 1px solid rgba(0,230,118,.2); }
-  .badge-expired { background: rgba(80,80,96,.12);  color: var(--g2);    border: 1px solid var(--border); }
-  .badge-revoked { background: rgba(255,59,59,.1);  color: var(--red);   border: 1px solid rgba(255,59,59,.2); }
-  .tr-days   { font-size: 10px; color: var(--g1); }
-  .tr-days strong { color: var(--cyan); }
-  .tr-issued { font-size: 10px; color: var(--g2); }
-
-  .tr-actions { display: flex; flex-direction: column; gap: 6px; align-items: flex-end; }
-
-  /* Empty state */
-  .empty-state {
-    text-align: center; padding: 60px 20px; color: var(--g2);
-  }
-  .empty-state .glyph { font-size: 28px; margin-bottom: 12px; opacity: .4; }
-  .empty-state p { font-size: 10px; letter-spacing: 1px; }
-
-  /* Toast */
-  #toast {
-    position: fixed; bottom: 24px; right: 24px; z-index: 200;
-    background: var(--card); border: 1px solid var(--border2);
-    padding: 12px 18px; border-radius: 1px; font-size: 11px;
-    color: var(--white); letter-spacing: 1px;
-    transform: translateY(10px); opacity: 0;
-    transition: all .25s ease; pointer-events: none;
-  }
-  #toast.show { transform: translateY(0); opacity: 1; }
-  #toast.success { border-left: 3px solid var(--green); }
-  #toast.error   { border-left: 3px solid var(--red); }
-  #toast.info    { border-left: 3px solid var(--cyan); }
-
-  /* Panels */
-  .panel { display: none; }
-  .panel.active { display: block; }
-
-  /* Animations */
-  @keyframes fadeIn  { from { opacity: 0; } to { opacity: 1; } }
-  @keyframes slideUp { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: translateY(0); } }
-
-  /* Confirm dialog */
-  .confirm-overlay {
-    position: fixed; inset: 0; background: rgba(8,8,9,.85);
-    display: flex; align-items: center; justify-content: center; z-index: 300;
-    display: none;
-  }
-  .confirm-overlay.show { display: flex; animation: fadeIn .2s ease; }
-  .confirm-box {
-    background: var(--card); border: 1px solid var(--red);
-    border-radius: 1px; padding: 28px 32px; max-width: 360px; width: 90%;
-  }
-  .confirm-title { font-size: 12px; color: var(--red); font-weight: 700; margin-bottom: 8px; letter-spacing: 1px; }
-  .confirm-body  { font-size: 11px; color: var(--g1); line-height: 1.6; margin-bottom: 20px; }
-  .confirm-actions { display: flex; gap: 10px; justify-content: flex-end; }
-
-  /* Loading spinner */
-  .spin {
-    display: inline-block; width: 10px; height: 10px;
-    border: 1.5px solid var(--border2); border-top-color: var(--cyan);
-    border-radius: 50%; animation: spin .6s linear infinite;
-  }
-  @keyframes spin { to { transform: rotate(360deg); } }
-</style>
-<style id="global-mobile-fix">
-@media(max-width:640px){
-  *{max-width:100%;box-sizing:border-box}
-  img,video,iframe{max-width:100%!important}
-  [style*="grid-template-columns:1fr 1fr"],[style*="grid-template-columns: 1fr 1fr"]{grid-template-columns:1fr!important}
-  [style*="grid-template-columns:repeat(3"],[style*="grid-template-columns: repeat(3"]{grid-template-columns:1fr 1fr!important}
-  [style*="grid-template-columns:repeat(4"],[style*="grid-template-columns: repeat(4"]{grid-template-columns:1fr 1fr!important}
-  .an-stats,.stat-grid,.stats-grid,.score-grid{grid-template-columns:repeat(2,1fr)!important}
-  .content{padding:12px!important}
-  .modal,.pred-modal,.flag-detail,[class*="-modal"]{width:calc(100vw - 24px)!important;max-width:calc(100vw - 24px)!important}
-  .an-grid-2,.an-grid-3{grid-template-columns:1fr!important}
+:root{
+  --bg:#0c0c0a;--surface:#111110;--card:#1a1a16;--card-hi:#222220;
+  --border:#1e1e18;--border-hi:#2e2e26;
+  --text:#f5f0e8;--text-s:#b8b0a0;--text-d:#6b6358;--text-xd:#3e3e34;
+  --amber:#f59e0b;--amber-d:rgba(245,158,11,.1);
+  --green:#22c55e;--green-d:rgba(34,197,94,.08);
+  --red:#ef4444;--red-d:rgba(239,68,68,.08);
+  --blue:#3b82f6;--blue-d:rgba(59,130,246,.08);
+  --purple:#a855f7;
+  --mono:'JetBrains Mono',monospace;
+  --font:'DM Sans',system-ui,sans-serif;
 }
+*{margin:0;padding:0;box-sizing:border-box}
+html{background:var(--bg);color:var(--text);font-family:var(--font);min-height:100vh}
+body{max-width:900px;margin:0 auto;padding:0 16px 60px}
+
+/* ── Lock screen ── */
+#lock{position:fixed;inset:0;background:var(--bg);display:flex;align-items:center;justify-content:center;z-index:100;flex-direction:column;gap:16px}
+.lock-box{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:32px;width:min(360px,90vw);display:flex;flex-direction:column;gap:14px}
+.lock-logo{font:700 11px var(--mono);color:var(--amber);letter-spacing:.12em;text-transform:uppercase}
+.lock-title{font:700 18px var(--font);color:var(--text)}
+.lock-sub{font:400 12px var(--font);color:var(--text-d);line-height:1.5}
+.lock-input{width:100%;background:var(--bg);border:1px solid var(--border-hi);border-radius:8px;padding:11px 14px;font:400 13px var(--mono);color:var(--text);outline:none;transition:border-color .15s}
+.lock-input:focus{border-color:var(--amber)}
+.lock-btn{padding:11px;background:var(--amber);color:#0c0c0a;border:none;border-radius:8px;font:700 12px var(--font);cursor:pointer;transition:opacity .15s}
+.lock-btn:hover{opacity:.9}
+.lock-err{font:400 11px var(--mono);color:var(--red);min-height:14px}
+
+/* ── App shell ── */
+#app{display:none;padding-top:20px}
+.topbar{display:flex;align-items:center;justify-content:space-between;padding:14px 0;border-bottom:1px solid var(--border);margin-bottom:24px}
+.topbar-brand{font:700 13px var(--mono);color:var(--amber);letter-spacing:-.01em}
+.topbar-right{display:flex;gap:8px;align-items:center}
+.topbar-status{font:500 10px var(--mono);color:var(--green);background:var(--green-d);border:1px solid rgba(34,197,94,.2);padding:3px 10px;border-radius:20px}
+.lock-out-btn{font:600 10px var(--mono);color:var(--text-d);background:none;border:1px solid var(--border);padding:4px 10px;border-radius:6px;cursor:pointer;transition:all .15s}
+.lock-out-btn:hover{color:var(--red);border-color:var(--red-d)}
+
+/* ── Stats ── */
+.stats{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:24px}
+@media(max-width:600px){.stats{grid-template-columns:repeat(2,1fr)}}
+.stat{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:14px 16px}
+.stat-n{font:700 22px var(--mono);line-height:1;margin-bottom:4px}
+.stat-l{font:500 10px var(--mono);color:var(--text-d);text-transform:uppercase;letter-spacing:.08em}
+.n-amber{color:var(--amber)}.n-green{color:var(--green)}.n-red{color:var(--red)}.n-blue{color:var(--blue)}
+
+/* ── Tabs ── */
+.tabs{display:flex;gap:2px;background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:4px;margin-bottom:20px}
+.tab{flex:1;padding:8px;background:none;border:none;border-radius:8px;font:600 11px var(--font);color:var(--text-d);cursor:pointer;transition:all .15s;white-space:nowrap}
+.tab.active{background:var(--card);color:var(--text)}
+.panel{display:none}.panel.active{display:block}
+
+/* ── Form ── */
+.form-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px}
+@media(max-width:500px){.form-grid{grid-template-columns:1fr}}
+.field{display:flex;flex-direction:column;gap:6px}
+.field label{font:600 10px var(--mono);color:var(--text-d);text-transform:uppercase;letter-spacing:.08em}
+.field input,.field select,.field textarea{background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:10px 12px;font:400 12px var(--font);color:var(--text);outline:none;transition:border-color .15s;-webkit-appearance:none}
+.field input:focus,.field select:focus,.field textarea:focus{border-color:var(--amber)}
+.field select{cursor:pointer}
+.field textarea{resize:vertical;min-height:60px;font-family:var(--mono);font-size:11px}
+
+/* ── Tier pills ── */
+.tier-select{display:flex;gap:8px;flex-wrap:wrap}
+.tier-opt{display:none}
+.tier-btn{padding:7px 14px;border:1px solid var(--border);border-radius:20px;font:600 11px var(--mono);color:var(--text-d);cursor:pointer;transition:all .15s;background:none;white-space:nowrap}
+.tier-btn:hover{border-color:var(--border-hi);color:var(--text-s)}
+.tier-opt:checked + .tier-btn{background:var(--amber-d);border-color:var(--amber);color:var(--amber)}
+
+/* ── Buttons ── */
+.btn{padding:10px 20px;border:none;border-radius:8px;font:700 12px var(--font);cursor:pointer;transition:all .15s;display:inline-flex;align-items:center;gap:8px}
+.btn-primary{background:var(--amber);color:#0c0c0a}
+.btn-primary:hover{opacity:.9}
+.btn-primary:disabled{opacity:.4;cursor:not-allowed}
+.btn-ghost{background:none;border:1px solid var(--border);color:var(--text-d)}
+.btn-ghost:hover{border-color:var(--border-hi);color:var(--text-s)}
+.btn-danger{background:none;border:1px solid rgba(239,68,68,.3);color:var(--red);font-size:10px;padding:4px 10px;border-radius:6px}
+.btn-danger:hover{background:var(--red-d)}
+.spin{width:10px;height:10px;border:2px solid rgba(0,0,0,.3);border-top-color:#000;border-radius:50%;animation:spin .6s linear infinite;display:inline-block}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+/* ── Result card ── */
+.result-card{background:var(--green-d);border:1px solid rgba(34,197,94,.2);border-radius:10px;padding:16px;margin-top:16px;display:none}
+.result-card.show{display:block}
+.result-label{font:700 9px var(--mono);color:var(--green);letter-spacing:.1em;text-transform:uppercase;margin-bottom:8px}
+.result-code{font:500 14px var(--mono);color:var(--text);word-break:break-all;background:var(--bg);border:1px solid var(--border);border-radius:6px;padding:10px 12px;margin-bottom:8px;cursor:pointer;transition:background .15s}
+.result-code:hover{background:var(--surface)}
+.result-meta{font:400 10px var(--mono);color:var(--text-d);line-height:1.7}
+.result-copy-hint{font:400 9px var(--mono);color:var(--text-xd);margin-top:4px}
+.usage-link{font:400 10px var(--mono);color:var(--amber);word-break:break-all;display:block;margin-top:6px}
+
+/* ── Token list ── */
+.list-toolbar{display:flex;gap:8px;margin-bottom:14px;flex-wrap:wrap;align-items:center}
+.list-search{flex:1;min-width:160px;background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:8px 12px;font:400 12px var(--font);color:var(--text);outline:none}
+.list-search:focus{border-color:var(--amber)}
+.filter-btns{display:flex;gap:4px}
+.filter-btn{padding:6px 12px;border:1px solid var(--border);border-radius:20px;font:600 10px var(--mono);color:var(--text-d);cursor:pointer;background:none;transition:all .15s;white-space:nowrap}
+.filter-btn.on{background:var(--amber-d);border-color:var(--amber);color:var(--amber)}
+
+.token-row{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:14px 16px;margin-bottom:8px;transition:border-color .15s}
+.token-row:hover{border-color:var(--border-hi)}
+.token-row.revoked{border-left:3px solid var(--red);opacity:.5}
+.token-row.used{border-left:3px solid var(--green)}
+.tr-head{display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap;margin-bottom:6px}
+.tr-code{font:600 13px var(--mono);color:var(--text);cursor:pointer;letter-spacing:.04em}
+.tr-code:hover{color:var(--amber)}
+.tr-badges{display:flex;gap:5px;flex-wrap:wrap}
+.badge{font:700 9px var(--mono);padding:2px 8px;border-radius:20px;letter-spacing:.06em;text-transform:uppercase;white-space:nowrap}
+.badge-commercial{background:var(--amber-d);color:var(--amber);border:1px solid rgba(245,158,11,.2)}
+.badge-dfr{background:var(--blue-d);color:var(--blue);border:1px solid rgba(59,130,246,.2)}
+.badge-agency{background:rgba(168,85,247,.1);color:var(--purple);border:1px solid rgba(168,85,247,.2)}
+.badge-used{background:var(--green-d);color:var(--green);border:1px solid rgba(34,197,94,.2)}
+.badge-revoked{background:var(--red-d);color:var(--red);border:1px solid rgba(239,68,68,.2)}
+.badge-reusable{background:var(--blue-d);color:var(--blue);border:1px solid rgba(59,130,246,.2)}
+.tr-meta{font:400 10px var(--mono);color:var(--text-d);line-height:1.8}
+.tr-meta span{color:var(--text-s)}
+.tr-actions{margin-top:10px;display:flex;gap:6px;align-items:center}
+.copy-btn{font:600 9px var(--mono);background:none;border:1px solid var(--border);color:var(--text-d);padding:3px 9px;border-radius:5px;cursor:pointer;transition:all .15s}
+.copy-btn:hover{color:var(--text);border-color:var(--border-hi)}
+.empty-state{text-align:center;padding:40px;color:var(--text-d);font:400 12px var(--mono)}
+
+/* ── Toast ── */
+#toast{position:fixed;bottom:24px;right:24px;background:var(--card);border:1px solid var(--border);border-radius:8px;padding:10px 16px;font:500 12px var(--font);color:var(--text);z-index:200;transform:translateY(100px);opacity:0;transition:all .25s;pointer-events:none;max-width:280px}
+#toast.show{transform:translateY(0);opacity:1}
+#toast.ok{border-color:rgba(34,197,94,.3);color:var(--green)}
+#toast.err{border-color:rgba(239,68,68,.3);color:var(--red)}
+
+/* ── Confirm modal ── */
+#confirm-modal{position:fixed;inset:0;background:rgba(0,0,0,.7);display:none;align-items:center;justify-content:center;z-index:150}
+#confirm-modal.show{display:flex}
+.confirm-box{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:24px;width:min(320px,90vw);display:flex;flex-direction:column;gap:12px}
+.confirm-title{font:700 13px var(--font);color:var(--text)}
+.confirm-sub{font:400 11px var(--font);color:var(--text-d);line-height:1.5}
+.confirm-actions{display:flex;gap:8px;justify-content:flex-end;margin-top:4px}
+
+.section-title{font:700 11px var(--mono);color:var(--text-d);text-transform:uppercase;letter-spacing:.1em;margin-bottom:14px}
+.divider{height:1px;background:var(--border);margin:20px 0}
 </style>
 </head>
 <body>
-<!-- ── Unified DroneClear Nav ───────────────────────────────────────── -->
-<style id="dc-unified-nav-styles">
-#dc-nav{display:flex;align-items:center;justify-content:space-between;padding:0 16px;height:44px;background:#0c0c0a;border-bottom:1px solid #1e1e18;position:sticky;top:0;z-index:500;font-family:'DM Sans',system-ui,sans-serif}
-#dc-nav-left{display:flex;align-items:center;gap:10px;min-width:0}
-#dc-nav-brand{font:700 13px 'JetBrains Mono',monospace;color:#f59e0b;text-decoration:none;letter-spacing:-.02em;flex-shrink:0}
-#dc-nav-sep{color:#2e2e26;font-size:12px;flex-shrink:0}
-#dc-nav-page{font:600 11px 'DM Sans',system-ui;color:#b8b0a0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:160px}
 
-#dc-hamburger{display:flex;align-items:center;justify-content:center;width:32px;height:32px;border-radius:6px;border:1px solid #2a2a22;background:none;color:#6b6358;cursor:pointer;transition:all .15s;flex-shrink:0;margin-left:auto}
-#dc-hamburger:hover{border-color:#3e3e34;color:#b8b0a0}
-#dc-hamburger.open{border-color:#f59e0b;color:#f59e0b;background:rgba(245,158,11,.08)}
-#dc-overlay{position:fixed;inset:0;z-index:498;background:rgba(0,0,0,.6);backdrop-filter:blur(4px);opacity:0;pointer-events:none;transition:opacity .25s}
-#dc-overlay.open{opacity:1;pointer-events:auto}
-#dc-drawer{position:fixed;top:0;right:0;bottom:0;z-index:499;width:260px;max-width:85vw;background:#111110;border-left:1px solid #2a2a22;transform:translateX(100%);transition:transform .3s cubic-bezier(.4,0,.2,1);display:flex;flex-direction:column;overflow:hidden}
-#dc-drawer.open{transform:translateX(0)}
-#dc-drawer-head{padding:16px;border-bottom:1px solid #1e1e18;display:flex;align-items:center;justify-content:space-between}
-#dc-drawer-brand{font:700 14px 'JetBrains Mono',monospace;color:#f59e0b;letter-spacing:-.02em}
-#dc-drawer-close{width:28px;height:28px;border-radius:6px;border:1px solid #2a2a22;background:none;color:#6b6358;cursor:pointer;font-size:16px;display:flex;align-items:center;justify-content:center;transition:all .15s}
-#dc-drawer-close:hover{color:#d62828;border-color:rgba(214,40,40,.3)}
-.dc-drawer-section{padding:12px 16px 4px;font:700 9px 'JetBrains Mono',monospace;color:#3e3e34;text-transform:uppercase;letter-spacing:.1em}
-.dc-drawer-item{display:flex;align-items:center;gap:10px;padding:9px 16px;color:#6b6358;text-decoration:none;font:400 12px 'DM Sans',system-ui;transition:all .15s;border-left:2px solid transparent}
-.dc-drawer-item:hover{color:#b8b0a0;background:rgba(255,255,255,.02);border-left-color:#2e2e26}
-.dc-drawer-item.dc-active{color:#22c55e;border-left-color:#22c55e;background:rgba(34,197,94,.04)}
-.dc-drawer-item.dc-ext{color:#3e3e34}
-.dc-drawer-item.dc-ext:hover{color:#6b6358}
-.dc-drawer-divider{height:1px;background:#1e1e18;margin:8px 16px}
-#dc-drawer-foot{padding:16px;border-top:1px solid #1e1e18;font:400 10px 'JetBrains Mono',monospace;color:#3e3e34;flex-shrink:0}#dc-drawer-body{flex:1;overflow-y:auto;overflow-x:hidden}
-</style>
-
-<nav id="dc-nav">
-  <div id="dc-nav-left">
-    <a id="dc-nav-brand" href="/" onclick="return dcNavBrandClick(event)">—</a>
-    <span id="dc-nav-sep" style="color:#2e2e26;font-size:11px;margin:0 4px">/</span>
-    <span id="dc-nav-page">—</span>
-  </div>
-  <button id="dc-hamburger" onclick="dcNavToggle()" aria-label="Menu">
-    <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round">
-      <line x1="1" y1="3" x2="13" y2="3"/><line x1="1" y1="7" x2="13" y2="7"/><line x1="1" y1="11" x2="13" y2="11"/>
-    </svg>
-  </button>
-</nav>
-
-<div id="dc-overlay" onclick="dcNavClose()"></div>
-<div id="dc-drawer">
-  <div id="dc-drawer-head">
-    <span id="dc-drawer-brand">—</span>
-    <button id="dc-drawer-close" onclick="dcNavClose()">✕</button>
-  </div>
-
-  <div id="dc-drawer-body">
-  <div class="dc-drawer-section">Forge Tool Chest — Intelligence</div>
-  <a class="dc-drawer-item" href="https://nvmillbuilditmyself.com/browse/" data-page="browse">Browse Components</a>
-  <a class="dc-drawer-item" href="https://nvmillbuilditmyself.com/compare/" data-page="compare">Compare</a>
-  <a class="dc-drawer-item" href="https://nvmillbuilditmyself.com/compliance/" data-page="compliance">Compliance</a>
-  <a class="dc-drawer-item" href="https://nvmillbuilditmyself.com/dossier/" data-page="dossier">Dossier</a>
-  <a class="dc-drawer-item" href="https://nvmillbuilditmyself.com/platforms/" data-page="platforms">Platforms</a>
-  <a class="dc-drawer-item" href="https://nvmillbuilditmyself.com/regs/" data-page="regs">Regs</a>
-
-  <div class="dc-drawer-section">Forge Tool Chest — Tools</div>
-  <a class="dc-drawer-item" href="https://nvmillbuilditmyself.com/wingman/" data-page="wingman">Wingman AI</a>
-  <a class="dc-drawer-item" href="https://nvmillbuilditmyself.com/stack-builder/" data-page="stack-builder">Stack Builder</a>
-  <a class="dc-drawer-item" href="https://nvmillbuilditmyself.com/report/" data-page="report">Compliance Report</a>
-  <a class="dc-drawer-item" href="https://nvmillbuilditmyself.com/tools-home/" data-page="tools-home">All Tools</a>
-
-  <div class="dc-drawer-section">Forge Tool Chest — Intel</div>
-  <a class="dc-drawer-item" href="https://nvmillbuilditmyself.com/intel/" data-page="intel">Intel Hub</a>
-  <a class="dc-drawer-item" href="https://nvmillbuilditmyself.com/industry/" data-page="industry">Industry</a>
-  <a class="dc-drawer-item" href="https://nvmillbuilditmyself.com/tracker/" data-page="tracker">Contract Tracker</a>
-
-  <div class="dc-drawer-divider"></div>
-
-  <div class="dc-drawer-section">PIE — Pattern Intelligence</div>
-  <a class="dc-drawer-item" href="https://nvmillfindoutmyself.com/patterns-home/" data-page="patterns-home">P.I.E Hub</a>
-  <a class="dc-drawer-item" href="https://nvmillfindoutmyself.com/brief/" data-page="brief">Brief</a>
-  <a class="dc-drawer-item" href="https://nvmillfindoutmyself.com/patterns/" data-page="patterns">Flags</a>
-  <a class="dc-drawer-item" href="https://nvmillfindoutmyself.com/clock/" data-page="clock">UAS Clock</a>
-  <a class="dc-drawer-item" href="https://nvmillfindoutmyself.com/ddg/" data-page="ddg">DDG Tracker</a>
-
-  </div><!-- /dc-drawer-body -->
-</div>
-
-<script>
-(function(){
-  var path = location.pathname.replace(/\/$/, '').split('/').pop() || 'home';
-  var isPro = (function(){
-    try {
-      var tok = localStorage.getItem('forge_token') || localStorage.getItem('wingman_sub_token') || '';
-      if(!tok || tok.length < 20) return false;
-      var p = JSON.parse(atob(tok.split('.')[1] || tok));
-      var payload = p.payload || p;
-      return !!(payload.tier && payload.tier !== 'free' && (!payload.exp || payload.exp > Date.now()));
-    } catch(e){ return false; }
-  })();
-  var host = location.hostname;
-  var isForge = host.includes('builditmyself') || host.includes('forgeprole') || host === 'localhost' || host === '127.0.0.1';
-  var isPIE   = host.includes('findoutmyself') || host.includes('nvmillfindout');
-
-  // Set page label
-  var labels = {
-    'browse':'Browse','wingman':'Wingman','intel':'Intel Hub','compare':'Compare',
-    'compliance':'Compliance','dossier':'Dossier','platforms':'Platforms','regs':'Regs',
-    'stack-builder':'Stack Builder','report':'Compliance Report','tools-home':'Tools',
-    'industry':'Industry','tracker':'Contract Tracker','patterns-home':'P.I.E Hub',
-    'brief':'Brief','patterns':'Flags','clock':'UAS Clock','ddg':'DDG Tracker',
-    'pro':'Pro','start':'Getting Started','grants':'Grants','waiver':'Doc Builder',
-    'verify':'Verify','vault':'Vault','troubleshoot':'Troubleshoot'
-  };
-  var pageEl = document.getElementById('dc-nav-page');
-  if(pageEl) pageEl.textContent = labels[path] || document.title.split('—')[0].trim().split('·')[0].trim() || path;
-
-  // Brand link — goes to home of current domain
-  // Set brand name: Forge / Patterns / Patterns Pro
-  var brandName = isForge ? 'Forge' : isPIE ? 'Patterns' : 'DroneClear';
-  var brandEl = document.getElementById('dc-nav-brand');
-  var drawerBrandEl = document.getElementById('dc-drawer-brand');
-  if(brandEl) brandEl.textContent = brandName;
-  if(drawerBrandEl) drawerBrandEl.textContent = brandName;
-
-  window.dcNavBrandClick = function(e){
-    e.preventDefault();
-    location.href = isForge ? 'https://nvmillbuilditmyself.com/' : isPIE ? 'https://nvmillfindoutmyself.com/patterns-home/' : '/';
-  };
-
-
-
-  // Mark active drawer items
-  document.querySelectorAll('.dc-drawer-item').forEach(function(a){
-    if(a.dataset.page === path) a.classList.add('dc-active');
-  });
-
-  // Hamburger toggle
-  window.dcNavToggle = function(){
-    var open = document.getElementById('dc-drawer').classList.toggle('open');
-    document.getElementById('dc-overlay').classList.toggle('open', open);
-    document.getElementById('dc-hamburger').classList.toggle('open', open);
-  };
-  window.dcNavClose = function(){
-    document.getElementById('dc-drawer').classList.remove('open');
-    document.getElementById('dc-overlay').classList.remove('open');
-    document.getElementById('dc-hamburger').classList.remove('open');
-  };
-  // Esc to close
-  document.addEventListener('keydown', function(e){ if(e.key==='Escape') dcNavClose(); });
-})();
-</script>
-<!-- ── /Unified DroneClear Nav ─────────────────────────────────────── -->
-
-
-<!-- ── LOCK SCREEN ─────────────────────────────────────────────────────────── -->
+<!-- Lock screen -->
 <div id="lock">
-  <div class="lock-glyph">
-    <span>MIDWEST NICE ADVISORY LLC</span><br>
-    DRONECLEAR · TOKEN CONSOLE<br>
-    RESTRICTED ACCESS
-  </div>
   <div class="lock-box">
-    <label class="lock-label">Owner Secret</label>
-    <input class="lock-input" type="password" id="secret-input"
-           placeholder="Enter WINGMAN_PROXY_SECRET"
-           autocomplete="off" spellcheck="false"/>
-    <button class="lock-btn" onclick="unlock()">AUTHENTICATE →</button>
+    <div class="lock-logo">// Forge Admin</div>
+    <div class="lock-title">Access Manager</div>
+    <div class="lock-sub">Enter your admin key to manage access codes and tokens.</div>
+    <input class="lock-input" id="secret-input" type="password" placeholder="Admin key" autocomplete="off">
+    <button class="lock-btn" onclick="unlock()">Unlock →</button>
     <div class="lock-err" id="lock-err"></div>
   </div>
 </div>
 
-<!-- ── CONFIRM DIALOG ──────────────────────────────────────────────────────── -->
-<div class="confirm-overlay" id="confirm-overlay">
+<!-- App -->
+<div id="app">
+  <div class="topbar">
+    <div class="topbar-brand">Forge / Access Admin</div>
+    <div class="topbar-right">
+      <div class="topbar-status">● LIVE</div>
+      <button class="lock-out-btn" onclick="lockOut()">Lock out</button>
+    </div>
+  </div>
+
+  <!-- Stats -->
+  <div class="stats">
+    <div class="stat"><div class="stat-n n-amber" id="stat-total">—</div><div class="stat-l">Total codes</div></div>
+    <div class="stat"><div class="stat-n n-green" id="stat-active">—</div><div class="stat-l">Active</div></div>
+    <div class="stat"><div class="stat-n n-blue" id="stat-used">—</div><div class="stat-l">Redeemed</div></div>
+    <div class="stat"><div class="stat-n n-red" id="stat-revoked">—</div><div class="stat-l">Revoked</div></div>
+  </div>
+
+  <!-- Tabs -->
+  <div class="tabs">
+    <button class="tab active" id="tab-issue" onclick="switchTab('issue')">Issue Code</button>
+    <button class="tab" id="tab-token" onclick="switchTab('token')">Mint Token</button>
+    <button class="tab" id="tab-list" onclick="switchTab('list')">All Codes</button>
+  </div>
+
+  <!-- Issue access code -->
+  <div class="panel active" id="panel-issue">
+    <div class="section-title">New Access Code</div>
+    <div class="form-grid">
+      <div class="field"><label>Email / Name</label><input id="i-email" type="text" placeholder="user@example.com"></div>
+      <div class="field"><label>Note</label><input id="i-note" type="text" placeholder="e.g. press inquiry, partner"></div>
+      <div class="field"><label>Duration (days)</label>
+        <select id="i-days">
+          <option value="30">30 days</option>
+          <option value="90">90 days</option>
+          <option value="180">180 days</option>
+          <option value="365" selected>1 year</option>
+          <option value="730">2 years</option>
+          <option value="36500">Lifetime</option>
+        </select>
+      </div>
+      <div class="field">
+        <label>Reusable</label>
+        <select id="i-reusable">
+          <option value="false">Single use</option>
+          <option value="true">Reusable</option>
+        </select>
+      </div>
+    </div>
+    <div class="field" style="margin-bottom:16px">
+      <label>Tier</label>
+      <div class="tier-select">
+        <label><input class="tier-opt" type="radio" name="tier" value="commercial" checked><span class="tier-btn" onclick="selectTier(this)">Commercial</span></label>
+        <label><input class="tier-opt" type="radio" name="tier" value="dfr"><span class="tier-btn" onclick="selectTier(this)">DFR</span></label>
+        <label><input class="tier-opt" type="radio" name="tier" value="agency"><span class="tier-btn" onclick="selectTier(this)">Agency</span></label>
+      </div>
+    </div>
+    <button class="btn btn-primary" id="issue-btn" onclick="issueCode()">Generate Code →</button>
+    <div class="result-card" id="issue-result">
+      <div class="result-label">Access Code</div>
+      <div class="result-code" id="result-code" onclick="copyText(this.textContent, 'Code copied')"></div>
+      <div class="result-meta" id="result-meta"></div>
+      <div class="result-copy-hint">Click code to copy · Share the usage link below</div>
+      <a class="usage-link" id="result-link" href="#" target="_blank"></a>
+    </div>
+  </div>
+
+  <!-- Mint JWT token directly -->
+  <div class="panel" id="panel-token">
+    <div class="section-title">Mint JWT Token</div>
+    <div class="form-grid">
+      <div class="field"><label>Email / Name</label><input id="t-email" type="text" placeholder="user@example.com"></div>
+      <div class="field"><label>Note</label><input id="t-note" type="text" placeholder="e.g. internal use, test"></div>
+      <div class="field"><label>Duration (days)</label>
+        <select id="t-days">
+          <option value="30">30 days</option>
+          <option value="90">90 days</option>
+          <option value="180">180 days</option>
+          <option value="365" selected>1 year</option>
+          <option value="730">2 years</option>
+          <option value="36500">Lifetime</option>
+        </select>
+      </div>
+    </div>
+    <div class="field" style="margin-bottom:16px">
+      <label>Tier</label>
+      <div class="tier-select">
+        <label><input class="tier-opt" type="radio" name="tier-t" value="commercial" checked><span class="tier-btn" onclick="selectTier(this)">Commercial</span></label>
+        <label><input class="tier-opt" type="radio" name="tier-t" value="dfr"><span class="tier-btn" onclick="selectTier(this)">DFR</span></label>
+        <label><input class="tier-opt" type="radio" name="tier-t" value="agency"><span class="tier-btn" onclick="selectTier(this)">Agency</span></label>
+      </div>
+    </div>
+    <button class="btn btn-primary" id="token-btn" onclick="mintToken()">Mint Token →</button>
+    <div class="result-card" id="token-result">
+      <div class="result-label">JWT Token — paste into Patterns login</div>
+      <div class="result-code" id="result-token" onclick="copyText(this.textContent, 'Token copied')" style="font-size:9px;line-height:1.5"></div>
+      <div class="result-meta" id="result-token-meta"></div>
+      <div class="result-copy-hint">Click to copy · Paste into the access code field on any Patterns page</div>
+    </div>
+  </div>
+
+  <!-- List all codes -->
+  <div class="panel" id="panel-list">
+    <div class="list-toolbar">
+      <input class="list-search" id="list-search" placeholder="Search email, code, note…" oninput="filterList()">
+      <div class="filter-btns">
+        <button class="filter-btn on" data-filter="all" onclick="setFilter('all',this)">All</button>
+        <button class="filter-btn" data-filter="active" onclick="setFilter('active',this)">Active</button>
+        <button class="filter-btn" data-filter="used" onclick="setFilter('used',this)">Used</button>
+        <button class="filter-btn" data-filter="revoked" onclick="setFilter('revoked',this)">Revoked</button>
+      </div>
+      <button class="btn btn-ghost" style="font-size:11px;padding:7px 12px" onclick="loadList()">↺ Refresh</button>
+    </div>
+    <div id="list-container"><div class="empty-state">Loading…</div></div>
+  </div>
+</div>
+
+<!-- Confirm modal -->
+<div id="confirm-modal">
   <div class="confirm-box">
-    <div class="confirm-title">⚠ CONFIRM REVOCATION</div>
-    <div class="confirm-body" id="confirm-body"></div>
+    <div class="confirm-title" id="confirm-title">Revoke this code?</div>
+    <div class="confirm-sub" id="confirm-sub">This cannot be undone.</div>
     <div class="confirm-actions">
-      <button class="btn btn-ghost" onclick="closeConfirm()">Cancel</button>
-      <button class="btn btn-danger" id="confirm-yes" onclick="doRevoke()">Revoke Token</button>
+      <button class="btn btn-ghost" style="font-size:11px;padding:7px 14px" onclick="closeConfirm()">Cancel</button>
+      <button class="btn" id="confirm-ok" style="font-size:11px;padding:7px 14px;background:var(--red);color:#fff">Revoke</button>
     </div>
   </div>
 </div>
 
-<!-- ── TOAST ───────────────────────────────────────────────────────────────── -->
 <div id="toast"></div>
 
-<!-- ── MAIN APP ────────────────────────────────────────────────────────────── -->
-<div id="app">
-  <span style="font-size:10px;color:var(--g2);letter-spacing:1px">CONNECTED</span>
-      </div>
-  </div>
-
-  <div class="layout">
-    <!-- Sidebar -->
-    <div class="sidebar">
-      <div class="sidebar-section">Actions</div>
-      <div class="nav-item active" onclick="showPanel('issue')" id="nav-issue">
-        <div class="nav-dot"></div> Issue Token
-      </div>
-      <div class="nav-item" onclick="showPanel('list')" id="nav-list">
-        <div class="nav-dot"></div> Token Registry
-      </div>
-
-      <div class="sidebar-section">DFR Intel</div>
-      <div class="nav-item" onclick="window.open('/intel-dfr/', '_blank')" id="nav-dfr">
-        <div class="nav-dot" style="background:var(--amber)"></div> DFR Dashboard ↗
-      </div>
-      <div class="nav-item" onclick="showPanel('dfr')" id="nav-dfr-issue">
-        <div class="nav-dot"></div> Issue DFR Token
-      </div>
-      <div class="nav-item" onclick="showPanel('full')" id="nav-full">
-        <div class="nav-dot" style="background:var(--cyan)"></div> Issue Full Access
-      </div>
-
-      <div class="sidebar-section">Status</div>
-      <div class="sidebar-stats">
-        <div class="stat-row">
-          <div class="stat-label">TOTAL ISSUED</div>
-          <div class="stat-val cyan" id="stat-total">—</div>
-        </div>
-        <div class="stat-row">
-          <div class="stat-label">ACTIVE</div>
-          <div class="stat-val green" id="stat-active">—</div>
-        </div>
-        <div class="stat-row">
-          <div class="stat-label">EXPIRED</div>
-          <div class="stat-val" id="stat-expired">—</div>
-        </div>
-        <div class="stat-row">
-          <div class="stat-label">REVOKED</div>
-          <div class="stat-val amber" id="stat-revoked">—</div>
-        </div>
-      </div>
-    </div>
-
-    <!-- Main -->
-    <div class="main">
-
-      <!-- ISSUE PANEL -->
-      <div class="panel active" id="panel-issue">
-        <div class="panel-header">
-          <div class="panel-title">Issue Demo Token</div>
-          <div class="panel-subtitle">Mint a Commercial access token for a contact</div>
-        </div>
-
-        <div class="form-grid">
-          <div class="field">
-            <label>Email *</label>
-            <input type="email" id="f-email" placeholder="contact@example.com" spellcheck="false"/>
-          </div>
-          <div class="field">
-            <label>Name / Org</label>
-            <input type="text" id="f-name" placeholder="Petar / Orqa HQ" spellcheck="false"/>
-          </div>
-          <div class="field">
-            <label>Duration (days)</label>
-            <select id="f-days">
-              <option value="7">7 days</option>
-              <option value="14">14 days</option>
-              <option value="30" selected>30 days</option>
-              <option value="60">60 days</option>
-              <option value="90">90 days</option>
-              <option value="365">1 year</option>
-            </select>
-          </div>
-          <div class="field">
-            <label>Tier</label>
-            <select id="f-tier">
-              <option value="commercial">Commercial — $39/mo</option>
-              <option value="dfr">DFR — $49/mo</option>
-              <option value="agency">Agency — contact/vetted</option>
-              <option value="full">Full Access — all tiers</option>
-            </select>
-          </div>
-          <div class="field">
-            <label>Note / Context</label>
-            <input type="text" id="f-note" placeholder="DDP eval · Camp Blanding · DFR pilot · PS agency" spellcheck="false"/>
-          </div>
-        </div>
-
-        <button class="btn btn-primary" id="issue-btn" onclick="issueToken()">
-          GENERATE TOKEN →
-        </button>
-
-        <!-- Token output -->
-        <div class="token-out" id="token-out">
-          <div class="token-out-label">// TOKEN ISSUED</div>
-          <div class="token-meta" id="token-meta"></div>
-          <div class="token-val" id="token-val"></div>
-          <div style="display:flex;gap:8px;flex-wrap:wrap">
-            <button class="copy-btn" id="copy-btn" onclick="copyToken()">COPY TOKEN</button>
-            <button class="copy-btn" onclick="copyEmail()" id="copy-email-btn">COPY EMAIL DRAFT</button>
-          </div>
-        </div>
-      </div>
-
-      <!-- LIST PANEL -->
-      <div class="panel" id="panel-list">
-        <div class="panel-header">
-          <div class="panel-title">Token Registry</div>
-          <div class="panel-subtitle">All issued demo tokens</div>
-        </div>
-
-        <div class="list-controls">
-          <input class="search-input" type="text" id="list-search"
-                 placeholder="Search by name, email, or note…"
-                 oninput="filterList()"/>
-          <button class="btn btn-ghost" onclick="loadList()" style="white-space:nowrap">
-            ↻ REFRESH
-          </button>
-        </div>
-
-        <div id="list-container">
-          <div class="empty-state">
-            <div class="glyph">◎</div>
-            <p>Loading registry…</p>
-          </div>
-        </div>
-      </div>
-
-      <!-- DFR PANEL -->
-      <div class="panel" id="panel-dfr">
-        <div class="panel-header">
-          <div class="panel-title">Issue DFR Access Token</div>
-          <div class="panel-subtitle">Mint a token for PS agency / DFR program access</div>
-        </div>
-
-        <div class="form-grid">
-          <div class="field">
-            <label>Email *</label>
-            <input type="email" id="dfr-email" placeholder="chief@pd.cityname.gov" spellcheck="false"/>
-          </div>
-          <div class="field">
-            <label>Agency / Name</label>
-            <input type="text" id="dfr-name" placeholder="Riverside PD · Chief Martinez" spellcheck="false"/>
-          </div>
-          <div class="field">
-            <label>Duration (days)</label>
-            <select id="dfr-days">
-              <option value="14">14 days — eval</option>
-              <option value="30" selected>30 days — pilot</option>
-              <option value="90">90 days — program</option>
-              <option value="365">1 year — full access</option>
-            </select>
-          </div>
-          <div class="field">
-            <label>DFR Context</label>
-            <input type="text" id="dfr-note" placeholder="COW pending · Part 107 · HSGP eval · grant app" spellcheck="false"/>
-          </div>
-        </div>
-
-        <div style="background:var(--card);border:1px solid var(--border2);border-left:2px solid var(--amber);padding:12px 16px;margin-bottom:16px;font-size:10px;color:var(--g1);line-height:1.7">
-          <span style="color:var(--amber);font-weight:700">// DFR PRO INCLUDES</span><br>
-          Wingman AI (Claude) · PIE predictions · DFR Intel Feed · Platform DB (14 platforms) ·
-          Grant Eligibility Matrix · Waiver template library · Regulatory KB · Compliance dashboard
-        </div>
-
-        <button class="btn btn-primary" id="dfr-issue-btn" onclick="issueDFRToken()">
-          GENERATE DFR TOKEN →
-        </button>
-
-        <div class="token-out" id="dfr-token-out">
-          <div class="token-out-label">// DFR TOKEN ISSUED</div>
-          <div class="token-meta" id="dfr-token-meta"></div>
-          <div class="token-val" id="dfr-token-val"></div>
-          <div style="display:flex;gap:8px;flex-wrap:wrap">
-            <button class="copy-btn" id="dfr-copy-btn" onclick="copyDFRToken()">COPY TOKEN</button>
-            <button class="copy-btn" onclick="copyDFREmail()" id="dfr-copy-email-btn">COPY EMAIL DRAFT</button>
-          </div>
-        </div>
-      </div>
-
-      <!-- FULL ACCESS PANEL -->
-      <div class="panel" id="panel-full">
-        <div class="panel-header">
-          <div class="panel-title">Issue Full Access Token</div>
-          <div class="panel-subtitle">Everything unlocked — Pro + DFR + Vault + all intel feeds</div>
-        </div>
-
-        <div style="background:var(--card);border:1px solid var(--border2);border-left:2px solid var(--cyan);padding:12px 16px;margin-bottom:16px;font-size:10px;color:var(--g1);line-height:1.8">
-          <span style="color:var(--cyan);font-weight:700">// FULL ACCESS SCOPE</span><br>
-          Wingman AI (Claude) · PIE predictions · DFR Intel Feed · Platform DB ·
-          Grant Matrix · Waiver Library · Compliance Dashboard · Vault (grey-area parts) ·
-          All tiers — commercial intel, DFR, defense master, grayzone, allied profiles · Agency-level access
-        </div>
-
-        <div class="form-grid">
-          <div class="field">
-            <label>Email *</label>
-            <input type="email" id="full-email" placeholder="contact@agency.gov" spellcheck="false"/>
-          </div>
-          <div class="field">
-            <label>Name / Org</label>
-            <input type="text" id="full-name" placeholder="Ted Strazimiri / DroneClear" spellcheck="false"/>
-          </div>
-          <div class="field">
-            <label>Duration (days)</label>
-            <select id="full-days">
-              <option value="7">7 days — quick eval</option>
-              <option value="30" selected>30 days — demo</option>
-              <option value="90">90 days — extended</option>
-              <option value="365">1 year — partner</option>
-            </select>
-          </div>
-          <div class="field">
-            <label>Context / Note</label>
-            <input type="text" id="full-note" placeholder="partner access · press eval · investor demo" spellcheck="false"/>
-          </div>
-        </div>
-
-        <button class="btn btn-primary" id="full-issue-btn" onclick="issueFullToken()"
-                style="border-color:var(--cyan);color:var(--cyan)">
-          GENERATE AGENCY / FULL ACCESS TOKEN →
-        </button>
-
-        <div class="token-out" id="full-token-out">
-          <div class="token-out-label" style="color:var(--cyan)">// FULL ACCESS TOKEN ISSUED</div>
-          <div class="token-meta" id="full-token-meta"></div>
-          <div class="token-val" id="full-token-val"></div>
-          <div style="display:flex;gap:8px;flex-wrap:wrap">
-            <button class="copy-btn" id="full-copy-btn" onclick="copyFullToken()">COPY TOKEN</button>
-            <button class="copy-btn" onclick="copyFullEmail()" id="full-copy-email-btn">COPY EMAIL DRAFT</button>
-          </div>
-        </div>
-      </div>
-
-    </div><!-- /main -->
-  </div><!-- /layout -->
-</div><!-- /app -->
-
 <script>
-var SECRET = '';
-var lastToken = '';
-var lastEmail = '';
-var lastName  = '';
-var revokeTarget = '';
-var allEntries = [];
+var ADMIN_KEY = '';
+var allCodes = [];
+var activeFilter = 'all';
 
-// ── Lock / unlock ─────────────────────────────────────────────────────────────
+// ── Unlock ──────────────────────────────────────────────────────────────────
 function unlock() {
   var s = document.getElementById('secret-input').value.trim();
-  if (!s) { document.getElementById('lock-err').textContent = 'Enter your owner secret.'; return; }
-
-  // Verify by calling list endpoint — if 401 it's wrong
+  if (!s) { document.getElementById('lock-err').textContent = 'Enter your admin key.'; return; }
   document.getElementById('lock-err').textContent = 'Verifying…';
-  fetch('/.netlify/functions/issue-demo?action=list', {
-    headers: { 'X-Owner-Secret': s }
+  fetch('/.netlify/functions/forge-access', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'X-Admin-Key': s },
+    body: JSON.stringify({ action: 'list' })
   }).then(function(r) {
     if (r.status === 401) {
-      document.getElementById('lock-err').textContent = 'Invalid secret. Try again.';
+      document.getElementById('lock-err').textContent = 'Invalid admin key.';
       document.getElementById('secret-input').value = '';
       document.getElementById('secret-input').focus();
       return;
     }
-    SECRET = s;
-    document.getElementById('lock').style.display = 'none';
-    document.getElementById('app').style.display = 'block';
-    r.json().then(updateStats);
+    return r.json().then(function(data) {
+      ADMIN_KEY = s;
+      document.getElementById('lock').style.display = 'none';
+      document.getElementById('app').style.display = 'block';
+      updateStats(data.codes || []);
+    });
   }).catch(function() {
-    document.getElementById('lock-err').textContent = 'Connection error. Is the site deployed?';
+    document.getElementById('lock-err').textContent = 'Connection error.';
   });
 }
-
-document.getElementById('secret-input').addEventListener('keydown', function(e) {
-  if (e.key === 'Enter') unlock();
-});
+document.getElementById('secret-input').addEventListener('keydown', function(e) { if (e.key === 'Enter') unlock(); });
 
 function lockOut() {
-  SECRET = '';
+  ADMIN_KEY = '';
   document.getElementById('app').style.display = 'none';
   document.getElementById('lock').style.display = 'flex';
   document.getElementById('secret-input').value = '';
   document.getElementById('lock-err').textContent = '';
 }
 
-// ── Panel nav ─────────────────────────────────────────────────────────────────
-function showPanel(name) {
+// ── Stats ────────────────────────────────────────────────────────────────────
+function updateStats(codes) {
+  allCodes = codes;
+  document.getElementById('stat-total').textContent = codes.length;
+  document.getElementById('stat-active').textContent = codes.filter(c => !c.used && !c.revoked).length;
+  document.getElementById('stat-used').textContent = codes.filter(c => c.used && !c.revoked).length;
+  document.getElementById('stat-revoked').textContent = codes.filter(c => c.revoked).length;
+}
+
+// ── Tabs ─────────────────────────────────────────────────────────────────────
+function switchTab(name) {
   document.querySelectorAll('.panel').forEach(function(p) { p.classList.remove('active'); });
-  document.querySelectorAll('.nav-item').forEach(function(n) { n.classList.remove('active'); });
+  document.querySelectorAll('.tab').forEach(function(t) { t.classList.remove('active'); });
   document.getElementById('panel-' + name).classList.add('active');
-  document.getElementById('nav-' + name).classList.add('active');
+  document.getElementById('tab-' + name).classList.add('active');
   if (name === 'list') loadList();
 }
 
-// ── Issue token ───────────────────────────────────────────────────────────────
-function issueToken() {
-  var email = document.getElementById('f-email').value.trim();
-  var name  = document.getElementById('f-name').value.trim();
-  var days  = parseInt(document.getElementById('f-days').value);
-  var note  = document.getElementById('f-note').value.trim();
+// ── Tier selector ────────────────────────────────────────────────────────────
+function selectTier(span) {
+  var radio = span.previousElementSibling;
+  radio.checked = true;
+  // Update all buttons in same group
+  var name = radio.name;
+  document.querySelectorAll('input[name="' + name + '"]').forEach(function(r) {
+    r.nextElementSibling.style.background = '';
+    r.nextElementSibling.style.borderColor = '';
+    r.nextElementSibling.style.color = '';
+  });
+  span.style.background = 'var(--amber-d)';
+  span.style.borderColor = 'var(--amber)';
+  span.style.color = 'var(--amber)';
+}
 
-  if (!email) { toast('Email is required', 'error'); return; }
+function getTier(name) {
+  var checked = document.querySelector('input[name="' + name + '"]:checked');
+  return checked ? checked.value : 'commercial';
+}
 
+// ── Issue access code ─────────────────────────────────────────────────────────
+function issueCode() {
   var btn = document.getElementById('issue-btn');
   btn.disabled = true;
-  btn.innerHTML = '<span class="spin"></span> GENERATING…';
-
-  fetch('/.netlify/functions/issue-demo?action=issue', {
+  btn.innerHTML = '<span class="spin"></span> Generating…';
+  var body = {
+    action: 'issue',
+    email: document.getElementById('i-email').value.trim(),
+    note: document.getElementById('i-note').value.trim(),
+    tier: getTier('tier'),
+    duration_days: parseInt(document.getElementById('i-days').value),
+    reusable: document.getElementById('i-reusable').value === 'true',
+  };
+  fetch('/.netlify/functions/forge-access', {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json', 'X-Owner-Secret': SECRET },
-    body: JSON.stringify({ email: email, name: name, days: days, note: note }),
-  })
-  .then(function(r) { return r.json(); })
-  .then(function(data) {
+    headers: { 'Content-Type': 'application/json', 'X-Admin-Key': ADMIN_KEY },
+    body: JSON.stringify(body)
+  }).then(function(r) { return r.json(); }).then(function(d) {
     btn.disabled = false;
-    btn.textContent = 'GENERATE TOKEN →';
-
-    if (data.error) { toast(data.error, 'error'); return; }
-
-    lastToken = data.token;
-    lastEmail = email;
-    lastName  = name || email;
-
-    var out = document.getElementById('token-out');
-    out.classList.add('show');
-
-    document.getElementById('token-meta').innerHTML =
-      '<div class="token-meta-item"><span>Email: </span><strong>' + escHtml(email) + '</strong></div>' +
-      (name ? '<div class="token-meta-item"><span>Name: </span><strong>' + escHtml(name) + '</strong></div>' : '') +
-      '<div class="token-meta-item"><span>Tier: </span><strong>' + escHtml((document.getElementById('f-tier')||{value:'commercial'}).value.toUpperCase()) + '</strong></div>' +
-      '<div class="token-meta-item"><span>Expires: </span><strong>' + new Date(data.expires).toLocaleDateString('en-US', {month:'short',day:'numeric',year:'numeric'}) + '</strong></div>' +
-      (note ? '<div class="token-meta-item"><span>Note: </span><strong>' + escHtml(note) + '</strong></div>' : '');
-
-    document.getElementById('token-val').textContent = data.token;
-    document.getElementById('copy-btn').textContent = 'COPY TOKEN';
-    document.getElementById('copy-btn').classList.remove('copied');
-    toast('Token issued for ' + (name || email), 'success');
-
-    // Reset stats
-    loadStats();
-  })
-  .catch(function(e) {
+    btn.textContent = 'Generate Code →';
+    if (d.error) { toast(d.error, 'err'); return; }
+    var rc = document.getElementById('issue-result');
+    rc.classList.add('show');
+    document.getElementById('result-code').textContent = d.code;
+    document.getElementById('result-meta').innerHTML =
+      'Tier: <span>' + d.tier.toUpperCase() + '</span> · ' +
+      'Duration: <span>' + d.duration_days + ' days</span>' +
+      (d.email ? ' · For: <span>' + escHtml(d.email) + '</span>' : '') +
+      (d.reusable ? ' · <span>REUSABLE</span>' : ' · <span>Single use</span>');
+    var link = d.usage_url || ('https://nvmillfindoutmyself.com/patterns/?access_code=' + d.code);
+    document.getElementById('result-link').textContent = link;
+    document.getElementById('result-link').href = link;
+    toast('Code issued: ' + d.code, 'ok');
+    loadList();
+  }).catch(function() {
     btn.disabled = false;
-    btn.textContent = 'GENERATE TOKEN →';
-    toast('Error: ' + e.message, 'error');
+    btn.textContent = 'Generate Code →';
+    toast('Request failed', 'err');
   });
 }
 
-function copyToken() {
-  navigator.clipboard.writeText(lastToken).then(function() {
-    var btn = document.getElementById('copy-btn');
-    btn.textContent = '✓ COPIED';
-    btn.classList.add('copied');
-    setTimeout(function() {
-      btn.textContent = 'COPY TOKEN';
-      btn.classList.remove('copied');
-    }, 2000);
+// ── Mint JWT token ─────────────────────────────────────────────────────────
+function mintToken() {
+  var btn = document.getElementById('token-btn');
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spin"></span> Minting…';
+  fetch('/.netlify/functions/forge-access', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'X-Admin-Key': ADMIN_KEY },
+    body: JSON.stringify({
+      action: 'issue_token',
+      email: document.getElementById('t-email').value.trim(),
+      note: document.getElementById('t-note').value.trim(),
+      tier: getTier('tier-t'),
+      duration_days: parseInt(document.getElementById('t-days').value),
+    })
+  }).then(function(r) { return r.json(); }).then(function(d) {
+    btn.disabled = false;
+    btn.textContent = 'Mint Token →';
+    if (d.error) { toast(d.error, 'err'); return; }
+    var rc = document.getElementById('token-result');
+    rc.classList.add('show');
+    document.getElementById('result-token').textContent = d.token;
+    document.getElementById('result-token-meta').innerHTML =
+      'Tier: <span>' + d.tier.toUpperCase() + '</span> · ' +
+      'Duration: <span>' + d.duration_days + ' days</span>' +
+      (d.email ? ' · For: <span>' + escHtml(d.email) + '</span>' : '');
+    toast('Token minted', 'ok');
+  }).catch(function() {
+    btn.disabled = false;
+    btn.textContent = 'Mint Token →';
+    toast('Request failed', 'err');
   });
 }
 
-function copyEmail() {
-  var days = document.getElementById('f-days').value;
-  var expires = new Date(Date.now() + days * 86400000).toLocaleDateString('en-US', {month:'long',day:'numeric',year:'numeric'});
-  var draft =
-    'Subject: Your DroneClear Commercial Access — ' + lastName + '\n\n' +
-    'Hi ' + (lastName || 'there') + ',\n\n' +
-    'Here\'s your DroneClear Commercial access token. This gives you access to Wingman AI (Claude), PIE predictions, the gap analyzer, and compliance tools — through ' + expires + '.\n\n' +
-    'To activate:\n' +
-    '1. Go to nvmillbuilditmyself.com/wingman/\n' +
-    '2. Open Settings (gear icon, top right)\n' +
-    '3. Paste this token under "Subscription Token"\n' +
-    '4. Claude will activate automatically\n\n' +
-    'TOKEN:\n' + lastToken + '\n\n' +
-    'Setup guide + FAQ: nvmillbuilditmyself.com/start/\n\n' +
-    'Let me know if you have any questions.\n\n' +
-    '— Jeremiah\n' +
-    'Midwest Nice Advisory LLC\n' +
-    'Jeremiah@midwestniceuas.com';
-
-  navigator.clipboard.writeText(draft).then(function() {
-    var btn = document.getElementById('copy-email-btn');
-    btn.textContent = '✓ COPIED';
-    btn.classList.add('copied');
-    setTimeout(function() { btn.textContent = 'COPY EMAIL DRAFT'; btn.classList.remove('copied'); }, 2500);
-    toast('Email draft copied to clipboard', 'info');
-  });
-}
-
-// ── Token list ────────────────────────────────────────────────────────────────
+// ── List all codes ─────────────────────────────────────────────────────────
 function loadList() {
-  document.getElementById('list-container').innerHTML =
-    '<div class="empty-state"><div class="spin" style="width:16px;height:16px;margin:0 auto 12px"></div><p>Loading…</p></div>';
-
-  fetch('/.netlify/functions/issue-demo?action=list', {
-    headers: { 'X-Owner-Secret': SECRET }
-  })
-  .then(function(r) { return r.json(); })
-  .then(function(data) {
-    allEntries = data.entries || [];
-    updateStats(data);
-    renderList(allEntries);
-  })
-  .catch(function(e) {
-    document.getElementById('list-container').innerHTML =
-      '<div class="empty-state"><div class="glyph">⚠</div><p>' + e.message + '</p></div>';
+  document.getElementById('list-container').innerHTML = '<div class="empty-state">Loading…</div>';
+  fetch('/.netlify/functions/forge-access', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'X-Admin-Key': ADMIN_KEY },
+    body: JSON.stringify({ action: 'list' })
+  }).then(function(r) { return r.json(); }).then(function(d) {
+    allCodes = d.codes || [];
+    updateStats(allCodes);
+    renderList();
+  }).catch(function() {
+    document.getElementById('list-container').innerHTML = '<div class="empty-state">Failed to load.</div>';
   });
 }
 
-function loadStats() {
-  fetch('/.netlify/functions/issue-demo?action=list', {
-    headers: { 'X-Owner-Secret': SECRET }
-  }).then(function(r) { return r.json(); }).then(updateStats).catch(function(){});
+function filterList() { renderList(); }
+function setFilter(f, btn) {
+  activeFilter = f;
+  document.querySelectorAll('.filter-btn').forEach(function(b) { b.classList.remove('on'); });
+  btn.classList.add('on');
+  renderList();
 }
 
-function updateStats(data) {
-  if (!data || !data.entries) return;
-  var entries = data.entries;
-  var active  = entries.filter(function(e) { return e.status === 'active'; }).length;
-  var expired = entries.filter(function(e) { return e.status === 'expired'; }).length;
-  var revoked = entries.filter(function(e) { return e.status === 'revoked'; }).length;
-  document.getElementById('stat-total').textContent   = entries.length;
-  document.getElementById('stat-active').textContent  = active;
-  document.getElementById('stat-expired').textContent = expired;
-  document.getElementById('stat-revoked').textContent = revoked;
-}
-
-function filterList() {
-  var q = document.getElementById('list-search').value.toLowerCase();
-  var filtered = allEntries.filter(function(e) {
-    return (e.email || '').toLowerCase().includes(q) ||
-           (e.name  || '').toLowerCase().includes(q) ||
-           (e.note  || '').toLowerCase().includes(q);
+function renderList() {
+  var q = (document.getElementById('list-search').value || '').toLowerCase();
+  var codes = allCodes.filter(function(c) {
+    if (activeFilter === 'active' && (c.used || c.revoked)) return false;
+    if (activeFilter === 'used' && !c.used) return false;
+    if (activeFilter === 'revoked' && !c.revoked) return false;
+    if (q) {
+      var hay = ((c.code || '') + ' ' + (c.email || '') + ' ' + (c.note || '') + ' ' + (c.tier || '')).toLowerCase();
+      return hay.includes(q);
+    }
+    return true;
   });
-  renderList(filtered);
-}
 
-function renderList(entries) {
-  if (!entries || entries.length === 0) {
-    document.getElementById('list-container').innerHTML =
-      '<div class="empty-state"><div class="glyph">◎</div><p>No tokens found.</p></div>';
+  if (!codes.length) {
+    document.getElementById('list-container').innerHTML = '<div class="empty-state">No codes found.</div>';
     return;
   }
 
-  // Sort: active first, then expired, then revoked
-  var sorted = entries.slice().sort(function(a, b) {
-    var order = { active: 0, expired: 1, revoked: 2 };
-    return (order[a.status] || 0) - (order[b.status] || 0);
+  var html = '';
+  codes.forEach(function(c) {
+    var rowClass = 'token-row' + (c.revoked ? ' revoked' : c.used && !c.reusable ? ' used' : '');
+    var created = c.created_at ? new Date(c.created_at).toLocaleDateString() : '—';
+    var exp = c.exp ? new Date(c.exp).toLocaleDateString() : '—';
+    var usageLink = 'https://nvmillfindoutmyself.com/patterns/?access_code=' + c.code;
+    html += '<div class="' + rowClass + '">';
+    html += '  <div class="tr-head">';
+    html += '    <div class="tr-code" onclick="copyText(\'' + escHtml(c.code) + '\', \'Code copied\')">' + escHtml(c.code) + '</div>';
+    html += '    <div class="tr-badges">';
+    html += '      <span class="badge badge-' + (c.tier||'commercial') + '">' + (c.tier||'commercial').toUpperCase() + '</span>';
+    if (c.revoked) html += '<span class="badge badge-revoked">REVOKED</span>';
+    else if (c.used && !c.reusable) html += '<span class="badge badge-used">REDEEMED</span>';
+    if (c.reusable) html += '<span class="badge badge-reusable">REUSABLE</span>';
+    html += '    </div>';
+    html += '  </div>';
+    html += '  <div class="tr-meta">';
+    if (c.email) html += 'For: <span>' + escHtml(c.email) + '</span> · ';
+    if (c.note) html += 'Note: <span>' + escHtml(c.note) + '</span> · ';
+    html += 'Created: <span>' + created + '</span> · Expires: <span>' + exp + '</span>';
+    if (c.used_at) html += ' · Used: <span>' + new Date(c.used_at).toLocaleDateString() + '</span>';
+    html += '  </div>';
+    html += '  <div class="tr-actions">';
+    html += '    <button class="copy-btn" onclick="copyText(\'' + escHtml(c.code) + '\', \'Code copied\')">Copy code</button>';
+    html += '    <button class="copy-btn" onclick="copyText(\'' + escHtml(usageLink) + '\', \'Link copied\')">Copy link</button>';
+    if (!c.revoked) html += '    <button class="btn-danger btn" onclick="confirmRevoke(\'' + escHtml(c.code) + '\')">Revoke</button>';
+    html += '  </div>';
+    html += '</div>';
   });
-
-  var html = sorted.map(function(e) {
-    var badgeClass = 'badge-' + e.status;
-    var daysStr = e.status === 'active'
-      ? '<strong>' + e.daysLeft + '</strong> days left'
-      : e.status === 'expired' ? 'Expired' : 'Revoked';
-    var issuedStr = e.iat ? new Date(e.iat).toLocaleDateString('en-US', {month:'short',day:'numeric',year:'numeric'}) : '—';
-    var expStr    = e.exp ? new Date(e.exp).toLocaleDateString('en-US', {month:'short',day:'numeric',year:'numeric'}) : '—';
-
-    var tierBadge = (e.tier === 'full' || e.tier === 'agency')
-      ? '<span style="font-size:10px;color:var(--cyan);border:1px solid var(--cyan);padding:1px 5px;margin-left:6px">FULL</span>'
-      : e.tier === 'dfr'
-      ? '<span style="font-size:10px;color:var(--amber);border:1px solid var(--amber);padding:1px 5px;margin-left:6px">DFR</span>'
-      : (e.tier === 'commercial' || e.tier === 'pro')
-      ? '<span style="font-size:10px;color:#aaa;border:1px solid #aaa;padding:1px 5px;margin-left:6px">COM</span>'
-      : '';
-    return '<div class="token-row ' + e.status + '">' +
-      '<div>' +
-        '<div class="tr-name">' + escHtml(e.name || e.email) + tierBadge + '</div>' +
-        '<div class="tr-email">' + escHtml(e.email) + '</div>' +
-        (e.note ? '<div class="tr-note">' + escHtml(e.note) + '</div>' : '') +
-        '<div class="tr-meta">' +
-          '<span class="tr-badge ' + badgeClass + '">' + e.status.toUpperCase() + '</span>' +
-          '<span class="tr-days">' + daysStr + '</span>' +
-          '<span class="tr-issued">Issued: ' + issuedStr + ' · Expires: ' + expStr + '</span>' +
-        '</div>' +
-      '</div>' +
-      '<div class="tr-actions">' +
-        (e.status === 'active'
-          ? '<button class="btn btn-danger" onclick="confirmRevoke(\'' + escAttr(e.email) + '\',\'' + escAttr(e.name||e.email) + '\')">REVOKE</button>'
-          : '<span style="font-size:10px;color:var(--g2);letter-spacing:1px">' + e.status.toUpperCase() + '</span>') +
-      '</div>' +
-    '</div>';
-  }).join('');
-
   document.getElementById('list-container').innerHTML = html;
 }
 
-// ── Revoke ────────────────────────────────────────────────────────────────────
-function confirmRevoke(email, name) {
-  revokeTarget = email;
-  document.getElementById('confirm-body').textContent =
-    'Revoke access for ' + name + ' (' + email + ')? This takes effect immediately.';
-  document.getElementById('confirm-overlay').classList.add('show');
+// ── Revoke ────────────────────────────────────────────────────────────────
+var revokeTarget = '';
+function confirmRevoke(code) {
+  revokeTarget = code;
+  document.getElementById('confirm-title').textContent = 'Revoke ' + code + '?';
+  document.getElementById('confirm-sub').textContent = 'This will immediately invalidate the code. Cannot be undone.';
+  document.getElementById('confirm-ok').onclick = doRevoke;
+  document.getElementById('confirm-modal').classList.add('show');
 }
-
-function closeConfirm() {
-  document.getElementById('confirm-overlay').classList.remove('show');
-  revokeTarget = '';
-}
-
+function closeConfirm() { document.getElementById('confirm-modal').classList.remove('show'); }
 function doRevoke() {
-  if (!revokeTarget) return;
-  var email = revokeTarget;
   closeConfirm();
-
-  fetch('/.netlify/functions/issue-demo?action=revoke', {
+  fetch('/.netlify/functions/forge-access', {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json', 'X-Owner-Secret': SECRET },
-    body: JSON.stringify({ email: email }),
-  })
-  .then(function(r) { return r.json(); })
-  .then(function(data) {
-    if (data.error) { toast(data.error, 'error'); return; }
-    toast('Revoked access for ' + email, 'success');
+    headers: { 'Content-Type': 'application/json', 'X-Admin-Key': ADMIN_KEY },
+    body: JSON.stringify({ action: 'revoke', code: revokeTarget })
+  }).then(function(r) { return r.json(); }).then(function(d) {
+    if (d.error) { toast(d.error, 'err'); return; }
+    toast('Revoked: ' + revokeTarget, 'ok');
     loadList();
-  })
-  .catch(function(e) { toast('Error: ' + e.message, 'error'); });
+  }).catch(function() { toast('Revoke failed', 'err'); });
 }
 
-// ── Toast ─────────────────────────────────────────────────────────────────────
+// ── Utilities ─────────────────────────────────────────────────────────────
+function copyText(text, msg) {
+  navigator.clipboard.writeText(text).then(function() {
+    toast(msg || 'Copied', 'ok');
+  }).catch(function() {
+    toast('Copy failed — select manually', 'err');
+  });
+}
+
+function escHtml(s) {
+  return String(s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+}
+
 var toastTimer;
 function toast(msg, type) {
-  var el = document.getElementById('toast');
-  el.textContent = msg;
-  el.className = 'show ' + (type || 'info');
+  var t = document.getElementById('toast');
+  t.textContent = msg;
+  t.className = 'show ' + (type || '');
   clearTimeout(toastTimer);
-  toastTimer = setTimeout(function() { el.className = ''; }, 3000);
+  toastTimer = setTimeout(function() { t.className = ''; }, 3000);
 }
 
-// ── Utils ─────────────────────────────────────────────────────────────────────
-function escHtml(s) {
-  return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
-}
-function escAttr(s) {
-  return String(s||'').replace(/'/g,"\\'").replace(/"/g,'&quot;');
-}
-
-// ── Panel switching (extended to cover dfr + full panels) ─────────────────────
-var _origShowPanel = showPanel;
-showPanel = function(name) {
-  var extras = ['dfr', 'full'];
-  extras.forEach(function(id) {
-    var p = document.getElementById('panel-' + id);
-    var n = document.getElementById('nav-' + (id === 'dfr' ? 'dfr-issue' : id));
-    if (p) p.classList.remove('active');
-    if (n) n.classList.remove('active');
-  });
-  if (name === 'dfr' || name === 'full') {
-    ['issue','list'].forEach(function(id) {
-      var p = document.getElementById('panel-' + id);
-      var n = document.getElementById('nav-' + id);
-      if (p) p.classList.remove('active');
-      if (n) n.classList.remove('active');
-    });
-    var panel = document.getElementById('panel-' + name);
-    var navId = name === 'dfr' ? 'nav-dfr-issue' : 'nav-full';
-    var nav   = document.getElementById(navId);
-    if (panel) panel.classList.add('active');
-    if (nav)   nav.classList.add('active');
-  } else {
-    _origShowPanel(name);
-  }
-};
-
-// ── DFR token ─────────────────────────────────────────────────────────────────
-var lastDFRToken = '', lastDFREmail = '', lastDFRName = '';
-
-function issueDFRToken() {
-  var email = (document.getElementById('dfr-email').value || '').trim();
-  var name  = (document.getElementById('dfr-name').value  || '').trim();
-  var days  = document.getElementById('dfr-days').value;
-  var note  = (document.getElementById('dfr-note').value  || '').trim();
-  if (!email) { toast('Email required', 'error'); return; }
-
-  var btn = document.getElementById('dfr-issue-btn');
-  btn.disabled = true;
-  btn.innerHTML = '<span class="spin"></span> ISSUING…';
-
-  fetch('/.netlify/functions/issue-demo?action=issue', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json', 'X-Owner-Secret': SECRET },
-    body: JSON.stringify({ email, name, days: parseInt(days), note,
-                           tier: 'dfr', scope: ['dfr','wingman','pie','compliance','intel'] }),
-  })
-  .then(function(r) { return r.json(); })
-  .then(function(data) {
-    btn.disabled = false;
-    btn.textContent = 'GENERATE DFR TOKEN →';
-    if (data.error) { toast(data.error, 'error'); return; }
-    lastDFRToken = data.token;
-    lastDFREmail = email;
-    lastDFRName  = name || email;
-
-    var out = document.getElementById('dfr-token-out');
-    out.classList.add('show');
-    document.getElementById('dfr-token-meta').innerHTML =
-      '<div class="token-meta-item"><span>Email: </span><strong>' + escHtml(email) + '</strong></div>' +
-      (name ? '<div class="token-meta-item"><span>Name: </span><strong>' + escHtml(name) + '</strong></div>' : '') +
-      '<div class="token-meta-item"><span>Tier: </span><strong>DFR</strong></div>' +
-      '<div class="token-meta-item"><span>Expires: </span><strong>' + new Date(data.expires).toLocaleDateString('en-US', {month:'short',day:'numeric',year:'numeric'}) + '</strong></div>';
-    document.getElementById('dfr-token-val').textContent = data.token;
-    document.getElementById('dfr-copy-btn').textContent = 'COPY TOKEN';
-    toast('DFR token issued for ' + (name || email), 'success');
-    loadStats();
-  })
-  .catch(function(e) {
-    btn.disabled = false;
-    btn.textContent = 'GENERATE DFR TOKEN →';
-    toast('Error: ' + e.message, 'error');
-  });
-}
-
-function copyDFRToken() {
-  navigator.clipboard.writeText(lastDFRToken).then(function() {
-    var btn = document.getElementById('dfr-copy-btn');
-    btn.textContent = '✓ COPIED';
-    btn.classList.add('copied');
-    setTimeout(function() { btn.textContent = 'COPY TOKEN'; btn.classList.remove('copied'); }, 2000);
-  });
-}
-
-function copyDFREmail() {
-  var days = document.getElementById('dfr-days').value;
-  var expires = new Date(Date.now() + days * 86400000).toLocaleDateString('en-US', {month:'long',day:'numeric',year:'numeric'});
-  var draft =
-    'Subject: Your DroneClear DFR Access — ' + lastDFRName + '\n\n' +
-    'Hi ' + (lastDFRName || 'there') + ',\n\n' +
-    'Here\'s your DroneClear DFR access token. This gives you access to Wingman AI (Claude), the DFR intel feed, ' +
-    'platform database, grant eligibility matrix, waiver templates, and the full compliance dashboard — through ' + expires + '.\n\n' +
-    'To activate:\n' +
-    '1. Go to nvmillbuilditmyself.com/wingman/\n' +
-    '2. Open Settings (gear icon, top right)\n' +
-    '3. Paste this token under "Subscription Token"\n' +
-    '4. Claude will activate automatically\n\n' +
-    'TOKEN:\n' + lastDFRToken + '\n\n' +
-    'DFR Intel: nvmillbuilditmyself.com/intel-dfr/\n' +
-    'Setup guide: nvmillbuilditmyself.com/start/\n\n' +
-    'Let me know if you have any questions.\n\n' +
-    '— Jeremiah\n' +
-    'Midwest Nice Advisory LLC\n' +
-    'Jeremiah@midwestniceuas.com';
-
-  navigator.clipboard.writeText(draft).then(function() {
-    var btn = document.getElementById('dfr-copy-email-btn');
-    btn.textContent = '✓ COPIED';
-    btn.classList.add('copied');
-    setTimeout(function() { btn.textContent = 'COPY EMAIL DRAFT'; btn.classList.remove('copied'); }, 2500);
-    toast('DFR email draft copied', 'info');
-  });
-}
-
-// ── Full Access token ─────────────────────────────────────────────────────────
-var lastFullToken = '', lastFullEmail = '', lastFullName = '';
-
-function issueFullToken() {
-  var email = (document.getElementById('full-email').value || '').trim();
-  var name  = (document.getElementById('full-name').value  || '').trim();
-  var days  = document.getElementById('full-days').value;
-  var note  = (document.getElementById('full-note').value  || '').trim();
-  if (!email) { toast('Email required', 'error'); return; }
-
-  var btn = document.getElementById('full-issue-btn');
-  btn.disabled = true;
-  btn.innerHTML = '<span class="spin"></span> ISSUING…';
-
-  fetch('/.netlify/functions/issue-demo?action=issue', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json', 'X-Owner-Secret': SECRET },
-    body: JSON.stringify({ email, name, days: parseInt(days), note, tier: 'agency' }),
-  })
-  .then(function(r) { return r.json(); })
-  .then(function(data) {
-    btn.disabled = false;
-    btn.textContent = 'GENERATE AGENCY / FULL ACCESS TOKEN →';
-    if (data.error) { toast(data.error, 'error'); return; }
-    lastFullToken = data.token;
-    lastFullEmail = email;
-    lastFullName  = name || email;
-
-    var out = document.getElementById('full-token-out');
-    out.classList.add('show');
-    document.getElementById('full-token-meta').innerHTML =
-      '<div class="token-meta-item"><span>Email: </span><strong>' + escHtml(email) + '</strong></div>' +
-      (name ? '<div class="token-meta-item"><span>Name: </span><strong>' + escHtml(name) + '</strong></div>' : '') +
-      '<div class="token-meta-item"><span>Tier: </span><strong style="color:var(--cyan)">FULL ACCESS</strong></div>' +
-      '<div class="token-meta-item"><span>Scope: </span><strong>' + (data.scope || []).join(' · ') + '</strong></div>' +
-      '<div class="token-meta-item"><span>Expires: </span><strong>' + new Date(data.expires).toLocaleDateString('en-US', {month:'short',day:'numeric',year:'numeric'}) + '</strong></div>';
-    document.getElementById('full-token-val').textContent = data.token;
-    document.getElementById('full-copy-btn').textContent = 'COPY TOKEN';
-    toast('Full access token issued for ' + (name || email), 'success');
-    loadStats();
-  })
-  .catch(function(e) {
-    btn.disabled = false;
-    btn.textContent = 'GENERATE AGENCY / FULL ACCESS TOKEN →';
-    toast('Error: ' + e.message, 'error');
-  });
-}
-
-function copyFullToken() {
-  navigator.clipboard.writeText(lastFullToken).then(function() {
-    var btn = document.getElementById('full-copy-btn');
-    btn.textContent = '✓ COPIED';
-    btn.classList.add('copied');
-    setTimeout(function() { btn.textContent = 'COPY TOKEN'; btn.classList.remove('copied'); }, 2000);
-  });
-}
-
-function copyFullEmail() {
-  var days = document.getElementById('full-days').value;
-  var expires = new Date(Date.now() + days * 86400000).toLocaleDateString('en-US', {month:'long',day:'numeric',year:'numeric'});
-  var draft =
-    'Subject: Your DroneClear Full Access Token — ' + lastFullName + '\n\n' +
-    'Hi ' + (lastFullName || 'there') + ',\n\n' +
-    'Here\'s your DroneClear full access token. This unlocks everything: Wingman AI (Claude), PIE predictions, ' +
-    'DFR intel feed, platform database, grant eligibility matrix, waiver templates, compliance dashboard, ' +
-    'and the Vault — through ' + expires + '.\n\n' +
-    'To activate:\n' +
-    '1. Go to nvmillbuilditmyself.com/wingman/\n' +
-    '2. Open Settings (gear icon, top right)\n' +
-    '3. Paste this token under "Subscription Token"\n' +
-    '4. All features will activate automatically\n\n' +
-    'TOKEN:\n' + lastFullToken + '\n\n' +
-    'Platform: nvmillbuilditmyself.com\n' +
-    'DFR Intel: nvmillbuilditmyself.com/intel-dfr/\n' +
-    'Setup guide: nvmillbuilditmyself.com/start/\n\n' +
-    'Let me know if you have any questions.\n\n' +
-    '— Jeremiah\n' +
-    'Midwest Nice Advisory LLC\n' +
-    'Jeremiah@midwestniceuas.com';
-
-  navigator.clipboard.writeText(draft).then(function() {
-    var btn = document.getElementById('full-copy-email-btn');
-    btn.textContent = '✓ COPIED';
-    btn.classList.add('copied');
-    setTimeout(function() { btn.textContent = 'COPY EMAIL DRAFT'; btn.classList.remove('copied'); }, 2500);
-    toast('Full access email draft copied', 'info');
-  });
-}
-</script>
-<!-- Page Analytics — fires batch events to /.netlify/functions/analytics -->
-<script>
-(function(){
-  var E='https://thebluefairy.netlify.app/.netlify/functions/analytics-ingest';
-  var S='sess_'+crypto.randomUUID().replace(/-/g,'').slice(0,16);
-  var surface='admin';
-  var q=[],t=null,ps=Date.now(),ms=0,ix=0;
-  function rg(){try{var z=Intl.DateTimeFormat().resolvedOptions().timeZone;if(z.includes('America'))return'Americas';if(z.includes('Europe'))return'Europe';if(z.includes('Asia')||z.includes('Australia')||z.includes('Pacific'))return'Asia-Pacific';}catch(e){}return'Unknown';}
-  function mkEvent(type,action,payload){return{event_id:crypto.randomUUID(),timestamp:new Date().toISOString(),surface:surface,event_type:type,event_action:action,context:{session_id:S,geo_region:rg(),platform:/Android|iPhone|iPad/i.test(navigator.userAgent)?'mobile':'web',path:location.pathname},payload:payload||{},data_policy:{collection_tier:'anonymous'}};}
-  function fl(){if(t){clearTimeout(t);t=null;}if(!q.length)return;var b=q.splice(0);navigator.sendBeacon?navigator.sendBeacon(E,JSON.stringify({type:'batch',events:b})):fetch(E,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({type:'batch',events:b}),keepalive:true}).catch(function(){});}
-  function ev(type,action,payload){q.push(mkEvent(type,action,payload));if(q.length>=20)fl();else if(!t)t=setTimeout(fl,5000);}
-  // Page view
-  ev('page_view','view',{path:location.pathname,title:document.title});
-  // Scroll depth
-  var st=null;addEventListener('scroll',function(){var h=document.documentElement.scrollHeight-innerHeight;if(h>0){var p=Math.round(100*scrollY/h);if(p>ms)ms=p;}if(st)clearTimeout(st);st=setTimeout(function(){ev('engagement','scroll_depth',{depth_pct:ms,path:location.pathname});},2000);},{passive:true});
-  // Click tracking
-  addEventListener('click',function(e){ix++;var el=e.target.closest('a,button,[data-track]');if(!el)return;ev('interaction','click',{label:(el.dataset.track||el.textContent.trim()).substring(0,50),href:(el.href||'').substring(0,200),element:el.tagName.toLowerCase(),path:location.pathname});},{passive:true});
-  // Exit
-  function end(){ev('engagement','page_exit',{duration_sec:Math.round((Date.now()-ps)/1e3),max_scroll_pct:ms,interactions:ix,path:location.pathname});fl();}
-  addEventListener('visibilitychange',function(){if(document.visibilityState==='hidden')end();});
-  addEventListener('pagehide',end);
-  // Expose for page-specific events
-  window.__pageAnalytics={ev:ev,flush:fl,session:S};
-})();
+// Init tier buttons visual state
+document.querySelectorAll('.tier-opt:checked').forEach(function(r) {
+  var span = r.nextElementSibling;
+  span.style.background = 'var(--amber-d)';
+  span.style.borderColor = 'var(--amber)';
+  span.style.color = 'var(--amber)';
+});
 </script>
 </body>
 </html>
