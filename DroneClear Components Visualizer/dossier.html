@@ -345,7 +345,7 @@
     <div id="picker-view">
         <div class="picker-header">
             <h1>Manufacturer Dossier</h1>
-            <p>One page per vendor — status, M&amp;A history, parts, spec sheets, alternatives, and risk flags. Pulls from the Forge manufacturer registry, the §848 spec sheet index, the alternatives map, and the 3,800+ part database. Click any vendor to open their full dossier.</p>
+            <p>One page per vendor — status, M&amp;A history, parts, spec sheets, alternatives, and risk flags. Pulls from the Forge manufacturer registry, the §848 spec sheet index, the alternatives map, and the <span data-parts-count>3,800</span>+ part database. Click any vendor to open their full dossier.</p>
         </div>
         <div class="picker-search">
             <i class="ph ph-magnifying-glass"></i>
@@ -756,6 +756,22 @@
   addEventListener('pagehide',end);
   // Expose for page-specific events
   window.__pageAnalytics={ev:ev,flush:fl,session:S};
+})();
+</script>
+<script>
+(function(){
+  fetch('/static/miner_health.json').then(function(r){return r.ok?r.json():null})
+  .then(function(h){
+    var n = h && h.parts && h.parts.total ? h.parts.total.toLocaleString() : null;
+    if(!n) return;
+    // Update all data-parts-count spans
+    document.querySelectorAll('[data-parts-count]').forEach(function(el){
+      el.textContent = n;
+    });
+    // Update search placeholder
+    var si = document.getElementById('global-search-input');
+    if(si) si.placeholder = 'Search ' + n + '+ parts across all categories...';
+  }).catch(function(){});
 })();
 </script>
 </body>

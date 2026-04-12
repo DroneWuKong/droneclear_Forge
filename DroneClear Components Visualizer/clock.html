@@ -724,7 +724,7 @@ body {
     <div class="meth-factor">
       <div class="meth-weight">10 pts</div>
       <div class="meth-name">Price Pressure</div>
-      <div class="meth-desc">Percentage of tracked categories with >5% price increase vs prior snapshot. Sourced from daily median price computation across 4,000+ parts in the Forge DB.</div>
+      <div class="meth-desc">Percentage of tracked categories with >5% price increase vs prior snapshot. Sourced from daily median price computation across <span data-parts-count>4,000</span>+ parts in the Forge DB.</div>
     </div>
     <div class="meth-factor">
       <div class="meth-weight">10 pts</div>
@@ -1210,6 +1210,22 @@ loadData().then(() => {
       });
     });
   });
+})();
+</script>
+<script>
+(function(){
+  fetch('/static/miner_health.json').then(function(r){return r.ok?r.json():null})
+  .then(function(h){
+    var n = h && h.parts && h.parts.total ? h.parts.total.toLocaleString() : null;
+    if(!n) return;
+    // Update all data-parts-count spans
+    document.querySelectorAll('[data-parts-count]').forEach(function(el){
+      el.textContent = n;
+    });
+    // Update search placeholder
+    var si = document.getElementById('global-search-input');
+    if(si) si.placeholder = 'Search ' + n + '+ parts across all categories...';
+  }).catch(function(){});
 })();
 </script>
 </body>

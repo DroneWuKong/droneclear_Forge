@@ -661,7 +661,7 @@ a.brief-source-chip:hover{color:var(--text-s);border-color:var(--border-hi)}
   <div class="panel" id="panel-components">
     <p style="font-size:11px;color:var(--text-d);margin-bottom:12px">
       46 critical components tracked · Risk-scored by supply chain vulnerability, diversion risk &amp; geographic concentration ·
-      <a href="https://nvmillbuilditmyself.com/">Full DB: 3,800+ components</a>
+      <a href="https://nvmillbuilditmyself.com/">Full DB: <span data-parts-count>3,800</span>+ components</a>
     </p>
     <div id="component-table-wrap"></div>
   </div>
@@ -7073,6 +7073,22 @@ updateNavTokenStatus();
   });
 })();
 
+</script>
+<script>
+(function(){
+  fetch('/static/miner_health.json').then(function(r){return r.ok?r.json():null})
+  .then(function(h){
+    var n = h && h.parts && h.parts.total ? h.parts.total.toLocaleString() : null;
+    if(!n) return;
+    // Update all data-parts-count spans
+    document.querySelectorAll('[data-parts-count]').forEach(function(el){
+      el.textContent = n;
+    });
+    // Update search placeholder
+    var si = document.getElementById('global-search-input');
+    if(si) si.placeholder = 'Search ' + n + '+ parts across all categories...';
+  }).catch(function(){});
+})();
 </script>
 </body>
 </html>
