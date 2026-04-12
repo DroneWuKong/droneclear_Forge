@@ -2671,37 +2671,6 @@ function renderComponents() {
     </div>`;
   });
   w.innerHTML = html;
-  // Click handlers for detail modal
-  w.querySelectorAll("[data-comp-name]").forEach(function(el) {
-    el.addEventListener("click", function(e) {
-      if (e.target.tagName === "BUTTON" && e.target !== el) return;
-      var comp = COMPONENTS.find(function(x){return x.name===el.dataset.compName;}); if(!comp) return;
-      var rc = riskColors[comp.risk]||"var(--text-d)";
-      var rl = riskLabels[comp.risk]||comp.risk;
-      var sc = statusColor[comp.status]||"var(--text-d)";
-      var delta = Math.round(((comp.price-comp.avg)/(comp.avg||1))*100);
-      var body = "";
-      body += '<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px">';
-      body += '<span style="font-size:10px;padding:2px 7px;border-radius:4px;background:'+rc+'20;color:'+rc+';font-weight:600">'+rl+'</span>';
-      body += '<span style="font-size:10px;padding:2px 7px;border-radius:4px;background:'+sc+'20;color:'+sc+';font-weight:600">'+(comp.status||"").toUpperCase()+'</span>';
-      if (comp.lead) body += '<span class="badge" style="background:var(--surface);color:var(--text-d)">'+comp.lead+'wk lead</span>';
-      body += '</div>';
-      if (comp.price) {
-        body += '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:8px;margin-bottom:10px">';
-        body += '<div style="background:var(--surface);border-radius:6px;padding:8px 10px"><div style="font:500 10px var(--mono);color:var(--text-d);margin-bottom:2px">PRICE</div><div style="font:700 14px var(--mono)">$'+comp.price.toLocaleString()+'</div>'+(delta?'<div style="font:10px var(--mono);color:'+(delta>0?"var(--red)":"var(--green)")+'">'+( delta>0?"+":"")+delta+'% vs avg</div>':"")+'</div>';
-        if (comp.avg) body += '<div style="background:var(--surface);border-radius:6px;padding:8px 10px"><div style="font:500 10px var(--mono);color:var(--text-d);margin-bottom:2px">AVG</div><div style="font:700 14px var(--mono);color:var(--text-s)">$'+comp.avg.toLocaleString()+'</div></div>';
-        body += '</div>';
-      }
-      if (comp.note) body += '<div style="background:var(--surface);border-radius:6px;padding:8px 10px;margin-bottom:10px;font:400 11px var(--font);color:var(--text-s);line-height:1.6">'+comp.note+'</div>';
-      if (comp.users && comp.users.length) { body += '<div><div style="font:600 10px var(--mono);color:var(--text-d);margin-bottom:5px">Used By</div><div style="display:flex;gap:4px;flex-wrap:wrap">'+comp.users.map(function(u){return '<span class="badge badge-blue">'+u+'</span>';}).join("")+'</div></div>'; }
-      var refs = [];
-      if (comp.risk==="diversion"||comp.risk==="china_source") refs.push({name:"NDAA §889 Covered List",url:"https://www.sam.gov"});
-      if (comp.risk==="single_source"||comp.risk==="allocated") refs.push({name:"Blue UAS Cleared List",url:"https://www.diu.mil/blue-uas-cleared-list"});
-      refs.push({name:"Browse in Forge Parts DB",url:"https://forgeprole.netlify.app"});
-      body += '<div style="margin-top:10px"><div style="font:600 10px var(--mono);color:var(--text-d);margin-bottom:5px">REFERENCES</div><div style="display:flex;flex-direction:column;gap:3px">'+refs.map(function(r){return '<a href="'+r.url+'" target="_blank" rel="noopener" style="font:500 11px var(--font);color:var(--cyan,#00d4ff);text-decoration:none;background:var(--surface);border-radius:5px;padding:5px 8px;display:block">'+r.name+' ↗</a>';}).join("")+'</div></div>';
-      openDetailModal(comp.name, comp.cat+" · "+comp.status, body);
-    });
-  });
 }
 
 function renderCompRow(c, riskColors, riskLabels, statusColor) {
@@ -2725,16 +2694,24 @@ function renderCompRow(c, riskColors, riskLabels, statusColor) {
       </div>
       <div id="${eid}_chev" style="font-size:9px;color:var(--text-xd);flex-shrink:0;transition:transform .2s">▼</div>
     </div>
-    <div id="${eid}" style="display:none;padding:0 10px 9px;border-top:1px solid var(--border)">
-      ${c.note?`<p style="font:400 11px var(--font);color:var(--text-s);line-height:1.5;margin:7px 0 5px">${c.note}</p>`:""}
-      ${c.users&&c.users.length?`<div style="display:flex;gap:3px;flex-wrap:wrap;margin-bottom:5px">${c.users.map(u=>`<span style="font-size:10px;color:var(--blue,#3b82f6);background:rgba(59,130,246,.1);padding:1px 5px;border-radius:3px">${u}</span>`).join("")}</div>`:""}
-      <button onclick="event.stopPropagation();document.querySelector('[data-comp-name=\"${c.name}\"]').dispatchEvent(new MouseEvent('click',{bubbles:false}))"
-        style="margin-top:4px;padding:3px 9px;background:none;border:1px solid var(--border);border-radius:5px;font:600 9px var(--mono);color:var(--text-d);cursor:pointer">
-        Full detail →
-      </button>
+    <div id="${eid}" style="display:none;padding:8px 10px 10px;border-top:1px solid var(--border)">
+      ${c.note?`<p style="font:400 11px var(--font);color:var(--text-s);line-height:1.5;margin-bottom:8px">${c.note}</p>`:""}
+      ${c.price?`<div style="display:flex;gap:6px;margin-bottom:8px">
+        <div style="background:var(--surface);border-radius:5px;padding:5px 9px;flex:1;min-width:0">
+          <div style="font:500 9px var(--mono);color:var(--text-d)">PRICE</div>
+          <div style="font:700 12px var(--mono);color:var(--text)">$${c.price.toLocaleString()}</div>
+          ${delta?`<div style="font:500 9px var(--mono);color:${delta>0?"var(--red)":"var(--green)"}">${delta>0?"+":""}${delta}% vs avg</div>`:""}
+        </div>
+        ${c.avg?`<div style="background:var(--surface);border-radius:5px;padding:5px 9px;flex:1;min-width:0">
+          <div style="font:500 9px var(--mono);color:var(--text-d)">AVG</div>
+          <div style="font:700 12px var(--mono);color:var(--text-s)">$${c.avg.toLocaleString()}</div>
+        </div>`:""}
+      </div>`:""}
+      ${c.users&&c.users.length?`<div style="display:flex;gap:3px;flex-wrap:wrap">${c.users.map(u=>`<span style="font-size:10px;color:var(--blue,#3b82f6);background:rgba(59,130,246,.1);padding:1px 5px;border-radius:3px">${u}</span>`).join("")}</div>`:""}
     </div>
   </div>`;
 }
+
 
 function toggleCompExpand(id, e) {
   if (e && e.target.tagName === "BUTTON") return;
