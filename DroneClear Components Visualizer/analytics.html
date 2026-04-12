@@ -495,14 +495,8 @@ async function loadAll(){
         loadJSON('/static/intel_programs.json').then(function(d){return d||loadJSON('/intel_programs.json')}),
         loadJSON('/static/intel_platforms.json').then(function(d){return d||loadJSON('/intel_platforms.json')}),
         loadJSON('/static/topic_component_map.json').then(function(d){return d||loadJSON('/topic_component_map.json')}).catch(function(){return null}),
-        loadJSON('/static/miner_health.json').then(function(d){return d||loadJSON('/miner_health.json')}).catch(function(){return null}),
     ]);
     DB=results[0];INTEL=results[1]||[];COS=results[2]||[];PROGS=results[3]||[];PLATS=results[4]||[];TOPICMAP=results[5];
-    var MH=results[6]; // miner_health — authoritative parts count from pipeline
-    if(MH && MH.parts && MH.parts.total && DB && DB.components) {
-        // Inject authoritative count so metrics() uses the pipeline number
-        DB._parts_total_override = MH.parts.total;
-    }
     try{var r=await fetch(FN+'?range=30',{headers:{'x-admin-key':sessionStorage.getItem(GATE_SESSION_KEY)||''}});if(r.ok)LIVE=await r.json()}catch(e){}
 
     // ── Auto-backfill: send any locally stored queries that aren't in the server log yet
@@ -544,8 +538,8 @@ async function loadAll(){
 
 function metrics(){
     var c=DB?DB.components||{}:{};
-    var tp=DB._parts_total_override||0,cats={},countries={},mfrs={},hLink=0,hImg=0,hDesc=0,ndaa=0;
-    Object.entries(c).forEach(function(e){if(!Array.isArray(e[1]))return;cats[e[0]]=e[1].length;if(!DB._parts_total_override)tp+=e[1].length;
+    var tp=0,cats={},countries={},mfrs={},hLink=0,hImg=0,hDesc=0,ndaa=0;
+    Object.entries(c).forEach(function(e){if(!Array.isArray(e[1]))return;cats[e[0]]=e[1].length;tp+=e[1].length;
         e[1].forEach(function(i){var co=i.country||'';if(co)countries[co]=(countries[co]||0)+1;
             var m=i.manufacturer||'';if(m)mfrs[m]=(mfrs[m]||0)+1;
             if(i.link)hLink++;if(i.image_file)hImg++;if(i.description)hDesc++;
