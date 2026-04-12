@@ -102,6 +102,9 @@
 #dc-nav-sep{color:#2e2e26;font-size:12px;flex-shrink:0}
 #dc-nav-page{font:600 11px 'DM Sans',system-ui;color:#b8b0a0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:160px}
 
+#dc-login-btn{display:flex;align-items:center;justify-content:center;width:32px;height:32px;border-radius:6px;border:1px solid #2a2a22;background:none;color:#6b6358;cursor:pointer;transition:all .15s;flex-shrink:0;font-size:13px;text-decoration:none}
+#dc-login-btn:hover{border-color:#3e3e34;color:#b8b0a0}
+#dc-login-btn.dc-authed{border-color:rgba(34,197,94,.4);color:#22c55e;background:rgba(34,197,94,.06)}
 #dc-hamburger{display:flex;align-items:center;justify-content:center;width:32px;height:32px;border-radius:6px;border:1px solid #2a2a22;background:none;color:#6b6358;cursor:pointer;transition:all .15s;flex-shrink:0;margin-left:auto}
 #dc-hamburger:hover{border-color:#3e3e34;color:#b8b0a0}
 #dc-hamburger.open{border-color:#f59e0b;color:#f59e0b;background:rgba(245,158,11,.08)}
@@ -129,6 +132,11 @@
     <span id="dc-nav-sep" style="color:#2e2e26;font-size:11px;margin:0 4px">/</span>
     <span id="dc-nav-page">—</span>
   </div>
+  <a id="dc-login-btn" href="#" onclick="event.preventDefault();typeof showTokenEntry==='function'?showTokenEntry():window.location='/pro/'" title="Login / Access Code" aria-label="Login">
+    <svg width="13" height="13" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+      <circle cx="7" cy="5" r="2.5"/><path d="M2 13c0-2.8 2.2-5 5-5s5 2.2 5 5"/>
+    </svg>
+  </a>
   <button id="dc-hamburger" onclick="dcNavToggle()" aria-label="Menu">
     <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round">
       <line x1="1" y1="3" x2="13" y2="3"/><line x1="1" y1="7" x2="13" y2="7"/><line x1="1" y1="11" x2="13" y2="11"/>
@@ -326,6 +334,26 @@
   addEventListener('pagehide',end);
   // Expose for page-specific events
   window.__pageAnalytics={ev:ev,flush:fl,session:S};
+})();
+</script>
+<script>
+// ── Login button state ──────────────────────────────────────────────
+(function(){
+  function updateLoginBtn(){
+    var btn = document.getElementById('dc-login-btn');
+    if(!btn) return;
+    var tok = localStorage.getItem('forge_token')||localStorage.getItem('wingman_sub_token')||'';
+    if(tok && tok.length > 20){
+      btn.classList.add('dc-authed');
+      btn.title = 'Access Active — click to manage';
+    } else {
+      btn.classList.remove('dc-authed');
+      btn.title = 'Login / Enter Access Code';
+    }
+  }
+  document.addEventListener('DOMContentLoaded', updateLoginBtn);
+  window.addEventListener('storage', updateLoginBtn);
+  setTimeout(updateLoginBtn, 500);
 })();
 </script>
 </body>
