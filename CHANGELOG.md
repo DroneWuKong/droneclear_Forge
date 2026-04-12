@@ -1,5 +1,28 @@
 # Changelog
 
+## [Session] - 2026-04-12 — Admin Rebuild, Components Tab, DB Dedup, UI Fixes
+
+### Added
+- **Admin page** (`/admin/`) fully rebuilt — connects to `forge-access` endpoint (was broken on old `issue-demo` endpoint). Three tabs: Issue Code, Mint Token, All Codes. Full token management with search/filter/revoke, tier badges, copy code/link.
+- **Weekly Parts DB Audit workflow** (`Ai-Project/.github/workflows/weekly-db-audit.yml`) — runs every Sunday 6AM CST, auto-dedupes `forge_database.json`, commits if changed, posts GitHub step summary. `scripts/audit_parts_db.py` standalone version also added.
+- **Patterns Components tab** — expanding accordion cards, 5 per category, sorted by prevalence (user count desc). Tap to expand inline: note, price/avg, platform tags. No modal popup.
+- **Orqa products** added to components database: FPV.One Micro (FPV Camera), QuadCore H7 + WingCore H7 (MCU/FC), IRONghost (RC Link), DTK APB (SBC/SoM).
+- **NDAA-compliant entry** in every component category — Microchip PolarFire (FPGA/SoC), WD iNAND IX (Memory), Kontron COMe (SBC), Silvus StreamCaster 4200 (VTX).
+
+### Changed
+- **Components data**: All 15 main categories expanded to exactly 5 entries, sorted by platform prevalence. Waveform category removed.
+- **Login button** moved into nav right-side flex wrapper (left of hamburger) on all 3 PIE pages.
+- **Parts count** now dynamic everywhere — `<span data-parts-count>` + JS loads `miner_health.json`. No hardcoded numbers in browse, clock, dossier, mission-control, patterns.
+
+### Fixed
+- **DB dedup audit**: `forge_database.json` cleaned from 3,629 → 3,495 (134 removed). Fixed: 54 duplicate PIDs, 61 stack/combo cross-listings, 18 AIO FC boards in multiple categories, 7 colliding sequential PIDs (FC-1297/8/9, MESH-1013/14).
+- **Analytics page** horizontal scroll on mobile — tab bar was wider than viewport causing whole page to shift left.
+- **Analytics parts count** — removed stale `miner_health.json` override (was showing 4,048). Now counts directly from `forge_database.json` (3,495).
+- `miner_health.json` corrected to 3,495 to match cleaned database.
+- **Component expand** — removed modal popup on tap; full detail now inline only.
+- Chevron indicator subtler (`›`, 50% opacity, rotates on expand).
+- Login button less prominent when authenticated (no background fill).
+
 ## [Session] - 2026-04-10 — Patterns Auth + Analytics Fixes
 
 ### Fixed — patterns.html

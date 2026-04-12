@@ -22,7 +22,7 @@
 
 ## Admin / Token Console
 - [x] Rotate PAT — revoke old token, set new GITHUB_PAT in Netlify env vars
-- [ ] Add token count by tier to admin sidebar stats (Commercial: N / DFR: N / Agency: N)
+- [x] Add token count by tier to admin sidebar stats (Commercial: N / DFR: N / Agency: N)
 
 ## Analytics
 - [ ] Confirm /analytics/ at thebluefairy.netlify.app is live vs. mock data
