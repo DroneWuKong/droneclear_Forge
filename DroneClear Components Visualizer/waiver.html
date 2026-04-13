@@ -408,6 +408,22 @@ select{-webkit-appearance:none;appearance:none;background-image:url("data:image/
         <div class="doc-card-time">⏱ Submit via FAA Aviation Safety Hub</div>
       </div>
 
+      <div class="doc-card" data-doc="property_access" onclick="selectDoc(this)">
+        <div class="doc-card-badge badge-commercial">Client-Facing</div>
+        <div class="doc-card-icon">🏠</div>
+        <div class="doc-card-name">Property Access Permission Letter</div>
+        <div class="doc-card-desc">Professional letter requesting landowner permission for drone operations over private property. Includes state-specific legal flags (NC surveillance ban, TX critical infrastructure, FL privacy statutes). Ready to send to client.</div>
+        <div class="doc-card-time">⏱ Send to property owner before flight</div>
+      </div>
+
+      <div class="doc-card" data-doc="subpart_d" onclick="selectDoc(this)">
+        <div class="doc-card-badge badge-commercial">FAA</div>
+        <div class="doc-card-icon">👥</div>
+        <div class="doc-card-name">Subpart D — Operations Over People</div>
+        <div class="doc-card-desc">Category 1/2/3/4 declaration and operational documentation for 14 CFR Part 107 Subpart D (over-people) operations. Covers category eligibility, remote ID compliance, and operating limitations.</div>
+        <div class="doc-card-time">⏱ Required for any flight over people</div>
+      </div>
+
       <div class="doc-card" data-doc="contractor_compliance" onclick="selectDoc(this)">
         <div class="doc-card-badge badge-commercial">B2B</div>
         <div class="doc-card-icon">📝</div>
@@ -602,6 +618,7 @@ select{-webkit-appearance:none;appearance:none;background-image:url("data:image/
     <div class="output-toolbar">
       <div class="output-title" id="output-title">Generated Document</div>
       <button class="action-btn" onclick="copyDoc()"><i class="ph ph-copy"></i> Copy Text</button>
+      <button class="action-btn" id="email-btn" onclick="emailDoc()" style="display:none"><i class="ph ph-paper-plane-tilt"></i> Send to Client</button>
       <button class="action-btn primary" onclick="window.print()"><i class="ph ph-printer"></i> Print / PDF</button>
     </div>
     <div class="status" id="gen-status"><span class="spinner"></span><span id="status-text">Generating…</span></div>
@@ -633,7 +650,7 @@ function getTier(){
 function canUse(docType){
   const t=getTier();
   const freeDocs=['ndaa_checklist','part107_night','remote_id','drone_policy'];
-  const commercialDocs=['client_services','site_safety','data_delivery','insurance_requirements','part107_bvlos','contractor_compliance','data_privacy','incident_response'];
+  const commercialDocs=['client_services','site_safety','data_delivery','insurance_requirements','part107_bvlos','contractor_compliance','data_privacy','incident_response','property_access','subpart_d'];
   const dfrDocs=['cow_shielded','cow_nonshielded','conops','pso_letter','cops_grant','hsgp_grant','council_memo','emergency_ops','transparency_policy','mutual_aid'];
   const agencyDocs=['sop','ndaa_procurement','blue_uas_comparison'];
   if(freeDocs.includes(docType)) return true;
@@ -731,6 +748,8 @@ const DOC_CONFIGS={
     title:'Incident Response Plan',
     fields:'agency_fields,platform_fields,pilot_fields',
   },
+  property_access:{title:'Property Access Permission Letter',fields:'commercial_op_fields,agency_fields,platform_fields,area_fields'},
+  subpart_d:{title:'Subpart D — Operations Over People',fields:'commercial_op_fields,agency_fields,platform_fields,area_fields,pilot_fields'},
   // Free tier
   ndaa_checklist:{title:'NDAA Compliance Checklist',fields:'agency_fields,platform_fields'},
   part107_night:{title:'Part 107 Night Waiver (§107.29)',fields:'agency_fields,platform_fields,area_fields,pilot_fields'},
@@ -1780,13 +1799,96 @@ Include:
 11. Return to Operations — criteria for resuming operations after incident
 12. Public Communications — approved messaging, spokesperson designation`;
 
+
+// State-specific drone privacy/access law flags for overlay
+const stateLaws = {
+  'NC': 'NOTE — North Carolina: G.S. §15A-300.1 prohibits using a drone to photograph or observe a person on private property without consent. Include explicit language that operator will not capture images of persons.',
+  'TX': 'NOTE — Texas: Tex. Gov. Code §423.003 prohibits UAS surveillance of critical infrastructure (pipelines, refineries, electrical substations). Tex. Gov. Code §423.002 restricts capture of images of private property for commercial use. Include limitations clause.',
+  'FL': 'NOTE — Florida: Fla. Stat. §934.50 prohibits using drones to conduct surveillance of persons or property without consent. Include privacy protection clause.',
+  'IL': 'NOTE — Illinois: 725 ILCS 167 (Freedom from Drone Surveillance Act) restricts law enforcement use; also impacts commercial operators near corrections facilities.',
+  'OR': 'NOTE — Oregon: ORS 837.380 prohibits using drones to photograph people in private spaces without consent.',
+  'IN': 'NOTE — Indiana: IC 35-33-5-9 restricts drone surveillance; commercial operators must include consent documentation.',
+  'TN': 'NOTE — Tennessee: Tenn. Code §39-13-902 prohibits using drones to conduct surveillance of a person or property. Require written consent.',
+  'UT': 'NOTE — Utah: Utah Code §78B-6-2903 prohibits using drones for surveillance without consent.',
+};
+
+  prompts.property_access=`Generate a professional Property Access Permission Letter for drone operations.
+
+${base}
+Operation location: ${d.area_name||d.area||d.city+', '+d.state}
+Client/Property Owner: ${d.client_name||'[Property Owner Name]'}
+Operator business: ${d.operator_biz||d.agency||'[Operator Business Name]'}
+Flight dates: ${d.flight_days||'[Date(s) of Operation]'}
+Purpose: ${d.commercial_op||'aerial photography and data collection'}
+
+${stateLaws[d.state]||''}
+
+The letter must include:
+1. Letter header — operator business name, date, property owner name and address
+2. Opening — professional introduction, purpose of the letter, why their property specifically
+3. Operational Details section:
+   - Exact dates and times of planned operations
+   - Aircraft type and registration (Remote ID compliant)
+   - Altitude (max AGL), approximate flight area, duration
+   - Number of pilots on site
+4. Privacy & Safety Commitments:
+   - No capture of persons inside structures
+   - No loitering over private spaces
+   - All data used only for stated purpose
+   - Certificate of insurance available on request
+   - Immediate cessation if requested by owner
+5. Legal/Regulatory Notice:
+   - FAA Part 107 certification statement
+   - State-specific privacy law compliance (based on state flag above)
+   - Property owner retains right to revoke at any time
+6. Contact information for questions
+7. Signature block with acceptance line for property owner
+8. Attachments checklist: Part 107 certificate copy, insurance certificate, sample data deliverables
+
+Make it professional, reassuring, and concise — property owners are often nervous about drones.`;
+
+  prompts.subpart_d=`Generate a Subpart D Operations Over People documentation package per 14 CFR Part 107 Subpart D.
+
+${base}
+Category claimed: ${d.threat||'Category 1 and Category 2'}
+
+The documentation must include:
+1. Document header — "Subpart D Operations Over People — Operational Declaration", operator, date
+2. Regulatory Basis — 14 CFR §§107.110–107.145, effective April 21, 2021
+3. Category Eligibility Declaration:
+   CATEGORY 1: Aircraft weighing ≤0.55 lbs (250g) at takeoff including payload — list qualifying aircraft
+   CATEGORY 2: Aircraft with FAA-accepted means of compliance, max kinetic energy ≤25 ft-lbs, no exposed rotating parts — list qualifying aircraft + means of compliance
+   CATEGORY 3: Same as Cat 2 but up to 100 ft-lbs kinetic energy — restricted persons consent requirement
+   CATEGORY 4: Airworthiness certificate under Part 21 + operating limitations — list any qualifying aircraft
+   For each category claimed, document specific aircraft and basis for eligibility.
+4. Remote ID Compliance:
+   - Standard Remote ID module or built-in capability
+   - Module FCC ID and approval status
+   - Broadcast protocol (WiFi/BT per ASTM F3586-22)
+5. Operating Limitations by Category:
+   - Cat 1: No operations over moving vehicles; sustained flight over open-air assemblies prohibited
+   - Cat 2/3: No operations over open-air assemblies; Cat 3 requires controlled/restricted area or consent
+   - Cat 4: Per airworthiness certificate limitations
+6. Pilot Responsibilities checklist
+7. Pre-flight Over-People Risk Assessment template (fill in per operation)
+8. Incident reporting obligations if operation results in injury
+9. Operator declaration and signature block
+
+Include specific kinetic energy calculation methodology: KE = ½mv² where m = mass in kg, v = max speed in m/s.`;
+
   return prompts[d.doc_type]||'Generate the requested document with full professional detail.';
 }
+
+// Docs where "Send to Client" is relevant
+const clientFacingDocs=['client_services','data_delivery','insurance_requirements','site_safety','property_access','subpart_d'];
 
 function showDoc(html){
   document.getElementById('gen-status').classList.remove('show');
   document.getElementById('doc-preview').style.display='block';
   document.getElementById('doc-content').innerHTML=html;
+  // Show email button for client-facing docs
+  const emailBtn=document.getElementById('email-btn');
+  if(emailBtn) emailBtn.style.display=clientFacingDocs.includes(currentDoc)?'':'none';
 }
 
 function copyDoc(){
@@ -1796,6 +1898,24 @@ function copyDoc(){
     btn.textContent='✓ Copied';
     setTimeout(()=>{btn.innerHTML='<i class="ph ph-copy"></i> Copy Text';},2000);
   });
+}
+
+function emailDoc(){
+  const cfg=DOC_CONFIGS[currentDoc]||{};
+  const title=cfg.title||'Document';
+  const clientName=(document.getElementById('f_client_name')||{}).value||'';
+  const agencyName=(document.getElementById('f_agency')||{}).value||'';
+  const recipient=clientName||agencyName||'';
+  const subject=encodeURIComponent('DroneClear — '+title+(recipient?' for '+recipient:''));
+  const preview=document.getElementById('doc-content').innerText.slice(0,400).replace(/\n+/g,' ').trim();
+  const body=encodeURIComponent(
+    'Hi'+(recipient?' '+recipient:'')+',\n\n'+
+    'Please find the '+title+' prepared for your review.\n\n'+
+    '--- Document Preview ---\n'+preview+'\n[...full document attached]\n\n'+
+    'To view the full document, open it in DroneClear: https://nvmillbuilditmyself.com/waiver/\n\n'+
+    'Let me know if you have any questions.\n\nBest regards'
+  );
+  window.location='mailto:?subject='+subject+'&body='+body;
 }
 </script>
 <!-- Page Analytics — fires batch events to /.netlify/functions/analytics -->
