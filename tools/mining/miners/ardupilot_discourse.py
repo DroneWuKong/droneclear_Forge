@@ -62,21 +62,92 @@ class ArduPilotDiscourseMiner(BaseMiner):
 
         Start with hardware tags. Each tag maps cleanly to a part in Forge's DB.
         """
-        # Tag registry — tells us which hardware tags exist
+        # Tag registry — tells us which hardware tags exist and their thread counts
         yield f"{self.config.base_url}/tags.json"
-        # Focused pulls on known hardware tags (extend over time)
-        for slug in [
-            "cube-orange", "cube-orange-plus", "cube-black",
-            "pixhawk-6x", "pixhawk-6c", "pixhawk-5x", "pixhawk-4",
-            "matek-h743", "matek-f405",
-            "holybro-durandal",
-            "ardupilot-herelink", "herelink",
-            "mrobotics-mro",
-            "px4-vision",
-            "auterion-skynode",
-            "arkv6x", "ark-fc",
-        ]:
-            yield f"{self.config.base_url}/tag/{slug}.json"
+
+        # ── Flight Controllers ──────────────────────────────────────────────
+        # CubePilot / ProfiCNC
+        fc_tags = [
+            "cube-orange", "cube-orange-plus", "cube-black", "cube-yellow",
+            "cube-purple", "cubepilot", "here3", "here4",
+            # Pixhawk ecosystem
+            "pixhawk-6x", "pixhawk-6c", "pixhawk-6c-mini", "pixhawk-5x",
+            "pixhawk-4", "pixhawk-4-mini", "pixhawk", "fmuv6x",
+            # Holybro
+            "holybro-durandal", "holybro-kakute-h7", "holybro-kakute-f7",
+            "kakuteh7", "kakutef7",
+            # Matek
+            "matek-h743", "matek-h743-slim", "matek-f405", "matek-f765",
+            "matek-h7", "matek",
+            # mRo
+            "mrobotics-mro", "mro-control-zero", "mro-x2-1",
+            # ARK Electronics
+            "arkv6x", "ark-fc", "ark-electronics",
+            # Auterion / Skynode
+            "auterion-skynode", "skynode",
+            # Others
+            "px4-vision", "px4-vision-v1-1", "nxp-hovergames",
+            "omnibusf4", "speedybee-f405",
+        ]
+
+        # ── GPS / GNSS ──────────────────────────────────────────────────────
+        gps_tags = [
+            "here3", "here4", "ardupilot-herelink", "herelink",
+            "matek-m9n", "matek-sam-m10q",
+            "f9p", "zed-f9p", "ublox-f9p", "rtk",
+            "ark-gps", "cuav-neo-3",
+        ]
+
+        # ── ESCs ────────────────────────────────────────────────────────────
+        esc_tags = [
+            "blheli32", "blheli-32", "am32", "kiss-esc",
+            "zubax-myxa", "myxa", "kotleta20",
+            "iflight-blitz", "flame-60a",
+        ]
+
+        # ── Companion Computers / SBCs ──────────────────────────────────────
+        companion_tags = [
+            "raspberry-pi", "rpi4", "rpi5", "jetson-nano", "jetson-orin",
+            "nvidia-jetson", "modalai-voxl", "voxl2", "voxl-2",
+            "orange-pi", "radxa-rock",
+        ]
+
+        # ── Cameras / Payloads ──────────────────────────────────────────────
+        camera_tags = [
+            "flir-boson", "boson", "lepton", "tau2",
+            "sony-imx", "herelink-camera",
+            "siyi", "siyi-a8", "siyi-zr10",
+            "caddx", "runcam",
+        ]
+
+        # ── RC Links / Datalinks ────────────────────────────────────────────
+        rc_tags = [
+            "herelink", "ardupilot-herelink",
+            "expresslrs", "elrs",
+            "crossfire", "tbs-crossfire",
+            "sik-radio", "rfdesign", "rfd900",
+            "doodle-labs", "silvus",
+        ]
+
+        # ── Airframes ───────────────────────────────────────────────────────
+        airframe_tags = [
+            "hexsoon", "tarot", "x500", "s500",
+            "vtol", "quadplane", "tiltrotor",
+            "fixed-wing", "flying-wing",
+            "traditional-helicopter", "heli",
+            "boat", "rover", "ardurover", "arduboat",
+            "sub", "blimp",
+        ]
+
+        # Yield all tags
+        all_tags = (fc_tags + gps_tags + esc_tags + companion_tags +
+                    camera_tags + rc_tags + airframe_tags)
+        # Deduplicate preserving order
+        seen = set()
+        for slug in all_tags:
+            if slug not in seen:
+                seen.add(slug)
+                yield f"{self.config.base_url}/tag/{slug}.json"
 
     def parse(self, url: str, body: str) -> Iterable[Record]:
         """

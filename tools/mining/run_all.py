@@ -34,6 +34,7 @@ from mining.miners.rotorbuilds import RotorBuildsMiner
 from mining.miners.ardupilot_discourse import ArduPilotDiscourseMiner
 from mining.miners.blue_uas import BlueUASMiner
 from mining.miners.sam_gov import SamGovMiner
+from mining.miners.mine_pilotinstitute import PilotInstituteMiner
 
 
 MINERS = {
@@ -41,6 +42,7 @@ MINERS = {
     "ardupilot_discourse": ArduPilotDiscourseMiner,
     "blue_uas": BlueUASMiner,
     "sam_gov": SamGovMiner,
+    "pilotinstitute": PilotInstituteMiner,
 }
 
 
