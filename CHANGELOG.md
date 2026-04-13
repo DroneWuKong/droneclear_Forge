@@ -1,5 +1,11 @@
 # Changelog
 
+## [Session] - 2026-04-12 — mine_pilotinstitute.py + GH Actions wiring
+
+### Added
+- **`tools/mining/miners/mine_pilotinstitute.py`** — Pilot Institute DFR article miner. Discovers articles via WordPress sitemap XML, filters by 14 URL path signals and 36 DFR keyword matches, extracts OG/meta tags (title, description, pub date, categories). Includes `normalize_to_dfr_master()` and `merge_into_dfr_master()` normalizers that write directly into `data/dfr/dfr_master.json`. CLI supports `--max`, `--dry`, `--no-merge`. Deduplicates by URL.
+- **`forge_miners.yml`** — new `pilotinstitute-miner` job. Runs on daily schedule and `workflow_dispatch` (miner=all or miner=pilotinstitute). Commits updated `dfr_master.json` + raw output via `SYNC_PAT`. Added `pilotinstitute` to dispatch miner choices.
+
 ## [Session] - 2026-04-12 — Support Hub page + build_static registration
 
 ### Added

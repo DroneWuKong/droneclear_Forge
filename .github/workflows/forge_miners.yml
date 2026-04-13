@@ -1,4 +1,4 @@
-name: "⛏ Forge Community Miners — RotorBuilds/BlueList/SAM (Daily 7:37AM CST)"
+name: "⛏ Forge Community Miners — RotorBuilds/BlueList/SAM/PilotInstitute (Daily 7:37AM CST)"
 
 on:
   schedule:
@@ -19,6 +19,7 @@ on:
           - ardupilot_discourse
           - blue_uas
           - sam_gov
+          - pilotinstitute
       max_records:
         description: 'Per-miner record cap (safety for DOM-unwired scaffolds)'
         required: false
@@ -199,4 +200,56 @@ jobs:
         with:
           name: mining-output-${{ github.run_id }}
           path: tools/mining/output/raw/
+          if-no-files-found: warn
+
+  # ─── Pilot Institute miner: runs daily, writes to dfr_master.json ───────
+  pilotinstitute-miner:
+    name: 'Mine Pilot Institute DFR articles'
+    runs-on: ubuntu-latest
+    # Run on schedule always; on dispatch only if miner == 'all' or 'pilotinstitute'
+    if: >
+      github.event_name == 'schedule' ||
+      (github.event_name == 'workflow_dispatch' &&
+       (inputs.miner == 'all' || inputs.miner == 'pilotinstitute'))
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.SYNC_PAT }}
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: pip install requests
+
+      - name: Run Pilot Institute miner
+        run: |
+          MAX="${{ inputs.max_records || '150' }}"
+          DRY="${{ inputs.dry_run || 'false' }}"
+          ARGS="--max $MAX"
+          if [ "$DRY" = "true" ]; then ARGS="$ARGS --dry"; fi
+          cd tools/mining
+          python3 miners/mine_pilotinstitute.py $ARGS
+
+      - name: Commit updated dfr_master.json and raw output
+        run: |
+          git config user.name  "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add data/dfr/dfr_master.json data/dfr/raw/pilotinstitute_*.json || true
+          if git diff --staged --quiet; then
+            echo "No new Pilot Institute records — nothing to commit."
+          else
+            COUNT=$(git diff --staged --stat | grep pilotinstitute | head -1)
+            git commit -m "data(dfr): mine_pilotinstitute — $COUNT [skip ci]"
+            git push
+          fi
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: pilotinstitute-raw-${{ github.run_id }}
+          path: data/dfr/raw/pilotinstitute_*.json
           if-no-files-found: warn

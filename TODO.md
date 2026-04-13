@@ -5,4 +5,4 @@
 - [ ] ArduPilot Discourse miner: tag list scaffolded; run locally or via GH Actions
 - [ ] Blue UAS miner: DOM inspection needed (bluelist.dcma.mil may be JS-rendered — try Playwright)
 - [ ] SAM.gov miner: add `SAM_GOV_API_KEY` to Ai-Project secrets when arrives; miner scaffolded and ready
-- [ ] `mine_pilotinstitute.py` — script needs to be written; run via GitHub Actions
+- [x] `mine_pilotinstitute.py` — script written, wired into forge_miners.yml (pilotinstitute job)
