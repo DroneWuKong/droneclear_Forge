@@ -3134,13 +3134,17 @@ function getFilteredTrendValues(trend, filteredHistory) {
 }
 
 // ── Report generator ───────────────────────────────────────────────
-function generateReport() {
+async function generateReport() {
+  // Ensure history data is loaded (user may not have visited History tab yet)
+  if (!_historyData) {
+    try { await loadHistoryData(); } catch(e) {}
+  }
   const filtered = getFilteredHistory();
   const trends   = _trendsData;
   const arch     = _predArchive || [];
 
   if (!filtered.length) {
-    alert('No history data available to generate a report.');
+    alert('No history data available. Try switching to the History tab first, then Generate Report.');
     return;
   }
 
@@ -3220,15 +3224,27 @@ function generateReport() {
 `;
 
   // Download as .md file
-  const blob = new Blob([md], {type: 'text/markdown'});
-  const url  = URL.createObjectURL(blob);
-  const a    = document.createElement('a');
-  a.href     = url;
-  a.download = `pie-report-${label.toLowerCase()}-${today}.md`;
-  document.body.appendChild(a);
-  a.click();
-  document.body.removeChild(a);
-  URL.revokeObjectURL(url);
+  // Mobile-safe: programmatic a.click() is blocked on Android Chrome.
+  // Use data: URI with download attr; fall back to new tab with plain text.
+  try {
+    const blob = new Blob([md], {type: 'text/markdown'});
+    const url  = URL.createObjectURL(blob);
+    const a    = document.createElement('a');
+    a.href     = url;
+    a.download = `pie-report-${label.toLowerCase()}-${today}.md`;
+    a.style.display = 'none';
+    document.body.appendChild(a);
+    a.click();
+    setTimeout(() => { document.body.removeChild(a); URL.revokeObjectURL(url); }, 1000);
+  } catch(e) {
+    // Fallback: open plain text in new tab (works on all mobile browsers)
+    const w = window.open('', '_blank');
+    if (w) {
+      w.document.write('<pre style="white-space:pre-wrap;font-family:monospace;padding:16px">' +
+        md.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;') + '</pre>');
+      w.document.title = `PIE Report ${today}`;
+    }
+  }
 }
 
 // Load history when tab activates
