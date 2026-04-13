@@ -1,5 +1,11 @@
 # Changelog
 
+## [Session] - 2026-04-12 — DFR Compliance KB Entries + RotorBuilds DOM Inspector
+
+### Added
+- **5 new DFR compliance KB entries** (`forge_troubleshooting.json` TS-DFR-006 through TS-DFR-010): grants/DHS AEL funding, NDAA/ASDA vendor selection + grounding exposure, FCC Conditional Approval clarification, hardware/dock/LTE selection, and state/local privacy law. Sourced from `dfr_master.json` records. Compliance category now 10 entries total.
+- **`tools/mining/inspect_rotorbuilds_dom.py`** — local DOM inspection script. Fetches `/explore`, `/builds`, and a sample build page; prints selector matches, class names, table structures, JSON-LD, and inline JS state. Run locally (network blocked in CI) to fill in `rotorbuilds.py` `parse()` selectors.
+
 ## [Session] - 2026-04-12 — Analytics Dedup, SyntaxWarning Fix, Stale Count Fix
 
 ### Fixed
