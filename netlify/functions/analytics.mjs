@@ -6,7 +6,7 @@
 import { getStore } from "@netlify/blobs";
 
 const ALLOWED_ORIGINS = [
-  'https://forgeprole.netlify.app',
+  'https://nvmillbuilditmyself.com',
   'https://nvmilldoitmyself.com',
   'https://www.nvmilldoitmyself.com',
   'https://nvmillfindoutmyself.com',

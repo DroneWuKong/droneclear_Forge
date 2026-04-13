@@ -14,7 +14,7 @@
  */
 
 const ALLOWED_ORIGINS = [
-  'https://forgeprole.netlify.app',
+  'https://nvmillbuilditmyself.com',
   'http://localhost:8888',
   'http://localhost:3000',
 ];
