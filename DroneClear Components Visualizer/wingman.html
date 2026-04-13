@@ -801,6 +801,7 @@ var ragIndex = [];
 var pieIndex = [];    // PIE flags for Wingman context injection
 var pieByKeyword = {}; // keyword → Set of flag ids
 var mfgStatus = {};   // manufacturer slug → status record (forge_manufacturer_status.json)
+var coOccur = {};     // part name → {related_part: count} (forge_co_occurrence.json)
 var mfgAliases = {};  // alias lowercase → canonical slug (for fuzzy matching)
 var altMap = {};      // category name → alternatives block (forge_alternatives.json)
 var handbookChunks = []; // {title, text, src}
@@ -1147,6 +1148,17 @@ async function loadRAG() {
       if (!kbSources.includes('alternatives')) kbSources.push('alternatives');
     }
   } catch(e) { console.warn('Alternatives load skipped:', e.message); }
+
+  // Load co-occurrence matrix (forge_co_occurrence.json) — built by tools/mining/aggregate_cooccurrence.py
+  try {
+    const res = await fetch('forge_co_occurrence.json');
+    if (res.ok) {
+      const coData = await res.json();
+      coOccur = coData.cooccurrence || {};
+      console.log(`Co-occurrence loaded: ${Object.keys(coOccur).length} parts`);
+      if (!kbSources.includes('co-occurrence')) kbSources.push('co-occurrence');
+    }
+  } catch(e) { /* co-occurrence not yet generated — run tools/mining/aggregate_cooccurrence.py */ }
 
   updateSourcePills();
   console.log(`RAG loaded: ${ragIndex.length} items, ${handbookChunks.length} handbook chunks in ${Date.now()-t0}ms`);
@@ -1837,6 +1849,25 @@ FrSky R-XSR: 5V, GND, SBUS out, SmartPort (S.Port)
 
 // ─── BUILD VALIDATOR ─────────────────────────────────────────
 // In-browser compatibility checker using ragIndex + compat blocks + incompat registry
+// Called from buildPrompt when intent === 'hardware_lookup' or 'validate'
+function getCoOccurrenceContext(partNames) {
+  if (!partNames || !partNames.length || !Object.keys(coOccur).length) return '';
+  const suggestions = new Map();
+  for (const name of partNames) {
+    const key = name.toLowerCase();
+    const related = coOccur[key] || {};
+    const top = Object.entries(related)
+      .sort((a,b) => b[1]-a[1])
+      .slice(0, 3)
+      .map(([p, c]) => `${p} (seen together ${c}x)`);
+    if (top.length) suggestions.set(name, top);
+  }
+  if (!suggestions.size) return '';
+  const lines = [...suggestions.entries()]
+    .map(([n, s]) => `  ${n}: commonly paired with ${s.join(', ')}`);
+  return '\n\nCo-occurrence data (real builds):\n' + lines.join('\n');
+}
+
 // Called from buildPrompt when intent === 'hardware_lookup' or 'validate'
 
 // Cached component DB for quick lookup by category

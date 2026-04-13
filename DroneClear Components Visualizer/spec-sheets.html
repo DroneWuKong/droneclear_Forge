@@ -390,6 +390,22 @@
         if (!s.self_attested) badges.push('<span class="badge b-green"><i class="ph ph-shield-check"></i> 3rd-party</span>');
         if (s.self_attested) badges.push('<span class="badge b-muted">self-attested</span>');
         if (s.segment?.includes('FPV')) badges.push('<span class="badge b-amber"><i class="ph ph-target"></i> FPV</span>');
+        // Subsidiary / parent cross-link
+        const mfrKey = (s.manufacturer || '').toLowerCase();
+        const mfrEntry = mfrStatus[mfrKey];
+        if (mfrEntry) {
+            if (mfrEntry.parent) {
+                const parentEntry = Object.values(mfrStatus).find(m => m.name && m.name.toLowerCase().includes(mfrEntry.parent.replace(/-/g,' ')));
+                const parentName = parentEntry?.name || mfrEntry.parent.replace(/-/g,' ').replace(/\b\w/g,c=>c.toUpperCase());
+                badges.push('<span class="badge b-muted" title="Subsidiary of ' + ESC(parentName) + '"><i class="ph ph-buildings"></i> ' + ESC(parentName) + ' subsidiary</span>');
+            }
+            if (mfrEntry.subsidiaries?.length) {
+                badges.push('<span class="badge b-muted" title="Subsidiaries: ' + ESC(mfrEntry.subsidiaries.join(', ')) + '"><i class="ph ph-tree-structure"></i> ' + mfrEntry.subsidiaries.length + ' subsidiaries</span>');
+            }
+            if (mfrEntry.status === 'defunct') {
+                badges.push('<span class="badge" style="background:rgba(239,68,68,.1);color:#ef4444;border:1px solid rgba(239,68,68,.2)" title="' + ESC(mfrEntry.notes||'') + '"><i class="ph ph-warning"></i> Defunct</span>');
+            }
+        }
 
         const components = (s.critical_components || []).length ? `
             <details class="sheet-components">
@@ -512,14 +528,29 @@
         });
     }
 
+    let mfrStatus = {}; // keyed by lowercase manufacturer name -> {parent, subsidiaries, status}
+
     async function init() {
         try {
-            const res = await fetch('forge_848_spec_sheets.json');
+            const [res, mfrRes] = await Promise.all([
+                fetch('forge_848_spec_sheets.json'),
+                fetch('forge_manufacturer_status.json').catch(() => null),
+            ]);
             if (!res.ok) throw new Error('Failed to load spec sheet index');
             const db = await res.json();
             sheets = db.spec_sheets || [];
             legalStack = db.legal_stack || {};
             criticalRoles = db.critical_component_roles || [];
+
+            // Build manufacturer status lookup (name -> entry)
+            if (mfrRes && mfrRes.ok) {
+                const mfrDb = await mfrRes.json();
+                const mfrs = mfrDb.manufacturers || {};
+                Object.values(mfrs).forEach(m => {
+                    if (m.name) mfrStatus[m.name.toLowerCase()] = m;
+                });
+            }
+
             renderStats();
             renderFilters();
             render();
