@@ -74,6 +74,10 @@
 
 | ID | Issue | Completed | Session |
 |----|-------|-----------|---------|
+| ~~BUG-mesh-001~~ | Mesh planner map never initializes | 2026-04-13 | tools.html nav clicks captured local showTool closure, bypassing window.showTool overrides |
+| ~~DEBT-risk-001~~ | risk_scores.json separate from entities.json | 2026-04-13 | Merged inline into entities.json schema |
+| ~~BUG-link-001~~ | PIE→ and Full analysis→ links broken in brief | 2026-04-13 | Now switch tabs in-page |
+| ~~BUG-redirect-001~~ | 9 missing netlify.toml redirects | 2026-04-13 | compliance-matrix, dossier, guides-hub, intel-commercial, intel-dfr, intel/feed, payload-compare, spec-sheets, stack-builder |
 | ~~XSS-M1~~ | `components.js` innerHTML XSS | 2026-03-06 | 2026-03-06-3 |
 | ~~XSS-M2~~ | `modal.js` innerHTML XSS | 2026-03-06 | 2026-03-06-3 |
 | ~~XSS-M3~~ | `build.js` innerHTML XSS | 2026-03-06 | 2026-03-06-3 |
