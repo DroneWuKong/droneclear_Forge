@@ -26,22 +26,22 @@
     a { text-decoration: none; color: inherit; }
 
     /* ── Page layout ── */
-    .page { max-width: 860px; margin: 0 auto; padding: 36px 20px 80px; }
+    .page { max-width: 860px; margin: 0 auto; padding: 20px 16px 80px; }
 
     /* ── Header ── */
-    .hdr { margin-bottom: 36px; }
-    .hdr-eyebrow { font: 600 10px var(--mono); text-transform: uppercase; letter-spacing: .14em; color: var(--text-xd); margin-bottom: 10px; }
-    .hdr-title { font: 700 30px var(--mono); color: var(--accent); letter-spacing: -.03em; margin-bottom: 10px; }
-    .hdr-sub { font-size: 13px; color: var(--text-s); max-width: 560px; line-height: 1.65; }
+    .hdr { margin-bottom: 20px; }
+    .hdr-eyebrow { font: 600 10px var(--mono); text-transform: uppercase; letter-spacing: .14em; color: var(--text-xd); margin-bottom: 8px; }
+    .hdr-title { font: 700 28px var(--mono); color: var(--accent); letter-spacing: -.03em; margin-bottom: 8px; }
+    .hdr-sub { font-size: 13px; color: var(--text-s); line-height: 1.6; }
 
     /* ── Filter bar ── */
-    .filter-bar { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 32px; }
-    .filt-btn { font: 500 11px var(--font); padding: 5px 12px; border-radius: 20px; border: 1px solid var(--border); color: var(--text-d); cursor: pointer; background: transparent; transition: all .12s; white-space: nowrap; }
+    .filter-bar { display: flex; gap: 5px; flex-wrap: wrap; margin-bottom: 20px; }
+    .filt-btn { font: 500 11px var(--font); padding: 5px 11px; border-radius: 20px; border: 1px solid var(--border); color: var(--text-d); cursor: pointer; background: transparent; transition: all .12s; white-space: nowrap; }
     .filt-btn:hover { border-color: var(--border-hi); color: var(--text-s); }
     .filt-btn.active { background: var(--card); border-color: var(--accent); color: var(--accent); }
 
     /* ── Search ── */
-    .search-wrap { position: relative; margin-bottom: 28px; max-width: 440px; }
+    .search-wrap { position: relative; margin-bottom: 14px; }
     .search-wrap i { position: absolute; left: 12px; top: 50%; transform: translateY(-50%); color: var(--text-d); font-size: 14px; pointer-events: none; }
     .search-input { width: 100%; background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 9px 12px 9px 36px; font: 13px var(--font); color: var(--text); outline: none; transition: border .15s; }
     .search-input:focus { border-color: var(--border-hi); }
@@ -96,10 +96,11 @@
     .badge-new { background: var(--red-d); color: var(--red); }
 
     /* ── Stats bar ── */
-    .stats-row { display: flex; gap: 20px; margin-bottom: 28px; padding: 14px 18px; background: var(--surface); border: 1px solid var(--border); border-radius: 8px; }
-    .stat-item { display: flex; flex-direction: column; }
-    .stat-val { font: 700 18px var(--mono); color: var(--text); }
-    .stat-lbl { font-size: 10px; color: var(--text-xd); text-transform: uppercase; letter-spacing: .08em; margin-top: 1px; }
+    .stats-row { display: grid; grid-template-columns: repeat(4,1fr); margin-bottom: 28px; background: var(--surface); border: 1px solid var(--border); border-radius: 8px; overflow: hidden; }
+    .stat-item { display: flex; flex-direction: column; padding: 14px 16px; border-right: 1px solid var(--border); }
+    .stat-item:last-child { border-right: none; }
+    .stat-val { font: 700 22px var(--mono); color: var(--text); line-height: 1; }
+    .stat-lbl { font-size: 10px; color: var(--text-xd); text-transform: uppercase; letter-spacing: .08em; margin-top: 4px; }
 
     /* ── Empty state ── */
     .empty { padding: 32px; text-align: center; color: var(--text-d); font-size: 13px; }
@@ -107,7 +108,10 @@
     /* ── Responsive ── */
     @media (max-width: 640px) {
       .section-grid { grid-template-columns: 1fr; }
-      .stats-row { flex-wrap: wrap; gap: 12px; }
+      .stats-row { grid-template-columns: repeat(2,1fr); }
+      .stat-item:nth-child(2) { border-right: none; }
+      .stat-item:nth-child(3) { border-top: 1px solid var(--border); }
+      .stat-item:nth-child(4) { border-top: 1px solid var(--border); border-right: none; }
     }
   </style>
   <style id="global-mobile-fix">
@@ -192,9 +196,9 @@ if (_dcBrand) { const h = location.hostname; _dcBrand.textContent = h.includes('
 
   <div class="stats-row" id="statsRow">
     <div class="stat-item"><span class="stat-val" id="totalCount">—</span><span class="stat-lbl">Tools</span></div>
-    <div class="stat-item"><span class="stat-val" id="freeCount">—</span><span class="stat-lbl">Free / Open Source</span></div>
+    <div class="stat-item"><span class="stat-val" id="freeCount">—</span><span class="stat-lbl">Free / Open</span></div>
     <div class="stat-item"><span class="stat-val" id="catCount">—</span><span class="stat-lbl">Categories</span></div>
-    <div class="stat-item"><span class="stat-val" id="platformCount">—</span><span class="stat-lbl">Platforms Covered</span></div>
+    <div class="stat-item"><span class="stat-val" id="paidCount">—</span><span class="stat-lbl">Paid</span></div>
   </div>
 
   <div class="search-wrap">
@@ -952,8 +956,7 @@ function renderStats() {
   document.getElementById('totalCount').textContent = SOFTWARE.length;
   document.getElementById('freeCount').textContent = SOFTWARE.filter(s => s.license === 'free' || s.license === 'open').length;
   document.getElementById('catCount').textContent = Object.keys(CATEGORIES).length;
-  const plats = new Set(SOFTWARE.flatMap(s => s.platforms || []));
-  document.getElementById('platformCount').textContent = plats.size;
+  document.getElementById('paidCount').textContent = SOFTWARE.filter(s => s.license === 'paid').length;
 }
 
 function renderFilterBar() {
