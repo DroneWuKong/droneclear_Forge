@@ -1,5 +1,12 @@
 # Changelog
 
+## [Session] - 2026-04-12 — Analytics Dedup, SyntaxWarning Fix, Stale Count Fix
+
+### Fixed
+- **Duplicate inline analytics block removed from 51 HTML files** — every page had a redundant `<script>` block firing two `scroll` listeners, two `page_view` events, and double-counting all engagement metrics. Removed; unified `_ANALYTICS_SNIPPET` injected by `build_static.py` is now sole analytics handler.
+- **`build_static.py` SyntaxWarning** — `_UNIFIED_NAV` defined as a regular `"""` string containing `\/` in a JS regex. Python 3.12 raises `SyntaxWarning`; future versions will error. Converted to `r"""` raw string.
+- **`patterns.html` hardcoded stale platform count** — `<span id="plat-count-blueuas">` was seeded with `237`, showing stale count on first render before live fetch resolved. Replaced with `—` so initial paint never shows wrong data.
+
 ## [Session] - 2026-04-12 — Admin Rebuild, Components Tab, DB Dedup, UI Fixes
 
 ### Added

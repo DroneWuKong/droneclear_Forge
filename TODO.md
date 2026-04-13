@@ -26,12 +26,12 @@
 
 ## Analytics
 - [ ] Confirm /analytics/ at thebluefairy.netlify.app is live vs. mock data
-- [ ] /intel/ page scroll rate UX improvement (build_static.py f-string)
+- [x] /intel/ page scroll rate UX improvement (build_static.py f-string)
 
 ## Patterns / PIE
 - [ ] PIE pipeline: add hedge generation guardrail — prompt must explicitly ban self-referential Forge/DroneClear mentions
 - [ ] pie_brief.json and pie_weekly.json are in root SRC_DIR and get auto-copied to build/static/ via STATIC_EXTENSIONS — confirm pipeline writes to the right location after regeneration
-- [ ] patterns.html — `plat-count-blueuas` hardcoded to 237; should fetch live from forge_database.json (currently done via fire-and-forget fetch in loadData, but initial render shows stale number)
+- [x] patterns.html — `plat-count-blueuas` hardcoded to 237; should fetch live from forge_database.json (currently done via fire-and-forget fetch in loadData, but initial render shows stale number)
 
 ## Platforms
 - [x] /platforms/?filter= URL param routing (survey→mapping, inspection→keyword match)

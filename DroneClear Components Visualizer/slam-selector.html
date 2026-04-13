@@ -659,30 +659,6 @@
         if (icon) icon.className = next === 'dark' ? 'ph ph-moon' : 'ph ph-sun';
     });
     </script>
-<!-- Page Analytics — fires batch events to /.netlify/functions/analytics -->
-<script>
-(function(){
-  var E='https://thebluefairy.netlify.app/.netlify/functions/analytics-ingest';
-  var S='sess_'+crypto.randomUUID().replace(/-/g,'').slice(0,16);
-  var surface='slam_selector';
-  var q=[],t=null,ps=Date.now(),ms=0,ix=0;
-  function rg(){try{var z=Intl.DateTimeFormat().resolvedOptions().timeZone;if(z.includes('America'))return'Americas';if(z.includes('Europe'))return'Europe';if(z.includes('Asia')||z.includes('Australia')||z.includes('Pacific'))return'Asia-Pacific';}catch(e){}return'Unknown';}
-  function mkEvent(type,action,payload){return{event_id:crypto.randomUUID(),timestamp:new Date().toISOString(),surface:surface,event_type:type,event_action:action,context:{session_id:S,geo_region:rg(),platform:/Android|iPhone|iPad/i.test(navigator.userAgent)?'mobile':'web',path:location.pathname},payload:payload||{},data_policy:{collection_tier:'anonymous'}};}
-  function fl(){if(t){clearTimeout(t);t=null;}if(!q.length)return;var b=q.splice(0);navigator.sendBeacon?navigator.sendBeacon(E,JSON.stringify({type:'batch',events:b})):fetch(E,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({type:'batch',events:b}),keepalive:true}).catch(function(){});}
-  function ev(type,action,payload){q.push(mkEvent(type,action,payload));if(q.length>=20)fl();else if(!t)t=setTimeout(fl,5000);}
-  // Page view
-  ev('page_view','view',{path:location.pathname,title:document.title});
-  // Scroll depth
-  var st=null;addEventListener('scroll',function(){var h=document.documentElement.scrollHeight-innerHeight;if(h>0){var p=Math.round(100*scrollY/h);if(p>ms)ms=p;}if(st)clearTimeout(st);st=setTimeout(function(){ev('engagement','scroll_depth',{depth_pct:ms,path:location.pathname});},2000);},{passive:true});
-  // Click tracking
-  addEventListener('click',function(e){ix++;var el=e.target.closest('a,button,[data-track]');if(!el)return;ev('interaction','click',{label:(el.dataset.track||el.textContent.trim()).substring(0,50),href:(el.href||'').substring(0,200),element:el.tagName.toLowerCase(),path:location.pathname});},{passive:true});
-  // Exit
-  function end(){ev('engagement','page_exit',{duration_sec:Math.round((Date.now()-ps)/1e3),max_scroll_pct:ms,interactions:ix,path:location.pathname});fl();}
-  addEventListener('visibilitychange',function(){if(document.visibilityState==='hidden')end();});
-  addEventListener('pagehide',end);
-  // Expose for page-specific events
-  window.__pageAnalytics={ev:ev,flush:fl,session:S};
-})();
-</script>
+<!-- Analytics injected by build_static.py (unified _ANALYTICS_SNIPPET + _UNIFIED_NAV) -->
 </body>
 </html>

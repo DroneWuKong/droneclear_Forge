@@ -210,7 +210,7 @@ _MOBILE_CSS = """<style>
 
 
 
-_UNIFIED_NAV = """<!-- ── Unified DroneClear Nav ───────────────────────────────────────── -->
+_UNIFIED_NAV = r"""<!-- ── Unified DroneClear Nav ───────────────────────────────────────── -->
 <style id="dc-unified-nav-styles">
 #dc-nav{display:flex;align-items:center;justify-content:space-between;padding:0 16px;height:44px;background:#0c0c0a;border-bottom:1px solid #1e1e18;position:sticky;top:0;z-index:500;font-family:'DM Sans',system-ui,sans-serif}
 #dc-nav-left{display:flex;align-items:center;gap:10px;min-width:0}
