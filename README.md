@@ -1,16 +1,19 @@
 # DroneClear Forge
 
-> The public-facing drone component browser, build planner, and integration guide hub.
-> **Live at [forgeprole.netlify.app](https://forgeprole.netlify.app)**
+> The public-facing drone component browser, build planner, and intelligence hub.
+> **Live at [nvmillbuilditmyself.com](https://nvmillbuilditmyself.com)**
+> PIE intelligence at [nvmillfindoutmyself.com](https://nvmillfindoutmyself.com)
 
 ## What This Is
 
-Forge is the front door to the AI Wingman ecosystem. It gives operators, builders, and integrators free access to:
+Forge is the front door to the DroneClear ecosystem. It gives operators, builders, and integrators free access to:
 
-- **3,200+ drone components** across 16 categories (motors, ESCs, FCs, frames, antennas, etc.)
-- **150+ drone platforms** with specs, compliance status, and manufacturer details
+- **3,885+ drone components** across 38 categories — all fields enriched to 95-100% coverage
+- **271 drone platforms** with specs, compliance status, and manufacturer details (25 Blue UAS)
+- **PIE v0.9** — Pattern Intelligence Engine: 237 flags, 10 predictions, 4 gray zone entities tracked
 - **Build planning tools** — model builder, build audit, compatibility checks
 - **Integration guides** — FC firmware, mesh networking, TAK, SLAM, C-UAS, AI, swarm coordination
+- **Intel feeds** — defense procurement, solicitations, gray zone enforcement, grant windows
 - **FPV Academy** — learning resources for new operators
 - **Community contributions** — submit new components and platforms
 

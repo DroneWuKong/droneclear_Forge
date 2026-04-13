@@ -882,8 +882,8 @@ def inject_seo(html, src_name, dst_path):
     <meta property="og:url" content="{canonical}">
 
     <!-- Open Graph Image -->
-    <meta property="og:image" content="https://forgeprole.netlify.app/static/og-image.png">
-    <meta name="twitter:image" content="https://forgeprole.netlify.app/static/og-image.png">
+    <meta property="og:image" content="https://nvmillbuilditmyself.com/static/og-image.png">
+    <meta name="twitter:image" content="https://nvmillbuilditmyself.com/static/og-image.png">
 
     <!-- Twitter Card -->
     <meta name="twitter:card" content="summary_large_image">

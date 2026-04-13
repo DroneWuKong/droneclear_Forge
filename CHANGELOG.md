@@ -1,5 +1,18 @@
 # Changelog
 
+## [Session] - 2026-04-13 — Full audit + enrichment + routing fixes
+
+### Fixed
+- **netlify.toml** — 9 missing redirects added: `/compliance-matrix`, `/dossier`, `/guides-hub`, `/intel-commercial`, `/intel-dfr`, `/intel/feed`, `/payload-compare`, `/spec-sheets`, `/stack-builder`
+- **build_static.py** — OG image URLs updated from `forgeprole.netlify.app` → `nvmillbuilditmyself.com`
+- **patterns.html** — `PIE →` and `Full analysis →` brief links now switch tabs in-page instead of navigating to dead hrefs
+- **README.md** — updated live URLs (forgeprole → nvmillbuilditmyself.com), component count (3,200 → 3,885+), category count (16 → 38), platform count (150 → 271)
+
+### Changed
+- **pie_flags.json** — synced 237 flags; all flags now have `prediction` field (58 gray zone flags were missing it)
+- **pie_brief.json** — synced from pipeline run 2026-04-13
+
+
 ## [Session] - 2026-04-12 — mine_pilotinstitute.py + GH Actions wiring
 
 ### Added
