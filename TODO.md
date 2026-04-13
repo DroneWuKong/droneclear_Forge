@@ -35,7 +35,7 @@
 
 ## Platforms
 - [x] /platforms/?filter= URL param routing (survey→mapping, inspection→keyword match)
-- [ ] KrattWorks Ghost Dragon DM-0032 had stale fabricated specs — corrected this session; verify no other DM- entries have similarly fabricated data
+- [x] KrattWorks Ghost Dragon DM-0032 had stale fabricated specs — corrected this session; verify no other DM- entries have similarly fabricated data
 
 ## Hangar / Wingman Private
 - [ ] Tooth Phase 1 SQLite implementation
@@ -51,7 +51,7 @@
 - [ ] SAM.gov miner: register for `SAM_GOV_API_KEY` at api.sam.gov, test opportunity search
 
 ## Wingman / Compliance (added this session)
-- [ ] Audit `forge_manufacturer_status.json` — verify Brain FPV closure date, Draganfly acquisition status, Yuneec FCC exposure, FrSky ecosystem-share claim
+- [x] Audit `forge_manufacturer_status.json` — verify Brain FPV closure date, Draganfly acquisition status, Yuneec FCC exposure, FrSky ecosystem-share claim
 - [ ] Add subsidiaries/parent cross-linking UX in `/spec-sheets/` card (show "part of ORQA ecosystem" for ImmersionRC, etc.)
 - [ ] Audit `forge_alternatives.json` — verify recommendations against real prices / availability
 - [ ] Extend `forge_manufacturer_status.json` with Unusual Machines' full subsidiary tree (Brave FPV, any post-2024 acquisitions)

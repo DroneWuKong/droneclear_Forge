@@ -1,5 +1,19 @@
 # Changelog
 
+## [Session] - 2026-04-12 — Manufacturer Audit, DM- Type Fixes, Vehicle Classification
+
+### Fixed
+- **`forge_manufacturer_status.json` — 4 manufacturer records corrected:**
+  - **Brain FPV**: status `defunct` → `active`. RADIX 2 H7 is in active production from Oregon, USA (NDAA compliant). Previous "defunct" was based on RADIX LI EOL, not company shutdown.
+  - **Yuneec**: status `active_restricted` → `restricted`. FCC Covered List updated Dec 22 2025 covers all foreign-produced UAS; Yuneec has no Blue UAS exemption. Added `fcc_covered_list_dec2025` and `no_new_fcc_auth` risk flags.
+  - **FrSky**: added `fcc_covered_list_components_risk` and `china_origin` flags. FCC Covered List Dec 2025 extends to UAS critical components from foreign countries.
+  - **Draganfly**: clarified active/publicly-traded status; changed flag from `verify_status` to `verify_component_sourcing`.
+- **DM- vehicle_type misclassifications fixed (3 entries):**
+  - DM-0064 `UkrSpecSystems Shark/PD-2/Leleka`: `multirotor` → `fixed_wing` (all are fixed-wing or VTOL fixed-wing)
+  - DM-0066 `WB Group FlyEye`: `multirotor` → `fixed_wing` (catapult-launched fixed-wing)
+  - DM-0078 `Leonardo AWHERO`: `multirotor` → `rotary_wing` (helicopter-type UAS)
+- **DM- spec audit**: no copy-paste fabrication found across 36 quad/multirotor entries; range outliers were correctly fixed-wing platforms misclassified.
+
 ## [Session] - 2026-04-12 — DFR Compliance KB Entries + RotorBuilds DOM Inspector
 
 ### Added
