@@ -1,0 +1,1074 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Software Library — Forge</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <script src="https://unpkg.com/@phosphor-icons/web"></script>
+  <style>
+    :root {
+      --bg:#0c0c0a;--surface:#141410;--card:#1c1c17;--card-hi:#242420;
+      --border:#2e2e26;--border-hi:#3e3e34;
+      --accent:#22c55e;--accent-d:#22c55e18;
+      --cyan:#22d3ee;--cyan-d:#22d3ee18;
+      --yellow:#eab308;--yellow-d:#eab30818;
+      --red:#dc2626;--red-d:#dc262618;
+      --purple:#a78bfa;--purple-d:#a78bfa18;
+      --orange:#f97316;--orange-d:#f9731618;
+      --text:#f5f0e8;--text-s:#b8b0a0;--text-d:#8a8070;--text-xd:#5a5248;
+      --font:'DM Sans',system-ui,sans-serif;
+      --mono:'JetBrains Mono',monospace;
+    }
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body { background: var(--bg); color: var(--text); font-family: var(--font); line-height: 1.5; -webkit-font-smoothing: antialiased; min-height: 100vh; }
+    a { text-decoration: none; color: inherit; }
+
+    /* ── Page layout ── */
+    .page { max-width: 860px; margin: 0 auto; padding: 36px 20px 80px; }
+
+    /* ── Header ── */
+    .hdr { margin-bottom: 36px; }
+    .hdr-eyebrow { font: 600 10px var(--mono); text-transform: uppercase; letter-spacing: .14em; color: var(--text-xd); margin-bottom: 10px; }
+    .hdr-title { font: 700 30px var(--mono); color: var(--accent); letter-spacing: -.03em; margin-bottom: 10px; }
+    .hdr-sub { font-size: 13px; color: var(--text-s); max-width: 560px; line-height: 1.65; }
+
+    /* ── Filter bar ── */
+    .filter-bar { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 32px; }
+    .filt-btn { font: 500 11px var(--font); padding: 5px 12px; border-radius: 20px; border: 1px solid var(--border); color: var(--text-d); cursor: pointer; background: transparent; transition: all .12s; white-space: nowrap; }
+    .filt-btn:hover { border-color: var(--border-hi); color: var(--text-s); }
+    .filt-btn.active { background: var(--card); border-color: var(--accent); color: var(--accent); }
+
+    /* ── Search ── */
+    .search-wrap { position: relative; margin-bottom: 28px; max-width: 440px; }
+    .search-wrap i { position: absolute; left: 12px; top: 50%; transform: translateY(-50%); color: var(--text-d); font-size: 14px; pointer-events: none; }
+    .search-input { width: 100%; background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 9px 12px 9px 36px; font: 13px var(--font); color: var(--text); outline: none; transition: border .15s; }
+    .search-input:focus { border-color: var(--border-hi); }
+    .search-input::placeholder { color: var(--text-xd); }
+
+    /* ── Section ── */
+    .section { margin-bottom: 32px; }
+    .section-hdr { display: flex; align-items: center; gap: 10px; margin-bottom: 12px; }
+    .section-icon { width: 28px; height: 28px; border-radius: 7px; display: flex; align-items: center; justify-content: center; font-size: 14px; flex-shrink: 0; }
+    .section-label { font: 600 10px var(--mono); text-transform: uppercase; letter-spacing: .1em; color: var(--text-d); flex: 1; }
+    .section-hdr::after { content: ''; flex: 1; height: 1px; background: var(--border); max-width: 400px; }
+    .section-count { font: 500 11px var(--mono); color: var(--text-xd); }
+
+    .section-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 8px; }
+
+    /* ── Software card ── */
+    .sw-card {
+      display: flex; align-items: flex-start; gap: 12px;
+      padding: 12px 14px; border-radius: 8px;
+      border: 1px solid transparent;
+      background: var(--surface);
+      transition: all .12s;
+      position: relative;
+    }
+    .sw-card:hover { background: var(--card); border-color: var(--border); }
+    .sw-card-ico { width: 34px; height: 34px; border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 15px; flex-shrink: 0; }
+    .sw-card-body { flex: 1; min-width: 0; }
+    .sw-card-name { font: 600 12px var(--font); color: var(--text); margin-bottom: 2px; display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+    .sw-card-desc { font-size: 11px; color: var(--text-d); line-height: 1.5; }
+    .sw-card-links { display: flex; gap: 6px; margin-top: 8px; flex-wrap: wrap; }
+
+    .sw-link {
+      display: inline-flex; align-items: center; gap: 4px;
+      font: 500 10px var(--mono); padding: 3px 8px; border-radius: 4px;
+      border: 1px solid var(--border); color: var(--text-d);
+      background: transparent; transition: all .1s; white-space: nowrap;
+    }
+    .sw-link:hover { border-color: var(--border-hi); color: var(--text-s); }
+    .sw-link.primary { border-color: rgba(34,197,94,.3); color: var(--accent); background: var(--accent-d); }
+    .sw-link.primary:hover { border-color: var(--accent); }
+    .sw-link i { font-size: 11px; }
+
+    /* ── Badges ── */
+    .badge { font: 600 9px var(--mono); padding: 1px 5px; border-radius: 4px; text-transform: uppercase; letter-spacing: .04em; }
+    .badge-free { background: var(--accent-d); color: var(--accent); }
+    .badge-open { background: var(--cyan-d); color: var(--cyan); }
+    .badge-paid { background: var(--yellow-d); color: var(--yellow); }
+    .badge-win { background: rgba(59,130,246,.15); color: #60a5fa; }
+    .badge-mac { background: rgba(168,85,247,.15); color: #c084fc; }
+    .badge-linux { background: rgba(249,115,22,.15); color: #fb923c; }
+    .badge-web { background: rgba(34,211,238,.12); color: var(--cyan); }
+    .badge-new { background: var(--red-d); color: var(--red); }
+
+    /* ── Stats bar ── */
+    .stats-row { display: flex; gap: 20px; margin-bottom: 28px; padding: 14px 18px; background: var(--surface); border: 1px solid var(--border); border-radius: 8px; }
+    .stat-item { display: flex; flex-direction: column; }
+    .stat-val { font: 700 18px var(--mono); color: var(--text); }
+    .stat-lbl { font-size: 10px; color: var(--text-xd); text-transform: uppercase; letter-spacing: .08em; margin-top: 1px; }
+
+    /* ── Empty state ── */
+    .empty { padding: 32px; text-align: center; color: var(--text-d); font-size: 13px; }
+
+    /* ── Responsive ── */
+    @media (max-width: 640px) {
+      .section-grid { grid-template-columns: 1fr; }
+      .stats-row { flex-wrap: wrap; gap: 12px; }
+    }
+  </style>
+  <style id="global-mobile-fix">
+    @media(max-width:640px){
+      *{max-width:100%;box-sizing:border-box}
+    }
+  </style>
+</head>
+<body>
+
+<!-- ── Unified DroneClear Nav placeholder ── -->
+<style id="dc-unified-nav-styles">
+#dc-nav{display:flex;align-items:center;justify-content:space-between;padding:0 16px;height:44px;background:#0c0c0a;border-bottom:1px solid #1e1e18;position:sticky;top:0;z-index:500;font-family:'DM Sans',system-ui,sans-serif}
+#dc-nav-left{display:flex;align-items:center;gap:10px;min-width:0}
+#dc-nav-brand{font:700 13px 'JetBrains Mono',monospace;color:#f59e0b;text-decoration:none;letter-spacing:-.02em;flex-shrink:0}
+#dc-nav-sep{color:#2e2e26;font-size:12px;flex-shrink:0}
+#dc-nav-current{font:600 12px 'DM Sans',system-ui;color:#f5f0e8;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#dc-nav-right{display:flex;gap:6px;flex-shrink:0}
+.dc-nav-pill{font:500 11px 'DM Sans',system-ui;color:#8a8070;padding:4px 10px;border:1px solid #2e2e26;border-radius:20px;text-decoration:none;transition:all .15s;white-space:nowrap}
+.dc-nav-pill:hover{border-color:#3e3e34;color:#b8b0a0}
+#dc-nav-hamburger{background:none;border:none;color:#8a8070;cursor:pointer;padding:6px;display:flex;align-items:center}
+#dc-nav-hamburger i{font-size:18px}
+#dc-drawer{position:fixed;top:44px;left:0;right:0;bottom:0;background:#0c0c0a;z-index:499;overflow-y:auto;padding:12px;display:none;border-top:1px solid #1e1e18}
+#dc-drawer.open{display:block}
+.dc-drawer-section{font:600 10px 'JetBrains Mono',monospace;text-transform:uppercase;letter-spacing:.1em;color:#5a5248;padding:8px 4px 4px;margin-top:8px}
+.dc-drawer-item{display:block;padding:10px 12px;border-radius:8px;color:#b8b0a0;font:500 13px 'DM Sans',system-ui;text-decoration:none;transition:all .1s}
+.dc-drawer-item:hover,.dc-drawer-item.active{background:#1c1c17;color:#f5f0e8}
+</style>
+
+<nav id="dc-nav">
+  <div id="dc-nav-left">
+    <a id="dc-nav-brand" href="/" onclick="return dcNavBrandClick(event)">—</a>
+    <span id="dc-nav-sep">/</span>
+    <span id="dc-nav-current">Software Library</span>
+  </div>
+  <div id="dc-nav-right">
+    <a class="dc-nav-pill" href="/tools-home/">All Tools</a>
+    <a class="dc-nav-pill" href="/wingman/">Wingman AI</a>
+    <button id="dc-nav-hamburger" onclick="document.getElementById('dc-drawer').classList.toggle('open')" aria-label="Menu">
+      <i class="ph ph-list"></i>
+    </button>
+  </div>
+</nav>
+<div id="dc-drawer">
+  <div class="dc-drawer-section">Forge</div>
+  <a class="dc-drawer-item" href="https://nvmillbuilditmyself.com/browse/" data-page="browse">Browse Components</a>
+  <a class="dc-drawer-item" href="https://nvmillbuilditmyself.com/platforms/" data-page="platforms">Platforms</a>
+  <a class="dc-drawer-item" href="https://nvmillbuilditmyself.com/wingman/" data-page="wingman">Wingman AI</a>
+  <a class="dc-drawer-item" href="https://nvmillbuilditmyself.com/tools-home/" data-page="tools-home">All Tools</a>
+  <a class="dc-drawer-item active" href="/software-library/" data-page="software-library">Software Library</a>
+  <div class="dc-drawer-section">Intelligence</div>
+  <a class="dc-drawer-item" href="https://nvmillbuilditmyself.com/intel/" data-page="intel">Intel Hub</a>
+  <a class="dc-drawer-item" href="https://nvmillfindoutmyself.com/patterns-home/" data-page="patterns-home">P.I.E Hub</a>
+</div>
+
+<script>
+function dcNavBrandClick(e) {
+  const host = location.hostname;
+  const isPIE = host.includes('findout');
+  if (isPIE) { location.href = 'https://nvmillfindoutmyself.com/patterns-home/'; return false; }
+  location.href = '/';
+  return false;
+}
+const _dcPageMap = {'software-library':'Software Library','tools-home':'Tools','browse':'Browse','platforms':'Platforms','wingman':'Wingman AI'};
+const _dcPage = location.pathname.replace(/\//g,'');
+if (_dcPageMap[_dcPage]) document.getElementById('dc-nav-current').textContent = _dcPageMap[_dcPage];
+document.querySelectorAll('.dc-drawer-item').forEach(a => {
+  if (a.dataset.page === _dcPage) a.classList.add('active');
+});
+const _dcBrand = document.getElementById('dc-nav-brand');
+if (_dcBrand) { const h = location.hostname; _dcBrand.textContent = h.includes('findout') ? 'P.I.E' : h.includes('builditmyself') ? 'FORGE' : '—'; }
+</script>
+
+<!-- ── Main content ── -->
+<div class="page">
+
+  <div class="hdr">
+    <div class="hdr-eyebrow">// Forge · Software Library</div>
+    <h1 class="hdr-title">SOFTWARE LIBRARY</h1>
+    <p class="hdr-sub">Every ground station, configurator, firmware tool, and mission planner for FPV, commercial UAS, and defense platforms — organized by system type.</p>
+  </div>
+
+  <div class="stats-row" id="statsRow">
+    <div class="stat-item"><span class="stat-val" id="totalCount">—</span><span class="stat-lbl">Tools</span></div>
+    <div class="stat-item"><span class="stat-val" id="freeCount">—</span><span class="stat-lbl">Free / Open Source</span></div>
+    <div class="stat-item"><span class="stat-val" id="catCount">—</span><span class="stat-lbl">Categories</span></div>
+    <div class="stat-item"><span class="stat-val" id="platformCount">—</span><span class="stat-lbl">Platforms Covered</span></div>
+  </div>
+
+  <div class="search-wrap">
+    <i class="ph ph-magnifying-glass"></i>
+    <input class="search-input" type="text" id="searchInput" placeholder="Search software…" oninput="applyFilters()">
+  </div>
+
+  <div class="filter-bar" id="filterBar"></div>
+
+  <div id="appContent"></div>
+</div>
+
+<script>
+const SOFTWARE = [
+  // ─────────────────────────────────────────────
+  // FLIGHT CONTROLLERS / FIRMWARE CONFIG
+  // ─────────────────────────────────────────────
+  {
+    id: 'betaflight-configurator',
+    name: 'Betaflight Configurator',
+    category: 'fc_firmware',
+    desc: 'Primary GUI for Betaflight FC setup, PID tuning, motor testing, OSD config, VTX control, and CLI access.',
+    tags: ['Betaflight', 'FPV', 'PID', 'OSD', 'CLI'],
+    platforms: ['Windows', 'macOS', 'Linux'],
+    license: 'open',
+    links: [
+      { label: 'Download', url: 'https://github.com/betaflight/betaflight-configurator/releases', primary: true },
+      { label: 'Docs', url: 'https://betaflight.com/docs' },
+    ]
+  },
+  {
+    id: 'cleanflight-configurator',
+    name: 'Cleanflight Configurator',
+    category: 'fc_firmware',
+    desc: 'Legacy FC configurator for Cleanflight-based hardware. Predecessor to Betaflight.',
+    tags: ['Cleanflight', 'legacy'],
+    platforms: ['Windows', 'macOS', 'Linux'],
+    license: 'open',
+    links: [
+      { label: 'GitHub', url: 'https://github.com/cleanflight/cleanflight-configurator/releases', primary: true },
+    ]
+  },
+  {
+    id: 'inav-configurator',
+    name: 'iNav Configurator',
+    category: 'fc_firmware',
+    desc: 'Full-featured GUI for iNav — autonomous navigation, GPS return-to-home, mission planning, waypoint upload.',
+    tags: ['iNav', 'autonomy', 'GPS', 'fixed wing', 'waypoints'],
+    platforms: ['Windows', 'macOS', 'Linux'],
+    license: 'open',
+    links: [
+      { label: 'Download', url: 'https://github.com/iNavFlight/inav-configurator/releases', primary: true },
+      { label: 'Wiki', url: 'https://github.com/iNavFlight/inav/wiki' },
+    ]
+  },
+  {
+    id: 'emuflight-configurator',
+    name: 'EmuFlight Configurator',
+    category: 'fc_firmware',
+    desc: 'Betaflight fork optimized for freestyle and cinematic — smoother filters, improved stick feel.',
+    tags: ['EmuFlight', 'freestyle', 'cinematic'],
+    platforms: ['Windows', 'macOS', 'Linux'],
+    license: 'open',
+    links: [
+      { label: 'GitHub', url: 'https://github.com/emuflight/EmuFlight/releases', primary: true },
+    ]
+  },
+  {
+    id: 'kiss-gui',
+    name: 'KISS GUI',
+    category: 'fc_firmware',
+    desc: 'Proprietary configurator for KISS FC and KISS ESCs. Simple interface, clean tuning workflow.',
+    tags: ['KISS', 'ESC'],
+    platforms: ['Windows', 'macOS'],
+    license: 'free',
+    links: [
+      { label: 'Download', url: 'https://kiss.flyduino.net/', primary: true },
+    ]
+  },
+  {
+    id: 'arducopter-configurator',
+    name: 'Mission Planner',
+    category: 'fc_firmware',
+    desc: 'Full GCS and configurator for ArduPilot (ArduCopter, ArduPlane, ArduRover). Waypoint planning, param tuning, telemetry.',
+    tags: ['ArduPilot', 'ArduCopter', 'autonomy', 'waypoints', 'GCS'],
+    platforms: ['Windows'],
+    license: 'open',
+    links: [
+      { label: 'Download', url: 'https://ardupilot.org/planner/docs/mission-planner-installation.html', primary: true },
+      { label: 'Docs', url: 'https://ardupilot.org/planner/' },
+    ]
+  },
+  {
+    id: 'qgroundcontrol',
+    name: 'QGroundControl',
+    category: 'fc_firmware',
+    desc: 'Cross-platform GCS for PX4 and ArduPilot. Flight planning, live telemetry, parameter config, video streaming.',
+    tags: ['PX4', 'ArduPilot', 'GCS', 'MAVLink', 'telemetry'],
+    platforms: ['Windows', 'macOS', 'Linux'],
+    license: 'open',
+    links: [
+      { label: 'Download', url: 'https://docs.qgroundcontrol.com/master/en/qgc-user-guide/getting_started/download_and_install.html', primary: true },
+      { label: 'Docs', url: 'https://docs.qgroundcontrol.com/' },
+    ]
+  },
+  {
+    id: 'opentx-companion',
+    name: 'OpenTX Companion',
+    category: 'fc_firmware',
+    desc: 'Radio programming software for OpenTX-based transmitters (FrSky, Jumper). Model management, firmware flash.',
+    tags: ['OpenTX', 'radio', 'transmitter', 'FrSky'],
+    platforms: ['Windows', 'macOS', 'Linux'],
+    license: 'open',
+    links: [
+      { label: 'Download', url: 'https://www.open-tx.org/downloads.html', primary: true },
+    ]
+  },
+  {
+    id: 'edgetx',
+    name: 'EdgeTX Companion',
+    category: 'fc_firmware',
+    desc: 'Next-generation OpenTX fork with improved LUA scripting, SD card management, and modern radio hardware support.',
+    tags: ['EdgeTX', 'radio', 'transmitter', 'Radiomaster'],
+    platforms: ['Windows', 'macOS', 'Linux'],
+    license: 'open',
+    links: [
+      { label: 'Download', url: 'https://github.com/EdgeTX/edgetx/releases', primary: true },
+      { label: 'Docs', url: 'https://edgetx.gitbook.io/edgetx-user-manual' },
+    ]
+  },
+
+  // ─────────────────────────────────────────────
+  // EXPRESSLRS / RC LINK
+  // ─────────────────────────────────────────────
+  {
+    id: 'elrs-configurator',
+    name: 'ExpressLRS Configurator',
+    category: 'rc_link',
+    desc: 'Flash and configure ELRS TX/RX firmware. Supports all ELRS hardware, binding phrase generation, feature flags.',
+    tags: ['ELRS', 'ExpressLRS', 'firmware', 'binding'],
+    platforms: ['Windows', 'macOS', 'Linux'],
+    license: 'open',
+    links: [
+      { label: 'Download', url: 'https://github.com/ExpressLRS/ExpressLRS-Configurator/releases', primary: true },
+      { label: 'Docs', url: 'https://www.expresslrs.org/quick-start/getting-started/' },
+    ]
+  },
+  {
+    id: 'crossfire-agent',
+    name: 'TBS Agent X',
+    category: 'rc_link',
+    desc: 'TBS device manager for Crossfire, Tracer, and other TBS hardware. Firmware update and config.',
+    tags: ['TBS', 'Crossfire', 'Tracer', 'firmware'],
+    platforms: ['Windows', 'macOS'],
+    license: 'free',
+    links: [
+      { label: 'Download', url: 'https://www.team-blacksheep.com/products/prod:tbs_agent_x', primary: true },
+    ]
+  },
+  {
+    id: 'dragonlink',
+    name: 'DragonLink Manager',
+    category: 'rc_link',
+    desc: 'Configuration and firmware update tool for DragonLink long-range RC systems.',
+    tags: ['DragonLink', 'long range'],
+    platforms: ['Windows'],
+    license: 'free',
+    links: [
+      { label: 'Download', url: 'https://www.dragonlinkrc.com/instructions/software/', primary: true },
+    ]
+  },
+  {
+    id: 'ghost-config',
+    name: 'ImmersionRC Ghost Config',
+    category: 'rc_link',
+    desc: 'Configuration app for ImmersionRC Ghost RC link. Channel mapping, power levels, telemetry setup.',
+    tags: ['Ghost', 'ImmersionRC'],
+    platforms: ['Windows', 'macOS'],
+    license: 'free',
+    links: [
+      { label: 'Download', url: 'https://www.immersionrc.com/fpv-products/ghost/', primary: true },
+    ]
+  },
+
+  // ─────────────────────────────────────────────
+  // VIDEO / VTX
+  // ─────────────────────────────────────────────
+  {
+    id: 'hdzero-config',
+    name: 'HDZero Companion App',
+    category: 'video_vtx',
+    desc: 'Configuration app for HDZero digital FPV system. Channel, power, OSD layout, firmware updates.',
+    tags: ['HDZero', 'digital FPV', 'OSD'],
+    platforms: ['Windows', 'macOS'],
+    license: 'free',
+    links: [
+      { label: 'Download', url: 'https://www.hdzero.com/downloads', primary: true },
+    ]
+  },
+  {
+    id: 'dji-assistant',
+    name: 'DJI Assistant 2',
+    category: 'video_vtx',
+    desc: 'DJI device manager — firmware updates, activation, and config for DJI FPV system, O3, Avata, Goggles 2.',
+    tags: ['DJI', 'O3', 'digital FPV', 'Goggles'],
+    platforms: ['Windows', 'macOS'],
+    license: 'free',
+    links: [
+      { label: 'Download', url: 'https://www.dji.com/downloads/softwares/assistant-dfu', primary: true },
+    ]
+  },
+  {
+    id: 'avatar-config',
+    name: 'Avatar HD System App',
+    category: 'video_vtx',
+    desc: 'Walksnail Avatar HD configuration — channel selection, power settings, OSD, firmware flash.',
+    tags: ['Walksnail', 'Avatar', 'digital FPV'],
+    platforms: ['Windows', 'macOS'],
+    license: 'free',
+    links: [
+      { label: 'Download', url: 'https://caddxfpv.com/pages/avatar-hd-system-download', primary: true },
+    ]
+  },
+  {
+    id: 'openhd',
+    name: 'OpenHD',
+    category: 'video_vtx',
+    desc: 'Open-source HD video transmission system for drones. Raspberry Pi-based, low latency, OSD, telemetry overlay.',
+    tags: ['OpenHD', 'HD video', 'open source', 'Raspberry Pi'],
+    platforms: ['Linux'],
+    license: 'open',
+    links: [
+      { label: 'GitHub', url: 'https://github.com/OpenHD/OpenHD/releases', primary: true },
+      { label: 'Docs', url: 'https://openhd.gitbook.io/open-hd/' },
+    ]
+  },
+  {
+    id: 'wifibroadcast',
+    name: 'WFB-ng (Wifibroadcast)',
+    category: 'video_vtx',
+    desc: 'Next-gen wifibroadcast — unidirectional WiFi video link for FPV. Low latency, encrypted, long range.',
+    tags: ['wifibroadcast', 'WiFi', 'open source', 'low latency'],
+    platforms: ['Linux'],
+    license: 'open',
+    links: [
+      { label: 'GitHub', url: 'https://github.com/svpcom/wifibroadcast', primary: true },
+    ]
+  },
+
+  // ─────────────────────────────────────────────
+  // BLACKBOX / ANALYSIS
+  // ─────────────────────────────────────────────
+  {
+    id: 'blackbox-explorer',
+    name: 'Betaflight Blackbox Explorer',
+    category: 'analysis',
+    desc: 'Visualize and analyze Blackbox flight logs. Gyro data, PID output, motor traces, step response analysis.',
+    tags: ['Blackbox', 'PID', 'analysis', 'tuning', 'Betaflight'],
+    platforms: ['Windows', 'macOS', 'Linux'],
+    license: 'open',
+    links: [
+      { label: 'Download', url: 'https://github.com/betaflight/blackbox-log-viewer/releases', primary: true },
+    ]
+  },
+  {
+    id: 'plasmatree',
+    name: 'PID Analyzer (Plasmatree)',
+    category: 'analysis',
+    desc: 'Python tool for step response analysis from Blackbox data. Quantifies P/D response, identifies oscillations.',
+    tags: ['PID', 'step response', 'Python', 'analysis'],
+    platforms: ['Windows', 'macOS', 'Linux'],
+    license: 'open',
+    links: [
+      { label: 'GitHub', url: 'https://github.com/Plasmatree/PID-Analyzer', primary: true },
+    ]
+  },
+  {
+    id: 'rotorflight-blackbox',
+    name: 'Rotorflight Blackbox Explorer',
+    category: 'analysis',
+    desc: 'Blackbox log viewer for Rotorflight (helicopter FC). Tail rotor, governor, cyclic analysis.',
+    tags: ['Rotorflight', 'helicopter', 'Blackbox'],
+    platforms: ['Windows', 'macOS', 'Linux'],
+    license: 'open',
+    links: [
+      { label: 'GitHub', url: 'https://github.com/rotorflight/rotorflight-blackbox/releases', primary: true },
+    ]
+  },
+  {
+    id: 'UAVLogViewer',
+    name: 'UAV Log Viewer',
+    category: 'analysis',
+    desc: 'Web-based MAVLink log viewer for ArduPilot and PX4. 3D flight replay, sensor graphs, parameter changes.',
+    tags: ['MAVLink', 'ArduPilot', 'PX4', 'web'],
+    platforms: ['Web'],
+    license: 'open',
+    links: [
+      { label: 'Open', url: 'https://plot.ardupilot.org/', primary: true },
+      { label: 'GitHub', url: 'https://github.com/ardupilot/UAVLogViewer' },
+    ]
+  },
+
+  // ─────────────────────────────────────────────
+  // GROUND CONTROL / GCS
+  // ─────────────────────────────────────────────
+  {
+    id: 'apm-planner',
+    name: 'APM Planner 2',
+    category: 'gcs',
+    desc: 'Cross-platform GCS for ArduPilot. Lighter alternative to Mission Planner, runs natively on macOS/Linux.',
+    tags: ['ArduPilot', 'GCS', 'MAVLink'],
+    platforms: ['Windows', 'macOS', 'Linux'],
+    license: 'open',
+    links: [
+      { label: 'Download', url: 'https://ardupilot.org/planner2/', primary: true },
+    ]
+  },
+  {
+    id: 'mavproxy',
+    name: 'MAVProxy',
+    category: 'gcs',
+    desc: 'Command-line MAVLink proxy and GCS for ArduPilot. Headless operation, scripting, multi-vehicle support.',
+    tags: ['MAVLink', 'CLI', 'proxy', 'Python', 'scripting'],
+    platforms: ['Windows', 'macOS', 'Linux'],
+    license: 'open',
+    links: [
+      { label: 'Docs', url: 'https://ardupilot.org/mavproxy/', primary: true },
+      { label: 'PyPI', url: 'https://pypi.org/project/MAVProxy/' },
+    ]
+  },
+  {
+    id: 'litchi',
+    name: 'Litchi',
+    category: 'gcs',
+    desc: 'Advanced mission planning app for DJI drones. Waypoints, orbit, follow-me, VR mode, CSV import.',
+    tags: ['DJI', 'waypoints', 'mission planning'],
+    platforms: ['Windows', 'macOS', 'iOS', 'Android'],
+    license: 'paid',
+    links: [
+      { label: 'Website', url: 'https://flylitchi.com/', primary: true },
+    ]
+  },
+  {
+    id: 'dronedeploy',
+    name: 'DroneDeploy',
+    category: 'gcs',
+    desc: 'Enterprise mapping and inspection platform. Autonomous flight plans, photogrammetry, orthomosaics, AI analysis.',
+    tags: ['mapping', 'photogrammetry', 'enterprise', 'GCS'],
+    platforms: ['Web', 'iOS', 'Android'],
+    license: 'paid',
+    links: [
+      { label: 'Website', url: 'https://www.dronedeploy.com/', primary: true },
+    ]
+  },
+  {
+    id: 'autopilot-agc',
+    name: 'Auterion Ground Control',
+    category: 'gcs',
+    desc: 'Enterprise GCS for Auterion-powered platforms (Freefly, Quantum, Herelink). Multi-vehicle, payload control.',
+    tags: ['Auterion', 'enterprise', 'PX4', 'multi-vehicle'],
+    platforms: ['Windows', 'macOS', 'Linux', 'iOS', 'Android'],
+    license: 'free',
+    links: [
+      { label: 'Download', url: 'https://auterion.com/product/ground-control-station/', primary: true },
+    ]
+  },
+  {
+    id: 'herelink-gcs',
+    name: 'HereLink GCS',
+    category: 'gcs',
+    desc: 'Integrated GCS running on HereLink controller. Based on QGC, supports ArduPilot and PX4.',
+    tags: ['HereLink', 'QGC', 'integrated GCS'],
+    platforms: ['Android'],
+    license: 'free',
+    links: [
+      { label: 'Docs', url: 'https://docs.cubepilot.org/user-guides/herelink/herelink-overview', primary: true },
+    ]
+  },
+  {
+    id: 'tak',
+    name: 'ATAK / WinTAK',
+    category: 'gcs',
+    desc: 'Android Team Awareness Kit — tactical SA for military/public safety. Drone integration via CivTAK and RVR plugin.',
+    tags: ['TAK', 'ATAK', 'tactical', 'SA', 'military', 'CivTAK'],
+    platforms: ['Windows', 'Android'],
+    license: 'free',
+    links: [
+      { label: 'TAK.gov', url: 'https://tak.gov/', primary: true },
+      { label: 'CivTAK', url: 'https://www.civtak.org/' },
+    ]
+  },
+
+  // ─────────────────────────────────────────────
+  // SIMULATION
+  // ─────────────────────────────────────────────
+  {
+    id: 'velocidrone',
+    name: 'VelociDrone',
+    category: 'simulation',
+    desc: 'Realistic FPV racing and freestyle simulator. Physics-accurate drone models, multiplayer, ELRS/Crossfire support.',
+    tags: ['simulator', 'FPV', 'racing', 'freestyle'],
+    platforms: ['Windows', 'macOS', 'Linux'],
+    license: 'paid',
+    links: [
+      { label: 'Website', url: 'https://www.velocidrone.com/', primary: true },
+    ]
+  },
+  {
+    id: 'liftoff',
+    name: 'Liftoff: FPV Drone Racing',
+    category: 'simulation',
+    desc: 'Steam FPV simulator with community maps, drone builder, and realistic flight physics.',
+    tags: ['simulator', 'FPV', 'Steam'],
+    platforms: ['Windows', 'macOS'],
+    license: 'paid',
+    links: [
+      { label: 'Steam', url: 'https://store.steampowered.com/app/410340/Liftoff_FPV_Drone_Racing/', primary: true },
+    ]
+  },
+  {
+    id: 'airsim',
+    name: 'AirSim (Microsoft)',
+    category: 'simulation',
+    desc: 'Open-source simulation environment for AI/ML drone research. Unreal Engine-based, MAVLink support, Lidar, camera sensors.',
+    tags: ['simulation', 'AI', 'ML', 'ArduPilot', 'PX4', 'open source'],
+    platforms: ['Windows', 'Linux'],
+    license: 'open',
+    links: [
+      { label: 'GitHub', url: 'https://github.com/microsoft/AirSim', primary: true },
+      { label: 'Docs', url: 'https://microsoft.github.io/AirSim/' },
+    ]
+  },
+  {
+    id: 'gazebo',
+    name: 'Gazebo / PX4 SITL',
+    category: 'simulation',
+    desc: 'Robot simulator with PX4 SITL support. Multi-vehicle, sensor plugins, ROS integration for autonomous development.',
+    tags: ['Gazebo', 'PX4', 'ROS', 'SITL', 'autonomous'],
+    platforms: ['Linux', 'macOS'],
+    license: 'open',
+    links: [
+      { label: 'Docs', url: 'https://docs.px4.io/main/en/simulation/gazebo_classic.html', primary: true },
+      { label: 'Gazebo', url: 'https://gazebosim.org/' },
+    ]
+  },
+  {
+    id: 'rotorflight-sim',
+    name: 'Rotorflight Configurator',
+    category: 'simulation',
+    desc: 'FC configurator for RC helicopters using Rotorflight firmware. Mixer, governor, rescue setup.',
+    tags: ['Rotorflight', 'helicopter', 'RC'],
+    platforms: ['Windows', 'macOS', 'Linux'],
+    license: 'open',
+    links: [
+      { label: 'GitHub', url: 'https://github.com/rotorflight/rotorflight-configurator/releases', primary: true },
+    ]
+  },
+
+  // ─────────────────────────────────────────────
+  // MAPPING / PHOTOGRAMMETRY
+  // ─────────────────────────────────────────────
+  {
+    id: 'webodm',
+    name: 'WebODM',
+    category: 'mapping',
+    desc: 'Open-source photogrammetry platform. 3D point clouds, orthomosaics, DSMs from drone imagery. Self-hosted.',
+    tags: ['photogrammetry', '3D', 'orthomosaic', 'open source', 'mapping'],
+    platforms: ['Windows', 'macOS', 'Linux'],
+    license: 'open',
+    links: [
+      { label: 'Website', url: 'https://www.opendronemap.org/webodm/', primary: true },
+      { label: 'GitHub', url: 'https://github.com/OpenDroneMap/WebODM' },
+    ]
+  },
+  {
+    id: 'pix4d',
+    name: 'Pix4D',
+    category: 'mapping',
+    desc: 'Professional photogrammetry suite. Pix4Dmapper for 3D maps, Pix4Dfields for agriculture, Pix4Dinspect for infrastructure.',
+    tags: ['photogrammetry', 'mapping', 'agriculture', 'inspection', 'enterprise'],
+    platforms: ['Windows', 'Web'],
+    license: 'paid',
+    links: [
+      { label: 'Website', url: 'https://www.pix4d.com/download/', primary: true },
+    ]
+  },
+  {
+    id: 'agisoft',
+    name: 'Agisoft Metashape',
+    category: 'mapping',
+    desc: 'Photogrammetric processing for aerial and ground imagery. Dense cloud, mesh, orthomosaic, DEM generation.',
+    tags: ['photogrammetry', 'mesh', 'DEM', 'mapping'],
+    platforms: ['Windows', 'macOS', 'Linux'],
+    license: 'paid',
+    links: [
+      { label: 'Website', url: 'https://www.agisoft.com/downloads/installer/', primary: true },
+    ]
+  },
+  {
+    id: 'openpilot-groundstation',
+    name: 'Maps Made Easy',
+    category: 'mapping',
+    desc: 'Cloud-based orthomosaic and 3D map stitching from drone imagery. Simple upload and download workflow.',
+    tags: ['mapping', 'cloud', 'orthomosaic'],
+    platforms: ['Web'],
+    license: 'paid',
+    links: [
+      { label: 'Website', url: 'https://www.mapsmadeeasy.com/', primary: true },
+    ]
+  },
+
+  // ─────────────────────────────────────────────
+  // AUTONOMOUS / AI / ROS
+  // ─────────────────────────────────────────────
+  {
+    id: 'ros2',
+    name: 'ROS 2',
+    category: 'autonomous',
+    desc: 'Robot Operating System 2 — the standard middleware for drone autonomy research and deployment. Navigation, SLAM, sensor fusion.',
+    tags: ['ROS', 'autonomy', 'SLAM', 'middleware', 'navigation'],
+    platforms: ['Linux'],
+    license: 'open',
+    links: [
+      { label: 'Install', url: 'https://docs.ros.org/en/humble/Installation.html', primary: true },
+      { label: 'Docs', url: 'https://docs.ros.org/' },
+    ]
+  },
+  {
+    id: 'dronekit',
+    name: 'DroneKit Python',
+    category: 'autonomous',
+    desc: 'Python API for communicating with ArduPilot over MAVLink. Script flight missions, read telemetry, control payloads.',
+    tags: ['Python', 'MAVLink', 'ArduPilot', 'scripting'],
+    platforms: ['Windows', 'macOS', 'Linux'],
+    license: 'open',
+    links: [
+      { label: 'Docs', url: 'https://dronekit-python.readthedocs.io/en/latest/', primary: true },
+      { label: 'GitHub', url: 'https://github.com/dronekit/dronekit-python' },
+    ]
+  },
+  {
+    id: 'px4-autopilot',
+    name: 'PX4 Autopilot',
+    category: 'autonomous',
+    desc: 'Open-source autopilot firmware. Modular, supports multirotor, fixed-wing, VTOL. Industry standard for research drones.',
+    tags: ['PX4', 'autopilot', 'firmware', 'MAVLink'],
+    platforms: ['Linux'],
+    license: 'open',
+    links: [
+      { label: 'Docs', url: 'https://docs.px4.io/main/en/', primary: true },
+      { label: 'GitHub', url: 'https://github.com/PX4/PX4-Autopilot' },
+    ]
+  },
+  {
+    id: 'ardupilot',
+    name: 'ArduPilot',
+    category: 'autonomous',
+    desc: 'Trusted open-source autopilot. ArduCopter, ArduPlane, ArduRover — broad hardware support, extensive features.',
+    tags: ['ArduPilot', 'ArduCopter', 'ArduPlane', 'autopilot', 'firmware'],
+    platforms: ['Linux', 'Windows', 'macOS'],
+    license: 'open',
+    links: [
+      { label: 'Docs', url: 'https://ardupilot.org/ardupilot/', primary: true },
+      { label: 'GitHub', url: 'https://github.com/ArduPilot/ardupilot' },
+    ]
+  },
+
+  // ─────────────────────────────────────────────
+  // REGULATIONS / COMPLIANCE / UTM
+  // ─────────────────────────────────────────────
+  {
+    id: 'faa-dronezon',
+    name: 'FAA DroneZone',
+    category: 'regulatory',
+    desc: 'Official FAA portal for drone registration, Part 107 certification, LAANC authorization, waivers.',
+    tags: ['FAA', 'Part 107', 'registration', 'LAANC'],
+    platforms: ['Web'],
+    license: 'free',
+    links: [
+      { label: 'Open', url: 'https://faadronezone-access.faa.gov/', primary: true },
+    ]
+  },
+  {
+    id: 'airmap',
+    name: 'AirMap',
+    category: 'regulatory',
+    desc: 'UTM platform for airspace authorization. LAANC, digital notice, advisory services for commercial operators.',
+    tags: ['UTM', 'LAANC', 'airspace', 'FAA'],
+    platforms: ['Web', 'iOS', 'Android'],
+    license: 'free',
+    links: [
+      { label: 'Website', url: 'https://www.airmap.com/', primary: true },
+    ]
+  },
+  {
+    id: 'aloft',
+    name: 'Aloft (formerly Kittyhawk)',
+    category: 'regulatory',
+    desc: 'Fleet management, LAANC authorization, flight ops compliance, and airspace intelligence for commercial UAS operators.',
+    tags: ['fleet', 'LAANC', 'commercial', 'compliance'],
+    platforms: ['Web', 'iOS', 'Android'],
+    license: 'paid',
+    links: [
+      { label: 'Website', url: 'https://aloft.ai/', primary: true },
+    ]
+  },
+
+  // ─────────────────────────────────────────────
+  // FLASH / FIRMWARE UTILITIES
+  // ─────────────────────────────────────────────
+  {
+    id: 'stm32-flasher',
+    name: 'STM32CubeProgrammer',
+    category: 'flash_tools',
+    desc: 'Official STM32 flash utility from ST. DFU, UART, SWD, JTAG. Needed for low-level FC/ESC recovery.',
+    tags: ['STM32', 'DFU', 'flash', 'recovery', 'UART'],
+    platforms: ['Windows', 'macOS', 'Linux'],
+    license: 'free',
+    links: [
+      { label: 'Download', url: 'https://www.st.com/en/development-tools/stm32cubeprog.html', primary: true },
+    ]
+  },
+  {
+    id: 'impulserc-driver-fixer',
+    name: 'ImpulseRC Driver Fixer',
+    category: 'flash_tools',
+    desc: 'Fixes Windows DFU driver issues for Betaflight FC flashing. Run once, never fight driver signing again.',
+    tags: ['Windows', 'DFU', 'driver', 'fix'],
+    platforms: ['Windows'],
+    license: 'free',
+    links: [
+      { label: 'Download', url: 'https://impulserc.com/pages/downloads', primary: true },
+    ]
+  },
+  {
+    id: 'zadig',
+    name: 'Zadig',
+    category: 'flash_tools',
+    desc: 'Generic USB driver installer for Windows. Required for DFU flashing when Betaflight Configurator cannot see the device.',
+    tags: ['Windows', 'USB', 'DFU', 'driver'],
+    platforms: ['Windows'],
+    license: 'free',
+    links: [
+      { label: 'Download', url: 'https://zadig.akeo.ie/', primary: true },
+    ]
+  },
+  {
+    id: 'passthrough-esc',
+    name: 'BLHeli Suite / BLHeli_32 Suite',
+    category: 'flash_tools',
+    desc: 'ESC firmware configurator and flasher for BLHeli and BLHeli_32 ESCs. Motor timing, demag, motor direction.',
+    tags: ['ESC', 'BLHeli', 'motor', 'firmware'],
+    platforms: ['Windows'],
+    license: 'free',
+    links: [
+      { label: 'GitHub', url: 'https://github.com/bitdump/BLHeli/releases', primary: true },
+    ]
+  },
+  {
+    id: 'am32-configurator',
+    name: 'AM32 Configurator',
+    category: 'flash_tools',
+    desc: 'Configurator for AM32 open-source ESC firmware — replacement for BLHeli_32 on STM32-based ESCs.',
+    tags: ['AM32', 'ESC', 'open source', 'STM32'],
+    platforms: ['Windows', 'macOS', 'Linux'],
+    license: 'open',
+    links: [
+      { label: 'GitHub', url: 'https://github.com/am32-firmware/AM32-MultiRotor-ESC-firmware/releases', primary: true },
+    ]
+  },
+
+  // ─────────────────────────────────────────────
+  // C2 / COMMS / MESH
+  // ─────────────────────────────────────────────
+  {
+    id: 'meshtastic',
+    name: 'Meshtastic',
+    category: 'c2_comms',
+    desc: 'Open-source LoRa mesh networking. Off-grid text messaging and location sharing. Used in BVLOS and field ops.',
+    tags: ['LoRa', 'mesh', 'off-grid', 'comms'],
+    platforms: ['Windows', 'macOS', 'Linux', 'iOS', 'Android', 'Web'],
+    license: 'open',
+    links: [
+      { label: 'Website', url: 'https://meshtastic.org/', primary: true },
+      { label: 'GitHub', url: 'https://github.com/meshtastic/firmware' },
+    ]
+  },
+  {
+    id: 'openrtk',
+    name: 'OpenRTK Configurator',
+    category: 'c2_comms',
+    desc: 'Configuration tool for OpenRTK GNSS modules. RTK fix setup, base station config, survey-in.',
+    tags: ['GNSS', 'RTK', 'GPS', 'survey'],
+    platforms: ['Windows'],
+    license: 'free',
+    links: [
+      { label: 'Docs', url: 'https://docs.aceinna.com/openrtk/', primary: true },
+    ]
+  },
+  {
+    id: 'mavlink-router',
+    name: 'MAVLink Router',
+    category: 'c2_comms',
+    desc: 'Route MAVLink messages between serial, UDP, TCP endpoints. Essential for multi-device GCS setups and telemetry forwarding.',
+    tags: ['MAVLink', 'routing', 'telemetry', 'GCS'],
+    platforms: ['Linux'],
+    license: 'open',
+    links: [
+      { label: 'GitHub', url: 'https://github.com/mavlink-router/mavlink-router', primary: true },
+    ]
+  },
+  {
+    id: 'zerotier',
+    name: 'ZeroTier',
+    category: 'c2_comms',
+    desc: 'Software-defined networking. Connect drone GCS and companion computers over internet as if on same LAN.',
+    tags: ['networking', 'VPN', 'SDN', 'telemetry'],
+    platforms: ['Windows', 'macOS', 'Linux', 'iOS', 'Android'],
+    license: 'free',
+    links: [
+      { label: 'Download', url: 'https://www.zerotier.com/download/', primary: true },
+    ]
+  },
+];
+
+// ─── Category metadata ───
+const CATEGORIES = {
+  fc_firmware:  { label: 'FC & Firmware Config', icon: 'ph-cpu', color: '#22c55e' },
+  rc_link:      { label: 'RC Link', icon: 'ph-wifi-high', color: '#22d3ee' },
+  video_vtx:    { label: 'Video & VTX', icon: 'ph-video-camera', color: '#a78bfa' },
+  analysis:     { label: 'Blackbox & Analysis', icon: 'ph-chart-line', color: '#eab308' },
+  gcs:          { label: 'Ground Control / GCS', icon: 'ph-map-trifold', color: '#f97316' },
+  simulation:   { label: 'Simulation', icon: 'ph-game-controller', color: '#ec4899' },
+  mapping:      { label: 'Mapping & Photogrammetry', icon: 'ph-globe-hemisphere-west', color: '#06b6d4' },
+  autonomous:   { label: 'Autonomy & AI / ROS', icon: 'ph-robot', color: '#8b5cf6' },
+  regulatory:   { label: 'Regulations & UTM', icon: 'ph-shield-check', color: '#4ade80' },
+  flash_tools:  { label: 'Flash & Firmware Tools', icon: 'ph-wrench', color: '#f59e0b' },
+  c2_comms:     { label: 'C2 / Comms / Mesh', icon: 'ph-broadcast', color: '#fb923c' },
+};
+
+const PLATFORM_ICONS = {
+  'Windows': 'ph-windows-logo',
+  'macOS': 'ph-apple-logo',
+  'Linux': 'ph-linux-logo',
+  'Web': 'ph-globe',
+  'iOS': 'ph-device-mobile',
+  'Android': 'ph-android-logo',
+};
+
+let activeFilter = 'all';
+
+function esc(s) { return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+function renderStats() {
+  document.getElementById('totalCount').textContent = SOFTWARE.length;
+  document.getElementById('freeCount').textContent = SOFTWARE.filter(s => s.license === 'free' || s.license === 'open').length;
+  document.getElementById('catCount').textContent = Object.keys(CATEGORIES).length;
+  const plats = new Set(SOFTWARE.flatMap(s => s.platforms || []));
+  document.getElementById('platformCount').textContent = plats.size;
+}
+
+function renderFilterBar() {
+  const bar = document.getElementById('filterBar');
+  const counts = {};
+  SOFTWARE.forEach(s => { counts[s.category] = (counts[s.category] || 0) + 1; });
+
+  let html = `<button class="filt-btn active" data-cat="all" onclick="setFilter('all')">All (${SOFTWARE.length})</button>`;
+  Object.entries(CATEGORIES).forEach(([key, meta]) => {
+    const c = counts[key] || 0;
+    if (c) html += `<button class="filt-btn" data-cat="${key}" onclick="setFilter('${key}')">${meta.label} (${c})</button>`;
+  });
+  bar.innerHTML = html;
+}
+
+function setFilter(cat) {
+  activeFilter = cat;
+  document.querySelectorAll('.filt-btn').forEach(b => b.classList.toggle('active', b.dataset.cat === cat));
+  applyFilters();
+}
+
+function applyFilters() {
+  const query = document.getElementById('searchInput').value.toLowerCase().trim();
+  let filtered = SOFTWARE;
+  if (activeFilter !== 'all') filtered = filtered.filter(s => s.category === activeFilter);
+  if (query) {
+    filtered = filtered.filter(s =>
+      s.name.toLowerCase().includes(query) ||
+      s.desc.toLowerCase().includes(query) ||
+      (s.tags || []).some(t => t.toLowerCase().includes(query))
+    );
+  }
+  renderContent(filtered);
+}
+
+function badgeHTML(license) {
+  if (license === 'open') return '<span class="badge badge-open">Open Source</span>';
+  if (license === 'free') return '<span class="badge badge-free">Free</span>';
+  if (license === 'paid') return '<span class="badge badge-paid">Paid</span>';
+  return '';
+}
+
+function platformBadgeHTML(platforms) {
+  return (platforms || []).map(p => {
+    const cls = { Windows:'win', macOS:'mac', Linux:'linux', Web:'web', iOS:'mac', Android:'linux' }[p] || 'web';
+    return `<span class="badge badge-${cls}">${p}</span>`;
+  }).join('');
+}
+
+function renderContent(items) {
+  const container = document.getElementById('appContent');
+  if (!items.length) {
+    container.innerHTML = '<div class="empty">No software matches your search.</div>';
+    return;
+  }
+
+  // Group by category
+  const grouped = {};
+  items.forEach(sw => {
+    if (!grouped[sw.category]) grouped[sw.category] = [];
+    grouped[sw.category].push(sw);
+  });
+
+  let html = '';
+  Object.entries(CATEGORIES).forEach(([catKey, catMeta]) => {
+    const group = grouped[catKey];
+    if (!group) return;
+
+    html += `<div class="section">
+      <div class="section-hdr">
+        <div class="section-icon" style="background:${catMeta.color}18;color:${catMeta.color}">
+          <i class="ph ${catMeta.icon}"></i>
+        </div>
+        <span class="section-label">${catMeta.label}</span>
+        <span class="section-count">${group.length}</span>
+      </div>
+      <div class="section-grid">`;
+
+    group.forEach(sw => {
+      const linksHTML = (sw.links || []).map(l =>
+        `<a href="${esc(l.url)}" target="_blank" rel="noopener" class="sw-link ${l.primary ? 'primary' : ''}">
+          <i class="ph ${l.primary ? 'ph-arrow-square-out' : 'ph-arrow-right'}"></i>${esc(l.label)}
+        </a>`
+      ).join('');
+
+      html += `<div class="sw-card">
+        <div class="sw-card-ico" style="background:${CATEGORIES[sw.category].color}18;color:${CATEGORIES[sw.category].color}">
+          <i class="ph ${CATEGORIES[sw.category].icon}"></i>
+        </div>
+        <div class="sw-card-body">
+          <div class="sw-card-name">
+            ${esc(sw.name)}
+            ${badgeHTML(sw.license)}
+          </div>
+          <div class="sw-card-desc">${esc(sw.desc)}</div>
+          <div class="sw-card-links">
+            ${linksHTML}
+            ${platformBadgeHTML(sw.platforms)}
+          </div>
+        </div>
+      </div>`;
+    });
+
+    html += `</div></div>`;
+  });
+
+  container.innerHTML = html;
+}
+
+// ── Init ──
+renderStats();
+renderFilterBar();
+applyFilters();
+</script>
+
+<!-- Analytics injected by build_static.py (unified _ANALYTICS_SNIPPET + _UNIFIED_NAV) -->
+</body>
+</html>

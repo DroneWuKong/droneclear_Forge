@@ -114,6 +114,7 @@
                         manufacturer: m.manufacturer || '',
                         manufacturer_hq: m.manufacturer_hq || (m.industry_data && m.industry_data.manufacturer_hq) || '',
                         manufacturer_url: m.manufacturer_url || (m.industry_data && m.industry_data.manufacturer_url) || '',
+                        doc_url: m.doc_url || (m.industry_data && m.industry_data.doc_url) || '',
                         platform_name: m.name || '',
                         category: normalizeCategory(rawCat),
                         _raw_category: rawCat,
@@ -467,7 +468,10 @@
                 </div>
                 ${renderPieBanner(getPlatformGzFlags(p))}
                 ${c.note ? `<div style="margin-top:8px; font-size:12px; color:var(--text-muted); font-style:italic;">${esc(c.note)}</div>` : ''}
-                ${p.manufacturer_url ? `<a href="${esc(p.manufacturer_url)}" target="_blank" rel="noopener" style="display:inline-flex; align-items:center; gap:6px; margin-top:12px; padding:8px 16px; border-radius:6px; background:rgba(34,211,238,0.1); border:1px solid rgba(34,211,238,0.2); color:var(--accent-cyan); font-family:var(--font-family); font-size:12px; font-weight:600; text-decoration:none; letter-spacing:0.03em; transition:all 0.15s;"><i class="ph ph-arrow-square-out"></i> Visit ${esc(p.manufacturer)}</a>` : ''}
+                <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:12px;">
+                ${p.manufacturer_url ? `<a href="${esc(p.manufacturer_url)}" target="_blank" rel="noopener" style="display:inline-flex; align-items:center; gap:6px; padding:8px 16px; border-radius:6px; background:rgba(34,211,238,0.1); border:1px solid rgba(34,211,238,0.2); color:var(--accent-cyan); font-family:var(--font-family); font-size:12px; font-weight:600; text-decoration:none; letter-spacing:0.03em; transition:all 0.15s;"><i class="ph ph-arrow-square-out"></i> Visit ${esc(p.manufacturer)}</a>` : ''}
+                ${p.doc_url ? `<a href="${esc(p.doc_url)}" target="_blank" rel="noopener" style="display:inline-flex; align-items:center; gap:6px; padding:8px 16px; border-radius:6px; background:rgba(168,85,247,0.1); border:1px solid rgba(168,85,247,0.25); color:#c084fc; font-family:var(--font-family); font-size:12px; font-weight:600; text-decoration:none; letter-spacing:0.03em; transition:all 0.15s;"><i class="ph ph-file-text"></i> Platform Docs</a>` : ''}
+                </div>
             </div>`;
 
         // Variants

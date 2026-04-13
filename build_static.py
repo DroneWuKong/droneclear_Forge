@@ -76,6 +76,7 @@ PAGES = {
     'brief.html': 'brief/index.html',
     'patterns-home.html': 'patterns-home/index.html',
     'tools-home.html': 'tools-home/index.html',
+    'software-library.html': 'software-library/index.html',
     'tracker.html': 'tracker/index.html',
     'grants.html': 'grants/index.html',
     'regs.html': 'regs/index.html',
@@ -167,6 +168,7 @@ _PAGE_SLUGS = {
     'cost.html': 'cost', 'payload-compare.html': 'payload-compare',
     'stack-builder.html': 'stack-builder', 'industry.html': 'industry',
     'tools.html': 'tools', 'tools-home.html': 'tools-home',
+    'software-library.html': 'software-library',
     'pro.html': 'pro', 'brief.html': 'brief', 'report.html': 'report',
     'compliance.html': 'compliance', 'tracker.html': 'tracker',
     'spec-sheets.html': 'spec-sheets', 'compliance-matrix.html': 'compliance-matrix',
@@ -289,6 +291,7 @@ _UNIFIED_NAV = r"""<!-- ── Unified DroneClear Nav ────────�
   <a class="dc-drawer-item" href="https://nvmillbuilditmyself.com/report/" data-page="report">Compliance Report</a>
   <a class="dc-drawer-item" href="https://nvmillbuilditmyself.com/support/" data-page="support">Support Hub</a>
   <a class="dc-drawer-item" href="https://nvmillbuilditmyself.com/tools-home/" data-page="tools-home">All Tools</a>
+  <a class="dc-drawer-item" href="https://nvmillbuilditmyself.com/software-library/" data-page="software-library">Software Library</a>
 
   <div class="dc-drawer-section">Forge — Intel</div>
   <a class="dc-drawer-item" href="https://nvmillbuilditmyself.com/intel/" data-page="intel">Intel Hub</a>
@@ -328,6 +331,7 @@ _UNIFIED_NAV = r"""<!-- ── Unified DroneClear Nav ────────�
     'browse':'Browse','wingman':'Wingman','intel':'Intel Hub','compare':'Compare',
     'compliance':'Compliance','dossier':'Dossier','platforms':'Platforms','regs':'Regs',
     'stack-builder':'Stack Builder','report':'Compliance Report','tools-home':'Tools',
+    'software-library':'Software Library',
     'industry':'Industry','tracker':'Contract Tracker','patterns-home':'P.I.E Hub',
     'brief':'Brief','patterns':'Flags','clock':'UAS Clock','ddg':'DDG Tracker',
     'pro':'Pro','start':'Getting Started','grants':'Grants','waiver':'Doc Builder',
@@ -772,6 +776,11 @@ SEO_META = {
         'Suite of drone and FPV tools: PID calculator, RF channel planner, range estimator, firmware target matcher, VTX frequency planner, and antenna length calculator.',
         'drone tools, FPV calculator, RF channel planner, PID tuning tool, drone range calculator, VTX planner',
     ),
+    'software-library.html': (
+        'Software Library — Drone & UAS Tools — Forge',
+        'Every configurator, GCS, simulator, and firmware tool for FPV, commercial UAS, and defense platforms. Betaflight, QGroundControl, Mission Planner, ELRS, and 40+ more with direct download links.',
+        'drone software, FPV configurator, ground control station, Betaflight configurator, ELRS configurator, Mission Planner, QGroundControl, drone tools download',
+    ),
     'privacy.html': (
         'Privacy Policy — Forge Drone Intelligence Platform',
         'Forge privacy policy. No cookies, no PII collection, no tracking. Analytics are anonymized session data only.',
@@ -845,6 +854,7 @@ def inject_seo(html, src_name, dst_path):
         'wingman/':            'https://nvmillbuilditmyself.com/wingman/',
         'tools/':              'https://nvmillbuilditmyself.com/tools/',
         'tools-home/':         'https://nvmillbuilditmyself.com/tools-home/',
+        'software-library/':   'https://nvmillbuilditmyself.com/software-library/',
         'pid-tuning/':         'https://nvmillbuilditmyself.com/pid-tuning/',
         'guides/':             'https://nvmillbuilditmyself.com/guides/',
         'guide/':              'https://nvmillbuilditmyself.com/guide/',
