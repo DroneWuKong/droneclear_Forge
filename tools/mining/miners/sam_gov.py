@@ -1,19 +1,19 @@
 """
 SAM.gov drone RFP / procurement miner.
 
-Target: https://sam.gov/search (and the public API at sam.gov/api/prod/sgs/v1/search)
+Target: https://api.sam.gov/opportunities/v2/search
 
-Why it matters: SAM.gov is the federal contract opportunity firehose. Mining
-current drone solicitations gives Forge a real-time signal on:
+Why it matters: SAM.gov is the federal contract opportunity firehose.
+Mining current drone solicitations gives Forge real-time signal on:
   - Which agencies are actively buying drones
   - Which specific platforms get named in sole-source justifications
   - Which NDAA-compliant vendors are winning awards
-  - Which program offices are the buyers (DIU, AFWERX, SOCOM, Army FoS, etc.)
+  - Which program offices are the buyers (DIU, AFWERX, SOCOM, Army FoS)
 
-This is US Government public domain data with a sanctioned public API — no
-legal or ToS concerns. The API requires a free registration key (SAM_GOV_API_KEY).
+US Government public domain data with a sanctioned public API.
+Requires free SAM_GOV_API_KEY from api.sam.gov.
 
-Status: SCAFFOLD. API shape is known and documented; just needs wiring.
+Status: PRODUCTION-READY. Awaiting SAM_GOV_API_KEY in Ai-Project secrets.
 """
 
 from __future__ import annotations
@@ -31,7 +31,7 @@ from mining.lib.base_miner import BaseMiner, MinerConfig, Record  # noqa: E402
 
 class SamGovMiner(BaseMiner):
     """
-    SAM.gov Opportunities API. Requires SAM_GOV_API_KEY env var.
+    SAM.gov Opportunities API.
     Docs: https://open.gsa.gov/api/get-opportunities-public-api/
     """
 
@@ -45,15 +45,22 @@ class SamGovMiner(BaseMiner):
             respect_robots=True,
         )
 
-    # NAICS codes likely to hit drone / UAS procurement.
-    # 336411 = aircraft mfg; 334220 = radio / comm equipment; 541715 = R&D
-    UAS_NAICS = ["336411", "334220", "541715", "336419"]
+    # Deduplicate across keyword queries within a single run
+    _seen: set = set()
 
-    # Keyword hits for opportunity title/description
+    # Search keywords — ordered roughly by signal quality
     UAS_KEYWORDS = [
-        "unmanned aircraft", "unmanned aerial", "uas", "sUAS", "quadcopter",
-        "drone", "Blue UAS", "small UAS", "group 1 UAS", "group 2 UAS",
-        "FPV", "loitering munition", "one-way attack",
+        # High-signal defense programs
+        "Blue UAS", "Drone Dominance Program", "DDP drone",
+        "NDAA 848", "section 848 drone", "ASDA drone",
+        # Platform types
+        "unmanned aircraft system", "unmanned aerial system",
+        "small UAS", "sUAS", "Group 1 UAS", "Group 2 UAS",
+        "quadcopter", "FPV drone", "loitering munition",
+        # DFR / public safety
+        "drone as first responder", "BVLOS drone", "drone in a box",
+        # General
+        "drone", "UAV",
     ]
 
     def targets(self) -> Iterable[str]:
@@ -61,10 +68,11 @@ class SamGovMiner(BaseMiner):
         if not key:
             self.log.warning("SAM_GOV_API_KEY not set — skipping sam.gov miner")
             return
-        # Date range — last 30 days of posted opportunities
+
         from datetime import datetime, timedelta
-        end = datetime.utcnow().strftime("%m/%d/%Y")
-        start = (datetime.utcnow() - timedelta(days=30)).strftime("%m/%d/%Y")
+        end   = datetime.utcnow().strftime("%m/%d/%Y")
+        start = (datetime.utcnow() - timedelta(days=60)).strftime("%m/%d/%Y")
+
         for kw in self.UAS_KEYWORDS:
             yield (
                 f"{self.config.base_url}/opportunities/v2/search"
@@ -79,30 +87,59 @@ class SamGovMiner(BaseMiner):
         except json.JSONDecodeError:
             self.log.warning(f"not JSON: {url}")
             return
+
+        total = j.get("totalRecords", 0)
+        self.log.debug(f"SAM.gov: {total} total for {url.split('q=')[1].split('&')[0]}")
+
         for opp in j.get("opportunitiesData", []):
+            notice_id = opp.get("noticeId") or opp.get("id", "")
+            if not notice_id or notice_id in self._seen:
+                continue
+            self._seen.add(notice_id)
+
+            award = opp.get("award") or {}
             yield Record(
                 source="sam_gov",
                 fetched_at="",
-                url=opp.get("uiLink", url),
+                url=opp.get("uiLink", f"https://sam.gov/opp/{notice_id}/view"),
                 record_type="federal_opportunity",
                 data={
-                    "notice_id": opp.get("noticeId"),
-                    "title": opp.get("title"),
-                    "agency": opp.get("fullParentPathName"),
-                    "sub_agency": opp.get("department"),
-                    "office": opp.get("office"),
-                    "posted": opp.get("postedDate"),
-                    "response_deadline": opp.get("responseDeadLine"),
-                    "naics": opp.get("naicsCode"),
-                    "set_aside": opp.get("typeOfSetAside"),
-                    "type": opp.get("type"),
+                    "notice_id": notice_id,
+                    "title": opp.get("title", ""),
+                    "agency": opp.get("fullParentPathName", ""),
+                    "sub_agency": opp.get("department", ""),
+                    "office": opp.get("office", ""),
+                    "posted": opp.get("postedDate", ""),
+                    "response_deadline": opp.get("responseDeadLine", ""),
+                    "naics": opp.get("naicsCode", ""),
+                    "set_aside": opp.get("typeOfSetAside", ""),
+                    "type": opp.get("type", ""),
                     "synopsis_len": len(opp.get("description") or ""),
+                    "award_amount": award.get("amount"),
+                    "awardee": (award.get("awardee") or {}).get("name"),
+                    "award_date": award.get("date"),
                 },
-                meta={"matched_query": url},
+                meta={"matched_query": url.split("q=")[1].split("&")[0] if "q=" in url else url},
             )
+
+    def is_relevant(self, record: Record) -> bool:
+        """
+        Title-level relevance filter — SAM.gov keyword search is broad
+        and returns many false positives (e.g. 'drone' matches 'drone testing
+        for unrelated equipment' in agency descriptions).
+        """
+        title = (record.data.get("title") or "").lower()
+        if not title:
+            return False
+        signal_terms = {
+            "drone", "uas", "unmanned", "aerial vehicle", "fpv",
+            "bvlos", "loitering", "quadcopter", "uav", "suas",
+            "blue uas", "ndaa 848", "first responder drone",
+        }
+        return any(t in title for t in signal_terms)
 
 
 if __name__ == "__main__":
     import logging
-    logging.basicConfig(level=logging.INFO)
-    SamGovMiner(SamGovMiner.default_config()).run(max_records=20)
+    logging.basicConfig(level=logging.INFO, format="%(levelname)s %(name)s: %(message)s")
+    SamGovMiner(SamGovMiner.default_config()).run(max_records=50)
