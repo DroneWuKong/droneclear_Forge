@@ -3748,7 +3748,7 @@ renderVtxTable();
         if(id==='mesh-planner'){
             // Init mesh map on first switch to tool
             setTimeout(function(){
-                initMeshMap();
+                if(window.initMeshMap) window.initMeshMap();
                 if(window._meshMapRef) window._meshMapRef.invalidateSize();
             }, 50);
         }
@@ -4113,6 +4113,8 @@ renderVtxTable();
         }
         setTimeout(tryResize,50);
     }
+    // Expose initMeshMap globally so showTool overrides in other IIFEs can reach it
+    window.initMeshMap = initMeshMap;
 
     window.meshSetLayer=function(key){
         if(!meshMap||!meshTile)return;
@@ -4749,8 +4751,9 @@ renderVtxTable();
         origShow(id);
         if(id==='mesh-planner'){
             setTimeout(function(){
-                initMeshMap();
-                if(meshMap)meshMap.invalidateSize();
+                // Use window.initMeshMap — local initMeshMap is out of scope in this IIFE
+                if(window.initMeshMap) window.initMeshMap();
+                if(window._meshMapRef) window._meshMapRef.invalidateSize();
             },100);
         }
     };

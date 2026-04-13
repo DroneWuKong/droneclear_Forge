@@ -88,7 +88,7 @@ export default async (req) => {
       note,
       duration_days,
       reusable,
-      usage_url: `https://forgeprole.netlify.app/pro/?access_code=${code}`,
+      usage_url: `https://nvmillbuilditmyself.com/pro/?access_code=${code}`,
       message: `Share this code. Anyone with it gets ${tier} access for ${duration_days} days, no payment needed.`,
     });
   }

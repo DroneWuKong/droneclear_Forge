@@ -85,8 +85,8 @@ async function freeSummary(type) {
     return { summary_only: true, message: `${type} requires Commercial access or an access code.`, upgrade_url: '/pro/' };
   }
   try {
-    // The function runs on forgeprole — fetch from same site's static files
-    const origin = 'https://forgeprole.netlify.app';
+    // The function runs on nvmillbuilditmyself.com — fetch from same site's static files
+    const origin = 'https://nvmillbuilditmyself.com';
     const res = await fetch(`${origin}/static/${type}.json`);
     if (res.ok) {
       const data = await res.json();
@@ -315,7 +315,7 @@ async function loadDataset(type) {
 
   // 2. Fall back to committed files in build (always present after build)
   const filename = DATASET_FILES[type];
-  const origin = 'https://forgeprole.netlify.app';
+  const origin = 'https://nvmillbuilditmyself.com';
   if (filename) {
     try {
       // Try root first — full data (221 flags, full predictions, full brief)
