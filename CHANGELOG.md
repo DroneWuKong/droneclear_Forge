@@ -1,5 +1,22 @@
 # Changelog
 
+## [Session] - 2026-04-12 — Alternatives Audit, Unusual Machines Tree, Brave FPV Entry
+
+### Added
+- **`forge_manufacturer_status.json`**: Brave FPV added as standalone entry — Brave F7/F7+ FC (first FPV FC on DIU Blue UAS Framework Aug 2024), US-made Orlando FL, NDAA compliant, parent=unusual-machines.
+- **Unusual Machines subsidiary tree** fully documented: Fat Shark (goggles, acq. Feb 2024), Rotor Riot (e-commerce, acq. Feb 2024), Brave FPV (FCs/ESCs), Rotor Lab (motors, acq. July 2025 from Australia, now producing in Orlando). FY2025 revenue $11.2M, $103M cash. Leadership added.
+
+### Fixed
+- **`forge_alternatives.json` audit** — 14 corrections:
+  - Walksnail Avatar HD + Moonlight: `active` → `restricted`, `fcc_covered=True` (Shenzhen manufacturer, Dec 2025 FCC Covered List)
+  - DJI O3/O4: `blue_uas_exemption_expires=2027-01-01` added
+  - TBS Crossfire/Tracer: `ndaa_compliant=False`, `fcc_covered=True` (Chinese manufacture)
+  - ELRS 2.4GHz/915MHz: `ndaa_compliant=vendor_dependent` (depends on assembly SKU)
+  - Ghost RC/IRONGhost: `ndaa_compliant=True` confirmed (Croatian/EU, Blue UAS)
+  - Doodle Labs, Silvus, Microhard, Rajant: `ndaa_compliant=True` confirmed
+  - RPi CM4: `status=active`, supply note updated with FCC diversion risk (40K+ units in Shahed drones)
+  - Jetson Orin NX/Nano: PIE allocation warning added (82% probability defense allocation-only by Q3 2026)
+
 ## [Session] - 2026-04-12 — Manufacturer Audit, DM- Type Fixes, Vehicle Classification
 
 ### Fixed

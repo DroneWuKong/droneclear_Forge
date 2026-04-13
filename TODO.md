@@ -53,6 +53,6 @@
 ## Wingman / Compliance (added this session)
 - [x] Audit `forge_manufacturer_status.json` — verify Brain FPV closure date, Draganfly acquisition status, Yuneec FCC exposure, FrSky ecosystem-share claim
 - [ ] Add subsidiaries/parent cross-linking UX in `/spec-sheets/` card (show "part of ORQA ecosystem" for ImmersionRC, etc.)
-- [ ] Audit `forge_alternatives.json` — verify recommendations against real prices / availability
-- [ ] Extend `forge_manufacturer_status.json` with Unusual Machines' full subsidiary tree (Brave FPV, any post-2024 acquisitions)
-- [ ] Add Brave FPV as its own entry when line details are verifiable
+- [x] Audit `forge_alternatives.json` — verify recommendations against real prices / availability
+- [x] Extend `forge_manufacturer_status.json` with Unusual Machines' full subsidiary tree (Brave FPV, any post-2024 acquisitions)
+- [x] Add Brave FPV as its own entry when line details are verifiable
