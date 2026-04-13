@@ -1,5 +1,5 @@
 ## Support page
-- [ ] Add non-RF tools to /support/ page:
+- [x] Add non-RF tools to /support/ page:
   - PID Tuning Tool (already exists at /pid-tuning/)
   - Build Audit (/audit/)
   - Troubleshooter (/troubleshoot/)

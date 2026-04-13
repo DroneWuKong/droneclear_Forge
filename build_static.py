@@ -24,6 +24,7 @@ PAGES = {
     'index.html': 'builder/index.html',      # /builder/
     'mission-control.html': 'index.html',      # / (home — The Bench)
     'academy.html': 'academy/index.html',
+    'support.html': 'support/index.html',
     'audit.html': 'audit/index.html',
     'editor.html': 'library/index.html',
     'guide.html': 'guide/index.html',
@@ -174,6 +175,7 @@ _PAGE_SLUGS = {
     'regs.html': 'regs', 'verify.html': 'verify', 'waiver.html': 'waiver',
     'grants.html': 'grants', 'audit.html': 'audit', 'guide.html': 'guide',
     'pid-tuning.html': 'pid-tuning', 'academy.html': 'academy',
+    'support.html': 'support',
     'guides-hub.html': 'guides-hub', 'swarm-guide.html': 'swarm-guide',
     'swarm-selector.html': 'swarm', 'slam-guide.html': 'slam-guide',
     'slam-selector.html': 'slam', 'mesh-guide.html': 'mesh-guide',
@@ -285,6 +287,7 @@ _UNIFIED_NAV = r"""<!-- ── Unified DroneClear Nav ────────�
   <a class="dc-drawer-item" href="https://nvmillbuilditmyself.com/wingman/" data-page="wingman">Wingman AI</a>
   <a class="dc-drawer-item" href="https://nvmillbuilditmyself.com/stack-builder/" data-page="stack-builder">Stack Builder</a>
   <a class="dc-drawer-item" href="https://nvmillbuilditmyself.com/report/" data-page="report">Compliance Report</a>
+  <a class="dc-drawer-item" href="https://nvmillbuilditmyself.com/support/" data-page="support">Support Hub</a>
   <a class="dc-drawer-item" href="https://nvmillbuilditmyself.com/tools-home/" data-page="tools-home">All Tools</a>
 
   <div class="dc-drawer-section">Forge — Intel</div>
@@ -328,7 +331,7 @@ _UNIFIED_NAV = r"""<!-- ── Unified DroneClear Nav ────────�
     'industry':'Industry','tracker':'Contract Tracker','patterns-home':'P.I.E Hub',
     'brief':'Brief','patterns':'Flags','clock':'UAS Clock','ddg':'DDG Tracker',
     'pro':'Pro','start':'Getting Started','grants':'Grants','waiver':'Doc Builder',
-    'verify':'Verify','vault':'Vault','troubleshoot':'Troubleshoot'
+    'verify':'Verify','vault':'Vault','troubleshoot':'Troubleshoot','support':'Support'
   };
   var pageEl = document.getElementById('dc-nav-page');
   if(pageEl) pageEl.textContent = labels[path] || document.title.split('—')[0].trim().split('·')[0].trim() || path;
@@ -465,6 +468,7 @@ def fix_nav_links(html, depth=0):
         "href=\"/guide/\"": f'href="{prefix}guide/"',
         "href=\"/audit/\"": f'href="{prefix}audit/"',
         "href=\"/academy/\"": f'href="{prefix}academy/"',
+        "href=\"/support/\"": f'href="{prefix}support/"',
         "window.location.href = '/'": f"window.location.href = '{prefix or '/'}'",
     }
     
@@ -602,6 +606,11 @@ SEO_META = {
         'FPV Academy — Learn Drone Building & Flight',
         'Educational modules for FPV drone building, soldering, firmware configuration, and flight.',
         'FPV drone tutorial, learn to build drone, FPV academy, drone building course',
+    ),
+    'support.html': (
+        'Support Hub — Forge Drone Tools & Resources',
+        'RF planning tools, PID tuning, build diagnostics, compliance audits, and learning guides for FPV and UAS builders. All Forge support resources in one place.',
+        'drone tools, FPV support, RF range calculator, PID tuning tool, NDAA compliance audit, build troubleshooter, drone guides',
     ),
     'guide.html': (
         'Build Guide — Step-by-Step Drone Assembly',
@@ -850,6 +859,7 @@ def inject_seo(html, src_name, dst_path):
         'cuas-guide/':         'https://nvmillbuilditmyself.com/cuas-guide/',
         'fc-firmware-guide/':  'https://nvmillbuilditmyself.com/fc-firmware-guide/',
         'academy/':            'https://nvmillbuilditmyself.com/academy/',
+        'support/':            'https://nvmillbuilditmyself.com/support/',
         'pro/':                'https://nvmillbuilditmyself.com/pro/',
         'start/':              'https://nvmillbuilditmyself.com/start/',
         'library/':            'https://nvmillbuilditmyself.com/library/',

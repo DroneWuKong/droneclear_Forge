@@ -1,5 +1,11 @@
 # Changelog
 
+## [Session] - 2026-04-12 — Support Hub page + build_static registration
+
+### Added
+- **`support.html`** — new Support Hub at `/support/`. 22 tool entries across 4 groups: RF Tools (terrain analysis, mesh planner, range estimator, Fresnel, harmonics, dipole, channel planner, VTX config), Tuning & Diagnostics (PID tuning, troubleshooter, build audit, stack builder, Wingman AI, FC target matcher), Learning (FPV Academy, implementation guides, getting started, contribute), Intel & Compliance (compliance dashboard, report, spec sheets, manufacturer dossier). Live search filter. Matches `tools-home.html` CSS/layout.
+- **`build_static.py`** — full registration: output map, PAGE_SLUGS, nav label, drawer nav link (`Support Hub`), SEO_META, CANONICAL_OVERRIDES, fix_nav_links href rewrite.
+
 ## [Session] - 2026-04-12 — Alternatives Audit, Unusual Machines Tree, Brave FPV Entry
 
 ### Added
