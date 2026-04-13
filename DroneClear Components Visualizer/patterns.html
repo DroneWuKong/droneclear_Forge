@@ -1491,7 +1491,7 @@ let activeTab = "flags";
 let activeSeverity = "all"; // kept for compat but unused in new logic
 // ── Hide-based filter sets (empty = show all, add items to hide them) ──
 let hiddenSeverities = new Set(['info']); // default: hide low-priority info flags
-let hiddenTypes = new Set();
+let hiddenTypes = new Set(); // grayzone types not hidden by default — deprioritized in sort order instead
 let hiddenRegions = new Set();
 let selectedFlag = null;
 let _flagScrollY = 0;
@@ -2303,9 +2303,32 @@ function renderFlags() {
       groups[key].push(f);
     });
     
-    // Sort groups: most flags first, critical groups first
+    // Sort groups: supply chain / procurement types promoted;
+    // grayzone deprioritized relative to operational signals.
+    const TYPE_PRIORITY = {
+      supply_constraint:   1,
+      contract_signal:     1,
+      procurement_spike:   1,
+      diversion_risk:      2,
+      correlation:         2,
+      regulatory:          2,
+      regulatory_deadline: 2,
+      legislation:         2,
+      price_anomaly:       3,
+      market_dynamics:     3,
+      grayzone:            4,  // deprioritized — covered in gray zone tab
+      grayzone_xref:       4,
+      corporate_evasion:   4,
+    };
+    function groupTypePriority(gFlags) {
+      const types = gFlags.map(f => f.flag_type || 'unknown');
+      return Math.min(...types.map(t => TYPE_PRIORITY[t] || 3));
+    }
     groupOrder.sort((a, b) => {
       const ga = groups[a], gb = groups[b];
+      const aPri = groupTypePriority(ga);
+      const bPri = groupTypePriority(gb);
+      if (aPri !== bPri) return aPri - bPri; // lower priority number = higher in list
       const aCrit = ga.filter(f => (f.severity || (FLAG_META[f.flag_type]||{}).sev) === 'critical').length;
       const bCrit = gb.filter(f => (f.severity || (FLAG_META[f.flag_type]||{}).sev) === 'critical').length;
       if (aCrit !== bCrit) return bCrit - aCrit;
