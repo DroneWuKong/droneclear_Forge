@@ -963,10 +963,24 @@ function fmtUpdated(iso) {
     if (el) el.textContent = 'Pipeline: ' + dt + ' · ' + timeStr;
   } catch(e) {}
 }
+// Try pie_flags.json first, fall back to miner_health.json generated_at
 fetch('/static/pie_flags.json').then(r=>r.json()).then(flags=>{
-    var ts = flags.map(f=>f.timestamp||'').filter(Boolean).sort().pop();
-    if(ts) fmtUpdated(ts);
-  }).catch(()=>{});
+    var arr = Array.isArray(flags) ? flags : (flags.flags || []);
+    var ts = arr.map(f=>f.timestamp||f.date||'').filter(Boolean).sort().pop();
+    if(ts){ fmtUpdated(ts); return; }
+    throw new Error('no ts');
+  }).catch(()=>{
+    // Fallback 1: miner_health.json
+    fetch('/static/miner_health.json').then(r=>r.json()).then(h=>{
+      var ts = h.timestamp || h.generated_at || '';
+      if(ts) fmtUpdated(ts);
+      else throw new Error('no ts');
+    }).catch(()=>{
+      // Fallback 2: show today's date so it never stays "Loading..."
+      var el = document.getElementById('last-updated');
+      if(el) el.textContent = 'Pipeline: — (check Actions)';
+    });
+  });
 </script>
 
 </div><!-- /page-content -->
