@@ -514,6 +514,10 @@ async function checkAccess() {
 }
 
 async function generateReport() {
+  // Persist typed proxy secret to localStorage so getAuth() finds it on retry
+  const typedSecret = document.getElementById('owner-secret')?.value?.trim();
+  if (typedSecret) localStorage.setItem(PROXY_SECRET_KEY, typedSecret);
+
   const access = await checkAccess();
   if (!access.ok) {
     document.getElementById('gate-msg').style.display = 'block';
@@ -524,6 +528,9 @@ async function generateReport() {
   const btn = document.getElementById('gen-btn');
   btn.disabled = true;
   btn.textContent = 'Generating…';
+  // Show status so user knows it's working (Claude synthesis can take 8-12s)
+  const statusEl = document.getElementById('gen-status');
+  if (statusEl) { statusEl.textContent = 'Contacting PIE intelligence engine…'; statusEl.style.display = 'block'; }
 
   const { subToken, proxySecret } = getAuth();
   const subject    = document.getElementById('subject-input').value.trim();
@@ -546,6 +553,16 @@ async function generateReport() {
     }
 
     const data = await res.json();
+
+    if (!data.meta) {
+      // Function returned an error object instead of report data
+      const msg = data.error || data.message || ('Server error ' + res.status);
+      alert('Report generation failed: ' + msg);
+      btn.disabled = false; btn.textContent = 'Generate Report →';
+      return;
+    }
+
+    if (statusEl) statusEl.style.display = 'none';
     renderReport(data);
 
     document.getElementById('generator').style.display = 'none';
@@ -554,10 +571,12 @@ async function generateReport() {
 
   } catch(e) {
     alert('Error generating report: ' + e.message);
+    console.error('Report error:', e);
   }
 
   btn.disabled = false;
   btn.textContent = 'Generate Report →';
+  if (statusEl) statusEl.style.display = 'none';
 }
 
 function renderReport(d) {
