@@ -488,7 +488,7 @@ def fix_nav_links(html, depth=0):
 # SEO — Meta tags, Open Graph, Twitter Cards, Sitemap, robots.txt
 # Ã¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂ
 
-SITE_URL = 'https://nvmilldoitmyself.com'
+SITE_URL = 'https://nvmillbuilditmyself.com'
 SITE_NAME = 'Forge — Drone Integration Handbook'
 
 # Part count for SEO copy. Computed once from forge_database.json on first
@@ -850,7 +850,8 @@ def inject_seo(html, src_name, dst_path):
         description = description.replace(_PART_COUNT_PLACEHOLDER, count_str)
 
     clean_path = dst_path.replace('index.html', '')
-    # patterns pages live on nvmillfindoutmyself.com, not nvmilldoitmyself.com
+    # patterns pages live on nvmillfindoutmyself.com (PIE intel domain),
+    # not the main Forge site at nvmillbuilditmyself.com.
     CANONICAL_OVERRIDES = {
         # PIE intelligence domain (nvmillfindoutmyself.com)
         'patterns/':       'https://nvmillfindoutmyself.com/patterns/',
