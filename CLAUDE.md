@@ -31,7 +31,7 @@ Netlify config is in `netlify.toml`. Build command: `python3 build_static.py`, p
 - **No backend.** Django was removed. All data is static JSON.
 - **20 pages** across: The Bench (home), Builder, Guide, Audit, Academy, Platforms, Browse, Contribute, Analytics, SLAM Selector, and 8 integration guides (FC Firmware, Mesh, TAK, AI, C-UAS, Swarm, SLAM, Guides Hub).
 - **Data flows from Ai-Project repo** → `data/parts-db/*.json` → merged into `forge_database.json` at build time.
-- **Analytics** snippet injected into all pages, reporting to nvmilldoitmyself.com Netlify Functions.
+- **Analytics** snippet injected into all pages, reporting to the Netlify Functions endpoint at `thebluefairy.netlify.app/.netlify/functions/analytics-ingest` (see `build_static.py:157`). The sibling product domains are: `nvmillbuilditmyself.com` (Forge, this repo), `illdoitmyself.com` (Handbook, `drone-integration-handbook` repo), `nvmillfindoutmyself.com` (Patterns/PIE intel). Ai-Project itself has no custom domain — it deploys to `thebluefairy.netlify.app`. **NOTE:** large chunks of this repo and the two sibling repos still reference `nvmilldoitmyself.com` as if it were the handbook domain — that's a stale/typo reference throughout the codebase, ~120 occurrences spanning analytics functions' `ALLOWED_ORIGINS` (CORS), contribution form fetch URLs, user-facing nav links, and the sitemap. Not yet mass-replaced because the scope is large and deserves a dedicated pass.
 
 ## Key Files
 

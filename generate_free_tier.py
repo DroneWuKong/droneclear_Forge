@@ -90,8 +90,9 @@ def main(args=None):
         # Sort by severity: critical first
         sev_order = {'critical': 0, 'warning': 1, 'info': 2}
         flags_sorted = sorted(flags, key=lambda f: sev_order.get(f.get('severity','info'), 3))
+        FLAG_LIMIT = 20
         free_flags = []
-        for f in flags_sorted[:20]:
+        for f in flags_sorted[:FLAG_LIMIT]:
             free_flags.append({
                 'id':        f.get('id'),
                 'flag_type': f.get('flag_type'),
@@ -100,6 +101,7 @@ def main(args=None):
                 'timestamp': f.get('timestamp'),
                 # detail, prediction, sources, data_sources — gated
             })
+        print(f"  pie_flags.json:    kept {len(free_flags)}/{len(flags)} (free-tier limit {FLAG_LIMIT}, dropped {max(0, len(flags) - FLAG_LIMIT)})")
         write(out / 'pie_flags.json', free_flags)
         # Also write a summary stub
         sev_counts = {}
@@ -116,8 +118,9 @@ def main(args=None):
     preds_raw = load('predictions.json') or load('pie_predictions.json')
     if preds_raw:
         preds = preds_raw if isinstance(preds_raw, list) else preds_raw.get('predictions', [])
+        PRED_LIMIT = 3
         free_preds = []
-        for p in preds[:3]:
+        for p in preds[:PRED_LIMIT]:
             free_preds.append({
                 'id':        p.get('id'),
                 'timeframe': p.get('timeframe'),
@@ -125,6 +128,7 @@ def main(args=None):
                 'impact':    p.get('impact'),
                 # probability, confidence, model_outputs, drivers — gated
             })
+        print(f"  pie_predictions:   kept {len(free_preds)}/{len(preds)} (free-tier limit {PRED_LIMIT}, dropped {max(0, len(preds) - PRED_LIMIT)})")
         write(out / 'pie_predictions.json', free_preds)
 
     # ── PIE TRENDS — full (no sensitive content, just trend lines) ────────
@@ -136,25 +140,30 @@ def main(args=None):
     history = load('pie_brief_history.json')
     if history:
         briefs = history if isinstance(history, list) else history.get('briefs', [])
+        BRIEF_LIMIT = 7
         free_history = []
-        for b in briefs[-7:]:
+        for b in briefs[-BRIEF_LIMIT:]:
             free_history.append({
                 'date':     b.get('date'),
                 'headline': b.get('headline', ''),
                 'flag_severities': b.get('flag_severities', {}),
             })
+        print(f"  pie_brief_history: kept {len(free_history)}/{len(briefs)} (free-tier limit {BRIEF_LIMIT}, dropped {max(0, len(briefs) - BRIEF_LIMIT)})")
         write(out / 'pie_brief_history.json', free_history)
 
     # ── ENTITY GRAPH — top 50 entities, no relationship details ──────────
     graph = load('entity_graph.json')
     if graph:
         entities = graph if isinstance(graph, list) else graph.get('entities', [])
-        nodes = list(graph.get('nodes') or [])[:50] if isinstance(graph, dict) else list(entities or [])[:50]
+        ENTITY_LIMIT = 50
+        all_nodes = list(graph.get('nodes') or []) if isinstance(graph, dict) else list(entities or [])
+        nodes = all_nodes[:ENTITY_LIMIT]
         # Strip sensitive fields
         free_nodes = []
         for n in nodes:
             free_nodes.append({k: v for k, v in n.items()
                 if k not in ['sources', 'evidence', 'raw_score', 'methodology']})
+        print(f"  entity_graph:      kept {len(free_nodes)}/{len(all_nodes)} nodes (free-tier limit {ENTITY_LIMIT}, dropped {max(0, len(all_nodes) - ENTITY_LIMIT)})")
         write(out / 'entity_graph.json', {'nodes': free_nodes, '_free_tier': True})
 
     # ── GAP ANALYSIS — full (no sensitive content) ───────────────────────
