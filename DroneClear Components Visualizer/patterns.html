@@ -5574,29 +5574,71 @@ function renderSources() {
     return;
   }
 
+  const lastSeen    = health ? (health.last_seen      || {}) : {};
+  const latestHL    = health ? (health.latest_headline || {}) : {};
+  const latestURL   = health ? (health.latest_url      || {}) : {};
+  const srcStatus   = health ? (health.source_status   || {}) : {};
+
   el.innerHTML = Object.entries(grouped).map(([cat, items]) => {
     const catLabel = CATEGORY_LABELS[cat] || cat;
     const catVert = items[0]?.vertical;
     const catColor = VERTICAL_LABELS[catVert]?.color || 'var(--text-d)';
     const rows = items.map(m => {
-      const live = liveCounts[m.id];
-      const liveHtml = live != null
+      const live    = liveCounts[m.id];
+      const seen    = lastSeen[m.id];
+      const hl      = latestHL[m.id];
+      const hlUrl   = latestURL[m.id];
+      const status  = srcStatus[m.id];   // 'ok' | 'stale' | 'silent' | undefined
+
+      // Status dot color
+      const dot = status === 'ok'    ? 'var(--green)'
+                : status === 'stale' ? 'var(--amber)'
+                : status === 'silent'? 'var(--red)'
+                : live != null       ? 'var(--green)'
+                : 'var(--text-d)';
+
+      // Article count badge
+      const countHtml = live != null
         ? `<span style="font:700 11px var(--mono);color:var(--green)">${live}</span><span style="font:500 10px var(--mono);color:var(--text-s)"> art</span>`
-        : `<span style="font:600 10px var(--mono);color:var(--text-s);background:var(--surface);padding:1px 6px;border-radius:3px">${m.schedule}</span>`;
-      const dot = live != null ? 'var(--green)' : 'var(--text-d)';
+        : `<span style="font:600 10px var(--mono);color:var(--text-xd);background:var(--surface);padding:1px 6px;border-radius:3px">${m.schedule}</span>`;
+
+      // Last-seen age label
+      let ageHtml = '';
+      if (seen) {
+        const daysAgo = Math.floor((Date.now() - new Date(seen).getTime()) / 86400000);
+        const ageLabel = daysAgo === 0 ? 'today'
+                       : daysAgo === 1 ? '1d ago'
+                       : daysAgo + 'd ago';
+        const ageColor = daysAgo <= 1 ? 'var(--green)'
+                       : daysAgo <= 7 ? 'var(--amber)'
+                       : 'var(--red)';
+        ageHtml = `<span style="font:500 10px var(--mono);color:${ageColor}">${ageLabel}</span>`;
+      }
+
+      // Latest headline (truncated, linked)
+      let hlHtml = '';
+      if (hl) {
+        const truncated = hl.length > 72 ? hl.slice(0, 72) + '…' : hl;
+        hlHtml = hlUrl
+          ? `<div style="margin-top:3px"><a href="${hlUrl}" target="_blank" rel="noopener" style="font:400 10px var(--font);color:var(--text-d);text-decoration:none;line-height:1.3;display:block" title="${hl.replace(/"/g,'&quot;')}">${truncated}</a></div>`
+          : `<div style="margin-top:3px;font:400 10px var(--font);color:var(--text-d);line-height:1.3">${truncated}</div>`;
+      }
+
       const geoFlag = GEO_FLAGS[m.geo] || '🌐';
       const urlDomain = m.url ? m.url.replace(/https?:\/\/(www\.)?/,'').split('/')[0] : '';
-      return `<div style="display:flex;align-items:center;gap:8px;padding:8px 0;border-bottom:1px solid var(--border)">
-        <span style="font:700 10px var(--mono);color:${dot};flex-shrink:0">●</span>
+      return `<div style="display:flex;align-items:flex-start;gap:8px;padding:8px 0;border-bottom:1px solid var(--border)">
+        <span style="font:700 10px var(--mono);color:${dot};flex-shrink:0;padding-top:2px">●</span>
         <div style="flex:1;min-width:0">
-          <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-bottom:2px">
+          <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-bottom:1px">
             <span style="font:700 12px var(--font);color:var(--text)">${m.name}</span>
             <span style="font-size:11px">${geoFlag}</span>
             ${m.url ? `<a href="${m.url}" target="_blank" rel="noopener" style="font:500 10px var(--mono);color:var(--cyan);text-decoration:none;opacity:.8">${urlDomain} ↗</a>` : ''}
+            ${ageHtml}
           </div>
           <div style="font:400 10px var(--font);color:var(--text-s);line-height:1.4">${m.description}</div>
+          ${hlHtml}
         </div>
-        <div style="text-align:right;flex-shrink:0">${liveHtml}</div>
+        <div style="text-align:right;flex-shrink:0;padding-top:1px">${countHtml}</div>
       </div>`;
     }).join('');
 
