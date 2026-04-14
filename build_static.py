@@ -1000,7 +1000,9 @@ def sync_handbook_data():
         return False
 
     subprocess.run(
-        ['git', '-C', DATA_CLONE_DIR, 'sparse-checkout', 'set', 'data/parts-db', 'docs/database'],
+        ['git', '-C', DATA_CLONE_DIR, 'sparse-checkout', 'set',
+         'data/parts-db', 'docs/database',
+         'scripts/validate_forge_database.py', 'data/forge_database.schema.json'],
         capture_output=True, text=True
     )
 
@@ -1010,10 +1012,41 @@ def sync_handbook_data():
         print("  Falling back to local forge_database.json")
         return False
 
+    # Pull the structural validator from the cloned Ai-Project — canonical
+    # source, no file duplication. Falls back to a no-op if the script isn't
+    # present (e.g. older Ai-Project commits before f396656). The validator
+    # is stdlib-only so no pip install needed at Netlify build time.
+    _forge_validator = None
+    _validator_src = os.path.join(DATA_CLONE_DIR, 'scripts', 'validate_forge_database.py')
+    if os.path.isfile(_validator_src):
+        try:
+            import importlib.util as _ilu
+            _spec = _ilu.spec_from_file_location('forge_db_validator', _validator_src)
+            _forge_validator = _ilu.module_from_spec(_spec)
+            _spec.loader.exec_module(_forge_validator)
+            print(f"  validator: loaded {_validator_src}")
+        except Exception as _e:
+            print(f"  WARNING: validator import failed: {_e}")
+            _forge_validator = None
+    else:
+        print("  WARNING: validate_forge_database.py not in clone — skipping pre/post validation")
+
     # Load existing forge_database.json for industry data (stays local)
     local_db_path = os.path.join(SRC_DIR, 'forge_database.json')
     with open(local_db_path, 'r', encoding='utf-8') as f:
         forge_db = json.load(f)
+
+    # Pre-merge: validate the local DB BEFORE we touch it. A corrupt local
+    # fallback (missing components, malformed drone_models) would otherwise
+    # silently produce a broken merged result that then ships to production.
+    if _forge_validator is not None:
+        try:
+            warnings = _forge_validator.validate(forge_db, source_path=local_db_path)
+            print(f"  validator (pre-merge): forge_database.json passed; {len(warnings)} soft warning(s)")
+        except _forge_validator.ValidationError as _e:
+            print(f"  ERROR: local forge_database.json failed validation: {_e}")
+            print("  Refusing to merge into a structurally broken database — aborting sync")
+            return False
 
     # Replace components from handbook
     # Component categories to sync from handbook
@@ -1121,6 +1154,20 @@ def sync_handbook_data():
                 existing_names.add(name.lower())
                 added += 1
             print(f"  drone_models: {added} new entries added ({len(forge_db['drone_models'])} total)")
+
+    # Post-merge: validate the merged result BEFORE we overwrite the local DB.
+    # A bad merge (field rename in parts-db that drops names, etc.) would
+    # otherwise stomp on a working forge_database.json with broken data and
+    # the next build would have nothing to fall back to.
+    if _forge_validator is not None:
+        try:
+            warnings = _forge_validator.validate(forge_db, source_path='<merged>')
+            print(f"  validator (post-merge): merged DB passed; {len(warnings)} soft warning(s)")
+        except _forge_validator.ValidationError as _e:
+            print(f"  ERROR: merged forge_database.json failed validation: {_e}")
+            print("  Refusing to overwrite the local DB with broken merged data — keeping previous version")
+            shutil.rmtree(DATA_CLONE_DIR, ignore_errors=True)
+            return False
 
     # Write updated forge_database.json
     with open(local_db_path, 'w', encoding='utf-8') as f:
