@@ -439,6 +439,8 @@ def fix_paths(html, depth=0):
         html = html.replace("fetch('pie_flags.json')", "fetch('/.netlify/functions/forge-data?type=pie_flags&token='+encodeURIComponent(localStorage.getItem('forge_token')||''))")
         html = html.replace("fetch('solicitations.json')", "fetch('/.netlify/functions/forge-data?type=solicitations&token='+encodeURIComponent(localStorage.getItem('forge_token')||''))")
         html = html.replace("fetch('miner_registry.json')", f"fetch('{prefix}static/miner_registry.json')")
+        html = html.replace('fetch("../static/miner_health.json")', f"fetch('{prefix}static/miner_health.json')")
+        html = html.replace("fetch('miner_health.json')", f"fetch('{prefix}static/miner_health.json')")
         html = html.replace("fetch('/static/gap_analysis_latest.json')", f"fetch('{prefix}static/gap_analysis_latest.json')")
         html = html.replace("fetch('pie_predictions.json')", "fetch('/.netlify/functions/forge-data?type=pie_predictions&token='+encodeURIComponent(localStorage.getItem('forge_token')||localStorage.getItem('wingman_sub_token')||''))")
         html = html.replace("fetch('pie_brief.json')", "fetch('/.netlify/functions/forge-data?type=pie_brief&token='+encodeURIComponent(localStorage.getItem('forge_token')||''))")
