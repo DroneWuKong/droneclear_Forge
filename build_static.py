@@ -491,16 +491,39 @@ def fix_nav_links(html, depth=0):
 SITE_URL = 'https://nvmilldoitmyself.com'
 SITE_NAME = 'Forge — Drone Integration Handbook'
 
+# Part count for SEO copy. Computed once from forge_database.json on first
+# read, then cached. Falls back to 3500 if the file is unavailable so the
+# build doesn't break — same number the strings used to hardcode.
+_PART_COUNT_CACHE = None
+_PART_COUNT_PLACEHOLDER = '__PART_COUNT__'
+
+def _get_part_count():
+    global _PART_COUNT_CACHE
+    if _PART_COUNT_CACHE is not None:
+        return _PART_COUNT_CACHE
+    try:
+        with open(os.path.join(SRC_DIR, 'forge_database.json'), 'r', encoding='utf-8') as f:
+            db = json.load(f)
+        comps = db.get('components', {})
+        _PART_COUNT_CACHE = sum(len(v) for v in comps.values() if isinstance(v, list))
+    except Exception:
+        _PART_COUNT_CACHE = 3500
+    return _PART_COUNT_CACHE
+
 # SEO metadata per page: (title, description, keywords)
+# Use __PART_COUNT__ as a placeholder; inject_seo() substitutes the real
+# count at use time so the meta description always matches the live DB.
+# Round down to the nearest 100 + "+" so the public number doesn't churn
+# on every commit.
 SEO_META = {
     'mission-control.html': (
         'Forge — Drone Build Planner & Intelligence Platform',
-        'Browse 3,500+ vetted drone parts, validate build compatibility, assemble step-by-step guides, and access defense intelligence. The interactive companion to the Drone Integration Handbook.',
+        'Browse __PART_COUNT__+ vetted drone parts, validate build compatibility, assemble step-by-step guides, and access defense intelligence. The interactive companion to the Drone Integration Handbook.',
         'drone build planner, FPV parts database, drone compatibility, NDAA compliant drones, Blue UAS, drone components',
     ),
     'index.html': (
         'Model Builder — Forge Drone Build Planner',
-        'Assemble drone builds from 3,500+ vetted parts with real-time 12-check compatibility validation. Flight controllers, ESCs, motors, frames, and more.',
+        'Assemble drone builds from __PART_COUNT__+ vetted parts with real-time 12-check compatibility validation. Flight controllers, ESCs, motors, frames, and more.',
         'drone model builder, FPV build tool, drone parts compatibility, flight controller selector',
     ),
     'wingman.html': (
@@ -624,7 +647,7 @@ SEO_META = {
         'drone build guide, FPV assembly instructions, drone wiring guide, step by step drone build',
     ),
     'editor.html': (
-        'Parts Library — 3,500+ Vetted Drone Components',
+        'Parts Library — __PART_COUNT__+ Vetted Drone Components',
         'Browse and search the full parts library with specs, compatibility data, and filtering by category, manufacturer, and voltage.',
         'drone parts library, FPV component database, flight controller database, motor database',
     ),
@@ -660,7 +683,7 @@ SEO_META = {
     ),
     'browse.html': (
         'Browse Components — Full Drone Parts Catalog',
-        'Browse the complete catalog of 3,500+ drone components with search, filtering, and detailed specifications.',
+        'Browse the complete catalog of __PART_COUNT__+ drone components with search, filtering, and detailed specifications.',
         'drone parts catalog, browse FPV parts, drone component search',
     ),
     'clock.html': (
@@ -807,7 +830,7 @@ SEO_META = {
 
 DEFAULT_SEO = (
     'Forge — Drone Integration Handbook',
-    'Interactive build planner and intelligence platform for the Drone Integration Handbook. 3,500+ parts, 219 platforms, compliance tracking.',
+    'Interactive build planner and intelligence platform for the Drone Integration Handbook. __PART_COUNT__+ parts, 219 platforms, compliance tracking.',
     'drone build planner, FPV parts, drone intelligence platform',
 )
 
@@ -815,6 +838,16 @@ DEFAULT_SEO = (
 def inject_seo(html, src_name, dst_path):
     """Inject meta description, Open Graph, Twitter Card, and canonical URL."""
     title, description, keywords = SEO_META.get(src_name, DEFAULT_SEO)
+
+    # Substitute __PART_COUNT__ placeholder with the live count from the DB,
+    # rounded down to the nearest 100 so the public number doesn't churn on
+    # every commit. SEO copy used to hardcode "3,500+" — drifted ~400 behind
+    # the real figure (currently ~3,885 components in 34 categories).
+    if _PART_COUNT_PLACEHOLDER in title or _PART_COUNT_PLACEHOLDER in description:
+        rounded = max(100, (_get_part_count() // 100) * 100)
+        count_str = f"{rounded:,}"
+        title = title.replace(_PART_COUNT_PLACEHOLDER, count_str)
+        description = description.replace(_PART_COUNT_PLACEHOLDER, count_str)
 
     clean_path = dst_path.replace('index.html', '')
     # patterns pages live on nvmillfindoutmyself.com, not nvmilldoitmyself.com
