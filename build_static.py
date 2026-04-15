@@ -260,13 +260,13 @@ _UNIFIED_NAV = r"""<!-- ── Unified DroneClear Nav ────────�
   </div>
   <div id="dc-nav-right">
     <!-- Forge pills -->
-    <a class="dc-nav-pill dc-forge-pill" href="https://nvmillbuilditmyself.com/browse/" data-page="browse">Browse</a>
-    <a class="dc-nav-pill dc-forge-pill" href="https://nvmillbuilditmyself.com/wingman/" data-page="wingman">Wingman</a>
-    <a class="dc-nav-pill dc-forge-pill" href="https://nvmillbuilditmyself.com/intel/" data-page="intel">Intel</a>
+    <a class="dc-nav-pill dc-forge-pill" href="https://uas-forge.com/browse/" data-page="browse">Browse</a>
+    <a class="dc-nav-pill dc-forge-pill" href="https://uas-forge.com/wingman/" data-page="wingman">Wingman</a>
+    <a class="dc-nav-pill dc-forge-pill" href="https://uas-forge.com/intel/" data-page="intel">Intel</a>
     <!-- PIE pills -->
-    <a class="dc-nav-pill dc-pie-pill" href="https://nvmillfindoutmyself.com/clock/" data-page="clock">Clock</a>
-    <a class="dc-nav-pill dc-pie-pill" href="https://nvmillfindoutmyself.com/ddg/" data-page="ddg">DDG</a>
-    <a class="dc-nav-pill dc-pie-pill" href="https://nvmillfindoutmyself.com/patterns/" data-page="patterns">Flags</a>
+    <a class="dc-nav-pill dc-pie-pill" href="https://uas-patterns.com/clock/" data-page="clock">Clock</a>
+    <a class="dc-nav-pill dc-pie-pill" href="https://uas-patterns.com/ddg/" data-page="ddg">DDG</a>
+    <a class="dc-nav-pill dc-pie-pill" href="https://uas-patterns.pro/patterns/" data-page="patterns">Flags</a>
   </div>
 </nav>
 
@@ -278,34 +278,34 @@ _UNIFIED_NAV = r"""<!-- ── Unified DroneClear Nav ────────�
   </div>
 
   <div class="dc-drawer-section">Forge — Intelligence</div>
-  <a class="dc-drawer-item" href="https://nvmillbuilditmyself.com/browse/" data-page="browse">Browse Components</a>
-  <a class="dc-drawer-item" href="https://nvmillbuilditmyself.com/compare/" data-page="compare">Compare</a>
-  <a class="dc-drawer-item" href="https://nvmillbuilditmyself.com/compliance/" data-page="compliance">Compliance</a>
-  <a class="dc-drawer-item" href="https://nvmillbuilditmyself.com/dossier/" data-page="dossier">Dossier</a>
-  <a class="dc-drawer-item" href="https://nvmillbuilditmyself.com/platforms/" data-page="platforms">Platforms</a>
-  <a class="dc-drawer-item" href="https://nvmillbuilditmyself.com/regs/" data-page="regs">Regs</a>
+  <a class="dc-drawer-item" href="https://uas-forge.com/browse/" data-page="browse">Browse Components</a>
+  <a class="dc-drawer-item" href="https://uas-forge.com/compare/" data-page="compare">Compare</a>
+  <a class="dc-drawer-item" href="https://uas-forge.com/compliance/" data-page="compliance">Compliance</a>
+  <a class="dc-drawer-item" href="https://uas-forge.com/dossier/" data-page="dossier">Dossier</a>
+  <a class="dc-drawer-item" href="https://uas-forge.com/platforms/" data-page="platforms">Platforms</a>
+  <a class="dc-drawer-item" href="https://uas-forge.com/regs/" data-page="regs">Regs</a>
 
   <div class="dc-drawer-section">Forge — Tools</div>
-  <a class="dc-drawer-item" href="https://nvmillbuilditmyself.com/wingman/" data-page="wingman">Wingman AI</a>
-  <a class="dc-drawer-item" href="https://nvmillbuilditmyself.com/stack-builder/" data-page="stack-builder">Stack Builder</a>
-  <a class="dc-drawer-item" href="https://nvmillbuilditmyself.com/report/" data-page="report">Compliance Report</a>
-  <a class="dc-drawer-item" href="https://nvmillbuilditmyself.com/support/" data-page="support">Support Hub</a>
-  <a class="dc-drawer-item" href="https://nvmillbuilditmyself.com/tools-home/" data-page="tools-home">All Tools</a>
-  <a class="dc-drawer-item" href="https://nvmillbuilditmyself.com/software-library/" data-page="software-library">Software Library</a>
+  <a class="dc-drawer-item" href="https://uas-forge.com/wingman/" data-page="wingman">Wingman AI</a>
+  <a class="dc-drawer-item" href="https://uas-forge.com/stack-builder/" data-page="stack-builder">Stack Builder</a>
+  <a class="dc-drawer-item" href="https://uas-forge.com/report/" data-page="report">Compliance Report</a>
+  <a class="dc-drawer-item" href="https://uas-forge.com/support/" data-page="support">Support Hub</a>
+  <a class="dc-drawer-item" href="https://uas-forge.com/tools-home/" data-page="tools-home">All Tools</a>
+  <a class="dc-drawer-item" href="https://uas-forge.com/software-library/" data-page="software-library">Software Library</a>
 
   <div class="dc-drawer-section">Forge — Intel</div>
-  <a class="dc-drawer-item" href="https://nvmillbuilditmyself.com/intel/" data-page="intel">Intel Hub</a>
-  <a class="dc-drawer-item" href="https://nvmillbuilditmyself.com/industry/" data-page="industry">Industry</a>
-  <a class="dc-drawer-item" href="https://nvmillbuilditmyself.com/tracker/" data-page="tracker">Contract Tracker</a>
+  <a class="dc-drawer-item" href="https://uas-forge.com/intel/" data-page="intel">Intel Hub</a>
+  <a class="dc-drawer-item" href="https://uas-forge.com/industry/" data-page="industry">Industry</a>
+  <a class="dc-drawer-item" href="https://uas-forge.com/tracker/" data-page="tracker">Contract Tracker</a>
 
   <div class="dc-drawer-divider"></div>
 
   <div class="dc-drawer-section">PIE — Pattern Intelligence</div>
-  <a class="dc-drawer-item" href="https://nvmillfindoutmyself.com/patterns-home/" data-page="patterns-home">P.I.E Hub</a>
-  <a class="dc-drawer-item" href="https://nvmillfindoutmyself.com/brief/" data-page="brief">Brief</a>
-  <a class="dc-drawer-item" href="https://nvmillfindoutmyself.com/patterns/" data-page="patterns">Flags</a>
-  <a class="dc-drawer-item" href="https://nvmillfindoutmyself.com/clock/" data-page="clock">UAS Clock</a>
-  <a class="dc-drawer-item" href="https://nvmillfindoutmyself.com/ddg/" data-page="ddg">DDG Tracker</a>
+  <a class="dc-drawer-item" href="https://uas-patterns.com/patterns-home/" data-page="patterns-home">P.I.E Hub</a>
+  <a class="dc-drawer-item" href="https://uas-patterns.com/brief/" data-page="brief">Brief</a>
+  <a class="dc-drawer-item" href="https://uas-patterns.pro/patterns/" data-page="patterns">Flags</a>
+  <a class="dc-drawer-item" href="https://uas-patterns.com/clock/" data-page="clock">UAS Clock</a>
+  <a class="dc-drawer-item" href="https://uas-patterns.com/ddg/" data-page="ddg">DDG Tracker</a>
 
   <div class="dc-drawer-foot">Midwest Nice Advisory LLC</div>
 </div>
@@ -323,8 +323,9 @@ _UNIFIED_NAV = r"""<!-- ── Unified DroneClear Nav ────────�
     } catch(e){ return false; }
   })();
   var host = location.hostname;
-  var isForge = host.includes('builditmyself') || host === 'localhost';
-  var isPIE   = host.includes('findoutmyself');
+  // Match both new uas-* domains and legacy nvmill* domains during transition.
+  var isForge = host.includes('uas-forge') || host.includes('builditmyself') || host === 'localhost';
+  var isPIE   = host.includes('uas-patterns') || host.includes('findoutmyself');
 
   // Set page label
   var labels = {
@@ -350,7 +351,7 @@ _UNIFIED_NAV = r"""<!-- ── Unified DroneClear Nav ────────�
 
   window.dcNavBrandClick = function(e){
     e.preventDefault();
-    location.href = isForge ? 'https://nvmillbuilditmyself.com/' : isPIE ? 'https://nvmillfindoutmyself.com/patterns-home/' : '/';
+    location.href = isForge ? 'https://uas-forge.com/' : isPIE ? 'https://uas-patterns.com/patterns-home/' : '/';
   };
 
   // Show correct pills for domain, mark active
@@ -465,7 +466,7 @@ def fix_paths(html, depth=0):
 def fix_nav_links(html, depth=0):
     """Update navigation links to use the static site structure."""
     prefix = '../' * depth if depth > 0 else ''
-    
+
     replacements = {
         "href=\"/\"": f'href="{prefix or "/"}"',
         "href=\"/builder/\"": f'href="{prefix}builder/"',
@@ -477,10 +478,52 @@ def fix_nav_links(html, depth=0):
         "href=\"/support/\"": f'href="{prefix}support/"',
         "window.location.href = '/'": f"window.location.href = '{prefix or '/'}'",
     }
-    
+
     for old, new in replacements.items():
         html = html.replace(old, new)
-    
+
+    return html
+
+
+def rewrite_legacy_domains(html):
+    """Rewrite all occurrences of legacy nvmill*/illdoitmyself domains
+    to their new uas-* equivalents. Runs at build time so the source HTML
+    files can be left unchanged — a pragmatic mass-replace that catches
+    hardcoded URLs embedded in any of the ~20 page templates.
+
+    Pro paths (/patterns/, /pro/) route to uas-patterns.pro.
+    All other Forge paths route to uas-forge.com.
+    All other Patterns paths route to uas-patterns.com.
+    Handbook references route to uas-handbook.com.
+
+    Order matters: specific-path rules must run before bare-domain rules
+    so e.g. nvmillbuilditmyself.com/pro/ → uas-patterns.pro/pro/ wins
+    over the generic nvmillbuilditmyself.com → uas-forge.com.
+    """
+    # Pro-specific paths (must come first — more specific than bare domain)
+    specific = [
+        ('https://nvmillbuilditmyself.com/patterns/', 'https://uas-patterns.pro/patterns/'),
+        ('https://nvmillbuilditmyself.com/pro/',      'https://uas-patterns.pro/pro/'),
+        ('https://nvmillfindoutmyself.com/patterns/', 'https://uas-patterns.pro/patterns/'),
+        ('https://nvmillfindoutmyself.com/pro/',      'https://uas-patterns.pro/pro/'),
+    ]
+    for old, new in specific:
+        html = html.replace(old, new)
+
+    # Bare-domain replacements (catch-all for everything else)
+    bare = [
+        ('https://www.nvmillbuilditmyself.com', 'https://uas-forge.com'),
+        ('https://nvmillbuilditmyself.com',     'https://uas-forge.com'),
+        ('https://www.nvmillfindoutmyself.com', 'https://uas-patterns.com'),
+        ('https://nvmillfindoutmyself.com',     'https://uas-patterns.com'),
+        ('https://www.nvmilldoitmyself.com',    'https://uas-handbook.com'),
+        ('https://nvmilldoitmyself.com',        'https://uas-handbook.com'),
+        ('https://www.illdoitmyself.com',       'https://uas-handbook.com'),
+        ('https://illdoitmyself.com',           'https://uas-handbook.com'),
+    ]
+    for old, new in bare:
+        html = html.replace(old, new)
+
     return html
 
 
@@ -488,7 +531,7 @@ def fix_nav_links(html, depth=0):
 # SEO — Meta tags, Open Graph, Twitter Cards, Sitemap, robots.txt
 # Ã¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂ
 
-SITE_URL = 'https://nvmillbuilditmyself.com'
+SITE_URL = 'https://uas-forge.com'
 SITE_NAME = 'Forge — Drone Integration Handbook'
 
 # Part count for SEO copy. Computed once from forge_database.json on first
@@ -850,67 +893,69 @@ def inject_seo(html, src_name, dst_path):
         description = description.replace(_PART_COUNT_PLACEHOLDER, count_str)
 
     clean_path = dst_path.replace('index.html', '')
-    # patterns pages live on nvmillfindoutmyself.com (PIE intel domain),
-    # not the main Forge site at nvmillbuilditmyself.com.
+    # Patterns pages live on uas-patterns.com (free) / uas-patterns.pro (gated).
+    # Main Forge tooling lives on uas-forge.com. Legacy nvmill* domains
+    # 301 → new ones during the transition window (see netlify.toml).
     CANONICAL_OVERRIDES = {
-        # PIE intelligence domain (nvmillfindoutmyself.com)
-        'patterns/':       'https://nvmillfindoutmyself.com/patterns/',
-        'patterns-home/':  'https://nvmillfindoutmyself.com/patterns-home/',
-        'clock/':          'https://nvmillfindoutmyself.com/clock/',
-        'ddg/':            'https://nvmillfindoutmyself.com/ddg/',
-        'brief/':          'https://nvmillfindoutmyself.com/brief/',
-        'analytics/':      'https://nvmillfindoutmyself.com/analytics/',
-        # Main Forge domain (nvmillbuilditmyself.com)
-        'browse/':             'https://nvmillbuilditmyself.com/browse/',
-        'builder/':            'https://nvmillbuilditmyself.com/builder/',
-        'compare/':            'https://nvmillbuilditmyself.com/compare/',
-        'compliance/':         'https://nvmillbuilditmyself.com/compliance/',
-        'compliance-matrix/':  'https://nvmillbuilditmyself.com/compliance-matrix/',
-        'cost/':               'https://nvmillbuilditmyself.com/cost/',
-        'payload-compare/':    'https://nvmillbuilditmyself.com/payload-compare/',
-        'platforms/':          'https://nvmillbuilditmyself.com/platforms/',
-        'stack-builder/':      'https://nvmillbuilditmyself.com/stack-builder/',
-        'spec-sheets/':        'https://nvmillbuilditmyself.com/spec-sheets/',
-        'intel/':              'https://nvmillbuilditmyself.com/intel/',
-        'intel/feed/':         'https://nvmillbuilditmyself.com/intel/feed/',
-        'intel-defense/':      'https://nvmillbuilditmyself.com/intel-defense/',
-        'intel-commercial/':   'https://nvmillbuilditmyself.com/intel-commercial/',
-        'intel-dfr/':          'https://nvmillbuilditmyself.com/intel-dfr/',
-        'intel-financial/':    'https://nvmillbuilditmyself.com/intel-financial/',
-        'timeline/':           'https://nvmillbuilditmyself.com/timeline/',
-        'industry/':           'https://nvmillbuilditmyself.com/industry/',
-        'tracker/':            'https://nvmillbuilditmyself.com/tracker/',
-        'dossier/':            'https://nvmillbuilditmyself.com/dossier/',
-        'grants/':             'https://nvmillbuilditmyself.com/grants/',
-        'regs/':               'https://nvmillbuilditmyself.com/regs/',
-        'verify/':             'https://nvmillbuilditmyself.com/verify/',
-        'audit/':              'https://nvmillbuilditmyself.com/audit/',
-        'report/':             'https://nvmillbuilditmyself.com/report/',
-        'waiver/':             'https://nvmillbuilditmyself.com/waiver/',
-        'wingman/':            'https://nvmillbuilditmyself.com/wingman/',
-        'tools/':              'https://nvmillbuilditmyself.com/tools/',
-        'tools-home/':         'https://nvmillbuilditmyself.com/tools-home/',
-        'software-library/':   'https://nvmillbuilditmyself.com/software-library/',
-        'pid-tuning/':         'https://nvmillbuilditmyself.com/pid-tuning/',
-        'guides/':             'https://nvmillbuilditmyself.com/guides/',
-        'guide/':              'https://nvmillbuilditmyself.com/guide/',
-        'swarm/':              'https://nvmillbuilditmyself.com/swarm/',
-        'swarm-guide/':        'https://nvmillbuilditmyself.com/swarm-guide/',
-        'slam/':               'https://nvmillbuilditmyself.com/slam/',
-        'slam-guide/':         'https://nvmillbuilditmyself.com/slam-guide/',
-        'mesh-guide/':         'https://nvmillbuilditmyself.com/mesh-guide/',
-        'tak-guide/':          'https://nvmillbuilditmyself.com/tak-guide/',
-        'openhd-guide/':       'https://nvmillbuilditmyself.com/openhd-guide/',
-        'ai-guide/':           'https://nvmillbuilditmyself.com/ai-guide/',
-        'cuas-guide/':         'https://nvmillbuilditmyself.com/cuas-guide/',
-        'fc-firmware-guide/':  'https://nvmillbuilditmyself.com/fc-firmware-guide/',
-        'academy/':            'https://nvmillbuilditmyself.com/academy/',
-        'support/':            'https://nvmillbuilditmyself.com/support/',
-        'pro/':                'https://nvmillbuilditmyself.com/pro/',
-        'start/':              'https://nvmillbuilditmyself.com/start/',
-        'library/':            'https://nvmillbuilditmyself.com/library/',
-        'vault/':              'https://nvmillbuilditmyself.com/vault/',
-        'contribute/':         'https://nvmillbuilditmyself.com/contribute/',
+        # Patterns Pro (gated / paid) — uas-patterns.pro
+        'patterns/':       'https://uas-patterns.pro/patterns/',
+        # Patterns free / public — uas-patterns.com
+        'patterns-home/':  'https://uas-patterns.com/patterns-home/',
+        'clock/':          'https://uas-patterns.com/clock/',
+        'ddg/':            'https://uas-patterns.com/ddg/',
+        'brief/':          'https://uas-patterns.com/brief/',
+        'analytics/':      'https://uas-patterns.com/analytics/',
+        # Main Forge — uas-forge.com
+        'browse/':             'https://uas-forge.com/browse/',
+        'builder/':            'https://uas-forge.com/builder/',
+        'compare/':            'https://uas-forge.com/compare/',
+        'compliance/':         'https://uas-forge.com/compliance/',
+        'compliance-matrix/':  'https://uas-forge.com/compliance-matrix/',
+        'cost/':               'https://uas-forge.com/cost/',
+        'payload-compare/':    'https://uas-forge.com/payload-compare/',
+        'platforms/':          'https://uas-forge.com/platforms/',
+        'stack-builder/':      'https://uas-forge.com/stack-builder/',
+        'spec-sheets/':        'https://uas-forge.com/spec-sheets/',
+        'intel/':              'https://uas-forge.com/intel/',
+        'intel/feed/':         'https://uas-forge.com/intel/feed/',
+        'intel-defense/':      'https://uas-forge.com/intel-defense/',
+        'intel-commercial/':   'https://uas-forge.com/intel-commercial/',
+        'intel-dfr/':          'https://uas-forge.com/intel-dfr/',
+        'intel-financial/':    'https://uas-forge.com/intel-financial/',
+        'timeline/':           'https://uas-forge.com/timeline/',
+        'industry/':           'https://uas-forge.com/industry/',
+        'tracker/':            'https://uas-forge.com/tracker/',
+        'dossier/':            'https://uas-forge.com/dossier/',
+        'grants/':             'https://uas-forge.com/grants/',
+        'regs/':               'https://uas-forge.com/regs/',
+        'verify/':             'https://uas-forge.com/verify/',
+        'audit/':              'https://uas-forge.com/audit/',
+        'report/':             'https://uas-forge.com/report/',
+        'waiver/':             'https://uas-forge.com/waiver/',
+        'wingman/':            'https://uas-forge.com/wingman/',
+        'tools/':              'https://uas-forge.com/tools/',
+        'tools-home/':         'https://uas-forge.com/tools-home/',
+        'software-library/':   'https://uas-forge.com/software-library/',
+        'pid-tuning/':         'https://uas-forge.com/pid-tuning/',
+        'guides/':             'https://uas-forge.com/guides/',
+        'guide/':              'https://uas-forge.com/guide/',
+        'swarm/':              'https://uas-forge.com/swarm/',
+        'swarm-guide/':        'https://uas-forge.com/swarm-guide/',
+        'slam/':               'https://uas-forge.com/slam/',
+        'slam-guide/':         'https://uas-forge.com/slam-guide/',
+        'mesh-guide/':         'https://uas-forge.com/mesh-guide/',
+        'tak-guide/':          'https://uas-forge.com/tak-guide/',
+        'openhd-guide/':       'https://uas-forge.com/openhd-guide/',
+        'ai-guide/':           'https://uas-forge.com/ai-guide/',
+        'cuas-guide/':         'https://uas-forge.com/cuas-guide/',
+        'fc-firmware-guide/':  'https://uas-forge.com/fc-firmware-guide/',
+        'academy/':            'https://uas-forge.com/academy/',
+        'support/':            'https://uas-forge.com/support/',
+        'pro/':                'https://uas-patterns.pro/pro/',
+        'start/':              'https://uas-forge.com/start/',
+        'library/':            'https://uas-forge.com/library/',
+        'vault/':              'https://uas-forge.com/vault/',
+        'contribute/':         'https://uas-forge.com/contribute/',
     }
     canonical = CANONICAL_OVERRIDES.get(clean_path, f'{SITE_URL}/{clean_path}')
 
@@ -928,8 +973,8 @@ def inject_seo(html, src_name, dst_path):
     <meta property="og:url" content="{canonical}">
 
     <!-- Open Graph Image -->
-    <meta property="og:image" content="https://nvmillbuilditmyself.com/static/og-image.png">
-    <meta name="twitter:image" content="https://nvmillbuilditmyself.com/static/og-image.png">
+    <meta property="og:image" content="https://uas-forge.com/static/og-image.png">
+    <meta name="twitter:image" content="https://uas-forge.com/static/og-image.png">
 
     <!-- Twitter Card -->
     <meta name="twitter:card" content="summary_large_image">
@@ -1321,6 +1366,7 @@ def build():
         html = inject_adapter(html, depth)
         html = inject_analytics(html, src_name)
         html = fix_nav_links(html, depth)
+        html = rewrite_legacy_domains(html)
         
         with open(dst_file, 'w', encoding='utf-8') as f:
             f.write(html)

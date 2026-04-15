@@ -6,9 +6,25 @@
 import { getStore } from "@netlify/blobs";
 
 const ALLOWED_ORIGINS = [
+  // New canonical uas-* domains (primary going forward)
+  'https://uas-forge.com',
+  'https://www.uas-forge.com',
+  'https://uas-patterns.com',
+  'https://www.uas-patterns.com',
+  'https://uas-patterns.pro',
+  'https://www.uas-patterns.pro',
+  'https://uas-intel.com',
+  'https://www.uas-intel.com',
+  'https://uas-handbook.com',
+  'https://www.uas-handbook.com',
+  // Legacy nvmill*/illdoitmyself domains — keep during the transition
+  // window so pages still loading from old URLs can post analytics.
+  // Remove after grace period is over.
   'https://nvmillbuilditmyself.com',
   'https://nvmilldoitmyself.com',
   'https://www.nvmilldoitmyself.com',
+  'https://illdoitmyself.com',
+  'https://www.illdoitmyself.com',
   'https://nvmillfindoutmyself.com',
   'https://www.nvmillfindoutmyself.com',
   'https://thebluefairy.netlify.app',

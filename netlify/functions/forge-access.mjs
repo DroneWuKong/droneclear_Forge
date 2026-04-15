@@ -88,7 +88,7 @@ export default async (req) => {
       note,
       duration_days,
       reusable,
-      usage_url: `https://nvmillbuilditmyself.com/pro/?access_code=${code}`,
+      usage_url: `${process.env.SITE_URL_PRO || 'https://uas-patterns.pro'}/pro/?access_code=${code}`,
       message: `Share this code. Anyone with it gets ${tier} access for ${duration_days} days, no payment needed.`,
     });
   }
