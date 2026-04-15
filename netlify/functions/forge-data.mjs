@@ -87,8 +87,10 @@ async function freeSummary(type) {
     return { summary_only: true, message: `${type} requires Commercial access or an access code.`, upgrade_url: '/pro/' };
   }
   try {
-    // The function runs on nvmillbuilditmyself.com — fetch from same site's static files
-    const origin = 'https://nvmillbuilditmyself.com';
+    // The function runs on the Forge site — fetch from same site's static files.
+    // process.env.URL is Netlify's built-in pointing to the actual deploy URL
+    // (prod or preview), so this works on uas-forge.com and on preview deploys.
+    const origin = process.env.URL || 'https://uas-forge.com';
     const res = await fetch(`${origin}/static/${type}.json`);
     if (res.ok) {
       const data = await res.json();
@@ -319,7 +321,7 @@ async function loadDataset(type) {
 
   // 2. Fall back to committed files in build (always present after build)
   const filename = DATASET_FILES[type];
-  const origin = 'https://nvmillbuilditmyself.com';
+  const origin = process.env.URL || 'https://uas-forge.com';
   if (filename) {
     try {
       // Try root first — full data (221 flags, full predictions, full brief)

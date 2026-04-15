@@ -143,7 +143,7 @@ export default async (req) => {
   });
 
   const { subject = '', report_type = 'full' } = body;
-  const base = 'https://nvmillbuilditmyself.com';
+  const base = process.env.URL || 'https://uas-forge.com';
 
   let flags = [], predictions = [];
   try {
@@ -264,7 +264,7 @@ export default async (req) => {
         'Regulatory compliance (NDAA, FCC, Blue UAS Framework) — weight: 0.20',
       ],
       scoring_formula: 'composite_score = min(0.98, critical × 0.08 + warning × 0.04 + info × 0.01)',
-      disclaimer: 'This report is generated from open-source intelligence, public procurement records, and AI synthesis. It constitutes an analytical assessment and does not constitute legal advice. Gray zone scores reflect pattern analysis across sourced evidence and should be verified before procurement decisions. Midwest Nice Advisory LLC · nvmillbuilditmyself.com',
+      disclaimer: 'This report is generated from open-source intelligence, public procurement records, and AI synthesis. It constitutes an analytical assessment and does not constitute legal advice. Gray zone scores reflect pattern analysis across sourced evidence and should be verified before procurement decisions. Midwest Nice Advisory LLC · uas-forge.com',
     },
   };
 

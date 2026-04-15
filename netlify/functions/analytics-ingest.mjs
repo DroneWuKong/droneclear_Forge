@@ -14,7 +14,22 @@
  */
 
 const ALLOWED_ORIGINS = [
+  // New canonical uas-* domains (primary going forward)
+  'https://uas-forge.com',
+  'https://www.uas-forge.com',
+  'https://uas-patterns.com',
+  'https://www.uas-patterns.com',
+  'https://uas-patterns.pro',
+  'https://www.uas-patterns.pro',
+  'https://uas-intel.com',
+  'https://www.uas-intel.com',
+  'https://uas-handbook.com',
+  'https://www.uas-handbook.com',
+  // Legacy nvmill*/illdoitmyself domains — keep during transition window
   'https://nvmillbuilditmyself.com',
+  'https://nvmillfindoutmyself.com',
+  'https://illdoitmyself.com',
+  'https://nvmilldoitmyself.com',
   'http://localhost:8888',
   'http://localhost:3000',
 ];

@@ -158,7 +158,7 @@ export default async (req) => {
       },
       body: new URLSearchParams({
         customer:   customer_id,
-        return_url: 'https://nvmillbuilditmyself.com/pro/',
+        return_url: `${process.env.SITE_URL_PRO || 'https://uas-patterns.pro'}/pro/`,
       }),
     });
     const portal = await portalRes.json();
