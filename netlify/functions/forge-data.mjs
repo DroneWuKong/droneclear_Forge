@@ -65,6 +65,7 @@ const DATASETS = {
   commercial_master:       { tier: 'commercial' },
   solicitations:           { tier: 'commercial' }, // free preview, full at dfr
   federal_awards:          { tier: 'commercial' },
+  sam_watchlist:           { tier: 'free' },
 
   // DFR ($49 or access code)
   dfr_master:              { tier: 'dfr' },
@@ -294,6 +295,7 @@ const DATASET_FILES = {
   intel_programs:      'intel_programs.json',
   solicitations:       'solicitations.json',
   federal_awards:      'federal_awards.json',
+  sam_watchlist:       'sam_watchlist.json',
   miner_health:        'miner_health.json',
   miner_registry:      'miner_registry.json',
 };

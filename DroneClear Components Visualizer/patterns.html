@@ -5653,15 +5653,19 @@ function renderProcurement() {
   const el = document.getElementById('procurement-inner');
   if (!el) return;
 
-  // ── Load federal_awards if not yet loaded ──
+  // ── Load federal_awards + watchlist if not yet loaded ──
   if (!window._FEDERAL_AWARDS) {
     el.innerHTML = '<div style="color:var(--text-d);font-size:12px;padding:40px;text-align:center">Loading award records…</div>';
-    fetch('/.netlify/functions/forge-data?type=federal_awards&token='+encodeURIComponent(localStorage.getItem('forge_token')||localStorage.getItem('wingman_sub_token')||''))
-      .then(r=>r.json()).then(raw=>{
-        const d = raw.summary_only ? null : (raw.data||raw);
-        window._FEDERAL_AWARDS = (d && (d.awards||d)) || [];
-        renderProcurement();
-      }).catch(()=>{ window._FEDERAL_AWARDS = []; renderProcurement(); });
+    Promise.all([
+      fetch('/.netlify/functions/forge-data?type=federal_awards&token='+encodeURIComponent(localStorage.getItem('forge_token')||localStorage.getItem('wingman_sub_token')||''))
+        .then(r=>r.json()).then(raw=>{ const d=raw.summary_only?null:(raw.data||raw); return (d&&(d.awards||d))||[]; }).catch(()=>[]),
+      fetch('/.netlify/functions/forge-data?type=sam_watchlist')
+        .then(r=>r.json()).then(raw=>{ const d=raw.data||raw; return (d&&d.notices)||[]; }).catch(()=>[]),
+    ]).then(([awards, watchlist])=>{
+      window._FEDERAL_AWARDS = awards;
+      window._SAM_WATCHLIST  = watchlist;
+      renderProcurement();
+    });
     return;
   }
 
@@ -5986,6 +5990,26 @@ function renderProcurement() {
       </div>
       <div id="aw-pager" style="display:flex;gap:8px;align-items:center;justify-content:center;margin-top:10px"></div>
     </div>
+
+    <!-- SAM Watchlist -->
+    ${(window._SAM_WATCHLIST&&window._SAM_WATCHLIST.length) ? `
+    <div style="margin-top:12px;background:var(--surface);border-radius:10px;padding:12px">
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
+        <div style="font:600 9px var(--mono);color:var(--amber);text-transform:uppercase;letter-spacing:.06em">📌 Watchlisted Notices (${window._SAM_WATCHLIST.length})</div>
+        <span style="font:400 9px var(--mono);color:var(--text-d)">Pinned — fetched each pipeline run</span>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:5px">
+        ${(window._SAM_WATCHLIST||[]).map(n=>`
+          <div style="display:flex;align-items:center;gap:8px;padding:7px 10px;background:var(--card);border-radius:6px;border:1px solid var(--amber)18">
+            <span style="font:700 9px var(--mono);color:var(--amber);flex-shrink:0">📌</span>
+            <a href="https://sam.gov/workspace/contract/opp/${n.notice_id}/view" target="_blank" rel="noopener"
+               style="font-size:11px;color:var(--text);flex:1;line-height:1.4">${n.label||n.notice_id}</a>
+            <span style="font:500 9px var(--mono);color:var(--text-d);flex-shrink:0">${n.notice_id.slice(0,8)}…</span>
+            <a href="https://sam.gov/workspace/contract/opp/${n.notice_id}/view" target="_blank" rel="noopener"
+               style="font:500 9px var(--mono);color:var(--blue);flex-shrink:0">↗</a>
+          </div>`).join('')}
+      </div>
+    </div>` : ''}
 
     <!-- News Signals (if any) -->
     ${sols.length ? `
