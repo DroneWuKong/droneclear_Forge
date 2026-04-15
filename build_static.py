@@ -1034,9 +1034,9 @@ def sync_handbook_data():
         return False
 
     subprocess.run(
-        ['git', '-C', DATA_CLONE_DIR, 'sparse-checkout', 'set',
-         'data/parts-db', 'docs/database',
-         'scripts/validate_forge_database.py', 'data/forge_database.schema.json'],
+        ['git', '-C', DATA_CLONE_DIR, 'sparse-checkout', 'set', '--no-cone',
+         '/data/parts-db/', '/docs/database/',
+         '/scripts/validate_forge_database.py', '/data/forge_database.schema.json'],
         capture_output=True, text=True
     )
 
