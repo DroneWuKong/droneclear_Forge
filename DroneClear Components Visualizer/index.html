@@ -408,21 +408,44 @@ const esc = s => String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').repl
 const fmtCat = s => s.replace(/_/g,' ').replace(/\b\w/g,c=>c.toUpperCase());
 
 // ── Load DB ──
+// Try every plausible path (absolute, relative for depth-1 and depth-2 routes,
+// same-dir). Capture the last error so the UI can show *why* it failed instead
+// of an unhelpful generic "nothing loaded" state.
+let _dbLoadError = null;
 async function loadDB() {
-  const paths = ['/static/forge_database.json','../static/forge_database.json','forge_database.json'];
+  const paths = [
+    '/static/forge_database.json',
+    '../static/forge_database.json',
+    '../../static/forge_database.json',
+    'static/forge_database.json',
+    'forge_database.json',
+  ];
+  let lastErr = null;
   for (const p of paths) {
     try {
-      const r = await fetch(p);
+      const r = await fetch(p, { cache: 'no-cache' });
       if (r.ok) return await r.json();
-    } catch(e) {}
+      lastErr = `HTTP ${r.status} at ${p}`;
+    } catch(e) {
+      lastErr = `${e.name || 'Error'}: ${e.message || e} at ${p}`;
+    }
   }
+  // Fallback: if the static adapter is present, it has already loaded the DB
+  // for /api/ interception. Ask it for the data via its /api/components endpoint.
+  try {
+    if (window.__forgeAdapterReady) await window.__forgeAdapterReady;
+    const r = await fetch('/api/schema/');
+    if (r.ok) return await r.json();
+  } catch(e) { lastErr = (lastErr || '') + '; adapter: ' + (e.message || e); }
+  _dbLoadError = lastErr;
   return null;
 }
 
 async function init() {
   DB = await loadDB();
   if (!DB || !DB.components) {
-    $('loader').innerHTML = '<i class="ph ph-warning-circle" style="font-size:32px;color:#ef4444"></i><p style="color:#ef4444">Failed to load database</p><button class="btn btn-outline" onclick="location.reload()" style="margin-top:8px"><i class="ph ph-arrow-clockwise"></i> Retry</button>';
+    const detail = _dbLoadError ? `<p style="color:#6b6358;font-size:11px;margin-top:6px;font-family:monospace;max-width:420px;word-break:break-word">${(_dbLoadError).replace(/</g,'&lt;')}</p>` : '';
+    $('loader').innerHTML = '<i class="ph ph-warning-circle" style="font-size:32px;color:#ef4444"></i><p style="color:#ef4444">Failed to load database</p>' + detail + '<button class="btn btn-outline" onclick="location.reload()" style="margin-top:8px"><i class="ph ph-arrow-clockwise"></i> Retry</button>';
     return;
   }
 

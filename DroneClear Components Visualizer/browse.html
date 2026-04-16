@@ -72,6 +72,27 @@ body { font-family:var(--sans); background:var(--bg); color:var(--text); -webkit
 .browse-item-add { background:none; border:1px solid var(--border); border-radius:50%; width:32px; height:32px; color:var(--accent); cursor:pointer; display:flex; align-items:center; justify-content:center; font-size:16px; flex-shrink:0; transition:background 0.15s; }
 .browse-item-add:hover { background:var(--accent-dim); }
 
+/* ── View-mode toggle (grid / list / rows) ── */
+.browse-view-toggle { display:inline-flex; border:1px solid var(--border); border-radius:6px; overflow:hidden; flex-shrink:0; }
+.browse-view-toggle button { background:none; border:none; color:var(--text-dim); padding:8px 10px; cursor:pointer; font-size:14px; display:flex; align-items:center; justify-content:center; transition:background 0.15s,color 0.15s; border-right:1px solid var(--border); }
+.browse-view-toggle button:last-child { border-right:none; }
+.browse-view-toggle button.active { background:var(--accent-dim); color:var(--accent); }
+.browse-view-toggle button:hover:not(.active) { color:var(--text-bright); }
+
+/* Grid mode: product cards */
+.browse-list.view-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(180px,1fr)); gap:10px; padding:12px 16px; }
+.browse-list.view-grid .browse-item { flex-direction:column; align-items:stretch; margin-bottom:0; padding:10px; text-align:left; }
+.browse-list.view-grid .browse-item-img { width:100%; height:120px; border-radius:6px; margin-bottom:8px; }
+.browse-list.view-grid .browse-item-img i { font-size:32px; }
+.browse-list.view-grid .browse-item-info { width:100%; }
+.browse-list.view-grid .browse-item-name { white-space:normal; overflow:visible; text-overflow:clip; font-size:12px; line-height:1.3; }
+.browse-list.view-grid .browse-item-add { position:absolute; bottom:10px; right:10px; }
+.browse-list.view-grid .browse-item { position:relative; padding-bottom:40px; }
+
+/* Rows mode: list with no photos */
+.browse-list.view-rows .browse-item-img { display:none; }
+.browse-list.view-rows .browse-item { padding:10px 12px; }
+
 .browse-empty { text-align:center; padding:40px 20px; color:var(--text-dim); font-size:13px; }
 
 /* ── Detail modal ── */
@@ -409,6 +430,22 @@ body { font-family:var(--sans); background:var(--bg); color:var(--text); -webkit
     let navStack = []; // [{view, title, crumb}]
     let currentParts = [];
     let ndaaFilter = 'all'; // 'all' | 'ndaa' | 'non-ndaa' | 'china' | 'usa'
+    // View mode: 'grid' (product cards), 'list' (row with image), 'rows' (no images)
+    let viewMode = (function(){
+        try { return localStorage.getItem('browse-view') || 'grid'; } catch(e) { return 'grid'; }
+    })();
+    function setViewMode(mode) {
+        viewMode = mode;
+        try { localStorage.setItem('browse-view', mode); } catch(e) {}
+        const container = document.getElementById('list-items');
+        if (container) {
+            container.classList.remove('view-grid','view-list','view-rows');
+            container.classList.add('view-' + mode);
+        }
+        document.querySelectorAll('.browse-view-toggle button').forEach(b => {
+            b.classList.toggle('active', b.dataset.mode === mode);
+        });
+    }
 
     const content = document.getElementById('browse-content');
     const titleEl = document.getElementById('browse-title');
@@ -879,11 +916,12 @@ body { font-family:var(--sans); background:var(--bg); color:var(--text); -webkit
         const mfrs = [...new Set(parts.map(p => p.manufacturer).filter(Boolean))].sort();
         const filters = smartFilters[catSlug] || [];
 
+        const catLabel = catLabels[catSlug] || title;
         let html = '<div class="browse-toolbar">';
-        html += '<input type="text" class="browse-search" id="list-search" placeholder="Search...">';
+        html += `<input type="text" class="browse-search" id="list-search" placeholder="Search ${esc(catLabel.toLowerCase())}...">`;
         if (mfrs.length > 1) {
-            html += '<select class="browse-filter" id="list-mfr" data-field="manufacturer"><option value="">All Manufacturers</option>';
-            mfrs.forEach(m => html += `<option value="${m}">${m}</option>`);
+            html += `<select class="browse-filter" id="list-mfr" data-field="manufacturer"><option value="">Manufacturer (${mfrs.length})</option>`;
+            mfrs.forEach(m => html += `<option value="${esc(m)}">${esc(m)}</option>`);
             html += '</select>';
         }
         // Smart attribute filters
@@ -904,9 +942,21 @@ body { font-family:var(--sans); background:var(--bg); color:var(--text); -webkit
                 html += '</select>';
             }
         }
-        html += '<select class="browse-sort" id="list-sort"><option value="default">Sort</option><option value="name">Name A-Z</option></select>';
+        html += '<select class="browse-sort" id="list-sort" title="Sort order">'
+              + '<option value="default">Sort: Default</option>'
+              + '<option value="name">Name A → Z</option>'
+              + '<option value="name-desc">Name Z → A</option>'
+              + '<option value="mfr">Manufacturer</option>'
+              + '<option value="price-asc">Price ↑</option>'
+              + '<option value="price-desc">Price ↓</option>'
+              + '</select>';
+        html += '<div class="browse-view-toggle" role="tablist" aria-label="View mode">'
+              + '<button type="button" data-mode="grid"  title="Grid view"><i class="ph ph-squares-four"></i></button>'
+              + '<button type="button" data-mode="list"  title="List view"><i class="ph ph-list"></i></button>'
+              + '<button type="button" data-mode="rows"  title="Compact (no photos)"><i class="ph ph-rows"></i></button>'
+              + '</div>';
         html += '</div>';
-        html += '<div class="browse-list" id="list-items"></div>';
+        html += `<div class="browse-list view-${viewMode}" id="list-items"></div>`;
 
         content.innerHTML = html;
 
@@ -945,6 +995,12 @@ body { font-family:var(--sans); background:var(--bg); color:var(--text); -webkit
         document.getElementById('list-mfr')?.addEventListener('change', applyListFilters);
         document.getElementById('list-sort')?.addEventListener('change', applyListFilters);
         document.querySelectorAll('.smart-filter').forEach(el => el.addEventListener('change', applyListFilters));
+
+        // View-mode toggle wiring — restores persisted mode and switches class
+        document.querySelectorAll('.browse-view-toggle button').forEach(btn => {
+            btn.classList.toggle('active', btn.dataset.mode === viewMode);
+            btn.addEventListener('click', () => setViewMode(btn.dataset.mode));
+        });
     }
 
     function applyListFilters() {
@@ -968,7 +1024,24 @@ body { font-family:var(--sans); background:var(--bg); color:var(--text); -webkit
             if (val) filtered = filtered.filter(p => String(p[field]) === val);
         });
 
-        if (sort === 'name') filtered = [...filtered].sort((a,b) => (a.name||'').localeCompare(b.name||''));
+        const priceOf = p => {
+            const v = p.price_usd ?? p.approx_price ?? p.approx_price_usd;
+            const n = typeof v === 'number' ? v : parseFloat(String(v||'').replace(/[^\d.]/g,''));
+            return isFinite(n) ? n : null;
+        };
+        if (sort === 'name')      filtered = [...filtered].sort((a,b) => (a.name||'').localeCompare(b.name||''));
+        else if (sort === 'name-desc') filtered = [...filtered].sort((a,b) => (b.name||'').localeCompare(a.name||''));
+        else if (sort === 'mfr')       filtered = [...filtered].sort((a,b) => (a.manufacturer||'').localeCompare(b.manufacturer||''));
+        else if (sort === 'price-asc' || sort === 'price-desc') {
+            const dir = sort === 'price-asc' ? 1 : -1;
+            filtered = [...filtered].sort((a,b) => {
+                const pa = priceOf(a), pb = priceOf(b);
+                if (pa == null && pb == null) return 0;
+                if (pa == null) return 1;   // missing prices sort to bottom
+                if (pb == null) return -1;
+                return (pa - pb) * dir;
+            });
+        }
 
         renderList(filtered);
     }
