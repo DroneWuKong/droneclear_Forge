@@ -83,6 +83,7 @@ PAGES = {
     'verify.html': 'verify/index.html',
     'analytics.html': 'analytics/index.html',
     'clock.html': 'clock/index.html',
+    'uas-hub.html': 'hub/index.html',       # /hub/ — UAS- landing page, all 5 domains
 }
 
 # Static assets to copy (JS, CSS, JSON, images)
@@ -214,37 +215,47 @@ _MOBILE_CSS = """<style>
 
 
 
-_UNIFIED_NAV = r"""<!-- ── Unified UAS-Nav ───────────────────────────────────────── -->
+_UNIFIED_NAV = r"""<!-- ── Unified UAS- Nav (5-domain accordion drawer) ──────────────── -->
 <style id="dc-unified-nav-styles">
 #dc-nav{display:flex;align-items:center;justify-content:space-between;padding:0 16px;height:44px;background:#0c0c0a;border-bottom:1px solid #1e1e18;position:sticky;top:0;z-index:500;font-family:'DM Sans',system-ui,sans-serif}
-#dc-nav-left{display:flex;align-items:center;gap:10px;min-width:0}
+#dc-nav-left{display:flex;align-items:center;gap:10px;min-width:0;flex:1}
 #dc-nav-brand{font:700 13px 'JetBrains Mono',monospace;color:#f59e0b;text-decoration:none;letter-spacing:-.02em;flex-shrink:0}
 #dc-nav-sep{color:#2e2e26;font-size:12px;flex-shrink:0}
-#dc-nav-page{font:600 11px 'DM Sans',system-ui;color:#b8b0a0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:160px}
+#dc-nav-page{font:600 11px 'DM Sans',system-ui;color:#b8b0a0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:200px}
 #dc-nav-right{display:flex;align-items:center;gap:6px;flex-shrink:0}
-.dc-nav-pill{font:500 10px 'DM Sans',system-ui;color:#6b6358;padding:4px 10px;border:1px solid #2a2a22;border-radius:20px;text-decoration:none;white-space:nowrap;transition:all .15s;display:none}
-.dc-nav-pill:hover{border-color:#3e3e34;color:#b8b0a0}
-.dc-nav-pill.dc-active{color:#22c55e;border-color:#22c55e;font-weight:700}
-@media(min-width:540px){.dc-nav-pill{display:inline-flex}}
+#dc-nav-right .dc-hub-link{font:600 10px 'DM Sans',system-ui;color:#6b6358;padding:4px 10px;border:1px solid #2a2a22;border-radius:20px;text-decoration:none;white-space:nowrap;transition:all .15s}
+#dc-nav-right .dc-hub-link:hover{border-color:#dc2626;color:#dc2626}
 #dc-hamburger{display:flex;align-items:center;justify-content:center;width:32px;height:32px;border-radius:6px;border:1px solid #2a2a22;background:none;color:#6b6358;cursor:pointer;transition:all .15s;flex-shrink:0}
 #dc-hamburger:hover{border-color:#3e3e34;color:#b8b0a0}
-#dc-hamburger.open{border-color:#f59e0b;color:#f59e0b;background:rgba(245,158,11,.08)}
+#dc-hamburger.open{border-color:#dc2626;color:#dc2626;background:rgba(220,38,38,.08)}
 #dc-overlay{position:fixed;inset:0;z-index:498;background:rgba(0,0,0,.6);backdrop-filter:blur(4px);opacity:0;pointer-events:none;transition:opacity .25s}
 #dc-overlay.open{opacity:1;pointer-events:auto}
-#dc-drawer{position:fixed;top:0;left:0;bottom:0;z-index:499;width:260px;max-width:85vw;background:#111110;border-right:1px solid #2a2a22;transform:translateX(-100%);transition:transform .3s cubic-bezier(.4,0,.2,1);display:flex;flex-direction:column;overflow-y:auto}
+#dc-drawer{position:fixed;top:0;left:0;bottom:0;z-index:499;width:280px;max-width:85vw;background:#111110;border-right:1px solid #2a2a22;transform:translateX(-100%);transition:transform .3s cubic-bezier(.4,0,.2,1);display:flex;flex-direction:column;overflow-y:auto}
 #dc-drawer.open{transform:translateX(0)}
-#dc-drawer-head{padding:16px;border-bottom:1px solid #1e1e18;display:flex;align-items:center;justify-content:space-between}
+#dc-drawer-head{padding:16px;border-bottom:1px solid #1e1e18;display:flex;align-items:center;justify-content:space-between;flex-shrink:0}
 #dc-drawer-brand{font:700 14px 'JetBrains Mono',monospace;color:#f59e0b;letter-spacing:-.02em}
 #dc-drawer-close{width:28px;height:28px;border-radius:6px;border:1px solid #2a2a22;background:none;color:#6b6358;cursor:pointer;font-size:16px;display:flex;align-items:center;justify-content:center;transition:all .15s}
-#dc-drawer-close:hover{color:#d62828;border-color:rgba(214,40,40,.3)}
-.dc-drawer-section{padding:12px 16px 4px;font:700 9px 'JetBrains Mono',monospace;color:#3e3e34;text-transform:uppercase;letter-spacing:.1em}
-.dc-drawer-item{display:flex;align-items:center;gap:10px;padding:9px 16px;color:#6b6358;text-decoration:none;font:400 12px 'DM Sans',system-ui;transition:all .15s;border-left:2px solid transparent}
-.dc-drawer-item:hover{color:#b8b0a0;background:rgba(255,255,255,.02);border-left-color:#2e2e26}
-.dc-drawer-item.dc-active{color:#22c55e;border-left-color:#22c55e;background:rgba(34,197,94,.04)}
-.dc-drawer-item.dc-ext{color:#3e3e34}
-.dc-drawer-item.dc-ext:hover{color:#6b6358}
-.dc-drawer-divider{height:1px;background:#1e1e18;margin:8px 16px}
-#dc-drawer-foot{margin-top:auto;padding:16px;border-top:1px solid #1e1e18;font:400 10px 'JetBrains Mono',monospace;color:#2e2e26}
+#dc-drawer-close:hover{color:#dc2626;border-color:rgba(220,38,38,.3)}
+.dc-dom-group{border-bottom:1px solid #1a1a14}
+.dc-dom-group > summary{padding:14px 16px;cursor:pointer;list-style:none;display:flex;align-items:center;gap:12px;transition:all .15s;user-select:none}
+.dc-dom-group > summary::-webkit-details-marker{display:none}
+.dc-dom-group > summary::marker{content:''}
+.dc-dom-group > summary:hover{background:rgba(255,255,255,.02)}
+.dc-dom-ico{font-size:18px;flex-shrink:0;filter:grayscale(.3)}
+.dc-dom-info{flex:1;min-width:0}
+.dc-dom-name{font:700 12px 'DM Sans',system-ui;color:#b8b0a0;letter-spacing:-.01em;transition:color .15s}
+.dc-dom-url{font:400 9px 'JetBrains Mono',monospace;color:#6b6358;margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.dc-dom-chev{color:#3e3e34;font-size:9px;transition:transform .2s;flex-shrink:0}
+.dc-dom-group[open] > summary .dc-dom-chev{transform:rotate(90deg);color:#dc2626}
+.dc-dom-group[open] > summary .dc-dom-name{color:#dc2626}
+.dc-dom-group[open] > summary .dc-dom-ico{filter:grayscale(0)}
+.dc-dom-sublinks{padding:0 0 10px 0;display:flex;flex-direction:column;gap:0;background:rgba(0,0,0,.15)}
+.dc-dom-sublink{display:block;padding:8px 16px 8px 46px;font:400 11px 'DM Sans',system-ui;color:#6b6358;text-decoration:none;border-left:2px solid transparent;transition:all .1s}
+.dc-dom-sublink:hover{color:#b8b0a0;background:rgba(255,255,255,.02);border-left-color:#2e2e26}
+.dc-dom-sublink.dc-active{color:#22c55e;border-left-color:#22c55e;background:rgba(34,197,94,.04)}
+#dc-drawer-foot{margin-top:auto;padding:16px;border-top:1px solid #1e1e18;font:400 10px 'JetBrains Mono',monospace;color:#2e2e26;display:flex;flex-direction:column;gap:6px}
+#dc-drawer-foot a{color:#f59e0b;text-decoration:none}
+#dc-drawer-foot a:hover{color:#dc2626}
 </style>
 
 <nav id="dc-nav">
@@ -259,55 +270,115 @@ _UNIFIED_NAV = r"""<!-- ── Unified UAS-Nav ───────────
     <span id="dc-nav-page">—</span>
   </div>
   <div id="dc-nav-right">
-    <!-- Forge pills -->
-    <a class="dc-nav-pill dc-forge-pill" href="https://uas-forge.com/browse/" data-page="browse">Browse</a>
-    <a class="dc-nav-pill dc-forge-pill" href="https://uas-forge.com/wingman/" data-page="wingman">Wingman</a>
-    <a class="dc-nav-pill dc-forge-pill" href="https://uas-forge.com/intel/" data-page="intel">Intel</a>
-    <!-- PIE pills -->
-    <a class="dc-nav-pill dc-pie-pill" href="https://uas-patterns.com/clock/" data-page="clock">Clock</a>
-    <a class="dc-nav-pill dc-pie-pill" href="https://uas-patterns.com/ddg/" data-page="ddg">DDG</a>
-    <a class="dc-nav-pill dc-pie-pill" href="https://uas-patterns.pro/patterns/" data-page="patterns">Flags</a>
+    <a class="dc-hub-link" href="https://uas-forge.com/hub/">⊞ Hub</a>
   </div>
 </nav>
 
 <div id="dc-overlay" onclick="dcNavClose()"></div>
 <div id="dc-drawer">
   <div id="dc-drawer-head">
-    <span id="dc-drawer-brand">—</span>
+    <span id="dc-drawer-brand">UAS-</span>
     <button id="dc-drawer-close" onclick="dcNavClose()">✕</button>
   </div>
 
-  <div class="dc-drawer-section">Forge — Intelligence</div>
-  <a class="dc-drawer-item" href="https://uas-forge.com/browse/" data-page="browse">Browse Components</a>
-  <a class="dc-drawer-item" href="https://uas-forge.com/compare/" data-page="compare">Compare</a>
-  <a class="dc-drawer-item" href="https://uas-forge.com/compliance/" data-page="compliance">Compliance</a>
-  <a class="dc-drawer-item" href="https://uas-forge.com/dossier/" data-page="dossier">Dossier</a>
-  <a class="dc-drawer-item" href="https://uas-forge.com/platforms/" data-page="platforms">Platforms</a>
-  <a class="dc-drawer-item" href="https://uas-forge.com/regs/" data-page="regs">Regs</a>
+  <details class="dc-dom-group" data-host="uas-forge.com">
+    <summary>
+      <span class="dc-dom-ico">🔨</span>
+      <div class="dc-dom-info">
+        <div class="dc-dom-name">Forge</div>
+        <div class="dc-dom-url">uas-forge.com</div>
+      </div>
+      <span class="dc-dom-chev">▶</span>
+    </summary>
+    <div class="dc-dom-sublinks">
+      <a class="dc-dom-sublink" href="https://uas-forge.com/browse/" data-page="browse">Parts Database</a>
+      <a class="dc-dom-sublink" href="https://uas-forge.com/builder/" data-page="builder">Model Builder</a>
+      <a class="dc-dom-sublink" href="https://uas-forge.com/platforms/" data-page="platforms">Platforms</a>
+      <a class="dc-dom-sublink" href="https://uas-forge.com/compare/" data-page="compare">Compare</a>
+      <a class="dc-dom-sublink" href="https://uas-forge.com/compliance/" data-page="compliance">Compliance Dashboard</a>
+      <a class="dc-dom-sublink" href="https://uas-forge.com/stack-builder/" data-page="stack-builder">Stack Builder</a>
+      <a class="dc-dom-sublink" href="https://uas-forge.com/cost/" data-page="cost">Cost Estimator</a>
+      <a class="dc-dom-sublink" href="https://uas-forge.com/wingman/" data-page="wingman">Wingman AI</a>
+      <a class="dc-dom-sublink" href="https://uas-forge.com/tools-home/" data-page="tools-home">All Tools</a>
+    </div>
+  </details>
 
-  <div class="dc-drawer-section">Forge — Tools</div>
-  <a class="dc-drawer-item" href="https://uas-forge.com/wingman/" data-page="wingman">Wingman AI</a>
-  <a class="dc-drawer-item" href="https://uas-forge.com/stack-builder/" data-page="stack-builder">Stack Builder</a>
-  <a class="dc-drawer-item" href="https://uas-forge.com/report/" data-page="report">Compliance Report</a>
-  <a class="dc-drawer-item" href="https://uas-forge.com/support/" data-page="support">Support Hub</a>
-  <a class="dc-drawer-item" href="https://uas-forge.com/tools-home/" data-page="tools-home">All Tools</a>
-  <a class="dc-drawer-item" href="https://uas-forge.com/software-library/" data-page="software-library">Software Library</a>
+  <details class="dc-dom-group" data-host="uas-patterns.com">
+    <summary>
+      <span class="dc-dom-ico">📊</span>
+      <div class="dc-dom-info">
+        <div class="dc-dom-name">Patterns</div>
+        <div class="dc-dom-url">uas-patterns.com</div>
+      </div>
+      <span class="dc-dom-chev">▶</span>
+    </summary>
+    <div class="dc-dom-sublinks">
+      <a class="dc-dom-sublink" href="https://uas-patterns.com/patterns-home/" data-page="patterns-home">P.I.E Hub</a>
+      <a class="dc-dom-sublink" href="https://uas-patterns.com/brief/" data-page="brief">Daily Brief</a>
+      <a class="dc-dom-sublink" href="https://uas-patterns.com/clock/" data-page="clock">UAS Clock</a>
+      <a class="dc-dom-sublink" href="https://uas-patterns.com/ddg/" data-page="ddg">DDG Tracker</a>
+      <a class="dc-dom-sublink" href="https://uas-patterns.com/analytics/" data-page="analytics">Analytics</a>
+    </div>
+  </details>
 
-  <div class="dc-drawer-section">Forge — Intel</div>
-  <a class="dc-drawer-item" href="https://uas-forge.com/intel/" data-page="intel">Intel Hub</a>
-  <a class="dc-drawer-item" href="https://uas-forge.com/industry/" data-page="industry">Industry</a>
-  <a class="dc-drawer-item" href="https://uas-forge.com/tracker/" data-page="tracker">Contract Tracker</a>
+  <details class="dc-dom-group" data-host="uas-patterns.pro">
+    <summary>
+      <span class="dc-dom-ico">🔥</span>
+      <div class="dc-dom-info">
+        <div class="dc-dom-name">Patterns Pro</div>
+        <div class="dc-dom-url">uas-patterns.pro</div>
+      </div>
+      <span class="dc-dom-chev">▶</span>
+    </summary>
+    <div class="dc-dom-sublinks">
+      <a class="dc-dom-sublink" href="https://uas-patterns.pro/patterns/" data-page="patterns">Flags Dashboard</a>
+      <a class="dc-dom-sublink" href="https://uas-patterns.pro/patterns/#awards" data-page="awards">Federal Awards ($11.6B)</a>
+      <a class="dc-dom-sublink" href="https://uas-patterns.pro/brief/" data-page="brief-pro">Brief (gated)</a>
+      <a class="dc-dom-sublink" href="https://uas-patterns.pro/pro/" data-page="pro">Subscription</a>
+      <a class="dc-dom-sublink" href="https://uas-patterns.pro/admin/" data-page="admin">Admin</a>
+    </div>
+  </details>
 
-  <div class="dc-drawer-divider"></div>
+  <details class="dc-dom-group" data-host="uas-intel.com">
+    <summary>
+      <span class="dc-dom-ico">📡</span>
+      <div class="dc-dom-info">
+        <div class="dc-dom-name">Intel</div>
+        <div class="dc-dom-url">uas-intel.com</div>
+      </div>
+      <span class="dc-dom-chev">▶</span>
+    </summary>
+    <div class="dc-dom-sublinks">
+      <a class="dc-dom-sublink" href="https://uas-intel.com/intel/" data-page="intel">Intel Hub</a>
+      <a class="dc-dom-sublink" href="https://uas-intel.com/intel/feed/" data-page="intel-feed">Intel Feed</a>
+      <a class="dc-dom-sublink" href="https://uas-intel.com/intel-commercial/" data-page="intel-commercial">Commercial Intel</a>
+      <a class="dc-dom-sublink" href="https://uas-intel.com/intel-dfr/" data-page="intel-dfr">DFR Intel</a>
+      <a class="dc-dom-sublink" href="https://uas-intel.com/industry/" data-page="industry">Industry Tracker</a>
+      <a class="dc-dom-sublink" href="https://uas-intel.com/tracker/" data-page="tracker">Contract Tracker</a>
+    </div>
+  </details>
 
-  <div class="dc-drawer-section">PIE — Pattern Intelligence</div>
-  <a class="dc-drawer-item" href="https://uas-patterns.com/patterns-home/" data-page="patterns-home">P.I.E Hub</a>
-  <a class="dc-drawer-item" href="https://uas-patterns.com/brief/" data-page="brief">Brief</a>
-  <a class="dc-drawer-item" href="https://uas-patterns.pro/patterns/" data-page="patterns">Flags</a>
-  <a class="dc-drawer-item" href="https://uas-patterns.com/clock/" data-page="clock">UAS Clock</a>
-  <a class="dc-drawer-item" href="https://uas-patterns.com/ddg/" data-page="ddg">DDG Tracker</a>
+  <details class="dc-dom-group" data-host="uas-handbook.com">
+    <summary>
+      <span class="dc-dom-ico">📘</span>
+      <div class="dc-dom-info">
+        <div class="dc-dom-name">Handbook</div>
+        <div class="dc-dom-url">uas-handbook.com</div>
+      </div>
+      <span class="dc-dom-chev">▶</span>
+    </summary>
+    <div class="dc-dom-sublinks">
+      <a class="dc-dom-sublink" href="https://uas-handbook.com/" data-page="handbook">Read the handbook</a>
+      <a class="dc-dom-sublink" href="https://uas-handbook.com/#c13" data-page="ch13">Chapter 13 — Parts</a>
+      <a class="dc-dom-sublink" href="https://uas-handbook.com/#c05" data-page="ch05">Chapter 5 — Mesh</a>
+      <a class="dc-dom-sublink" href="https://uas-handbook.com/#c08" data-page="ch08">Chapter 8 — NDAA</a>
+    </div>
+  </details>
 
-  <div class="dc-drawer-foot">Midwest Nice Advisory LLC</div>
+  <div id="dc-drawer-foot">
+    <a href="https://uas-forge.com/hub/">⊞ UAS- Hub (all domains)</a>
+    <span>Midwest Nice Advisory LLC</span>
+  </div>
 </div>
 
 <script>
@@ -323,50 +394,67 @@ _UNIFIED_NAV = r"""<!-- ── Unified UAS-Nav ───────────
     } catch(e){ return false; }
   })();
   var host = location.hostname;
-  // Match both new uas-* domains and legacy nvmill* domains during transition.
-  var isForge = host.includes('uas-forge') || host.includes('builditmyself') || host === 'localhost';
-  var isPIE   = host.includes('uas-patterns') || host.includes('findoutmyself');
+  // Domain detection — matches new uas-* AND legacy nvmill*/illdoitmyself during transition
+  var isForge    = host.indexOf('uas-forge') >= 0 || host.indexOf('builditmyself') >= 0 || host === 'localhost' || host.indexOf('forgeprole') >= 0;
+  var isPatPro   = host.indexOf('uas-patterns.pro') >= 0 || host.indexOf('uas-patterns-pro.netlify') >= 0;
+  var isPatCom   = (host.indexOf('uas-patterns.com') >= 0 || host.indexOf('findoutmyself') >= 0) && !isPatPro;
+  var isIntel    = host.indexOf('uas-intel') >= 0;
+  var isHandbook = host.indexOf('uas-handbook') >= 0 || host.indexOf('doitmyself') >= 0 || host.indexOf('illdoitmyself') >= 0;
 
-  // Set page label
+  // Page labels for the top bar
   var labels = {
     'browse':'Browse','wingman':'Wingman','intel':'Intel Hub','compare':'Compare',
     'compliance':'Compliance','dossier':'Dossier','platforms':'Platforms','regs':'Regs',
     'stack-builder':'Stack Builder','report':'Compliance Report','tools-home':'Tools',
-    'software-library':'Software Library',
-    'industry':'Industry','tracker':'Contract Tracker','patterns-home':'P.I.E Hub',
-    'brief':'Brief','patterns':'Flags','clock':'UAS Clock','ddg':'DDG Tracker',
+    'software-library':'Software Library','industry':'Industry','tracker':'Contract Tracker',
+    'patterns-home':'P.I.E Hub','brief':'Brief','patterns':'Flags','clock':'UAS Clock','ddg':'DDG Tracker',
     'pro':'Pro','start':'Getting Started','grants':'Grants','waiver':'Doc Builder',
-    'verify':'Verify','vault':'Vault','troubleshoot':'Troubleshoot','support':'Support'
+    'verify':'Verify','vault':'Vault','troubleshoot':'Troubleshoot','support':'Support','hub':'Hub',
+    'builder':'Builder','cost':'Cost','admin':'Admin','analytics':'Analytics'
   };
   var pageEl = document.getElementById('dc-nav-page');
   if(pageEl) pageEl.textContent = labels[path] || document.title.split('—')[0].trim().split('·')[0].trim() || path;
 
-  // Brand link — goes to home of current domain
-  // Set brand name: Forge / Patterns / Patterns Pro
-  var brandName = isForge ? 'Forge' : (isPIE && (isPro || path === 'pro')) ? 'Patterns Pro' : isPIE ? 'Patterns' : 'UAS-';
+  // Brand label — per domain
+  var brandName = isForge    ? 'Forge'
+                : isPatPro   ? 'Patterns Pro'
+                : isPatCom   ? 'Patterns'
+                : isIntel    ? 'Intel'
+                : isHandbook ? 'Handbook'
+                : 'UAS-';
   var brandEl = document.getElementById('dc-nav-brand');
   var drawerBrandEl = document.getElementById('dc-drawer-brand');
-  if(brandEl){ brandEl.textContent = brandName; if(isPIE && isPro) brandEl.style.color='#a78bfa'; }
-  if(drawerBrandEl){ drawerBrandEl.textContent = brandName; if(isPIE && isPro) drawerBrandEl.style.color='#a78bfa'; }
+  if(brandEl) brandEl.textContent = brandName;
+  if(drawerBrandEl) drawerBrandEl.textContent = brandName;
+  if(isPatPro){
+    if(brandEl) brandEl.style.color = '#a78bfa';
+    if(drawerBrandEl) drawerBrandEl.style.color = '#a78bfa';
+  }
 
+  // Brand-click home target per domain
   window.dcNavBrandClick = function(e){
     e.preventDefault();
-    location.href = isForge ? 'https://uas-forge.com/' : isPIE ? 'https://uas-patterns.com/patterns-home/' : '/';
+    if(isForge)         location.href = 'https://uas-forge.com/';
+    else if(isPatPro)   location.href = 'https://uas-patterns.pro/';
+    else if(isPatCom)   location.href = 'https://uas-patterns.com/patterns-home/';
+    else if(isIntel)    location.href = 'https://uas-intel.com/';
+    else if(isHandbook) location.href = 'https://uas-handbook.com/';
+    else                location.href = 'https://uas-forge.com/hub/';
   };
 
-  // Show correct pills for domain, mark active
-  var pills = document.querySelectorAll('.dc-nav-pill');
-  pills.forEach(function(p){
-    var isForgeP = p.classList.contains('dc-forge-pill');
-    var isPIEP   = p.classList.contains('dc-pie-pill');
-    if(isForge && isForgeP) p.style.display = 'inline-flex';
-    if(isPIE   && isPIEP)   p.style.display = 'inline-flex';
-    if(!isForge && !isPIE)  p.style.display = 'inline-flex'; // show all on unknown
-    if(p.dataset.page === path) p.classList.add('dc-active');
+  // Auto-expand the drawer group matching current host
+  var currentHost = isForge    ? 'uas-forge.com'
+                  : isPatPro   ? 'uas-patterns.pro'
+                  : isPatCom   ? 'uas-patterns.com'
+                  : isIntel    ? 'uas-intel.com'
+                  : isHandbook ? 'uas-handbook.com'
+                  : 'uas-forge.com';
+  document.querySelectorAll('.dc-dom-group').forEach(function(g){
+    if(g.dataset.host === currentHost) g.open = true;
   });
 
-  // Mark active drawer items
-  document.querySelectorAll('.dc-drawer-item').forEach(function(a){
+  // Mark active sublink (match data-page)
+  document.querySelectorAll('.dc-dom-sublink').forEach(function(a){
     if(a.dataset.page === path) a.classList.add('dc-active');
   });
 
@@ -381,20 +469,35 @@ _UNIFIED_NAV = r"""<!-- ── Unified UAS-Nav ───────────
     document.getElementById('dc-overlay').classList.remove('open');
     document.getElementById('dc-hamburger').classList.remove('open');
   };
-  // Esc to close
   document.addEventListener('keydown', function(e){ if(e.key==='Escape') dcNavClose(); });
 })();
 </script>
-<!-- ── /Unified UAS-Nav ─────────────────────────────────────── -->"""
+<!-- ── /Unified UAS- Nav ─────────────────────────────────────────── -->"""
 
 
 def inject_nav(html, src_name):
-    """Inject unified nav after <body> on every page except analytics and clock."""
+    """Inject unified nav after <body> on every page except analytics and clock.
+
+    Strips any pre-existing `<!-- ── Unified ... Nav ── -->` block from the
+    source HTML first — the source files historically embedded a stale copy
+    of the nav, and without stripping it first the old "DroneClear / Forge
+    pills / PIE pills" nav would win. Strip-then-inject is idempotent.
+    """
     skip = {"analytics.html", "clock.html"}
     if src_name in skip:
         return html
-    if "dc-unified-nav-styles" in html:
-        return html  # already injected
+
+    # Strip any existing nav block (old OR new — matches any brand name
+    # between "Unified" and "Nav", handles DroneClear / UAS- / future renames)
+    html = re.sub(
+        r'<!-- ── Unified[^\n]*?Nav[^\n]*?-->.*?<!-- ── /Unified[^\n]*?-->',
+        '',
+        html,
+        count=1,
+        flags=re.DOTALL,
+    )
+
+    # Inject the fresh nav after <body>
     nav_block = "\n" + _UNIFIED_NAV + "\n"
     if "<body>" in html:
         return html.replace("<body>", "<body>" + nav_block, 1)
@@ -897,6 +1000,8 @@ def inject_seo(html, src_name, dst_path):
     # Main Forge tooling lives on uas-forge.com. Legacy nvmill* domains
     # 301 → new ones during the transition window (see netlify.toml).
     CANONICAL_OVERRIDES = {
+        # UAS- hub — cross-domain landing page, canonical on uas-forge.com
+        'hub/':            'https://uas-forge.com/hub/',
         # Patterns Pro (gated / paid) — uas-patterns.pro
         'patterns/':       'https://uas-patterns.pro/patterns/',
         # Patterns free / public — uas-patterns.com

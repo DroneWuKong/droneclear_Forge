@@ -49,6 +49,8 @@ PATTERNS_PRO_PAGES = {
     # Auth / subscription / admin
     'pro.html':            'pro/index.html',
     'admin.html':          'admin/index.html',
+    # UAS- cross-domain landing hub (reachable from uas-patterns.pro/hub/ too)
+    'uas-hub.html':        'hub/index.html',
     # Supporting pages
     'analytics.html':      'analytics/index.html',
     'report.html':         'report/index.html',
