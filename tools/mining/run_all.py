@@ -69,6 +69,12 @@ def run_normalizers():
     except Exception as e:
         print(f"[normalizer:aggregate_cooccurrence] FAILED: {type(e).__name__}: {e}")
 
+    try:
+        from mining.normalizers import blue_uas_to_cleared
+        blue_uas_to_cleared.main()
+    except Exception as e:
+        print(f"[normalizer:blue_uas_to_cleared] FAILED: {type(e).__name__}: {e}")
+
 
 def main():
     ap = argparse.ArgumentParser()
