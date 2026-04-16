@@ -997,6 +997,7 @@ def inject_seo(html, src_name, dst_path):
 
     clean_path = dst_path.replace('index.html', '')
     # Patterns pages live on uas-patterns.com (free) / uas-patterns.pro (gated).
+    # Intel pages live on uas-intel.com (Phase 2B split — dedicated Netlify site).
     # Main Forge tooling lives on uas-forge.com. Legacy nvmill* domains
     # 301 → new ones during the transition window (see netlify.toml).
     CANONICAL_OVERRIDES = {
@@ -1010,6 +1011,16 @@ def inject_seo(html, src_name, dst_path):
         'ddg/':            'https://uas-patterns.com/ddg/',
         'brief/':          'https://uas-patterns.com/brief/',
         'analytics/':      'https://uas-patterns.com/analytics/',
+        # Intel — uas-intel.com (Phase 2B split, dedicated Netlify site)
+        'intel/':              'https://uas-intel.com/intel/',
+        'intel/feed/':         'https://uas-intel.com/intel/feed/',
+        'intel-defense/':      'https://uas-intel.com/intel-defense/',
+        'intel-commercial/':   'https://uas-intel.com/intel-commercial/',
+        'intel-dfr/':          'https://uas-intel.com/intel-dfr/',
+        'intel-financial/':    'https://uas-intel.com/intel-financial/',
+        'industry/':           'https://uas-intel.com/industry/',
+        'tracker/':            'https://uas-intel.com/tracker/',
+        'timeline/':           'https://uas-intel.com/timeline/',
         # Main Forge — uas-forge.com
         'browse/':             'https://uas-forge.com/browse/',
         'builder/':            'https://uas-forge.com/builder/',
@@ -1021,15 +1032,6 @@ def inject_seo(html, src_name, dst_path):
         'platforms/':          'https://uas-forge.com/platforms/',
         'stack-builder/':      'https://uas-forge.com/stack-builder/',
         'spec-sheets/':        'https://uas-forge.com/spec-sheets/',
-        'intel/':              'https://uas-forge.com/intel/',
-        'intel/feed/':         'https://uas-forge.com/intel/feed/',
-        'intel-defense/':      'https://uas-forge.com/intel-defense/',
-        'intel-commercial/':   'https://uas-forge.com/intel-commercial/',
-        'intel-dfr/':          'https://uas-forge.com/intel-dfr/',
-        'intel-financial/':    'https://uas-forge.com/intel-financial/',
-        'timeline/':           'https://uas-forge.com/timeline/',
-        'industry/':           'https://uas-forge.com/industry/',
-        'tracker/':            'https://uas-forge.com/tracker/',
         'dossier/':            'https://uas-forge.com/dossier/',
         'grants/':             'https://uas-forge.com/grants/',
         'regs/':               'https://uas-forge.com/regs/',
