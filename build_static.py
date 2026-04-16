@@ -305,7 +305,7 @@ _UNIFIED_NAV = r"""<!-- ── Unified UAS- Nav (5-domain accordion drawer) ─�
     </div>
   </details>
 
-  <details class="dc-dom-group" data-host="uas-patterns.com">
+  <details class="dc-dom-group" data-host="uas-patterns.com" data-hub-href="https://uas-patterns.com/patterns-home/">
     <summary>
       <span class="dc-dom-ico">📊</span>
       <div class="dc-dom-info">
@@ -315,16 +315,11 @@ _UNIFIED_NAV = r"""<!-- ── Unified UAS- Nav (5-domain accordion drawer) ─�
       <span class="dc-dom-chev">▶</span>
     </summary>
     <div class="dc-dom-sublinks">
-      <a class="dc-dom-sublink" href="https://uas-patterns.com/patterns-home/" data-page="patterns-home">P.I.E Hub</a>
       <a class="dc-dom-sublink" href="https://uas-patterns.com/patterns/" data-page="patterns">Flags Dashboard</a>
-      <a class="dc-dom-sublink" href="https://uas-patterns.com/patterns/#awards" data-page="awards">Federal Awards ($11.6B)</a>
-      <a class="dc-dom-sublink" href="https://uas-patterns.com/brief/" data-page="brief">Daily Brief</a>
-      <a class="dc-dom-sublink" href="https://uas-patterns.com/analytics/" data-page="analytics">Analytics</a>
-      <a class="dc-dom-sublink" href="https://uas-patterns.com/admin/" data-page="admin">Admin</a>
     </div>
   </details>
 
-  <details class="dc-dom-group" data-host="uas-intel.com">
+  <details class="dc-dom-group" data-host="uas-intel.com" data-hub-href="https://uas-intel.com/intel/">
     <summary>
       <span class="dc-dom-ico">📡</span>
       <div class="dc-dom-info">
@@ -334,10 +329,7 @@ _UNIFIED_NAV = r"""<!-- ── Unified UAS- Nav (5-domain accordion drawer) ─�
       <span class="dc-dom-chev">▶</span>
     </summary>
     <div class="dc-dom-sublinks">
-      <a class="dc-dom-sublink" href="https://uas-intel.com/intel/" data-page="intel">Intel Hub</a>
       <a class="dc-dom-sublink" href="https://uas-intel.com/intel/feed/" data-page="intel-feed">Intel Feed</a>
-      <a class="dc-dom-sublink" href="https://uas-intel.com/intel-commercial/" data-page="intel-commercial">Commercial Intel</a>
-      <a class="dc-dom-sublink" href="https://uas-intel.com/intel-dfr/" data-page="intel-dfr">DFR Intel</a>
       <a class="dc-dom-sublink" href="https://uas-intel.com/industry/" data-page="industry">Industry Tracker</a>
       <a class="dc-dom-sublink" href="https://uas-intel.com/tracker/" data-page="tracker">Contract Tracker</a>
     </div>
@@ -456,6 +448,16 @@ _UNIFIED_NAV = r"""<!-- ── Unified UAS- Nav (5-domain accordion drawer) ─�
   // Mark active sublink AND standalone (match data-page)
   document.querySelectorAll('.dc-dom-sublink, .dc-dom-standalone').forEach(function(a){
     if(a.dataset.page === path) a.classList.add('dc-active');
+  });
+
+  // Domain groups with data-hub-href: clicking the name/icon navigates to the
+  // hub URL; clicking the chev still toggles the dropdown.
+  document.querySelectorAll('.dc-dom-group[data-hub-href] > summary').forEach(function(s){
+    s.addEventListener('click', function(e){
+      if(e.target.closest('.dc-dom-chev')) return; // chev: default toggle
+      e.preventDefault();
+      location.href = s.parentElement.dataset.hubHref;
+    });
   });
 
   // Hamburger toggle
