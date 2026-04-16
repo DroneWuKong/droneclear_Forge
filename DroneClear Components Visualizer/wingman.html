@@ -661,7 +661,7 @@
     <div style="margin-bottom:16px;">
       <label class="cfg-label" style="display:flex;align-items:center;gap:6px;margin-bottom:6px;">
         <span style="display:inline-block;width:7px;height:7px;border-radius:50%;background:var(--cyan);flex-shrink:0"></span>
-        Subscription Token <span style="font-size:10px;color:var(--g3);font-weight:400;text-transform:none;letter-spacing:0">( — unlocks Claude, Gap Analyzer, PIE)</span>
+        Access Token <span style="font-size:10px;color:var(--g3);font-weight:400;text-transform:none;letter-spacing:0">(optional — legacy codes still work; everything is free)</span>
       </label>
       <input type="password" id="sub-token-input" placeholder="Paste your token here…" style="font-size:11px;letter-spacing:.03em"/>
       <div id="sub-token-status" style="font-size:10px;margin-top:5px;min-height:14px;"></div>
@@ -2471,12 +2471,12 @@ function openCfg() {
         const daysLeft = p.exp ? Math.max(0, Math.ceil((p.exp - Date.now()) / 86400000)) : null;
         const expired = p.exp && Date.now() > p.exp;
         statusEl.textContent = expired
-          ? '⚠ Token expired — renew at /pro/'
-          : (daysLeft !== null ? `✓ Active · ${daysLeft} days remaining${p.demo ? ' (demo)' : ''}` : '✓ Token present');
-        statusEl.style.color = expired ? 'var(--amber)' : 'var(--cyan)';
+          ? 'Token expired — everything is free now, no renewal needed'
+          : (daysLeft !== null ? `✓ Token present · ${daysLeft} days` : '✓ Token present');
+        statusEl.style.color = expired ? 'var(--g2)' : 'var(--cyan)';
       } catch { statusEl.textContent = '✓ Token present'; statusEl.style.color = 'var(--cyan)'; }
     } else {
-      statusEl.textContent = 'No token — subscribe at nvmillbuilditmyself.com/pro/';
+      statusEl.textContent = 'No token required — everything is free';
       statusEl.style.color = 'var(--g3)';
     }
   }
@@ -3356,19 +3356,7 @@ async function runGapAnalysis() {
   const b = document.getElementById('gap-b').value.trim();
   if (!a || !b) { alert('Enter two entities to compare.'); return; }
 
-  // ── Pro gate — gap analyzer is a Pro feature ────────────────────────────────────────────────────
-  if (!subToken && !proxySecret) {
-    const results = document.getElementById('gap-results');
-    document.getElementById('gap-empty').style.display = 'none';
-    results.style.display = 'block';
-    results.innerHTML = `<div class="gap-empty" style="gap:10px">
-      <i class="ph ph-lock"></i>
-      <span style="color:var(--white);font-weight:600">Gap Analyzer requires a subscription</span>
-      <span style="font-size:11px;color:var(--g2);line-height:1.5;max-width:260px;text-align:center">Full gap analysis with NDAA, supply chain, and spec comparisons requires a Pro subscription.</span>
-      <a href="/pro/" style="margin-top:4px;padding:8px 20px;background:var(--cyan);color:#0c0c0a;border-radius:6px;font-weight:600;font-size:12px;text-decoration:none">Subscribe →</a>
-    </div>`;
-    return;
-  }
+  // Paywall removed — Gap Analyzer is free. No gate.
 
   const btn = document.getElementById('gap-run');
   btn.disabled = true;

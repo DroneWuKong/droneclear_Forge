@@ -333,8 +333,8 @@ _UNIFIED_NAV = r"""<!-- ── Unified UAS- Nav (5-domain accordion drawer) ─�
     <div class="dc-dom-sublinks">
       <a class="dc-dom-sublink" href="https://uas-patterns.pro/patterns/" data-page="patterns">Flags Dashboard</a>
       <a class="dc-dom-sublink" href="https://uas-patterns.pro/patterns/#awards" data-page="awards">Federal Awards ($11.6B)</a>
-      <a class="dc-dom-sublink" href="https://uas-patterns.pro/brief/" data-page="brief-pro">Brief (gated)</a>
-      <a class="dc-dom-sublink" href="https://uas-patterns.pro/pro/" data-page="pro">Subscription</a>
+      <a class="dc-dom-sublink" href="https://uas-patterns.pro/brief/" data-page="brief-pro">Daily Brief</a>
+      <a class="dc-dom-sublink" href="https://uas-patterns.pro/pro/" data-page="pro">Donate / Support</a>
       <a class="dc-dom-sublink" href="https://uas-patterns.pro/admin/" data-page="admin">Admin</a>
     </div>
   </details>
@@ -431,7 +431,7 @@ _UNIFIED_NAV = r"""<!-- ── Unified UAS- Nav (5-domain accordion drawer) ─�
     'stack-builder':'Stack Builder','report':'Compliance Report','tools-home':'Tools',
     'software-library':'Software Library','industry':'Industry','tracker':'Contract Tracker',
     'patterns-home':'P.I.E Hub','brief':'Brief','patterns':'Flags','clock':'UAS Clock','ddg':'DDG Tracker',
-    'pro':'Pro','start':'Getting Started','grants':'Grants','waiver':'Doc Builder',
+    'pro':'Support','start':'Getting Started','grants':'Grants','waiver':'Doc Builder',
     'verify':'Verify','vault':'Vault','troubleshoot':'Troubleshoot','support':'Support','hub':'Hub',
     'builder':'Builder','cost':'Cost','admin':'Admin','analytics':'Analytics'
   };
@@ -921,9 +921,9 @@ SEO_META = {
         'drone intelligence report, PIE briefing, drone procurement report, UAS supply chain analysis, NDAA compliance report',
     ),
     'pro.html': (
-        'Forge Pro — Full Access to PIE Intelligence & Analytics',
-        'Upgrade to Forge Pro for full PIE flag access, daily intelligence briefs, gray zone entity tracking, procurement signal analysis, and Document Builder templates.',
-        'Forge Pro, drone intelligence subscription, PIE flags, UAS procurement intelligence, drone compliance subscription',
+        'Support UAS- — Donate',
+        'Everything on UAS- is free — parts database, PIE flags, daily brief, intel feed, handbook. No paywall, no tiers. If the platform helped your work, a donation keeps it running.',
+        'UAS-, donate, drone intelligence, procurement tools, free drone compliance',
     ),
     'start.html': (
         'Get Started with Forge — Drone Intelligence Platform',

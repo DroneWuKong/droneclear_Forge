@@ -1,19 +1,16 @@
 /**
- * Forge Gated Data API
- * GET /.netlify/functions/forge-data?type=<dataset>&token=<jwt>
- * GET /.netlify/functions/forge-data?type=<dataset>&access_code=<code>
+ * Forge Data API
+ * GET /.netlify/functions/forge-data?type=<dataset>
  *
- * Tiers (need-to-know, not paywall):
- *   free       — parts DB, platform DB, firmware, troubleshooting (no token)
- *   commercial — + intel, flags, predictions, trends, supply chain, entity graph ($39)
- *   dfr        — + solicitations, dfr_master, grants, CAD matrix, federal awards ($49)
- *   agency     — + defense_master, grayzone, allied profiles (contact/vetted)
+ * Paywall removed — every dataset is free. The function now exists purely
+ * as a pass-through to Netlify Blobs (fresh pipeline output) with fallback
+ * to the committed build files. No tier logic, no JWT verification on GET.
  *
- * Override: access_code mints a JWT at any tier — Jeremiah's discretion,
- *   no Stripe required. Anyone who genuinely needs it gets it.
+ * The access_code path is kept as a no-op for backwards compatibility with
+ * old URLs/bookmarks — it still mints a token so clients that cached one
+ * keep working, but the token is never required.
  *
- * Never served at any tier: forge_orqa_configs, build-specs/orqa_*,
- *   terminal guidance, RC injection, behavior trees.
+ * POST path (admin Blobs write) is unchanged — that's infra, not paywall.
  */
 
 const CORS = {
@@ -28,92 +25,16 @@ function resp(data, status = 200) {
   });
 }
 
-const TIER_RANK = { free: 0, commercial: 1, dfr: 2, agency: 3 };
-function tierAtLeast(user, required) {
-  return (TIER_RANK[user] ?? -1) >= (TIER_RANK[required] ?? 999);
-}
-
-// Dataset registry — file paths are relative to /static/ in the built site
-const DATASETS = {
-  // FREE — no token needed
-  forge_database:          { tier: 'free' },
-  drone_database:          { tier: 'free' },
-  topic_component_map:     { tier: 'free' },
-  forge_firmware_versions: { tier: 'free' },
-  forge_troubleshooting:   { tier: 'free' },
-  forge_incompatibilities: { tier: 'free' },
-  miner_health:            { tier: 'free' },
-  miner_registry:          { tier: 'free' },
-
-  // COMMERCIAL ($39 or access code)
-  intel_articles:          { tier: 'commercial' },
-  intel_companies:         { tier: 'commercial' },
-  intel_platforms:         { tier: 'commercial' },
-  intel_programs:          { tier: 'commercial' },
-  pie_flags:               { tier: 'commercial' },
-  pie_brief:               { tier: 'commercial' },
-  pie_brief_history:       { tier: 'commercial' },
-  pie_predictions:         { tier: 'commercial' },
-  pie_trends:              { tier: 'commercial' },
-  pie_weekly:              { tier: 'commercial' },
-  predictions_best:        { tier: 'commercial' },
-  predictions_archive:     { tier: 'commercial' },
-  llm_predictions:         { tier: 'commercial' },
-  gap_analysis_latest:     { tier: 'commercial' },
-  entity_graph:            { tier: 'commercial' },
-  forge_intel:             { tier: 'commercial' },
-  commercial_master:       { tier: 'commercial' },
-  solicitations:           { tier: 'commercial' }, // free preview, full at dfr
-  federal_awards:          { tier: 'commercial' },
-  sam_watchlist:           { tier: 'free' },
-
-  // DFR ($49 or access code)
-  dfr_master:              { tier: 'dfr' },
-
-  // AGENCY (contact/vetted or access code)
-  defense_master:          { tier: 'agency' },
-};
-
-// Free-tier: serve the public-safe static slice that's already in the build
-// These are truncated versions committed by the sync workflow — same data, less of it
-async function freeSummary(type) {
-  // Free-tier slices are committed into static/ and built into /static/*.json
-  // They are truncated versions of the full data — same structure, less content
-  const PUBLIC_SLICES = ['pie_flags','pie_brief','pie_predictions','pie_trends',
-                         'pie_brief_history','pie_flags_summary','entity_graph',
-                         'gap_analysis_latest','miner_health','miner_registry',
-                         'topic_component_map'];
-  if (!PUBLIC_SLICES.includes(type)) {
-    return { summary_only: true, message: `${type} requires Commercial access or an access code.`, upgrade_url: '/pro/' };
-  }
-  try {
-    // The function runs on the Forge site — fetch from same site's static files.
-    // process.env.URL is Netlify's built-in pointing to the actual deploy URL
-    // (prod or preview), so this works on uas-forge.com and on preview deploys.
-    const origin = process.env.URL || 'https://uas-forge.com';
-    const res = await fetch(`${origin}/static/${type}.json`);
-    if (res.ok) {
-      const data = await res.json();
-      return { data, _free_tier: true };
-    }
-  } catch (e) {}
-  return { summary_only: true, message: `${type} not available. Try again shortly.`, upgrade_url: '/pro/' };
-}
-
-async function verifyToken(token, secret) {
-  try {
-    const { payload, sig } = JSON.parse(atob(token));
-    const enc = new TextEncoder();
-    const key = await crypto.subtle.importKey(
-      'raw', enc.encode(secret), { name: 'HMAC', hash: 'SHA-256' }, false, ['verify']
-    );
-    const sigBytes = Uint8Array.from(atob(sig), c => c.charCodeAt(0));
-    const valid = await crypto.subtle.verify('HMAC', key, sigBytes, enc.encode(JSON.stringify(payload)));
-    if (!valid) return null;
-    if (payload.exp && Date.now() > payload.exp) return null;
-    return payload;
-  } catch { return null; }
-}
+// Dataset registry — flat list, no tiers
+const DATASETS = new Set([
+  'forge_database','drone_database','topic_component_map','forge_firmware_versions',
+  'forge_troubleshooting','forge_incompatibilities','miner_health','miner_registry',
+  'intel_articles','intel_companies','intel_platforms','intel_programs',
+  'pie_flags','pie_brief','pie_brief_history','pie_predictions','pie_trends',
+  'pie_weekly','predictions_best','predictions_archive','llm_predictions',
+  'gap_analysis_latest','entity_graph','forge_intel','commercial_master',
+  'solicitations','federal_awards','sam_watchlist','dfr_master','defense_master',
+]);
 
 async function signToken(payload, secret) {
   const enc = new TextEncoder();
@@ -128,22 +49,9 @@ async function signToken(payload, secret) {
 export default async (req) => {
   if (req.method === 'OPTIONS') return new Response(null, { status: 204, headers: CORS });
 
-  const tokenSecret = process.env.PRO_TOKEN_SECRET;
-  if (!tokenSecret) return resp({ error: 'Service not configured' }, 503);
-
   const url = new URL(req.url);
 
-  // ── POST: admin Blobs write path ──────────────────────────────────────────
-  // Allows uploading fresh dataset content to the forge-datasets Blobs store
-  // without needing a valid NETLIFY_API_TOKEN (the @netlify/blobs SDK auto-
-  // authenticates from the function's deploy context). Gated by a one-off
-  // admin key stored as FORGE_BLOBS_ADMIN_KEY in Netlify env vars.
-  //
-  // Usage:
-  //   POST /.netlify/functions/forge-data?type=pie_brief
-  //   Authorization: Bearer <FORGE_BLOBS_ADMIN_KEY>
-  //   Content-Type: application/json
-  //   <full dataset JSON>
+  // ── POST: admin Blobs write path (unchanged) ─────────────────────────────
   if (req.method === 'POST' && url.searchParams.get('type')) {
     const adminKey = process.env.FORGE_BLOBS_ADMIN_KEY;
     const authHeader = req.headers.get('authorization') || '';
@@ -152,7 +60,7 @@ export default async (req) => {
     if (providedKey !== adminKey) return resp({ error: 'Invalid admin key' }, 401);
 
     const writeType = url.searchParams.get('type');
-    if (!DATASETS[writeType]) return resp({ error: `Unknown dataset: ${writeType}` }, 404);
+    if (!DATASETS.has(writeType)) return resp({ error: `Unknown dataset: ${writeType}` }, 404);
 
     try {
       const body = await req.text();
@@ -178,100 +86,43 @@ export default async (req) => {
   }
 
   const type = url.searchParams.get('type') || '';
-  const rawToken = url.searchParams.get('token') || req.headers.get('authorization')?.replace('Bearer ', '') || '';
   const accessCode = url.searchParams.get('access_code') || '';
 
-  // ── Owner shortcut — permanent full access, no token needed ────────────────
-  const OWNER_CODE = process.env.OWNER_ACCESS_CODE || 'MIDWEST-NICE-UAS';
-  if (accessCode === OWNER_CODE) {
-    const token = await signToken({
-      email: 'jeremiah@midwestniceuas.com',
-      tier: 'agency',
-      note: 'owner',
-      iat: Date.now(),
-      exp: Date.now() + 365 * 24 * 60 * 60 * 1000 * 10, // 10 years
-    }, tokenSecret);
-    if (type && DATASETS[type]) {
-      const data = await loadDataset(type);
-      return resp({ token, tier: 'agency', data });
-    }
-    return resp({ token, tier: 'agency', email: 'jeremiah@midwestniceuas.com' });
-  }
-
-  // ── Access code path — mint a JWT, no Stripe needed ──────────────────────
+  // ── Access code path (no-op compat) ──────────────────────────────────────
+  // Used to gate access — now just mints a token so any client that still
+  // expects one keeps working. Anyone with any code gets data.
   if (accessCode) {
-    try {
-      const { getStore } = await import('@netlify/blobs');
-      const store = getStore('forge-access-codes');
-      const raw = await store.get(accessCode, { type: 'json' }).catch(() => null);
-
-      if (!raw) return resp({ error: 'Invalid or expired access code' }, 403);
-      if (raw.used && !raw.reusable) return resp({ error: 'Access code already used' }, 403);
-      if (raw.exp && Date.now() > raw.exp) return resp({ error: 'Access code expired' }, 403);
-
-      // Mark used (unless reusable)
-      if (!raw.reusable) {
-        await store.setJSON(accessCode, { ...raw, used: true, used_at: new Date().toISOString() });
-      }
-
-      const tier = raw.tier || 'commercial';
-      const token = await signToken({
-        email: raw.email || 'access-code',
-        tier,
-        access_code: accessCode,
-        note: raw.note || '',
-        iat: Date.now(),
-        exp: Date.now() + (raw.duration_days || 365) * 24 * 60 * 60 * 1000,
-      }, tokenSecret);
-
-      // If they also want data, serve it now
-      if (type && DATASETS[type]) {
-        const dataset = DATASETS[type];
-        if (!tierAtLeast(tier, dataset.tier)) {
-          return resp({ error: `Access code tier (${tier}) cannot access ${type}`, token }, 403);
-        }
+    const tokenSecret = process.env.PRO_TOKEN_SECRET;
+    let token = null;
+    if (tokenSecret) {
+      try {
+        token = await signToken({
+          email: 'access-code',
+          tier: 'agency',
+          access_code: accessCode,
+          iat: Date.now(),
+          exp: Date.now() + 365 * 24 * 60 * 60 * 1000,
+        }, tokenSecret);
+      } catch {}
+    }
+    if (type && DATASETS.has(type)) {
+      try {
         const data = await loadDataset(type);
-        return resp({ token, tier, data });
+        return resp({ token, tier: 'agency', data });
+      } catch (e) {
+        return resp({ error: 'Failed to load dataset: ' + e.message }, 500);
       }
-
-      return resp({ token, tier, message: `Access code accepted. Token valid for ${raw.duration_days || 365} days.` });
-    } catch (e) {
-      return resp({ error: 'Access code check failed: ' + e.message }, 500);
     }
+    return resp({ token, tier: 'agency', message: 'Access code accepted (all data is free now).' });
   }
 
-  // ── Determine user tier from token ────────────────────────────────────────
-  let userTier = 'free';
-  let tokenPayload = null;
+  // ── Normal GET: serve the requested dataset, no auth required ────────────
+  if (!type) return resp({ error: 'type parameter required', available: Array.from(DATASETS) }, 400);
+  if (!DATASETS.has(type)) return resp({ error: `Unknown dataset: ${type}` }, 404);
 
-  if (rawToken) {
-    tokenPayload = await verifyToken(rawToken, tokenSecret);
-    if (!tokenPayload) return resp({ error: 'Invalid or expired token', hint: 'Re-authenticate at /pro/' }, 401);
-    // Normalise old 'pro' → 'dfr' for backwards compat
-    userTier = tokenPayload.tier === 'pro' ? 'dfr' : (tokenPayload.tier || 'commercial');
-  }
-
-  // ── Verify dataset access ──────────────────────────────────────────────────
-  if (!type) return resp({ error: 'type parameter required', available: Object.keys(DATASETS) }, 400);
-
-  const dataset = DATASETS[type];
-  if (!dataset) return resp({ error: `Unknown dataset: ${type}` }, 404);
-
-  if (!tierAtLeast(userTier, dataset.tier)) {
-    if (userTier === 'free') {
-      const summary = await freeSummary(type);
-      return resp({ ...summary, required_tier: dataset.tier, upgrade_url: '/pro/' });
-    }
-    return resp({
-      error: `Your tier (${userTier}) cannot access ${type}. Required: ${dataset.tier}`,
-      upgrade_url: '/pro/',
-    }, 403);
-  }
-
-  // ── Load and serve dataset ─────────────────────────────────────────────────
   try {
     const data = await loadDataset(type);
-    return resp({ data, tier: userTier, type });
+    return resp({ data, tier: 'free', type });
   } catch (e) {
     return resp({ error: 'Failed to load dataset: ' + e.message }, 500);
   }
@@ -307,7 +158,6 @@ async function loadDataset(type) {
   // 1. Try Netlify Blobs (populated by sync workflow when available)
   try {
     const { getStore } = await import('@netlify/blobs');
-    // Use explicit siteID+token when available for cross-context reliability
     const siteID = process.env.NETLIFY_SITE_ID;
     const token = process.env.NETLIFY_API_TOKEN;
     const storeOpts = (siteID && token)
@@ -324,17 +174,16 @@ async function loadDataset(type) {
   const origin = process.env.URL || 'https://uas-forge.com';
   if (filename) {
     try {
-      // Try root first — full data (221 flags, full predictions, full brief)
+      // Try root first — full data (270 flags, full predictions, full brief)
       const res = await fetch(`${origin}/${filename}`);
       if (res.ok) {
         const data = await res.json();
-        // Validate it's real data not an error page
         if (Array.isArray(data) ? data.length > 0 : (data && typeof data === 'object'))
           return data;
       }
     } catch {}
     try {
-      // Try /static/ — may be truncated free slice but better than nothing
+      // Try /static/ — may be truncated slice but better than nothing
       const res = await fetch(`${origin}/static/${filename}`);
       if (res.ok) return await res.json();
     } catch {}

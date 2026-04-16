@@ -631,55 +631,14 @@ select{-webkit-appearance:none;appearance:none;background-image:url("data:image/
 
 <script>
 // -- Auth ----------------------------------------------------------------------
-function getTier(){
-  const tok=localStorage.getItem('wingman_sub_token')||'';
-  const ps=localStorage.getItem('wingman_proxy_secret')||'';
-  if(ps) return 'agency';
-  if(!tok) return 'free';
-  try{
-    const outer=JSON.parse(atob(tok));
-    // Token structure: { payload: { tier, exp, ... }, sig: "..." }
-    const p=outer.payload||outer;
-    if(p.exp&&Date.now()>p.exp)return'free';
-    const t=p.tier||'commercial';
-    // backwards compat: old 'pro' tokens map to 'dfr'
-    if(t==='pro') return 'dfr';
-    return t;
-  }catch{return'free';}
-}
-function canUse(docType){
-  const t=getTier();
-  const freeDocs=['ndaa_checklist','part107_night','remote_id','drone_policy'];
-  const commercialDocs=['client_services','site_safety','data_delivery','insurance_requirements','part107_bvlos','contractor_compliance','data_privacy','incident_response','property_access','subpart_d'];
-  const dfrDocs=['cow_shielded','cow_nonshielded','conops','pso_letter','cops_grant','hsgp_grant','council_memo','emergency_ops','transparency_policy','mutual_aid'];
-  const agencyDocs=['sop','ndaa_procurement','blue_uas_comparison'];
-  if(freeDocs.includes(docType)) return true;
-  if(t==='free') return false;
-  if(commercialDocs.includes(docType)) return ['commercial','dfr','agency','full'].includes(t);
-  if(dfrDocs.includes(docType)) return ['dfr','agency','full'].includes(t);
-  if(agencyDocs.includes(docType)) return t==='agency'||t==='full';
-  return true;
-}
+// Paywall removed — all doc types are free.
+function getTier(){ return 'agency'; }
+function canUse(_docType){ return true; }
 
 // -- Init ---------------------------------------------------------------------
 window.addEventListener('DOMContentLoaded',()=>{
-  const tier=getTier();
-  // Show tier badges on cards
-  document.querySelectorAll('.doc-card').forEach(el=>{
-    const docType=el.dataset.doc;
-    if(!canUse(docType)){
-      el.style.opacity='.6';
-      el.title='Requires upgrade';
-    }
-  });
-  // Show tier label in hero
   const tierLabel=document.getElementById('tier-label');
-  if(tierLabel){
-    if(tier==='free') tierLabel.textContent='Free — 4 documents available · Upgrade to Commercial for operator docs';
-    else if(tier==='commercial') tierLabel.textContent='Commercial tier — 12 documents available · Upgrade to DFR for public safety docs';
-    else if(tier==='dfr') tierLabel.textContent='DFR tier — all 22 documents available';
-    else if(tier==='agency'||tier==='full') tierLabel.textContent='Agency tier — all 29 documents available';
-  }
+  if(tierLabel) tierLabel.textContent='All 29 documents available — everything on UAS- is free.';
 });
 
 // -- Doc type selection --------------------------------------------------------
