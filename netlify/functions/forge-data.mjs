@@ -2,13 +2,9 @@
  * Forge Data API
  * GET /.netlify/functions/forge-data?type=<dataset>
  *
- * Paywall removed — every dataset is free. The function now exists purely
- * as a pass-through to Netlify Blobs (fresh pipeline output) with fallback
- * to the committed build files. No tier logic, no JWT verification on GET.
- *
- * The access_code path is kept as a no-op for backwards compatibility with
- * old URLs/bookmarks — it still mints a token so clients that cached one
- * keep working, but the token is never required.
+ * Paywall removed — every dataset is free. The function is a pass-through
+ * to Netlify Blobs (fresh pipeline output) with fallback to the committed
+ * build files. No tier logic, no JWT verification on GET.
  *
  * POST path (admin Blobs write) is unchanged — that's infra, not paywall.
  */
@@ -35,16 +31,6 @@ const DATASETS = new Set([
   'gap_analysis_latest','entity_graph','forge_intel','commercial_master',
   'solicitations','federal_awards','sam_watchlist','dfr_master','defense_master',
 ]);
-
-async function signToken(payload, secret) {
-  const enc = new TextEncoder();
-  const key = await crypto.subtle.importKey(
-    'raw', enc.encode(secret), { name: 'HMAC', hash: 'SHA-256' }, false, ['sign']
-  );
-  const sig = await crypto.subtle.sign('HMAC', key, enc.encode(JSON.stringify(payload)));
-  const b64 = btoa(String.fromCharCode(...new Uint8Array(sig)));
-  return btoa(JSON.stringify({ payload, sig: b64 }));
-}
 
 export default async (req) => {
   if (req.method === 'OPTIONS') return new Response(null, { status: 204, headers: CORS });
@@ -86,37 +72,8 @@ export default async (req) => {
   }
 
   const type = url.searchParams.get('type') || '';
-  const accessCode = url.searchParams.get('access_code') || '';
 
-  // ── Access code path (no-op compat) ──────────────────────────────────────
-  // Used to gate access — now just mints a token so any client that still
-  // expects one keeps working. Anyone with any code gets data.
-  if (accessCode) {
-    const tokenSecret = process.env.PRO_TOKEN_SECRET;
-    let token = null;
-    if (tokenSecret) {
-      try {
-        token = await signToken({
-          email: 'access-code',
-          tier: 'agency',
-          access_code: accessCode,
-          iat: Date.now(),
-          exp: Date.now() + 365 * 24 * 60 * 60 * 1000,
-        }, tokenSecret);
-      } catch {}
-    }
-    if (type && DATASETS.has(type)) {
-      try {
-        const data = await loadDataset(type);
-        return resp({ token, tier: 'agency', data });
-      } catch (e) {
-        return resp({ error: 'Failed to load dataset: ' + e.message }, 500);
-      }
-    }
-    return resp({ token, tier: 'agency', message: 'Access code accepted (all data is free now).' });
-  }
-
-  // ── Normal GET: serve the requested dataset, no auth required ────────────
+  // ── GET: serve the requested dataset, no auth required ────────────
   if (!type) return resp({ error: 'type parameter required', available: Array.from(DATASETS) }, 400);
   if (!DATASETS.has(type)) return resp({ error: `Unknown dataset: ${type}` }, 404);
 

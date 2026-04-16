@@ -1,30 +1,15 @@
 // Netlify function — generates a PIE intelligence report
-// Pro and Agency tier only — validates sub token before generating
+// Owner-only — validates proxy secret before generating
 //
 // POST /.netlify/functions/compliance-report
-// Body: { token, report_type, subject, proxy_secret? }
+// Body: { report_type, subject, proxy_secret? }
 // Returns: JSON structured report data for client-side rendering + PDF
 
 const CORS = {
   'Access-Control-Allow-Origin':  '*',
   'Access-Control-Allow-Methods': 'POST, OPTIONS',
-  'Access-Control-Allow-Headers': 'Content-Type, X-Sub-Token, X-Proxy-Secret',
+  'Access-Control-Allow-Headers': 'Content-Type, X-Proxy-Secret',
 };
-
-async function verifySubToken(token, secret) {
-  if (!token || !secret) return null;
-  try {
-    const { payload, sig } = JSON.parse(atob(token));
-    const enc = new TextEncoder();
-    const key = await crypto.subtle.importKey(
-      'raw', enc.encode(secret), { name: 'HMAC', hash: 'SHA-256' }, false, ['verify']
-    );
-    const sigBytes = Uint8Array.from(atob(sig), c => c.charCodeAt(0));
-    const valid = await crypto.subtle.verify('HMAC', key, sigBytes, enc.encode(JSON.stringify(payload)));
-    if (!valid || (payload.exp && Date.now() > payload.exp)) return null;
-    return payload;
-  } catch { return null; }
-}
 
 const KNOWN_ENTITIES = [
   { key: 'SkyRover',  name: 'SkyRover / Knowact',   country: 'China (Shenzhen)',  ndaa: 'Non-compliant', fcc: true  },
@@ -124,23 +109,17 @@ export default async (req) => {
     status: 405, headers: { ...CORS, 'Content-Type': 'application/json' },
   });
 
-  const tokenSecret  = process.env.PRO_TOKEN_SECRET;
   const proxySecret  = process.env.WINGMAN_PROXY_SECRET;
   const anthropicKey = process.env.ANTHROPIC_API_KEY;
 
   const body         = await req.json().catch(() => ({}));
-  const clientToken  = body.token || req.headers.get('x-sub-token') || '';
   const clientSecret = body.proxy_secret || req.headers.get('x-proxy-secret') || '';
 
-  let authed = false;
-  if (proxySecret && clientSecret === proxySecret) authed = true;
-  if (!authed && tokenSecret && clientToken) {
-    const payload = await verifySubToken(clientToken, tokenSecret);
-    if (payload) authed = true;
+  if (!proxySecret || clientSecret !== proxySecret) {
+    return new Response(JSON.stringify({ error: 'Unauthorized' }), {
+      status: 401, headers: { ...CORS, 'Content-Type': 'application/json' },
+    });
   }
-  if (!authed) return new Response(JSON.stringify({ error: 'Pro subscription required', upgrade_url: '/pro/' }), {
-    status: 401, headers: { ...CORS, 'Content-Type': 'application/json' },
-  });
 
   const { subject = '', report_type = 'full' } = body;
   const base = process.env.URL || 'https://uas-forge.com';

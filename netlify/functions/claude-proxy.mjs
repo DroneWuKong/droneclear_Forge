@@ -36,41 +36,12 @@ export default async (req) => {
     });
   }
 
-  // ── Auth check — accepts either proxy secret (owner) or valid sub token (Pro) ──
+  // ── Auth check — owner-only via proxy secret ──
   const proxySecret = process.env.WINGMAN_PROXY_SECRET;
-  const tokenSecret = process.env.PRO_TOKEN_SECRET;
-
   const clientSecret = req.headers.get('x-proxy-secret') || '';
-  const clientToken  = req.headers.get('x-sub-token') || '';
 
-  let authed = false;
-  let authTier = 'owner';
-
-  // Owner access via proxy secret
-  if (proxySecret && clientSecret === proxySecret) {
-    authed = true;
-    authTier = 'owner';
-  }
-
-  // Pro subscriber access via signed token
-  if (!authed && tokenSecret && clientToken) {
-    try {
-      const { payload, sig } = JSON.parse(atob(clientToken));
-      const enc = new TextEncoder();
-      const key = await crypto.subtle.importKey(
-        'raw', enc.encode(tokenSecret), { name: 'HMAC', hash: 'SHA-256' }, false, ['verify']
-      );
-      const sigBytes = Uint8Array.from(atob(sig), c => c.charCodeAt(0));
-      const valid = await crypto.subtle.verify('HMAC', key, sigBytes, enc.encode(JSON.stringify(payload)));
-      if (valid && (!payload.exp || Date.now() < payload.exp)) {
-        authed = true;
-        authTier = payload.tier || 'commercial';
-      }
-    } catch { /* invalid token */ }
-  }
-
-  if (!authed) {
-    return new Response(JSON.stringify({ error: 'Unauthorized — Pro subscription required', upgrade_url: '/pro/' }), {
+  if (!proxySecret || clientSecret !== proxySecret) {
+    return new Response(JSON.stringify({ error: 'Unauthorized' }), {
       status: 401, headers: { ...CORS, 'Content-Type': 'application/json' },
     });
   }
