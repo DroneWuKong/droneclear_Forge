@@ -316,26 +316,11 @@ _UNIFIED_NAV = r"""<!-- ── Unified UAS- Nav (5-domain accordion drawer) ─�
     </summary>
     <div class="dc-dom-sublinks">
       <a class="dc-dom-sublink" href="https://uas-patterns.com/patterns-home/" data-page="patterns-home">P.I.E Hub</a>
+      <a class="dc-dom-sublink" href="https://uas-patterns.com/patterns/" data-page="patterns">Flags Dashboard</a>
+      <a class="dc-dom-sublink" href="https://uas-patterns.com/patterns/#awards" data-page="awards">Federal Awards ($11.6B)</a>
       <a class="dc-dom-sublink" href="https://uas-patterns.com/brief/" data-page="brief">Daily Brief</a>
       <a class="dc-dom-sublink" href="https://uas-patterns.com/analytics/" data-page="analytics">Analytics</a>
-    </div>
-  </details>
-
-  <details class="dc-dom-group" data-host="uas-patterns.pro">
-    <summary>
-      <span class="dc-dom-ico">🔥</span>
-      <div class="dc-dom-info">
-        <div class="dc-dom-name">Patterns Pro</div>
-        <div class="dc-dom-url">uas-patterns.pro</div>
-      </div>
-      <span class="dc-dom-chev">▶</span>
-    </summary>
-    <div class="dc-dom-sublinks">
-      <a class="dc-dom-sublink" href="https://uas-patterns.pro/patterns/" data-page="patterns">Flags Dashboard</a>
-      <a class="dc-dom-sublink" href="https://uas-patterns.pro/patterns/#awards" data-page="awards">Federal Awards ($11.6B)</a>
-      <a class="dc-dom-sublink" href="https://uas-patterns.pro/brief/" data-page="brief-pro">Daily Brief</a>
-      <a class="dc-dom-sublink" href="https://uas-patterns.pro/pro/" data-page="pro">Donate / Support</a>
-      <a class="dc-dom-sublink" href="https://uas-patterns.pro/admin/" data-page="admin">Admin</a>
+      <a class="dc-dom-sublink" href="https://uas-patterns.com/admin/" data-page="admin">Admin</a>
     </div>
   </details>
 
@@ -419,8 +404,7 @@ _UNIFIED_NAV = r"""<!-- ── Unified UAS- Nav (5-domain accordion drawer) ─�
   var host = location.hostname;
   // Domain detection — matches new uas-* AND legacy nvmill*/illdoitmyself during transition
   var isForge    = host.indexOf('uas-forge') >= 0 || host.indexOf('builditmyself') >= 0 || host === 'localhost' || host.indexOf('forgeprole') >= 0;
-  var isPatPro   = host.indexOf('uas-patterns.pro') >= 0 || host.indexOf('uas-patterns-pro.netlify') >= 0;
-  var isPatCom   = (host.indexOf('uas-patterns.com') >= 0 || host.indexOf('findoutmyself') >= 0) && !isPatPro;
+  var isPatCom   = host.indexOf('uas-patterns') >= 0 || host.indexOf('findoutmyself') >= 0 || host.indexOf('uas-patterns-pro') >= 0;
   var isIntel    = host.indexOf('uas-intel') >= 0;
   var isHandbook = host.indexOf('uas-handbook') >= 0 || host.indexOf('doitmyself') >= 0 || host.indexOf('illdoitmyself') >= 0;
 
@@ -440,7 +424,6 @@ _UNIFIED_NAV = r"""<!-- ── Unified UAS- Nav (5-domain accordion drawer) ─�
 
   // Brand label — per domain
   var brandName = isForge    ? 'Forge'
-                : isPatPro   ? 'Patterns Pro'
                 : isPatCom   ? 'Patterns'
                 : isIntel    ? 'Intel'
                 : isHandbook ? 'Handbook'
@@ -449,16 +432,11 @@ _UNIFIED_NAV = r"""<!-- ── Unified UAS- Nav (5-domain accordion drawer) ─�
   var drawerBrandEl = document.getElementById('dc-drawer-brand');
   if(brandEl) brandEl.textContent = brandName;
   if(drawerBrandEl) drawerBrandEl.textContent = brandName;
-  if(isPatPro){
-    if(brandEl) brandEl.style.color = '#a78bfa';
-    if(drawerBrandEl) drawerBrandEl.style.color = '#a78bfa';
-  }
 
   // Brand-click home target per domain
   window.dcNavBrandClick = function(e){
     e.preventDefault();
     if(isForge)         location.href = 'https://uas-forge.com/';
-    else if(isPatPro)   location.href = 'https://uas-patterns.pro/';
     else if(isPatCom)   location.href = 'https://uas-patterns.com/patterns-home/';
     else if(isIntel)    location.href = 'https://uas-intel.com/';
     else if(isHandbook) location.href = 'https://uas-handbook.com/';
@@ -467,7 +445,6 @@ _UNIFIED_NAV = r"""<!-- ── Unified UAS- Nav (5-domain accordion drawer) ─�
 
   // Auto-expand the drawer group matching current host
   var currentHost = isForge    ? 'uas-forge.com'
-                  : isPatPro   ? 'uas-patterns.pro'
                   : isPatCom   ? 'uas-patterns.com'
                   : isIntel    ? 'uas-intel.com'
                   : isHandbook ? 'uas-handbook.com'
@@ -617,25 +594,10 @@ def rewrite_legacy_domains(html):
     files can be left unchanged — a pragmatic mass-replace that catches
     hardcoded URLs embedded in any of the ~20 page templates.
 
-    Pro paths (/patterns/, /pro/) route to uas-patterns.pro.
-    All other Forge paths route to uas-forge.com.
-    All other Patterns paths route to uas-patterns.com.
+    All Forge paths route to uas-forge.com.
+    All Patterns paths (including former Pro) route to uas-patterns.com.
     Handbook references route to uas-handbook.com.
-
-    Order matters: specific-path rules must run before bare-domain rules
-    so e.g. nvmillbuilditmyself.com/pro/ → uas-patterns.pro/pro/ wins
-    over the generic nvmillbuilditmyself.com → uas-forge.com.
     """
-    # Pro-specific paths (must come first — more specific than bare domain)
-    specific = [
-        ('https://nvmillbuilditmyself.com/patterns/', 'https://uas-patterns.pro/patterns/'),
-        ('https://nvmillbuilditmyself.com/pro/',      'https://uas-patterns.pro/pro/'),
-        ('https://nvmillfindoutmyself.com/patterns/', 'https://uas-patterns.pro/patterns/'),
-        ('https://nvmillfindoutmyself.com/pro/',      'https://uas-patterns.pro/pro/'),
-    ]
-    for old, new in specific:
-        html = html.replace(old, new)
-
     # Bare-domain replacements (catch-all for everything else)
     bare = [
         ('https://www.nvmillbuilditmyself.com', 'https://uas-forge.com'),
@@ -1019,15 +981,15 @@ def inject_seo(html, src_name, dst_path):
         description = description.replace(_PART_COUNT_PLACEHOLDER, count_str)
 
     clean_path = dst_path.replace('index.html', '')
-    # Patterns pages live on uas-patterns.com (free) / uas-patterns.pro (gated).
+    # Patterns pages live on uas-patterns.com (Pro merged — no separate .pro site).
     # Intel pages live on uas-intel.com (Phase 2B split — dedicated Netlify site).
     # Main Forge tooling lives on uas-forge.com. Legacy nvmill* domains
     # 301 → new ones during the transition window (see netlify.toml).
     CANONICAL_OVERRIDES = {
         # UAS- hub — cross-domain landing page, canonical on uas-forge.com
         'hub/':            'https://uas-forge.com/hub/',
-        # Patterns Pro (gated / paid) — uas-patterns.pro
-        'patterns/':       'https://uas-patterns.pro/patterns/',
+        # Patterns flags dashboard — on uas-patterns.com (Pro merged)
+        'patterns/':       'https://uas-patterns.com/patterns/',
         # Patterns free / public — uas-patterns.com
         'patterns-home/':  'https://uas-patterns.com/patterns-home/',
         'clock/':          'https://uas-patterns.com/clock/',
@@ -1081,7 +1043,7 @@ def inject_seo(html, src_name, dst_path):
         'fc-firmware-guide/':  'https://uas-forge.com/fc-firmware-guide/',
         'academy/':            'https://uas-forge.com/academy/',
         'support/':            'https://uas-forge.com/support/',
-        'pro/':                'https://uas-patterns.pro/pro/',
+        'pro/':                'https://uas-patterns.com/pro/',
         'start/':              'https://uas-forge.com/start/',
         'library/':            'https://uas-forge.com/library/',
         'vault/':              'https://uas-forge.com/vault/',
