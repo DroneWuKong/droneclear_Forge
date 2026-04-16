@@ -222,9 +222,7 @@ _UNIFIED_NAV = r"""<!-- ── Unified UAS- Nav (5-domain accordion drawer) ─�
 #dc-nav-brand{font:700 13px 'JetBrains Mono',monospace;color:#f59e0b;text-decoration:none;letter-spacing:-.02em;flex-shrink:0}
 #dc-nav-sep{color:#2e2e26;font-size:12px;flex-shrink:0}
 #dc-nav-page{font:600 11px 'DM Sans',system-ui;color:#b8b0a0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:200px}
-#dc-nav-right{display:flex;align-items:center;gap:6px;flex-shrink:0}
-#dc-nav-right .dc-hub-link{font:600 10px 'DM Sans',system-ui;color:#6b6358;padding:4px 10px;border:1px solid #2a2a22;border-radius:20px;text-decoration:none;white-space:nowrap;transition:all .15s}
-#dc-nav-right .dc-hub-link:hover{border-color:#dc2626;color:#dc2626}
+#dc-nav-right{display:none}
 #dc-hamburger{display:flex;align-items:center;justify-content:center;width:32px;height:32px;border-radius:6px;border:1px solid #2a2a22;background:none;color:#6b6358;cursor:pointer;transition:all .15s;flex-shrink:0}
 #dc-hamburger:hover{border-color:#3e3e34;color:#b8b0a0}
 #dc-hamburger.open{border-color:#dc2626;color:#dc2626;background:rgba(220,38,38,.08)}
@@ -253,6 +251,12 @@ _UNIFIED_NAV = r"""<!-- ── Unified UAS- Nav (5-domain accordion drawer) ─�
 .dc-dom-sublink{display:block;padding:8px 16px 8px 46px;font:400 11px 'DM Sans',system-ui;color:#6b6358;text-decoration:none;border-left:2px solid transparent;transition:all .1s}
 .dc-dom-sublink:hover{color:#b8b0a0;background:rgba(255,255,255,.02);border-left-color:#2e2e26}
 .dc-dom-sublink.dc-active{color:#22c55e;border-left-color:#22c55e;background:rgba(34,197,94,.04)}
+.dc-dom-standalone{padding:14px 16px;display:flex;align-items:center;gap:12px;text-decoration:none;border-bottom:1px solid #1a1a14;transition:all .15s}
+.dc-dom-standalone:hover{background:rgba(255,255,255,.02)}
+.dc-dom-standalone:hover .dc-dom-name{color:#dc2626}
+.dc-dom-standalone:hover .dc-dom-ico{filter:grayscale(0)}
+.dc-dom-standalone.dc-active .dc-dom-name{color:#22c55e}
+.dc-dom-standalone.dc-active{background:rgba(34,197,94,.04);border-left:2px solid #22c55e}
 #dc-drawer-foot{margin-top:auto;padding:16px;border-top:1px solid #1e1e18;font:400 10px 'JetBrains Mono',monospace;color:#2e2e26;display:flex;flex-direction:column;gap:6px}
 #dc-drawer-foot a{color:#f59e0b;text-decoration:none}
 #dc-drawer-foot a:hover{color:#dc2626}
@@ -269,9 +273,7 @@ _UNIFIED_NAV = r"""<!-- ── Unified UAS- Nav (5-domain accordion drawer) ─�
     <span id="dc-nav-sep">/</span>
     <span id="dc-nav-page">—</span>
   </div>
-  <div id="dc-nav-right">
-    <a class="dc-hub-link" href="https://uas-forge.com/hub/">⊞ Hub</a>
-  </div>
+  <div id="dc-nav-right"></div>
 </nav>
 
 <div id="dc-overlay" onclick="dcNavClose()"></div>
@@ -315,8 +317,6 @@ _UNIFIED_NAV = r"""<!-- ── Unified UAS- Nav (5-domain accordion drawer) ─�
     <div class="dc-dom-sublinks">
       <a class="dc-dom-sublink" href="https://uas-patterns.com/patterns-home/" data-page="patterns-home">P.I.E Hub</a>
       <a class="dc-dom-sublink" href="https://uas-patterns.com/brief/" data-page="brief">Daily Brief</a>
-      <a class="dc-dom-sublink" href="https://uas-patterns.com/clock/" data-page="clock">UAS Clock</a>
-      <a class="dc-dom-sublink" href="https://uas-patterns.com/ddg/" data-page="ddg">DDG Tracker</a>
       <a class="dc-dom-sublink" href="https://uas-patterns.com/analytics/" data-page="analytics">Analytics</a>
     </div>
   </details>
@@ -375,9 +375,32 @@ _UNIFIED_NAV = r"""<!-- ── Unified UAS- Nav (5-domain accordion drawer) ─�
     </div>
   </details>
 
+  <!-- Standalone quick links — not grouped under any domain -->
+  <a class="dc-dom-standalone" href="https://uas-patterns.com/clock/" data-page="clock">
+    <span class="dc-dom-ico">⏰</span>
+    <div class="dc-dom-info">
+      <div class="dc-dom-name">UAS Clock</div>
+      <div class="dc-dom-url">uas-patterns.com/clock/</div>
+    </div>
+  </a>
+  <a class="dc-dom-standalone" href="https://uas-patterns.com/ddg/" data-page="ddg">
+    <span class="dc-dom-ico">🎯</span>
+    <div class="dc-dom-info">
+      <div class="dc-dom-name">DDG Tracker</div>
+      <div class="dc-dom-url">uas-patterns.com/ddg/</div>
+    </div>
+  </a>
+  <a class="dc-dom-standalone" href="https://uas-forge.com/hub/" data-page="hub">
+    <span class="dc-dom-ico">⊞</span>
+    <div class="dc-dom-info">
+      <div class="dc-dom-name">UAS- Hub</div>
+      <div class="dc-dom-url">all 5 domains</div>
+    </div>
+  </a>
+
   <div id="dc-drawer-foot">
-    <a href="https://uas-forge.com/hub/">⊞ UAS- Hub (all domains)</a>
     <span>Midwest Nice Advisory LLC</span>
+    <span style="color:#3e3e34">uasdash.com</span>
   </div>
 </div>
 
@@ -453,8 +476,8 @@ _UNIFIED_NAV = r"""<!-- ── Unified UAS- Nav (5-domain accordion drawer) ─�
     if(g.dataset.host === currentHost) g.open = true;
   });
 
-  // Mark active sublink (match data-page)
-  document.querySelectorAll('.dc-dom-sublink').forEach(function(a){
+  // Mark active sublink AND standalone (match data-page)
+  document.querySelectorAll('.dc-dom-sublink, .dc-dom-standalone').forEach(function(a){
     if(a.dataset.page === path) a.classList.add('dc-active');
   });
 

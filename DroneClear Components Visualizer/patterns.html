@@ -1535,9 +1535,13 @@ async function loadData() {
         return flags;
       }).then(flags=>{
         if(flags) return flags;
-        // Fallback: try static slice (free tier) and full root copy
-        return fetch('/static/pie_flags.json').then(r=>r.ok?r.json():[])
-          .then(d=>d.length?d:fetch('/pie_flags.json').then(r=>r.ok?r.json():[]).catch(()=>[]))
+        // Fallback: prefer root /pie_flags.json (full 270-flag dataset, publicly
+        // served as static build artifact) over /static/pie_flags.json which is
+        // a truncated 20-item free-tier preview slice. The old order preferred
+        // the 20-item slice because .length was truthy, and never reached root.
+        return fetch('/pie_flags.json').then(r=>r.ok?r.json():null)
+          .then(d=>Array.isArray(d)&&d.length?d
+                  :fetch('/static/pie_flags.json').then(r=>r.ok?r.json():[]).catch(()=>[]))
           .catch(()=>[]);
       }),
       fetch('/.netlify/functions/forge-data?type=pie_predictions&token='+encodeURIComponent(localStorage.getItem('forge_token')||localStorage.getItem('wingman_sub_token')||'')).then(r=>r.json()).then(d=>{
