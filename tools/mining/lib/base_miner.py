@@ -149,6 +149,7 @@ class BaseMiner(ABC):
                 if content is not None:
                     self._robots.set_url(robots_url)
                     self._robots.parse(content.splitlines())
+                    self._robots._read = True  # parse() skips this flag; can_fetch() requires it
                 else:
                     self._robots.set_url(robots_url)
                     self._robots.read()
