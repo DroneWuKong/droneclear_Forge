@@ -68,6 +68,14 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:var(--s
 /* ── Spec tags on cards ── */
 .spec-tags{display:flex;flex-wrap:wrap;gap:3px;margin-top:5px}
 .spec-tag{font:500 9px var(--mono);color:var(--text-d);background:var(--surface);border:1px solid var(--border);border-radius:4px;padding:1px 5px;white-space:nowrap}
+/* ── Compatibility ── */
+.part-card.compat-yes{border-color:rgba(34,197,94,.45);box-shadow:0 0 0 1px rgba(34,197,94,.25)}
+.part-card.compat-no{opacity:.32}
+.part-card.compat-no:hover{opacity:.55}
+.compat-why{font:400 9px var(--mono);color:var(--amber);margin-top:4px;line-height:1.3}
+.compat-toggle{display:flex;align-items:center;gap:6px;flex-shrink:0;margin-left:auto;padding-left:10px;border-left:1px solid var(--border)}
+.compat-toggle label{display:flex;align-items:center;gap:5px;cursor:pointer;font:400 11px var(--sans);color:var(--text-d);white-space:nowrap}
+.compat-toggle input[type=checkbox]{accent-color:var(--green);cursor:pointer}
 #cat-title{font:700 13px var(--mono);color:var(--text);flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 #part-count{font:400 10px var(--mono);color:var(--text-d)}
 .tb-select{background:var(--card);border:1px solid var(--border);color:var(--text-s);font:400 10px var(--sans);padding:4px 8px;border-radius:6px;outline:none;cursor:pointer}
@@ -568,6 +576,148 @@ const CARD_SPECS = {
   antennas:          p => [p.frequency_ghz && `${p.frequency_ghz}GHz`, p.polarization],
 };
 
+// ── Compatibility state ──
+let showIncompat = true; // false = hide incompatible cards
+
+// ── Compatibility rules ──
+// Each rule: (candidatePart, buildIndex) → {r:'yes'|'no', why?} | null
+// null = rule cannot apply (missing data on either side)
+// First 'no' result wins; 'yes' only if at least one rule applied and none said 'no'
+const COMPAT_RULES = {
+  motors: [
+    (p, bi) => {
+      const b = bi.batteries;
+      if (!b?.cell_count || !p.cell_count_min) return null;
+      const ok = b.cell_count >= p.cell_count_min && (!p.cell_count_max || b.cell_count <= p.cell_count_max);
+      return ok ? {r:'yes'} : {r:'no', why:`Needs ≥${p.cell_count_min}S`};
+    },
+    (p, bi) => {
+      const f = bi.frames;
+      if (!f?.prop_size_max_in || !p.prop_size_min_in || !p.prop_size_max_in) return null;
+      const ok = f.prop_size_max_in >= p.prop_size_min_in && f.prop_size_max_in <= p.prop_size_max_in;
+      return ok ? {r:'yes'} : {r:'no', why:`Props ${p.prop_size_min_in}–${p.prop_size_max_in}"`};
+    },
+    (p, bi) => {
+      const f = bi.frames;
+      if (!f?.motor_mount_hole_spacing_mm || !p.motor_mount_hole_spacing_mm) return null;
+      const ok = f.motor_mount_hole_spacing_mm === p.motor_mount_hole_spacing_mm;
+      return ok ? {r:'yes'} : {r:'no', why:`Mount ${p.motor_mount_hole_spacing_mm}mm`};
+    },
+  ],
+  escs: [
+    (p, bi) => {
+      const b = bi.batteries;
+      if (!b?.cell_count || !p.cell_count_min || !p.cell_count_max) return null;
+      const ok = b.cell_count >= p.cell_count_min && b.cell_count <= p.cell_count_max;
+      return ok ? {r:'yes'} : {r:'no', why:`Needs ${p.cell_count_min}–${p.cell_count_max}S`};
+    },
+  ],
+  flight_controllers: [
+    (p, bi) => {
+      const b = bi.batteries;
+      if (!b?.cell_count || !p.cell_count_min || !p.cell_count_max) return null;
+      const ok = b.cell_count >= p.cell_count_min && b.cell_count <= p.cell_count_max;
+      return ok ? {r:'yes'} : {r:'no', why:`Needs ${p.cell_count_min}–${p.cell_count_max}S`};
+    },
+    (p, bi) => {
+      const f = bi.frames;
+      if (!f?.fc_mounting_patterns_mm || !p.mounting_pattern_mm) return null;
+      const pats = Array.isArray(f.fc_mounting_patterns_mm) ? f.fc_mounting_patterns_mm : [f.fc_mounting_patterns_mm];
+      const ok = pats.includes(p.mounting_pattern_mm);
+      return ok ? {r:'yes'} : {r:'no', why:`Frame: ${pats.map(x=>x+'mm').join('/')}`};
+    },
+  ],
+  stacks: [
+    (p, bi) => {
+      const b = bi.batteries;
+      if (!b?.cell_count || !p.cell_count_min || !p.cell_count_max) return null;
+      const ok = b.cell_count >= p.cell_count_min && b.cell_count <= p.cell_count_max;
+      return ok ? {r:'yes'} : {r:'no', why:`Needs ${p.cell_count_min}–${p.cell_count_max}S`};
+    },
+    (p, bi) => {
+      const f = bi.frames;
+      if (!f?.fc_mounting_patterns_mm || !p.mounting_pattern_mm) return null;
+      const pats = Array.isArray(f.fc_mounting_patterns_mm) ? f.fc_mounting_patterns_mm : [f.fc_mounting_patterns_mm];
+      const ok = pats.includes(p.mounting_pattern_mm);
+      return ok ? {r:'yes'} : {r:'no', why:`Frame: ${pats.map(x=>x+'mm').join('/')}`};
+    },
+  ],
+  propellers: [
+    (p, bi) => {
+      const f = bi.frames;
+      if (!f?.prop_size_max_in || !p.diameter_in) return null;
+      const ok = Math.abs(p.diameter_in - f.prop_size_max_in) <= 0.5;
+      return ok ? {r:'yes'} : {r:'no', why:`Frame: ${f.prop_size_max_in}"`};
+    },
+    (p, bi) => {
+      const m = bi.motors;
+      if (!m?.prop_size_min_in || !m?.prop_size_max_in || !p.diameter_in) return null;
+      const ok = p.diameter_in >= m.prop_size_min_in && p.diameter_in <= m.prop_size_max_in;
+      return ok ? {r:'yes'} : {r:'no', why:`Motor: ${m.prop_size_min_in}–${m.prop_size_max_in}"`};
+    },
+  ],
+  batteries: [
+    (p, bi) => {
+      const fc = bi.flight_controllers || bi.stacks;
+      if (!fc?.cell_count_min || !fc?.cell_count_max || !p.cell_count) return null;
+      const ok = p.cell_count >= fc.cell_count_min && p.cell_count <= fc.cell_count_max;
+      return ok ? {r:'yes'} : {r:'no', why:`FC: ${fc.cell_count_min}–${fc.cell_count_max}S`};
+    },
+    (p, bi) => {
+      const e = bi.escs;
+      if (!e?.cell_count_min || !e?.cell_count_max || !p.cell_count) return null;
+      const ok = p.cell_count >= e.cell_count_min && p.cell_count <= e.cell_count_max;
+      return ok ? {r:'yes'} : {r:'no', why:`ESC: ${e.cell_count_min}–${e.cell_count_max}S`};
+    },
+    (p, bi) => {
+      const m = bi.motors;
+      if (!m?.cell_count_min || !p.cell_count) return null;
+      const ok = p.cell_count >= m.cell_count_min;
+      return ok ? {r:'yes'} : {r:'no', why:`Motor: min ${m.cell_count_min}S`};
+    },
+  ],
+  fpv_cameras: [
+    (p, bi) => {
+      const v = bi.video_transmitters;
+      if (!v?.video_system || !p.video_system) return null;
+      const vs = s => s.toLowerCase().replace(/\s+/g,'');
+      const ok = vs(v.video_system) === vs(p.video_system) || vs(v.video_system).includes(vs(p.video_system)) || vs(p.video_system).includes(vs(v.video_system));
+      return ok ? {r:'yes'} : {r:'no', why:`VTX: ${v.video_system}`};
+    },
+  ],
+  video_transmitters: [
+    (p, bi) => {
+      const c = bi.fpv_cameras;
+      if (!c?.video_system || !p.video_system) return null;
+      const vs = s => s.toLowerCase().replace(/\s+/g,'');
+      const ok = vs(p.video_system) === vs(c.video_system) || vs(p.video_system).includes(vs(c.video_system)) || vs(c.video_system).includes(vs(p.video_system));
+      return ok ? {r:'yes'} : {r:'no', why:`Camera: ${c.video_system}`};
+    },
+  ],
+};
+
+function getBuildIndex() {
+  const idx = {};
+  build.forEach(b => {
+    const p = allParts.find(x => x.pid === b.pid);
+    if (p) idx[b.cat] = p;
+  });
+  return idx;
+}
+
+function getCompat(part, buildIdx) {
+  const rules = COMPAT_RULES[currentCat];
+  if (!rules) return {r: null};
+  let anyApplied = false;
+  for (const rule of rules) {
+    const res = rule(part, buildIdx);
+    if (res === null) continue;
+    anyApplied = true;
+    if (res.r === 'no') return res;
+  }
+  return anyApplied ? {r:'yes'} : {r: null};
+}
+
 // ── Filter helpers ──
 function derivedVal(cfg, part) {
   if (cfg.type === 'derived') return cfg.derive(part);
@@ -610,8 +760,20 @@ function renderFilterBar() {
     </div>`;
   }).join('');
 
+  const hasCompatForCat = !!(COMPAT_RULES[currentCat] && build.length > 0);
+  const compatToggle = hasCompatForCat
+    ? `<div class="compat-toggle">
+        <span class="filter-label">Compat</span>
+        <label><input type="checkbox" id="compat-hide-cb"${!showIncompat?' checked':''}>Hide incompatible</label>
+       </div>`
+    : '';
+
+  const hasContent = cfgs.length > 0 || hasCompatForCat;
+  if (!hasContent) { bar.style.display = 'none'; return; }
+
   bar.innerHTML = groups +
-    `<button id="filter-clear" class="${anyActive?'visible':''}">✕ Clear</button>`;
+    `<button id="filter-clear" class="${anyActive?'visible':''}">✕ Clear</button>` +
+    compatToggle;
   bar.style.display = 'flex';
 
   bar.querySelectorAll('.filter-sel').forEach(sel => {
@@ -626,6 +788,11 @@ function renderFilterBar() {
   if (clr) clr.addEventListener('click', () => {
     activeFilters = {};
     renderFilterBar();
+    renderGrid();
+  });
+  const hideCb = $('compat-hide-cb');
+  if (hideCb) hideCb.addEventListener('change', () => {
+    showIncompat = !hideCb.checked;
     renderGrid();
   });
 }
@@ -772,13 +939,39 @@ function renderGrid() {
     parts = applySpecFilters(DB.components[currentCat] || []);
   }
 
-  if (sort === 'name-asc') parts = [...parts].sort((a,b) => (a.name||'').localeCompare(b.name||''));
+  // Compute compat for current parts
+  const buildIdx = getBuildIndex();
+  const compatActive = !search && !!(COMPAT_RULES[currentCat] && build.length > 0);
+  const compatMap = new Map();
+  if (compatActive) {
+    parts.forEach(p => compatMap.set(p.pid, getCompat(p, buildIdx)));
+  }
+
+  // Optionally hide incompatible
+  if (compatActive && !showIncompat) {
+    parts = parts.filter(p => compatMap.get(p.pid)?.r !== 'no');
+  }
+
+  // Sort compatible to top when compat is active and no explicit sort chosen
+  if (compatActive && !sort) {
+    parts = [...parts].sort((a, b) => {
+      const ra = compatMap.get(a.pid)?.r, rb = compatMap.get(b.pid)?.r;
+      if (ra === 'yes' && rb !== 'yes') return -1;
+      if (rb === 'yes' && ra !== 'yes') return 1;
+      return 0;
+    });
+  } else if (sort === 'name-asc') parts = [...parts].sort((a,b) => (a.name||'').localeCompare(b.name||''));
   else if (sort === 'name-desc') parts = [...parts].sort((a,b) => (b.name||'').localeCompare(a.name||''));
   else if (sort === 'mfr') parts = [...parts].sort((a,b) => (a.manufacturer||'').localeCompare(b.manufacturer||''));
 
   currentParts = parts;
   const total = (DB.components[currentCat]||[]).length;
-  $('part-count').textContent = parts.length === total ? `${total} parts` : `${parts.length} / ${total}`;
+  if (compatActive) {
+    const nYes = [...compatMap.values()].filter(c=>c.r==='yes').length;
+    $('part-count').textContent = `${nYes} compatible · ${total} total`;
+  } else {
+    $('part-count').textContent = parts.length === total ? `${total} parts` : `${parts.length} / ${total}`;
+  }
 
   const grid = $('grid');
   const empty = $('empty');
@@ -800,11 +993,16 @@ function renderGrid() {
         `<div class="img-placeholder" style="display:none"><i class="ph ph-image"></i></div>`
       : `<div class="img-placeholder"><i class="ph ph-image"></i></div>`;
     const tags = specFn ? specFn(p).filter(Boolean).map(s=>`<span class="spec-tag">${esc(String(s))}</span>`).join('') : '';
-    return `<div class="part-card${inBuild.has(p.pid)?' in-build':''}" data-pid="${esc(p.pid)}">
+    const compat = compatMap.get(p.pid);
+    const compatClass = compat?.r ? ` compat-${compat.r}` : '';
+    const compatWhy = compat?.r === 'no' && compat.why
+      ? `<div class="compat-why">⚠ ${esc(compat.why)}</div>` : '';
+    return `<div class="part-card${inBuild.has(p.pid)?' in-build':''}${compatClass}" data-pid="${esc(p.pid)}">
       ${imgHtml}
       <div class="name">${esc(p.name)}</div>
       <div class="mfr">${esc(p.manufacturer||'')}</div>
       ${tags ? `<div class="spec-tags">${tags}</div>` : ''}
+      ${compatWhy}
       <div class="pid">${esc(p.pid)}</div>
       <button class="add-btn" data-pid="${esc(p.pid)}" title="Add to build"><i class="ph ph-plus"></i></button>
     </div>`;
@@ -879,8 +1077,8 @@ function addToBuild(pid) {
   build.push({pid: p.pid, name: p.name, cat: p._cat || p.category});
   saveBuild();
   updateBuildUI();
+  renderFilterBar();
   renderGrid();
-  // Update modal if open
   if (modalPart && modalPart.pid === pid) {
     $('modal-add-btn').innerHTML = '<i class="ph ph-check"></i> In Build';
     $('modal-add-btn').style.opacity = '.6';
@@ -891,6 +1089,7 @@ function removeFromBuild(pid) {
   build = build.filter(b => b.pid !== pid);
   saveBuild();
   updateBuildUI();
+  renderFilterBar();
   renderGrid();
 }
 
@@ -898,6 +1097,7 @@ function clearBuild() {
   build = [];
   saveBuild();
   updateBuildUI();
+  renderFilterBar();
   renderGrid();
 }
 
