@@ -77,6 +77,12 @@ def run_normalizers():
     except Exception as e:
         print(f"[normalizer:blue_uas_to_cleared] FAILED: {type(e).__name__}: {e}")
 
+    try:
+        from mining.normalizers import parts_canonical
+        parts_canonical.main()
+    except Exception as e:
+        print(f"[normalizer:parts_canonical] FAILED: {type(e).__name__}: {e}")
+
 
 def main():
     ap = argparse.ArgumentParser()
