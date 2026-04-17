@@ -39,10 +39,16 @@ def load_source(path: Path) -> dict[str, list[dict]]:
     if isinstance(data, list):
         return {path.stem: data}
     if isinstance(data, dict):
-        return {
-            k: v for k, v in data.items()
-            if isinstance(v, list) and v and isinstance(v[0], dict)
-        }
+        categories = {}
+        for k, v in data.items():
+            if isinstance(v, list) and v and isinstance(v[0], dict):
+                categories[k] = v
+            elif isinstance(v, dict):
+                # Flatten nested dicts like {"components": {"motors": [...], ...}}
+                for subk, subv in v.items():
+                    if isinstance(subv, list) and subv and isinstance(subv[0], dict):
+                        categories[subk] = subv
+        return categories
     raise SystemExit(f"Unsupported JSON shape in {path}")
 
 

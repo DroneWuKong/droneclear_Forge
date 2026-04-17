@@ -15,6 +15,7 @@ import re
 import shutil
 import json
 import subprocess
+import sys
 
 SRC_DIR = 'DroneClear Components Visualizer'
 BUILD_DIR = 'build'
@@ -1389,6 +1390,22 @@ def sync_handbook_data():
 def build():
     # Step 0: Sync data from handbook repo
     sync_handbook_data()
+
+    # Step 0.5: SQLite integrity checks (warn-only, never blocks build)
+    _db_path = os.path.join(SRC_DIR, 'forge_database.json')
+    if os.path.exists(_db_path):
+        try:
+            _vr = subprocess.run(
+                [sys.executable, os.path.join('tools', 'validate_db.py'), _db_path],
+                capture_output=True, text=True, timeout=30,
+            )
+            for _line in (_vr.stdout or '').strip().split('\n'):
+                if _line:
+                    print(f"  {_line}")
+            if _vr.returncode != 0 and _vr.stderr:
+                print(f"  NOTE: validator exited {_vr.returncode}: {_vr.stderr.strip()[:200]}")
+        except Exception as _e:
+            print(f"  NOTE: SQLite validator skipped ({_e})")
 
     # Clean build directory
     if os.path.exists(BUILD_DIR):
