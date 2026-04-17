@@ -212,7 +212,10 @@ class BaseMiner(ABC):
         self.log.info(f"run start → {out_path}")
         with out_path.open("w", encoding="utf-8") as f:
             for url in self.targets():
-                if max_records is not None and len(records) >= max_records:
+                # max_records counts terminal records only — types ending in
+                # '_index' are ephemeral URL-discovery records and don't count.
+                terminal_count = sum(1 for r in records if not r.record_type.endswith("_index"))
+                if max_records is not None and terminal_count >= max_records:
                     self.log.info(f"reached max_records={max_records}; stopping")
                     break
                 body = self.fetch(url)
@@ -223,6 +226,7 @@ class BaseMiner(ABC):
                         continue
                     rec.fetched_at = datetime.now().isoformat()
                     records.append(rec)
-                    f.write(json.dumps(asdict(rec)) + "\n")
+                    if not rec.record_type.endswith("_index"):
+                        f.write(json.dumps(asdict(rec)) + "\n")
         self.log.info(f"run complete: {len(records)} records emitted")
         return records
