@@ -20,8 +20,9 @@ from pathlib import Path
 
 DEFAULT_DB_PATH = Path("DroneClear Components Visualizer/forge_database.json")
 
-# Heuristic: uppercase prefix + dash + digits
-PID_REF_RE = re.compile(r"^[A-Z]{2,6}-\d{3,6}$")
+# Heuristic: 2-6 uppercase letters + dash + 4-digit number (matches PID format,
+# excludes protocol names like AES-256, RS-232, RS-422, STANAG-4738)
+PID_REF_RE = re.compile(r"^[A-Z]{2,6}-\d{4,6}$")
 
 CORE_FIELDS = ("pid", "name", "manufacturer")
 
@@ -76,10 +77,10 @@ def load_into_sqlite(categories: dict[str, list[dict]]) -> sqlite3.Connection:
                 continue
             rows.append((
                 cat,
-                p.get("pid"),
-                p.get("name"),
-                p.get("manufacturer"),
-                p.get("manufacturer_country"),
+                _to_str(p.get("pid")),
+                _to_str(p.get("name")),
+                _to_str(p.get("manufacturer")),
+                _to_str(p.get("manufacturer_country")),
                 _to_float(p.get("price_usd")),
                 _to_float(p.get("weight_g")),
                 len(p.get("tags") or []),
@@ -90,6 +91,14 @@ def load_into_sqlite(categories: dict[str, list[dict]]) -> sqlite3.Connection:
     conn.execute("CREATE INDEX idx_cat ON parts(category)")
     conn.commit()
     return conn
+
+
+def _to_str(v):
+    if v is None or isinstance(v, str):
+        return v
+    if isinstance(v, (dict, list)):
+        return json.dumps(v, ensure_ascii=False)
+    return str(v)
 
 
 def _to_float(v):
