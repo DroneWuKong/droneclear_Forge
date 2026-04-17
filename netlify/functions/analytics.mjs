@@ -265,7 +265,10 @@ export default async (req, context) => {
 
   // ─── GET: Admin dashboard data / key verification ───
   if (req.method === 'GET') {
-    const adminKey = process.env.ANALYTICS_ADMIN_KEY || 'AsdfAsdf';
+    const adminKey = process.env.ANALYTICS_ADMIN_KEY;
+    if (!adminKey) {
+      return new Response(JSON.stringify({ error: 'Admin key not configured' }), { status: 500, headers: C });
+    }
     const reqKey = req.headers.get('x-admin-key') || '';
     if (reqKey !== adminKey) {
       return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401, headers: C });

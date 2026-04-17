@@ -35,6 +35,12 @@ except ImportError:
     raise RuntimeError("pip install -r tools/mining/requirements.txt")
 
 try:
+    from curl_cffi import requests as _cffi_requests
+    _CURL_AVAILABLE = True
+except ImportError:
+    _CURL_AVAILABLE = False
+
+try:
     from urllib import robotparser
 except ImportError:
     robotparser = None
@@ -111,6 +117,36 @@ class BaseMiner(ABC):
 
     # -------- framework plumbing --------
 
+    def _fetch_robots_txt(self, robots_url: str) -> str | None:
+        """
+        Fetch robots.txt via curl_cffi (browser TLS) when available, falling
+        back to urllib. Plain urllib gets 403 from Cloudflare-protected sites,
+        which robotparser misreads as 'disallow all'.
+        """
+        if _CURL_AVAILABLE:
+            for attempt in range(3):
+                try:
+                    r = _cffi_requests.get(
+                        robots_url, timeout=10, impersonate="chrome120",
+                        headers={"User-Agent": self.config.user_agent},
+                    )
+                    if r.status_code == 200:
+                        return r.text
+                    if r.status_code == 404:
+                        return ""  # no robots.txt → allow all
+                    if r.status_code >= 500:
+                        import time; time.sleep(2 * (attempt + 1))
+                        continue
+                    break
+                except Exception:
+                    import time; time.sleep(2 * (attempt + 1))
+            # curl_cffi available but couldn't get a definitive answer.
+            # Falling through to urllib will also fail (same Cloudflare wall),
+            # so default to allow-all rather than disallow-all.
+            self.log.warning(f"robots.txt fetch via curl_cffi failed for {robots_url}; assuming allow")
+            return ""
+        return None  # fall through to standard robotparser.read()
+
     def _check_robots(self, url: str) -> bool:
         if not self.config.respect_robots:
             return True
@@ -119,8 +155,14 @@ class BaseMiner(ABC):
             parsed = urlparse(self.config.base_url)
             robots_url = f"{parsed.scheme}://{parsed.netloc}/robots.txt"
             try:
-                self._robots.set_url(robots_url)
-                self._robots.read()
+                content = self._fetch_robots_txt(robots_url)
+                if content is not None:
+                    self._robots.set_url(robots_url)
+                    self._robots.parse(content.splitlines())
+                    self._robots._read = True  # parse() skips this flag; can_fetch() requires it
+                else:
+                    self._robots.set_url(robots_url)
+                    self._robots.read()
                 self.log.info(f"robots.txt loaded from {robots_url}")
             except Exception as e:
                 self.log.warning(f"robots.txt fetch failed ({e}); assuming allow")
@@ -153,11 +195,29 @@ class BaseMiner(ABC):
         if cache.exists() and not force:
             return cache.read_text(encoding="utf-8", errors="replace")
 
-        headers = {"User-Agent": self.config.user_agent, "Accept": "text/html,application/json,*/*"}
+        headers = {
+            "User-Agent": self.config.user_agent,
+            "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+            "Accept-Language": "en-US,en;q=0.9",
+            "Accept-Encoding": "gzip, deflate, br",
+            "Sec-Fetch-Dest": "document",
+            "Sec-Fetch-Mode": "navigate",
+            "Sec-Fetch-Site": "none",
+        }
         for attempt in range(self.config.max_retries):
             try:
                 self._rate_limit()
-                r = requests.get(url, headers=headers, timeout=self.config.timeout_sec)
+                # curl_cffi impersonates Chrome's TLS fingerprint (JA3/JA4), which is
+                # what Cloudflare uses to detect Python requests. Falls back to plain
+                # requests if curl_cffi is not installed.
+                if _CURL_AVAILABLE:
+                    r = _cffi_requests.get(
+                        url, headers=headers,
+                        timeout=self.config.timeout_sec,
+                        impersonate="chrome120",
+                    )
+                else:
+                    r = requests.get(url, headers=headers, timeout=self.config.timeout_sec)
                 if r.status_code == 200:
                     cache.write_text(r.text, encoding="utf-8")
                     return r.text
@@ -188,7 +248,10 @@ class BaseMiner(ABC):
         self.log.info(f"run start → {out_path}")
         with out_path.open("w", encoding="utf-8") as f:
             for url in self.targets():
-                if max_records is not None and len(records) >= max_records:
+                # max_records counts terminal records only — types ending in
+                # '_index' are ephemeral URL-discovery records and don't count.
+                terminal_count = sum(1 for r in records if not r.record_type.endswith("_index"))
+                if max_records is not None and terminal_count >= max_records:
                     self.log.info(f"reached max_records={max_records}; stopping")
                     break
                 body = self.fetch(url)
@@ -199,6 +262,7 @@ class BaseMiner(ABC):
                         continue
                     rec.fetched_at = datetime.now().isoformat()
                     records.append(rec)
-                    f.write(json.dumps(asdict(rec)) + "\n")
+                    if not rec.record_type.endswith("_index"):
+                        f.write(json.dumps(asdict(rec)) + "\n")
         self.log.info(f"run complete: {len(records)} records emitted")
         return records

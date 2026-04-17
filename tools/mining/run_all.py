@@ -35,6 +35,7 @@ from mining.miners.ardupilot_discourse import ArduPilotDiscourseMiner
 from mining.miners.blue_uas import BlueUASMiner
 from mining.miners.sam_gov import SamGovMiner
 from mining.miners.mine_pilotinstitute import PilotInstituteMiner
+from mining.miners.diyfpv_catalog import DiyfpvCatalogMiner
 
 
 MINERS = {
@@ -43,6 +44,7 @@ MINERS = {
     "blue_uas": BlueUASMiner,
     "sam_gov": SamGovMiner,
     "pilotinstitute": PilotInstituteMiner,
+    "diyfpv_catalog": DiyfpvCatalogMiner,
 }
 
 
@@ -74,6 +76,18 @@ def run_normalizers():
         blue_uas_to_cleared.main()
     except Exception as e:
         print(f"[normalizer:blue_uas_to_cleared] FAILED: {type(e).__name__}: {e}")
+
+    try:
+        from mining.normalizers import parts_canonical
+        parts_canonical.main()
+    except Exception as e:
+        print(f"[normalizer:parts_canonical] FAILED: {type(e).__name__}: {e}")
+
+    try:
+        from mining.normalizers import platform_cooccurrence
+        platform_cooccurrence.main()
+    except Exception as e:
+        print(f"[normalizer:platform_cooccurrence] FAILED: {type(e).__name__}: {e}")
 
 
 def main():

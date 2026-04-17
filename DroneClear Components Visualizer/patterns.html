@@ -1261,6 +1261,9 @@ document.addEventListener('DOMContentLoaded', function() {
 
 let ENTITY_GRAPH = {};
 let PROCUREMENT_DATA = null;
+let HOBBY_COOCCUR = null;   // forge_co_occurrence.json
+let PARTS_CANONICAL = null; // forge_parts_canonical.json
+let PLATFORM_COOCCUR = null; // forge_platform_cooccurrence.json
 
 const FLAG_META = {
   procurement_spike: {label:"Procurement Spike",badge:"badge-red",sev:"critical",icon:"▲"},
@@ -1487,6 +1490,17 @@ async function loadData() {
   fetch('/.netlify/functions/forge-data?type=solicitations&token='+encodeURIComponent(localStorage.getItem('forge_token')||localStorage.getItem('wingman_sub_token')||'')).then(r=>r.json()).then(d=>{
     const _d = d.summary_only ? null : (d.data||d);
     if(_d) { PROCUREMENT_DATA = _d; renderProcurement(); }
+  }).catch(()=>{});
+
+  // Co-occurrence + canonical parts data (best-effort, fire-and-forget)
+  fetch("forge_co_occurrence.json").then(r=>r.ok?r.json():null).then(d=>{
+    if(d) HOBBY_COOCCUR = d;
+  }).catch(()=>{});
+  fetch("forge_parts_canonical.json").then(r=>r.ok?r.json():null).then(d=>{
+    if(d) PARTS_CANONICAL = d;
+  }).catch(()=>{});
+  fetch("forge_platform_cooccurrence.json").then(r=>r.ok?r.json():null).then(d=>{
+    if(d) PLATFORM_COOCCUR = d;
   }).catch(()=>{});
 
   try {
@@ -2729,6 +2743,90 @@ function renderComponents() {
   w.innerHTML = html;
 }
 
+// ── Co-occurrence / price lookup helpers ──
+function _fuzzyMatchKey(name, keys) {
+  // exact then lowercase-contains
+  const nl = name.toLowerCase();
+  for (const k of keys) { if (k === name) return k; }
+  for (const k of keys) { if (k.toLowerCase() === nl) return k; }
+  // contains (either direction)
+  for (const k of keys) {
+    const kl = k.toLowerCase();
+    if (kl.includes(nl) || nl.includes(kl)) return k;
+  }
+  // token overlap: match if >=60% of name tokens appear in key
+  const ntokens = nl.split(/[\s\-\/()]+/).filter(t=>t.length>2);
+  if (ntokens.length >= 2) {
+    let best = null, bestScore = 0;
+    for (const k of keys) {
+      const kl = k.toLowerCase();
+      const hits = ntokens.filter(t=>kl.includes(t)).length;
+      const score = hits / ntokens.length;
+      if (score > bestScore) { bestScore = score; best = k; }
+    }
+    if (bestScore >= 0.6) return best;
+  }
+  return null;
+}
+
+function _getCompCooccurrence(c) {
+  const result = { hobbyPairs: [], platformCount: 0, platformNames: [], marketPrice: null, inStockCount: 0, totalStores: 0 };
+
+  // Hobby co-occurrence (forge_co_occurrence.json)
+  if (HOBBY_COOCCUR && HOBBY_COOCCUR.cooccurrence) {
+    const matchKey = _fuzzyMatchKey(c.name, Object.keys(HOBBY_COOCCUR.cooccurrence));
+    if (matchKey) {
+      const related = HOBBY_COOCCUR.cooccurrence[matchKey];
+      result.hobbyPairs = Object.entries(related)
+        .sort((a,b) => b[1] - a[1])
+        .slice(0, 3)
+        .map(([name, count]) => ({ name, count }));
+    }
+  }
+
+  // Platform co-occurrence (forge_platform_cooccurrence.json)
+  if (PLATFORM_COOCCUR) {
+    // Try components dict first (keyed by PID)
+    if (PLATFORM_COOCCUR.components) {
+      const comps = PLATFORM_COOCCUR.components;
+      for (const pid of Object.keys(comps)) {
+        const pc = comps[pid];
+        if (pc.name && (pc.name.toLowerCase().includes(c.name.toLowerCase()) || c.name.toLowerCase().includes(pc.name.toLowerCase()))) {
+          result.platformCount = pc.platform_count || 0;
+          result.platformNames = pc.platforms || [];
+          break;
+        }
+      }
+    }
+    // Fallback: check cooccurrence keys
+    if (!result.platformCount && PLATFORM_COOCCUR.cooccurrence) {
+      const matchKey = _fuzzyMatchKey(c.name, Object.keys(PLATFORM_COOCCUR.cooccurrence));
+      if (matchKey) {
+        // Count unique platforms from pairs
+        const related = PLATFORM_COOCCUR.cooccurrence[matchKey];
+        result.platformCount = Object.keys(related).length;
+      }
+    }
+  }
+
+  // Canonical parts / market price (forge_parts_canonical.json)
+  if (PARTS_CANONICAL && PARTS_CANONICAL.parts) {
+    const nl = c.name.toLowerCase();
+    for (const p of PARTS_CANONICAL.parts) {
+      const cn = (p.canonical_name || "").toLowerCase();
+      const aliases = (p.aliases || []).map(a => a.toLowerCase());
+      if (cn.includes(nl) || nl.includes(cn) || aliases.some(a => a.includes(nl) || nl.includes(a))) {
+        result.marketPrice = p.min_price_usd;
+        result.inStockCount = p.in_stock_store_count || 0;
+        result.totalStores = p.total_store_count || 0;
+        break;
+      }
+    }
+  }
+
+  return result;
+}
+
 function renderCompRow(c, riskColors, riskLabels, statusColor) {
   const delta = c.price && c.avg ? Math.round(((c.price-c.avg)/(c.avg||1))*100) : 0;
   const rc = riskColors[c.risk]||"var(--text-d)";
@@ -2763,7 +2861,39 @@ function renderCompRow(c, riskColors, riskLabels, statusColor) {
           <div style="font:700 12px var(--mono);color:var(--text-s)">$${c.avg.toLocaleString()}</div>
         </div>`:""}
       </div>`:""}
-      ${c.users&&c.users.length?`<div style="display:flex;gap:3px;flex-wrap:wrap">${c.users.map(u=>`<span style="font-size:10px;color:var(--blue,#3b82f6);background:rgba(59,130,246,.1);padding:1px 5px;border-radius:3px">${u}</span>`).join("")}</div>`:""}
+      ${c.users&&c.users.length?`<div style="display:flex;gap:3px;flex-wrap:wrap;margin-bottom:6px">${c.users.map(u=>`<span style="font-size:10px;color:var(--blue,#3b82f6);background:rgba(59,130,246,.1);padding:1px 5px;border-radius:3px">${u}</span>`).join("")}</div>`:""}
+      ${(function(){
+        const coData = _getCompCooccurrence(c);
+        const hasAny = coData.hobbyPairs.length || coData.platformCount || coData.marketPrice;
+        if (!hasAny) return "";
+        let h = '<div style="border-top:1px solid var(--border);padding-top:6px;margin-top:2px">';
+        h += '<div style="font:600 9px var(--mono);color:var(--text-d);margin-bottom:4px;letter-spacing:.04em">CO-OCCURRENCE</div>';
+        if (coData.hobbyPairs.length) {
+          h += '<div style="font:400 11px var(--font);color:var(--text-s);margin-bottom:4px">';
+          h += '<span style="color:var(--text-d)">Commonly paired with:</span> ';
+          h += coData.hobbyPairs.map(p =>
+            '<span style="background:var(--purple-d);color:var(--purple);padding:1px 5px;border-radius:3px;font-size:10px">' +
+            p.name + ' <span style="opacity:.6">(' + p.count + ')</span></span>'
+          ).join(" ");
+          h += '</div>';
+        }
+        if (coData.platformCount) {
+          h += '<div style="font:400 11px var(--font);color:var(--text-s);margin-bottom:4px">';
+          h += '<span style="color:var(--text-d)">Platform usage:</span> appears in <span style="color:var(--cyan);font-weight:600">' + coData.platformCount + '</span> platform' + (coData.platformCount!==1?"s":"");
+          if (coData.platformNames.length) {
+            h += ' <span style="color:var(--text-xd);font-size:10px">(' + coData.platformNames.slice(0,3).join(", ") + (coData.platformNames.length>3 ? ", ..." : "") + ')</span>';
+          }
+          h += '</div>';
+        }
+        if (coData.marketPrice != null) {
+          h += '<div style="font:400 11px var(--font);color:var(--text-s)">';
+          h += '<span style="color:var(--text-d)">Market price:</span> <span style="color:var(--green);font:600 11px var(--mono)">$' + coData.marketPrice.toFixed(2) + '</span>';
+          h += ' <span style="color:var(--text-xd);font-size:10px">(' + coData.inStockCount + ' of ' + coData.totalStores + ' store' + (coData.totalStores!==1?"s":"") + ' in stock)</span>';
+          h += '</div>';
+        }
+        h += '</div>';
+        return h;
+      })()}
     </div>
   </div>`;
 }

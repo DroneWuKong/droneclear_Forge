@@ -95,6 +95,16 @@ SPAM_MARKERS = {
     "please delete", "deleted", "removed by",
 }
 
+# Part names that indicate a shopping cart, rate-limit page, or toy drone
+# rather than a real FPV build.
+SPAM_PART_NAMES = {
+    "whoa there",   # RotorBuilds rate-limit / error page
+    "my cart",      # shopping cart UI parsed as a part
+}
+
+# If this fraction of parts have toy-drone vendor signals, reject the build.
+_TOY_DRONE_SIGNALS = {"onderdelen", "afstandsbediening"}  # Dutch toy drone listings
+
 
 class RotorBuildsMiner(BaseMiner):
     """
@@ -269,6 +279,19 @@ class RotorBuildsMiner(BaseMiner):
 
         if record.data.get("part_count", 0) < 3:
             self.log.debug(f"too few parts ({record.data.get('part_count')}): {record.url}")
+            return False
+
+        parts = record.data.get("parts") or []
+        part_names = [p.get("name", "").lower() for p in parts]
+
+        # Reject if any part name matches a known spam/error-page token
+        if any(spam in name for name in part_names for spam in SPAM_PART_NAMES):
+            self.log.debug(f"spam part name: {record.url}")
+            return False
+
+        # Reject toy-drone wishlists (e.g. Dutch parts listings for toy quads)
+        if any(sig in name for name in part_names for sig in _TOY_DRONE_SIGNALS):
+            self.log.debug(f"toy-drone signal in parts: {record.url}")
             return False
 
         return True
