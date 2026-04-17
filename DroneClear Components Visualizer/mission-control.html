@@ -319,7 +319,14 @@
   fetch('/static/forge_database.json').then(r=>r.json()).then(db=>{
     const c=db.components||{};let t=0;
     Object.values(c).forEach(v=>{if(Array.isArray(v))t+=v.length});
-    if(t)document.getElementById('s-parts').textContent=t.toLocaleString();
+    const n = t ? t.toLocaleString() : null;
+    if(n){
+      const sp=document.getElementById('s-parts'); if(sp) sp.textContent=n;
+      // Keep tagline + card descriptions in lockstep with the shipped DB count
+      document.querySelectorAll('[data-parts-count]').forEach(el=>{el.textContent=n;});
+      const si=document.getElementById('global-search-input');
+      if(si) si.placeholder='Search '+n+'+ parts across all categories...';
+    }
     const cats=Object.keys(c).length;if(cats)document.getElementById('s-cats').textContent=cats;
     const plat=(db.drone_models||[]).length;if(plat)document.getElementById('s-plat').textContent=plat;
     const guide=(db.build_guides||[]).length;if(guide)document.getElementById('s-guide').textContent=guide;
@@ -327,21 +334,5 @@
 })();
 </script>
 <!-- Analytics injected by build_static.py (unified _ANALYTICS_SNIPPET + _UNIFIED_NAV) -->
-<script>
-(function(){
-  fetch('/static/miner_health.json').then(function(r){return r.ok?r.json():null})
-  .then(function(h){
-    var n = h && h.parts && h.parts.total ? h.parts.total.toLocaleString() : null;
-    if(!n) return;
-    // Update all data-parts-count spans
-    document.querySelectorAll('[data-parts-count]').forEach(function(el){
-      el.textContent = n;
-    });
-    // Update search placeholder
-    var si = document.getElementById('global-search-input');
-    if(si) si.placeholder = 'Search ' + n + '+ parts across all categories...';
-  }).catch(function(){});
-})();
-</script>
 </body>
 </html>
