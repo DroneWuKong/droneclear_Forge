@@ -53,6 +53,38 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:var(--s
 #search{width:100%;padding:5px 10px 5px 28px;background:var(--card);border:1px solid var(--border);border-radius:var(--r);color:var(--text);font:400 11px var(--sans);outline:none;transition:.15s}
 #search:focus{border-color:var(--border-hi)}
 #search::placeholder{color:var(--text-d)}
+/* ── ArduPilot profile picker ── */
+#param-picker{display:none;position:absolute;bottom:calc(100% + 6px);right:0;background:var(--card);border:1px solid var(--border-hi);border-radius:10px;padding:8px;width:260px;box-shadow:0 8px 32px rgba(0,0,0,.5);z-index:400}
+#param-picker.open{display:block}
+.pp-title{font:600 9px var(--mono);color:var(--text-x);text-transform:uppercase;letter-spacing:.1em;padding:4px 8px 8px;border-bottom:1px solid var(--border);margin-bottom:6px}
+.pp-btn{display:flex;align-items:flex-start;gap:10px;width:100%;padding:8px 10px;border-radius:7px;border:none;background:none;cursor:pointer;text-align:left;transition:.1s}
+.pp-btn:hover{background:var(--card-hi)}
+.pp-icon{font-size:16px;flex-shrink:0;margin-top:1px}
+.pp-name{font:600 12px var(--sans);color:var(--text);display:block;margin-bottom:2px}
+.pp-desc{font:400 10px var(--sans);color:var(--text-d);display:block;line-height:1.3}
+/* ── Filter bar ── */
+#filter-bar{display:none;align-items:center;gap:8px;padding:6px 12px;background:var(--bg);border-bottom:1px solid var(--border);flex-shrink:0;overflow-x:auto;white-space:nowrap}
+#filter-bar::-webkit-scrollbar{height:3px}
+#filter-bar::-webkit-scrollbar-thumb{background:var(--border);border-radius:2px}
+.filter-group{display:inline-flex;flex-direction:column;gap:2px;flex-shrink:0}
+.filter-label{font:600 9px var(--mono);color:var(--text-x);text-transform:uppercase;letter-spacing:.07em}
+.filter-sel{background:var(--card);border:1px solid var(--border);color:var(--text-s);font:400 11px var(--sans);padding:4px 24px 4px 8px;border-radius:6px;outline:none;cursor:pointer;appearance:none;-webkit-appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%238a8070'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 7px center;transition:.1s;max-width:130px}
+.filter-sel:hover{border-color:var(--border-hi)}
+.filter-sel.active{border-color:var(--amber);color:var(--amber)}
+#filter-clear{background:none;border:none;font:500 10px var(--sans);color:var(--text-x);cursor:pointer;padding:4px 8px;border-radius:5px;margin-left:4px;display:none;flex-shrink:0}
+#filter-clear.visible{display:block;color:var(--red)}
+#filter-clear:hover{color:var(--red)}
+/* ── Spec tags on cards ── */
+.spec-tags{display:flex;flex-wrap:wrap;gap:3px;margin-top:5px}
+.spec-tag{font:500 9px var(--mono);color:var(--text-d);background:var(--surface);border:1px solid var(--border);border-radius:4px;padding:1px 5px;white-space:nowrap}
+/* ── Compatibility ── */
+.part-card.compat-yes{border-color:rgba(34,197,94,.45);box-shadow:0 0 0 1px rgba(34,197,94,.25)}
+.part-card.compat-no{opacity:.32}
+.part-card.compat-no:hover{opacity:.55}
+.compat-why{font:400 9px var(--mono);color:var(--amber);margin-top:4px;line-height:1.3}
+.compat-toggle{display:flex;align-items:center;gap:6px;flex-shrink:0;margin-left:auto;padding-left:10px;border-left:1px solid var(--border)}
+.compat-toggle label{display:flex;align-items:center;gap:5px;cursor:pointer;font:400 11px var(--sans);color:var(--text-d);white-space:nowrap}
+.compat-toggle input[type=checkbox]{accent-color:var(--green);cursor:pointer}
 #cat-title{font:700 13px var(--mono);color:var(--text);flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 #part-count{font:400 10px var(--mono);color:var(--text-d)}
 .tb-select{background:var(--card);border:1px solid var(--border);color:var(--text-s);font:400 10px var(--sans);padding:4px 8px;border-radius:6px;outline:none;cursor:pointer}
@@ -334,6 +366,7 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:var(--s
           <option value="mfr">Manufacturer</option>
         </select>
       </div>
+      <div id="filter-bar"></div>
 
       <div id="grid-wrap">
         <div id="loader">
@@ -371,7 +404,32 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:var(--s
     <div class="btn-row">
       <button class="btn btn-outline" id="btn-share"><i class="ph ph-share-network"></i> Share</button>
       <button class="btn btn-outline" id="btn-export"><i class="ph ph-export"></i> Export</button>
-      <button class="btn btn-outline" id="btn-ardupilot" style="color:#22c55e;border-color:rgba(34,197,94,.3)"><i class="ph ph-download"></i> ArduPilot .param</button>
+      <div id="param-wrap" style="position:relative">
+        <button class="btn btn-outline" id="btn-ardupilot" style="color:#22c55e;border-color:rgba(34,197,94,.3)"><i class="ph ph-sliders"></i> ArduPilot .param</button>
+        <div id="param-picker">
+          <div class="pp-title">Select build profile</div>
+          <button class="pp-btn" data-profile="racing">
+            <span class="pp-icon">⚡</span>
+            <span class="pp-name">Racing</span>
+            <span class="pp-desc">Aggressive PIDs · tight filters · snappy response</span>
+          </button>
+          <button class="pp-btn" data-profile="freestyle">
+            <span class="pp-icon">🎯</span>
+            <span class="pp-name">Freestyle</span>
+            <span class="pp-desc">Balanced tune · moderate filtering · good default</span>
+          </button>
+          <button class="pp-btn" data-profile="cinematic">
+            <span class="pp-icon">🎬</span>
+            <span class="pp-name">Cinematic</span>
+            <span class="pp-desc">Smooth response · heavy filtering · slow accel</span>
+          </button>
+          <button class="pp-btn" data-profile="longrange">
+            <span class="pp-icon">📡</span>
+            <span class="pp-name">Long-range</span>
+            <span class="pp-desc">Conservative PIDs · efficient hover · RTL focused</span>
+          </button>
+        </div>
+      </div>
       <button class="btn btn-outline" id="btn-clear" style="color:#ef4444;border-color:rgba(239,68,68,.3)"><i class="ph ph-trash"></i> Clear</button>
     </div>
   </div>
@@ -414,6 +472,385 @@ let currentCat = null;
 let currentParts = [];
 let build = JSON.parse(localStorage.getItem('forge-build') || '[]');
 let modalPart = null;
+let activeFilters = {};
+
+// ── Filter config per category ──
+// type:'select' — enumerate unique values from data (exact match)
+// type:'buckets' — predefined ranges; buckets:[{l:label, t:testFn(val)}]
+// type:'derived' — compute a simplified key via derive(part), then exact match
+const FILTER_CFG = {
+  motors: [
+    { key:'kv_rating', label:'KV', type:'buckets', buckets:[
+      {l:'< 1000',  t:v=>v<1000},
+      {l:'1000–2000',t:v=>v>=1000&&v<2000},
+      {l:'2000–3000',t:v=>v>=2000&&v<3000},
+      {l:'3000+',   t:v=>v>=3000},
+    ]},
+    { key:'_stator', label:'Size', type:'derived',
+      derive: p => p.stator_size ? String(p.stator_size).slice(0,2)+'xx' : null },
+    { key:'cell_count_min', label:'Cells', type:'select', fmt:v=>`${v}S` },
+    { key:'prop_size_max_in', label:'Prop', type:'select', fmt:v=>`${v}"` },
+  ],
+  escs: [
+    { key:'motor_output_count', label:'Type', type:'select',
+      fmt:v=>v===1||v==='1'?'Single':'4-in-1' },
+    { key:'esc_firmware', label:'Firmware', type:'select' },
+    { key:'continuous_current_per_motor_a', label:'Current', type:'buckets', buckets:[
+      {l:'≤ 30A', t:v=>v<=30},
+      {l:'30–50A', t:v=>v>30&&v<=50},
+      {l:'50–70A', t:v=>v>50&&v<=70},
+      {l:'70A+',  t:v=>v>70},
+    ]},
+    { key:'cell_count_max', label:'Max Cells', type:'select', fmt:v=>`${v}S` },
+  ],
+  flight_controllers: [
+    { key:'mcu_family', label:'MCU', type:'select' },
+    { key:'mounting_pattern_mm', label:'Mount', type:'select', fmt:v=>`${v}mm` },
+    { key:'_imu', label:'IMU', type:'derived',
+      derive: p => {
+        const s = (p.imu||'').toLowerCase();
+        if (s.includes('icm42688')||s.includes('icm-42688')) return 'ICM42688';
+        if (s.includes('bmi270')) return 'BMI270';
+        if (s.includes('mpu6000')) return 'MPU6000';
+        if (s.includes('icm20689')) return 'ICM20689';
+        if (s.includes('tactical')) return 'Tactical-grade';
+        return p.imu||null;
+      }},
+    { key:'cell_count_max', label:'Max Cells', type:'select', fmt:v=>`${v}S` },
+  ],
+  stacks: [
+    { key:'mcu_family', label:'MCU', type:'select' },
+    { key:'cell_count_max', label:'Max Cells', type:'select', fmt:v=>`${v}S` },
+    { key:'esc_current_a', label:'ESC Current', type:'buckets', buckets:[
+      {l:'≤ 30A', t:v=>v<=30},
+      {l:'30–50A', t:v=>v>30&&v<=50},
+      {l:'50–70A', t:v=>v>50&&v<=70},
+      {l:'70A+',  t:v=>v>70},
+    ]},
+    { key:'is_aio', label:'Form', type:'select',
+      fmt:v=>(v===true||v==='true')?'AIO':'Standalone' },
+  ],
+  frames: [
+    { key:'prop_size_max_in', label:'Prop Size', type:'select', fmt:v=>`${v}"` },
+    { key:'fc_mounting_patterns_mm', label:'FC Mount', type:'derived',
+      derive: p => {
+        const arr = p.fc_mounting_patterns_mm;
+        if (!arr) return null;
+        const vals = Array.isArray(arr) ? arr : [arr];
+        return vals.map(v=>`${v}mm`).join('/');
+      }},
+  ],
+  batteries: [
+    { key:'cell_count', label:'Cells', type:'select', fmt:v=>`${v}S` },
+    { key:'capacity_mah', label:'Capacity', type:'buckets', buckets:[
+      {l:'< 1000mAh',  t:v=>v<1000},
+      {l:'1000–2000',  t:v=>v>=1000&&v<2000},
+      {l:'2000–4000',  t:v=>v>=2000&&v<4000},
+      {l:'4000mAh+',   t:v=>v>=4000},
+    ]},
+    { key:'_chem', label:'Chemistry', type:'derived',
+      derive: p => {
+        const c = (p.chemistry||'').toLowerCase();
+        if (c.includes('lihv')) return 'LiHV';
+        if (c.includes('lipo')) return 'LiPo';
+        if (c.includes('sulfur')) return 'Li-S';
+        if (c.includes('semi')) return 'Semi-solid';
+        if (c.includes('ion')) return 'Li-Ion';
+        return p.chemistry||null;
+      }},
+  ],
+  propellers: [
+    { key:'_size', label:'Size', type:'derived',
+      derive: p => {
+        const d = p.diameter_in;
+        if (d==null) return null;
+        if (d<=3) return '≤ 3"';
+        if (d<=5) return '3–5"';
+        if (d<=7) return '5–7"';
+        return '7"+';
+      }},
+    { key:'blade_count', label:'Blades', type:'select', fmt:v=>`${v}B` },
+    { key:'pitch_in', label:'Pitch', type:'select', fmt:v=>`${v}p` },
+  ],
+  receivers: [
+    { key:'protocol', label:'Protocol', type:'select' },
+  ],
+  video_transmitters: [
+    { key:'video_system', label:'System', type:'select' },
+  ],
+  fpv_cameras: [
+    { key:'video_system', label:'System', type:'select' },
+  ],
+  gps_modules: [
+    { key:'size_class', label:'Size', type:'select' },
+  ],
+  antennas: [
+    { key:'frequency_ghz', label:'Frequency', type:'select', fmt:v=>`${v}GHz` },
+    { key:'polarization', label:'Polarization', type:'select' },
+  ],
+};
+
+// ── Key spec badges shown on cards ──
+const CARD_SPECS = {
+  motors:            p => [p.stator_size, p.kv_rating && `${p.kv_rating}KV`],
+  escs:              p => [p.motor_output_count===4||p.motor_output_count==='4'?'4-in-1':'Single',
+                           p.continuous_current_per_motor_a && `${p.continuous_current_per_motor_a}A`],
+  flight_controllers:p => [p.mcu_family, p.mounting_pattern_mm && `${p.mounting_pattern_mm}mm`],
+  stacks:            p => [p.mcu_family, p.esc_current_a && `${p.esc_current_a}A`,
+                           (p.is_aio===true||p.is_aio==='true')?'AIO':null],
+  frames:            p => [p.prop_size_max_in && `${p.prop_size_max_in}"`,
+                           p.wheelbase_mm && `${p.wheelbase_mm}mm`],
+  batteries:         p => [p.cell_count && `${p.cell_count}S`, p.capacity_mah && `${p.capacity_mah}mAh`],
+  propellers:        p => [p.diameter_in && `${p.diameter_in}"`,
+                           p.pitch_in && `${p.pitch_in}p`, p.blade_count && `${p.blade_count}B`],
+  receivers:         p => [p.protocol, p.frequency_ghz && `${p.frequency_ghz}GHz`],
+  video_transmitters:p => [p.video_system],
+  fpv_cameras:       p => [p.video_system],
+  gps_modules:       p => [p.constellations],
+  antennas:          p => [p.frequency_ghz && `${p.frequency_ghz}GHz`, p.polarization],
+};
+
+// ── Compatibility state ──
+let showIncompat = true; // false = hide incompatible cards
+
+// ── Compatibility rules ──
+// Each rule: (candidatePart, buildIndex) → {r:'yes'|'no', why?} | null
+// null = rule cannot apply (missing data on either side)
+// First 'no' result wins; 'yes' only if at least one rule applied and none said 'no'
+const COMPAT_RULES = {
+  motors: [
+    (p, bi) => {
+      const b = bi.batteries;
+      if (!b?.cell_count || !p.cell_count_min) return null;
+      const ok = b.cell_count >= p.cell_count_min && (!p.cell_count_max || b.cell_count <= p.cell_count_max);
+      return ok ? {r:'yes'} : {r:'no', why:`Needs ≥${p.cell_count_min}S`};
+    },
+    (p, bi) => {
+      const f = bi.frames;
+      if (!f?.prop_size_max_in || !p.prop_size_min_in || !p.prop_size_max_in) return null;
+      const ok = f.prop_size_max_in >= p.prop_size_min_in && f.prop_size_max_in <= p.prop_size_max_in;
+      return ok ? {r:'yes'} : {r:'no', why:`Props ${p.prop_size_min_in}–${p.prop_size_max_in}"`};
+    },
+    (p, bi) => {
+      const f = bi.frames;
+      if (!f?.motor_mount_hole_spacing_mm || !p.motor_mount_hole_spacing_mm) return null;
+      const ok = f.motor_mount_hole_spacing_mm === p.motor_mount_hole_spacing_mm;
+      return ok ? {r:'yes'} : {r:'no', why:`Mount ${p.motor_mount_hole_spacing_mm}mm`};
+    },
+  ],
+  escs: [
+    (p, bi) => {
+      const b = bi.batteries;
+      if (!b?.cell_count || !p.cell_count_min || !p.cell_count_max) return null;
+      const ok = b.cell_count >= p.cell_count_min && b.cell_count <= p.cell_count_max;
+      return ok ? {r:'yes'} : {r:'no', why:`Needs ${p.cell_count_min}–${p.cell_count_max}S`};
+    },
+  ],
+  flight_controllers: [
+    (p, bi) => {
+      const b = bi.batteries;
+      if (!b?.cell_count || !p.cell_count_min || !p.cell_count_max) return null;
+      const ok = b.cell_count >= p.cell_count_min && b.cell_count <= p.cell_count_max;
+      return ok ? {r:'yes'} : {r:'no', why:`Needs ${p.cell_count_min}–${p.cell_count_max}S`};
+    },
+    (p, bi) => {
+      const f = bi.frames;
+      if (!f?.fc_mounting_patterns_mm || !p.mounting_pattern_mm) return null;
+      const pats = Array.isArray(f.fc_mounting_patterns_mm) ? f.fc_mounting_patterns_mm : [f.fc_mounting_patterns_mm];
+      const ok = pats.includes(p.mounting_pattern_mm);
+      return ok ? {r:'yes'} : {r:'no', why:`Frame: ${pats.map(x=>x+'mm').join('/')}`};
+    },
+  ],
+  stacks: [
+    (p, bi) => {
+      const b = bi.batteries;
+      if (!b?.cell_count || !p.cell_count_min || !p.cell_count_max) return null;
+      const ok = b.cell_count >= p.cell_count_min && b.cell_count <= p.cell_count_max;
+      return ok ? {r:'yes'} : {r:'no', why:`Needs ${p.cell_count_min}–${p.cell_count_max}S`};
+    },
+    (p, bi) => {
+      const f = bi.frames;
+      if (!f?.fc_mounting_patterns_mm || !p.mounting_pattern_mm) return null;
+      const pats = Array.isArray(f.fc_mounting_patterns_mm) ? f.fc_mounting_patterns_mm : [f.fc_mounting_patterns_mm];
+      const ok = pats.includes(p.mounting_pattern_mm);
+      return ok ? {r:'yes'} : {r:'no', why:`Frame: ${pats.map(x=>x+'mm').join('/')}`};
+    },
+  ],
+  propellers: [
+    (p, bi) => {
+      const f = bi.frames;
+      if (!f?.prop_size_max_in || !p.diameter_in) return null;
+      const ok = Math.abs(p.diameter_in - f.prop_size_max_in) <= 0.5;
+      return ok ? {r:'yes'} : {r:'no', why:`Frame: ${f.prop_size_max_in}"`};
+    },
+    (p, bi) => {
+      const m = bi.motors;
+      if (!m?.prop_size_min_in || !m?.prop_size_max_in || !p.diameter_in) return null;
+      const ok = p.diameter_in >= m.prop_size_min_in && p.diameter_in <= m.prop_size_max_in;
+      return ok ? {r:'yes'} : {r:'no', why:`Motor: ${m.prop_size_min_in}–${m.prop_size_max_in}"`};
+    },
+  ],
+  batteries: [
+    (p, bi) => {
+      const fc = bi.flight_controllers || bi.stacks;
+      if (!fc?.cell_count_min || !fc?.cell_count_max || !p.cell_count) return null;
+      const ok = p.cell_count >= fc.cell_count_min && p.cell_count <= fc.cell_count_max;
+      return ok ? {r:'yes'} : {r:'no', why:`FC: ${fc.cell_count_min}–${fc.cell_count_max}S`};
+    },
+    (p, bi) => {
+      const e = bi.escs;
+      if (!e?.cell_count_min || !e?.cell_count_max || !p.cell_count) return null;
+      const ok = p.cell_count >= e.cell_count_min && p.cell_count <= e.cell_count_max;
+      return ok ? {r:'yes'} : {r:'no', why:`ESC: ${e.cell_count_min}–${e.cell_count_max}S`};
+    },
+    (p, bi) => {
+      const m = bi.motors;
+      if (!m?.cell_count_min || !p.cell_count) return null;
+      const ok = p.cell_count >= m.cell_count_min;
+      return ok ? {r:'yes'} : {r:'no', why:`Motor: min ${m.cell_count_min}S`};
+    },
+  ],
+  fpv_cameras: [
+    (p, bi) => {
+      const v = bi.video_transmitters;
+      if (!v?.video_system || !p.video_system) return null;
+      const vs = s => s.toLowerCase().replace(/\s+/g,'');
+      const ok = vs(v.video_system) === vs(p.video_system) || vs(v.video_system).includes(vs(p.video_system)) || vs(p.video_system).includes(vs(v.video_system));
+      return ok ? {r:'yes'} : {r:'no', why:`VTX: ${v.video_system}`};
+    },
+  ],
+  video_transmitters: [
+    (p, bi) => {
+      const c = bi.fpv_cameras;
+      if (!c?.video_system || !p.video_system) return null;
+      const vs = s => s.toLowerCase().replace(/\s+/g,'');
+      const ok = vs(p.video_system) === vs(c.video_system) || vs(p.video_system).includes(vs(c.video_system)) || vs(c.video_system).includes(vs(p.video_system));
+      return ok ? {r:'yes'} : {r:'no', why:`Camera: ${c.video_system}`};
+    },
+  ],
+};
+
+function getBuildIndex() {
+  const idx = {};
+  build.forEach(b => {
+    const p = allParts.find(x => x.pid === b.pid);
+    if (p) idx[b.cat] = p;
+  });
+  return idx;
+}
+
+function getCompat(part, buildIdx) {
+  const rules = COMPAT_RULES[currentCat];
+  if (!rules) return {r: null};
+  let anyApplied = false;
+  for (const rule of rules) {
+    const res = rule(part, buildIdx);
+    if (res === null) continue;
+    anyApplied = true;
+    if (res.r === 'no') return res;
+  }
+  return anyApplied ? {r:'yes'} : {r: null};
+}
+
+// ── Filter helpers ──
+function derivedVal(cfg, part) {
+  if (cfg.type === 'derived') return cfg.derive(part);
+  return part[cfg.key];
+}
+
+function renderFilterBar() {
+  const bar = $('filter-bar');
+  const cfgs = FILTER_CFG[currentCat];
+  if (!cfgs || !cfgs.length) { bar.style.display = 'none'; return; }
+  const parts = DB.components[currentCat] || [];
+  const anyActive = Object.keys(activeFilters).length > 0;
+
+  const groups = cfgs.map(cfg => {
+    const active = activeFilters[cfg.key];
+    let options = '';
+    if (cfg.type === 'buckets') {
+      options = cfg.buckets.map(b =>
+        `<option value="${esc(b.l)}"${active===b.l?' selected':''}>${esc(b.l)}</option>`
+      ).join('');
+    } else {
+      const vals = new Map();
+      parts.forEach(p => {
+        const v = derivedVal(cfg, p);
+        if (v == null || v === '') return;
+        const key = String(v);
+        const disp = cfg.fmt ? cfg.fmt(v) : key;
+        vals.set(key, disp);
+      });
+      const sorted = [...vals.entries()].sort((a,b)=>a[0].localeCompare(b[0],undefined,{numeric:true}));
+      options = sorted.map(([k,d]) =>
+        `<option value="${esc(k)}"${active===k?' selected':''}>${esc(d)}</option>`
+      ).join('');
+    }
+    return `<div class="filter-group">
+      <span class="filter-label">${esc(cfg.label)}</span>
+      <select class="filter-sel${active?' active':''}" data-fk="${esc(cfg.key)}">
+        <option value="">All</option>${options}
+      </select>
+    </div>`;
+  }).join('');
+
+  const hasCompatForCat = !!(COMPAT_RULES[currentCat] && build.length > 0);
+  const compatToggle = hasCompatForCat
+    ? `<div class="compat-toggle">
+        <span class="filter-label">Compat</span>
+        <label><input type="checkbox" id="compat-hide-cb"${!showIncompat?' checked':''}>Hide incompatible</label>
+       </div>`
+    : '';
+
+  const hasContent = cfgs.length > 0 || hasCompatForCat;
+  if (!hasContent) { bar.style.display = 'none'; return; }
+
+  bar.innerHTML = groups +
+    `<button id="filter-clear" class="${anyActive?'visible':''}">✕ Clear</button>` +
+    compatToggle;
+  bar.style.display = 'flex';
+
+  bar.querySelectorAll('.filter-sel').forEach(sel => {
+    sel.addEventListener('change', () => {
+      if (sel.value) activeFilters[sel.dataset.fk] = sel.value;
+      else delete activeFilters[sel.dataset.fk];
+      renderFilterBar();
+      renderGrid();
+    });
+  });
+  const clr = $('filter-clear');
+  if (clr) clr.addEventListener('click', () => {
+    activeFilters = {};
+    renderFilterBar();
+    renderGrid();
+  });
+  const hideCb = $('compat-hide-cb');
+  if (hideCb) hideCb.addEventListener('change', () => {
+    showIncompat = !hideCb.checked;
+    renderGrid();
+  });
+}
+
+function applySpecFilters(parts) {
+  const cfgs = FILTER_CFG[currentCat];
+  if (!cfgs || !Object.keys(activeFilters).length) return parts;
+  return parts.filter(p => {
+    for (const cfg of cfgs) {
+      const val = activeFilters[cfg.key];
+      if (!val) continue;
+      if (cfg.type === 'buckets') {
+        const bucket = cfg.buckets.find(b => b.l === val);
+        if (!bucket) continue;
+        const pv = p[cfg.key];
+        if (pv == null || !bucket.t(Number(pv))) return false;
+      } else {
+        const pv = String(derivedVal(cfg, p) ?? '');
+        if (pv !== val) return false;
+      }
+    }
+    return true;
+  });
+}
 
 // ── Helpers ──
 const $ = id => document.getElementById(id);
@@ -511,13 +948,13 @@ function renderSidebar() {
 
 function selectCat(cat) {
   currentCat = cat;
-  // Update sidebar active
+  activeFilters = {};
   document.querySelectorAll('.cat-item').forEach(el => {
     el.classList.toggle('active', el.dataset.cat === cat);
   });
   $('cat-title').textContent = fmtCat(cat);
-  // Close mobile sidebar
   $('sidebar').classList.remove('mob-open');
+  renderFilterBar();
   renderGrid();
 }
 
@@ -526,21 +963,49 @@ function renderGrid() {
   const search = $('search').value.trim().toLowerCase();
   const sort = $('sort-sel').value;
 
-  let parts = DB.components[currentCat] || [];
-
+  let parts;
   if (search) {
     parts = allParts.filter(p => {
       const haystack = [p.name,p.manufacturer,p.pid,...(p.tags||[])].join(' ').toLowerCase();
       return haystack.includes(search);
     });
+  } else {
+    parts = applySpecFilters(DB.components[currentCat] || []);
   }
 
-  if (sort === 'name-asc') parts = [...parts].sort((a,b) => (a.name||'').localeCompare(b.name||''));
+  // Compute compat for current parts
+  const buildIdx = getBuildIndex();
+  const compatActive = !search && !!(COMPAT_RULES[currentCat] && build.length > 0);
+  const compatMap = new Map();
+  if (compatActive) {
+    parts.forEach(p => compatMap.set(p.pid, getCompat(p, buildIdx)));
+  }
+
+  // Optionally hide incompatible
+  if (compatActive && !showIncompat) {
+    parts = parts.filter(p => compatMap.get(p.pid)?.r !== 'no');
+  }
+
+  // Sort compatible to top when compat is active and no explicit sort chosen
+  if (compatActive && !sort) {
+    parts = [...parts].sort((a, b) => {
+      const ra = compatMap.get(a.pid)?.r, rb = compatMap.get(b.pid)?.r;
+      if (ra === 'yes' && rb !== 'yes') return -1;
+      if (rb === 'yes' && ra !== 'yes') return 1;
+      return 0;
+    });
+  } else if (sort === 'name-asc') parts = [...parts].sort((a,b) => (a.name||'').localeCompare(b.name||''));
   else if (sort === 'name-desc') parts = [...parts].sort((a,b) => (b.name||'').localeCompare(a.name||''));
   else if (sort === 'mfr') parts = [...parts].sort((a,b) => (a.manufacturer||'').localeCompare(b.manufacturer||''));
 
   currentParts = parts;
-  $('part-count').textContent = `${parts.length} parts`;
+  const total = (DB.components[currentCat]||[]).length;
+  if (compatActive) {
+    const nYes = [...compatMap.values()].filter(c=>c.r==='yes').length;
+    $('part-count').textContent = `${nYes} compatible · ${total} total`;
+  } else {
+    $('part-count').textContent = parts.length === total ? `${total} parts` : `${parts.length} / ${total}`;
+  }
 
   const grid = $('grid');
   const empty = $('empty');
@@ -554,16 +1019,24 @@ function renderGrid() {
   empty.style.display = 'none';
 
   const inBuild = new Set(build.map(b => b.pid));
+  const specFn = CARD_SPECS[currentCat];
 
   grid.innerHTML = parts.map(p => {
     const imgHtml = p.image_file
       ? `<img class="img" src="${esc(p.image_file)}" alt="" loading="lazy" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'">`+
         `<div class="img-placeholder" style="display:none"><i class="ph ph-image"></i></div>`
       : `<div class="img-placeholder"><i class="ph ph-image"></i></div>`;
-    return `<div class="part-card${inBuild.has(p.pid)?' in-build':''}" data-pid="${esc(p.pid)}">
+    const tags = specFn ? specFn(p).filter(Boolean).map(s=>`<span class="spec-tag">${esc(String(s))}</span>`).join('') : '';
+    const compat = compatMap.get(p.pid);
+    const compatClass = compat?.r ? ` compat-${compat.r}` : '';
+    const compatWhy = compat?.r === 'no' && compat.why
+      ? `<div class="compat-why">⚠ ${esc(compat.why)}</div>` : '';
+    return `<div class="part-card${inBuild.has(p.pid)?' in-build':''}${compatClass}" data-pid="${esc(p.pid)}">
       ${imgHtml}
       <div class="name">${esc(p.name)}</div>
       <div class="mfr">${esc(p.manufacturer||'')}</div>
+      ${tags ? `<div class="spec-tags">${tags}</div>` : ''}
+      ${compatWhy}
       <div class="pid">${esc(p.pid)}</div>
       <button class="add-btn" data-pid="${esc(p.pid)}" title="Add to build"><i class="ph ph-plus"></i></button>
     </div>`;
@@ -638,8 +1111,8 @@ function addToBuild(pid) {
   build.push({pid: p.pid, name: p.name, cat: p._cat || p.category});
   saveBuild();
   updateBuildUI();
+  renderFilterBar();
   renderGrid();
-  // Update modal if open
   if (modalPart && modalPart.pid === pid) {
     $('modal-add-btn').innerHTML = '<i class="ph ph-check"></i> In Build';
     $('modal-add-btn').style.opacity = '.6';
@@ -650,6 +1123,7 @@ function removeFromBuild(pid) {
   build = build.filter(b => b.pid !== pid);
   saveBuild();
   updateBuildUI();
+  renderFilterBar();
   renderGrid();
 }
 
@@ -657,6 +1131,7 @@ function clearBuild() {
   build = [];
   saveBuild();
   updateBuildUI();
+  renderFilterBar();
   renderGrid();
 }
 
@@ -725,17 +1200,38 @@ function exportBuild() {
 }
 
 // ── ArduPilot .param generator ──
-function generateArduPilotParams() {
+
+// Build profiles — multipliers and overrides applied on top of hardware-derived base
+const AP_PROFILES = {
+  racing:    { label:'Racing',     pidMult:1.15, accelMult:1.25, inputTC:0.10, dFiltHz:60, wpSpeed:1000, angP:4.5 },
+  freestyle: { label:'Freestyle',  pidMult:1.00, accelMult:1.00, inputTC:0.15, dFiltHz:40, wpSpeed:800,  angP:4.5 },
+  cinematic: { label:'Cinematic',  pidMult:0.80, accelMult:0.60, inputTC:0.28, dFiltHz:20, wpSpeed:500,  angP:3.5 },
+  longrange: { label:'Long-range', pidMult:0.75, accelMult:0.50, inputTC:0.22, dFiltHz:20, wpSpeed:1200, angP:4.0 },
+};
+
+// Base acceleration limits by prop size (freestyle baseline)
+const AP_ACCEL = {
+  3:  {r:180000, p:180000, y:36000},
+  5:  {r:110000, p:110000, y:27000},
+  6:  {r:90000,  p:90000,  y:22000},
+  7:  {r:70000,  p:70000,  y:18000},
+  10: {r:50000,  p:50000,  y:14000},
+  13: {r:35000,  p:35000,  y:10000},
+};
+
+function generateArduPilotParams(profile) {
   if (!build.length) { alert('Add components to your build first.'); return; }
+  const prof = AP_PROFILES[profile] || AP_PROFILES.freestyle;
+
   const comp = pid => allParts.find(p => p.pid === pid) || null;
   const cats = {};
   build.forEach(b => { const c = comp(b.pid); if (c) cats[b.cat] = c; });
-  const fc = cats.flight_controllers || cats.stacks || null;
-  const esc = cats.escs || null;
-  const motor = cats.motors || null;
+  const fc      = cats.flight_controllers || cats.stacks || null;
+  const esc     = cats.escs    || null;
+  const motor   = cats.motors  || null;
   const battery = cats.batteries || null;
-  const gps = cats.gps_modules || null;
-  const frame = cats.frames || null;
+  const gps     = cats.gps_modules || null;
+  const frame   = cats.frames  || null;
   const P = {};
   const set = (n,v,c) => { P[n] = {v,c}; };
 
@@ -745,111 +1241,157 @@ function generateArduPilotParams() {
   if (frame) {
     const vt = (frame.vehicle_type||'quad').toLowerCase();
     const ac = (frame.arm_configuration||'x').toLowerCase();
-    set('FRAME_CLASS', FC_MAP[vt]||1, (frame.name||'')+ ' — '+vt);
-    set('FRAME_TYPE', FT_MAP[ac]||1, 'arm: '+ac);
-  } else { set('FRAME_CLASS',1,'Quad (default)'); set('FRAME_TYPE',1,'X'); }
+    set('FRAME_CLASS', FC_MAP[vt]||1, (frame.name||'')+' — '+vt);
+    set('FRAME_TYPE',  FT_MAP[ac]||1, 'arm: '+ac);
+  } else {
+    set('FRAME_CLASS',1,'Quad (default)');
+    set('FRAME_TYPE', 1,'X');
+  }
 
   // Battery
   if (battery) {
     const cells = battery.cell_count||4;
-    const cap = battery.capacity_mah||1500;
-    const chem = (battery.chemistry||'lipo').toLowerCase();
-    const isLiIon = chem.includes('ion');
-    const crit = isLiIon ? 2.8 : 3.3;
-    const low = isLiIon ? 3.2 : 3.5;
-    const nom = isLiIon ? 3.6 : 3.7;
-    set('BATT_MONITOR',4,'Analog V+I');
-    set('BATT_CAPACITY',cap, cap+'mAh '+cells+'S');
-    set('BATT_ARM_VOLT', +(nom*cells*0.95).toFixed(1), 'Min arm voltage');
-    set('BATT_CRT_VOLT', +(crit*cells).toFixed(1), crit+'V/cell x'+cells+'S');
-    set('BATT_LOW_VOLT', +(low*cells).toFixed(1), low+'V/cell x'+cells+'S');
-    set('BATT_FS_CRT_ACT',1,'Land on critical');
-    set('BATT_FS_LOW_ACT',2,'RTL on low');
-    set('BATT_FS_LOW_MAH',Math.round(cap*0.2),'20% remaining');
+    const cap   = battery.capacity_mah||1500;
+    const chem  = (battery.chemistry||'lipo').toLowerCase();
+    const isIon = chem.includes('ion');
+    const crit  = isIon ? 2.8 : 3.3;
+    const low   = isIon ? 3.2 : 3.5;
+    const nom   = isIon ? 3.6 : 3.7;
+    set('BATT_MONITOR',    4,                          'Analog V+I');
+    set('BATT_CAPACITY',   cap,                        cap+'mAh '+cells+'S');
+    set('BATT_ARM_VOLT',   +(nom*cells*0.95).toFixed(1),'Min arm voltage');
+    set('BATT_CRT_VOLT',   +(crit*cells).toFixed(1),  crit+'V/cell x'+cells+'S');
+    set('BATT_LOW_VOLT',   +(low*cells).toFixed(1),   low+'V/cell x'+cells+'S');
+    set('BATT_FS_CRT_ACT', 1,                         'Land on critical');
+    set('BATT_FS_LOW_ACT', 2,                         'RTL on low');
+    set('BATT_FS_LOW_MAH', Math.round(cap*0.2),       '20% remaining');
   }
 
-  // ESC
-  const TELEM_FW = new Set(['blheli_32','am32','fettec','kiss','apm']);
+  // ESC + harmonic notch
+  const TELEM_FW  = new Set(['blheli_32','am32','fettec','kiss','apm']);
   const DSHOT_MAP = {blheli_32:6,blheli_s:5,am32:6,fettec:6,kiss:6,bluejay:5};
   if (esc) {
-    const fw = (esc.esc_firmware||'').toLowerCase().replace(/\s+/g,'_');
-    const iface = (esc.interface||'').toLowerCase();
+    const fw      = (esc.esc_firmware||'').toLowerCase().replace(/\s+/g,'_');
+    const iface   = (esc.interface||'').toLowerCase();
     const pwmType = DSHOT_MAP[fw] || (iface.includes('dshot') ? 6 : 5);
     set('MOT_PWM_TYPE', pwmType, (pwmType>=6?'DShot600':'DShot300')+' — '+fw);
     if (TELEM_FW.has(fw)) {
-      set('INS_HNTCH_ENABLE',1,'Harmonic notch ON');
-      set('INS_HNTCH_MODE',4,'RPM telemetry');
-      set('INS_HNTCH_OPTS',2,'Double notch');
-      set('INS_HNTCH_REF',1,'');
       const kv = motor ? (motor.kv_rating||2000) : 2000;
-      set('INS_HNTCH_FREQ', Math.max(80,Math.min(250,Math.round(kv*0.06))), 'From '+kv+'KV');
+      set('INS_HNTCH_ENABLE', 1,   'Harmonic notch ON');
+      set('INS_HNTCH_MODE',   4,   'RPM telemetry');
+      set('INS_HNTCH_OPTS',   2,   'Double notch');
+      set('INS_HNTCH_REF',    1,   '');
+      set('INS_HNTCH_FREQ',   Math.max(80,Math.min(250,Math.round(kv*0.06))), 'From '+kv+'KV');
     } else {
-      set('INS_HNTCH_ENABLE',1,'Harmonic notch ON');
-      set('INS_HNTCH_MODE',1,'Throttle-based');
-      set('INS_HNTCH_FREQ',120,'Verify with FFT');
-      set('INS_HNTCH_REF',0.35,'Hover ref');
+      set('INS_HNTCH_ENABLE', 1,    'Harmonic notch ON');
+      set('INS_HNTCH_MODE',   1,    'Throttle-based');
+      set('INS_HNTCH_FREQ',   120,  'Verify with FFT');
+      set('INS_HNTCH_REF',    0.35, 'Hover ref');
     }
   }
 
-  // Motor + PIDs
+  // Motor + PID tune
   if (motor) {
-    const kv = motor.kv_rating||2000;
-    const pMin = motor.prop_size_min_in||5, pMax = motor.prop_size_max_in||pMin;
-    const ps = Math.round((pMin+pMax)/2);
+    const kv   = motor.kv_rating||2000;
+    const pMin = motor.prop_size_min_in||5;
+    const pMax = motor.prop_size_max_in||pMin;
+    const ps   = Math.round((pMin+pMax)/2);
+
+    // Motor constants
     const sm = ps<=3?0.12:ps<=5?0.15:ps<=7?0.12:0.10;
     const sx = ps<=5?0.95:ps<=7?0.90:0.85;
-    set('MOT_SPIN_MIN',sm, kv+'KV on '+ps+'" props');
-    set('MOT_SPIN_MAX',sx,'');
-    set('MOT_SPIN_ARM',0.05,'');
-    set('MOT_THST_EXPO', kv>3000?0.55:kv>2000?0.60:0.65, 'Thrust curve for '+kv+'KV');
+    set('MOT_SPIN_MIN',   sm,               kv+'KV on '+ps+'" props');
+    set('MOT_SPIN_MAX',   sx,               '');
+    set('MOT_SPIN_ARM',   0.05,             '');
+    set('MOT_THST_EXPO',  kv>3000?0.55:kv>2000?0.60:0.65, 'Thrust curve for '+kv+'KV');
+    set('MOT_HOVER_LEARN',2,               'Learn+save');
     const hov = ps>=10?0.30:ps>=7?0.35:kv<2500?0.45:0.50;
-    set('MOT_HOVER_LEARN',2,'Learn+save');
-    set('MOT_THST_HOVER',hov,'Starting estimate');
-    const PID = {3:[.09,.09,.003],5:[.135,.135,.004],6:[.10,.10,.005],7:[.08,.08,.005],10:[.05,.05,.006]};
-    const [bp,bi,bd] = PID[ps]||PID[5];
-    const sc = Math.max(0.7,Math.min(1.3,2000/Math.max(kv,1)));
-    const rp=+(bp*sc).toFixed(4), ri=+(bi*sc).toFixed(4), rd=+(bd*sc).toFixed(5);
-    set('ATC_RAT_RLL_P',rp, ps+'"/'+kv+'KV STARTING POINT');
-    set('ATC_RAT_RLL_I',ri,''); set('ATC_RAT_RLL_D',rd,'');
-    set('ATC_RAT_PIT_P',rp,'Sym w/ roll'); set('ATC_RAT_PIT_I',ri,''); set('ATC_RAT_PIT_D',rd,'');
-    set('ATC_RAT_YAW_P',+(rp*0.6).toFixed(4),'60% of roll');
-    set('ATC_RAT_YAW_I',+(ri*0.3).toFixed(4),''); set('ATC_RAT_YAW_D',0,'');
+    set('MOT_THST_HOVER', hov,              'Starting estimate');
+
+    // Rate PID base values (from prop size + KV scaling)
+    const PID_BASE = {3:[.09,.09,.003],5:[.135,.135,.004],6:[.10,.10,.005],7:[.08,.08,.005],10:[.05,.05,.006],13:[.035,.035,.008]};
+    const [bp,bi,bd] = PID_BASE[ps]||PID_BASE[5];
+    const kvScale  = Math.max(0.7, Math.min(1.3, 2000/Math.max(kv,1)));
+    const pm       = kvScale * prof.pidMult;
+    const rp = +(bp*pm).toFixed(4);
+    const ri = +(bi*pm).toFixed(4);
+    const rd = +(bd*pm).toFixed(5);
+
+    set('ATC_RAT_RLL_P',    rp, ps+'"/'+kv+'KV — '+prof.label);
+    set('ATC_RAT_RLL_I',    ri, '');
+    set('ATC_RAT_RLL_D',    rd, '');
+    set('ATC_RAT_RLL_FF',   0,  'Set after autotune');
+    set('ATC_RAT_RLL_FILT', prof.dFiltHz, 'D-term filter Hz');
+
+    set('ATC_RAT_PIT_P',    rp, 'Sym w/ roll');
+    set('ATC_RAT_PIT_I',    ri, '');
+    set('ATC_RAT_PIT_D',    rd, '');
+    set('ATC_RAT_PIT_FF',   0,  '');
+    set('ATC_RAT_PIT_FILT', prof.dFiltHz, '');
+
+    set('ATC_RAT_YAW_P',    +(rp*0.6).toFixed(4), '60% of roll P');
+    set('ATC_RAT_YAW_I',    +(ri*0.3).toFixed(4), '');
+    set('ATC_RAT_YAW_D',    0,  '');
+    set('ATC_RAT_YAW_FF',   0,  '');
+    set('ATC_RAT_YAW_FILT', 20, 'Yaw D filter');
+
+    // Angle PIDs
+    const aP = prof.angP;
+    set('ATC_ANG_RLL_P', aP, 'Angle P — '+prof.label);
+    set('ATC_ANG_PIT_P', aP, '');
+    set('ATC_ANG_YAW_P', aP, '');
+
+    // Input time constant (controls "feel" — lower=snappier)
+    set('ATC_INPUT_TC', prof.inputTC, prof.label+' feel');
+
+    // Acceleration limits (deg/s² — controls max rotation rate)
+    const baseAccel = AP_ACCEL[ps] || AP_ACCEL[5];
+    const am = prof.accelMult;
+    set('ATC_ACCEL_R_MAX', Math.round(baseAccel.r*am/1000)*1000, 'Roll accel limit');
+    set('ATC_ACCEL_P_MAX', Math.round(baseAccel.p*am/1000)*1000, 'Pitch accel limit');
+    set('ATC_ACCEL_Y_MAX', Math.round(baseAccel.y*am/1000)*1000, 'Yaw accel limit');
   }
 
   // GPS
   if (gps) {
     const gn = (gps.name||'').toLowerCase();
-    set('GPS_TYPE', gn.includes('dronecan')||gn.includes('uavcan')?9:1, gps.name||'GPS');
-    set('GPS_AUTO_CONFIG',1,'');
-    set('GPS_GNSS_MODE',67,'GPS+GLONASS+Galileo');
-    set('SERIAL3_PROTOCOL',5,'GPS');
-    set('SERIAL3_BAUD',230,'230400');
+    set('GPS_TYPE',        gn.includes('dronecan')||gn.includes('uavcan')?9:1, gps.name||'GPS');
+    set('GPS_AUTO_CONFIG', 1,  '');
+    set('GPS_GNSS_MODE',   67, 'GPS+GLONASS+Galileo');
+    set('SERIAL3_PROTOCOL',5,  'GPS');
+    set('SERIAL3_BAUD',    230,'230400');
   }
 
-  // FC
+  // FC / IMU
   if (fc) {
     const imu = ((fc.imu||'')+'').toUpperCase();
-    if (imu.includes('ICM42688')) set('INS_GYRO_RATE',1,'ICM42688 4kHz');
-    else if (imu.includes('BMI270')) set('INS_GYRO_RATE',0,'BMI270 1.6kHz');
-    set('LOG_BITMASK',176126,'Default+IMU+PID+RCOUT');
-    set('LOG_BACKEND_TYPE',1,'DataFlash');
+    if (imu.includes('ICM42688'))      set('INS_GYRO_RATE',1,'ICM42688 4kHz');
+    else if (imu.includes('BMI270'))   set('INS_GYRO_RATE',0,'BMI270 1.6kHz');
+    set('LOG_BITMASK',    176126,'Default+IMU+PID+RCOUT');
+    set('LOG_BACKEND_TYPE',1,   'DataFlash');
   }
-  set('SERIAL0_PROTOCOL',2,'MAVLink2 USB'); set('SERIAL0_BAUD',115,'115200');
+  set('SERIAL0_PROTOCOL',2,'MAVLink2 USB');  set('SERIAL0_BAUD',115,'115200');
   set('SERIAL1_PROTOCOL',2,'MAVLink2 TELEM1'); set('SERIAL1_BAUD',57,'57600');
 
-  // Safety
-  set('ARMING_CHECK',1,'All checks');
-  set('FS_THR_ENABLE',1,'RC failsafe: RTL'); set('FS_THR_VALUE',975,'');
-  set('FS_GCS_ENABLE',1,'GCS failsafe'); set('FS_CRASH_CHECK',1,'');
-  set('FLTMODE1',0,'Stabilize'); set('FLTMODE4',2,'AltHold'); set('FLTMODE6',6,'RTL');
-  set('RTL_ALT',3000,'30m'); set('WPNAV_SPEED',800,'8 m/s');
+  // Safety + nav
+  set('ARMING_CHECK',   1,   'All checks');
+  set('FS_THR_ENABLE',  1,   'RC failsafe: RTL'); set('FS_THR_VALUE',975,'');
+  set('FS_GCS_ENABLE',  1,   'GCS failsafe');
+  set('FS_CRASH_CHECK', 1,   '');
+  set('FLTMODE1', 0,'Stabilize'); set('FLTMODE4',2,'AltHold'); set('FLTMODE6',6,'RTL');
+  set('RTL_ALT',  3000, '30m');
+  set('WPNAV_SPEED',  prof.wpSpeed, (prof.wpSpeed/100).toFixed(1)+' m/s — '+prof.label);
+  set('WPNAV_ACCEL',  prof.accelMult >= 1 ? 250 : 150, 'Horizontal acceleration cm/s²');
+  set('WPNAV_ACCEL_Z',100,'Vertical acceleration cm/s²');
 
   // Build .param text
-  const ts = new Date().toISOString().replace(/\.\d+/,'');
+  const ts    = new Date().toISOString().replace(/\.\d+/,'');
   const parts = build.map(b=>b.name).join(', ');
   let out = `# ArduPilot Base Parameters — Generated by DroneClear Forge\n`;
-  out += `# ${ts}\n# Build: ${parts}\n#\n`;
-  out += `# STARTING POINT — run AutoTune after first hover\n#\n`;
+  out += `# ${ts}\n`;
+  out += `# Profile: ${prof.label}\n`;
+  out += `# Build: ${parts}\n#\n`;
+  out += `# STARTING POINT — Calibrate ESCs, run AutoTune before flying.\n#\n`;
   let prev = '';
   Object.keys(P).sort().forEach(k => {
     const pfx = k.split('_')[0];
@@ -861,7 +1403,7 @@ function generateArduPilotParams() {
   const blob = new Blob([out], {type:'text/plain'});
   const a = document.createElement('a');
   a.href = URL.createObjectURL(blob);
-  a.download = 'ardupilot-'+new Date().toISOString().slice(0,10)+'.param';
+  a.download = `ardupilot-${profile}-${new Date().toISOString().slice(0,10)}.param`;
   a.click();
 }
 
@@ -882,7 +1424,19 @@ $('build-overlay').addEventListener('click', () => {
 });
 $('btn-clear').addEventListener('click', () => { if(confirm('Clear build?')) clearBuild(); });
 $('btn-export').addEventListener('click', exportBuild);
-$('btn-ardupilot').addEventListener('click', generateArduPilotParams);
+$('btn-ardupilot').addEventListener('click', e => {
+  e.stopPropagation();
+  $('param-picker').classList.toggle('open');
+});
+document.addEventListener('click', e => {
+  if (!$('param-wrap').contains(e.target)) $('param-picker').classList.remove('open');
+});
+$('param-picker').querySelectorAll('.pp-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    $('param-picker').classList.remove('open');
+    generateArduPilotParams(btn.dataset.profile);
+  });
+});
 $('btn-share').addEventListener('click', shareBuild);
 $('modal-close-x').addEventListener('click', closeModal);
 $('modal-close-btn').addEventListener('click', closeModal);
