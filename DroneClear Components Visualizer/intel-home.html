@@ -292,8 +292,8 @@
     <div class="grp-lbl">Industry</div>
     <div class="grp-list">
       <a href="/industry/" class="mod"><div class="mod-ico cyan"><i class="ph ph-currency-dollar"></i></div><div class="mod-body"><div class="mod-title">Industry Intel</div><div class="mod-desc">Funding rounds, defense contracts, grants, market data</div></div><i class="ph ph-arrow-right mod-arr"></i></a>
-      <a href="/platforms/" class="mod"><div class="mod-ico blue"><i class="ph ph-shield-check"></i></div><div class="mod-body"><div class="mod-title">Platform Intelligence</div><div class="mod-desc">219 platforms — Blue UAS cleared, funding, production data</div></div><i class="ph ph-arrow-right mod-arr"></i></a>
-      <a href="/compliance/" class="mod"><div class="mod-ico" style="background:rgba(239,68,68,.1)"><i class="ph ph-traffic-signal" style="color:#ef4444"></i></div><div class="mod-body"><div class="mod-title">Compliance Dashboard</div><div class="mod-desc">Blue UAS, NDAA §848 + ASDA, ITAR, country-of-origin for 219 platforms</div></div><i class="ph ph-arrow-right mod-arr"></i></a>
+      <a href="/platforms/" class="mod"><div class="mod-ico blue"><i class="ph ph-shield-check"></i></div><div class="mod-body"><div class="mod-title">Platform Intelligence</div><div class="mod-desc"><span data-platform-count>237</span> platforms — Blue UAS cleared, funding, production data</div></div><i class="ph ph-arrow-right mod-arr"></i></a>
+      <a href="/compliance/" class="mod"><div class="mod-ico" style="background:rgba(239,68,68,.1)"><i class="ph ph-traffic-signal" style="color:#ef4444"></i></div><div class="mod-body"><div class="mod-title">Compliance Dashboard</div><div class="mod-desc">Blue UAS, NDAA §848 + ASDA, ITAR, country-of-origin for <span data-platform-count>237</span> platforms</div></div><i class="ph ph-arrow-right mod-arr"></i></a>
       <a href="/spec-sheets/" class="mod"><div class="mod-ico" style="background:rgba(245,158,11,.1)"><i class="ph ph-file-pdf" style="color:#f59e0b"></i></div><div class="mod-body"><div class="mod-title">§848 Spec Sheet Viewer</div><div class="mod-desc">Cross-vendor index of manufacturer compliance PDFs — the first free aggregator</div></div><i class="ph ph-arrow-right mod-arr"></i></a>
       <a href="/compliance-matrix/" class="mod"><div class="mod-ico" style="background:rgba(168,85,247,.1)"><i class="ph ph-grid-four" style="color:#a855f7"></i></div><div class="mod-body"><div class="mod-title">Compliance Matrix</div><div class="mod-desc">§848 · §889 · ASDA · Blue UAS · TAA · FCC Covered List explainer</div></div><i class="ph ph-arrow-right mod-arr"></i></a>
     </div>
@@ -303,13 +303,35 @@
 
 <script>
 (function(){
-  fetch('/intel_articles.json').then(r=>r.json()).then(d=>{
+  // Articles + sources — from the live feed file
+  fetch('/intel_articles.json').then(r=>r.ok?r.json():null).then(d=>{
+    if(!d) return;
+    // Defensively unwrap {data,tier,type} if forge-data wrapper slips through
+    var arts = Array.isArray(d) ? d : (d && d.tier ? d.data : d);
+    if(!Array.isArray(arts)) return;
     var el=document.getElementById('s-articles');
     var fc=document.getElementById('feed-count');
     var src=document.getElementById('s-sources');
+    if(el) el.textContent=arts.length.toLocaleString();
+    if(fc) fc.textContent=arts.length.toLocaleString();
+    if(src){var s=new Set(arts.map(function(a){return a.site}));src.textContent=s.size;}
+  }).catch(function(){});
+
+  // Companies — real count from intel_companies.json
+  fetch('/static/intel_companies.json').then(r=>r.ok?r.json():null).then(d=>{
+    if(!Array.isArray(d)) return;
+    var el=document.getElementById('s-companies');
     if(el) el.textContent=d.length;
-    if(fc) fc.textContent=d.length;
-    if(src){var s=new Set(d.map(function(a){return a.site}));src.textContent=s.size;}
+  }).catch(function(){});
+
+  // Platforms — real count from forge_database.drone_models (same source as Forge hub)
+  fetch('/static/forge_database.json').then(r=>r.ok?r.json():null).then(db=>{
+    if(!db) return;
+    var n = (db.drone_models||[]).length;
+    if(!n) return;
+    var el=document.getElementById('s-platforms');
+    if(el) el.textContent=n;
+    document.querySelectorAll('[data-platform-count]').forEach(function(el){el.textContent=n;});
   }).catch(function(){});
 })();
 </script>
