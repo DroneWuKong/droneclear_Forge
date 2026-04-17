@@ -53,6 +53,15 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:var(--s
 #search{width:100%;padding:5px 10px 5px 28px;background:var(--card);border:1px solid var(--border);border-radius:var(--r);color:var(--text);font:400 11px var(--sans);outline:none;transition:.15s}
 #search:focus{border-color:var(--border-hi)}
 #search::placeholder{color:var(--text-d)}
+/* ── ArduPilot profile picker ── */
+#param-picker{display:none;position:absolute;bottom:calc(100% + 6px);right:0;background:var(--card);border:1px solid var(--border-hi);border-radius:10px;padding:8px;width:260px;box-shadow:0 8px 32px rgba(0,0,0,.5);z-index:400}
+#param-picker.open{display:block}
+.pp-title{font:600 9px var(--mono);color:var(--text-x);text-transform:uppercase;letter-spacing:.1em;padding:4px 8px 8px;border-bottom:1px solid var(--border);margin-bottom:6px}
+.pp-btn{display:flex;align-items:flex-start;gap:10px;width:100%;padding:8px 10px;border-radius:7px;border:none;background:none;cursor:pointer;text-align:left;transition:.1s}
+.pp-btn:hover{background:var(--card-hi)}
+.pp-icon{font-size:16px;flex-shrink:0;margin-top:1px}
+.pp-name{font:600 12px var(--sans);color:var(--text);display:block;margin-bottom:2px}
+.pp-desc{font:400 10px var(--sans);color:var(--text-d);display:block;line-height:1.3}
 /* ── Filter bar ── */
 #filter-bar{display:none;align-items:center;gap:8px;padding:6px 12px;background:var(--bg);border-bottom:1px solid var(--border);flex-shrink:0;overflow-x:auto;white-space:nowrap}
 #filter-bar::-webkit-scrollbar{height:3px}
@@ -395,7 +404,32 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:var(--s
     <div class="btn-row">
       <button class="btn btn-outline" id="btn-share"><i class="ph ph-share-network"></i> Share</button>
       <button class="btn btn-outline" id="btn-export"><i class="ph ph-export"></i> Export</button>
-      <button class="btn btn-outline" id="btn-ardupilot" style="color:#22c55e;border-color:rgba(34,197,94,.3)"><i class="ph ph-download"></i> ArduPilot .param</button>
+      <div id="param-wrap" style="position:relative">
+        <button class="btn btn-outline" id="btn-ardupilot" style="color:#22c55e;border-color:rgba(34,197,94,.3)"><i class="ph ph-sliders"></i> ArduPilot .param</button>
+        <div id="param-picker">
+          <div class="pp-title">Select build profile</div>
+          <button class="pp-btn" data-profile="racing">
+            <span class="pp-icon">⚡</span>
+            <span class="pp-name">Racing</span>
+            <span class="pp-desc">Aggressive PIDs · tight filters · snappy response</span>
+          </button>
+          <button class="pp-btn" data-profile="freestyle">
+            <span class="pp-icon">🎯</span>
+            <span class="pp-name">Freestyle</span>
+            <span class="pp-desc">Balanced tune · moderate filtering · good default</span>
+          </button>
+          <button class="pp-btn" data-profile="cinematic">
+            <span class="pp-icon">🎬</span>
+            <span class="pp-name">Cinematic</span>
+            <span class="pp-desc">Smooth response · heavy filtering · slow accel</span>
+          </button>
+          <button class="pp-btn" data-profile="longrange">
+            <span class="pp-icon">📡</span>
+            <span class="pp-name">Long-range</span>
+            <span class="pp-desc">Conservative PIDs · efficient hover · RTL focused</span>
+          </button>
+        </div>
+      </div>
       <button class="btn btn-outline" id="btn-clear" style="color:#ef4444;border-color:rgba(239,68,68,.3)"><i class="ph ph-trash"></i> Clear</button>
     </div>
   </div>
@@ -1166,17 +1200,38 @@ function exportBuild() {
 }
 
 // ── ArduPilot .param generator ──
-function generateArduPilotParams() {
+
+// Build profiles — multipliers and overrides applied on top of hardware-derived base
+const AP_PROFILES = {
+  racing:    { label:'Racing',     pidMult:1.15, accelMult:1.25, inputTC:0.10, dFiltHz:60, wpSpeed:1000, angP:4.5 },
+  freestyle: { label:'Freestyle',  pidMult:1.00, accelMult:1.00, inputTC:0.15, dFiltHz:40, wpSpeed:800,  angP:4.5 },
+  cinematic: { label:'Cinematic',  pidMult:0.80, accelMult:0.60, inputTC:0.28, dFiltHz:20, wpSpeed:500,  angP:3.5 },
+  longrange: { label:'Long-range', pidMult:0.75, accelMult:0.50, inputTC:0.22, dFiltHz:20, wpSpeed:1200, angP:4.0 },
+};
+
+// Base acceleration limits by prop size (freestyle baseline)
+const AP_ACCEL = {
+  3:  {r:180000, p:180000, y:36000},
+  5:  {r:110000, p:110000, y:27000},
+  6:  {r:90000,  p:90000,  y:22000},
+  7:  {r:70000,  p:70000,  y:18000},
+  10: {r:50000,  p:50000,  y:14000},
+  13: {r:35000,  p:35000,  y:10000},
+};
+
+function generateArduPilotParams(profile) {
   if (!build.length) { alert('Add components to your build first.'); return; }
+  const prof = AP_PROFILES[profile] || AP_PROFILES.freestyle;
+
   const comp = pid => allParts.find(p => p.pid === pid) || null;
   const cats = {};
   build.forEach(b => { const c = comp(b.pid); if (c) cats[b.cat] = c; });
-  const fc = cats.flight_controllers || cats.stacks || null;
-  const esc = cats.escs || null;
-  const motor = cats.motors || null;
+  const fc      = cats.flight_controllers || cats.stacks || null;
+  const esc     = cats.escs    || null;
+  const motor   = cats.motors  || null;
   const battery = cats.batteries || null;
-  const gps = cats.gps_modules || null;
-  const frame = cats.frames || null;
+  const gps     = cats.gps_modules || null;
+  const frame   = cats.frames  || null;
   const P = {};
   const set = (n,v,c) => { P[n] = {v,c}; };
 
@@ -1186,111 +1241,157 @@ function generateArduPilotParams() {
   if (frame) {
     const vt = (frame.vehicle_type||'quad').toLowerCase();
     const ac = (frame.arm_configuration||'x').toLowerCase();
-    set('FRAME_CLASS', FC_MAP[vt]||1, (frame.name||'')+ ' — '+vt);
-    set('FRAME_TYPE', FT_MAP[ac]||1, 'arm: '+ac);
-  } else { set('FRAME_CLASS',1,'Quad (default)'); set('FRAME_TYPE',1,'X'); }
+    set('FRAME_CLASS', FC_MAP[vt]||1, (frame.name||'')+' — '+vt);
+    set('FRAME_TYPE',  FT_MAP[ac]||1, 'arm: '+ac);
+  } else {
+    set('FRAME_CLASS',1,'Quad (default)');
+    set('FRAME_TYPE', 1,'X');
+  }
 
   // Battery
   if (battery) {
     const cells = battery.cell_count||4;
-    const cap = battery.capacity_mah||1500;
-    const chem = (battery.chemistry||'lipo').toLowerCase();
-    const isLiIon = chem.includes('ion');
-    const crit = isLiIon ? 2.8 : 3.3;
-    const low = isLiIon ? 3.2 : 3.5;
-    const nom = isLiIon ? 3.6 : 3.7;
-    set('BATT_MONITOR',4,'Analog V+I');
-    set('BATT_CAPACITY',cap, cap+'mAh '+cells+'S');
-    set('BATT_ARM_VOLT', +(nom*cells*0.95).toFixed(1), 'Min arm voltage');
-    set('BATT_CRT_VOLT', +(crit*cells).toFixed(1), crit+'V/cell x'+cells+'S');
-    set('BATT_LOW_VOLT', +(low*cells).toFixed(1), low+'V/cell x'+cells+'S');
-    set('BATT_FS_CRT_ACT',1,'Land on critical');
-    set('BATT_FS_LOW_ACT',2,'RTL on low');
-    set('BATT_FS_LOW_MAH',Math.round(cap*0.2),'20% remaining');
+    const cap   = battery.capacity_mah||1500;
+    const chem  = (battery.chemistry||'lipo').toLowerCase();
+    const isIon = chem.includes('ion');
+    const crit  = isIon ? 2.8 : 3.3;
+    const low   = isIon ? 3.2 : 3.5;
+    const nom   = isIon ? 3.6 : 3.7;
+    set('BATT_MONITOR',    4,                          'Analog V+I');
+    set('BATT_CAPACITY',   cap,                        cap+'mAh '+cells+'S');
+    set('BATT_ARM_VOLT',   +(nom*cells*0.95).toFixed(1),'Min arm voltage');
+    set('BATT_CRT_VOLT',   +(crit*cells).toFixed(1),  crit+'V/cell x'+cells+'S');
+    set('BATT_LOW_VOLT',   +(low*cells).toFixed(1),   low+'V/cell x'+cells+'S');
+    set('BATT_FS_CRT_ACT', 1,                         'Land on critical');
+    set('BATT_FS_LOW_ACT', 2,                         'RTL on low');
+    set('BATT_FS_LOW_MAH', Math.round(cap*0.2),       '20% remaining');
   }
 
-  // ESC
-  const TELEM_FW = new Set(['blheli_32','am32','fettec','kiss','apm']);
+  // ESC + harmonic notch
+  const TELEM_FW  = new Set(['blheli_32','am32','fettec','kiss','apm']);
   const DSHOT_MAP = {blheli_32:6,blheli_s:5,am32:6,fettec:6,kiss:6,bluejay:5};
   if (esc) {
-    const fw = (esc.esc_firmware||'').toLowerCase().replace(/\s+/g,'_');
-    const iface = (esc.interface||'').toLowerCase();
+    const fw      = (esc.esc_firmware||'').toLowerCase().replace(/\s+/g,'_');
+    const iface   = (esc.interface||'').toLowerCase();
     const pwmType = DSHOT_MAP[fw] || (iface.includes('dshot') ? 6 : 5);
     set('MOT_PWM_TYPE', pwmType, (pwmType>=6?'DShot600':'DShot300')+' — '+fw);
     if (TELEM_FW.has(fw)) {
-      set('INS_HNTCH_ENABLE',1,'Harmonic notch ON');
-      set('INS_HNTCH_MODE',4,'RPM telemetry');
-      set('INS_HNTCH_OPTS',2,'Double notch');
-      set('INS_HNTCH_REF',1,'');
       const kv = motor ? (motor.kv_rating||2000) : 2000;
-      set('INS_HNTCH_FREQ', Math.max(80,Math.min(250,Math.round(kv*0.06))), 'From '+kv+'KV');
+      set('INS_HNTCH_ENABLE', 1,   'Harmonic notch ON');
+      set('INS_HNTCH_MODE',   4,   'RPM telemetry');
+      set('INS_HNTCH_OPTS',   2,   'Double notch');
+      set('INS_HNTCH_REF',    1,   '');
+      set('INS_HNTCH_FREQ',   Math.max(80,Math.min(250,Math.round(kv*0.06))), 'From '+kv+'KV');
     } else {
-      set('INS_HNTCH_ENABLE',1,'Harmonic notch ON');
-      set('INS_HNTCH_MODE',1,'Throttle-based');
-      set('INS_HNTCH_FREQ',120,'Verify with FFT');
-      set('INS_HNTCH_REF',0.35,'Hover ref');
+      set('INS_HNTCH_ENABLE', 1,    'Harmonic notch ON');
+      set('INS_HNTCH_MODE',   1,    'Throttle-based');
+      set('INS_HNTCH_FREQ',   120,  'Verify with FFT');
+      set('INS_HNTCH_REF',    0.35, 'Hover ref');
     }
   }
 
-  // Motor + PIDs
+  // Motor + PID tune
   if (motor) {
-    const kv = motor.kv_rating||2000;
-    const pMin = motor.prop_size_min_in||5, pMax = motor.prop_size_max_in||pMin;
-    const ps = Math.round((pMin+pMax)/2);
+    const kv   = motor.kv_rating||2000;
+    const pMin = motor.prop_size_min_in||5;
+    const pMax = motor.prop_size_max_in||pMin;
+    const ps   = Math.round((pMin+pMax)/2);
+
+    // Motor constants
     const sm = ps<=3?0.12:ps<=5?0.15:ps<=7?0.12:0.10;
     const sx = ps<=5?0.95:ps<=7?0.90:0.85;
-    set('MOT_SPIN_MIN',sm, kv+'KV on '+ps+'" props');
-    set('MOT_SPIN_MAX',sx,'');
-    set('MOT_SPIN_ARM',0.05,'');
-    set('MOT_THST_EXPO', kv>3000?0.55:kv>2000?0.60:0.65, 'Thrust curve for '+kv+'KV');
+    set('MOT_SPIN_MIN',   sm,               kv+'KV on '+ps+'" props');
+    set('MOT_SPIN_MAX',   sx,               '');
+    set('MOT_SPIN_ARM',   0.05,             '');
+    set('MOT_THST_EXPO',  kv>3000?0.55:kv>2000?0.60:0.65, 'Thrust curve for '+kv+'KV');
+    set('MOT_HOVER_LEARN',2,               'Learn+save');
     const hov = ps>=10?0.30:ps>=7?0.35:kv<2500?0.45:0.50;
-    set('MOT_HOVER_LEARN',2,'Learn+save');
-    set('MOT_THST_HOVER',hov,'Starting estimate');
-    const PID = {3:[.09,.09,.003],5:[.135,.135,.004],6:[.10,.10,.005],7:[.08,.08,.005],10:[.05,.05,.006]};
-    const [bp,bi,bd] = PID[ps]||PID[5];
-    const sc = Math.max(0.7,Math.min(1.3,2000/Math.max(kv,1)));
-    const rp=+(bp*sc).toFixed(4), ri=+(bi*sc).toFixed(4), rd=+(bd*sc).toFixed(5);
-    set('ATC_RAT_RLL_P',rp, ps+'"/'+kv+'KV STARTING POINT');
-    set('ATC_RAT_RLL_I',ri,''); set('ATC_RAT_RLL_D',rd,'');
-    set('ATC_RAT_PIT_P',rp,'Sym w/ roll'); set('ATC_RAT_PIT_I',ri,''); set('ATC_RAT_PIT_D',rd,'');
-    set('ATC_RAT_YAW_P',+(rp*0.6).toFixed(4),'60% of roll');
-    set('ATC_RAT_YAW_I',+(ri*0.3).toFixed(4),''); set('ATC_RAT_YAW_D',0,'');
+    set('MOT_THST_HOVER', hov,              'Starting estimate');
+
+    // Rate PID base values (from prop size + KV scaling)
+    const PID_BASE = {3:[.09,.09,.003],5:[.135,.135,.004],6:[.10,.10,.005],7:[.08,.08,.005],10:[.05,.05,.006],13:[.035,.035,.008]};
+    const [bp,bi,bd] = PID_BASE[ps]||PID_BASE[5];
+    const kvScale  = Math.max(0.7, Math.min(1.3, 2000/Math.max(kv,1)));
+    const pm       = kvScale * prof.pidMult;
+    const rp = +(bp*pm).toFixed(4);
+    const ri = +(bi*pm).toFixed(4);
+    const rd = +(bd*pm).toFixed(5);
+
+    set('ATC_RAT_RLL_P',    rp, ps+'"/'+kv+'KV — '+prof.label);
+    set('ATC_RAT_RLL_I',    ri, '');
+    set('ATC_RAT_RLL_D',    rd, '');
+    set('ATC_RAT_RLL_FF',   0,  'Set after autotune');
+    set('ATC_RAT_RLL_FILT', prof.dFiltHz, 'D-term filter Hz');
+
+    set('ATC_RAT_PIT_P',    rp, 'Sym w/ roll');
+    set('ATC_RAT_PIT_I',    ri, '');
+    set('ATC_RAT_PIT_D',    rd, '');
+    set('ATC_RAT_PIT_FF',   0,  '');
+    set('ATC_RAT_PIT_FILT', prof.dFiltHz, '');
+
+    set('ATC_RAT_YAW_P',    +(rp*0.6).toFixed(4), '60% of roll P');
+    set('ATC_RAT_YAW_I',    +(ri*0.3).toFixed(4), '');
+    set('ATC_RAT_YAW_D',    0,  '');
+    set('ATC_RAT_YAW_FF',   0,  '');
+    set('ATC_RAT_YAW_FILT', 20, 'Yaw D filter');
+
+    // Angle PIDs
+    const aP = prof.angP;
+    set('ATC_ANG_RLL_P', aP, 'Angle P — '+prof.label);
+    set('ATC_ANG_PIT_P', aP, '');
+    set('ATC_ANG_YAW_P', aP, '');
+
+    // Input time constant (controls "feel" — lower=snappier)
+    set('ATC_INPUT_TC', prof.inputTC, prof.label+' feel');
+
+    // Acceleration limits (deg/s² — controls max rotation rate)
+    const baseAccel = AP_ACCEL[ps] || AP_ACCEL[5];
+    const am = prof.accelMult;
+    set('ATC_ACCEL_R_MAX', Math.round(baseAccel.r*am/1000)*1000, 'Roll accel limit');
+    set('ATC_ACCEL_P_MAX', Math.round(baseAccel.p*am/1000)*1000, 'Pitch accel limit');
+    set('ATC_ACCEL_Y_MAX', Math.round(baseAccel.y*am/1000)*1000, 'Yaw accel limit');
   }
 
   // GPS
   if (gps) {
     const gn = (gps.name||'').toLowerCase();
-    set('GPS_TYPE', gn.includes('dronecan')||gn.includes('uavcan')?9:1, gps.name||'GPS');
-    set('GPS_AUTO_CONFIG',1,'');
-    set('GPS_GNSS_MODE',67,'GPS+GLONASS+Galileo');
-    set('SERIAL3_PROTOCOL',5,'GPS');
-    set('SERIAL3_BAUD',230,'230400');
+    set('GPS_TYPE',        gn.includes('dronecan')||gn.includes('uavcan')?9:1, gps.name||'GPS');
+    set('GPS_AUTO_CONFIG', 1,  '');
+    set('GPS_GNSS_MODE',   67, 'GPS+GLONASS+Galileo');
+    set('SERIAL3_PROTOCOL',5,  'GPS');
+    set('SERIAL3_BAUD',    230,'230400');
   }
 
-  // FC
+  // FC / IMU
   if (fc) {
     const imu = ((fc.imu||'')+'').toUpperCase();
-    if (imu.includes('ICM42688')) set('INS_GYRO_RATE',1,'ICM42688 4kHz');
-    else if (imu.includes('BMI270')) set('INS_GYRO_RATE',0,'BMI270 1.6kHz');
-    set('LOG_BITMASK',176126,'Default+IMU+PID+RCOUT');
-    set('LOG_BACKEND_TYPE',1,'DataFlash');
+    if (imu.includes('ICM42688'))      set('INS_GYRO_RATE',1,'ICM42688 4kHz');
+    else if (imu.includes('BMI270'))   set('INS_GYRO_RATE',0,'BMI270 1.6kHz');
+    set('LOG_BITMASK',    176126,'Default+IMU+PID+RCOUT');
+    set('LOG_BACKEND_TYPE',1,   'DataFlash');
   }
-  set('SERIAL0_PROTOCOL',2,'MAVLink2 USB'); set('SERIAL0_BAUD',115,'115200');
+  set('SERIAL0_PROTOCOL',2,'MAVLink2 USB');  set('SERIAL0_BAUD',115,'115200');
   set('SERIAL1_PROTOCOL',2,'MAVLink2 TELEM1'); set('SERIAL1_BAUD',57,'57600');
 
-  // Safety
-  set('ARMING_CHECK',1,'All checks');
-  set('FS_THR_ENABLE',1,'RC failsafe: RTL'); set('FS_THR_VALUE',975,'');
-  set('FS_GCS_ENABLE',1,'GCS failsafe'); set('FS_CRASH_CHECK',1,'');
-  set('FLTMODE1',0,'Stabilize'); set('FLTMODE4',2,'AltHold'); set('FLTMODE6',6,'RTL');
-  set('RTL_ALT',3000,'30m'); set('WPNAV_SPEED',800,'8 m/s');
+  // Safety + nav
+  set('ARMING_CHECK',   1,   'All checks');
+  set('FS_THR_ENABLE',  1,   'RC failsafe: RTL'); set('FS_THR_VALUE',975,'');
+  set('FS_GCS_ENABLE',  1,   'GCS failsafe');
+  set('FS_CRASH_CHECK', 1,   '');
+  set('FLTMODE1', 0,'Stabilize'); set('FLTMODE4',2,'AltHold'); set('FLTMODE6',6,'RTL');
+  set('RTL_ALT',  3000, '30m');
+  set('WPNAV_SPEED',  prof.wpSpeed, (prof.wpSpeed/100).toFixed(1)+' m/s — '+prof.label);
+  set('WPNAV_ACCEL',  prof.accelMult >= 1 ? 250 : 150, 'Horizontal acceleration cm/s²');
+  set('WPNAV_ACCEL_Z',100,'Vertical acceleration cm/s²');
 
   // Build .param text
-  const ts = new Date().toISOString().replace(/\.\d+/,'');
+  const ts    = new Date().toISOString().replace(/\.\d+/,'');
   const parts = build.map(b=>b.name).join(', ');
   let out = `# ArduPilot Base Parameters — Generated by DroneClear Forge\n`;
-  out += `# ${ts}\n# Build: ${parts}\n#\n`;
-  out += `# STARTING POINT — run AutoTune after first hover\n#\n`;
+  out += `# ${ts}\n`;
+  out += `# Profile: ${prof.label}\n`;
+  out += `# Build: ${parts}\n#\n`;
+  out += `# STARTING POINT — Calibrate ESCs, run AutoTune before flying.\n#\n`;
   let prev = '';
   Object.keys(P).sort().forEach(k => {
     const pfx = k.split('_')[0];
@@ -1302,7 +1403,7 @@ function generateArduPilotParams() {
   const blob = new Blob([out], {type:'text/plain'});
   const a = document.createElement('a');
   a.href = URL.createObjectURL(blob);
-  a.download = 'ardupilot-'+new Date().toISOString().slice(0,10)+'.param';
+  a.download = `ardupilot-${profile}-${new Date().toISOString().slice(0,10)}.param`;
   a.click();
 }
 
@@ -1323,7 +1424,19 @@ $('build-overlay').addEventListener('click', () => {
 });
 $('btn-clear').addEventListener('click', () => { if(confirm('Clear build?')) clearBuild(); });
 $('btn-export').addEventListener('click', exportBuild);
-$('btn-ardupilot').addEventListener('click', generateArduPilotParams);
+$('btn-ardupilot').addEventListener('click', e => {
+  e.stopPropagation();
+  $('param-picker').classList.toggle('open');
+});
+document.addEventListener('click', e => {
+  if (!$('param-wrap').contains(e.target)) $('param-picker').classList.remove('open');
+});
+$('param-picker').querySelectorAll('.pp-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    $('param-picker').classList.remove('open');
+    generateArduPilotParams(btn.dataset.profile);
+  });
+});
 $('btn-share').addEventListener('click', shareBuild);
 $('modal-close-x').addEventListener('click', closeModal);
 $('modal-close-btn').addEventListener('click', closeModal);
