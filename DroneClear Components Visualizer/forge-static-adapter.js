@@ -16,11 +16,17 @@
 
     // ── Load static data on page load ──
     async function _loadDB() {
-        // Try multiple paths — works at any route depth
+        const cb = '?v=' + Date.now();
         const paths = ['/static/forge_database.json', '../static/forge_database.json', 'forge_database.json'];
         let db = null;
         for (const p of paths) {
-            try { const r = await fetch(p); if (r.ok) { db = await r.json(); break; } } catch(e) {}
+            try {
+                const ctrl = new AbortController();
+                const tid = setTimeout(() => ctrl.abort(), 15000);
+                const r = await fetch(p + cb, { cache: 'no-store', signal: ctrl.signal });
+                clearTimeout(tid);
+                if (r.ok) { db = await r.json(); break; }
+            } catch(e) {}
         }
         if (!db) throw new Error('forge_database.json not found at any path');
         return db;

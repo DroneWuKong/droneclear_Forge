@@ -415,12 +415,19 @@ const fmtCat = s => s.replace(/_/g,' ').replace(/\b\w/g,c=>c.toUpperCase());
 // of an unhelpful generic "nothing loaded" state.
 let _dbLoadError = null;
 async function loadDB() {
+  // Fast path: if the static adapter already loaded the DB, reuse it (avoids double-fetch)
+  try {
+    if (window.__forgeAdapterReady) {
+      await Promise.race([window.__forgeAdapterReady, new Promise((_,rej) => setTimeout(rej, 10000))]);
+      const r = await fetch('/api/schema/');
+      if (r.ok) { const d = await r.json(); if (d && d.components) return d; }
+    }
+  } catch(e) { /* adapter not ready or timed out — fetch directly */ }
+
   const cb = '?v=' + Date.now();
   const paths = [
     '/static/forge_database.json',
     '../static/forge_database.json',
-    '../../static/forge_database.json',
-    'static/forge_database.json',
     'forge_database.json',
   ];
   let lastErr = null;
@@ -436,13 +443,6 @@ async function loadDB() {
       lastErr = `${e.name || 'Error'}: ${e.message || e} at ${p}`;
     }
   }
-  // Fallback: if the static adapter is present, it has already loaded the DB
-  // for /api/ interception. Ask it for the data via its /api/components endpoint.
-  try {
-    if (window.__forgeAdapterReady) await window.__forgeAdapterReady;
-    const r = await fetch('/api/schema/');
-    if (r.ok) return await r.json();
-  } catch(e) { lastErr = (lastErr || '') + '; adapter: ' + (e.message || e); }
   _dbLoadError = lastErr;
   return null;
 }
