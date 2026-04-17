@@ -83,6 +83,8 @@ PAGES = {
     'analytics.html': 'analytics/index.html',
     'clock.html': 'clock/index.html',
     'uas-hub.html': 'hub/index.html',       # /hub/ — UAS- landing page, all 5 domains
+    'gallery.html': 'gallery/index.html',
+    'entity-graph.html': 'entity-graph/index.html',
 }
 
 # Static assets to copy (JS, CSS, JSON, images)

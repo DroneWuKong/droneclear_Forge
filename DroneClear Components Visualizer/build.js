@@ -71,6 +71,8 @@ function addToBuild(comp) {
     updateBuildTotals();
     updateBuildBadge();
     validateBuild();
+    // Analytics: track builder add
+    if (window.__fa) window.__fa.view(comp.pid, currentCategory, comp.manufacturer || '', '', null);
 }
 
 function removeFromBuild(category) {
@@ -79,6 +81,8 @@ function removeFromBuild(category) {
     updateBuildTotals();
     updateBuildBadge();
     validateBuild();
+    // Analytics: track builder remove
+    if (window.__fa) window.__fa.filter(category, {action: 'builder_remove'}, Object.values(currentBuild).filter(c => c !== null).length);
 }
 
 function renderBuildSlots() {
@@ -363,6 +367,8 @@ function exportBuildCSV() {
     a.click();
     URL.revokeObjectURL(url);
     showToast('Build exported as CSV.', 'success');
+    // Analytics: track build export
+    if (window.__fa) window.__fa.tab('export_csv');
 }
 
 document.getElementById('export-build-csv-btn')?.addEventListener('click', exportBuildCSV);
