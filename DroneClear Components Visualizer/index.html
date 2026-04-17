@@ -53,6 +53,21 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:var(--s
 #search{width:100%;padding:5px 10px 5px 28px;background:var(--card);border:1px solid var(--border);border-radius:var(--r);color:var(--text);font:400 11px var(--sans);outline:none;transition:.15s}
 #search:focus{border-color:var(--border-hi)}
 #search::placeholder{color:var(--text-d)}
+/* ── Filter bar ── */
+#filter-bar{display:none;align-items:center;gap:8px;padding:6px 12px;background:var(--bg);border-bottom:1px solid var(--border);flex-shrink:0;overflow-x:auto;white-space:nowrap}
+#filter-bar::-webkit-scrollbar{height:3px}
+#filter-bar::-webkit-scrollbar-thumb{background:var(--border);border-radius:2px}
+.filter-group{display:inline-flex;flex-direction:column;gap:2px;flex-shrink:0}
+.filter-label{font:600 9px var(--mono);color:var(--text-x);text-transform:uppercase;letter-spacing:.07em}
+.filter-sel{background:var(--card);border:1px solid var(--border);color:var(--text-s);font:400 11px var(--sans);padding:4px 24px 4px 8px;border-radius:6px;outline:none;cursor:pointer;appearance:none;-webkit-appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%238a8070'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 7px center;transition:.1s;max-width:130px}
+.filter-sel:hover{border-color:var(--border-hi)}
+.filter-sel.active{border-color:var(--amber);color:var(--amber)}
+#filter-clear{background:none;border:none;font:500 10px var(--sans);color:var(--text-x);cursor:pointer;padding:4px 8px;border-radius:5px;margin-left:4px;display:none;flex-shrink:0}
+#filter-clear.visible{display:block;color:var(--red)}
+#filter-clear:hover{color:var(--red)}
+/* ── Spec tags on cards ── */
+.spec-tags{display:flex;flex-wrap:wrap;gap:3px;margin-top:5px}
+.spec-tag{font:500 9px var(--mono);color:var(--text-d);background:var(--surface);border:1px solid var(--border);border-radius:4px;padding:1px 5px;white-space:nowrap}
 #cat-title{font:700 13px var(--mono);color:var(--text);flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 #part-count{font:400 10px var(--mono);color:var(--text-d)}
 .tb-select{background:var(--card);border:1px solid var(--border);color:var(--text-s);font:400 10px var(--sans);padding:4px 8px;border-radius:6px;outline:none;cursor:pointer}
@@ -334,6 +349,7 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:var(--s
           <option value="mfr">Manufacturer</option>
         </select>
       </div>
+      <div id="filter-bar"></div>
 
       <div id="grid-wrap">
         <div id="loader">
@@ -414,6 +430,226 @@ let currentCat = null;
 let currentParts = [];
 let build = JSON.parse(localStorage.getItem('forge-build') || '[]');
 let modalPart = null;
+let activeFilters = {};
+
+// ── Filter config per category ──
+// type:'select' — enumerate unique values from data (exact match)
+// type:'buckets' — predefined ranges; buckets:[{l:label, t:testFn(val)}]
+// type:'derived' — compute a simplified key via derive(part), then exact match
+const FILTER_CFG = {
+  motors: [
+    { key:'kv_rating', label:'KV', type:'buckets', buckets:[
+      {l:'< 1000',  t:v=>v<1000},
+      {l:'1000–2000',t:v=>v>=1000&&v<2000},
+      {l:'2000–3000',t:v=>v>=2000&&v<3000},
+      {l:'3000+',   t:v=>v>=3000},
+    ]},
+    { key:'_stator', label:'Size', type:'derived',
+      derive: p => p.stator_size ? String(p.stator_size).slice(0,2)+'xx' : null },
+    { key:'cell_count_min', label:'Cells', type:'select', fmt:v=>`${v}S` },
+    { key:'prop_size_max_in', label:'Prop', type:'select', fmt:v=>`${v}"` },
+  ],
+  escs: [
+    { key:'motor_output_count', label:'Type', type:'select',
+      fmt:v=>v===1||v==='1'?'Single':'4-in-1' },
+    { key:'esc_firmware', label:'Firmware', type:'select' },
+    { key:'continuous_current_per_motor_a', label:'Current', type:'buckets', buckets:[
+      {l:'≤ 30A', t:v=>v<=30},
+      {l:'30–50A', t:v=>v>30&&v<=50},
+      {l:'50–70A', t:v=>v>50&&v<=70},
+      {l:'70A+',  t:v=>v>70},
+    ]},
+    { key:'cell_count_max', label:'Max Cells', type:'select', fmt:v=>`${v}S` },
+  ],
+  flight_controllers: [
+    { key:'mcu_family', label:'MCU', type:'select' },
+    { key:'mounting_pattern_mm', label:'Mount', type:'select', fmt:v=>`${v}mm` },
+    { key:'_imu', label:'IMU', type:'derived',
+      derive: p => {
+        const s = (p.imu||'').toLowerCase();
+        if (s.includes('icm42688')||s.includes('icm-42688')) return 'ICM42688';
+        if (s.includes('bmi270')) return 'BMI270';
+        if (s.includes('mpu6000')) return 'MPU6000';
+        if (s.includes('icm20689')) return 'ICM20689';
+        if (s.includes('tactical')) return 'Tactical-grade';
+        return p.imu||null;
+      }},
+    { key:'cell_count_max', label:'Max Cells', type:'select', fmt:v=>`${v}S` },
+  ],
+  stacks: [
+    { key:'mcu_family', label:'MCU', type:'select' },
+    { key:'cell_count_max', label:'Max Cells', type:'select', fmt:v=>`${v}S` },
+    { key:'esc_current_a', label:'ESC Current', type:'buckets', buckets:[
+      {l:'≤ 30A', t:v=>v<=30},
+      {l:'30–50A', t:v=>v>30&&v<=50},
+      {l:'50–70A', t:v=>v>50&&v<=70},
+      {l:'70A+',  t:v=>v>70},
+    ]},
+    { key:'is_aio', label:'Form', type:'select',
+      fmt:v=>(v===true||v==='true')?'AIO':'Standalone' },
+  ],
+  frames: [
+    { key:'prop_size_max_in', label:'Prop Size', type:'select', fmt:v=>`${v}"` },
+    { key:'fc_mounting_patterns_mm', label:'FC Mount', type:'derived',
+      derive: p => {
+        const arr = p.fc_mounting_patterns_mm;
+        if (!arr) return null;
+        const vals = Array.isArray(arr) ? arr : [arr];
+        return vals.map(v=>`${v}mm`).join('/');
+      }},
+  ],
+  batteries: [
+    { key:'cell_count', label:'Cells', type:'select', fmt:v=>`${v}S` },
+    { key:'capacity_mah', label:'Capacity', type:'buckets', buckets:[
+      {l:'< 1000mAh',  t:v=>v<1000},
+      {l:'1000–2000',  t:v=>v>=1000&&v<2000},
+      {l:'2000–4000',  t:v=>v>=2000&&v<4000},
+      {l:'4000mAh+',   t:v=>v>=4000},
+    ]},
+    { key:'_chem', label:'Chemistry', type:'derived',
+      derive: p => {
+        const c = (p.chemistry||'').toLowerCase();
+        if (c.includes('lihv')) return 'LiHV';
+        if (c.includes('lipo')) return 'LiPo';
+        if (c.includes('sulfur')) return 'Li-S';
+        if (c.includes('semi')) return 'Semi-solid';
+        if (c.includes('ion')) return 'Li-Ion';
+        return p.chemistry||null;
+      }},
+  ],
+  propellers: [
+    { key:'_size', label:'Size', type:'derived',
+      derive: p => {
+        const d = p.diameter_in;
+        if (d==null) return null;
+        if (d<=3) return '≤ 3"';
+        if (d<=5) return '3–5"';
+        if (d<=7) return '5–7"';
+        return '7"+';
+      }},
+    { key:'blade_count', label:'Blades', type:'select', fmt:v=>`${v}B` },
+    { key:'pitch_in', label:'Pitch', type:'select', fmt:v=>`${v}p` },
+  ],
+  receivers: [
+    { key:'protocol', label:'Protocol', type:'select' },
+  ],
+  video_transmitters: [
+    { key:'video_system', label:'System', type:'select' },
+  ],
+  fpv_cameras: [
+    { key:'video_system', label:'System', type:'select' },
+  ],
+  gps_modules: [
+    { key:'size_class', label:'Size', type:'select' },
+  ],
+  antennas: [
+    { key:'frequency_ghz', label:'Frequency', type:'select', fmt:v=>`${v}GHz` },
+    { key:'polarization', label:'Polarization', type:'select' },
+  ],
+};
+
+// ── Key spec badges shown on cards ──
+const CARD_SPECS = {
+  motors:            p => [p.stator_size, p.kv_rating && `${p.kv_rating}KV`],
+  escs:              p => [p.motor_output_count===4||p.motor_output_count==='4'?'4-in-1':'Single',
+                           p.continuous_current_per_motor_a && `${p.continuous_current_per_motor_a}A`],
+  flight_controllers:p => [p.mcu_family, p.mounting_pattern_mm && `${p.mounting_pattern_mm}mm`],
+  stacks:            p => [p.mcu_family, p.esc_current_a && `${p.esc_current_a}A`,
+                           (p.is_aio===true||p.is_aio==='true')?'AIO':null],
+  frames:            p => [p.prop_size_max_in && `${p.prop_size_max_in}"`,
+                           p.wheelbase_mm && `${p.wheelbase_mm}mm`],
+  batteries:         p => [p.cell_count && `${p.cell_count}S`, p.capacity_mah && `${p.capacity_mah}mAh`],
+  propellers:        p => [p.diameter_in && `${p.diameter_in}"`,
+                           p.pitch_in && `${p.pitch_in}p`, p.blade_count && `${p.blade_count}B`],
+  receivers:         p => [p.protocol, p.frequency_ghz && `${p.frequency_ghz}GHz`],
+  video_transmitters:p => [p.video_system],
+  fpv_cameras:       p => [p.video_system],
+  gps_modules:       p => [p.constellations],
+  antennas:          p => [p.frequency_ghz && `${p.frequency_ghz}GHz`, p.polarization],
+};
+
+// ── Filter helpers ──
+function derivedVal(cfg, part) {
+  if (cfg.type === 'derived') return cfg.derive(part);
+  return part[cfg.key];
+}
+
+function renderFilterBar() {
+  const bar = $('filter-bar');
+  const cfgs = FILTER_CFG[currentCat];
+  if (!cfgs || !cfgs.length) { bar.style.display = 'none'; return; }
+  const parts = DB.components[currentCat] || [];
+  const anyActive = Object.keys(activeFilters).length > 0;
+
+  const groups = cfgs.map(cfg => {
+    const active = activeFilters[cfg.key];
+    let options = '';
+    if (cfg.type === 'buckets') {
+      options = cfg.buckets.map(b =>
+        `<option value="${esc(b.l)}"${active===b.l?' selected':''}>${esc(b.l)}</option>`
+      ).join('');
+    } else {
+      const vals = new Map();
+      parts.forEach(p => {
+        const v = derivedVal(cfg, p);
+        if (v == null || v === '') return;
+        const key = String(v);
+        const disp = cfg.fmt ? cfg.fmt(v) : key;
+        vals.set(key, disp);
+      });
+      const sorted = [...vals.entries()].sort((a,b)=>a[0].localeCompare(b[0],undefined,{numeric:true}));
+      options = sorted.map(([k,d]) =>
+        `<option value="${esc(k)}"${active===k?' selected':''}>${esc(d)}</option>`
+      ).join('');
+    }
+    return `<div class="filter-group">
+      <span class="filter-label">${esc(cfg.label)}</span>
+      <select class="filter-sel${active?' active':''}" data-fk="${esc(cfg.key)}">
+        <option value="">All</option>${options}
+      </select>
+    </div>`;
+  }).join('');
+
+  bar.innerHTML = groups +
+    `<button id="filter-clear" class="${anyActive?'visible':''}">✕ Clear</button>`;
+  bar.style.display = 'flex';
+
+  bar.querySelectorAll('.filter-sel').forEach(sel => {
+    sel.addEventListener('change', () => {
+      if (sel.value) activeFilters[sel.dataset.fk] = sel.value;
+      else delete activeFilters[sel.dataset.fk];
+      renderFilterBar();
+      renderGrid();
+    });
+  });
+  const clr = $('filter-clear');
+  if (clr) clr.addEventListener('click', () => {
+    activeFilters = {};
+    renderFilterBar();
+    renderGrid();
+  });
+}
+
+function applySpecFilters(parts) {
+  const cfgs = FILTER_CFG[currentCat];
+  if (!cfgs || !Object.keys(activeFilters).length) return parts;
+  return parts.filter(p => {
+    for (const cfg of cfgs) {
+      const val = activeFilters[cfg.key];
+      if (!val) continue;
+      if (cfg.type === 'buckets') {
+        const bucket = cfg.buckets.find(b => b.l === val);
+        if (!bucket) continue;
+        const pv = p[cfg.key];
+        if (pv == null || !bucket.t(Number(pv))) return false;
+      } else {
+        const pv = String(derivedVal(cfg, p) ?? '');
+        if (pv !== val) return false;
+      }
+    }
+    return true;
+  });
+}
 
 // ── Helpers ──
 const $ = id => document.getElementById(id);
@@ -511,13 +747,13 @@ function renderSidebar() {
 
 function selectCat(cat) {
   currentCat = cat;
-  // Update sidebar active
+  activeFilters = {};
   document.querySelectorAll('.cat-item').forEach(el => {
     el.classList.toggle('active', el.dataset.cat === cat);
   });
   $('cat-title').textContent = fmtCat(cat);
-  // Close mobile sidebar
   $('sidebar').classList.remove('mob-open');
+  renderFilterBar();
   renderGrid();
 }
 
@@ -526,13 +762,14 @@ function renderGrid() {
   const search = $('search').value.trim().toLowerCase();
   const sort = $('sort-sel').value;
 
-  let parts = DB.components[currentCat] || [];
-
+  let parts;
   if (search) {
     parts = allParts.filter(p => {
       const haystack = [p.name,p.manufacturer,p.pid,...(p.tags||[])].join(' ').toLowerCase();
       return haystack.includes(search);
     });
+  } else {
+    parts = applySpecFilters(DB.components[currentCat] || []);
   }
 
   if (sort === 'name-asc') parts = [...parts].sort((a,b) => (a.name||'').localeCompare(b.name||''));
@@ -540,7 +777,8 @@ function renderGrid() {
   else if (sort === 'mfr') parts = [...parts].sort((a,b) => (a.manufacturer||'').localeCompare(b.manufacturer||''));
 
   currentParts = parts;
-  $('part-count').textContent = `${parts.length} parts`;
+  const total = (DB.components[currentCat]||[]).length;
+  $('part-count').textContent = parts.length === total ? `${total} parts` : `${parts.length} / ${total}`;
 
   const grid = $('grid');
   const empty = $('empty');
@@ -554,16 +792,19 @@ function renderGrid() {
   empty.style.display = 'none';
 
   const inBuild = new Set(build.map(b => b.pid));
+  const specFn = CARD_SPECS[currentCat];
 
   grid.innerHTML = parts.map(p => {
     const imgHtml = p.image_file
       ? `<img class="img" src="${esc(p.image_file)}" alt="" loading="lazy" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'">`+
         `<div class="img-placeholder" style="display:none"><i class="ph ph-image"></i></div>`
       : `<div class="img-placeholder"><i class="ph ph-image"></i></div>`;
+    const tags = specFn ? specFn(p).filter(Boolean).map(s=>`<span class="spec-tag">${esc(String(s))}</span>`).join('') : '';
     return `<div class="part-card${inBuild.has(p.pid)?' in-build':''}" data-pid="${esc(p.pid)}">
       ${imgHtml}
       <div class="name">${esc(p.name)}</div>
       <div class="mfr">${esc(p.manufacturer||'')}</div>
+      ${tags ? `<div class="spec-tags">${tags}</div>` : ''}
       <div class="pid">${esc(p.pid)}</div>
       <button class="add-btn" data-pid="${esc(p.pid)}" title="Add to build"><i class="ph ph-plus"></i></button>
     </div>`;
