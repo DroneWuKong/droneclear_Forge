@@ -358,6 +358,7 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:var(--s
   <div id="drawer-footer">
     <div id="build-total">Parts: <span id="build-n">0</span></div>
     <div class="btn-row">
+      <button class="btn btn-outline" id="btn-share"><i class="ph ph-share-network"></i> Share</button>
       <button class="btn btn-outline" id="btn-export"><i class="ph ph-export"></i> Export</button>
       <button class="btn btn-outline" id="btn-clear" style="color:#ef4444;border-color:rgba(239,68,68,.3)"><i class="ph ph-trash"></i> Clear</button>
     </div>
@@ -453,6 +454,19 @@ async function init() {
   allParts = [];
   for (const [cat, parts] of Object.entries(DB.components)) {
     for (const p of parts) allParts.push({...p, _cat: cat});
+  }
+
+  // Hydrate build from ?b= shareable URL param (overrides localStorage)
+  const bParam = new URLSearchParams(location.search).get('b');
+  if (bParam) {
+    const pids = decodeBuildParam(bParam);
+    if (pids && Array.isArray(pids) && pids.length) {
+      build = pids
+        .map(pid => allParts.find(p => p.pid === pid))
+        .filter(Boolean)
+        .map(p => ({pid: p.pid, name: p.name, cat: p._cat || p.category}));
+      saveBuild();
+    }
   }
 
   renderSidebar();
@@ -634,6 +648,32 @@ function saveBuild() {
   try { localStorage.setItem('forge-build', JSON.stringify(build)); } catch(e) {}
 }
 
+// ── Share ──
+function encodeBuildParam() {
+  const pids = build.map(b => b.pid);
+  return btoa(JSON.stringify(pids)).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,'');
+}
+function decodeBuildParam(s) {
+  try {
+    const b64 = s.replace(/-/g,'+').replace(/_/g,'/');
+    const padded = b64 + '='.repeat((4 - b64.length % 4) % 4);
+    const parsed = JSON.parse(atob(padded));
+    return Array.isArray(parsed) ? parsed : null;
+  } catch(e) { return null; }
+}
+function shareBuild() {
+  if (!build.length) { alert('Build is empty — add parts before sharing.'); return; }
+  const url = location.origin + location.pathname + '?b=' + encodeBuildParam();
+  const btn = $('btn-share');
+  const restore = btn.innerHTML;
+  const flash = () => { btn.innerHTML = '<i class="ph ph-check"></i> Copied'; setTimeout(() => btn.innerHTML = restore, 1500); };
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(url).then(flash, () => prompt('Copy this URL:', url));
+  } else {
+    prompt('Copy this URL:', url);
+  }
+}
+
 function updateBuildUI() {
   $('build-count').textContent = build.length;
   $('build-n').textContent = build.length;
@@ -685,6 +725,7 @@ $('build-overlay').addEventListener('click', () => {
 });
 $('btn-clear').addEventListener('click', () => { if(confirm('Clear build?')) clearBuild(); });
 $('btn-export').addEventListener('click', exportBuild);
+$('btn-share').addEventListener('click', shareBuild);
 $('modal-close-x').addEventListener('click', closeModal);
 $('modal-close-btn').addEventListener('click', closeModal);
 $('modal-overlay').addEventListener('click', e => { if(e.target === $('modal-overlay')) closeModal(); });

@@ -39,9 +39,23 @@ verbatim photos, no verbatim user writeups, no comments. The output is a
 statistical graph over parts + a normalization table. See tools/mining/README.md
 for the full policy.
 
-Status: SCAFFOLD — targets() paginates /explore; parse() is stubbed pending
-DOM inspection. Run with max_records=25 first; verify DOM selectors before
-scaling up.
+RotorBuilds robots.txt (verified 2026-04): User-agent: * / Allow: / with
+ai-train=no signal. Scraping for aggregate stats is permitted; training AI
+on verbatim content is not. This miner emits only derived data, not verbatim.
+
+DOM structure (verified from live page 2026-04-16):
+  Index pages (/builds, /explore): single-quoted hrefs like href='/build/36877'
+  Build pages (/build/N):
+    <tr>
+      <td class='tag' data-tag='fc'><h4>Flight Controller</h4></td>
+      <td class='name'>
+        <a href='...'>Part Name</a>
+        <div class='vendor'>VendorName</div>
+      </td>
+      <td class='price'><span>$115.99</span></td>
+    </tr>
+  data-tag values: fc, motor, frame, prop, fpvcamera, tx, antenna, rx, battery,
+                   esc, pdb, 3d, hardware (may extend)
 """
 
 from __future__ import annotations
@@ -56,10 +70,27 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 from mining.lib.base_miner import BaseMiner, MinerConfig, Record  # noqa: E402
 
 
-# --- quality-gate keywords (NOT category filter) ---------------------
+# ── Category slug → canonical Forge category name ──────────────────────────
+
+TAG_TO_CATEGORY = {
+    "fc":        "flight_controller",
+    "esc":       "esc",
+    "motor":     "motor",
+    "frame":     "frame",
+    "prop":      "propeller",
+    "fpvcamera": "camera",
+    "tx":        "vtx",
+    "antenna":   "antenna",
+    "rx":        "receiver",
+    "battery":   "battery",
+    "pdb":       "power_distribution",
+    "gps":       "gps",
+    "stack":     "stack",
+    "3d":        "3d_print",
+    "hardware":  "hardware",
+}
 
 SPAM_MARKERS = {
-    # things that suggest a placeholder / test / deleted build
     "test build", "asdf", "untitled", "new build",
     "please delete", "deleted", "removed by",
 }
@@ -67,9 +98,9 @@ SPAM_MARKERS = {
 
 class RotorBuildsMiner(BaseMiner):
     """
-    SCAFFOLD. Yields build URLs from /explore pagination, then parses each
-    build page into a Record. Filter (is_relevant) is a quality gate only —
-    no category exclusion, no size exclusion.
+    Yields build URLs from /builds and /explore, then parses each build page
+    into a Record with a real parts list extracted from the DOM.
+    Filter (is_relevant) is a quality gate only — no category exclusion.
     """
 
     @classmethod
@@ -77,10 +108,8 @@ class RotorBuildsMiner(BaseMiner):
         return MinerConfig(
             source_name="rotorbuilds",
             base_url="https://rotorbuilds.com",
-            # RotorBuilds returned 403 on initial probe — they have anti-bot.
-            # Start SLOW. 4 seconds between requests. Watch for blocks.
-            min_request_interval_sec=4.0,
-            # Identify ourselves honestly. If they want us to stop, they can ask.
+            # Be polite — 3s between requests.
+            min_request_interval_sec=3.0,
             user_agent="ForgeMinerBot/0.1 (+https://forgeprole.netlify.app; research@droneclear.ai)",
             respect_robots=True,
             robots_block_behavior="skip",
@@ -88,53 +117,48 @@ class RotorBuildsMiner(BaseMiner):
 
     def targets(self) -> Iterable[str]:
         """
-        Yield URLs to fetch.
-
-        Strategy:
-          1. Start from /explore (featured builds — curated, higher signal).
-          2. Paginate until exhausted or max_records reached.
-          3. parse() of index pages emits build_index records that a follow-up
-             run can re-enqueue (via _discovered_build_urls, captured in memory).
-
-        Pagination: /explore?page=N. Exact param name and page size need
-        verification against the live DOM.
+        Pass 1: /builds page (latest builds, high volume).
+        Pass 2: /explore (featured/curated builds, higher signal).
+        Pass 3: build pages discovered during index parse this run.
         """
-        # Pass 1: the featured-builds index pages. Start with 10 pages of /explore.
-        for page in range(1, 11):
-            yield f"{self.config.base_url}/explore?page={page}"
-        # Pass 2: also pull from /builds (latest builds, higher volume).
         for page in range(1, 11):
             yield f"{self.config.base_url}/builds?page={page}"
-        # Pass 3: build pages discovered from index parses this run.
+        for page in range(1, 11):
+            yield f"{self.config.base_url}/explore?page={page}"
         for url in getattr(self, "_discovered_build_urls", []):
             yield url
 
-    # Regex patterns — placeholders. Actual selectors will need the real DOM.
-    _BUILD_URL_RE = re.compile(r'href="(/build/\d+[^"#?]*)"')
-    _BUILD_TITLE_RE = re.compile(r"<title>([^<]+)</title>", re.IGNORECASE)
-    _PROP_SIZE_RE = re.compile(r"(\d{1,2})\s*(?:inch|in|\")", re.IGNORECASE)
+    # ── Regex patterns ───────────────────────────────────────────────────────
+
+    # Index page: single-quoted OR double-quoted hrefs to /build/N
+    _BUILD_URL_RE = re.compile(r"""href=['"](/build/\d+[^'"#?]*)['"]""")
+
+    # Build page: each parts row
+    # Matches: <td class='tag' data-tag='fc'>...  <td class='name'><a ...>Name</a> <div class='vendor'>V</div>  <td class='price'><span>$X</span>
+    _PARTS_ROW = re.compile(
+        r"<td[^>]*class=['\"]tag['\"][^>]*data-tag=['\"]([^'\"]+)['\"].*?"   # group 1: data-tag
+        r"<td[^>]*class=['\"]name['\"]>(.*?)</td>",                           # group 2: name cell HTML
+        re.DOTALL | re.I,
+    )
+    _PART_NAME_ANCHOR = re.compile(r"<a[^>]*>([^<]+)</a>", re.I)
+    _VENDOR_DIV       = re.compile(r"<div[^>]*class=['\"]vendor['\"][^>]*>([^<]+)", re.I)
+    _PRICE_SPAN       = re.compile(r"<td[^>]*class=['\"]price['\"][^>]*>\s*<span>([^<]+)</span>", re.I)
+    _TITLE_TAG        = re.compile(r"<title>([^<]+)</title>", re.I)
+    _PROP_SIZE_RE     = re.compile(r"(\d{1,2})\s*(?:inch|in|\")", re.I)
+    _STRIP_TAGS       = re.compile(r"<[^>]+>")
 
     def parse(self, url: str, body: str) -> Iterable[Record]:
-        """
-        Parse a fetched body into Records.
+        if "/builds" in url or "/explore" in url:
+            yield from self._parse_index(url, body)
+        elif "/build/" in url:
+            yield from self._parse_build(url, body)
 
-        Two modes based on URL shape:
-          - index pages (/explore, /builds)  → emit 'build_index' records
-          - individual builds (/build/N)      → emit 'build' records with parts
-
-        SCAFFOLD NOTE: the part-list extraction is the core value. It needs
-        real DOM inspection to get selectors right. Workflow:
-          1. Save one representative build page to output/.cache/
-          2. Inspect it to find the part-list container
-          3. Walk rows for: category, part name, vendor/retailer, price (if listed)
-          4. Emit one sub-record per part plus one summary Record per build
-        """
-        if "/explore" in url or "/builds" in url:
-            discovered = set()
-            for build_path in self._BUILD_URL_RE.findall(body):
-                full = self.config.base_url + build_path
-                if full in discovered:
-                    continue
+    def _parse_index(self, url: str, body: str) -> Iterable[Record]:
+        """Emit build_index records for each build URL discovered."""
+        discovered: set[str] = set()
+        for m in self._BUILD_URL_RE.finditer(body):
+            full = self.config.base_url + m.group(1)
+            if full not in discovered:
                 discovered.add(full)
                 yield Record(
                     source="rotorbuilds",
@@ -144,53 +168,91 @@ class RotorBuildsMiner(BaseMiner):
                     data={"build_url": full},
                     meta={"discovered_from": url},
                 )
-            # Stash discovered URLs so targets() can re-emit them in pass 3
-            if not hasattr(self, "_discovered_build_urls"):
-                self._discovered_build_urls = []
-            self._discovered_build_urls.extend(discovered)
-            return
+        if not hasattr(self, "_discovered_build_urls"):
+            self._discovered_build_urls = []
+        self._discovered_build_urls.extend(discovered)
 
-        if "/build/" in url:
-            # TODO: implement real extraction. Placeholder returns a shell
-            # with title + prop-size hint so the pipeline can be tested.
-            title_m = self._BUILD_TITLE_RE.search(body)
-            title = title_m.group(1).strip() if title_m else ""
-            size_hint = None
-            for m in self._PROP_SIZE_RE.finditer(title + " " + body[:2000]):
-                try:
-                    size_hint = int(m.group(1))
-                    break
-                except ValueError:
-                    continue
-            yield Record(
-                source="rotorbuilds",
-                fetched_at="",
-                url=url,
-                record_type="build",
-                data={
-                    "title": title,
-                    "prop_size_inch_hint": size_hint,
-                    # TODO — real fields after DOM inspection:
-                    "parts": [],       # list of {category, name, vendor, price_usd}
-                    "part_count": 0,
-                    "tags": [],
-                    "description_len": 0,  # length only — never store verbatim text
-                },
-                meta={"SCAFFOLD": True},
-            )
-            return
+    def _parse_build(self, url: str, body: str) -> Iterable[Record]:
+        """
+        Extract parts from the real RotorBuilds DOM:
+          <td class='tag' data-tag='fc'> → category
+          <td class='name'><a>Name</a><div class='vendor'>V</div>  → part name + vendor
+        """
+        title_m = self._TITLE_TAG.search(body)
+        title = self._decode_html(title_m.group(1).strip()) if title_m else ""
+
+        # Prop-size hint from title + first 2000 chars of body
+        size_hint = None
+        for m in self._PROP_SIZE_RE.finditer(title + " " + body[:2000]):
+            try:
+                size_hint = int(m.group(1))
+                break
+            except ValueError:
+                continue
+
+        parts = self._extract_parts(body)
+
+        yield Record(
+            source="rotorbuilds",
+            fetched_at="",
+            url=url,
+            record_type="build",
+            data={
+                "title": title,
+                "prop_size_inch_hint": size_hint,
+                "parts": parts,
+                "part_count": len(parts),
+                "tags": [],
+                "description_len": 0,  # never store verbatim text
+            },
+            meta={},
+        )
+
+    def _extract_parts(self, body: str) -> list[dict]:
+        """
+        Walk <tr> rows whose first <td> has class='tag' and data-tag=.
+        Extracts: category (mapped to Forge slug), name, vendor.
+        """
+        parts = []
+        # We need to pair each <td class='tag'> with its following <td class='name'>
+        # and optionally the <td class='price'>. The compiled _PARTS_ROW does this.
+        for m in self._PARTS_ROW.finditer(body):
+            raw_tag = m.group(1).strip().lower()
+            category = TAG_TO_CATEGORY.get(raw_tag, raw_tag)
+            name_html = m.group(2)
+
+            # Part name: first anchor text in the name cell
+            name_m = self._PART_NAME_ANCHOR.search(name_html)
+            if not name_m:
+                continue
+            name = self._decode_html(name_m.group(1).strip())
+            if not name:
+                continue
+
+            # Vendor: <div class='vendor'>
+            vendor_m = self._VENDOR_DIV.search(name_html)
+            vendor = vendor_m.group(1).strip() if vendor_m else ""
+
+            parts.append({
+                "category": category,
+                "name": name,
+                "vendor": vendor,
+            })
+
+        return parts
+
+    @staticmethod
+    def _decode_html(s: str) -> str:
+        """Unescape basic HTML entities."""
+        return (s
+                .replace("&amp;", "&")
+                .replace("&lt;", "<")
+                .replace("&gt;", ">")
+                .replace("&quot;", '"')
+                .replace("&#39;", "'"))
 
     def is_relevant(self, record: Record) -> bool:
-        """
-        QUALITY gate only. No category exclusion. See file header for rationale.
-
-        Rules:
-          - build_index records always pass (filter downstream on parsed build)
-          - build records must have a non-blank title
-          - build records must not match spam markers
-          - build records must have at least 1 part (once parsed; SCAFFOLD
-            currently emits empty lists, so this check is soft for now)
-        """
+        """Quality gate only. No category exclusion."""
         if record.record_type == "build_index":
             return True
         if record.record_type != "build":
@@ -205,18 +267,34 @@ class RotorBuildsMiner(BaseMiner):
             self.log.debug(f"spam marker: {record.url}")
             return False
 
-        # Soft part-count gate. Once the scaffold is filled in and parts[] is
-        # populated, uncomment to require >=3 parts (a real build, not a shell).
-        # if record.data.get("part_count", 0) < 3:
-        #     return False
+        if record.data.get("part_count", 0) < 3:
+            self.log.debug(f"too few parts ({record.data.get('part_count')}): {record.url}")
+            return False
 
         return True
 
 
 if __name__ == "__main__":
+    import argparse
     import logging
     logging.basicConfig(level=logging.INFO, format="%(levelname)s %(name)s: %(message)s")
+
+    ap = argparse.ArgumentParser(description="RotorBuilds miner")
+    ap.add_argument("--fixture", metavar="FILE",
+                    help="Parse a local HTML file instead of fetching from the web")
+    ap.add_argument("--url", default="https://rotorbuilds.com/build/0",
+                    help="Fake URL to use when parsing a fixture file")
+    ap.add_argument("--max", type=int, default=25)
+    args = ap.parse_args()
+
     miner = RotorBuildsMiner(RotorBuildsMiner.default_config())
-    # Dry run — cap records so nothing runs away.
-    records = miner.run(max_records=25)
-    print(f"emitted {len(records)} records")
+
+    if args.fixture:
+        body = Path(args.fixture).read_text(encoding="utf-8", errors="replace")
+        records = list(miner.parse(args.url, body))
+        print(f"Emitted {len(records)} record(s) from fixture:")
+        for r in records:
+            print(f"  {r.record_type}: {r.data}")
+    else:
+        records = miner.run(max_records=args.max)
+        print(f"Emitted {len(records)} records")

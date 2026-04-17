@@ -800,6 +800,7 @@ var STARTERS = [
 var ragIndex = [];
 var pieIndex = [];    // PIE flags for Wingman context injection
 var pieByKeyword = {}; // keyword → Set of flag ids
+var coData = null;    // forge_co_occurrence.json — part co-occurrence from real builds
 var mfgStatus = {};   // manufacturer slug → status record (forge_manufacturer_status.json)
 var coOccur = {};     // part name → {related_part: count} (forge_co_occurrence.json)
 var mfgAliases = {};  // alias lowercase → canonical slug (for fuzzy matching)
@@ -1113,6 +1114,12 @@ async function loadRAG() {
       }
     }
   } catch(e) { /* PIE unavailable */ }
+
+  // Load co-occurrence data for build-validity Step 5 (best-effort, non-blocking)
+  try {
+    const coRes = await fetch('forge_co_occurrence.json');
+    if (coRes.ok) coData = await coRes.json();
+  } catch(e) { /* co-occurrence unavailable */ }
 
   // Load manufacturer status registry (forge_manufacturer_status.json)
   try {
@@ -2248,6 +2255,23 @@ function buildPieContext(query) {
   return '\nPIE INTELLIGENCE (supply chain / compliance signals relevant to this query):\n' + lines.join('\n') + '\n';
 }
 
+function buildCooccurrenceContext(query) {
+  if (!coData || !coData.cooccurrence || !query) return '';
+  const q = query.toLowerCase();
+  const signals = [];
+  for (const [part, related] of Object.entries(coData.cooccurrence)) {
+    if (part.length < 4) continue;
+    if (q.includes(part)) {
+      const top = Object.entries(related).slice(0, 3).map(([r, n]) => `${r} (×${n})`).join(', ');
+      if (top) signals.push(`${part} → commonly paired with: ${top}`);
+    }
+  }
+  if (!signals.length) return '';
+  const buildCount = coData.source_build_count || '?';
+  return '\nCO-OCCURRENCE DATA (from ' + buildCount + ' real FPV builds — community ground truth):\n' +
+    signals.slice(0, 5).join('\n') + '\n';
+}
+
 function buildPrompt(query, hasImages) {
   // ── 4. Conversation-aware: extract last 3 user messages as context
   const recentUserMsgs = messages
@@ -2334,6 +2358,7 @@ BUILD-VALIDITY CHECK (always run for ANY question mentioning parts, vendors, or 
   Step 2 — PART FLAGGED? Cross-check mentioned parts against PIE INTELLIGENCE (supply/diversion/compliance flags). If a flag applies, mention it.
   Step 3 — BETTER ALTERNATIVE? If the primary pick has a supply_constrained flag, a covered_foreign_entity flag, or an eol status, pull the drop-in or equivalent from ALTERNATIVES context and recommend it by name. Briefly justify ("RPi 5 is supply-constrained per our intel — Radxa Rock 5B is the drop-in").
   Step 4 — UNKNOWN VENDOR? If a user mentions a part vendor not in MANUFACTURER STATUS, and you're on Claude, use web_search before claiming a vendor is active. On Gemini/Groq, state plainly "I don't have current status on $VENDOR — verify availability before ordering."
+  Step 5 — COMBO PROVEN? If CO-OCCURRENCE DATA below shows the mentioned parts ship together in real builds, surface that positive signal briefly: "This FC+ESC combo appears on X builds per community data — compatibility is proven."
 
 TONE FOR STATUS WARNINGS: Don't scold. "Yes, that combo works electrically — heads up though, Brain FPV shut down around 2020-2021, so no firmware updates or RMAs. If you have a working Radix, run it; for a new build grab a Matek/Holybro/SpeedyBee F7 AIO instead."
 
@@ -2341,7 +2366,7 @@ KNOWLEDGE BASE:
 ${FALLBACK_KB}
 ${kbData !== FALLBACK_KB ? kbData : ''}
 ${validationCtx ? validationCtx : ''}
-${ragCtx ? '\nRELEVANT DB ENTRIES:' + ragCtx : ''}${buildManufacturerContext(query)}${buildAlternativesContext(query)}${buildPieContext(query)}
+${ragCtx ? '\nRELEVANT DB ENTRIES:' + ragCtx : ''}${buildManufacturerContext(query)}${buildAlternativesContext(query)}${buildPieContext(query)}${buildCooccurrenceContext(query)}
 ${imageInstructions}`;
 }
 

@@ -54,14 +54,14 @@
 | FEAT-003 | Photo AI analysis | Run CV models on captured step photos for quality assurance. Needs backend CV server. | 2026-03-06 |
 | FEAT-004 | Schema audit logging | Track who changed what in the schema and parts library. Needs database persistence. | 2026-03-06 |
 | FEAT-005 | Tag vocabulary | Controlled tag taxonomy per category instead of free-form strings. Needs schema changes. | 2026-03-06 |
-| FEAT-006 | Additional data sources | Scraping pipeline scaffolded at `tools/mining/` (2026-04-11). RotorBuilds + ArduPilot Discourse + DIU Blue UAS + SAM.gov miners stubbed. DOM extraction for RotorBuilds is the next concrete step. See tools/mining/README.md. | 2026-03-06 |
-| FEAT-020 | RotorBuilds DOM extraction | Wire `parse()` in `tools/mining/miners/rotorbuilds.py` with real DOM selectors after saving sample pages to cache. Target: emit structured `parts` arrays with category + name + vendor + price. | 2026-04-11 |
-| FEAT-021 | Blue UAS authoritative registry | Wire `tools/mining/miners/blue_uas.py` to pull the DIU Cleared List + Framework list and emit `forge_blue_uas_cleared.json`. US Government public domain — lowest legal risk, highest authority value. | 2026-04-11 |
-| FEAT-022 | Wingman co-occurrence signal | Once `forge_co_occurrence.json` is populated, extend `wingman.html` buildPrompt() with a 5th check: "is this combo common in actual builds?" Complements existing vendor-alive / PIE-flag / alternatives checks. | 2026-04-11 |
-| FEAT-023 | Manufacturer Dossier page | `/patterns/dossier/?m=<slug>` — single page showing all parts + intel articles + PIE flags + spec sheets + subsidiaries for a given manufacturer. Pulls from `forge_manufacturer_status.json` + `forge_database.json`. Natural click-through from any product page or PIE flag. | 2026-04-11 |
-| FEAT-024 | Entity graph visualizer | `/patterns/graph/` — force-directed graph of `entity_graph.json` (manufacturers ↔ parts ↔ contracts ↔ articles). Data already exists; nothing renders it today. | 2026-04-11 |
-| FEAT-025 | Lifecycle timeline | `/patterns/timeline/` — chronological feed of company closures, acquisitions, Blue UAS additions/removals, program cancellations. Pulls from manufacturer_status + intel_articles. | 2026-04-11 |
-| FEAT-026 | Shareable build URLs | `/builder/?b=<compressed-json>` — encode builder state into a URL for no-auth shareable builds. Complements the Forge-vs-RotorBuilds analysis (RotorBuilds borrows). | 2026-04-11 |
+| FEAT-006 | Additional data sources | Pipeline at `tools/mining/`. RotorBuilds miner now produces real parts data (DOM extraction working, 448 pairs from 10 builds). Blue UAS miner blocked by robots.txt (bluelist.dcma.mil disallows). ArduPilot Discourse + SAM.gov miners scaffolded. Next: ArduPilot Discourse parse() + SAM.gov API key. | 2026-03-06 |
+| ~~FEAT-020~~ | ~~RotorBuilds DOM extraction~~ | ~~Resolved — see Completed section~~ | 2026-04-11 |
+| ~~FEAT-021~~ | ~~Blue UAS authoritative registry~~ | ~~Resolved — see Completed section~~ | 2026-04-11 |
+| ~~FEAT-022~~ | ~~Wingman co-occurrence signal~~ | ~~Resolved — see Completed section~~ | 2026-04-11 |
+| ~~FEAT-023~~ | ~~Manufacturer Dossier page~~ | ~~Resolved — see Completed section~~ | 2026-04-11 |
+| FEAT-024 | Entity graph visualizer | `/patterns/graph/` — force-directed graph of `entity_graph.json` (manufacturers ↔ parts ↔ contracts ↔ articles). Data already exists; nothing renders it today. Blocked: `entity_graph.json` is gated — needs product decision on access method. | 2026-04-11 |
+| ~~FEAT-025~~ | ~~Lifecycle timeline~~ | ~~Resolved — see Completed section~~ | 2026-04-11 |
+| ~~FEAT-026~~ | ~~Shareable build URLs~~ | ~~Resolved — see Completed section~~ | 2026-04-11 |
 | FEAT-027 | Featured builds gallery | `/gallery/` — hand-curated `forge_featured_builds.json` with 10-30 reference builds (7" NDAA long-range, cinelifter, Blue UAS Framework reference, ORQA NDAA FPV, etc.). Each deep-links into `/builder/?b=`. | 2026-04-11 |
 | FEAT-008 | Build guide versioning | Track guide revisions so sessions reference a specific version. Needs database versioning. | 2026-03-06 |
 | ~~FEAT-013~~ | ~~Mission Control dashboard~~ | ~~Resolved — see Completed section~~ | 2026-03-08 |
@@ -74,6 +74,12 @@
 
 | ID | Issue | Completed | Session |
 |----|-------|-----------|---------|
+| ~~FEAT-026~~ | Shareable build URLs — `?b=<base64url-pids>` on `/builder/`. Share button in drawer; hydrates build from URL param on load. | 2026-04-16 | `index.html`: encodeBuildParam/decodeBuildParam helpers + btn-share + URL hydration in init() |
+| ~~FEAT-022~~ | Wingman 5th co-occurrence check — `buildCooccurrenceContext()` injected into buildPrompt(); loads `forge_co_occurrence.json` non-blocking. Step 5 added to BUILD-VALIDITY CHECK. | 2026-04-16 | `wingman.html`: coData var + loadCooccurrence + buildCooccurrenceContext() |
+| ~~FEAT-020~~ | RotorBuilds DOM extraction — real DOM selectors verified on live site. `parse()` extracts category/name/vendor from `<td class='tag' data-tag=...>` rows. 9-part builds extracted cleanly. Sample page cached at `tools/mining/fixtures/rotorbuilds_build_36877.html`. | 2026-04-16 | `tools/mining/miners/rotorbuilds.py` rewritten; end-to-end tested: 448 pairs from 10 builds |
+| ~~FEAT-021~~ | Blue UAS normalizer — `tools/mining/normalizers/blue_uas_to_cleared.py` writes `forge_blue_uas_cleared.json`. Registered in `run_all.py`. Note: bluelist.dcma.mil and diu.mil both block scraping via robots.txt; populating real data requires Excel download or operator permission. | 2026-04-16 | `tools/mining/normalizers/blue_uas_to_cleared.py` (new); `run_all.py` updated |
+| ~~FEAT-023~~ | Manufacturer Dossier page — `dossier.html` already fully implemented (754 lines, picker + detail views). Backlog was stale. | 2026-04-16 | Backlog reconciliation |
+| ~~FEAT-025~~ | Lifecycle/Regulatory Timeline — `timeline.html` already fully implemented (432 lines, law/regulation/list_update/ma/program/enforcement filter pills). Backlog was stale. | 2026-04-16 | Backlog reconciliation |
 | ~~BUG-mesh-001~~ | Mesh planner map never initializes | 2026-04-13 | tools.html nav clicks captured local showTool closure, bypassing window.showTool overrides |
 | ~~DEBT-risk-001~~ | risk_scores.json separate from entities.json | 2026-04-13 | Merged inline into entities.json schema |
 | ~~BUG-link-001~~ | PIE→ and Full analysis→ links broken in brief | 2026-04-13 | Now switch tabs in-page |
