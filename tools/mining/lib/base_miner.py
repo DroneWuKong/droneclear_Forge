@@ -124,17 +124,27 @@ class BaseMiner(ABC):
         which robotparser misreads as 'disallow all'.
         """
         if _CURL_AVAILABLE:
-            try:
-                r = _cffi_requests.get(
-                    robots_url, timeout=10, impersonate="chrome120",
-                    headers={"User-Agent": self.config.user_agent},
-                )
-                if r.status_code == 200:
-                    return r.text
-                if r.status_code == 404:
-                    return ""  # no robots.txt → allow all
-            except Exception:
-                pass
+            for attempt in range(3):
+                try:
+                    r = _cffi_requests.get(
+                        robots_url, timeout=10, impersonate="chrome120",
+                        headers={"User-Agent": self.config.user_agent},
+                    )
+                    if r.status_code == 200:
+                        return r.text
+                    if r.status_code == 404:
+                        return ""  # no robots.txt → allow all
+                    if r.status_code >= 500:
+                        import time; time.sleep(2 * (attempt + 1))
+                        continue
+                    break
+                except Exception:
+                    import time; time.sleep(2 * (attempt + 1))
+            # curl_cffi available but couldn't get a definitive answer.
+            # Falling through to urllib will also fail (same Cloudflare wall),
+            # so default to allow-all rather than disallow-all.
+            self.log.warning(f"robots.txt fetch via curl_cffi failed for {robots_url}; assuming allow")
+            return ""
         return None  # fall through to standard robotparser.read()
 
     def _check_robots(self, url: str) -> bool:
