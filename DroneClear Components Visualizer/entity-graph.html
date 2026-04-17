@@ -1,0 +1,221 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Entity Graph — Forge</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+<script src="https://d3js.org/d3.v7.min.js"></script>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:#0c0c0a;color:#b8b0a0;font-family:'DM Sans',system-ui,sans-serif;height:100vh;overflow:hidden;display:flex;flex-direction:column}
+.toolbar{padding:12px 20px;display:flex;align-items:center;gap:12px;border-bottom:1px solid #1e1e18;flex-shrink:0;z-index:10}
+.toolbar h1{font:700 16px 'JetBrains Mono',monospace;color:#f59e0b;flex-shrink:0}
+.search-box{flex:1;max-width:320px;padding:6px 12px;border-radius:6px;border:1px solid #2a2a22;background:#111110;color:#b8b0a0;font:400 12px 'DM Sans',system-ui;outline:none}
+.search-box:focus{border-color:#f59e0b}
+.legend{display:flex;gap:14px;margin-left:auto;flex-shrink:0}
+.legend-item{display:flex;align-items:center;gap:5px;font:400 11px 'JetBrains Mono',monospace;color:#4a4540}
+.legend-dot{width:10px;height:10px;border-radius:50%}
+.legend-sq{width:10px;height:10px;border-radius:2px}
+#graph{flex:1;width:100%;cursor:grab}
+#graph:active{cursor:grabbing}
+.tooltip{position:fixed;padding:8px 12px;background:#1a1a14;border:1px solid #2a2a22;border-radius:6px;font:400 11px 'DM Sans',system-ui;color:#b8b0a0;pointer-events:none;opacity:0;transition:opacity .15s;z-index:100;max-width:280px}
+.tooltip b{color:#f59e0b;font-weight:600}
+.tooltip .tt-type{color:#4a4540;font:400 10px 'JetBrains Mono',monospace}
+.stats{position:fixed;bottom:12px;left:20px;font:400 10px 'JetBrains Mono',monospace;color:#2e2e26;z-index:10}
+</style>
+</head>
+<body>
+
+<div class="toolbar">
+  <h1>Entity Graph</h1>
+  <input class="search-box" id="search" placeholder="Search manufacturers, categories, programs..." />
+  <div class="legend">
+    <div class="legend-item"><div class="legend-dot" style="background:#f59e0b"></div> Manufacturer</div>
+    <div class="legend-item"><div class="legend-sq" style="background:#dc2626"></div> Category</div>
+    <div class="legend-item"><div class="legend-dot" style="background:#22c55e"></div> Program</div>
+  </div>
+</div>
+
+<svg id="graph"></svg>
+<div class="tooltip" id="tooltip"></div>
+<div class="stats" id="stats"></div>
+
+<script>
+(function() {
+  var manufacturers = [
+    {id:'mfr-holybro',name:'Holybro',country:'China',cats:['flight_controllers','gps_modules','receivers','stacks']},
+    {id:'mfr-betafpv',name:'BetaFPV',country:'China',cats:['frames','motors','flight_controllers','fpv_cameras','receivers']},
+    {id:'mfr-tbs',name:'TBS',country:'China',cats:['video_transmitters','receivers','control_link_tx','antennas']},
+    {id:'mfr-immersionrc',name:'ImmersionRC',country:'Italy',cats:['video_transmitters','receivers','antennas']},
+    {id:'mfr-happymodel',name:'Happymodel',country:'China',cats:['receivers','frames','motors','flight_controllers']},
+    {id:'mfr-cubepilot',name:'CubePilot',country:'Australia',cats:['flight_controllers','gps_modules','video_transmitters']},
+    {id:'mfr-speedybee',name:'SpeedyBee',country:'China',cats:['flight_controllers','escs','stacks','video_transmitters']},
+    {id:'mfr-geprc',name:'GEPRC',country:'China',cats:['frames','motors','stacks','video_transmitters']},
+    {id:'mfr-iflight',name:'iFlight',country:'China',cats:['frames','motors','escs','stacks','flight_controllers']},
+    {id:'mfr-diatone',name:'Diatone',country:'China',cats:['frames','flight_controllers','escs','stacks']},
+    {id:'mfr-runcam',name:'RunCam',country:'China',cats:['fpv_cameras','video_transmitters']},
+    {id:'mfr-caddx',name:'Caddx',country:'China',cats:['fpv_cameras','video_transmitters']},
+    {id:'mfr-foxeer',name:'Foxeer',country:'China',cats:['fpv_cameras','video_transmitters','antennas']},
+    {id:'mfr-dji',name:'DJI',country:'China',cats:['fpv_cameras','video_transmitters','control_link_tx']},
+    {id:'mfr-skydio',name:'Skydio',country:'USA',cats:['companion_computers','ai_accelerators'],programs:['pbas']},
+    {id:'mfr-freefly',name:'Freefly',country:'USA',cats:['frames','motors','gps_modules'],programs:['blue-uas']},
+    {id:'mfr-orqa',name:'ORQA',country:'Croatia',cats:['fpv_cameras','video_transmitters','flight_controllers']},
+    {id:'mfr-neros',name:'Neros Technologies',country:'USA',cats:['frames','flight_controllers'],programs:['pbas']},
+    {id:'mfr-redcat',name:'Red Cat Holdings',country:'USA',cats:['flight_controllers','companion_computers'],programs:['blue-uas','pbas']},
+    {id:'mfr-shieldai',name:'Shield AI',country:'USA',cats:['ai_accelerators','companion_computers'],programs:['blue-uas']},
+    {id:'mfr-teal',name:'Teal Drones',country:'USA',cats:['frames','flight_controllers','thermal_cameras'],programs:['blue-uas']},
+    {id:'mfr-hqprop',name:'HQProp',country:'China',cats:['propellers']},
+    {id:'mfr-gemfan',name:'Gemfan',country:'China',cats:['propellers']},
+    {id:'mfr-tattu',name:'Tattu/Gens Ace',country:'China',cats:['batteries']},
+    {id:'mfr-cnhl',name:'CNHL',country:'China',cats:['batteries']},
+    {id:'mfr-matek',name:'Matek',country:'China',cats:['flight_controllers','escs','stacks','gps_modules']},
+    {id:'mfr-flir',name:'FLIR/Teledyne',country:'USA',cats:['thermal_cameras'],programs:['blue-uas']},
+    {id:'mfr-herelink',name:'Herelink',country:'Australia',cats:['control_link_tx','ground_control_stations']},
+    {id:'mfr-silvus',name:'Silvus Technologies',country:'USA',cats:['mesh_radios'],programs:['blue-uas']},
+    {id:'mfr-doodlelabs',name:'Doodle Labs',country:'USA',cats:['mesh_radios'],programs:['blue-uas']},
+  ];
+
+  var catNames = {
+    flight_controllers:'Flight Controllers',escs:'ESCs',frames:'Frames',motors:'Motors',
+    propellers:'Propellers',batteries:'Batteries',receivers:'Receivers',stacks:'Stacks',
+    video_transmitters:'Video TX',fpv_cameras:'FPV Cameras',antennas:'Antennas',
+    gps_modules:'GPS',control_link_tx:'Control Link',companion_computers:'Companion PCs',
+    ai_accelerators:'AI Accelerators',thermal_cameras:'Thermal Cameras',
+    mesh_radios:'Mesh Radios',ground_control_stations:'GCS',
+  };
+
+  var programs = [
+    {id:'pgm-pbas',name:'PBAS',full:'Purpose-Built Attritable Systems'},
+    {id:'pgm-blue-uas',name:'Blue UAS',full:'Blue UAS Cleared List'},
+  ];
+
+  var nodes = [];
+  var links = [];
+  var catSet = new Set();
+
+  manufacturers.forEach(function(m) {
+    nodes.push({id:m.id,label:m.name,type:'manufacturer',country:m.country,radius:8+m.cats.length*1.5});
+    m.cats.forEach(function(c) { catSet.add(c); });
+  });
+
+  catSet.forEach(function(c) {
+    nodes.push({id:'cat-'+c,label:catNames[c]||c,type:'category',radius:10});
+  });
+
+  programs.forEach(function(p) {
+    nodes.push({id:p.id,label:p.name,type:'program',full:p.full,radius:12});
+  });
+
+  manufacturers.forEach(function(m) {
+    m.cats.forEach(function(c) {
+      links.push({source:m.id,target:'cat-'+c});
+    });
+    if (m.programs) {
+      m.programs.forEach(function(p) {
+        links.push({source:m.id,target:'pgm-'+p});
+      });
+    }
+  });
+
+  document.getElementById('stats').textContent = nodes.length + ' nodes, ' + links.length + ' edges';
+
+  var svg = d3.select('#graph');
+  var width, height;
+  function resize() {
+    var r = svg.node().getBoundingClientRect();
+    width = r.width; height = r.height;
+  }
+  resize();
+
+  var g = svg.append('g');
+  var zoom = d3.zoom().scaleExtent([0.2,5]).on('zoom', function(e) { g.attr('transform',e.transform); });
+  svg.call(zoom);
+
+  var sim = d3.forceSimulation(nodes)
+    .force('link', d3.forceLink(links).id(function(d){return d.id}).distance(80))
+    .force('charge', d3.forceManyBody().strength(-200))
+    .force('center', d3.forceCenter(width/2, height/2))
+    .force('collision', d3.forceCollide().radius(function(d){return d.radius+4}));
+
+  var link = g.append('g').selectAll('line').data(links).join('line')
+    .attr('stroke','#1e1e18').attr('stroke-width',1);
+
+  var node = g.append('g').selectAll('g').data(nodes).join('g')
+    .call(d3.drag().on('start',dragStart).on('drag',dragging).on('end',dragEnd));
+
+  node.each(function(d) {
+    var el = d3.select(this);
+    if (d.type === 'category') {
+      el.append('rect').attr('width',d.radius*2).attr('height',d.radius*2)
+        .attr('x',-d.radius).attr('y',-d.radius).attr('rx',3)
+        .attr('fill','#dc2626').attr('opacity',0.8);
+    } else {
+      el.append('circle').attr('r',d.radius)
+        .attr('fill',d.type==='manufacturer'?'#f59e0b':'#22c55e').attr('opacity',0.8);
+    }
+    el.append('text').text(d.label)
+      .attr('font-size',9).attr('font-family','JetBrains Mono,monospace')
+      .attr('fill','#6b6358').attr('text-anchor','middle').attr('dy',d.radius+12);
+  });
+
+  var tooltip = document.getElementById('tooltip');
+
+  node.on('mouseover', function(e,d) {
+    var connected = new Set();
+    links.forEach(function(l) {
+      var s = typeof l.source === 'object' ? l.source.id : l.source;
+      var t = typeof l.target === 'object' ? l.target.id : l.target;
+      if (s === d.id) connected.add(t);
+      if (t === d.id) connected.add(s);
+    });
+    node.attr('opacity', function(n) { return n.id===d.id||connected.has(n.id)?1:0.15; });
+    link.attr('opacity', function(l) {
+      var s = typeof l.source === 'object' ? l.source.id : l.source;
+      var t = typeof l.target === 'object' ? l.target.id : l.target;
+      return s===d.id||t===d.id?1:0.05;
+    }).attr('stroke', function(l) {
+      var s = typeof l.source === 'object' ? l.source.id : l.source;
+      var t = typeof l.target === 'object' ? l.target.id : l.source;
+      return s===d.id||t===d.id?'#3e3e34':'#1e1e18';
+    });
+    var html = '<b>' + d.label + '</b><br><span class="tt-type">' + d.type + '</span>';
+    if (d.country) html += '<br>Country: ' + d.country;
+    if (d.full) html += '<br>' + d.full;
+    html += '<br>Connections: ' + connected.size;
+    tooltip.innerHTML = html;
+    tooltip.style.opacity = 1;
+    tooltip.style.left = (e.pageX+12)+'px';
+    tooltip.style.top = (e.pageY-12)+'px';
+  })
+  .on('mousemove', function(e) {
+    tooltip.style.left = (e.pageX+12)+'px';
+    tooltip.style.top = (e.pageY-12)+'px';
+  })
+  .on('mouseout', function() {
+    node.attr('opacity',1);
+    link.attr('opacity',1).attr('stroke','#1e1e18');
+    tooltip.style.opacity = 0;
+  });
+
+  sim.on('tick', function() {
+    link.attr('x1',function(d){return d.source.x}).attr('y1',function(d){return d.source.y})
+        .attr('x2',function(d){return d.target.x}).attr('y2',function(d){return d.target.y});
+    node.attr('transform',function(d){return 'translate('+d.x+','+d.y+')';});
+  });
+
+  function dragStart(e,d) { if(!e.active)sim.alphaTarget(0.3).restart(); d.fx=d.x; d.fy=d.y; }
+  function dragging(e,d) { d.fx=e.x; d.fy=e.y; }
+  function dragEnd(e,d) { if(!e.active)sim.alphaTarget(0); d.fx=null; d.fy=null; }
+
+  document.getElementById('search').addEventListener('input', function(e) {
+    var q = e.target.value.toLowerCase();
+    if (!q) { node.attr('opacity',1); link.attr('opacity',1); return; }
+    node.attr('opacity', function(d) { return d.label.toLowerCase().includes(q)?1:0.1; });
+  });
+
+  window.addEventListener('resize', function() { resize(); sim.force('center',d3.forceCenter(width/2,height/2)).alpha(0.3).restart(); });
+})();
+</script>
+</body>
+</html>
