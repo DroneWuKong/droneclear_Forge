@@ -415,6 +415,7 @@ const fmtCat = s => s.replace(/_/g,' ').replace(/\b\w/g,c=>c.toUpperCase());
 // of an unhelpful generic "nothing loaded" state.
 let _dbLoadError = null;
 async function loadDB() {
+  const cb = '?v=' + Date.now();
   const paths = [
     '/static/forge_database.json',
     '../static/forge_database.json',
@@ -425,7 +426,10 @@ async function loadDB() {
   let lastErr = null;
   for (const p of paths) {
     try {
-      const r = await fetch(p, { cache: 'no-cache' });
+      const ctrl = new AbortController();
+      const tid = setTimeout(() => ctrl.abort(), 15000);
+      const r = await fetch(p + cb, { cache: 'no-store', signal: ctrl.signal });
+      clearTimeout(tid);
       if (r.ok) return await r.json();
       lastErr = `HTTP ${r.status} at ${p}`;
     } catch(e) {
