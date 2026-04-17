@@ -117,6 +117,26 @@ class BaseMiner(ABC):
 
     # -------- framework plumbing --------
 
+    def _fetch_robots_txt(self, robots_url: str) -> str | None:
+        """
+        Fetch robots.txt via curl_cffi (browser TLS) when available, falling
+        back to urllib. Plain urllib gets 403 from Cloudflare-protected sites,
+        which robotparser misreads as 'disallow all'.
+        """
+        if _CURL_AVAILABLE:
+            try:
+                r = _cffi_requests.get(
+                    robots_url, timeout=10, impersonate="chrome120",
+                    headers={"User-Agent": self.config.user_agent},
+                )
+                if r.status_code == 200:
+                    return r.text
+                if r.status_code == 404:
+                    return ""  # no robots.txt → allow all
+            except Exception:
+                pass
+        return None  # fall through to standard robotparser.read()
+
     def _check_robots(self, url: str) -> bool:
         if not self.config.respect_robots:
             return True
@@ -125,8 +145,13 @@ class BaseMiner(ABC):
             parsed = urlparse(self.config.base_url)
             robots_url = f"{parsed.scheme}://{parsed.netloc}/robots.txt"
             try:
-                self._robots.set_url(robots_url)
-                self._robots.read()
+                content = self._fetch_robots_txt(robots_url)
+                if content is not None:
+                    self._robots.set_url(robots_url)
+                    self._robots.parse(content.splitlines())
+                else:
+                    self._robots.set_url(robots_url)
+                    self._robots.read()
                 self.log.info(f"robots.txt loaded from {robots_url}")
             except Exception as e:
                 self.log.warning(f"robots.txt fetch failed ({e}); assuming allow")
