@@ -7,6 +7,51 @@
     let pieByCatP   = {};   // category → flags[]
     let pieByCompP  = {};   // component_id → flags[]
 
+    // ── Image relevance auditor ────────────────────────────────────────────
+    // We frequently get scraped images that are unrelated to the platform
+    // (stock drones, generic CDN placeholders, or a different manufacturer's
+    // product). This check rejects the image BEFORE it renders so we fall
+    // back to the category icon instead of showing something misleading.
+    //
+    // Policy:
+    //   1) Reject known stock/placeholder/thumbnail hosts outright.
+    //   2) Accept if the URL contains any ≥3-char token from the platform
+    //      name or manufacturer (case-insensitive, stripped to alphanum).
+    //   3) Accept if the URL is on the manufacturer's own domain.
+    //   4) Otherwise reject — better to show a clean icon than a wrong drone.
+    const STOCK_IMAGE_HOSTS = [
+        'placeholder.com','via.placeholder','picsum.photos',
+        'unsplash.com','pexels.com','pixabay.com',
+        'istockphoto','shutterstock','dreamstime','gettyimages',
+        'encrypted-tbn',
+        'googleusercontent.com/proxy',
+        'example.com','lorempixel'
+    ];
+    function _alnumTokens(s) {
+        return String(s || '')
+            .toLowerCase()
+            .replace(/[^a-z0-9]+/g, ' ')
+            .split(/\s+/)
+            .filter(t => t.length >= 3);
+    }
+    function imageLooksRelevant(url, platformName, manufacturer) {
+        if (!url || typeof url !== 'string') return false;
+        const u = url.toLowerCase();
+        if (u.startsWith('data:') && u.length < 128) return false;
+        if (STOCK_IMAGE_HOSTS.some(h => u.includes(h))) return false;
+        const tokens = [..._alnumTokens(platformName), ..._alnumTokens(manufacturer)];
+        // Compact alnum of URL, so "M350RTK" in URL matches "m350-rtk" tokens
+        const uAlnum = u.replace(/[^a-z0-9]+/g, '');
+        if (tokens.some(t => uAlnum.includes(t))) return true;
+        // Trust URL if hosted on manufacturer's own domain (collapsed alnum)
+        const mfrSlug = String(manufacturer || '').toLowerCase().replace(/[^a-z0-9]+/g,'');
+        try {
+            const host = new URL(url).hostname.toLowerCase().replace(/[^a-z0-9]+/g,'');
+            if (mfrSlug.length >= 4 && host.includes(mfrSlug)) return true;
+        } catch (_) { /* not a full URL — fall through */ }
+        return false;
+    }
+
     // ── Clean unified category taxonomy ──
     const UNIFIED_CATS = {
         // Map raw build_class / industry category → clean group
@@ -360,7 +405,7 @@
 
             const tags = (p.tags || []).slice(0, 4).map(t => `<span class="plat-tag">${esc(t)}</span>`).join('');
 
-            const hasImage = !!p.image_url;
+            const hasImage = !!p.image_url && imageLooksRelevant(p.image_url, p.platform_name, p.manufacturer);
             const cardVisual = hasImage
                 ? `<div class="plat-card-image" style="border-color: ${vis.color};">
                         <img src="${esc(p.image_url)}" alt="${esc(p.platform_name)}" loading="lazy" onerror="this.parentElement.innerHTML='<i class=\\'ph ${vis.icon}\\' style=\\'font-size:48px;color:${vis.color};opacity:0.4;\\'></i>';">
@@ -454,7 +499,7 @@
         const c = p.compliance || {};
 
         let html = `
-            ${p.image_url ? `<div style="width:100%; height:200px; border-radius:12px; overflow:hidden; margin-bottom:20px; background:var(--bg-dark);"><img src="${esc(p.image_url)}" alt="${esc(p.platform_name)}" style="width:100%; height:100%; object-fit:cover;" onerror="this.parentElement.style.display='none';"></div>` : ''}
+            ${p.image_url && imageLooksRelevant(p.image_url, p.platform_name, p.manufacturer) ? `<div style="width:100%; height:200px; border-radius:12px; overflow:hidden; margin-bottom:20px; background:var(--bg-dark);"><img src="${esc(p.image_url)}" alt="${esc(p.platform_name)}" style="width:100%; height:100%; object-fit:cover;" onerror="this.parentElement.style.display='none';"></div>` : ''}
             <div class="plat-detail-header">
                 <div class="plat-detail-name">${esc(p.platform_name)}</div>
                 <div class="plat-detail-mfr">

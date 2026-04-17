@@ -222,10 +222,15 @@ _UNIFIED_NAV = r"""<!-- ── Unified UAS- Nav (5-domain accordion drawer) ─�
 #dc-nav-brand{font:700 13px 'JetBrains Mono',monospace;color:#f59e0b;text-decoration:none;letter-spacing:-.02em;flex-shrink:0}
 #dc-nav-sep{color:#2e2e26;font-size:12px;flex-shrink:0}
 #dc-nav-page{font:600 11px 'DM Sans',system-ui;color:#b8b0a0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:200px}
-#dc-nav-right{display:none}
+#dc-nav-right{display:flex;align-items:center;gap:8px;flex-shrink:0}
 #dc-hamburger{display:flex;align-items:center;justify-content:center;width:32px;height:32px;border-radius:6px;border:1px solid #2a2a22;background:none;color:#6b6358;cursor:pointer;transition:all .15s;flex-shrink:0}
 #dc-hamburger:hover{border-color:#3e3e34;color:#b8b0a0}
 #dc-hamburger.open{border-color:#dc2626;color:#dc2626;background:rgba(220,38,38,.08)}
+.dc-nav-top-btn{display:inline-flex;align-items:center;gap:6px;height:30px;padding:0 10px;border-radius:6px;border:1px solid #2a2a22;background:none;color:#b8b0a0;font:600 11px 'DM Sans',system-ui,sans-serif;text-decoration:none;cursor:pointer;transition:all .15s;flex-shrink:0}
+.dc-nav-top-btn:hover{border-color:#f59e0b;color:#f59e0b;background:rgba(245,158,11,.06)}
+.dc-nav-top-btn.dc-active{border-color:#22c55e;color:#22c55e;background:rgba(34,197,94,.06)}
+.dc-nav-top-btn .dc-nav-top-ico{font-size:14px;line-height:1}
+@media (max-width:520px){.dc-nav-top-btn span.dc-nav-top-label{display:none}}
 #dc-overlay{position:fixed;inset:0;z-index:498;background:rgba(0,0,0,.6);backdrop-filter:blur(4px);opacity:0;pointer-events:none;transition:opacity .25s}
 #dc-overlay.open{opacity:1;pointer-events:auto}
 #dc-drawer{position:fixed;top:0;left:0;bottom:0;z-index:499;width:280px;max-width:85vw;background:#111110;border-right:1px solid #2a2a22;transform:translateX(-100%);transition:transform .3s cubic-bezier(.4,0,.2,1);display:flex;flex-direction:column;overflow-y:auto}
@@ -273,7 +278,12 @@ _UNIFIED_NAV = r"""<!-- ── Unified UAS- Nav (5-domain accordion drawer) ─�
     <span id="dc-nav-sep">/</span>
     <span id="dc-nav-page">—</span>
   </div>
-  <div id="dc-nav-right"></div>
+  <div id="dc-nav-right">
+    <a class="dc-nav-top-btn" href="https://uas-forge.com/wingman/" data-page="wingman" title="Wingman AI">
+      <span class="dc-nav-top-ico">🤖</span>
+      <span class="dc-nav-top-label">Wingman</span>
+    </a>
+  </div>
 </nav>
 
 <div id="dc-overlay" onclick="dcNavClose()"></div>
@@ -305,7 +315,7 @@ _UNIFIED_NAV = r"""<!-- ── Unified UAS- Nav (5-domain accordion drawer) ─�
     </div>
   </details>
 
-  <details class="dc-dom-group" data-host="uas-patterns.com">
+  <details class="dc-dom-group" data-host="uas-patterns.com" data-hub-href="https://uas-patterns.com/patterns-home/">
     <summary>
       <span class="dc-dom-ico">📊</span>
       <div class="dc-dom-info">
@@ -315,16 +325,11 @@ _UNIFIED_NAV = r"""<!-- ── Unified UAS- Nav (5-domain accordion drawer) ─�
       <span class="dc-dom-chev">▶</span>
     </summary>
     <div class="dc-dom-sublinks">
-      <a class="dc-dom-sublink" href="https://uas-patterns.com/patterns-home/" data-page="patterns-home">P.I.E Hub</a>
       <a class="dc-dom-sublink" href="https://uas-patterns.com/patterns/" data-page="patterns">Flags Dashboard</a>
-      <a class="dc-dom-sublink" href="https://uas-patterns.com/patterns/#awards" data-page="awards">Federal Awards ($11.6B)</a>
-      <a class="dc-dom-sublink" href="https://uas-patterns.com/brief/" data-page="brief">Daily Brief</a>
-      <a class="dc-dom-sublink" href="https://uas-patterns.com/analytics/" data-page="analytics">Analytics</a>
-      <a class="dc-dom-sublink" href="https://uas-patterns.com/admin/" data-page="admin">Admin</a>
     </div>
   </details>
 
-  <details class="dc-dom-group" data-host="uas-intel.com">
+  <details class="dc-dom-group" data-host="uas-intel.com" data-hub-href="https://uas-intel.com/intel/">
     <summary>
       <span class="dc-dom-ico">📡</span>
       <div class="dc-dom-info">
@@ -334,10 +339,7 @@ _UNIFIED_NAV = r"""<!-- ── Unified UAS- Nav (5-domain accordion drawer) ─�
       <span class="dc-dom-chev">▶</span>
     </summary>
     <div class="dc-dom-sublinks">
-      <a class="dc-dom-sublink" href="https://uas-intel.com/intel/" data-page="intel">Intel Hub</a>
       <a class="dc-dom-sublink" href="https://uas-intel.com/intel/feed/" data-page="intel-feed">Intel Feed</a>
-      <a class="dc-dom-sublink" href="https://uas-intel.com/intel-commercial/" data-page="intel-commercial">Commercial Intel</a>
-      <a class="dc-dom-sublink" href="https://uas-intel.com/intel-dfr/" data-page="intel-dfr">DFR Intel</a>
       <a class="dc-dom-sublink" href="https://uas-intel.com/industry/" data-page="industry">Industry Tracker</a>
       <a class="dc-dom-sublink" href="https://uas-intel.com/tracker/" data-page="tracker">Contract Tracker</a>
     </div>
@@ -361,6 +363,13 @@ _UNIFIED_NAV = r"""<!-- ── Unified UAS- Nav (5-domain accordion drawer) ─�
   </details>
 
   <!-- Standalone quick links — not grouped under any domain -->
+  <a class="dc-dom-standalone" href="https://uas-forge.com/wingman/" data-page="wingman">
+    <span class="dc-dom-ico">🤖</span>
+    <div class="dc-dom-info">
+      <div class="dc-dom-name">Wingman AI</div>
+      <div class="dc-dom-url">uas-forge.com/wingman/</div>
+    </div>
+  </a>
   <a class="dc-dom-standalone" href="https://uas-patterns.com/clock/" data-page="clock">
     <span class="dc-dom-ico">⏰</span>
     <div class="dc-dom-info">
@@ -453,9 +462,19 @@ _UNIFIED_NAV = r"""<!-- ── Unified UAS- Nav (5-domain accordion drawer) ─�
     if(g.dataset.host === currentHost) g.open = true;
   });
 
-  // Mark active sublink AND standalone (match data-page)
-  document.querySelectorAll('.dc-dom-sublink, .dc-dom-standalone').forEach(function(a){
+  // Mark active sublink AND standalone AND top-bar buttons (match data-page)
+  document.querySelectorAll('.dc-dom-sublink, .dc-dom-standalone, .dc-nav-top-btn').forEach(function(a){
     if(a.dataset.page === path) a.classList.add('dc-active');
+  });
+
+  // Domain groups with data-hub-href: clicking the name/icon navigates to the
+  // hub URL; clicking the chev still toggles the dropdown.
+  document.querySelectorAll('.dc-dom-group[data-hub-href] > summary').forEach(function(s){
+    s.addEventListener('click', function(e){
+      if(e.target.closest('.dc-dom-chev')) return; // chev: default toggle
+      e.preventDefault();
+      location.href = s.parentElement.dataset.hubHref;
+    });
   });
 
   // Hamburger toggle
