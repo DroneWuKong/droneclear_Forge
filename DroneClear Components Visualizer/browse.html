@@ -1135,6 +1135,32 @@ body { font-family:var(--sans); background:var(--bg); color:var(--text); -webkit
                </div>`
             : '';
 
+        // Handbook cross-link — map category to relevant chapter
+        const HANDBOOK_MAP = {
+            flight_controllers: ['firmware/', 'Flight Controller Firmware'],
+            escs: ['firmware/', 'Flight Controller Firmware'],
+            mesh_radios: ['integration/', 'Mesh Networking'],
+            antennas: ['fundamentals/', 'RF Fundamentals'],
+            video_transmitters: ['fundamentals/', 'RF Fundamentals'],
+            receivers: ['fundamentals/', 'RF Fundamentals'],
+            control_link_tx: ['fundamentals/', 'RF Fundamentals'],
+            gps_modules: ['integration/', 'GPS & Navigation'],
+            lidar: ['integration/', 'Sensors & Autonomy'],
+            lidar_rangefinders: ['integration/', 'Sensors & Autonomy'],
+            optical_flow: ['integration/', 'Sensors & Autonomy'],
+            companion_computers: ['integration/', 'Companion Computing'],
+            ai_accelerators: ['integration/', 'AI & Computer Vision'],
+            frames: ['fundamentals/', 'Airframe Fundamentals'],
+            motors: ['fundamentals/', 'Propulsion'],
+            propellers: ['fundamentals/', 'Propulsion'],
+            batteries: ['fundamentals/', 'Power Systems'],
+            fpv_cameras: ['fundamentals/', 'Video Systems'],
+            thermal_cameras: ['integration/', 'Thermal & ISR'],
+            ground_control_stations: ['integration/', 'Ground Control'],
+        };
+        const hb = HANDBOOK_MAP[category];
+        const handbookHtml = hb ? `<a href="https://uas-handbook.com/${hb[0]}" target="_blank" rel="noopener" style="margin-top:10px;display:inline-flex;align-items:center;gap:6px;padding:6px 12px;background:rgba(59,130,246,.08);border:1px solid rgba(59,130,246,.25);border-radius:6px;font:600 11px var(--mono);color:#60a5fa;text-decoration:none;transition:all .15s" onmouseover="this.style.background='rgba(59,130,246,.18)'" onmouseout="this.style.background='rgba(59,130,246,.08)'"><i class="ph ph-book-open"></i> Read in Handbook: ${hb[1]}</a>` : '';
+
         modalContent.innerHTML = `
             <button class="browse-modal-close" onclick="closeDetail()"><i class="ph ph-x"></i></button>
             ${hasImg ? `<img src="${p.image_file}" alt="${p.name}">` : ''}
@@ -1145,12 +1171,16 @@ body { font-family:var(--sans); background:var(--bg); color:var(--text); -webkit
             ${p.description ? `<div class="modal-desc">${p.description}</div>` : ''}
             ${specsHtml ? `<div class="modal-specs">${specsHtml}</div>` : ''}
             ${tagsHtml}
+            ${handbookHtml}
             ${p.ndaa_note ? `<div style="margin-top:10px;padding:8px 10px;background:rgba(245,158,11,.06);border:1px solid rgba(245,158,11,.2);border-radius:6px;font-size:11px;color:var(--text-dim)">${p.ndaa_note}</div>` : ''}
             ${renderPieFlags(getPieFlags(category, p.name||'', p.manufacturer||'', p.ndaa_compliant))}
             ${sourceFooterHtml}
         `;
         modal.classList.add('open');
         modal.onclick = function(e) { if (e.target === modal) closeDetail(); };
+
+        // Analytics: track component detail view
+        if (window.__forgeAnalytics) window.__forgeAnalytics.view(p.pid, category, p.manufacturer || '', p.manufacturer_country || '', p.ndaa_compliant);
     };
 
     window.closeDetail = function() {
