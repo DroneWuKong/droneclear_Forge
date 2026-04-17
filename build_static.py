@@ -64,8 +64,6 @@ PAGES = {
     'stack-builder.html': 'stack-builder/index.html',
     'tools.html': 'tools/index.html',
     'wingman.html': 'wingman/index.html',
-    'pro.html': 'pro/index.html',
-    'admin.html': 'admin/index.html',
     'start.html': 'start/index.html',
     'report.html': 'report/index.html',
     'waiver.html': 'waiver/index.html',
@@ -170,7 +168,7 @@ _PAGE_SLUGS = {
     'stack-builder.html': 'stack-builder', 'industry.html': 'industry',
     'tools.html': 'tools', 'tools-home.html': 'tools-home',
     'software-library.html': 'software-library',
-    'pro.html': 'pro', 'brief.html': 'brief', 'report.html': 'report',
+    'brief.html': 'brief', 'report.html': 'report',
     'compliance.html': 'compliance', 'tracker.html': 'tracker',
     'spec-sheets.html': 'spec-sheets', 'compliance-matrix.html': 'compliance-matrix',
     'dossier.html': 'dossier',
@@ -186,7 +184,7 @@ _PAGE_SLUGS = {
     'ai-guide.html': 'ai-guide', 'cuas-guide.html': 'cuas-guide',
     'fc-firmware-guide.html': 'fc-firmware-guide', 'vault.html': 'vault',
     'troubleshoot.html': 'troubleshoot', 'start.html': 'start',
-    'admin.html': 'admin', 'contribute.html': 'contribute',
+    'contribute.html': 'contribute',
     'privacy.html': 'privacy', 'terms.html': 'terms',
 }
 
@@ -413,7 +411,7 @@ _UNIFIED_NAV = r"""<!-- ── Unified UAS- Nav (5-domain accordion drawer) ─�
   var host = location.hostname;
   // Domain detection — matches new uas-* AND legacy nvmill*/illdoitmyself during transition
   var isForge    = host.indexOf('uas-forge') >= 0 || host.indexOf('builditmyself') >= 0 || host === 'localhost' || host.indexOf('forgeprole') >= 0;
-  var isPatCom   = host.indexOf('uas-patterns') >= 0 || host.indexOf('findoutmyself') >= 0 || host.indexOf('uas-patterns-pro') >= 0;
+  var isPatCom   = host.indexOf('uas-patterns') >= 0 || host.indexOf('findoutmyself') >= 0;
   var isIntel    = host.indexOf('uas-intel') >= 0;
   var isHandbook = host.indexOf('uas-handbook') >= 0 || host.indexOf('doitmyself') >= 0 || host.indexOf('illdoitmyself') >= 0;
 
@@ -424,9 +422,9 @@ _UNIFIED_NAV = r"""<!-- ── Unified UAS- Nav (5-domain accordion drawer) ─�
     'stack-builder':'Stack Builder','report':'Compliance Report','tools-home':'Tools',
     'software-library':'Software Library','industry':'Industry','tracker':'Contract Tracker',
     'patterns-home':'P.I.E Hub','brief':'Brief','patterns':'Flags','clock':'UAS Clock','ddg':'DDG Tracker',
-    'pro':'Support','start':'Getting Started','grants':'Grants','waiver':'Doc Builder',
+    'start':'Getting Started','grants':'Grants','waiver':'Doc Builder',
     'verify':'Verify','vault':'Vault','troubleshoot':'Troubleshoot','support':'Support','hub':'Hub',
-    'builder':'Builder','cost':'Cost','admin':'Admin','analytics':'Analytics'
+    'builder':'Builder','cost':'Cost','analytics':'Analytics'
   };
   var pageEl = document.getElementById('dc-nav-page');
   if(pageEl) pageEl.textContent = labels[path] || document.title.split('—')[0].trim().split('·')[0].trim() || path;
@@ -616,6 +614,11 @@ def rewrite_legacy_domains(html):
     All Forge paths route to uas-forge.com.
     All Patterns paths (including former Pro) route to uas-patterns.com.
     Handbook references route to uas-handbook.com.
+
+    Also catches dangling `/pro/` and `/admin/` links from the retired
+    Patterns Pro tier — rewrites them to `/` so pages that still have
+    "Subscribe" / "Upgrade" CTAs don't 404. The surrounding copy is stale
+    but harmless; a follow-up pass can clean up the gating language.
     """
     # Bare-domain replacements (catch-all for everything else)
     bare = [
@@ -627,9 +630,18 @@ def rewrite_legacy_domains(html):
         ('https://nvmilldoitmyself.com',        'https://uas-handbook.com'),
         ('https://www.illdoitmyself.com',       'https://uas-handbook.com'),
         ('https://illdoitmyself.com',           'https://uas-handbook.com'),
+        # Retired uas-patterns.pro → .com
+        ('https://www.uas-patterns.pro',        'https://uas-patterns.com'),
+        ('https://uas-patterns.pro',            'https://uas-patterns.com'),
     ]
     for old, new in bare:
         html = html.replace(old, new)
+
+    # Retired /pro/ and /admin/ pages → homepage. Only touch href attributes
+    # so raw text mentions of "/pro/" (e.g., in code blocks or docs copy)
+    # are left alone.
+    html = re.sub(r'''href=(["'])/pro/\1''', r'href=\1/\1', html)
+    html = re.sub(r'''href=(["'])/admin/\1''', r'href=\1/\1', html)
 
     return html
 
@@ -901,11 +913,6 @@ SEO_META = {
         'Generate custom drone industry intelligence reports from PIE flag data. Export procurement signals, supply chain analysis, and gray zone entity summaries.',
         'drone intelligence report, PIE briefing, drone procurement report, UAS supply chain analysis, NDAA compliance report',
     ),
-    'pro.html': (
-        'Support UAS- — Donate',
-        'Everything on UAS- is free — parts database, PIE flags, daily brief, intel feed, handbook. No paywall, no tiers. If the platform helped your work, a donation keeps it running.',
-        'UAS-, donate, drone intelligence, procurement tools, free drone compliance',
-    ),
     'start.html': (
         'Get Started with Forge — Drone Intelligence Platform',
         'Start using Forge: browse 3,700+ vetted drone parts, check NDAA compliance, build your stack, access PIE intelligence flags, and chat with Wingman AI.',
@@ -963,13 +970,8 @@ SEO_META = {
     ),
     'terms.html': (
         'Terms of Service — Forge Drone Intelligence Platform',
-        'Terms of service for the Forge drone intelligence platform, including data usage, subscription terms, and acceptable use policy.',
-        'Forge terms of service, drone platform terms, subscription terms',
-    ),
-    'admin.html': (
-        'Forge Admin — Internal Dashboard',
-        'Internal Forge administration dashboard.',
-        'Forge admin',
+        'Terms of service for the Forge drone intelligence platform, including data usage and acceptable use policy.',
+        'Forge terms of service, drone platform terms',
     ),
     'template.html': (
         'Forge — Page Template',
@@ -1062,7 +1064,6 @@ def inject_seo(html, src_name, dst_path):
         'fc-firmware-guide/':  'https://uas-forge.com/fc-firmware-guide/',
         'academy/':            'https://uas-forge.com/academy/',
         'support/':            'https://uas-forge.com/support/',
-        'pro/':                'https://uas-patterns.com/pro/',
         'start/':              'https://uas-forge.com/start/',
         'library/':            'https://uas-forge.com/library/',
         'vault/':              'https://uas-forge.com/vault/',
