@@ -55,7 +55,13 @@ body { font-family:var(--sans); background:var(--bg); color:var(--text); -webkit
 .browse-search:focus { border-color:var(--accent); }
 .browse-search::placeholder { color:var(--text-dim); }
 .browse-filter { padding:8px 12px; font-family:var(--mono); font-size:11px; color:var(--text); background:var(--bg-card); border:1px solid var(--border); border-radius:6px; cursor:pointer; appearance:none; -webkit-appearance:none; }
+.browse-filter.active { border-color:var(--accent); color:var(--accent); }
 .browse-sort { padding:8px 12px; font-family:var(--mono); font-size:11px; color:var(--text); background:var(--bg-card); border:1px solid var(--border); border-radius:6px; }
+.browse-filter-clear { background:none; border:none; font:500 11px var(--mono); color:var(--text-dim); cursor:pointer; padding:6px 10px; border-radius:5px; }
+.browse-filter-clear:hover { color:#ef4444; }
+/* ── Spec badges on cards ── */
+.spec-tags { display:flex; flex-wrap:wrap; gap:3px; margin-top:5px; }
+.spec-tag { font:500 9px var(--mono); color:var(--text-dim); background:var(--bg-card); border:1px solid var(--border); border-radius:4px; padding:1px 5px; white-space:nowrap; }
 
 .browse-list { padding:8px 16px; }
 .browse-item { display:flex; align-items:center; gap:12px; padding:12px; background:var(--bg-card); border:1px solid var(--border); border-radius:8px; margin-bottom:8px; cursor:pointer; transition:border-color 0.15s; }
@@ -428,6 +434,7 @@ body { font-family:var(--sans); background:var(--bg); color:var(--text); -webkit
     let pieByComp = {};     // component_id slug → flags[]
     let navStack = []; // [{view, title, crumb}]
     let currentParts = [];
+    let currentCat = null;
     let ndaaFilter = 'all'; // 'all' | 'ndaa' | 'non-ndaa' | 'china' | 'usa'
     // View mode: 'grid' (product cards), 'list' (row with image), 'rows' (no images)
     let viewMode = (function(){
@@ -906,14 +913,184 @@ body { font-family:var(--sans); background:var(--bg); color:var(--text); -webkit
         ],
     };
 
+    // ── Per-category spec filters (ported from Builder commit acf8f79) ──
+    // type:'select' — enumerate unique values from data (exact match)
+    // type:'buckets' — predefined ranges; buckets:[{l:label, t:testFn(val)}]
+    // type:'derived' — compute a simplified key via derive(part), then exact match
+    const FILTER_CFG = {
+        motors: [
+            { key:'kv_rating', label:'KV', type:'buckets', buckets:[
+                {l:'< 1000',   t:v=>v<1000},
+                {l:'1000–2000',t:v=>v>=1000&&v<2000},
+                {l:'2000–3000',t:v=>v>=2000&&v<3000},
+                {l:'3000+',    t:v=>v>=3000},
+            ]},
+            { key:'_stator', label:'Size', type:'derived',
+                derive: p => p.stator_size ? String(p.stator_size).slice(0,2)+'xx' : null },
+            { key:'cell_count_min', label:'Cells', type:'select', fmt:v=>`${v}S` },
+            { key:'prop_size_max_in', label:'Prop', type:'select', fmt:v=>`${v}"` },
+        ],
+        escs: [
+            { key:'motor_output_count', label:'Type', type:'select',
+                fmt:v=>v===1||v==='1'?'Single':'4-in-1' },
+            { key:'esc_firmware', label:'Firmware', type:'select' },
+            { key:'continuous_current_per_motor_a', label:'Current', type:'buckets', buckets:[
+                {l:'≤ 30A',  t:v=>v<=30},
+                {l:'30–50A', t:v=>v>30&&v<=50},
+                {l:'50–70A', t:v=>v>50&&v<=70},
+                {l:'70A+',   t:v=>v>70},
+            ]},
+            { key:'cell_count_max', label:'Max Cells', type:'select', fmt:v=>`${v}S` },
+        ],
+        flight_controllers: [
+            { key:'mcu_family', label:'MCU', type:'select' },
+            { key:'mounting_pattern_mm', label:'Mount', type:'select', fmt:v=>`${v}mm` },
+            { key:'_imu', label:'IMU', type:'derived',
+                derive: p => {
+                    const s = (p.imu||'').toLowerCase();
+                    if (s.includes('icm42688')||s.includes('icm-42688')) return 'ICM42688';
+                    if (s.includes('bmi270')) return 'BMI270';
+                    if (s.includes('mpu6000')) return 'MPU6000';
+                    if (s.includes('icm20689')) return 'ICM20689';
+                    if (s.includes('tactical')) return 'Tactical-grade';
+                    return p.imu||null;
+                }},
+            { key:'cell_count_max', label:'Max Cells', type:'select', fmt:v=>`${v}S` },
+        ],
+        stacks: [
+            { key:'mcu_family', label:'MCU', type:'select' },
+            { key:'cell_count_max', label:'Max Cells', type:'select', fmt:v=>`${v}S` },
+            { key:'esc_current_a', label:'ESC Current', type:'buckets', buckets:[
+                {l:'≤ 30A',  t:v=>v<=30},
+                {l:'30–50A', t:v=>v>30&&v<=50},
+                {l:'50–70A', t:v=>v>50&&v<=70},
+                {l:'70A+',   t:v=>v>70},
+            ]},
+            { key:'is_aio', label:'Form', type:'select',
+                fmt:v=>(v===true||v==='true')?'AIO':'Standalone' },
+        ],
+        frames: [
+            { key:'prop_size_max_in', label:'Prop Size', type:'select', fmt:v=>`${v}"` },
+            { key:'fc_mounting_patterns_mm', label:'FC Mount', type:'derived',
+                derive: p => {
+                    const arr = p.fc_mounting_patterns_mm;
+                    if (!arr) return null;
+                    const vals = Array.isArray(arr) ? arr : [arr];
+                    return vals.map(v=>`${v}mm`).join('/');
+                }},
+        ],
+        batteries: [
+            { key:'cell_count', label:'Cells', type:'select', fmt:v=>`${v}S` },
+            { key:'capacity_mah', label:'Capacity', type:'buckets', buckets:[
+                {l:'< 1000mAh', t:v=>v<1000},
+                {l:'1000–2000', t:v=>v>=1000&&v<2000},
+                {l:'2000–4000', t:v=>v>=2000&&v<4000},
+                {l:'4000mAh+',  t:v=>v>=4000},
+            ]},
+            { key:'_chem', label:'Chemistry', type:'derived',
+                derive: p => {
+                    const c = (p.chemistry||'').toLowerCase();
+                    if (c.includes('lihv')) return 'LiHV';
+                    if (c.includes('lipo')) return 'LiPo';
+                    if (c.includes('sulfur')) return 'Li-S';
+                    if (c.includes('semi')) return 'Semi-solid';
+                    if (c.includes('ion')) return 'Li-Ion';
+                    return p.chemistry||null;
+                }},
+        ],
+        propellers: [
+            { key:'_size', label:'Size', type:'derived',
+                derive: p => {
+                    const d = p.diameter_in;
+                    if (d==null) return null;
+                    if (d<=3) return '≤ 3"';
+                    if (d<=5) return '3–5"';
+                    if (d<=7) return '5–7"';
+                    return '7"+';
+                }},
+            { key:'blade_count', label:'Blades', type:'select', fmt:v=>`${v}B` },
+            { key:'pitch_in', label:'Pitch', type:'select', fmt:v=>`${v}p` },
+        ],
+        receivers: [
+            { key:'protocol', label:'Protocol', type:'select' },
+        ],
+        video_transmitters: [
+            { key:'video_system', label:'System', type:'select' },
+        ],
+        fpv_cameras: [
+            { key:'video_system', label:'System', type:'select' },
+        ],
+        gps_modules: [
+            { key:'size_class', label:'Size', type:'select' },
+        ],
+        antennas: [
+            { key:'frequency_ghz', label:'Frequency', type:'select', fmt:v=>`${v}GHz` },
+            { key:'polarization', label:'Polarization', type:'select' },
+        ],
+    };
+
+    // ── Key spec badges shown on cards ──
+    const CARD_SPECS = {
+        motors:             p => [p.stator_size, p.kv_rating && `${p.kv_rating}KV`],
+        escs:               p => [p.motor_output_count===4||p.motor_output_count==='4'?'4-in-1':'Single',
+                                  p.continuous_current_per_motor_a && `${p.continuous_current_per_motor_a}A`],
+        flight_controllers: p => [p.mcu_family, p.mounting_pattern_mm && `${p.mounting_pattern_mm}mm`],
+        stacks:             p => [p.mcu_family, p.esc_current_a && `${p.esc_current_a}A`,
+                                  (p.is_aio===true||p.is_aio==='true')?'AIO':null],
+        frames:             p => [p.prop_size_max_in && `${p.prop_size_max_in}"`,
+                                  p.wheelbase_mm && `${p.wheelbase_mm}mm`],
+        batteries:          p => [p.cell_count && `${p.cell_count}S`, p.capacity_mah && `${p.capacity_mah}mAh`],
+        propellers:         p => [p.diameter_in && `${p.diameter_in}"`,
+                                  p.pitch_in && `${p.pitch_in}p`, p.blade_count && `${p.blade_count}B`],
+        receivers:          p => [p.protocol, p.frequency_ghz && `${p.frequency_ghz}GHz`],
+        video_transmitters: p => [p.video_system],
+        fpv_cameras:        p => [p.video_system],
+        gps_modules:        p => [p.constellations],
+        antennas:           p => [p.frequency_ghz && `${p.frequency_ghz}GHz`, p.polarization],
+    };
+
+    function derivedVal(cfg, part) {
+        if (cfg.type === 'derived') return cfg.derive(part);
+        return part[cfg.key];
+    }
+
+    // Apply FILTER_CFG buckets/derived filters (state held in .spec-filter DOM values)
+    function applySpecFilters(parts, catSlug) {
+        const cfgs = FILTER_CFG[catSlug];
+        if (!cfgs) return parts;
+        const active = {};
+        document.querySelectorAll('.spec-filter').forEach(el => {
+            if (el.value) active[el.dataset.fk] = el.value;
+        });
+        if (!Object.keys(active).length) return parts;
+        return parts.filter(p => {
+            for (const cfg of cfgs) {
+                const val = active[cfg.key];
+                if (!val) continue;
+                if (cfg.type === 'buckets') {
+                    const bucket = cfg.buckets.find(b => b.l === val);
+                    if (!bucket) continue;
+                    const pv = p[cfg.key];
+                    if (pv == null || !bucket.t(Number(pv))) return false;
+                } else {
+                    const pv = String(derivedVal(cfg, p) ?? '');
+                    if (pv !== val) return false;
+                }
+            }
+            return true;
+        });
+    }
+
     // ── VIEW: Component list with smart filters ──
     function showList(parts, title, catSlug) {
         currentParts = parts;
+        currentCat = catSlug;
         pushNav(() => showList(parts, title, catSlug), title, parts.length + ' parts');
 
         // Get filterable manufacturers
         const mfrs = [...new Set(parts.map(p => p.manufacturer).filter(Boolean))].sort();
-        const filters = smartFilters[catSlug] || [];
+        const specCfgs = FILTER_CFG[catSlug];
+        const filters = specCfgs ? [] : (smartFilters[catSlug] || []);
 
         const catLabel = catLabels[catSlug] || title;
         let html = '<div class="browse-toolbar">';
@@ -923,7 +1100,47 @@ body { font-family:var(--sans); background:var(--bg); color:var(--text); -webkit
             mfrs.forEach(m => html += `<option value="${esc(m)}">${esc(m)}</option>`);
             html += '</select>';
         }
-        // Smart attribute filters
+        // New per-category spec filters (ported from Builder commit acf8f79)
+        if (specCfgs) {
+            for (const cfg of specCfgs) {
+                let options = '';
+                if (cfg.type === 'buckets') {
+                    // Only show buckets that have at least one matching part in this category
+                    const counts = cfg.buckets.map(b => {
+                        let n = 0;
+                        for (const p of parts) {
+                            const v = p[cfg.key];
+                            if (v != null && b.t(Number(v))) n++;
+                        }
+                        return { b, n };
+                    }).filter(x => x.n > 0);
+                    if (counts.length < 2) continue;
+                    options = counts.map(({b,n}) =>
+                        `<option value="${esc(b.l)}">${esc(b.l)} (${n})</option>`
+                    ).join('');
+                } else {
+                    const vals = new Map();
+                    const counts = new Map();
+                    for (const p of parts) {
+                        const v = derivedVal(cfg, p);
+                        if (v == null || v === '') continue;
+                        const key = String(v);
+                        const disp = cfg.fmt ? cfg.fmt(v) : key;
+                        vals.set(key, disp);
+                        counts.set(key, (counts.get(key)||0) + 1);
+                    }
+                    if (vals.size < 2) continue;
+                    const sorted = [...vals.entries()].sort((a,b)=>a[0].localeCompare(b[0],undefined,{numeric:true}));
+                    options = sorted.map(([k,d]) =>
+                        `<option value="${esc(k)}">${esc(d)} (${counts.get(k)})</option>`
+                    ).join('');
+                }
+                html += `<select class="browse-filter spec-filter" data-fk="${esc(cfg.key)}">
+                    <option value="">${esc(cfg.label)}</option>${options}
+                </select>`;
+            }
+        }
+        // Legacy smart attribute filters (for categories without FILTER_CFG coverage)
         for (const filt of filters) {
             const vals = {};
             for (const p of parts) {
@@ -954,6 +1171,10 @@ body { font-family:var(--sans); background:var(--bg); color:var(--text); -webkit
               + '<button type="button" data-mode="list"  title="List view"><i class="ph ph-list"></i></button>'
               + '<button type="button" data-mode="rows"  title="Compact (no photos)"><i class="ph ph-rows"></i></button>'
               + '</div>';
+        if (specCfgs) {
+            html += '<button type="button" class="browse-filter-clear" id="spec-filter-clear" title="Clear filters" style="display:none">✕ Clear</button>';
+        }
+        html += '<span class="browse-count" id="browse-count" style="margin-left:auto;font:600 11px var(--mono);color:var(--text-dim)"></span>';
         html += '</div>';
         html += `<div class="browse-list view-${viewMode}" id="list-items"></div>`;
 
@@ -987,13 +1208,19 @@ body { font-family:var(--sans); background:var(--bg); color:var(--text); -webkit
             }
         }
         ndaaFilter = 'all';
-        renderList(parts);
+        // Initial render via applyListFilters so the count + spec filter state are set up
+        applyListFilters();
 
         // Wire up all filters
         document.getElementById('list-search')?.addEventListener('input', applyListFilters);
         document.getElementById('list-mfr')?.addEventListener('change', applyListFilters);
         document.getElementById('list-sort')?.addEventListener('change', applyListFilters);
         document.querySelectorAll('.smart-filter').forEach(el => el.addEventListener('change', applyListFilters));
+        document.querySelectorAll('.spec-filter').forEach(el => el.addEventListener('change', applyListFilters));
+        document.getElementById('spec-filter-clear')?.addEventListener('click', () => {
+            document.querySelectorAll('.spec-filter').forEach(el => { el.value = ''; el.classList.remove('active'); });
+            applyListFilters();
+        });
 
         // View-mode toggle wiring — restores persisted mode and switches class
         document.querySelectorAll('.browse-view-toggle button').forEach(btn => {
@@ -1016,12 +1243,25 @@ body { font-family:var(--sans); background:var(--bg); color:var(--text); -webkit
         else if (ndaaFilter === 'usa')      filtered = filtered.filter(p => ['usa','united states'].includes((p.manufacturer_country||'').toLowerCase()));
         if (mfr) filtered = filtered.filter(p => p.manufacturer === mfr);
 
-        // Apply smart filters
+        // Apply smart filters (legacy, for categories without FILTER_CFG)
         document.querySelectorAll('.smart-filter').forEach(el => {
             const field = el.dataset.field;
             const val = el.value;
             if (val) filtered = filtered.filter(p => String(p[field]) === val);
         });
+
+        // Apply per-category spec filters (FILTER_CFG, with buckets + derived)
+        filtered = applySpecFilters(filtered, currentCat);
+
+        // Style active spec filters and toggle clear button visibility
+        let anySpecActive = false;
+        document.querySelectorAll('.spec-filter').forEach(el => {
+            const on = !!el.value;
+            el.classList.toggle('active', on);
+            if (on) anySpecActive = true;
+        });
+        const clrBtn = document.getElementById('spec-filter-clear');
+        if (clrBtn) clrBtn.style.display = anySpecActive ? '' : 'none';
 
         const priceOf = p => {
             const v = p.price_usd ?? p.approx_price ?? p.approx_price_usd;
@@ -1042,6 +1282,10 @@ body { font-family:var(--sans); background:var(--bg); color:var(--text); -webkit
             });
         }
 
+        const total = currentParts.length;
+        const cnt = document.getElementById('browse-count');
+        if (cnt) cnt.textContent = filtered.length === total ? `${total} parts` : `${filtered.length} / ${total}`;
+
         renderList(filtered);
     }
 
@@ -1051,17 +1295,22 @@ body { font-family:var(--sans); background:var(--bg); color:var(--text); -webkit
             container.innerHTML = '<div class="browse-empty">No parts match your filters.</div>';
             return;
         }
+        const specFn = currentCat && CARD_SPECS[currentCat];
         container.innerHTML = parts.map(p => {
             const hasImg = p.image_file && !p.image_file.startsWith('data:');
             const imgHtml = hasImg
                 ? `<img src="${p.image_file}" alt="" loading="lazy">`
                 : `<i class="ph ${catIcons[p.category] || 'ph-cube'}"></i>`;
+            const tags = specFn
+                ? specFn(p).filter(Boolean).map(s=>`<span class="spec-tag">${esc(String(s))}</span>`).join('')
+                : '';
             return `<div class="browse-item" onclick="showDetail('${p.pid.replace(/'/g,"\\'")}', '${(p.category||'').replace(/'/g,"\\'")}')">
                 <div class="browse-item-img">${imgHtml}</div>
                 <div class="browse-item-info">
                     <div class="browse-item-name">${p.name || ''}</div>
                     <div class="browse-item-mfr">${p.manufacturer || ''}</div>
                     <div class="browse-item-pid">${p.pid || ''}</div>
+                    ${tags ? `<div class="spec-tags">${tags}</div>` : ''}
                 </div>
                 <button class="browse-item-add" onclick="event.stopPropagation()" title="Add to build"><i class="ph ph-plus"></i></button>
             </div>`;
