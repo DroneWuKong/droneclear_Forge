@@ -35,6 +35,12 @@ except ImportError:
     raise RuntimeError("pip install -r tools/mining/requirements.txt")
 
 try:
+    from curl_cffi import requests as _cffi_requests
+    _CURL_AVAILABLE = True
+except ImportError:
+    _CURL_AVAILABLE = False
+
+try:
     from urllib import robotparser
 except ImportError:
     robotparser = None
@@ -153,11 +159,29 @@ class BaseMiner(ABC):
         if cache.exists() and not force:
             return cache.read_text(encoding="utf-8", errors="replace")
 
-        headers = {"User-Agent": self.config.user_agent, "Accept": "text/html,application/json,*/*"}
+        headers = {
+            "User-Agent": self.config.user_agent,
+            "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+            "Accept-Language": "en-US,en;q=0.9",
+            "Accept-Encoding": "gzip, deflate, br",
+            "Sec-Fetch-Dest": "document",
+            "Sec-Fetch-Mode": "navigate",
+            "Sec-Fetch-Site": "none",
+        }
         for attempt in range(self.config.max_retries):
             try:
                 self._rate_limit()
-                r = requests.get(url, headers=headers, timeout=self.config.timeout_sec)
+                # curl_cffi impersonates Chrome's TLS fingerprint (JA3/JA4), which is
+                # what Cloudflare uses to detect Python requests. Falls back to plain
+                # requests if curl_cffi is not installed.
+                if _CURL_AVAILABLE:
+                    r = _cffi_requests.get(
+                        url, headers=headers,
+                        timeout=self.config.timeout_sec,
+                        impersonate="chrome120",
+                    )
+                else:
+                    r = requests.get(url, headers=headers, timeout=self.config.timeout_sec)
                 if r.status_code == 200:
                     cache.write_text(r.text, encoding="utf-8")
                     return r.text
