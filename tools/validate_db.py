@@ -143,10 +143,22 @@ def run_checks(conn: sqlite3.Connection, categories: dict[str, list[dict]]):
     else:
         ok.append("no cross-category duplicate PIDs")
 
+    # Only check core fields for entries that have a PID (non-parts entries
+    # like platforms, events, programs use different schemas).
+    # Skip manufacturer for build configs that reference parts but aren't
+    # manufactured themselves.
+    _MFR_SKIP = ("drone_models", "build_guides")
     for field in CORE_FIELDS:
+        extra = ""
+        if field == "manufacturer":
+            skip_clause = " AND category NOT IN ({})".format(
+                ",".join(f"'{c}'" for c in _MFR_SKIP))
+            extra = skip_clause
         missing = conn.execute(
             f"SELECT category, COUNT(*) AS n FROM parts "
-            f"WHERE {field} IS NULL OR {field} = '' "
+            f"WHERE pid IS NOT NULL AND pid != '' "
+            f"AND ({field} IS NULL OR {field} = '') "
+            f"{extra} "
             f"GROUP BY category HAVING n > 0 ORDER BY n DESC"
         ).fetchall()
         if missing:
