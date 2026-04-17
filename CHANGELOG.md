@@ -111,7 +111,7 @@
 - Added `?verify=1` endpoint for dashboard login gate (key never touches client JS)
 - Dashboard client gate was trivially bypassable (empty string unlocked it) — replaced with server-side verify flow
 - `/analytics/` removed from sitemap, `X-Robots-Tag: noindex` header added, redirect removed from netlify.toml
-- `ANALYTICS_ADMIN_KEY` = `AsdfAsdf` (set in Netlify env)
+- `ANALYTICS_ADMIN_KEY` set in Netlify env (rotated — do not commit values here)
 
 ### Fixed — GitHub Actions / Blobs pipeline
 - `sync-forge-data.yml` now uploads full intel datasets to `forge-datasets` Blobs store on every run
@@ -121,7 +121,7 @@
 - Deleted 9 stale/orphaned classic PATs (dfr, FORGE_PAT, Update, Sync pat handbook patterns, asdf, Newsync, Image_Mine, Parts_Miner, Git actions)
 - `FORGE_PAT` Actions secret restored with new token after accidental deletion
 - Session PAT stored in browser localStorage — Claude reads it at session start, no manual paste needed
-- Session PAT: `ghp_fX2m...` expires 2026-05-10
+- Session PAT rotated (do not commit token values here)
 
 ## [Session] - 2026-04-07 — Platform Mining + Patterns Overhaul + DB Enrichment
 
@@ -210,7 +210,7 @@
 - **Gap Analyzer** — slide-in panel in Wingman AI; auto-detects entity pairs from conversation, compares spec/compliance/supply chain gaps via AI, color-coded gap cards with severity, "open chat" CTA
 - **Trends tab** on analytics.html — 30/60/90-day PIE projections, R² confidence, sparklines, anomaly detection; reads from pie_trends.json (no password gate)
 - **Usage tab** on analytics.html — page views, sessions, Wingman query categories, top gap entity pairs, surface breakdown, daily activity spark (behind admin gate)
-- **Admin gate** on User Signals + Usage tabs — password prompt (key: forge-admin-2026), session-persisted, auto-unlocks via ?key= param
+- **Admin gate** on User Signals + Usage tabs — password prompt (key rotated — set in Netlify env), session-persisted, auto-unlocks via ?key= param
 - **Groq/Llama proxy** (netlify/functions/groq-proxy.mjs) — rate-limited server-side proxy for Groq API; mirrors gemini-proxy pattern
 - **Groq provider in Wingman** — three-button provider selector: Gemini (free) · Groq/Llama (free) · Claude (private BYOK); model chip rotates between public providers; Groq BYOK optional
 - Page-level event tracking injected into patterns.html, intel.html, platforms.html, patterns-home.html
