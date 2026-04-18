@@ -1457,7 +1457,7 @@ def build():
     ROOT_INTEL_FILES = ['pie_flags.json', 'pie_predictions.json', 'predictions_best.json',
                         'pie_brief.json', 'pie_trends.json', 'solicitations.json',
                         'intel_articles.json', 'intel_companies.json', 'intel_platforms.json',
-                        'intel_programs.json']
+                        'intel_programs.json', 'forge_intel.json']
     for fname in ROOT_INTEL_FILES:
         src = os.path.join(SRC_DIR, fname)
         dst = os.path.join(BUILD_DIR, fname)
@@ -1465,8 +1465,18 @@ def build():
             shutil.copy2(src, dst)
     print(f"  Copied {len(ROOT_INTEL_FILES)} intel files to build root")
 
-    # Master DB files are gated — served by forge-data.mjs, not in public build
-    # defense_master, commercial_master, dfr_master Ã¢ÂÂ never in build/static/
+    # Master DB files — served at /data/<vertical>/<vertical>_master.json to
+    # match the absolute fetch paths in intel.html (commit 799e568). Without
+    # this, the Defense / DFR / Commercial tabs on Intel Feed 404 and stay
+    # empty even after the function gating was removed.
+    DATA_ROOT = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'data')
+    for vertical in ('defense', 'commercial', 'dfr'):
+        src_m = os.path.join(DATA_ROOT, vertical, f'{vertical}_master.json')
+        dst_dir = os.path.join(BUILD_DIR, 'data', vertical)
+        if os.path.exists(src_m):
+            os.makedirs(dst_dir, exist_ok=True)
+            shutil.copy2(src_m, os.path.join(dst_dir, f'{vertical}_master.json'))
+    print('  Copied defense / commercial / dfr master files to build/data/')
     
     # Generate free-tier data slices (same data, truncated — for public build)
     try:
