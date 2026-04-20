@@ -59,10 +59,10 @@
 | ~~FEAT-021~~ | ~~Blue UAS authoritative registry~~ | ~~Resolved — see Completed section~~ | 2026-04-11 |
 | ~~FEAT-022~~ | ~~Wingman co-occurrence signal~~ | ~~Resolved — see Completed section~~ | 2026-04-11 |
 | ~~FEAT-023~~ | ~~Manufacturer Dossier page~~ | ~~Resolved — see Completed section~~ | 2026-04-11 |
-| FEAT-024 | Entity graph visualizer | `/patterns/graph/` — force-directed graph of `entity_graph.json` (manufacturers ↔ parts ↔ contracts ↔ articles). Data already exists; nothing renders it today. Blocked: `entity_graph.json` is gated — needs product decision on access method. | 2026-04-11 |
+| ~~FEAT-024~~ | ~~Entity graph visualizer~~ | ~~Resolved — see Completed section~~ | 2026-04-11 |
 | ~~FEAT-025~~ | ~~Lifecycle timeline~~ | ~~Resolved — see Completed section~~ | 2026-04-11 |
 | ~~FEAT-026~~ | ~~Shareable build URLs~~ | ~~Resolved — see Completed section~~ | 2026-04-11 |
-| FEAT-027 | Featured builds gallery | `/gallery/` — hand-curated `forge_featured_builds.json` with 10-30 reference builds (7" NDAA long-range, cinelifter, Blue UAS Framework reference, ORQA NDAA FPV, etc.). Each deep-links into `/builder/?b=`. | 2026-04-11 |
+| ~~FEAT-027~~ | ~~Featured builds gallery~~ | ~~Resolved — see Completed section~~ | 2026-04-11 |
 | FEAT-008 | Build guide versioning | Track guide revisions so sessions reference a specific version. Needs database versioning. | 2026-03-06 |
 | ~~FEAT-013~~ | ~~Mission Control dashboard~~ | ~~Resolved — see Completed section~~ | 2026-03-08 |
 | ~~FEAT-014~~ | ~~FPV Academy educational module~~ | ~~Resolved — see Completed section~~ | 2026-03-08 |
@@ -74,6 +74,8 @@
 
 | ID | Issue | Completed | Session |
 |----|-------|-----------|---------|
+| ~~FEAT-027~~ | Featured builds gallery — `gallery.html` rebuilt with 8 real NDAA reference builds using actual PIDs from forge_database.json. Each card deep-links to `/builder/?b=<base64url-pids>`. Registered in build_static.py (PAGE_SLUGS, nav label, drawer link, SEO_META) + netlify.toml redirect. | 2026-04-20 | `gallery.html`, `build_static.py`, `netlify.toml` |
+| ~~FEAT-024~~ | Entity graph visualizer — `entity-graph.html` rebuilt with real D3 force-directed graph fetching from `forge-data` function (1,229 entities, shared-program edges). Filter pills (All/Flagged/Contracts/Programs/NDAA/China), hover dim, search, click-to-expand sidebar panel showing parts/flags/contracts/programs. Registered in build_static.py + netlify.toml. | 2026-04-20 | `entity-graph.html`, `build_static.py`, `netlify.toml` |
 | ~~FEAT-026~~ | Shareable build URLs — `?b=<base64url-pids>` on `/builder/`. Share button in drawer; hydrates build from URL param on load. | 2026-04-16 | `index.html`: encodeBuildParam/decodeBuildParam helpers + btn-share + URL hydration in init() |
 | ~~FEAT-022~~ | Wingman 5th co-occurrence check — `buildCooccurrenceContext()` injected into buildPrompt(); loads `forge_co_occurrence.json` non-blocking. Step 5 added to BUILD-VALIDITY CHECK. | 2026-04-16 | `wingman.html`: coData var + loadCooccurrence + buildCooccurrenceContext() |
 | ~~FEAT-020~~ | RotorBuilds DOM extraction — real DOM selectors verified on live site. `parse()` extracts category/name/vendor from `<td class='tag' data-tag=...>` rows. 9-part builds extracted cleanly. Sample page cached at `tools/mining/fixtures/rotorbuilds_build_36877.html`. | 2026-04-16 | `tools/mining/miners/rotorbuilds.py` rewritten; end-to-end tested: 448 pairs from 10 builds |

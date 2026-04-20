@@ -179,7 +179,7 @@ _PAGE_SLUGS = {
     'regs.html': 'regs', 'verify.html': 'verify', 'waiver.html': 'waiver',
     'grants.html': 'grants', 'audit.html': 'audit', 'guide.html': 'guide',
     'pid-tuning.html': 'pid-tuning', 'academy.html': 'academy',
-    'support.html': 'support',
+    'support.html': 'support', 'gallery.html': 'gallery', 'entity-graph.html': 'entity-graph',
     'guides-hub.html': 'guides-hub', 'swarm-guide.html': 'swarm-guide',
     'swarm-selector.html': 'swarm', 'slam-guide.html': 'slam-guide',
     'slam-selector.html': 'slam', 'mesh-guide.html': 'mesh-guide',
@@ -312,6 +312,8 @@ _UNIFIED_NAV = r"""<!-- ── Unified UAS- Nav (5-domain accordion drawer) ─�
       <a class="dc-dom-sublink" href="https://uas-forge.com/stack-builder/" data-page="stack-builder">Stack Builder</a>
       <a class="dc-dom-sublink" href="https://uas-forge.com/cost/" data-page="cost">Cost Estimator</a>
       <a class="dc-dom-sublink" href="https://uas-forge.com/wingman/" data-page="wingman">Wingman AI</a>
+      <a class="dc-dom-sublink" href="https://uas-forge.com/gallery/" data-page="gallery">Featured Builds</a>
+      <a class="dc-dom-sublink" href="https://uas-forge.com/entity-graph/" data-page="entity-graph">Entity Graph</a>
       <a class="dc-dom-sublink" href="https://uas-forge.com/tools-home/" data-page="tools-home">All Tools</a>
     </div>
   </details>
@@ -426,7 +428,7 @@ _UNIFIED_NAV = r"""<!-- ── Unified UAS- Nav (5-domain accordion drawer) ─�
     'software-library':'Software Library','industry':'Industry','tracker':'Contract Tracker',
     'patterns-home':'P.I.E Hub','brief':'Brief','patterns':'Flags','clock':'UAS Clock','ddg':'DDG Tracker',
     'start':'Getting Started','grants':'Grants','waiver':'Doc Builder',
-    'verify':'Verify','vault':'Vault','troubleshoot':'Troubleshoot','support':'Support','hub':'Hub',
+    'verify':'Verify','vault':'Vault','troubleshoot':'Troubleshoot','support':'Support','hub':'Hub','gallery':'Featured Builds','entity-graph':'Entity Graph',
     'builder':'Builder','cost':'Cost','analytics':'Analytics'
   };
   var pageEl = document.getElementById('dc-nav-page');
@@ -805,6 +807,16 @@ SEO_META = {
         'Support Hub — Forge Drone Tools & Resources',
         'RF planning tools, PID tuning, build diagnostics, compliance audits, and learning guides for FPV and UAS builders. All Forge support resources in one place.',
         'drone tools, FPV support, RF range calculator, PID tuning tool, NDAA compliance audit, build troubleshooter, drone guides',
+    ),
+    'gallery.html': (
+        'Featured Builds — NDAA-Compliant Reference Drone Builds',
+        'Hand-curated NDAA-compliant FPV and UAS reference builds. Open any build directly in the Forge Model Builder to customize, clone, or price out your own version.',
+        'NDAA drone build, FPV reference build, compliant drone components, TBS, Lumenier, Orqa, CubePilot, ISR drone, cinelifter, long range FPV',
+    ),
+    'entity-graph.html': (
+        'Entity Graph — UAS Manufacturer & Program Network',
+        'Interactive force-directed graph of UAS manufacturers, defense programs, contracts, and supply chain relationships. Explore connections across 1,200+ entities.',
+        'UAS entity graph, drone manufacturer network, defense program relationships, supply chain graph, NDAA contractor map, drone industry connections',
     ),
     'guide.html': (
         'Build Guide — Step-by-Step Drone Assembly',

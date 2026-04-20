@@ -9,212 +9,425 @@
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
 body{background:#0c0c0a;color:#b8b0a0;font-family:'DM Sans',system-ui,sans-serif;height:100vh;overflow:hidden;display:flex;flex-direction:column}
-.toolbar{padding:12px 20px;display:flex;align-items:center;gap:12px;border-bottom:1px solid #1e1e18;flex-shrink:0;z-index:10}
-.toolbar h1{font:700 16px 'JetBrains Mono',monospace;color:#f59e0b;flex-shrink:0}
-.search-box{flex:1;max-width:320px;padding:6px 12px;border-radius:6px;border:1px solid #2a2a22;background:#111110;color:#b8b0a0;font:400 12px 'DM Sans',system-ui;outline:none}
+.toolbar{padding:10px 16px;display:flex;align-items:center;gap:10px;border-bottom:1px solid #1e1e18;flex-shrink:0;flex-wrap:wrap}
+.toolbar h1{font:700 14px 'JetBrains Mono',monospace;color:#f59e0b;white-space:nowrap}
+.search-box{flex:1;min-width:160px;max-width:280px;padding:6px 10px;border-radius:6px;border:1px solid #2a2a22;background:#111110;color:#b8b0a0;font:400 12px 'DM Sans',system-ui;outline:none}
 .search-box:focus{border-color:#f59e0b}
-.legend{display:flex;gap:14px;margin-left:auto;flex-shrink:0}
-.legend-item{display:flex;align-items:center;gap:5px;font:400 11px 'JetBrains Mono',monospace;color:#4a4540}
-.legend-dot{width:10px;height:10px;border-radius:50%}
-.legend-sq{width:10px;height:10px;border-radius:2px}
-#graph{flex:1;width:100%;cursor:grab}
+.filter-group{display:flex;gap:6px;flex-wrap:wrap}
+.fpill{padding:4px 10px;border-radius:12px;border:1px solid #2a2a22;background:none;color:#6b6358;font:500 10px 'JetBrains Mono',monospace;cursor:pointer;transition:all .15s;white-space:nowrap}
+.fpill:hover{border-color:#3e3e34;color:#b8b0a0}
+.fpill.active{border-color:var(--c);color:var(--c);background:rgba(255,255,255,.04)}
+.legend{display:flex;gap:10px;flex-wrap:wrap;margin-left:auto}
+.legend-item{display:flex;align-items:center;gap:4px;font:400 10px 'JetBrains Mono',monospace;color:#4a4540}
+.legend-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0}
+.main{display:flex;flex:1;overflow:hidden}
+#graph{flex:1;cursor:grab}
 #graph:active{cursor:grabbing}
-.tooltip{position:fixed;padding:8px 12px;background:#1a1a14;border:1px solid #2a2a22;border-radius:6px;font:400 11px 'DM Sans',system-ui;color:#b8b0a0;pointer-events:none;opacity:0;transition:opacity .15s;z-index:100;max-width:280px}
-.tooltip b{color:#f59e0b;font-weight:600}
-.tooltip .tt-type{color:#4a4540;font:400 10px 'JetBrains Mono',monospace}
-.stats{position:fixed;bottom:12px;left:20px;font:400 10px 'JetBrains Mono',monospace;color:#2e2e26;z-index:10}
+.panel{width:280px;flex-shrink:0;border-left:1px solid #1e1e18;overflow-y:auto;background:#0e0e0c;display:none;flex-direction:column}
+.panel.open{display:flex}
+.panel-head{padding:14px 16px 10px;border-bottom:1px solid #1e1e18;position:sticky;top:0;background:#0e0e0c;z-index:1}
+.panel-name{font:700 14px 'DM Sans',system-ui;color:#f59e0b;margin-bottom:4px}
+.panel-cid{font:400 10px 'JetBrains Mono',monospace;color:#3e3e34}
+.panel-close{float:right;background:none;border:none;color:#4a4540;cursor:pointer;font-size:16px;line-height:1}
+.panel-body{padding:14px 16px;display:flex;flex-direction:column;gap:14px}
+.panel-section h3{font:600 10px 'JetBrains Mono',monospace;color:#4a4540;text-transform:uppercase;margin-bottom:6px;letter-spacing:.06em}
+.tag-row{display:flex;flex-wrap:wrap;gap:4px}
+.etag{padding:2px 7px;border-radius:3px;font:400 10px 'JetBrains Mono',monospace;background:#1a1a14;color:#4a4540}
+.etag.ndaa{background:rgba(34,197,94,.1);color:#22c55e}
+.etag.china{background:rgba(245,158,11,.1);color:#f59e0b}
+.etag.flag{background:rgba(220,38,38,.1);color:#dc2626}
+.link-row{font:400 11px 'DM Sans',system-ui;color:#6b6358;padding:4px 0;border-bottom:1px solid #1a1a14}
+.link-row b{color:#b8b0a0;font-weight:500}
+.link-row a{color:#3b82f6;text-decoration:none;font-size:10px}
+.stat-row{display:flex;gap:10px;flex-wrap:wrap}
+.stat-box{background:#111110;border:1px solid #1e1e18;border-radius:6px;padding:8px 10px;flex:1;min-width:60px}
+.stat-box .sv{font:700 18px 'JetBrains Mono',monospace;color:#f59e0b}
+.stat-box .sl{font:400 9px 'JetBrains Mono',monospace;color:#4a4540;text-transform:uppercase}
+.tooltip{position:fixed;padding:8px 12px;background:#1a1a14;border:1px solid #2a2a22;border-radius:6px;font:400 11px 'DM Sans',system-ui;color:#b8b0a0;pointer-events:none;opacity:0;transition:opacity .1s;z-index:100;max-width:240px}
+.tooltip b{color:#f59e0b}
+.status{position:fixed;bottom:10px;left:16px;font:400 10px 'JetBrains Mono',monospace;color:#2e2e26}
+.loading{position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);font:400 13px 'JetBrains Mono',monospace;color:#4a4540}
 </style>
 </head>
 <body>
 
 <div class="toolbar">
-  <h1>Entity Graph</h1>
-  <input class="search-box" id="search" placeholder="Search manufacturers, categories, programs..." />
+  <h1>⬡ Entity Graph</h1>
+  <input class="search-box" id="search" placeholder="Search entities…" />
+  <div class="filter-group">
+    <button class="fpill active" data-f="all" style="--c:#b8b0a0">All</button>
+    <button class="fpill" data-f="flags" style="--c:#dc2626">Flagged</button>
+    <button class="fpill" data-f="contracts" style="--c:#3b82f6">Contracts</button>
+    <button class="fpill" data-f="programs" style="--c:#22c55e">Programs</button>
+    <button class="fpill" data-f="ndaa" style="--c:#22c55e">NDAA</button>
+    <button class="fpill" data-f="china" style="--c:#f59e0b">China</button>
+  </div>
   <div class="legend">
-    <div class="legend-item"><div class="legend-dot" style="background:#f59e0b"></div> Manufacturer</div>
-    <div class="legend-item"><div class="legend-sq" style="background:#dc2626"></div> Category</div>
-    <div class="legend-item"><div class="legend-dot" style="background:#22c55e"></div> Program</div>
+    <div class="legend-item"><div class="legend-dot" style="background:#dc2626"></div>Flagged</div>
+    <div class="legend-item"><div class="legend-dot" style="background:#3b82f6"></div>Contracts</div>
+    <div class="legend-item"><div class="legend-dot" style="background:#22c55e"></div>Programs</div>
+    <div class="legend-item"><div class="legend-dot" style="background:#f59e0b"></div>China</div>
+    <div class="legend-item"><div class="legend-dot" style="background:#6b6358"></div>Other</div>
   </div>
 </div>
 
-<svg id="graph"></svg>
+<div class="main">
+  <svg id="graph"></svg>
+  <div class="panel" id="panel">
+    <div class="panel-head">
+      <button class="panel-close" id="panel-close">✕</button>
+      <div class="panel-name" id="pname">—</div>
+      <div class="panel-cid" id="pcid"></div>
+    </div>
+    <div class="panel-body" id="pbody"></div>
+  </div>
+</div>
+
 <div class="tooltip" id="tooltip"></div>
-<div class="stats" id="stats"></div>
+<div class="status" id="status">Loading…</div>
+<div class="loading" id="loading">Loading entity graph…</div>
 
 <script>
 (function() {
-  var manufacturers = [
-    {id:'mfr-holybro',name:'Holybro',country:'China',cats:['flight_controllers','gps_modules','receivers','stacks']},
-    {id:'mfr-betafpv',name:'BetaFPV',country:'China',cats:['frames','motors','flight_controllers','fpv_cameras','receivers']},
-    {id:'mfr-tbs',name:'TBS',country:'China',cats:['video_transmitters','receivers','control_link_tx','antennas']},
-    {id:'mfr-immersionrc',name:'ImmersionRC',country:'Italy',cats:['video_transmitters','receivers','antennas']},
-    {id:'mfr-happymodel',name:'Happymodel',country:'China',cats:['receivers','frames','motors','flight_controllers']},
-    {id:'mfr-cubepilot',name:'CubePilot',country:'Australia',cats:['flight_controllers','gps_modules','video_transmitters']},
-    {id:'mfr-speedybee',name:'SpeedyBee',country:'China',cats:['flight_controllers','escs','stacks','video_transmitters']},
-    {id:'mfr-geprc',name:'GEPRC',country:'China',cats:['frames','motors','stacks','video_transmitters']},
-    {id:'mfr-iflight',name:'iFlight',country:'China',cats:['frames','motors','escs','stacks','flight_controllers']},
-    {id:'mfr-diatone',name:'Diatone',country:'China',cats:['frames','flight_controllers','escs','stacks']},
-    {id:'mfr-runcam',name:'RunCam',country:'China',cats:['fpv_cameras','video_transmitters']},
-    {id:'mfr-caddx',name:'Caddx',country:'China',cats:['fpv_cameras','video_transmitters']},
-    {id:'mfr-foxeer',name:'Foxeer',country:'China',cats:['fpv_cameras','video_transmitters','antennas']},
-    {id:'mfr-dji',name:'DJI',country:'China',cats:['fpv_cameras','video_transmitters','control_link_tx']},
-    {id:'mfr-skydio',name:'Skydio',country:'USA',cats:['companion_computers','ai_accelerators'],programs:['pbas']},
-    {id:'mfr-freefly',name:'Freefly',country:'USA',cats:['frames','motors','gps_modules'],programs:['blue-uas']},
-    {id:'mfr-orqa',name:'ORQA',country:'Croatia',cats:['fpv_cameras','video_transmitters','flight_controllers']},
-    {id:'mfr-neros',name:'Neros Technologies',country:'USA',cats:['frames','flight_controllers'],programs:['pbas']},
-    {id:'mfr-redcat',name:'Red Cat Holdings',country:'USA',cats:['flight_controllers','companion_computers'],programs:['blue-uas','pbas']},
-    {id:'mfr-shieldai',name:'Shield AI',country:'USA',cats:['ai_accelerators','companion_computers'],programs:['blue-uas']},
-    {id:'mfr-teal',name:'Teal Drones',country:'USA',cats:['frames','flight_controllers','thermal_cameras'],programs:['blue-uas']},
-    {id:'mfr-hqprop',name:'HQProp',country:'China',cats:['propellers']},
-    {id:'mfr-gemfan',name:'Gemfan',country:'China',cats:['propellers']},
-    {id:'mfr-tattu',name:'Tattu/Gens Ace',country:'China',cats:['batteries']},
-    {id:'mfr-cnhl',name:'CNHL',country:'China',cats:['batteries']},
-    {id:'mfr-matek',name:'Matek',country:'China',cats:['flight_controllers','escs','stacks','gps_modules']},
-    {id:'mfr-flir',name:'FLIR/Teledyne',country:'USA',cats:['thermal_cameras'],programs:['blue-uas']},
-    {id:'mfr-herelink',name:'Herelink',country:'Australia',cats:['control_link_tx','ground_control_stations']},
-    {id:'mfr-silvus',name:'Silvus Technologies',country:'USA',cats:['mesh_radios'],programs:['blue-uas']},
-    {id:'mfr-doodlelabs',name:'Doodle Labs',country:'USA',cats:['mesh_radios'],programs:['blue-uas']},
-  ];
-
-  var catNames = {
-    flight_controllers:'Flight Controllers',escs:'ESCs',frames:'Frames',motors:'Motors',
-    propellers:'Propellers',batteries:'Batteries',receivers:'Receivers',stacks:'Stacks',
-    video_transmitters:'Video TX',fpv_cameras:'FPV Cameras',antennas:'Antennas',
-    gps_modules:'GPS',control_link_tx:'Control Link',companion_computers:'Companion PCs',
-    ai_accelerators:'AI Accelerators',thermal_cameras:'Thermal Cameras',
-    mesh_radios:'Mesh Radios',ground_control_stations:'GCS',
-  };
-
-  var programs = [
-    {id:'pgm-pbas',name:'PBAS',full:'Purpose-Built Attritable Systems'},
-    {id:'pgm-blue-uas',name:'Blue UAS',full:'Blue UAS Cleared List'},
-  ];
-
-  var nodes = [];
-  var links = [];
-  var catSet = new Set();
-
-  manufacturers.forEach(function(m) {
-    nodes.push({id:m.id,label:m.name,type:'manufacturer',country:m.country,radius:8+m.cats.length*1.5});
-    m.cats.forEach(function(c) { catSet.add(c); });
-  });
-
-  catSet.forEach(function(c) {
-    nodes.push({id:'cat-'+c,label:catNames[c]||c,type:'category',radius:10});
-  });
-
-  programs.forEach(function(p) {
-    nodes.push({id:p.id,label:p.name,type:'program',full:p.full,radius:12});
-  });
-
-  manufacturers.forEach(function(m) {
-    m.cats.forEach(function(c) {
-      links.push({source:m.id,target:'cat-'+c});
-    });
-    if (m.programs) {
-      m.programs.forEach(function(p) {
-        links.push({source:m.id,target:'pgm-'+p});
-      });
-    }
-  });
-
-  document.getElementById('stats').textContent = nodes.length + ' nodes, ' + links.length + ' edges';
-
-  var svg = d3.select('#graph');
+  var RAW = null;
+  var allNodes = [], allLinks = [], visNodes = [], visLinks = [];
+  var activeFilter = 'all';
+  var svg, g, sim, linkSel, nodeSel, zoom;
   var width, height;
-  function resize() {
-    var r = svg.node().getBoundingClientRect();
-    width = r.width; height = r.height;
-  }
-  resize();
 
-  var g = svg.append('g');
-  var zoom = d3.zoom().scaleExtent([0.2,5]).on('zoom', function(e) { g.attr('transform',e.transform); });
-  svg.call(zoom);
-
-  var sim = d3.forceSimulation(nodes)
-    .force('link', d3.forceLink(links).id(function(d){return d.id}).distance(80))
-    .force('charge', d3.forceManyBody().strength(-200))
-    .force('center', d3.forceCenter(width/2, height/2))
-    .force('collision', d3.forceCollide().radius(function(d){return d.radius+4}));
-
-  var link = g.append('g').selectAll('line').data(links).join('line')
-    .attr('stroke','#1e1e18').attr('stroke-width',1);
-
-  var node = g.append('g').selectAll('g').data(nodes).join('g')
-    .call(d3.drag().on('start',dragStart).on('drag',dragging).on('end',dragEnd));
-
-  node.each(function(d) {
-    var el = d3.select(this);
-    if (d.type === 'category') {
-      el.append('rect').attr('width',d.radius*2).attr('height',d.radius*2)
-        .attr('x',-d.radius).attr('y',-d.radius).attr('rx',3)
-        .attr('fill','#dc2626').attr('opacity',0.8);
-    } else {
-      el.append('circle').attr('r',d.radius)
-        .attr('fill',d.type==='manufacturer'?'#f59e0b':'#22c55e').attr('opacity',0.8);
+  // ── Fetch data ───────────────────────────────────────────────────────────
+  async function load() {
+    try {
+      var r = await fetch('/.netlify/functions/forge-data?type=entity_graph');
+      if (r.ok) {
+        var j = await r.json();
+        RAW = j.data || j;
+      }
+    } catch(e) {}
+    if (!RAW) {
+      try {
+        var r2 = await fetch('/entity_graph.json');
+        if (r2.ok) RAW = await r2.json();
+      } catch(e) {}
     }
-    el.append('text').text(d.label)
-      .attr('font-size',9).attr('font-family','JetBrains Mono,monospace')
-      .attr('fill','#6b6358').attr('text-anchor','middle').attr('dy',d.radius+12);
-  });
+    if (!RAW) { document.getElementById('loading').textContent = 'Failed to load entity graph.'; return; }
+    document.getElementById('loading').style.display = 'none';
+    build();
+    initSVG();
+    applyFilter('all');
+  }
 
+  // ── Build nodes + links from entity data ─────────────────────────────────
+  function build() {
+    var entities = RAW.entities || {};
+    var meta = RAW.meta || {};
+
+    // Build program→entity map for edge generation
+    var programMap = {};
+    Object.values(entities).forEach(function(e) {
+      (e.programs || []).forEach(function(p) {
+        if (!programMap[p]) programMap[p] = [];
+        programMap[p].push(e.key);
+      });
+    });
+
+    // Nodes
+    allNodes = Object.values(entities).map(function(e) {
+      var nFlags = (e.flags||[]).length;
+      var nContracts = (e.contracts||[]).length;
+      var nPrograms = (e.programs||[]).length;
+      var nParts = (e.parts||[]).length;
+      var nArticles = (e.articles||[]).length;
+      var tags = e.tags || [];
+      var isNdaa = tags.includes('ndaa');
+      var isChina = tags.includes('china');
+      var color = nFlags > 0 ? '#dc2626'
+                : nContracts > 0 ? '#3b82f6'
+                : nPrograms > 0 ? '#22c55e'
+                : isChina ? '#f59e0b'
+                : '#4a4540';
+      var score = nFlags*4 + nContracts*2 + nPrograms*2 + nParts*0.3 + nArticles*0.5;
+      return {
+        id: e.key, name: e.name, cid: e.cid,
+        nFlags, nContracts, nPrograms, nParts, nArticles, tags,
+        isNdaa, isChina, color,
+        radius: Math.max(4, Math.min(18, 4 + Math.sqrt(score) * 1.8)),
+        programs: e.programs || [],
+        contracts: e.contracts || [],
+        parts: e.parts || [],
+        articles: e.articles || [],
+        flags: e.flags || [],
+      };
+    });
+
+    // Edges — shared program membership
+    var seen = new Set();
+    Object.entries(programMap).forEach(function(entry) {
+      var prog = entry[0], members = entry[1];
+      for (var i = 0; i < members.length; i++) {
+        for (var j = i+1; j < members.length; j++) {
+          var key = [members[i],members[j]].sort().join('|');
+          if (!seen.has(key)) {
+            seen.add(key);
+            allLinks.push({source: members[i], target: members[j], program: prog});
+          }
+        }
+      }
+    });
+
+    document.getElementById('status').textContent =
+      allNodes.length + ' entities · ' + allLinks.length + ' program links · ' +
+      (RAW.meta ? RAW.meta.total_part_links + ' part links' : '');
+  }
+
+  // ── SVG + simulation ──────────────────────────────────────────────────────
+  function initSVG() {
+    svg = d3.select('#graph');
+    var rect = svg.node().getBoundingClientRect();
+    width = rect.width; height = rect.height;
+
+    g = svg.append('g');
+    zoom = d3.zoom().scaleExtent([0.05, 8]).on('zoom', function(e) { g.attr('transform', e.transform); });
+    svg.call(zoom);
+
+    linkSel = g.append('g').attr('class', 'links');
+    nodeSel = g.append('g').attr('class', 'nodes');
+
+    sim = d3.forceSimulation()
+      .force('link', d3.forceLink().id(function(d) { return d.id; }).distance(60).strength(0.4))
+      .force('charge', d3.forceManyBody().strength(-120))
+      .force('center', d3.forceCenter(width/2, height/2))
+      .force('collision', d3.forceCollide().radius(function(d) { return d.radius + 3; }));
+
+    sim.on('tick', tick);
+    window.addEventListener('resize', onResize);
+  }
+
+  // ── Filter & render ───────────────────────────────────────────────────────
+  function applyFilter(f) {
+    activeFilter = f;
+    var nodeSet;
+    if (f === 'all') {
+      // Show only entities with any connections to avoid hairball
+      nodeSet = new Set(allNodes.filter(function(n) {
+        return n.nFlags > 0 || n.nContracts > 0 || n.nPrograms > 0 || n.nParts >= 2;
+      }).map(function(n) { return n.id; }));
+    } else if (f === 'flags') {
+      nodeSet = new Set(allNodes.filter(function(n) { return n.nFlags > 0; }).map(function(n) { return n.id; }));
+    } else if (f === 'contracts') {
+      nodeSet = new Set(allNodes.filter(function(n) { return n.nContracts > 0; }).map(function(n) { return n.id; }));
+    } else if (f === 'programs') {
+      nodeSet = new Set(allNodes.filter(function(n) { return n.nPrograms > 0; }).map(function(n) { return n.id; }));
+    } else if (f === 'ndaa') {
+      nodeSet = new Set(allNodes.filter(function(n) { return n.isNdaa; }).map(function(n) { return n.id; }));
+    } else if (f === 'china') {
+      nodeSet = new Set(allNodes.filter(function(n) { return n.isChina; }).map(function(n) { return n.id; }));
+    }
+
+    visNodes = allNodes.filter(function(n) { return nodeSet.has(n.id); });
+    visLinks = allLinks.filter(function(l) {
+      var s = typeof l.source === 'object' ? l.source.id : l.source;
+      var t = typeof l.target === 'object' ? l.target.id : l.target;
+      return nodeSet.has(s) && nodeSet.has(t);
+    });
+
+    render();
+  }
+
+  function render() {
+    // Links
+    var lSel = linkSel.selectAll('line').data(visLinks, function(d) {
+      var s = typeof d.source === 'object' ? d.source.id : d.source;
+      var t = typeof d.target === 'object' ? d.target.id : d.target;
+      return s + '|' + t;
+    });
+    lSel.exit().remove();
+    lSel.enter().append('line')
+      .attr('stroke', '#1e1e18').attr('stroke-width', 1).attr('opacity', 0.6);
+
+    linkSel.selectAll('line').data(visLinks, function(d) {
+      var s = typeof d.source === 'object' ? d.source.id : d.source;
+      var t = typeof d.target === 'object' ? d.target.id : d.target;
+      return s + '|' + t;
+    });
+
+    // Nodes
+    var nSel = nodeSel.selectAll('g.node').data(visNodes, function(d) { return d.id; });
+    nSel.exit().remove();
+    var entered = nSel.enter().append('g').attr('class', 'node')
+      .call(d3.drag().on('start', dragStart).on('drag', dragging).on('end', dragEnd))
+      .on('mouseover', onHover).on('mousemove', onMove).on('mouseout', onOut)
+      .on('click', onClick);
+
+    entered.append('circle');
+    entered.append('text');
+
+    var allNodeG = nodeSel.selectAll('g.node');
+    allNodeG.select('circle')
+      .attr('r', function(d) { return d.radius; })
+      .attr('fill', function(d) { return d.color; })
+      .attr('opacity', 0.85);
+    allNodeG.select('text')
+      .text(function(d) { return d.name.length > 18 ? d.name.slice(0,16)+'…' : d.name; })
+      .attr('font-size', 8).attr('font-family', 'JetBrains Mono,monospace')
+      .attr('fill', '#4a4540').attr('text-anchor', 'middle')
+      .attr('dy', function(d) { return d.radius + 10; });
+
+    sim.nodes(visNodes);
+    sim.force('link').links(visLinks);
+    sim.alpha(0.6).restart();
+
+    document.getElementById('status').textContent =
+      visNodes.length + ' entities · ' + visLinks.length + ' edges shown';
+  }
+
+  function tick() {
+    linkSel.selectAll('line')
+      .attr('x1', function(d) { return d.source.x; }).attr('y1', function(d) { return d.source.y; })
+      .attr('x2', function(d) { return d.target.x; }).attr('y2', function(d) { return d.target.y; });
+    nodeSel.selectAll('g.node')
+      .attr('transform', function(d) { return 'translate(' + d.x + ',' + d.y + ')'; });
+  }
+
+  // ── Interaction ───────────────────────────────────────────────────────────
   var tooltip = document.getElementById('tooltip');
 
-  node.on('mouseover', function(e,d) {
-    var connected = new Set();
-    links.forEach(function(l) {
+  function onHover(e, d) {
+    // Dim unconnected
+    var connected = new Set([d.id]);
+    visLinks.forEach(function(l) {
       var s = typeof l.source === 'object' ? l.source.id : l.source;
       var t = typeof l.target === 'object' ? l.target.id : l.target;
       if (s === d.id) connected.add(t);
       if (t === d.id) connected.add(s);
     });
-    node.attr('opacity', function(n) { return n.id===d.id||connected.has(n.id)?1:0.15; });
-    link.attr('opacity', function(l) {
+    nodeSel.selectAll('g.node').attr('opacity', function(n) { return connected.has(n.id) ? 1 : 0.12; });
+    linkSel.selectAll('line').attr('opacity', function(l) {
       var s = typeof l.source === 'object' ? l.source.id : l.source;
       var t = typeof l.target === 'object' ? l.target.id : l.target;
-      return s===d.id||t===d.id?1:0.05;
+      return (s===d.id||t===d.id) ? 0.9 : 0.04;
     }).attr('stroke', function(l) {
       var s = typeof l.source === 'object' ? l.source.id : l.source;
-      var t = typeof l.target === 'object' ? l.target.id : l.source;
-      return s===d.id||t===d.id?'#3e3e34':'#1e1e18';
+      var t = typeof l.target === 'object' ? l.target.id : l.target;
+      return (s===d.id||t===d.id) ? '#3e3e34' : '#1e1e18';
     });
-    var html = '<b>' + d.label + '</b><br><span class="tt-type">' + d.type + '</span>';
-    if (d.country) html += '<br>Country: ' + d.country;
-    if (d.full) html += '<br>' + d.full;
-    html += '<br>Connections: ' + connected.size;
-    tooltip.innerHTML = html;
+
+    tooltip.innerHTML = '<b>' + d.name + '</b>' +
+      (d.cid ? '<br><span style="font:400 9px JetBrains Mono,monospace;color:#3e3e34">' + d.cid + '</span>' : '') +
+      '<br>Parts: ' + d.nParts + ' · Articles: ' + d.nArticles +
+      '<br>Programs: ' + d.nPrograms + ' · Contracts: ' + d.nContracts +
+      (d.nFlags ? '<br><span style="color:#dc2626">⚑ ' + d.nFlags + ' flag' + (d.nFlags>1?'s':'') + '</span>' : '') +
+      '<br>Connections: ' + (connected.size - 1);
     tooltip.style.opacity = 1;
-    tooltip.style.left = (e.pageX+12)+'px';
-    tooltip.style.top = (e.pageY-12)+'px';
-  })
-  .on('mousemove', function(e) {
-    tooltip.style.left = (e.pageX+12)+'px';
-    tooltip.style.top = (e.pageY-12)+'px';
-  })
-  .on('mouseout', function() {
-    node.attr('opacity',1);
-    link.attr('opacity',1).attr('stroke','#1e1e18');
+    onMove(e);
+  }
+  function onMove(e) {
+    tooltip.style.left = (e.pageX+14)+'px';
+    tooltip.style.top = (e.pageY-10)+'px';
+  }
+  function onOut() {
+    nodeSel.selectAll('g.node').attr('opacity', 1);
+    linkSel.selectAll('line').attr('opacity', 0.6).attr('stroke', '#1e1e18');
     tooltip.style.opacity = 0;
-  });
+  }
 
-  sim.on('tick', function() {
-    link.attr('x1',function(d){return d.source.x}).attr('y1',function(d){return d.source.y})
-        .attr('x2',function(d){return d.target.x}).attr('y2',function(d){return d.target.y});
-    node.attr('transform',function(d){return 'translate('+d.x+','+d.y+')';});
-  });
+  function onClick(e, d) {
+    e.stopPropagation();
+    openPanel(d);
+  }
 
-  function dragStart(e,d) { if(!e.active)sim.alphaTarget(0.3).restart(); d.fx=d.x; d.fy=d.y; }
-  function dragging(e,d) { d.fx=e.x; d.fy=e.y; }
-  function dragEnd(e,d) { if(!e.active)sim.alphaTarget(0); d.fx=null; d.fy=null; }
+  svg.on && document.getElementById('graph').addEventListener('click', function() { closePanel(); });
 
+  function openPanel(d) {
+    document.getElementById('pname').textContent = d.name;
+    document.getElementById('pcid').textContent = d.cid || '';
+    var body = document.getElementById('pbody');
+
+    var html = '<div class="stat-row">' +
+      stat(d.nParts, 'Parts') + stat(d.nArticles, 'Articles') +
+      stat(d.nContracts, 'Contracts') + stat(d.nFlags, 'Flags') +
+      '</div>';
+
+    if (d.tags.length) {
+      html += '<div class="panel-section"><h3>Tags</h3><div class="tag-row">' +
+        d.tags.map(function(t) {
+          var cls = t==='ndaa'?'ndaa':t==='china'?'china':t==='flagged'?'flag':'';
+          return '<span class="etag '+cls+'">'+t+'</span>';
+        }).join('') + '</div></div>';
+    }
+
+    if (d.programs.length) {
+      html += '<div class="panel-section"><h3>Programs</h3>' +
+        d.programs.map(function(p) { return '<div class="link-row">📋 '+p+'</div>'; }).join('') + '</div>';
+    }
+
+    if (d.flags.length) {
+      html += '<div class="panel-section"><h3>Flags</h3>' +
+        d.flags.slice(0,5).map(function(f) {
+          return '<div class="link-row"><span style="color:#dc2626">⚑</span> <b>' +
+            (f.label||f.flag_id||'Flag') + '</b>' +
+            (f.severity ? ' · ' + f.severity : '') + '</div>';
+        }).join('') + (d.flags.length > 5 ? '<div class="link-row" style="color:#4a4540">+' + (d.flags.length-5) + ' more</div>' : '') + '</div>';
+    }
+
+    if (d.contracts.length) {
+      html += '<div class="panel-section"><h3>Contracts</h3>' +
+        d.contracts.slice(0,4).map(function(c) {
+          return '<div class="link-row"><b>' + (c.value||'') + '</b> ' + (c.program||'').slice(0,40) +
+            '<br><span style="font-size:9px;color:#3e3e34">' + (c.date||'') + ' · ' + (c.type||'') + '</span></div>';
+        }).join('') + (d.contracts.length > 4 ? '<div class="link-row" style="color:#4a4540">+' + (d.contracts.length-4) + ' more</div>' : '') + '</div>';
+    }
+
+    if (d.parts.length) {
+      html += '<div class="panel-section"><h3>Parts (' + d.parts.length + ')</h3>' +
+        d.parts.slice(0,5).map(function(p) {
+          return '<div class="link-row"><b>' + p.pid + '</b> ' + (p.name||'').slice(0,36) + '</div>';
+        }).join('') + (d.parts.length > 5 ? '<div class="link-row" style="color:#4a4540">+' + (d.parts.length-5) + ' more</div>' : '') + '</div>';
+    }
+
+    body.innerHTML = html;
+    document.getElementById('panel').classList.add('open');
+  }
+
+  function closePanel() { document.getElementById('panel').classList.remove('open'); }
+  document.getElementById('panel-close').addEventListener('click', closePanel);
+
+  function stat(v, l) {
+    return '<div class="stat-box"><div class="sv">' + v + '</div><div class="sl">' + l + '</div></div>';
+  }
+
+  // ── Drag ──────────────────────────────────────────────────────────────────
+  function dragStart(e, d) { if (!e.active) sim.alphaTarget(0.3).restart(); d.fx = d.x; d.fy = d.y; }
+  function dragging(e, d) { d.fx = e.x; d.fy = e.y; }
+  function dragEnd(e, d) { if (!e.active) sim.alphaTarget(0); d.fx = null; d.fy = null; }
+
+  // ── Search ────────────────────────────────────────────────────────────────
   document.getElementById('search').addEventListener('input', function(e) {
-    var q = e.target.value.toLowerCase();
-    if (!q) { node.attr('opacity',1); link.attr('opacity',1); return; }
-    node.attr('opacity', function(d) { return d.label.toLowerCase().includes(q)?1:0.1; });
+    var q = e.target.value.toLowerCase().trim();
+    if (!q) { nodeSel.selectAll('g.node').attr('opacity', 1); linkSel.selectAll('line').attr('opacity', 0.6); return; }
+    nodeSel.selectAll('g.node').attr('opacity', function(d) {
+      return (d.name.toLowerCase().includes(q) || (d.tags||[]).some(function(t){return t.includes(q)})) ? 1 : 0.08;
+    });
+    linkSel.selectAll('line').attr('opacity', 0.04);
   });
 
-  window.addEventListener('resize', function() { resize(); sim.force('center',d3.forceCenter(width/2,height/2)).alpha(0.3).restart(); });
+  // ── Filter pills ──────────────────────────────────────────────────────────
+  document.querySelectorAll('.fpill').forEach(function(btn) {
+    btn.addEventListener('click', function() {
+      document.querySelectorAll('.fpill').forEach(function(b) { b.classList.remove('active'); });
+      btn.classList.add('active');
+      applyFilter(btn.dataset.f);
+    });
+  });
+
+  // ── Resize ────────────────────────────────────────────────────────────────
+  function onResize() {
+    var rect = document.getElementById('graph').getBoundingClientRect();
+    width = rect.width; height = rect.height;
+    if (sim) sim.force('center', d3.forceCenter(width/2, height/2)).alpha(0.2).restart();
+  }
+
+  load();
 })();
 </script>
 </body>
