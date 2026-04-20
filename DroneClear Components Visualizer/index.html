@@ -129,6 +129,19 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:var(--s
 #drawer-body{flex:1;overflow-y:auto;padding:12px}
 #build-empty{display:flex;flex-direction:column;align-items:center;justify-content:center;height:120px;color:var(--text-d);font:400 12px var(--sans);gap:6px}
 #build-empty i{font-size:28px;color:var(--text-x)}
+#bom-summary{padding:10px 0 4px;border-top:1px solid var(--border);margin-top:8px;display:none}
+.bom-gauges{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:8px}
+.bom-gauge{background:var(--bg);border:1px solid var(--border);border-radius:6px;padding:7px 10px}
+.bom-gauge-val{font:700 15px var(--mono);color:var(--text)}
+.bom-gauge-val.green{color:#22c55e}.bom-gauge-val.amber{color:#f59e0b}.bom-gauge-val.red{color:#ef4444}
+.bom-gauge-lbl{font:400 9px var(--mono);color:var(--text-d);text-transform:uppercase;letter-spacing:.06em;margin-top:1px}
+.bom-bar-wrap{margin-bottom:6px}
+.bom-bar-bg{height:5px;border-radius:3px;background:var(--border);display:flex;overflow:hidden}
+.bom-bar-seg{height:100%;transition:width .3s}
+.bom-rows{display:flex;flex-direction:column;gap:1px}
+.bom-row{display:flex;justify-content:space-between;font:400 10px var(--mono);color:var(--text-d);padding:2px 0}
+.bom-row .bom-name{color:var(--text-s);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:160px}
+.bom-row .bom-price{color:var(--text);flex-shrink:0;margin-left:6px}
 .build-slot{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:10px 12px;margin-bottom:6px;display:flex;align-items:center;gap:10px}
 .build-slot .slot-cat{font:500 10px var(--mono);color:var(--text-x);text-transform:uppercase;letter-spacing:.06em;min-width:70px}
 .build-slot .slot-name{font:500 11px var(--sans);color:var(--text-s);flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
@@ -399,6 +412,14 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:var(--s
   <div id="drawer-body">
     <div id="build-empty"><i class="ph ph-stack"></i><span>No parts added yet</span></div>
     <div id="build-slots"></div>
+    <div id="bom-summary">
+      <div class="bom-gauges">
+        <div class="bom-gauge"><div class="bom-gauge-val" id="bom-cost">$0</div><div class="bom-gauge-lbl">Est. Cost</div></div>
+        <div class="bom-gauge"><div class="bom-gauge-val" id="bom-weight">0g</div><div class="bom-gauge-lbl">Total Weight</div></div>
+      </div>
+      <div class="bom-bar-wrap"><div class="bom-bar-bg" id="bom-bar"></div></div>
+      <div class="bom-rows" id="bom-rows"></div>
+    </div>
   </div>
   <div id="drawer-footer">
     <div id="build-total">Parts: <span id="build-n">0</span></div>
@@ -1204,10 +1225,12 @@ function updateBuildUI() {
 
   const slots = $('build-slots');
   const empty = $('build-empty');
+  const bom   = $('bom-summary');
 
   if (!build.length) {
     empty.style.display = 'flex';
     slots.innerHTML = '';
+    bom.style.display = 'none';
     return;
   }
   empty.style.display = 'none';
@@ -1221,14 +1244,66 @@ function updateBuildUI() {
   slots.querySelectorAll('.slot-remove').forEach(btn => {
     btn.addEventListener('click', () => removeFromBuild(btn.dataset.pid));
   });
+
+  // ── Live BOM panel ──
+  const CAT_COLORS = {
+    frames:'#f59e0b',motors:'#ef4444',escs:'#8b5cf6',flight_controllers:'#3b82f6',
+    stacks:'#06b6d4',batteries:'#22c55e',fpv_cameras:'#ec4899',video_transmitters:'#f97316',
+    receivers:'#a78bfa',gps_modules:'#0ea5e9',propellers:'#6366f1',antennas:'#f43f5e',
+  };
+  let totalCost = 0, totalWeight = 0;
+  const catCost = {}, catWeight = {};
+  const rows = [];
+
+  build.forEach(b => {
+    const part = allParts.find(p => p.pid === b.pid);
+    const price  = part?.approx_price || 0;
+    const weight = part?.schema_data?.weight_g || part?.weight_g || 0;
+    totalCost   += price;
+    totalWeight += weight;
+    catCost[b.cat]   = (catCost[b.cat]   || 0) + price;
+    catWeight[b.cat] = (catWeight[b.cat] || 0) + weight;
+    rows.push({name: b.name, cat: b.cat, price, weight});
+  });
+
+  const costCls = totalCost < 350 ? 'green' : totalCost < 700 ? 'amber' : 'red';
+  $('bom-cost').textContent   = totalCost  ? '$' + totalCost.toFixed(0)  : '—';
+  $('bom-cost').className     = 'bom-gauge-val ' + (totalCost ? costCls : '');
+  $('bom-weight').textContent = totalWeight ? totalWeight.toFixed(0) + 'g' : '—';
+
+  // Weight bar
+  const barSegs = Object.entries(catWeight).filter(([,w]) => w > 0).sort((a,b) => b[1]-a[1]);
+  $('bom-bar').innerHTML = totalWeight ? barSegs.map(([cat, w]) =>
+    `<div class="bom-bar-seg" style="width:${(w/totalWeight*100).toFixed(1)}%;background:${CAT_COLORS[cat]||'#6b6358'}" title="${fmtCat(cat)}: ${w.toFixed(0)}g"></div>`
+  ).join('') : '';
+
+  // Per-part cost rows (only if price data exists)
+  const priceRows = rows.filter(r => r.price > 0);
+  $('bom-rows').innerHTML = priceRows.length ? priceRows.map(r =>
+    `<div class="bom-row"><span class="bom-name">${esc(r.name)}</span><span class="bom-price">$${r.price.toFixed(0)}</span></div>`
+  ).join('') : '<div class="bom-row"><span style="color:var(--text-d);font-size:9px">Price data not available for all parts</span></div>';
+
+  bom.style.display = 'block';
 }
 
 function exportBuild() {
-  const lines = ['PID,Name,Category', ...build.map(b => `${b.pid},"${b.name}",${b.cat}`)];
+  const rows = build.map(b => {
+    const part = allParts.find(p => p.pid === b.pid);
+    const price  = part?.approx_price || '';
+    const weight = part?.schema_data?.weight_g || part?.weight_g || '';
+    return `${b.pid},"${b.name}",${b.cat},${price},${weight}`;
+  });
+  const totalCost   = build.reduce((s,b) => s + (allParts.find(p=>p.pid===b.pid)?.approx_price||0), 0);
+  const totalWeight = build.reduce((s,b) => s + (allParts.find(p=>p.pid===b.pid)?.schema_data?.weight_g||0), 0);
+  const lines = [
+    'PID,Name,Category,Price_USD,Weight_g',
+    ...rows,
+    `,,TOTAL,$${totalCost.toFixed(2)},${totalWeight.toFixed(1)}g`,
+  ];
   const blob = new Blob([lines.join('\n')], {type:'text/csv'});
   const a = document.createElement('a');
   a.href = URL.createObjectURL(blob);
-  a.download = 'forge-build.csv';
+  a.download = 'forge-build-bom.csv';
   a.click();
 }
 
