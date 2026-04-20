@@ -97,17 +97,19 @@ body{background:#0c0c0a;color:#b8b0a0;font-family:'DM Sans',system-ui,sans-serif
 
   // ── Fetch data ───────────────────────────────────────────────────────────
   async function load() {
-    try {
-      var r = await fetch('/.netlify/functions/forge-data?type=entity_graph');
-      if (r.ok) {
-        var j = await r.json();
-        RAW = j.data || j;
-      }
-    } catch(e) {}
+    // Direct file first — fastest path, skips function overhead for 2.5MB payload
+    var direct = ['/entity_graph.json', '/static/entity_graph.json'];
+    for (var i = 0; i < direct.length; i++) {
+      try {
+        var r = await fetch(direct[i]);
+        if (r.ok) { RAW = await r.json(); break; }
+      } catch(e) {}
+    }
+    // Fall back to forge-data function (Blobs — has freshest pipeline output)
     if (!RAW) {
       try {
-        var r2 = await fetch('/entity_graph.json');
-        if (r2.ok) RAW = await r2.json();
+        var rf = await fetch('/.netlify/functions/forge-data?type=entity_graph');
+        if (rf.ok) { var j = await rf.json(); RAW = j.data || j; }
       } catch(e) {}
     }
     if (!RAW) { document.getElementById('loading').textContent = 'Failed to load entity graph.'; return; }

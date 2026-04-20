@@ -1480,7 +1480,7 @@ def build():
     ROOT_INTEL_FILES = ['pie_flags.json', 'pie_predictions.json', 'predictions_best.json',
                         'pie_brief.json', 'pie_trends.json', 'solicitations.json',
                         'intel_articles.json', 'intel_companies.json', 'intel_platforms.json',
-                        'intel_programs.json', 'forge_intel.json']
+                        'intel_programs.json', 'forge_intel.json', 'entity_graph.json']
     for fname in ROOT_INTEL_FILES:
         src = os.path.join(SRC_DIR, fname)
         dst = os.path.join(BUILD_DIR, fname)
