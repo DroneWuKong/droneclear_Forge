@@ -54,7 +54,7 @@
 | FEAT-003 | Photo AI analysis | Run CV models on captured step photos for quality assurance. Needs backend CV server. | 2026-03-06 |
 | FEAT-004 | Schema audit logging | Track who changed what in the schema and parts library. Needs database persistence. | 2026-03-06 |
 | FEAT-005 | Tag vocabulary | Controlled tag taxonomy per category instead of free-form strings. Needs schema changes. | 2026-03-06 |
-| FEAT-006 | Additional data sources | Pipeline at `tools/mining/`. RotorBuilds miner now produces real parts data (DOM extraction working, 448 pairs from 10 builds). Blue UAS miner blocked by robots.txt (bluelist.dcma.mil disallows). ArduPilot Discourse + SAM.gov miners scaffolded. Next: ArduPilot Discourse parse() + SAM.gov API key. | 2026-03-06 |
+| ~~FEAT-006~~ | ~~Additional data sources~~ | ~~Resolved — see Completed section~~ | 2026-03-06 |
 | ~~FEAT-020~~ | ~~RotorBuilds DOM extraction~~ | ~~Resolved — see Completed section~~ | 2026-04-11 |
 | ~~FEAT-021~~ | ~~Blue UAS authoritative registry~~ | ~~Resolved — see Completed section~~ | 2026-04-11 |
 | ~~FEAT-022~~ | ~~Wingman co-occurrence signal~~ | ~~Resolved — see Completed section~~ | 2026-04-11 |
@@ -74,6 +74,7 @@
 
 | ID | Issue | Completed | Session |
 |----|-------|-----------|---------|
+| ~~FEAT-006~~ | Additional data source normalizers — 3 new normalizers: `ardupilot_to_cooccurrence.py` (thread tag co-occurrence → forge_co_occurrence.json, 60+ tag→category mappings, 3× weight for accepted-answer threads), `sam_gov_to_solicitations.py` (raw opportunities → solicitations.json, NAICS drone-filter, Blue UAS + gray zone auto-detection), `diyfpv_to_prices.py` (name-similarity match → patches price_min_usd/in_stock/retailer_count in forge_database.json). Wired into run_all.py. Workflow split: ArduPilot + DIYFPV promoted to daily schedule (`api-miners` job), RotorBuilds + SAM.gov kept dispatch-only (`dom-miners` job). | 2026-04-20 | `normalizers/ardupilot_to_cooccurrence.py`, `normalizers/sam_gov_to_solicitations.py`, `normalizers/diyfpv_to_prices.py`, `run_all.py`, `forge_miners.yml` |
 | ~~FEAT-027~~ | Featured builds gallery — `gallery.html` rebuilt with 8 real NDAA reference builds using actual PIDs from forge_database.json. Each card deep-links to `/builder/?b=<base64url-pids>`. Registered in build_static.py (PAGE_SLUGS, nav label, drawer link, SEO_META) + netlify.toml redirect. | 2026-04-20 | `gallery.html`, `build_static.py`, `netlify.toml` |
 | ~~FEAT-024~~ | Entity graph visualizer — `entity-graph.html` rebuilt with real D3 force-directed graph fetching from `forge-data` function (1,229 entities, shared-program edges). Filter pills (All/Flagged/Contracts/Programs/NDAA/China), hover dim, search, click-to-expand sidebar panel showing parts/flags/contracts/programs. Registered in build_static.py + netlify.toml. | 2026-04-20 | `entity-graph.html`, `build_static.py`, `netlify.toml` |
 | ~~FEAT-026~~ | Shareable build URLs — `?b=<base64url-pids>` on `/builder/`. Share button in drawer; hydrates build from URL param on load. | 2026-04-16 | `index.html`: encodeBuildParam/decodeBuildParam helpers + btn-share + URL hydration in init() |

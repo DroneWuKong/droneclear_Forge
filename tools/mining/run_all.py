@@ -72,6 +72,24 @@ def run_normalizers():
         print(f"[normalizer:aggregate_cooccurrence] FAILED: {type(e).__name__}: {e}")
 
     try:
+        from mining.normalizers import ardupilot_to_cooccurrence
+        ardupilot_to_cooccurrence.main()
+    except Exception as e:
+        print(f"[normalizer:ardupilot_to_cooccurrence] FAILED: {type(e).__name__}: {e}")
+
+    try:
+        from mining.normalizers import sam_gov_to_solicitations
+        sam_gov_to_solicitations.main()
+    except Exception as e:
+        print(f"[normalizer:sam_gov_to_solicitations] FAILED: {type(e).__name__}: {e}")
+
+    try:
+        from mining.normalizers import diyfpv_to_prices
+        diyfpv_to_prices.main()
+    except Exception as e:
+        print(f"[normalizer:diyfpv_to_prices] FAILED: {type(e).__name__}: {e}")
+
+    try:
         from mining.normalizers import blue_uas_to_cleared
         blue_uas_to_cleared.main()
     except Exception as e:

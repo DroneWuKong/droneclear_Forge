@@ -1,4 +1,4 @@
-name: "⛏ Forge Community Miners — RotorBuilds/BlueList/SAM/PilotInstitute (Daily 7:37AM CST)"
+name: "⛏ Forge Community Miners — RotorBuilds/ArduPilot/DIYFPV/SAM/PilotInstitute (Daily 7:37AM CST)"
 
 on:
   schedule:
@@ -17,13 +17,14 @@ on:
           - all
           - rotorbuilds
           - ardupilot_discourse
+          - diyfpv_catalog
           - blue_uas
           - sam_gov
           - pilotinstitute
       max_records:
-        description: 'Per-miner record cap (safety for DOM-unwired scaffolds)'
+        description: 'Per-miner record cap'
         required: false
-        default: '25'
+        default: '200'
         type: string
       dry_run:
         description: 'Miners only, skip normalizers'
@@ -90,10 +91,26 @@ jobs:
           from miners.ardupilot_discourse import ArduPilotDiscourseMiner
           from miners.blue_uas import BlueUASMiner
           from miners.sam_gov import SamGovMiner
-          for cls in [RotorBuildsMiner, ArduPilotDiscourseMiner, BlueUASMiner, SamGovMiner]:
+          from miners.diyfpv_catalog import DiyfpvCatalogMiner
+          for cls in [RotorBuildsMiner, ArduPilotDiscourseMiner, BlueUASMiner, SamGovMiner, DiyfpvCatalogMiner]:
               cfg = cls.default_config()
               print(f'{cls.__name__:32s} base={cfg.base_url:42s} min_interval={cfg.min_request_interval_sec}s')
           print('ALL MINER CONFIGS VALID')
+          "
+      - name: Import check normalizers
+        run: |
+          set -e
+          cd tools/mining
+          python3 -c "
+          import sys; sys.path.insert(0, '../..')
+          from mining.normalizers import aggregate_cooccurrence
+          from mining.normalizers import ardupilot_to_cooccurrence
+          from mining.normalizers import sam_gov_to_solicitations
+          from mining.normalizers import diyfpv_to_prices
+          from mining.normalizers import blue_uas_to_cleared
+          from mining.normalizers import parts_canonical
+          from mining.normalizers import platform_cooccurrence
+          print('ALL NORMALIZER IMPORTS VALID')
           "
       - name: Validate orchestrator
         run: |
@@ -171,20 +188,98 @@ jobs:
           path: .reports/roster-report.md
           if-no-files-found: warn
 
-  # ─── Mining run: actual scrape (DRY by default since DOM isn't wired) ──
-  mining-run:
-    name: 'Mining scaffold dry-run'
+  # ─── API miners: ArduPilot Discourse + DIYFPV (safe for daily schedule) ──
+  # These use clean public APIs / JSON endpoints — no DOM scraping, no
+  # robots.txt concerns. Run daily and commit results + normalizer output.
+  api-miners:
+    name: 'ArduPilot Discourse + DIYFPV catalog (daily)'
     runs-on: ubuntu-latest
     needs: smoke-miners
-    # Only run when DOM is wired — gated behind workflow_dispatch for now
-    if: github.event_name == 'workflow_dispatch'
+    if: >
+      github.event_name == 'schedule' ||
+      (github.event_name == 'workflow_dispatch' &&
+       (inputs.miner == 'all' || inputs.miner == 'ardupilot_discourse' || inputs.miner == 'diyfpv_catalog'))
+    permissions:
+      contents: write
     steps:
       - uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.SYNC_PAT }}
       - uses: actions/setup-python@v5
         with:
           python-version: '3.11'
       - run: pip install -r tools/mining/requirements.txt
-      - name: Run selected miner
+
+      - name: Run ArduPilot Discourse miner
+        if: inputs.miner == 'all' || inputs.miner == 'ardupilot_discourse' || github.event_name == 'schedule'
+        run: |
+          MAX="${{ inputs.max_records || '300' }}"
+          python3 tools/mining/run_all.py --miner ardupilot_discourse --max $MAX --dry
+
+      - name: Run DIYFPV catalog miner
+        if: inputs.miner == 'all' || inputs.miner == 'diyfpv_catalog' || github.event_name == 'schedule'
+        run: |
+          MAX="${{ inputs.max_records || '300' }}"
+          python3 tools/mining/run_all.py --miner diyfpv_catalog --max $MAX --dry
+
+      - name: Run normalizers
+        if: inputs.dry_run != 'true'
+        run: |
+          cd tools/mining
+          python3 -c "
+          import sys
+          sys.path.insert(0, '../..')
+          from mining.normalizers import aggregate_cooccurrence, ardupilot_to_cooccurrence, diyfpv_to_prices
+          ardupilot_to_cooccurrence.main()
+          diyfpv_to_prices.main()
+          aggregate_cooccurrence.main()
+          "
+
+      - name: Commit normalizer output
+        if: inputs.dry_run != 'true'
+        run: |
+          git config user.name  "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add \
+            "DroneClear Components Visualizer/forge_co_occurrence.json" \
+            "DroneClear Components Visualizer/forge_database.json" \
+            tools/mining/output/raw/ || true
+          if git diff --staged --quiet; then
+            echo "No changes from API miners — nothing to commit."
+          else
+            git commit -m "data(mining): ardupilot+diyfpv normalizer run — $(date -u '+%Y-%m-%d') [skip ci]"
+            git push
+          fi
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: api-mining-output-${{ github.run_id }}
+          path: tools/mining/output/raw/
+          if-no-files-found: warn
+
+  # ─── DOM miners: RotorBuilds + SAM.gov (workflow_dispatch only) ──────────
+  # RotorBuilds requires DOM parsing; SAM.gov requires API key secret.
+  # Both are dispatch-only until fully validated in production.
+  dom-miners:
+    name: 'RotorBuilds + SAM.gov (dispatch only)'
+    runs-on: ubuntu-latest
+    needs: smoke-miners
+    if: >
+      github.event_name == 'workflow_dispatch' &&
+      (inputs.miner == 'all' || inputs.miner == 'rotorbuilds' || inputs.miner == 'sam_gov')
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.SYNC_PAT }}
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - run: pip install -r tools/mining/requirements.txt
+
+      - name: Run selected DOM/key miner
         env:
           SAM_GOV_API_KEY: ${{ secrets.SAM_GOV_API_KEY }}
         run: |
@@ -195,10 +290,28 @@ jobs:
           if [ "$MINER" != "all" ]; then ARGS="$ARGS --miner $MINER"; fi
           if [ "$DRY" = "true" ]; then ARGS="$ARGS --dry"; fi
           python3 tools/mining/run_all.py $ARGS
+
+      - name: Commit output
+        if: inputs.dry_run != 'true'
+        run: |
+          git config user.name  "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add \
+            "DroneClear Components Visualizer/forge_co_occurrence.json" \
+            "DroneClear Components Visualizer/forge_database.json" \
+            "DroneClear Components Visualizer/solicitations.json" \
+            tools/mining/output/raw/ || true
+          if git diff --staged --quiet; then
+            echo "No changes — nothing to commit."
+          else
+            git commit -m "data(mining): dom-miners run — $(date -u '+%Y-%m-%d') [skip ci]"
+            git push
+          fi
+
       - uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: mining-output-${{ github.run_id }}
+          name: dom-mining-output-${{ github.run_id }}
           path: tools/mining/output/raw/
           if-no-files-found: warn
 
