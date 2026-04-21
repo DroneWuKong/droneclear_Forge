@@ -59,6 +59,27 @@ body{background:var(--bg);color:var(--text);font-family:var(--font);min-height:1
 .setup-steps{text-align:left;margin:16px 0;display:flex;flex-direction:column;gap:10px}
 .setup-step{display:flex;align-items:flex-start;gap:10px;font-size:12px;color:var(--text-s)}
 .step-num{width:20px;height:20px;background:var(--surface);border:1px solid var(--border);border-radius:50%;font:700 10px var(--mono);color:var(--cyan);display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:1px}
+/* FAA Lookup */
+.faa-lookup{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:20px;margin-bottom:20px}
+.faa-lookup-title{font:700 10px var(--mono);text-transform:uppercase;letter-spacing:.12em;color:var(--text-d);margin-bottom:14px}
+.faa-input-row{display:flex;gap:8px;margin-bottom:10px}
+.faa-input{flex:1;background:var(--surface);border:1px solid var(--border);border-radius:7px;padding:9px 12px;font:500 12px var(--mono);color:var(--text);outline:none;transition:border-color .15s}
+.faa-input:focus{border-color:var(--cyan)}
+.faa-input::placeholder{color:var(--text-d)}
+.faa-btn{padding:9px 16px;background:var(--cyan);color:#0c0c0a;border:none;border-radius:7px;font:700 11px var(--font);cursor:pointer;white-space:nowrap;transition:opacity .15s}
+.faa-btn:hover{opacity:.85}
+.faa-btn:disabled{opacity:.4;cursor:not-allowed}
+.faa-result{margin-top:12px;padding:14px;border-radius:8px;background:var(--surface);border:1px solid var(--border);display:none}
+.faa-result.show{display:block}
+.faa-result.ok{border-color:rgba(34,197,94,.3)}
+.faa-result.err{border-color:rgba(239,68,68,.3)}
+.faa-result-name{font:700 14px var(--font);color:var(--text);margin-bottom:4px}
+.faa-result-meta{font:500 11px var(--mono);color:var(--text-d);margin-bottom:10px}
+.faa-import-btn{padding:6px 14px;background:none;border:1px solid var(--green);color:var(--green);border-radius:6px;font:700 10px var(--font);cursor:pointer;transition:all .15s}
+.faa-import-btn:hover{background:rgba(34,197,94,.1)}
+.faa-tabs{display:flex;gap:4px;margin-bottom:12px}
+.faa-tab{padding:5px 12px;border-radius:6px;border:1px solid var(--border);background:none;color:var(--text-d);font:600 10px var(--mono);cursor:pointer;transition:all .15s}
+.faa-tab.active{background:var(--surface);border-color:var(--cyan);color:var(--cyan)}
 </style>
 <style id="global-mobile-fix">
 @media(max-width:640px){
@@ -223,6 +244,142 @@ body{background:var(--bg);color:var(--text);font-family:var(--font);min-height:1
 <!-- ── /Unified UAS-Nav ─────────────────────────────────────── -->
 
 <div class="page" id="page-content">
+
+  <!-- FAA Lookup Panel -->
+  <div class="faa-lookup" id="faa-lookup-panel">
+    <div class="faa-lookup-title">// FAA Part 107 Airmen Lookup</div>
+    <div class="faa-tabs">
+      <button class="faa-tab active" onclick="faaSetTab('cert',this)">Cert #</button>
+      <button class="faa-tab" onclick="faaSetTab('name',this)">Name</button>
+    </div>
+    <div id="faa-tab-cert">
+      <div class="faa-input-row">
+        <input class="faa-input" id="faa-cert-input" type="text" placeholder="Certificate number (e.g. 4123456)" maxlength="9" />
+        <button class="faa-btn" id="faa-cert-btn" onclick="faaLookupCert()">Verify</button>
+      </div>
+    </div>
+    <div id="faa-tab-name" style="display:none">
+      <div class="faa-input-row">
+        <input class="faa-input" id="faa-first-input" type="text" placeholder="First name" maxlength="20" style="max-width:140px"/>
+        <input class="faa-input" id="faa-last-input" type="text" placeholder="Last name (required)" maxlength="25"/>
+        <button class="faa-btn" id="faa-name-btn" onclick="faaLookupName()">Search</button>
+      </div>
+    </div>
+    <div class="faa-result" id="faa-result"></div>
+    <div style="font-size:10px;color:var(--text-d);margin-top:10px">Data: FAA Releasable Airmen DB · Part 107 Remote Pilot Certificates · Refreshed monthly</div>
+  </div>
+
+</div>
+
+<script>
+// ── FAA Lookup ───────────────────────────────────────────────────────────────
+const FAA_API = '/.netlify/functions/faa-lookup';
+
+function faaSetTab(tab, el) {
+  document.querySelectorAll('.faa-tab').forEach(t => t.classList.remove('active'));
+  el.classList.add('active');
+  document.getElementById('faa-tab-cert').style.display = tab === 'cert' ? '' : 'none';
+  document.getElementById('faa-tab-name').style.display = tab === 'name' ? '' : 'none';
+  document.getElementById('faa-result').classList.remove('show');
+}
+
+function faaShowResult(html, type) {
+  const el = document.getElementById('faa-result');
+  el.innerHTML = html;
+  el.className = `faa-result show ${type}`;
+}
+
+function faaMultiResult(results) {
+  if (!results.length) return faaShowResult('<div style="color:var(--text-d);font-size:12px">No Part 107 certificate found.</div>', 'err');
+  let html = '';
+  for (const r of results.slice(0, 5)) {
+    html += `
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px;padding-bottom:10px;margin-bottom:10px;border-bottom:1px solid var(--border)">
+        <div>
+          <div class="faa-result-name">${r.first_name} ${r.last_name}</div>
+          <div class="faa-result-meta">${r.cert_type}${r.city ? ' · ' + r.city + (r.state ? ', ' + r.state : '') : ''}</div>
+          <div style="font:500 10px var(--mono);color:var(--text-d)">Cert ID: ${r.cert_id}</div>
+        </div>
+        <div style="display:flex;flex-direction:column;align-items:flex-end;gap:6px">
+          <div style="display:flex;align-items:center;gap:5px;background:rgba(34,197,94,.1);border:1px solid rgba(34,197,94,.25);border-radius:20px;padding:4px 10px">
+            <i class="ph ph-seal-check" style="color:var(--green);font-size:12px"></i>
+            <span style="font:700 9px var(--mono);color:var(--green)">FAA Verified</span>
+          </div>
+          <button class="faa-import-btn" onclick="faaImport(${JSON.stringify(r).replace(/"/g,'&quot;')})">+ Import</button>
+        </div>
+      </div>`;
+  }
+  if (results.length > 5) html += `<div style="font-size:10px;color:var(--text-d)">+${results.length-5} more results — refine search</div>`;
+  faaShowResult(html, 'ok');
+}
+
+async function faaLookupCert() {
+  const cert = document.getElementById('faa-cert-input').value.trim().replace(/\D/g,'');
+  if (!cert) return;
+  const btn = document.getElementById('faa-cert-btn');
+  btn.disabled = true; btn.textContent = 'Checking...';
+  faaShowResult('<div style="color:var(--text-d);font-size:12px">Querying FAA database...</div>', '');
+  try {
+    const r = await fetch(`${FAA_API}?cert=${encodeURIComponent(cert)}`);
+    const d = await r.json();
+    if (d.found && d.results.length) {
+      faaMultiResult(d.results);
+    } else {
+      faaShowResult('<div style="color:var(--text-d);font-size:12px">No Part 107 certificate found for that number.</div>', 'err');
+    }
+  } catch(e) {
+    faaShowResult('<div style="color:var(--red);font-size:12px">Lookup unavailable — try again later.</div>', 'err');
+  }
+  btn.disabled = false; btn.textContent = 'Verify';
+}
+
+async function faaLookupName() {
+  const first = document.getElementById('faa-first-input').value.trim().toUpperCase();
+  const last  = document.getElementById('faa-last-input').value.trim().toUpperCase();
+  if (!last) { document.getElementById('faa-last-input').focus(); return; }
+  const btn = document.getElementById('faa-name-btn');
+  btn.disabled = true; btn.textContent = 'Searching...';
+  faaShowResult('<div style="color:var(--text-d);font-size:12px">Querying FAA database...</div>', '');
+  try {
+    const params = new URLSearchParams({ last });
+    if (first) params.set('first', first);
+    const r = await fetch(`${FAA_API}?${params}`);
+    const d = await r.json();
+    if (d.found && d.results.length) {
+      faaMultiResult(d.results);
+    } else {
+      faaShowResult('<div style="color:var(--text-d);font-size:12px">No Part 107 certificate found for that name.</div>', 'err');
+    }
+  } catch(e) {
+    faaShowResult('<div style="color:var(--red);font-size:12px">Lookup unavailable — try again later.</div>', 'err');
+  }
+  btn.disabled = false; btn.textContent = 'Search';
+}
+
+function faaImport(result) {
+  // Pre-populate the cert tracker with FAA-verified data
+  const existing = (() => {
+    try { return JSON.parse(localStorage.getItem('dc_tracker_v1')) || {}; } catch { return {}; }
+  })();
+  existing.cert = existing.cert || [];
+  // Avoid duplicates
+  if (!existing.cert.find(c => c.cert_num === result.cert_id)) {
+    existing.cert.push({
+      name: `${result.first_name} ${result.last_name}`.trim(),
+      cert_num: result.cert_id,
+      issued: '',
+      faa_verified: true,
+    });
+    localStorage.setItem('dc_tracker_v1', JSON.stringify(existing));
+  }
+  window.location.href = '/tracker/?imported=1';
+}
+
+// Enter key support
+document.getElementById('faa-cert-input').addEventListener('keydown', e => { if(e.key==='Enter') faaLookupCert(); });
+document.getElementById('faa-last-input').addEventListener('keydown', e => { if(e.key==='Enter') faaLookupName(); });
+document.getElementById('faa-first-input').addEventListener('keydown', e => { if(e.key==='Enter') faaLookupName(); });
+
   <div style="text-align:center;padding:40px 20px;color:var(--text-d)">
     <i class="ph ph-spinner" style="font-size:24px;display:block;margin-bottom:8px"></i>
     Loading...
