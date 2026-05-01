@@ -1,10 +1,13 @@
-name: Generate Flags RSS
+name: Generate RSS Feeds
 
 on:
   push:
     paths:
       - 'DroneClear Components Visualizer/static/data/flags.json'
+      - 'DroneClear Components Visualizer/static/pie_brief.json'
+      - 'DroneClear Components Visualizer/static/pie_brief_history.json'
       - 'generate_flags_rss.py'
+      - 'generate_brief_rss.py'
   workflow_dispatch:
 
 jobs:
@@ -21,11 +24,15 @@ jobs:
       - name: Generate flags.xml
         run: python3 generate_flags_rss.py
 
-      - name: Commit RSS feed
+      - name: Generate brief.xml
+        run: python3 generate_brief_rss.py
+
+      - name: Commit RSS feeds
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git add "DroneClear Components Visualizer/static/flags.xml"
+          git add "DroneClear Components Visualizer/static/brief.xml"
           git diff --cached --quiet && echo "No changes" || \
-            git commit -m "chore: regenerate flags.xml RSS feed [skip ci]"
+            git commit -m "chore: regenerate RSS feeds [skip ci]"
           git push
