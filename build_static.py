@@ -88,7 +88,7 @@ PAGES = {
 }
 
 # Static assets to copy (JS, CSS, JSON, images)
-STATIC_EXTENSIONS = {'.js', '.css', '.json', '.png', '.jpg', '.svg', '.ico', '.gif', '.webp'}
+STATIC_EXTENSIONS = {'.js', '.css', '.json', '.xml', '.png', '.jpg', '.svg', '.ico', '.gif', '.webp'}
 
 # Files that must NOT appear in the public build/ static/ directory.
 # These are served by forge-data.mjs with tier-based auth.
@@ -1477,7 +1477,7 @@ def build():
 
     # Explicitly copy full intel files to build root (served at /pie_flags.json etc.)
     # These are NOT in /static/ — they live at root so authed users get full data
-    ROOT_INTEL_FILES = ['pie_flags.json', 'pie_predictions.json', 'predictions_best.json',
+    ROOT_INTEL_FILES = ['flags.xml', 'pie_flags.json', 'pie_predictions.json', 'predictions_best.json',
                         'pie_brief.json', 'pie_trends.json', 'solicitations.json',
                         'intel_articles.json', 'intel_companies.json', 'intel_platforms.json',
                         'intel_programs.json', 'forge_intel.json', 'entity_graph.json']
