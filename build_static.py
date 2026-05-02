@@ -1598,5 +1598,14 @@ def build():
             print(f"  Ã¢ÂÂ Counts match: {src_parts} parts, {src_models} models, {src_cats} categories")
 
 
+    # ── Cloudflare Pages routing files ──────────────────────────
+    for cf_file in ['_redirects', '_routes.json']:
+        src_cf = os.path.join(os.path.dirname(os.path.abspath(__file__)), cf_file)
+        dst_cf = os.path.join(BUILD_DIR, cf_file)
+        if os.path.exists(src_cf):
+            shutil.copy2(src_cf, dst_cf)
+            print(f"  ✓ Copied {cf_file} to build/")
+
+
 if __name__ == '__main__':
     build()
