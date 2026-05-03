@@ -114,7 +114,7 @@ function render(){
   var rows = ALL.filter(function(x){ return STATUS==='all' || x.status===STATUS; });
   if(!rows.length){ box.innerHTML = '<div class="empty">No '+STATUS+' submissions.</div>'; return; }
   box.innerHTML = rows.map(function(r){
-    var url = '/.netlify/functions/doctrine-queue?id='+encodeURIComponent(r.submission_id);
+    var url = '/api/doctrine-queue?id='+encodeURIComponent(r.submission_id);
     return '<div class="row" data-id="'+r.submission_id+'">'+
       '<div class="h">'+
         '<div class="title">'+escapeHtml(r.title)+'</div>'+
@@ -146,7 +146,7 @@ async function decide(id, action){
   var reason = '';
   if(action==='reject') reason = prompt('Rejection reason (optional):') || '';
   try{
-    var r = await fetch('/.netlify/functions/doctrine-queue', {
+    var r = await fetch('/api/doctrine-queue', {
       method:'POST',
       headers: Object.assign({'Content-Type':'application/json'}, tokHeader()),
       body: JSON.stringify({ id, action, reason })
@@ -161,7 +161,7 @@ async function load(){
   TOK = document.getElementById('tok').value.trim();
   if(!TOK){ alert('Token required.'); return; }
   try{
-    var r = await fetch('/.netlify/functions/doctrine-queue?status=all', { headers: tokHeader() });
+    var r = await fetch('/api/doctrine-queue?status=all', { headers: tokHeader() });
     if(r.status===401){ alert('Unauthorized — wrong token.'); return; }
     if(!r.ok) throw new Error('HTTP '+r.status);
     var j = await r.json();

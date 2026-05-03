@@ -14,6 +14,8 @@ import geminiProxy  from './gemini-proxy.js';
 import pricesApi    from './prices-api.js';
 import analyticsIngest from './analytics-ingest.js';
 import complianceReport from './compliance-report.js';
+import doctrineSubmit from './doctrine-submit.js';
+import doctrineQueue  from './doctrine-queue.js';
 
 const CORS = {
   'Access-Control-Allow-Origin': '*',
@@ -53,6 +55,12 @@ export default {
     if (path === '/api/compliance/report')
       return complianceReport.fetch(req, env, ctx);
 
+    if (path === '/api/doctrine-submit')
+      return doctrineSubmit.fetch(req, env, ctx);
+
+    if (path === '/api/doctrine-queue' || path.startsWith('/api/doctrine-queue?'))
+      return doctrineQueue.fetch(req, env, ctx);
+
     // Legacy /.netlify/functions/* redirect → /api/* equivalents
     if (path.startsWith('/.netlify/functions/')) {
       const fn = path.replace('/.netlify/functions/', '');
@@ -65,6 +73,8 @@ export default {
         'prices-api':        '/api/prices',
         'analytics-ingest':  '/api/analytics/ingest',
         'compliance-report': '/api/compliance/report',
+        'doctrine-submit':   '/api/doctrine-submit',
+        'doctrine-queue':    '/api/doctrine-queue',
       };
       const newPath = legacyMap[fn];
       if (newPath) {
