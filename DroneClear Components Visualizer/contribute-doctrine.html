@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Contribute Doctrine — uas-patterns</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://unpkg.com/@phosphor-icons/web"></script>
+<style>
+:root{
+  --bg:#0c0c0a;--surface:#141410;--card:#1c1c17;--card-hi:#242420;
+  --border:#2e2e26;--border-hi:#3e3e34;
+  --green:#22c55e;--green-d:rgba(34,197,94,.15);
+  --amber:#f59e0b;--red:#ef4444;
+  --text:#f5f0e8;--text-s:#b8b0a0;--text-d:#8a8070;--text-xd:#6b6358;
+  --font:'Inter',system-ui,sans-serif;--mono:'JetBrains Mono',monospace;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--bg);color:var(--text);font-family:var(--font);line-height:1.5;-webkit-font-smoothing:antialiased;min-height:100vh}
+a{text-decoration:none;color:inherit}
+
+#dc-nav{display:flex;align-items:center;justify-content:space-between;padding:0 16px;height:44px;background:#0c0c0a;border-bottom:1px solid #1e1e18;position:sticky;top:0;z-index:500}
+#dc-nav-brand{font:700 13px var(--mono);color:#f59e0b}
+#dc-nav-sep{color:#2e2e26;font-size:12px}
+#dc-nav-page{font:600 11px var(--font);color:#b8b0a0}
+#dc-nav-left{display:flex;align-items:center;gap:10px}
+
+.page{max-width:560px;margin:0 auto;padding:32px 24px 60px}
+.eyebrow{font:600 10px var(--mono);text-transform:uppercase;letter-spacing:.12em;color:var(--text-xd);margin-bottom:6px}
+h1{font:700 24px var(--mono);color:#22c55e;letter-spacing:-0.02em;margin-bottom:8px}
+.tagline{font-size:13px;color:var(--text-s);line-height:1.6;margin-bottom:24px}
+.tagline code{font:500 11px var(--mono);background:var(--surface);padding:1px 5px;border-radius:3px;color:var(--text)}
+
+form{display:flex;flex-direction:column;gap:14px;background:var(--card);border:1px solid var(--border);border-radius:10px;padding:20px}
+label{display:block;font:600 10px var(--mono);text-transform:uppercase;letter-spacing:.07em;color:var(--text-d);margin-bottom:5px}
+input[type=text], input[type=url], input[type=email], textarea, select{
+  width:100%;background:var(--surface);border:1px solid var(--border);border-radius:6px;padding:10px 12px;color:var(--text);font:400 13px var(--font);transition:border-color .15s
+}
+input[type=text]:focus, input[type=url]:focus, input[type=email]:focus, textarea:focus, select:focus{outline:none;border-color:#22c55e}
+input[type=file]{font:400 12px var(--font);color:var(--text-s)}
+textarea{resize:vertical;min-height:60px}
+.help{font:400 11px var(--font);color:var(--text-xd);margin-top:4px}
+button{background:#22c55e;color:#0c0c0a;border:none;border-radius:6px;padding:11px 16px;font:600 13px var(--font);cursor:pointer;transition:opacity .15s}
+button:hover{opacity:.9}
+button:disabled{opacity:.5;cursor:not-allowed}
+
+.note{padding:12px 14px;background:var(--surface);border-left:3px solid var(--amber);border-radius:4px;font:400 11px var(--font);color:var(--text-s);line-height:1.6;margin-bottom:18px}
+.result{padding:14px;background:var(--surface);border:1px solid var(--border);border-radius:8px;margin-top:16px;font-size:12px;color:var(--text-s);line-height:1.6;display:none}
+.result.ok{border-color:rgba(34,197,94,.4);background:var(--green-d)}
+.result.err{border-color:rgba(239,68,68,.4);background:rgba(239,68,68,.1)}
+.result code{font:500 11px var(--mono);background:var(--bg);padding:1px 5px;border-radius:3px;color:var(--text)}
+</style>
+</head>
+<body>
+
+<nav id="dc-nav">
+  <div id="dc-nav-left">
+    <a id="dc-nav-brand" href="/patterns-home/">Patterns</a>
+    <span id="dc-nav-sep">/</span>
+    <span id="dc-nav-page">Contribute Doctrine</span>
+  </div>
+</nav>
+
+<main class="page">
+  <div class="eyebrow">Doctrine Pipeline · Submission</div>
+  <h1>Contribute a Document</h1>
+  <p class="tagline">Submit a public-domain or fair-use UAS / counter-UAS / supply-chain doctrine document
+  for inclusion in the corpus. Submissions go to a moderated queue; an analyst reviews each one before
+  it lands in <code>data/doctrine/MANIFEST.json</code>.</p>
+
+  <div class="note">
+    <strong style="color:var(--text-s)">Please don't submit:</strong> copyrighted material without a
+    distribution license, vendor manuals (those stay <code>local_only</code>), classified material, PII,
+    or anything you wouldn't share publicly. PDFs only, 50 KB to 25 MB.
+  </div>
+
+  <form id="form">
+    <div>
+      <label for="title">Title <span style="color:var(--red)">*</span></label>
+      <input type="text" name="title" id="title" required maxlength="240" placeholder="e.g. RAND TR-1234 — Loitering Munition Doctrine">
+    </div>
+    <div>
+      <label for="source_url">Source URL</label>
+      <input type="url" name="source_url" id="source_url" maxlength="500" placeholder="https://www.rand.org/pubs/...">
+      <div class="help">Where you got this. Helps the auditor verify provenance.</div>
+    </div>
+    <div>
+      <label for="category_hint">Category hint</label>
+      <select name="category_hint" id="category_hint">
+        <option value="">— let the categoriser pick —</option>
+        <option value="osint_methods">OSINT methods / tradecraft</option>
+        <option value="china_pla">China / PLA</option>
+        <option value="adversary_ttps">Adversary TTPs</option>
+        <option value="counter_uas">Counter-UAS</option>
+        <option value="rf_ew">RF / Electronic Warfare</option>
+        <option value="ukraine_intel">Ukraine intel</option>
+        <option value="comms">Comms</option>
+        <option value="acoustics">Acoustics</option>
+        <option value="eod">EOD</option>
+        <option value="industry_intel">Industry intel</option>
+        <option value="strategic">Strategic</option>
+        <option value="policy_law">Policy / Law</option>
+        <option value="threat_intel">Threat intel</option>
+        <option value="info_warfare">Info warfare</option>
+        <option value="air_defense">Air defense</option>
+        <option value="maritime">Maritime</option>
+        <option value="human_factors">Human factors</option>
+      </select>
+      <div class="help">Optional. The build_manifest categoriser already classifies by filename + content patterns; you can override here if you know better.</div>
+    </div>
+    <div>
+      <label for="email">Your email</label>
+      <input type="email" name="email" id="email" maxlength="200" placeholder="optional — for follow-up only">
+      <div class="help">Optional. Never published. Used only if the auditor needs to reach you for context.</div>
+    </div>
+    <div>
+      <label for="notes">Notes for the auditor</label>
+      <textarea name="notes" id="notes" maxlength="1000" placeholder="What is this? Why is it relevant?"></textarea>
+    </div>
+    <div>
+      <label for="file">PDF file <span style="color:var(--red)">*</span></label>
+      <input type="file" name="file" id="file" accept="application/pdf" required>
+      <div class="help">PDFs only. 50 KB minimum, 25 MB maximum.</div>
+    </div>
+    <button type="submit" id="submit-btn">Submit for review</button>
+  </form>
+
+  <div class="result" id="result"></div>
+</main>
+
+<script>
+var form = document.getElementById('form');
+var btn  = document.getElementById('submit-btn');
+var res  = document.getElementById('result');
+
+form.addEventListener('submit', async function(e){
+  e.preventDefault();
+  btn.disabled = true; btn.textContent = 'Uploading…';
+  res.style.display = 'none'; res.className = 'result';
+  var fd = new FormData(form);
+  try{
+    var r = await fetch('/.netlify/functions/doctrine-submit', { method:'POST', body: fd });
+    var j = await r.json();
+    if(r.ok && j.ok){
+      res.className = 'result ok';
+      res.innerHTML = '<strong style="color:#22c55e">'+(j.duplicate?'Already in queue':'Submission received.')+'</strong><br>'+
+        'Submission ID: <code>'+j.submission_id+'</code><br>'+
+        (j.sha256_prefix?'sha256: <code>'+j.sha256_prefix+'…</code><br>':'')+
+        '<br>'+(j.message||'');
+      form.reset();
+    } else {
+      res.className = 'result err';
+      res.textContent = 'Failed: ' + (j.error || ('HTTP '+r.status));
+    }
+  } catch(err){
+    res.className = 'result err';
+    res.textContent = 'Network error: ' + err.message;
+  } finally {
+    res.style.display = 'block';
+    btn.disabled = false; btn.textContent = 'Submit for review';
+  }
+});
+</script>
+</body>
+</html>

@@ -1,0 +1,240 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Threat Actors — uas-patterns</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://unpkg.com/@phosphor-icons/web"></script>
+<style>
+:root{
+  --bg:#0c0c0a;--surface:#141410;--card:#1c1c17;--card-hi:#242420;
+  --border:#2e2e26;--border-hi:#3e3e34;
+  --green:#22c55e;--green-d:rgba(34,197,94,.15);
+  --amber:#f59e0b;--amber-d:rgba(245,158,11,.15);
+  --red:#ef4444;--red-d:rgba(239,68,68,.15);
+  --blue:#3b82f6;--blue-d:rgba(59,130,246,.15);
+  --purple:#a78bfa;--purple-d:rgba(167,139,250,.15);
+  --text:#f5f0e8;--text-s:#b8b0a0;--text-d:#8a8070;--text-xd:#6b6358;
+  --font:'Inter',system-ui,sans-serif;--mono:'JetBrains Mono',monospace;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--bg);color:var(--text);font-family:var(--font);line-height:1.5;-webkit-font-smoothing:antialiased;min-height:100vh}
+a{text-decoration:none;color:inherit}
+
+#dc-nav{display:flex;align-items:center;justify-content:space-between;padding:0 16px;height:44px;background:#0c0c0a;border-bottom:1px solid #1e1e18;position:sticky;top:0;z-index:500}
+#dc-nav-left{display:flex;align-items:center;gap:10px;min-width:0}
+#dc-nav-brand{font:700 13px var(--mono);color:#f59e0b;flex-shrink:0}
+#dc-nav-sep{color:#2e2e26;font-size:12px;flex-shrink:0}
+#dc-nav-page{font:600 11px var(--font);color:#b8b0a0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:160px}
+#dc-hamburger{display:flex;align-items:center;justify-content:center;width:32px;height:32px;border-radius:6px;border:1px solid #2a2a22;background:none;color:#6b6358;cursor:pointer;flex-shrink:0;margin-left:auto;transition:all .15s}
+#dc-hamburger:hover{border-color:#3e3e34;color:#b8b0a0}
+#dc-overlay{position:fixed;inset:0;z-index:498;background:rgba(0,0,0,.6);backdrop-filter:blur(4px);opacity:0;pointer-events:none;transition:opacity .25s}
+#dc-overlay.open{opacity:1;pointer-events:auto}
+#dc-drawer{position:fixed;top:0;right:0;bottom:0;z-index:499;width:260px;max-width:85vw;background:#111110;border-left:1px solid #2a2a22;transform:translateX(100%);transition:transform .3s cubic-bezier(.4,0,.2,1);display:flex;flex-direction:column;overflow:hidden}
+#dc-drawer.open{transform:translateX(0)}
+#dc-drawer-head{padding:16px;border-bottom:1px solid #1e1e18;display:flex;align-items:center;justify-content:space-between}
+#dc-drawer-brand{font:700 14px var(--mono);color:#f59e0b}
+#dc-drawer-close{width:28px;height:28px;border-radius:6px;border:1px solid #2a2a22;background:none;color:#6b6358;cursor:pointer;font-size:16px}
+.dc-drawer-section{padding:12px 16px 4px;font:700 9px var(--mono);color:#3e3e34;text-transform:uppercase;letter-spacing:.1em}
+.dc-drawer-item{display:flex;gap:10px;padding:9px 16px;color:#6b6358;font:400 12px var(--font);border-left:2px solid transparent;transition:all .15s}
+.dc-drawer-item:hover{color:#b8b0a0;background:rgba(255,255,255,.02);border-left-color:#2e2e26}
+.dc-drawer-item.dc-active{color:#22c55e;border-left-color:#22c55e;background:rgba(34,197,94,.04)}
+.dc-drawer-divider{height:1px;background:#1e1e18;margin:8px 16px}
+#dc-drawer-body{flex:1;overflow-y:auto;overflow-x:hidden}
+
+.page{max-width:1100px;margin:0 auto;padding:32px 24px 60px}
+.eyebrow{font:600 10px var(--mono);text-transform:uppercase;letter-spacing:.12em;color:var(--text-xd);margin-bottom:6px}
+h1{font:700 24px var(--mono);color:#22c55e;letter-spacing:-0.02em;margin-bottom:8px}
+.tagline{font-size:13px;color:var(--text-s);line-height:1.6;max-width:680px}
+.tagline code{font:500 11px var(--mono);background:var(--surface);padding:1px 5px;border-radius:3px;color:var(--text)}
+
+.layout{display:grid;grid-template-columns:300px 1fr;gap:16px;margin-top:20px;align-items:flex-start}
+.actor-list{display:flex;flex-direction:column;gap:4px;border:1px solid var(--border);border-radius:8px;background:var(--surface);padding:6px;max-height:80vh;overflow-y:auto}
+.alist-h{font:600 9px var(--mono);text-transform:uppercase;letter-spacing:.1em;color:var(--text-xd);padding:6px 8px}
+.actor-row{display:flex;align-items:center;gap:8px;padding:8px 10px;border-radius:6px;cursor:pointer;transition:all .12s}
+.actor-row:hover{background:var(--card)}
+.actor-row.sel{background:var(--card);border-left:2px solid #22c55e;padding-left:8px}
+.actor-row .ts{font:700 13px var(--mono);color:#22c55e;width:38px;flex-shrink:0;text-align:right}
+.actor-row .nm{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font:600 12px var(--font);color:var(--text)}
+.actor-row .ic{font:600 9px var(--mono);color:var(--text-d);flex-shrink:0}
+
+.detail{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:18px;min-height:400px}
+.detail .h{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;margin-bottom:6px}
+.detail h2{font:700 18px var(--font);color:var(--text);margin:0}
+.detail .seen{font:500 10px var(--mono);color:var(--text-d)}
+.detail .ration{font-size:12px;color:var(--text-s);margin-bottom:12px;line-height:1.6;padding:8px 10px;background:var(--surface);border-radius:6px;border-left:3px solid var(--purple)}
+.detail .pills{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:14px}
+.pill{font:600 10px var(--mono);text-transform:uppercase;padding:3px 7px;border-radius:4px;background:var(--surface);color:var(--text-d);border:1px solid var(--border)}
+.pill.region{background:var(--blue-d);color:var(--blue);border-color:rgba(59,130,246,.3)}
+.pill.drone{background:var(--amber-d);color:var(--amber);border-color:rgba(245,158,11,.3)}
+
+.section-h{font:600 10px var(--mono);text-transform:uppercase;letter-spacing:.07em;color:var(--text-d);margin:14px 0 6px}
+.ttp-row{display:flex;align-items:center;gap:8px;padding:9px 10px;background:var(--surface);border-radius:6px;margin-bottom:4px;font-size:12px}
+.ttp-row.undefended{background:var(--amber-d);border:1px solid rgba(245,158,11,.4)}
+.ttp-row .nm{flex:1;color:var(--text);font-weight:500}
+.ttp-row .ev{font:600 10px var(--mono);color:var(--text-d)}
+.ttp-row .gap{font:600 10px var(--mono);width:42px;text-align:right}
+.ttp-row .verdict{font:600 9px var(--mono);padding:2px 5px;border-radius:3px;background:var(--surface);color:var(--text-d);border:1px solid var(--border)}
+.ttp-row.undefended .verdict{background:rgba(245,158,11,.2);color:var(--amber);border-color:rgba(245,158,11,.4)}
+
+.cross{margin-top:24px;padding:14px;background:var(--surface);border:1px solid var(--border);border-radius:8px}
+.cross h3{font:600 11px var(--mono);text-transform:uppercase;letter-spacing:.1em;color:var(--text-d);margin-bottom:8px}
+.cross-row{display:flex;justify-content:space-between;font-size:12px;padding:5px 0;border-bottom:1px dashed var(--border)}
+.cross-row:last-child{border:none}
+.cross-row .id{color:var(--text);font-family:var(--mono);font-size:11px}
+.cross-row .ct{color:var(--amber);font:700 11px var(--mono)}
+
+.empty{padding:40px 20px;text-align:center;color:var(--text-d);font-size:13px}
+.caveat{margin-top:24px;padding:12px 14px;background:var(--surface);border-left:3px solid var(--text-xd);border-radius:4px;font:400 11px var(--font);color:var(--text-s);line-height:1.6}
+
+@media(max-width:780px){
+  .layout{grid-template-columns:1fr}
+  .actor-list{max-height:240px}
+  .page{padding:20px 14px 40px}
+}
+</style>
+</head>
+<body>
+
+<nav id="dc-nav">
+  <div id="dc-nav-left">
+    <a id="dc-nav-brand" href="/" onclick="return dcNavBrandClick(event)">Patterns</a>
+    <span id="dc-nav-sep">/</span>
+    <span id="dc-nav-page">Threat Actors</span>
+  </div>
+  <button id="dc-hamburger" onclick="dcNavToggle()">
+    <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round">
+      <line x1="1" y1="3" x2="13" y2="3"/><line x1="1" y1="7" x2="13" y2="7"/><line x1="1" y1="11" x2="13" y2="11"/>
+    </svg>
+  </button>
+</nav>
+<div id="dc-overlay" onclick="dcNavClose()"></div>
+<div id="dc-drawer">
+  <div id="dc-drawer-head"><span id="dc-drawer-brand">Patterns</span><button id="dc-drawer-close" onclick="dcNavClose()">✕</button></div>
+  <div id="dc-drawer-body">
+    <div class="dc-drawer-section">PIE — Pattern Intelligence</div>
+    <a class="dc-drawer-item" href="https://uas-patterns.com/patterns-home/" data-page="patterns-home">P.I.E Hub</a>
+    <a class="dc-drawer-item" href="https://uas-patterns.com/brief/" data-page="brief">Brief</a>
+    <a class="dc-drawer-item" href="https://uas-patterns.com/patterns/" data-page="patterns">Flags</a>
+    <a class="dc-drawer-item" href="https://uas-patterns.com/clock/" data-page="clock">UAS Clock</a>
+    <a class="dc-drawer-item" href="https://uas-patterns.com/ddg/" data-page="ddg">DDG Tracker</a>
+    <div class="dc-drawer-divider"></div>
+    <div class="dc-drawer-section">Lens — Adversary</div>
+    <a class="dc-drawer-item" href="/adversary-bom/" data-page="adversary-bom">Adversary BOM</a>
+    <a class="dc-drawer-item" href="/mirroring/" data-page="mirroring">Component Mirroring</a>
+    <div class="dc-drawer-section">Lens — Actor</div>
+    <a class="dc-drawer-item" href="/actors/" data-page="actors">Threat Actors</a>
+    <a class="dc-drawer-item" href="/ttps/" data-page="ttps">TTP Defense Gap</a>
+    <div class="dc-drawer-section">Lens — Risk</div>
+    <a class="dc-drawer-item" href="/evasion/" data-page="evasion">Sanctions-Evasion Graph</a>
+  </div>
+</div>
+
+<main class="page">
+  <div class="eyebrow">Actor Lens</div>
+  <h1>Threat Actors</h1>
+  <p class="tagline">Per-actor behavioural fingerprints (regions, drone systems, TTP repertoire) joined with
+  composite threat scores. Rank emphasises <code>undefended_exposure</code> — TTPs an actor uses AND for which
+  defensive procurement signal is weak. Reads <code>actor_fingerprints.json</code> + <code>threat_scores.json</code>.</p>
+
+  <div class="layout">
+    <div class="actor-list" id="actor-list"><div class="alist-h">Ranked by threat_score</div><div class="empty">Loading…</div></div>
+    <div class="detail" id="detail"><div class="empty">Pick an actor on the left</div></div>
+  </div>
+
+  <div class="cross" id="cross" style="display:none">
+    <h3>Most concentrated undefended TTPs (across actors)</h3>
+    <div id="cross-list"></div>
+  </div>
+
+  <div class="caveat" id="caveat">—</div>
+</main>
+
+<script>
+window.dcNavToggle=function(){document.getElementById('dc-drawer').classList.toggle('open');document.getElementById('dc-overlay').classList.toggle('open');document.getElementById('dc-hamburger').classList.toggle('open');};
+window.dcNavClose=function(){document.getElementById('dc-drawer').classList.remove('open');document.getElementById('dc-overlay').classList.remove('open');document.getElementById('dc-hamburger').classList.remove('open');};
+window.dcNavBrandClick=function(e){e.preventDefault();location.href='/patterns-home/';};
+(function(){var path=location.pathname.replace(/\/$/,'').split('/').pop()||'home';document.querySelectorAll('.dc-drawer-item').forEach(function(a){if(a.dataset.page===path)a.classList.add('dc-active');});})();
+
+var FP_BY_NAME = {}, SCORES = [], SELECTED = null;
+
+function selectActor(name){
+  SELECTED = name;
+  document.querySelectorAll('.actor-row').forEach(function(r){
+    r.classList.toggle('sel', r.dataset.name === name);
+  });
+  var s = SCORES.find(function(x){ return x.actor === name; });
+  var fp = FP_BY_NAME[name];
+  if(!s){ document.getElementById('detail').innerHTML = '<div class="empty">No score for '+name+'</div>'; return; }
+  var regions = (s.dominant_regions||[]).map(function(r){ return '<span class="pill region">'+r+'</span>'; }).join('');
+  var drones  = (s.top_drones||[]).map(function(d){ return '<span class="pill drone">'+d+'</span>'; }).join('');
+  var ttps = (s.ttps_exhibited||[]).map(function(t){
+    var und = t.counter_gap_score >= 0.65;
+    return '<div class="ttp-row '+(und?'undefended':'')+'">'+
+      '<div class="nm">'+t.ttp_id+'</div>'+
+      '<div class="ev">×'+t.evidence_count+'</div>'+
+      '<div class="gap">gap '+(t.counter_gap_score||0).toFixed(2)+'</div>'+
+      '<div class="verdict">'+(t.counter_verdict||'').split(' ')[0]+'</div>'+
+    '</div>';
+  }).join('') || '<div class="empty" style="padding:20px">No TTPs detected in articles for this actor.</div>';
+
+  var velocity = (fp && fp.monthly_velocity) || {};
+  var velocityRows = Object.keys(velocity).sort().slice(-6).map(function(m){
+    return '<span style="display:inline-block;margin-right:8px;font:500 10px var(--mono);color:var(--text-d)">'+m+': <span style="color:var(--text-s)">'+velocity[m]+'</span></span>';
+  }).join('');
+
+  document.getElementById('detail').innerHTML =
+    '<div class="h"><h2>'+name+'</h2><div class="seen">first '+(s.first_seen||'?').slice(0,10)+' · last '+(s.last_seen||'?').slice(0,10)+'</div></div>'+
+    '<div class="ration">'+(s.rationale || '—')+'</div>'+
+    '<div class="pills">'+
+      '<span class="pill" style="background:var(--green-d);color:#22c55e;border-color:rgba(34,197,94,.3)">threat '+s.threat_score.toFixed(3)+'</span>'+
+      '<span class="pill">'+s.incident_count+' incidents</span>'+
+      '<span class="pill">'+s.ttp_breadth+' TTPs</span>'+
+      '<span class="pill" style="background:var(--amber-d);color:var(--amber);border-color:rgba(245,158,11,.3)">undefended '+(s.undefended_ttps||[]).length+'</span>'+
+    '</div>'+
+    (regions ? '<div class="section-h">Dominant regions</div><div class="pills">'+regions+'</div>' : '')+
+    (drones  ? '<div class="section-h">Top drone systems referenced</div><div class="pills">'+drones+'</div>' : '')+
+    (velocityRows ? '<div class="section-h">Monthly velocity (last 6)</div><div style="margin-bottom:10px">'+velocityRows+'</div>' : '')+
+    '<div class="section-h">TTP exposure '+(s.ttp_breadth?'('+s.ttp_breadth+')':'')+'</div>'+
+    ttps;
+}
+
+function renderList(){
+  var box = document.getElementById('actor-list');
+  if(!SCORES.length){ box.innerHTML = '<div class="empty">No actors loaded</div>'; return; }
+  box.innerHTML = '<div class="alist-h">Ranked by threat_score</div>' + SCORES.map(function(s){
+    return '<div class="actor-row" data-name="'+s.actor+'" onclick="selectActor(\''+s.actor.replace(/'/g,"\\'")+'\')">'+
+      '<div class="ts">'+s.threat_score.toFixed(2)+'</div>'+
+      '<div class="nm">'+s.actor+'</div>'+
+      '<div class="ic">'+s.incident_count+'</div>'+
+    '</div>';
+  }).join('');
+}
+
+Promise.all([
+  fetch('/actor_fingerprints.json').then(function(r){ return r.ok?r.json():null; }),
+  fetch('/threat_scores.json').then(function(r){ return r.ok?r.json():null; })
+]).then(function(arr){
+  var fp = arr[0], ts = arr[1];
+  if(!ts){ document.getElementById('detail').innerHTML = '<div class="empty">threat_scores.json not synced yet.</div>'; return; }
+  if(fp){ (fp.fingerprints||[]).forEach(function(f){ FP_BY_NAME[f.actor] = f; }); }
+  SCORES = ts.actors || [];
+  renderList();
+  if(SCORES.length) selectActor(SCORES[0].actor);
+  document.getElementById('caveat').textContent = (ts.meta && ts.meta.caveat) || '';
+  var conc = (ts.meta && ts.meta.undefended_ttp_concentration) || {};
+  var concEntries = Object.entries(conc);
+  if(concEntries.length){
+    document.getElementById('cross').style.display = '';
+    document.getElementById('cross-list').innerHTML = concEntries.map(function(e){
+      return '<div class="cross-row"><div class="id">'+e[0]+'</div><div class="ct">'+e[1]+' actor(s)</div></div>';
+    }).join('');
+  }
+}).catch(function(err){
+  document.getElementById('detail').innerHTML = '<div class="empty">Failed to load fingerprints/scores ('+err+')</div>';
+});
+</script>
+</body>
+</html>

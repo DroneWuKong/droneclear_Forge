@@ -85,6 +85,15 @@ PAGES = {
     'uas-hub.html': 'hub/index.html',       # /hub/ — UAS- landing page, all 5 domains
     'gallery.html': 'gallery/index.html',
     'entity-graph.html': 'entity-graph/index.html',
+    # Patterns Hub lens pages — fed by data/*.json synced from Ai-Project pie-daily.yml
+    'adversary-bom.html': 'adversary-bom/index.html',
+    'mirroring.html': 'mirroring/index.html',
+    'actors.html': 'actors/index.html',
+    'ttps.html': 'ttps/index.html',
+    'evasion.html': 'evasion/index.html',
+    # Doctrine submission + audit (Cloudflare/Netlify-Function backed)
+    'contribute-doctrine.html': 'contribute-doctrine/index.html',
+    'audit-doctrine.html': 'audit-doctrine/index.html',
 }
 
 # Static assets to copy (JS, CSS, JSON, images)
@@ -162,6 +171,9 @@ _ANALYTICS_SNIPPET = r"""(function(){var E=(location.hostname==='localhost'||loc
 _PAGE_SLUGS = {
     'index.html': 'builder', 'mission-control.html': 'home',
     'patterns.html': 'patterns', 'patterns-home.html': 'patterns-home',
+    'adversary-bom.html': 'adversary-bom', 'mirroring.html': 'mirroring',
+    'actors.html': 'actors', 'ttps.html': 'ttps', 'evasion.html': 'evasion',
+    'contribute-doctrine.html': 'contribute-doctrine', 'audit-doctrine.html': 'audit-doctrine',
     'intel.html': 'intel-feed', 'intel-home.html': 'intel-home',
     'intel-defense.html': 'intel-defense', 'intel-commercial.html': 'intel-commercial',
     'intel-dfr.html': 'intel-dfr', 'intel-financial.html': 'intel-financial',
@@ -427,6 +439,9 @@ _UNIFIED_NAV = r"""<!-- ── Unified UAS- Nav (5-domain accordion drawer) ─�
     'stack-builder':'Stack Builder','report':'Compliance Report','tools-home':'Tools',
     'software-library':'Software Library','industry':'Industry','tracker':'Contract Tracker',
     'patterns-home':'P.I.E Hub','brief':'Brief','patterns':'Flags','clock':'UAS Clock','ddg':'DDG Tracker',
+    'adversary-bom':'Adversary BOM','mirroring':'Component Mirroring','actors':'Threat Actors',
+    'ttps':'TTP Defense Gap','evasion':'Sanctions-Evasion',
+    'contribute-doctrine':'Contribute Doctrine','audit-doctrine':'Doctrine Audit',
     'start':'Getting Started','grants':'Grants','waiver':'Doc Builder',
     'verify':'Verify','vault':'Vault','troubleshoot':'Troubleshoot','support':'Support','hub':'Hub','gallery':'Featured Builds','entity-graph':'Entity Graph',
     'builder':'Builder','cost':'Cost','analytics':'Analytics'

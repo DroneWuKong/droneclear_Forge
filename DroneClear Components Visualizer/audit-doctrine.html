@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Doctrine Audit Queue — uas-patterns</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://unpkg.com/@phosphor-icons/web"></script>
+<style>
+:root{
+  --bg:#0c0c0a;--surface:#141410;--card:#1c1c17;--card-hi:#242420;
+  --border:#2e2e26;--border-hi:#3e3e34;
+  --green:#22c55e;--green-d:rgba(34,197,94,.15);
+  --amber:#f59e0b;--amber-d:rgba(245,158,11,.15);
+  --red:#ef4444;--red-d:rgba(239,68,68,.15);
+  --text:#f5f0e8;--text-s:#b8b0a0;--text-d:#8a8070;--text-xd:#6b6358;
+  --font:'Inter',system-ui,sans-serif;--mono:'JetBrains Mono',monospace;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--bg);color:var(--text);font-family:var(--font);line-height:1.5;-webkit-font-smoothing:antialiased;min-height:100vh}
+a{text-decoration:none;color:inherit}
+
+#dc-nav{display:flex;align-items:center;justify-content:space-between;padding:0 16px;height:44px;background:#0c0c0a;border-bottom:1px solid #1e1e18;position:sticky;top:0;z-index:500}
+#dc-nav-brand{font:700 13px var(--mono);color:#f59e0b}
+#dc-nav-sep{color:#2e2e26;font-size:12px}
+#dc-nav-page{font:600 11px var(--font);color:#b8b0a0}
+#dc-nav-left{display:flex;align-items:center;gap:10px}
+
+.page{max-width:920px;margin:0 auto;padding:32px 24px 60px}
+.eyebrow{font:600 10px var(--mono);text-transform:uppercase;letter-spacing:.12em;color:var(--text-xd);margin-bottom:6px}
+h1{font:700 24px var(--mono);color:#22c55e;letter-spacing:-0.02em;margin-bottom:8px}
+.tagline{font-size:13px;color:var(--text-s);line-height:1.6;margin-bottom:18px}
+
+.auth{background:var(--card);border:1px solid var(--border);border-radius:8px;padding:14px;margin-bottom:18px;display:flex;gap:10px;align-items:center}
+.auth input{flex:1;background:var(--surface);border:1px solid var(--border);border-radius:6px;padding:8px 12px;color:var(--text);font:500 12px var(--mono)}
+.auth input:focus{outline:none;border-color:#22c55e}
+.auth button{background:#22c55e;color:#0c0c0a;border:none;border-radius:6px;padding:9px 16px;font:600 12px var(--font);cursor:pointer}
+.auth label{font:600 10px var(--mono);text-transform:uppercase;letter-spacing:.07em;color:var(--text-d);min-width:90px}
+
+.tabs{display:flex;gap:4px;margin-bottom:14px;border-bottom:1px solid var(--border)}
+.tab{padding:8px 14px;font:500 12px var(--font);color:var(--text-d);cursor:pointer;border-bottom:2px solid transparent;transition:all .15s}
+.tab:hover{color:var(--text-s)}
+.tab.active{color:#22c55e;border-bottom-color:#22c55e}
+.tab .ct{font:600 9px var(--mono);background:var(--surface);color:var(--text-d);padding:1px 5px;border-radius:8px;margin-left:4px}
+
+.row{background:var(--card);border:1px solid var(--border);border-radius:8px;padding:13px 16px;margin-bottom:6px}
+.row .h{display:flex;align-items:center;gap:10px;margin-bottom:6px}
+.row .title{flex:1;font:600 13px var(--font);color:var(--text);min-width:0}
+.row .meta{font:500 10px var(--mono);color:var(--text-d);display:flex;gap:10px;flex-wrap:wrap;margin-bottom:6px}
+.row .url{font-size:11px;color:var(--text-d);margin-bottom:6px;word-break:break-all}
+.row .url a{color:var(--text-s);text-decoration:underline;text-decoration-color:var(--text-xd)}
+.row .notes{font-size:11px;color:var(--text-s);margin-bottom:8px;font-style:italic}
+.row .actions{display:flex;gap:6px;flex-wrap:wrap}
+.row .actions button, .row .actions a{font:500 11px var(--font);padding:6px 12px;border-radius:5px;border:1px solid var(--border);background:var(--surface);color:var(--text-s);cursor:pointer;transition:all .15s;text-decoration:none}
+.row .actions .primary{background:var(--green-d);color:#22c55e;border-color:rgba(34,197,94,.3)}
+.row .actions .danger{background:var(--red-d);color:var(--red);border-color:rgba(239,68,68,.3)}
+.row .actions .neutral{background:var(--surface)}
+.row .actions a:hover, .row .actions button:hover{filter:brightness(1.2)}
+.status{font:600 9px var(--mono);text-transform:uppercase;padding:2px 6px;border-radius:3px;background:var(--amber-d);color:var(--amber);border:1px solid rgba(245,158,11,.3)}
+.status.approved{background:var(--green-d);color:#22c55e;border-color:rgba(34,197,94,.3)}
+.status.rejected{background:var(--red-d);color:var(--red);border-color:rgba(239,68,68,.3)}
+
+.empty{padding:40px 20px;text-align:center;color:var(--text-d);font-size:13px;border:1px dashed var(--border);border-radius:8px;background:var(--surface)}
+</style>
+</head>
+<body>
+
+<nav id="dc-nav">
+  <div id="dc-nav-left">
+    <a id="dc-nav-brand" href="/patterns-home/">Patterns</a>
+    <span id="dc-nav-sep">/</span>
+    <span id="dc-nav-page">Doctrine Audit</span>
+  </div>
+</nav>
+
+<main class="page">
+  <div class="eyebrow">Doctrine Pipeline · Audit</div>
+  <h1>Doctrine Audit Queue</h1>
+  <p class="tagline">Review pending submissions to <code style="font:500 11px var(--mono);background:var(--surface);padding:1px 5px;border-radius:3px">doctrine-inbox</code>. Approving here flips the status flag; the
+  Ai-Project intake job picks up approved entries on its next daily run and moves them into the canonical corpus.</p>
+
+  <div class="auth">
+    <label for="tok">Admin token</label>
+    <input type="password" id="tok" placeholder="paste DOCTRINE_ADMIN_TOKEN" autocomplete="off">
+    <button id="load-btn">Load queue</button>
+  </div>
+
+  <div class="tabs">
+    <div class="tab active" data-status="pending">Pending <span class="ct" id="ct-pending">—</span></div>
+    <div class="tab" data-status="approved">Approved <span class="ct" id="ct-approved">—</span></div>
+    <div class="tab" data-status="rejected">Rejected <span class="ct" id="ct-rejected">—</span></div>
+    <div class="tab" data-status="all">All <span class="ct" id="ct-all">—</span></div>
+  </div>
+
+  <div id="list"><div class="empty">Paste your admin token and click Load queue.</div></div>
+</main>
+
+<script>
+var ALL = [];
+var STATUS = 'pending';
+var TOK = '';
+
+function tokHeader(){ return { 'X-Admin-Token': TOK }; }
+
+function fmtBytes(n){
+  if(n<1024) return n+' B';
+  if(n<1024*1024) return (n/1024).toFixed(1)+' KB';
+  return (n/(1024*1024)).toFixed(2)+' MB';
+}
+
+function render(){
+  var box = document.getElementById('list');
+  var rows = ALL.filter(function(x){ return STATUS==='all' || x.status===STATUS; });
+  if(!rows.length){ box.innerHTML = '<div class="empty">No '+STATUS+' submissions.</div>'; return; }
+  box.innerHTML = rows.map(function(r){
+    var url = '/.netlify/functions/doctrine-queue?id='+encodeURIComponent(r.submission_id);
+    return '<div class="row" data-id="'+r.submission_id+'">'+
+      '<div class="h">'+
+        '<div class="title">'+escapeHtml(r.title)+'</div>'+
+        '<div class="status '+r.status+'">'+r.status+'</div>'+
+      '</div>'+
+      '<div class="meta">'+
+        '<span>id <code>'+r.submission_id+'</code></span>'+
+        '<span>sha <code>'+r.sha256_prefix+'…</code></span>'+
+        '<span>'+fmtBytes(r.size_bytes||0)+'</span>'+
+        '<span>cat: '+(r.category_hint||'(auto)')+'</span>'+
+        '<span>'+(r.submitted_at||'').slice(0,16).replace('T',' ')+'</span>'+
+      '</div>'+
+      (r.source_url ? '<div class="url">source: <a href="'+escapeHtml(r.source_url)+'" target="_blank" rel="noopener">'+escapeHtml(r.source_url)+'</a></div>' : '')+
+      (r.decision_reason ? '<div class="notes">decision: '+escapeHtml(r.decision_reason)+'</div>' : '')+
+      '<div class="actions">'+
+        '<a class="neutral" href="'+url+'" target="_blank" rel="noopener">↓ Download PDF</a>'+
+        (r.status==='pending'
+          ? '<button class="primary" onclick="decide(\''+r.submission_id+'\',\'approve\')">Approve</button>'+
+            '<button class="danger" onclick="decide(\''+r.submission_id+'\',\'reject\')">Reject</button>'
+          : '')+
+      '</div>'+
+    '</div>';
+  }).join('');
+}
+
+function escapeHtml(s){ return String(s||'').replace(/[&<>"']/g, function(c){ return ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'})[c]; }); }
+
+async function decide(id, action){
+  var reason = '';
+  if(action==='reject') reason = prompt('Rejection reason (optional):') || '';
+  try{
+    var r = await fetch('/.netlify/functions/doctrine-queue', {
+      method:'POST',
+      headers: Object.assign({'Content-Type':'application/json'}, tokHeader()),
+      body: JSON.stringify({ id, action, reason })
+    });
+    if(!r.ok) throw new Error('HTTP '+r.status);
+    var j = await r.json();
+    if(j.ok){ await load(); }
+  } catch(e){ alert('Failed: '+e.message); }
+}
+
+async function load(){
+  TOK = document.getElementById('tok').value.trim();
+  if(!TOK){ alert('Token required.'); return; }
+  try{
+    var r = await fetch('/.netlify/functions/doctrine-queue?status=all', { headers: tokHeader() });
+    if(r.status===401){ alert('Unauthorized — wrong token.'); return; }
+    if(!r.ok) throw new Error('HTTP '+r.status);
+    var j = await r.json();
+    ALL = j.items || [];
+    var counts = { pending:0, approved:0, rejected:0, all: ALL.length };
+    ALL.forEach(function(x){ if(counts[x.status] !== undefined) counts[x.status]++; });
+    document.getElementById('ct-pending').textContent  = counts.pending;
+    document.getElementById('ct-approved').textContent = counts.approved;
+    document.getElementById('ct-rejected').textContent = counts.rejected;
+    document.getElementById('ct-all').textContent      = counts.all;
+    render();
+    try { sessionStorage.setItem('doctrine_admin_tok', TOK); } catch(e){}
+  } catch(e){ alert('Failed: '+e.message); }
+}
+
+document.getElementById('load-btn').addEventListener('click', load);
+document.getElementById('tok').addEventListener('keypress', function(e){ if(e.key==='Enter') load(); });
+document.querySelectorAll('.tab').forEach(function(t){
+  t.addEventListener('click', function(){
+    document.querySelectorAll('.tab').forEach(function(x){ x.classList.remove('active'); });
+    t.classList.add('active');
+    STATUS = t.dataset.status;
+    render();
+  });
+});
+// Restore token across page reloads
+try { var saved = sessionStorage.getItem('doctrine_admin_tok'); if(saved) document.getElementById('tok').value = saved; } catch(e){}
+</script>
+</body>
+</html>
