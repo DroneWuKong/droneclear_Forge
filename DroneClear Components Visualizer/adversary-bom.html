@@ -1,0 +1,292 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Adversary BOM — uas-patterns</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://unpkg.com/@phosphor-icons/web"></script>
+<style>
+:root{
+  --bg:#0c0c0a;--surface:#141410;--card:#1c1c17;--card-hi:#242420;
+  --border:#2e2e26;--border-hi:#3e3e34;
+  --green:#22c55e;--green-d:rgba(34,197,94,.15);
+  --amber:#f59e0b;--amber-d:rgba(245,158,11,.15);
+  --red:#ef4444;--red-d:rgba(239,68,68,.15);
+  --blue:#3b82f6;--blue-d:rgba(59,130,246,.15);
+  --text:#f5f0e8;--text-s:#b8b0a0;--text-d:#8a8070;--text-xd:#6b6358;
+  --font:'Inter',system-ui,sans-serif;
+  --mono:'JetBrains Mono',monospace;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--bg);color:var(--text);font-family:var(--font);line-height:1.5;-webkit-font-smoothing:antialiased;min-height:100vh}
+a{text-decoration:none;color:inherit}
+
+/* Unified UAS-Nav — copied from patterns-home.html */
+#dc-nav{display:flex;align-items:center;justify-content:space-between;padding:0 16px;height:44px;background:#0c0c0a;border-bottom:1px solid #1e1e18;position:sticky;top:0;z-index:500;font-family:'Inter',system-ui,sans-serif}
+#dc-nav-left{display:flex;align-items:center;gap:10px;min-width:0}
+#dc-nav-brand{font:700 13px 'JetBrains Mono',monospace;color:#f59e0b;text-decoration:none;letter-spacing:-.02em;flex-shrink:0}
+#dc-nav-sep{color:#2e2e26;font-size:12px;flex-shrink:0}
+#dc-nav-page{font:600 11px 'Inter',system-ui;color:#b8b0a0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:160px}
+#dc-hamburger{display:flex;align-items:center;justify-content:center;width:32px;height:32px;border-radius:6px;border:1px solid #2a2a22;background:none;color:#6b6358;cursor:pointer;transition:all .15s;flex-shrink:0;margin-left:auto}
+#dc-hamburger:hover{border-color:#3e3e34;color:#b8b0a0}
+#dc-hamburger.open{border-color:#f59e0b;color:#f59e0b;background:rgba(245,158,11,.08)}
+#dc-overlay{position:fixed;inset:0;z-index:498;background:rgba(0,0,0,.6);backdrop-filter:blur(4px);opacity:0;pointer-events:none;transition:opacity .25s}
+#dc-overlay.open{opacity:1;pointer-events:auto}
+#dc-drawer{position:fixed;top:0;right:0;bottom:0;z-index:499;width:260px;max-width:85vw;background:#111110;border-left:1px solid #2a2a22;transform:translateX(100%);transition:transform .3s cubic-bezier(.4,0,.2,1);display:flex;flex-direction:column;overflow:hidden}
+#dc-drawer.open{transform:translateX(0)}
+#dc-drawer-head{padding:16px;border-bottom:1px solid #1e1e18;display:flex;align-items:center;justify-content:space-between}
+#dc-drawer-brand{font:700 14px 'JetBrains Mono',monospace;color:#f59e0b;letter-spacing:-.02em}
+#dc-drawer-close{width:28px;height:28px;border-radius:6px;border:1px solid #2a2a22;background:none;color:#6b6358;cursor:pointer;font-size:16px;display:flex;align-items:center;justify-content:center;transition:all .15s}
+#dc-drawer-close:hover{color:#d62828;border-color:rgba(214,40,40,.3)}
+.dc-drawer-section{padding:12px 16px 4px;font:700 9px 'JetBrains Mono',monospace;color:#3e3e34;text-transform:uppercase;letter-spacing:.1em}
+.dc-drawer-item{display:flex;align-items:center;gap:10px;padding:9px 16px;color:#6b6358;text-decoration:none;font:400 12px 'Inter',system-ui;transition:all .15s;border-left:2px solid transparent}
+.dc-drawer-item:hover{color:#b8b0a0;background:rgba(255,255,255,.02);border-left-color:#2e2e26}
+.dc-drawer-item.dc-active{color:#22c55e;border-left-color:#22c55e;background:rgba(34,197,94,.04)}
+.dc-drawer-divider{height:1px;background:#1e1e18;margin:8px 16px}
+#dc-drawer-body{flex:1;overflow-y:auto;overflow-x:hidden}
+
+/* Page */
+.page{max-width:980px;margin:0 auto;padding:32px 24px 60px}
+.head{margin-bottom:24px}
+.eyebrow{font:600 10px var(--mono);text-transform:uppercase;letter-spacing:.12em;color:var(--text-xd);margin-bottom:6px}
+h1{font:700 24px var(--mono);color:#22c55e;letter-spacing:-0.02em;margin-bottom:8px}
+.tagline{font-size:13px;color:var(--text-s);line-height:1.6;max-width:680px}
+.tagline code{font:500 11px var(--mono);background:var(--surface);padding:1px 5px;border-radius:3px;color:var(--text)}
+
+.tabs{display:flex;gap:4px;margin:20px 0 16px;border-bottom:1px solid var(--border)}
+.tab{padding:8px 14px;font:500 12px var(--font);color:var(--text-d);cursor:pointer;border-bottom:2px solid transparent;transition:all .15s}
+.tab:hover{color:var(--text-s)}
+.tab.active{color:#22c55e;border-bottom-color:#22c55e}
+
+.stats{display:flex;gap:0;border:1px solid var(--border);border-radius:8px;overflow:hidden;margin:0 0 20px}
+.st{flex:1;text-align:center;padding:12px 8px;border-right:1px solid var(--border)}
+.st:last-child{border-right:none}
+.st-n{font:700 18px var(--mono);color:#22c55e;display:block;line-height:1}
+.st-n.amber{color:var(--amber)} .st-n.red{color:var(--red)} .st-n.blue{color:var(--blue)}
+.st-l{font:500 9px var(--font);text-transform:uppercase;letter-spacing:.07em;color:var(--text-d);margin-top:4px;display:block}
+
+/* Levers table */
+.levers{display:flex;flex-direction:column;gap:6px}
+.lev{background:var(--card);border:1px solid var(--border);border-radius:8px;padding:12px 14px;display:flex;align-items:center;gap:12px;cursor:pointer;transition:border-color .15s}
+.lev:hover{border-color:var(--border-hi);background:var(--card-hi)}
+.lev-rank{font:700 13px var(--mono);color:var(--text-xd);width:24px;flex-shrink:0;text-align:right}
+.lev-bar{flex-shrink:0;width:48px;text-align:right}
+.lev-bar-track{height:5px;background:var(--surface);border-radius:3px;overflow:hidden}
+.lev-bar-fill{height:100%;background:#22c55e;transition:width .3s}
+.lev-bar-val{font:600 11px var(--mono);color:var(--text-s);margin-top:3px;display:block}
+.lev-body{flex:1;min-width:0}
+.lev-title{font:600 13px var(--font);color:var(--text);display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+.lev-mfr{font:500 11px var(--font);color:var(--text-d)}
+.lev-tags{display:flex;gap:4px;margin-top:4px;flex-wrap:wrap}
+.tag{font:600 9px var(--mono);text-transform:uppercase;padding:2px 6px;border-radius:3px;background:var(--surface);color:var(--text-d);border:1px solid var(--border)}
+.tag.western{background:var(--green-d);color:#22c55e;border-color:rgba(34,197,94,.3)}
+.tag.adversary{background:var(--red-d);color:var(--red);border-color:rgba(239,68,68,.3)}
+.tag.other{background:var(--blue-d);color:var(--blue);border-color:rgba(59,130,246,.3)}
+.tag.unknown{background:var(--surface);color:var(--text-xd)}
+.tag.weapon{background:var(--amber-d);color:var(--amber);border-color:rgba(245,158,11,.3)}
+.lev-x{font:700 12px var(--mono);color:var(--amber);flex-shrink:0}
+
+/* Per-weapon cards */
+.weapons{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:12px}
+.wcard{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:14px}
+.wcard-h{font:700 13px var(--font);color:var(--text);margin-bottom:8px;line-height:1.3}
+.wcard-meta{font:500 10px var(--mono);color:var(--text-d);margin-bottom:10px;display:flex;gap:12px}
+.bar-row{display:flex;align-items:center;gap:8px;font:400 11px var(--font);margin-bottom:4px}
+.bar-row .lbl{flex:1;color:var(--text-s);min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.bar-row .val{font:600 10px var(--mono);color:var(--text-d);width:40px;text-align:right}
+.bar-stack{display:flex;height:6px;border-radius:3px;overflow:hidden;background:var(--surface);margin:6px 0 10px}
+.bar-stack span{display:block;height:100%}
+.bar-stack .western{background:#22c55e}
+.bar-stack .adversary{background:#ef4444}
+.bar-stack .other{background:#3b82f6}
+.bar-stack .unknown{background:var(--text-xd)}
+.bar-key{display:flex;gap:8px;font:500 9px var(--mono);color:var(--text-d);margin-bottom:10px}
+.bar-key span{display:flex;align-items:center;gap:4px}
+.bar-key i{display:inline-block;width:7px;height:7px;border-radius:50%}
+.dep-list{display:flex;flex-direction:column;gap:3px}
+.dep{font-size:11px;color:var(--text-s);display:flex;justify-content:space-between;gap:6px;padding:3px 0;border-top:1px dashed var(--border)}
+.dep .nm{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.dep .ct{font:600 10px var(--mono);color:var(--text-d);flex-shrink:0}
+
+.empty{padding:40px 20px;text-align:center;color:var(--text-d);font-size:13px}
+.caveat{margin-top:24px;padding:12px 14px;background:var(--surface);border-left:3px solid var(--text-xd);border-radius:4px;font:400 11px var(--font);color:var(--text-s);line-height:1.6}
+
+@media(max-width:640px){
+  .page{padding:20px 14px 40px}
+  h1{font-size:20px}
+  .lev{padding:10px}
+  .lev-bar{width:36px}
+  .weapons{grid-template-columns:1fr}
+}
+</style>
+</head>
+<body>
+
+<nav id="dc-nav">
+  <div id="dc-nav-left">
+    <a id="dc-nav-brand" href="/" onclick="return dcNavBrandClick(event)">—</a>
+    <span id="dc-nav-sep">/</span>
+    <span id="dc-nav-page">Adversary BOM</span>
+  </div>
+  <button id="dc-hamburger" onclick="dcNavToggle()" aria-label="Menu">
+    <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round">
+      <line x1="1" y1="3" x2="13" y2="3"/><line x1="1" y1="7" x2="13" y2="7"/><line x1="1" y1="11" x2="13" y2="11"/>
+    </svg>
+  </button>
+</nav>
+<div id="dc-overlay" onclick="dcNavClose()"></div>
+<div id="dc-drawer">
+  <div id="dc-drawer-head">
+    <span id="dc-drawer-brand">Patterns</span>
+    <button id="dc-drawer-close" onclick="dcNavClose()">✕</button>
+  </div>
+  <div id="dc-drawer-body">
+    <div class="dc-drawer-section">PIE — Pattern Intelligence</div>
+    <a class="dc-drawer-item" href="https://uas-patterns.com/patterns-home/" data-page="patterns-home">P.I.E Hub</a>
+    <a class="dc-drawer-item" href="https://uas-patterns.com/brief/" data-page="brief">Brief</a>
+    <a class="dc-drawer-item" href="https://uas-patterns.com/patterns/" data-page="patterns">Flags</a>
+    <a class="dc-drawer-item" href="https://uas-patterns.com/clock/" data-page="clock">UAS Clock</a>
+    <a class="dc-drawer-item" href="https://uas-patterns.com/ddg/" data-page="ddg">DDG Tracker</a>
+    <div class="dc-drawer-divider"></div>
+    <div class="dc-drawer-section">Lens — Adversary</div>
+    <a class="dc-drawer-item" href="/adversary-bom/" data-page="adversary-bom">Adversary BOM</a>
+    <a class="dc-drawer-item" href="/mirroring/" data-page="mirroring">Component Mirroring</a>
+    <div class="dc-drawer-section">Lens — Actor</div>
+    <a class="dc-drawer-item" href="/actors/" data-page="actors">Threat Actors</a>
+    <a class="dc-drawer-item" href="/ttps/" data-page="ttps">TTP Defense Gap</a>
+    <div class="dc-drawer-section">Lens — Risk</div>
+    <a class="dc-drawer-item" href="/evasion/" data-page="evasion">Sanctions-Evasion Graph</a>
+  </div>
+</div>
+
+<main class="page">
+  <div class="head">
+    <div class="eyebrow">Adversary Lens</div>
+    <h1>Adversary BOM</h1>
+    <p class="tagline">Captured-component teardowns from <code>data/gur_teardowns.json</code> aggregated per weapon
+    platform, with cross-weapon ranking of components by export-control leverage. Heuristic, not policy
+    recommendation. Data flows: GUR scraping → BOM analyzer → this page.</p>
+  </div>
+
+  <div class="stats" id="stats">
+    <div class="st"><span class="st-n" id="s-rows">—</span><span class="st-l">component rows</span></div>
+    <div class="st"><span class="st-n amber" id="s-weapons">—</span><span class="st-l">weapon platforms</span></div>
+    <div class="st"><span class="st-n blue" id="s-western">—</span><span class="st-l">western parts</span></div>
+    <div class="st"><span class="st-n red" id="s-adv">—</span><span class="st-l">adversary parts</span></div>
+  </div>
+
+  <div class="tabs">
+    <div class="tab active" data-tab="levers">Top Export-Control Levers</div>
+    <div class="tab" data-tab="weapons">Per-Weapon BOMs</div>
+  </div>
+
+  <div id="pane-levers"><div class="levers" id="levers-list"><div class="empty">Loading…</div></div></div>
+  <div id="pane-weapons" style="display:none"><div class="weapons" id="weapons-list"><div class="empty">Loading…</div></div></div>
+
+  <div class="caveat" id="caveat">—</div>
+</main>
+
+<script>
+/* dc-nav drawer toggle (matches patterns-home.html) */
+window.dcNavToggle = function(){
+  var d=document.getElementById('dc-drawer'),o=document.getElementById('dc-overlay'),h=document.getElementById('dc-hamburger');
+  d.classList.toggle('open'); o.classList.toggle('open'); h.classList.toggle('open');
+};
+window.dcNavClose = function(){
+  document.getElementById('dc-drawer').classList.remove('open');
+  document.getElementById('dc-overlay').classList.remove('open');
+  document.getElementById('dc-hamburger').classList.remove('open');
+};
+window.dcNavBrandClick = function(e){ e.preventDefault(); location.href='/patterns-home/'; };
+(function(){
+  var path = location.pathname.replace(/\/$/, '').split('/').pop() || 'home';
+  document.querySelectorAll('.dc-drawer-item').forEach(function(a){
+    if(a.dataset.page === path) a.classList.add('dc-active');
+  });
+})();
+
+/* Tabs */
+document.querySelectorAll('.tab').forEach(function(t){
+  t.addEventListener('click', function(){
+    document.querySelectorAll('.tab').forEach(x=>x.classList.remove('active'));
+    t.classList.add('active');
+    var which = t.dataset.tab;
+    document.getElementById('pane-levers').style.display  = which==='levers'  ? '' : 'none';
+    document.getElementById('pane-weapons').style.display = which==='weapons' ? '' : 'none';
+  });
+});
+
+/* Render */
+function fmtAlign(a){ return '<span class="tag '+a+'">'+a+'</span>'; }
+
+function renderLevers(levers){
+  var box = document.getElementById('levers-list');
+  if(!levers || !levers.length){ box.innerHTML = '<div class="empty">No levers above the score threshold.</div>'; return; }
+  var max = levers[0].leverage_score || 1;
+  box.innerHTML = levers.map(function(l, i){
+    var pct = Math.max(4, Math.round((l.leverage_score / max) * 100));
+    var weapons = (l.weapons||[]).slice(0,3).map(function(w){ return '<span class="tag weapon">'+w.weapon+' ×'+w.count+'</span>'; }).join('');
+    return '<div class="lev">'+
+      '<div class="lev-rank">'+(i+1)+'</div>'+
+      '<div class="lev-bar"><div class="lev-bar-track"><div class="lev-bar-fill" style="width:'+pct+'%"></div></div>'+
+        '<span class="lev-bar-val">'+(l.leverage_score||0).toFixed(2)+'</span></div>'+
+      '<div class="lev-body">'+
+        '<div class="lev-title">'+(l.component||'—')+' '+fmtAlign(l.alignment||'unknown')+'</div>'+
+        '<div class="lev-mfr">'+(l.manufacturer||'—')+(l.country?(' · '+l.country):'')+'</div>'+
+        '<div class="lev-tags">'+weapons+'</div>'+
+      '</div>'+
+      '<div class="lev-x">×'+(l.appearances||0)+'</div>'+
+    '</div>';
+  }).join('');
+}
+
+function renderWeapons(weapons){
+  var box = document.getElementById('weapons-list');
+  if(!weapons || !weapons.length){ box.innerHTML = '<div class="empty">No weapon BOMs available.</div>'; return; }
+  box.innerHTML = weapons.map(function(w){
+    var a = w.by_alignment || {};
+    var total = (a.western||0)+(a.adversary||0)+(a.other||0)+(a.unknown||0);
+    function pct(n){ return total ? (n*100/total).toFixed(0) : 0; }
+    var deps = (w.top_western_dependencies||[]).slice(0,6).map(function(d){
+      return '<div class="dep"><span class="nm">'+d.name+'</span><span class="ct">×'+d.appearances+'</span></div>';
+    }).join('') || '<div class="dep" style="border:none;color:var(--text-xd)">—</div>';
+    return '<div class="wcard">'+
+      '<div class="wcard-h">'+w.weapon+'</div>'+
+      '<div class="wcard-meta">'+w.component_rows+' rows · '+w.unique_components+' unique</div>'+
+      '<div class="bar-stack" title="alignment mix">'+
+        '<span class="western"   style="width:'+pct(a.western||0)+'%"></span>'+
+        '<span class="adversary" style="width:'+pct(a.adversary||0)+'%"></span>'+
+        '<span class="other"     style="width:'+pct(a.other||0)+'%"></span>'+
+        '<span class="unknown"   style="width:'+pct(a.unknown||0)+'%"></span>'+
+      '</div>'+
+      '<div class="bar-key">'+
+        '<span><i style="background:#22c55e"></i>WST '+(a.western||0)+'</span>'+
+        '<span><i style="background:#ef4444"></i>ADV '+(a.adversary||0)+'</span>'+
+        '<span><i style="background:#3b82f6"></i>OTH '+(a.other||0)+'</span>'+
+        '<span><i style="background:var(--text-xd)"></i>UNK '+(a.unknown||0)+'</span>'+
+      '</div>'+
+      '<div style="font:600 10px var(--mono);color:var(--text-d);text-transform:uppercase;letter-spacing:.07em;margin-bottom:4px">Top Western Dependencies</div>'+
+      '<div class="dep-list">'+deps+'</div>'+
+    '</div>';
+  }).join('');
+}
+
+fetch('/adversary_bom.json').then(function(r){ return r.ok ? r.json() : Promise.reject(r.status); }).then(function(d){
+  document.getElementById('s-rows').textContent     = (d.meta && d.meta.total_component_rows) || '—';
+  document.getElementById('s-weapons').textContent  = (d.meta && d.meta.unique_weapon_platforms) || '—';
+  var summary = (d.meta && d.meta.alignment_summary) || {};
+  document.getElementById('s-western').textContent  = summary.western || 0;
+  document.getElementById('s-adv').textContent      = summary.adversary || 0;
+  document.getElementById('caveat').textContent     = (d.meta && d.meta.caveat) || '';
+  renderLevers(d.top_export_control_levers || []);
+  renderWeapons(d.per_weapon || []);
+}).catch(function(err){
+  ['levers-list','weapons-list'].forEach(function(id){
+    document.getElementById(id).innerHTML = '<div class="empty">Failed to load adversary_bom.json ('+err+'). Sync from the daily PIE pipeline must run first.</div>';
+  });
+});
+</script>
+</body>
+</html>

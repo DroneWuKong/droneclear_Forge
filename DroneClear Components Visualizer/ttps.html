@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TTP Defense Gap — uas-patterns</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://unpkg.com/@phosphor-icons/web"></script>
+<style>
+:root{
+  --bg:#0c0c0a;--surface:#141410;--card:#1c1c17;--card-hi:#242420;
+  --border:#2e2e26;--border-hi:#3e3e34;
+  --green:#22c55e;--green-d:rgba(34,197,94,.15);
+  --amber:#f59e0b;--amber-d:rgba(245,158,11,.15);
+  --red:#ef4444;--red-d:rgba(239,68,68,.15);
+  --blue:#3b82f6;--blue-d:rgba(59,130,246,.15);
+  --text:#f5f0e8;--text-s:#b8b0a0;--text-d:#8a8070;--text-xd:#6b6358;
+  --font:'Inter',system-ui,sans-serif;--mono:'JetBrains Mono',monospace;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--bg);color:var(--text);font-family:var(--font);line-height:1.5;-webkit-font-smoothing:antialiased;min-height:100vh}
+a{text-decoration:none;color:inherit}
+
+#dc-nav{display:flex;align-items:center;justify-content:space-between;padding:0 16px;height:44px;background:#0c0c0a;border-bottom:1px solid #1e1e18;position:sticky;top:0;z-index:500}
+#dc-nav-left{display:flex;align-items:center;gap:10px;min-width:0}
+#dc-nav-brand{font:700 13px var(--mono);color:#f59e0b;flex-shrink:0}
+#dc-nav-sep{color:#2e2e26;font-size:12px}
+#dc-nav-page{font:600 11px var(--font);color:#b8b0a0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:160px}
+#dc-hamburger{width:32px;height:32px;border-radius:6px;border:1px solid #2a2a22;background:none;color:#6b6358;cursor:pointer;flex-shrink:0;margin-left:auto;display:flex;align-items:center;justify-content:center;transition:all .15s}
+#dc-hamburger:hover{border-color:#3e3e34;color:#b8b0a0}
+#dc-overlay{position:fixed;inset:0;z-index:498;background:rgba(0,0,0,.6);backdrop-filter:blur(4px);opacity:0;pointer-events:none;transition:opacity .25s}
+#dc-overlay.open{opacity:1;pointer-events:auto}
+#dc-drawer{position:fixed;top:0;right:0;bottom:0;z-index:499;width:260px;max-width:85vw;background:#111110;border-left:1px solid #2a2a22;transform:translateX(100%);transition:transform .3s cubic-bezier(.4,0,.2,1);display:flex;flex-direction:column;overflow:hidden}
+#dc-drawer.open{transform:translateX(0)}
+#dc-drawer-head{padding:16px;border-bottom:1px solid #1e1e18;display:flex;align-items:center;justify-content:space-between}
+#dc-drawer-brand{font:700 14px var(--mono);color:#f59e0b}
+#dc-drawer-close{width:28px;height:28px;border-radius:6px;border:1px solid #2a2a22;background:none;color:#6b6358;cursor:pointer;font-size:16px}
+.dc-drawer-section{padding:12px 16px 4px;font:700 9px var(--mono);color:#3e3e34;text-transform:uppercase;letter-spacing:.1em}
+.dc-drawer-item{display:flex;gap:10px;padding:9px 16px;color:#6b6358;font:400 12px var(--font);border-left:2px solid transparent;transition:all .15s}
+.dc-drawer-item:hover{color:#b8b0a0;background:rgba(255,255,255,.02);border-left-color:#2e2e26}
+.dc-drawer-item.dc-active{color:#22c55e;border-left-color:#22c55e;background:rgba(34,197,94,.04)}
+.dc-drawer-divider{height:1px;background:#1e1e18;margin:8px 16px}
+#dc-drawer-body{flex:1;overflow-y:auto;overflow-x:hidden}
+
+.page{max-width:920px;margin:0 auto;padding:32px 24px 60px}
+.eyebrow{font:600 10px var(--mono);text-transform:uppercase;letter-spacing:.12em;color:var(--text-xd);margin-bottom:6px}
+h1{font:700 24px var(--mono);color:#22c55e;letter-spacing:-0.02em;margin-bottom:8px}
+.tagline{font-size:13px;color:var(--text-s);line-height:1.6;max-width:680px}
+.tagline code{font:500 11px var(--mono);background:var(--surface);padding:1px 5px;border-radius:3px;color:var(--text)}
+
+.legend{display:flex;gap:14px;font:500 10px var(--font);color:var(--text-d);margin:16px 0 20px;flex-wrap:wrap}
+.legend span{display:flex;align-items:center;gap:5px}
+.legend i{display:inline-block;width:8px;height:8px;border-radius:50%}
+.dot-c{background:#ef4444}.dot-l{background:#f59e0b}.dot-m{background:#3b82f6}.dot-o{background:#22c55e}
+
+.bar-list{display:flex;flex-direction:column;gap:6px;margin-bottom:30px}
+.barline{background:var(--card);border:1px solid var(--border);border-radius:8px;padding:12px 14px;cursor:pointer;transition:border-color .15s}
+.barline:hover{border-color:var(--border-hi)}
+.barline.expanded{background:var(--card-hi);border-color:var(--border-hi)}
+.barline-h{display:flex;align-items:center;gap:10px}
+.barline-h .nm{flex:1;font:600 13px var(--font);color:var(--text);min-width:0}
+.barline-h .gap{font:700 13px var(--mono);width:48px;text-align:right;flex-shrink:0}
+.barline-h .verdict{font:600 9px var(--mono);padding:2px 6px;border-radius:3px;flex-shrink:0}
+.verdict.crit{background:var(--red-d);color:var(--red);border:1px solid rgba(239,68,68,.3)}
+.verdict.large{background:var(--amber-d);color:var(--amber);border:1px solid rgba(245,158,11,.3)}
+.verdict.mod{background:var(--blue-d);color:var(--blue);border:1px solid rgba(59,130,246,.3)}
+.verdict.cov{background:var(--green-d);color:#22c55e;border:1px solid rgba(34,197,94,.3)}
+.bar-track{height:6px;background:var(--surface);border-radius:3px;overflow:hidden;margin-top:9px}
+.bar-fill{height:100%;border-radius:3px;transition:width .3s}
+.bar-fill.crit{background:#ef4444}.bar-fill.large{background:#f59e0b}.bar-fill.mod{background:#3b82f6}.bar-fill.cov{background:#22c55e}
+
+.detail{padding:14px 4px 4px;font-size:12px;color:var(--text-s);display:none;line-height:1.6}
+.barline.expanded .detail{display:block}
+.detail .desc{margin-bottom:10px}
+.detail .actors{display:flex;gap:5px;flex-wrap:wrap;margin-bottom:10px}
+.actor-pill{font:500 10px var(--mono);padding:2px 6px;background:var(--surface);border-radius:3px;color:var(--text-d);border:1px solid var(--border)}
+.detail h3{font:600 10px var(--mono);text-transform:uppercase;letter-spacing:.07em;color:var(--text-d);margin:10px 0 6px}
+.kw{display:inline-block;font:500 10px var(--mono);padding:1px 5px;margin:1px 2px 1px 0;background:var(--surface);border-radius:3px;color:var(--text-s);border:1px solid var(--border)}
+.match{padding:6px 8px;background:var(--surface);border-radius:5px;margin-bottom:4px;font-size:11px;color:var(--text-s)}
+.match .src{font:500 9px var(--mono);color:var(--text-d)}
+.match .kw{margin-left:6px;color:var(--amber)}
+
+.caveat{margin-top:24px;padding:12px 14px;background:var(--surface);border-left:3px solid var(--text-xd);border-radius:4px;font:400 11px var(--font);color:var(--text-s);line-height:1.6}
+
+@media(max-width:640px){
+  .page{padding:20px 14px 40px}
+  h1{font-size:20px}
+}
+</style>
+</head>
+<body>
+
+<nav id="dc-nav">
+  <div id="dc-nav-left">
+    <a id="dc-nav-brand" href="/" onclick="return dcNavBrandClick(event)">Patterns</a>
+    <span id="dc-nav-sep">/</span>
+    <span id="dc-nav-page">TTP Defense Gap</span>
+  </div>
+  <button id="dc-hamburger" onclick="dcNavToggle()">
+    <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round">
+      <line x1="1" y1="3" x2="13" y2="3"/><line x1="1" y1="7" x2="13" y2="7"/><line x1="1" y1="11" x2="13" y2="11"/>
+    </svg>
+  </button>
+</nav>
+<div id="dc-overlay" onclick="dcNavClose()"></div>
+<div id="dc-drawer">
+  <div id="dc-drawer-head"><span id="dc-drawer-brand">Patterns</span><button id="dc-drawer-close" onclick="dcNavClose()">✕</button></div>
+  <div id="dc-drawer-body">
+    <div class="dc-drawer-section">PIE — Pattern Intelligence</div>
+    <a class="dc-drawer-item" href="https://uas-patterns.com/patterns-home/" data-page="patterns-home">P.I.E Hub</a>
+    <a class="dc-drawer-item" href="https://uas-patterns.com/brief/" data-page="brief">Brief</a>
+    <a class="dc-drawer-item" href="https://uas-patterns.com/patterns/" data-page="patterns">Flags</a>
+    <a class="dc-drawer-item" href="https://uas-patterns.com/clock/" data-page="clock">UAS Clock</a>
+    <a class="dc-drawer-item" href="https://uas-patterns.com/ddg/" data-page="ddg">DDG Tracker</a>
+    <div class="dc-drawer-divider"></div>
+    <div class="dc-drawer-section">Lens — Adversary</div>
+    <a class="dc-drawer-item" href="/adversary-bom/" data-page="adversary-bom">Adversary BOM</a>
+    <a class="dc-drawer-item" href="/mirroring/" data-page="mirroring">Component Mirroring</a>
+    <div class="dc-drawer-section">Lens — Actor</div>
+    <a class="dc-drawer-item" href="/actors/" data-page="actors">Threat Actors</a>
+    <a class="dc-drawer-item" href="/ttps/" data-page="ttps">TTP Defense Gap</a>
+    <div class="dc-drawer-section">Lens — Risk</div>
+    <a class="dc-drawer-item" href="/evasion/" data-page="evasion">Sanctions-Evasion Graph</a>
+  </div>
+</div>
+
+<main class="page">
+  <div class="eyebrow">Actor Lens</div>
+  <h1>TTP Defense Gap</h1>
+  <p class="tagline">For each TTP we track in modern UAS conflict, scans <code>forge_intel</code> +
+  <code>parts-db</code> + procurement solicitations for *defensive* procurement signal. High <code>gap_score</code>
+  means little or no money flowing against this TTP — capability gap to address. Reads <code>ttp_counter_gap.json</code>.</p>
+
+  <div class="legend">
+    <span><i class="dot-c"></i>CRITICAL gap</span>
+    <span><i class="dot-l"></i>LARGE gap</span>
+    <span><i class="dot-m"></i>MODERATE</span>
+    <span><i class="dot-o"></i>COVERED</span>
+  </div>
+
+  <div class="bar-list" id="bars"><div style="padding:30px;text-align:center;color:var(--text-d)">Loading…</div></div>
+
+  <div class="caveat" id="caveat">—</div>
+</main>
+
+<script>
+window.dcNavToggle=function(){document.getElementById('dc-drawer').classList.toggle('open');document.getElementById('dc-overlay').classList.toggle('open');document.getElementById('dc-hamburger').classList.toggle('open');};
+window.dcNavClose=function(){document.getElementById('dc-drawer').classList.remove('open');document.getElementById('dc-overlay').classList.remove('open');document.getElementById('dc-hamburger').classList.remove('open');};
+window.dcNavBrandClick=function(e){e.preventDefault();location.href='/patterns-home/';};
+(function(){var path=location.pathname.replace(/\/$/,'').split('/').pop()||'home';document.querySelectorAll('.dc-drawer-item').forEach(function(a){if(a.dataset.page===path)a.classList.add('dc-active');});})();
+
+function bandClass(verdict){
+  if(!verdict) return 'mod';
+  if(verdict.startsWith('CRITICAL')) return 'crit';
+  if(verdict.startsWith('LARGE')) return 'large';
+  if(verdict.startsWith('MODERATE')) return 'mod';
+  if(verdict.startsWith('COVERED')) return 'cov';
+  return 'mod';
+}
+
+fetch('/ttp_counter_gap.json').then(function(r){ return r.ok?r.json():Promise.reject(r.status); }).then(function(d){
+  document.getElementById('caveat').textContent = (d.meta && d.meta.caveat) || '';
+  var box = document.getElementById('bars');
+  var rs = d.results || [];
+  if(!rs.length){ box.innerHTML = '<div style="padding:30px;text-align:center;color:var(--text-d)">No TTP entries found.</div>'; return; }
+  box.innerHTML = rs.map(function(r,i){
+    var b = bandClass(r.verdict);
+    var pct = Math.round((r.gap_score||0) * 100);
+    var actorPills = (r.attributed_actors||[]).map(function(a){ return '<span class="actor-pill">'+a+'</span>'; }).join('');
+    var kws = (r.counter_keywords||[]).map(function(k){ return '<span class="kw">'+k+'</span>'; }).join('');
+    var matches = (r.sample_matches||[]).slice(0,5).map(function(m){
+      return '<div class="match"><span class="src">'+m.source+'</span><span class="kw">'+m.keyword+'</span></div>';
+    }).join('') || '<div style="font-size:11px;color:var(--text-xd)">No defensive procurement matches.</div>';
+    return '<div class="barline" data-i="'+i+'">'+
+      '<div class="barline-h" onclick="this.parentNode.classList.toggle(\'expanded\')">'+
+        '<div class="nm">'+r.ttp_id+'</div>'+
+        '<div class="gap" style="color:var(--'+(b==='crit'?'red':b==='large'?'amber':b==='mod'?'blue':'green')+')">'+r.gap_score.toFixed(2)+'</div>'+
+        '<div class="verdict '+b+'">'+(r.verdict||'').split(' ')[0]+'</div>'+
+      '</div>'+
+      '<div class="bar-track"><div class="bar-fill '+b+'" style="width:'+pct+'%"></div></div>'+
+      '<div class="detail">'+
+        '<div class="desc">'+r.description+'</div>'+
+        '<div class="actors">'+actorPills+'</div>'+
+        '<h3>Counter keywords searched</h3><div>'+kws+'</div>'+
+        '<h3>Sample matches ('+r.counter_signal_count+' total)</h3>'+matches+
+      '</div>'+
+    '</div>';
+  }).join('');
+}).catch(function(err){
+  document.getElementById('bars').innerHTML = '<div style="padding:30px;text-align:center;color:var(--text-d)">Failed to load ttp_counter_gap.json ('+err+')</div>';
+});
+</script>
+</body>
+</html>
