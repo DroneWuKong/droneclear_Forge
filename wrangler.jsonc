@@ -2,13 +2,82 @@
   "$schema": "node_modules/wrangler/config-schema.json",
   "name": "forge",
   "compatibility_date": "2026-05-03",
-  "observability": {
-    "enabled": true
+  "compatibility_flags": ["nodejs_compat"],
+  "observability": { "enabled": true },
+
+  // CF Pages project: the build output dir is served as static assets
+  // automatically. No `assets` block — that's for Workers projects, and
+  // its `binding: "ASSETS"` name is reserved by Pages so the two configs
+  // can't coexist.
+  "pages_build_output_dir": "DroneClear Components Visualizer",
+
+  // ── KV Namespaces ──────────────────────────────────────────────────────
+  "kv_namespaces": [
+    {
+      "binding": "PIE_DB",
+      "id": "8fe3a4d82f154d98bcedd8920527ee8c"
+    },
+    {
+      "binding": "PIE_OUTPUTS",
+      "id": "4a6f8fcda0e1405b9880e0f4e2886a3c"
+    },
+    {
+      "binding": "PARTS_DB",
+      "id": "0b385069d83a49559977ea3c4e26d614"
+    },
+    {
+      "binding": "PROCUREMENT_DB",
+      "id": "8adeaf72ac32464aa1b19c54cf6cd588"
+    },
+    {
+      "binding": "GRAYZONE_DB",
+      "id": "f7a9344cd19c4aa0b9fdeea169030195"
+    },
+    {
+      "binding": "PIE_HISTORY",
+      "id": "96cc0e98f13f4f6095e65d94a514091e"
+    }
+  ],
+
+  // ── Queues ─────────────────────────────────────────────────────────────
+  "queues": {
+    "producers": [
+      {
+        "binding": "ARTICLE_INGEST_QUEUE",
+        "queue": "article-ingest"
+      }
+    ]
   },
-  "assets": {
-    "directory": "DroneClear Components Visualizer"
-  },
-  "compatibility_flags": [
-    "nodejs_compat"
-  ]
+
+  // ── Vectorize ──────────────────────────────────────────────────────────
+  "vectorize": [
+    {
+      "binding": "VECTORIZE",
+      "index_name": "prismo-intel"
+    }
+  ],
+
+  // ── Analytics Engine ───────────────────────────────────────────────────
+  "analytics_engine_datasets": [
+    {
+      "binding": "FORGE_ANALYTICS",
+      "dataset": "forge_analytics"
+    }
+  ],
+
+  // ── Environment variables (non-secret) ────────────────────────────────
+  "vars": {
+    "ENVIRONMENT": "production"
+  }
+
+  // ── Secrets (set via CF dashboard or wrangler secret put) ──────────────
+  // ANTHROPIC_API_KEY
+  // GEMINI_API_KEY
+  // GROQ_API_KEY
+  // WINGMAN_PROXY_SECRET
+  // PRICES_API_KEY
+  // ANALYTICS_ADMIN_KEY
+  // TURSO_URL
+  // TURSO_AUTH_TOKEN
+  // FORGE_BLOBS_ADMIN_KEY  (replaces Netlify Blobs admin key)
 }
