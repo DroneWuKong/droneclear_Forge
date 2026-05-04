@@ -1,8 +1,8 @@
 # DroneClear Forge
 
 > The public-facing drone component browser, build planner, and intelligence hub.
-> **Live at [nvmillbuilditmyself.com](https://nvmillbuilditmyself.com)**
-> PIE intelligence at [nvmillfindoutmyself.com](https://nvmillfindoutmyself.com)
+> **Live at [uas-forge.com](https://uas-forge.com)**
+> PIE intelligence at [uas-intel.com](https://uas-intel.com)
 
 ## What This Is
 

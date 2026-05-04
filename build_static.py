@@ -642,12 +642,12 @@ def rewrite_legacy_domains(html):
     """
     # Bare-domain replacements (catch-all for everything else)
     bare = [
-        ('https://www.nvmillbuilditmyself.com', 'https://uas-forge.com'),
-        ('https://nvmillbuilditmyself.com',     'https://uas-forge.com'),
-        ('https://www.nvmillfindoutmyself.com', 'https://uas-patterns.com'),
-        ('https://nvmillfindoutmyself.com',     'https://uas-patterns.com'),
-        ('https://www.nvmilldoitmyself.com',    'https://uas-handbook.com'),
-        ('https://nvmilldoitmyself.com',        'https://uas-handbook.com'),
+        ('https://www.uas-forge.com', 'https://uas-forge.com'),
+        ('https://uas-forge.com',     'https://uas-forge.com'),
+        ('https://www.uas-intel.com', 'https://uas-patterns.com'),
+        ('https://uas-intel.com',     'https://uas-patterns.com'),
+        ('https://www.uas-handbook.com',    'https://uas-handbook.com'),
+        ('https://uas-handbook.com',        'https://uas-handbook.com'),
         ('https://www.illdoitmyself.com',       'https://uas-handbook.com'),
         ('https://illdoitmyself.com',           'https://uas-handbook.com'),
         # Retired uas-patterns.pro → .com

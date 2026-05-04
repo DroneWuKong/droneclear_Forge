@@ -4,9 +4,9 @@
 
 ### Fixed
 - **netlify.toml** — 9 missing redirects added: `/compliance-matrix`, `/dossier`, `/guides-hub`, `/intel-commercial`, `/intel-dfr`, `/intel/feed`, `/payload-compare`, `/spec-sheets`, `/stack-builder`
-- **build_static.py** — OG image URLs updated from `forgeprole.netlify.app` → `nvmillbuilditmyself.com`
+- **build_static.py** — OG image URLs updated from `forgeprole.netlify.app` → `uas-forge.com`
 - **patterns.html** — `PIE →` and `Full analysis →` brief links now switch tabs in-page instead of navigating to dead hrefs
-- **README.md** — updated live URLs (forgeprole → nvmillbuilditmyself.com), component count (3,200 → 3,885+), category count (16 → 38), platform count (150 → 271)
+- **README.md** — updated live URLs (forgeprole → uas-forge.com), component count (3,200 → 3,885+), category count (16 → 38), platform count (150 → 271)
 
 ### Changed
 - **pie_flags.json** — synced 237 flags; all flags now have `prediction` field (58 gray zone flags were missing it)
@@ -224,7 +224,7 @@
 - analytics.html DASH_FN added — fetches from analytics-dashboard function for richer usage data
 
 ### Fixed
-- bluefairy.netlify.app analytics dashboard was fetching from forgeprole.netlify.app (wrong alias) — all 5 URLs updated to nvmillbuilditmyself.com
+- bluefairy.netlify.app analytics dashboard was fetching from forgeprole.netlify.app (wrong alias) — all 5 URLs updated to uas-forge.com
 
 
 ## [Military Firmware + DB Expansion] - 2026-04-05
