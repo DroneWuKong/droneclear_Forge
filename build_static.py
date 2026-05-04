@@ -1630,7 +1630,7 @@ def build():
 
 
     # ── Cloudflare Pages routing files ──────────────────────────
-    for cf_file in ['_redirects', '_routes.json']:
+    for cf_file in ['_redirects', '_routes.json', '_headers']:
         src_cf = os.path.join(os.path.dirname(os.path.abspath(__file__)), cf_file)
         dst_cf = os.path.join(BUILD_DIR, cf_file)
         if os.path.exists(src_cf):
