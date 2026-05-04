@@ -165,7 +165,7 @@ def inject_adapter(html, depth=0):
 # Tracks: page views, scroll depth, time on page, outbound clicks, tab switches,
 #         component views, searches, filters, Wingman queries, PIE flag views,
 #         intel article views. All anonymous, no cookies, no PII.
-_ANALYTICS_SNIPPET = r"""(function(){var E=(location.hostname==='localhost'||location.hostname==='127.0.0.1'?'http://localhost:8888':'https://thebluefairy.netlify.app')+'/.netlify/functions/analytics-ingest',S='sess_'+crypto.randomUUID().replace(/-/g,'').slice(0,16),T=Date.now(),q=[],t=null,PG=typeof __FORGE_PAGE__!=='undefined'?__FORGE_PAGE__:'unknown';function reg(){try{var z=Intl.DateTimeFormat().resolvedOptions().timeZone;if(z.includes('America'))return'Americas';if(z.includes('Europe'))return'Europe';if(z.includes('Asia')||z.includes('Australia')||z.includes('Pacific'))return'Asia-Pacific';if(z.includes('Africa'))return'Africa';}catch(e){}return'Unknown';}function ev(tp,ac,p){q.push({event_id:crypto.randomUUID(),timestamp:new Date().toISOString(),surface:'forge',page:PG,event_type:tp,event_action:ac,context:{session_id:S,geo_region:reg(),platform:/Android|iPhone|iPad/i.test(navigator.userAgent)?'mobile':'web',viewport:innerWidth+'x'+innerHeight,path:location.pathname},payload:p,data_policy:{collection_tier:'anonymous',retention_days:90,anonymized:true}});if(q.length>=20)fl();else if(!t)t=setTimeout(fl,5e3);}function fl(){if(t){clearTimeout(t);t=null;}if(!q.length)return;var b=q.splice(0);fetch(E,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({events:b}),keepalive:true}).catch(function(){});}ev('page_view','view',{path:location.pathname,title:document.title,page:PG,referrer:document.referrer?new URL(document.referrer).hostname:'direct'});var ds=[25,50,75,100],ht=new Set;addEventListener('scroll',function(){var pct=Math.round(scrollY/(Math.max(document.body.scrollHeight-innerHeight,1))*100),el=(Date.now()-T)/1e3;ds.forEach(function(d){if(pct>=d&&!ht.has(d)){ht.add(d);ev('engagement','scroll_depth',{path:location.pathname,depth_pct:d,time_sec:Math.round(el)});}});},{passive:true});document.addEventListener('click',function(e){var a=e.target.closest('a[href]');if(!a)return;try{var u=new URL(a.href);if(u.hostname!==location.hostname)ev('click','outbound_link',{from:location.pathname,to:u.hostname,text:a.textContent.trim().slice(0,80)});}catch(e){}});addEventListener('visibilitychange',function(){if(document.visibilityState==='hidden'){ev('engagement','time_on_page',{path:location.pathname,duration_sec:Math.round((Date.now()-T)/1e3),deep_read:(Date.now()-T)>12e4});fl();}});addEventListener('pagehide',fl);window.__fa=window.__forgeAnalytics={search:function(q,cat,n){ev('search','component_search',{query:(q||'').slice(0,200),category:cat,result_count:n,had_results:n>0});if(!n)ev('search','no_results',{query:(q||'').slice(0,200),category:cat});},filter:function(cat,filters,n){ev('filter','apply_filter',{category:cat,filter_names:Object.keys(filters||{}),result_count:n,zero_results:!n});if(!n)ev('search','no_results',{query:'',category:cat,filters:filters});},view:function(pid,cat,mfr,country,ndaa){ev('page_view','component_detail',{pid:pid,category:cat,manufacturer:mfr,country:country,ndaa_compliant:ndaa});},compare:function(a,b,cat){ev('compare','side_by_side',{pid_a:a,pid_b:b,category:cat});},tab:function(name){ev('navigation','tab_switch',{tab:name,page:PG});},query:function(q,cat,img){ev('ai','wingman_query',{query:(q||'').slice(0,200),category:cat,has_image:!!img});},flag:function(id,sev,type){ev('intel','flag_view',{flag_id:id,severity:sev,flag_type:type});},intel:function(src,art){ev('intel','article_view',{source:src,article_id:art});},flush:fl};})();"""
+_ANALYTICS_SNIPPET = r"""(function(){var E=(location.hostname==='localhost'||location.hostname==='127.0.0.1'?'http://localhost:8788':'')+'/api/analytics-ingest',S='sess_'+crypto.randomUUID().replace(/-/g,'').slice(0,16),T=Date.now(),q=[],t=null,PG=typeof __FORGE_PAGE__!=='undefined'?__FORGE_PAGE__:'unknown';function reg(){try{var z=Intl.DateTimeFormat().resolvedOptions().timeZone;if(z.includes('America'))return'Americas';if(z.includes('Europe'))return'Europe';if(z.includes('Asia')||z.includes('Australia')||z.includes('Pacific'))return'Asia-Pacific';if(z.includes('Africa'))return'Africa';}catch(e){}return'Unknown';}function ev(tp,ac,p){q.push({event_id:crypto.randomUUID(),timestamp:new Date().toISOString(),surface:'forge',page:PG,event_type:tp,event_action:ac,context:{session_id:S,geo_region:reg(),platform:/Android|iPhone|iPad/i.test(navigator.userAgent)?'mobile':'web',viewport:innerWidth+'x'+innerHeight,path:location.pathname},payload:p,data_policy:{collection_tier:'anonymous',retention_days:90,anonymized:true}});if(q.length>=20)fl();else if(!t)t=setTimeout(fl,5e3);}function fl(){if(t){clearTimeout(t);t=null;}if(!q.length)return;var b=q.splice(0);fetch(E,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({events:b}),keepalive:true}).catch(function(){});}ev('page_view','view',{path:location.pathname,title:document.title,page:PG,referrer:document.referrer?new URL(document.referrer).hostname:'direct'});var ds=[25,50,75,100],ht=new Set;addEventListener('scroll',function(){var pct=Math.round(scrollY/(Math.max(document.body.scrollHeight-innerHeight,1))*100),el=(Date.now()-T)/1e3;ds.forEach(function(d){if(pct>=d&&!ht.has(d)){ht.add(d);ev('engagement','scroll_depth',{path:location.pathname,depth_pct:d,time_sec:Math.round(el)});}});},{passive:true});document.addEventListener('click',function(e){var a=e.target.closest('a[href]');if(!a)return;try{var u=new URL(a.href);if(u.hostname!==location.hostname)ev('click','outbound_link',{from:location.pathname,to:u.hostname,text:a.textContent.trim().slice(0,80)});}catch(e){}});addEventListener('visibilitychange',function(){if(document.visibilityState==='hidden'){ev('engagement','time_on_page',{path:location.pathname,duration_sec:Math.round((Date.now()-T)/1e3),deep_read:(Date.now()-T)>12e4});fl();}});addEventListener('pagehide',fl);window.__fa=window.__forgeAnalytics={search:function(q,cat,n){ev('search','component_search',{query:(q||'').slice(0,200),category:cat,result_count:n,had_results:n>0});if(!n)ev('search','no_results',{query:(q||'').slice(0,200),category:cat});},filter:function(cat,filters,n){ev('filter','apply_filter',{category:cat,filter_names:Object.keys(filters||{}),result_count:n,zero_results:!n});if(!n)ev('search','no_results',{query:'',category:cat,filters:filters});},view:function(pid,cat,mfr,country,ndaa){ev('page_view','component_detail',{pid:pid,category:cat,manufacturer:mfr,country:country,ndaa_compliant:ndaa});},compare:function(a,b,cat){ev('compare','side_by_side',{pid_a:a,pid_b:b,category:cat});},tab:function(name){ev('navigation','tab_switch',{tab:name,page:PG});},query:function(q,cat,img){ev('ai','wingman_query',{query:(q||'').slice(0,200),category:cat,has_image:!!img});},flag:function(id,sev,type){ev('intel','flag_view',{flag_id:id,severity:sev,flag_type:type});},intel:function(src,art){ev('intel','article_view',{source:src,article_id:art});},flush:fl};})();"""
 
 # Page slug mapping — used to set __FORGE_PAGE__ per page
 _PAGE_SLUGS = {
@@ -540,6 +540,19 @@ def inject_nav(html, src_name):
         return html.replace("<body>", "<body>" + nav_block, 1)
     return html
 
+
+def strip_baked_analytics(html):
+    """Remove old baked-in analytics snippets (thebluefairy/netlify) from source HTML.
+    The build pipeline injects a canonical snippet via inject_analytics(), so any
+    pre-existing snippet in the source file is a duplicate that must be removed.
+    """
+    # Match <script>...</script> blocks containing the old analytics endpoint
+    pattern = re.compile(
+        r"<script>[^<]*thebluefairy\.netlify\.app[^<]*</script>",
+        re.DOTALL
+    )
+    return pattern.sub('', html)
+
 def inject_analytics(html, src_name):
     """Inject Forge analytics snippet and global mobile CSS before </body> on every page."""
     slug = _PAGE_SLUGS.get(src_name, src_name.replace('.html', ''))
@@ -566,7 +579,7 @@ def fix_paths(html, depth=0):
         html = html.replace("fetch('forge_database.json')", f"fetch('{prefix}static/forge_database.json')")
         html = html.replace("fetch('forge_intel.json')", f"fetch('{prefix}static/forge_intel.json')")
         html = html.replace("fetch('forge_troubleshooting.json')", f"fetch('{prefix}static/forge_troubleshooting.json')")
-        html = html.replace("fetch('intel_articles.json')", "fetch('/.netlify/functions/forge-data?type=intel_articles&token='+encodeURIComponent(localStorage.getItem('forge_token')||''))")
+        html = html.replace("fetch('intel_articles.json')", "fetch('/api/forge-data?type=intel_articles&token='+encodeURIComponent(localStorage.getItem('forge_token')||''))")
         html = html.replace("fetch('intel_companies.json')", f"fetch('{prefix}static/intel_companies.json')")
         html = html.replace("fetch('intel_platforms.json')", f"fetch('{prefix}static/intel_platforms.json')")
         html = html.replace("fetch('intel_programs.json')", f"fetch('{prefix}static/intel_programs.json')")
@@ -577,15 +590,15 @@ def fix_paths(html, depth=0):
         html = html.replace("fetch('../data/commercial/commercial_master.json')", f"fetch('{prefix}static/commercial_master.json')")
         html = html.replace("fetch('../data/dfr/dfr_master.json')", f"fetch('{prefix}static/dfr_master.json')")
         # PIE files
-        html = html.replace("fetch('pie_flags.json')", "fetch('/.netlify/functions/forge-data?type=pie_flags&token='+encodeURIComponent(localStorage.getItem('forge_token')||''))")
-        html = html.replace("fetch('solicitations.json')", "fetch('/.netlify/functions/forge-data?type=solicitations&token='+encodeURIComponent(localStorage.getItem('forge_token')||''))")
+        html = html.replace("fetch('pie_flags.json')", "fetch('/api/forge-data?type=pie_flags&token='+encodeURIComponent(localStorage.getItem('forge_token')||''))")
+        html = html.replace("fetch('solicitations.json')", "fetch('/api/forge-data?type=solicitations&token='+encodeURIComponent(localStorage.getItem('forge_token')||''))")
         html = html.replace("fetch('miner_registry.json')", f"fetch('{prefix}static/miner_registry.json')")
         html = html.replace('fetch("../static/miner_health.json")', f"fetch('{prefix}static/miner_health.json')")
         html = html.replace("fetch('miner_health.json')", f"fetch('{prefix}static/miner_health.json')")
         html = html.replace("fetch('/static/gap_analysis_latest.json')", f"fetch('{prefix}static/gap_analysis_latest.json')")
-        html = html.replace("fetch('pie_predictions.json')", "fetch('/.netlify/functions/forge-data?type=pie_predictions&token='+encodeURIComponent(localStorage.getItem('forge_token')||localStorage.getItem('wingman_sub_token')||''))")
-        html = html.replace("fetch('pie_brief.json')", "fetch('/.netlify/functions/forge-data?type=pie_brief&token='+encodeURIComponent(localStorage.getItem('forge_token')||''))")
-        html = html.replace("fetch('pie_weekly.json')", "fetch('/.netlify/functions/forge-data?type=pie_weekly&token='+encodeURIComponent(localStorage.getItem('forge_token')||localStorage.getItem('wingman_sub_token')||''))")
+        html = html.replace("fetch('pie_predictions.json')", "fetch('/api/forge-data?type=pie_predictions&token='+encodeURIComponent(localStorage.getItem('forge_token')||localStorage.getItem('wingman_sub_token')||''))")
+        html = html.replace("fetch('pie_brief.json')", "fetch('/api/forge-data?type=pie_brief&token='+encodeURIComponent(localStorage.getItem('forge_token')||''))")
+        html = html.replace("fetch('pie_weekly.json')", "fetch('/api/forge-data?type=pie_weekly&token='+encodeURIComponent(localStorage.getItem('forge_token')||localStorage.getItem('wingman_sub_token')||''))")
         html = html.replace("fetch('forge_firmware_configs.json')", f"fetch('{prefix}static/forge_firmware_configs.json')")
         html = html.replace("fetch('forge_firmware_versions.json')", f"fetch('{prefix}static/forge_firmware_versions.json')")
         html = html.replace("fetch('forge_incompatibilities.json')", f"fetch('{prefix}static/forge_incompatibilities.json')")
@@ -642,6 +655,8 @@ def rewrite_legacy_domains(html):
     """
     # Bare-domain replacements (catch-all for everything else)
     bare = [
+        ('https://thebluefairy.netlify.app/.netlify/functions/', '/api/'),
+        ('/.netlify/functions/', '/api/'),
         ('https://www.uas-forge.com', 'https://uas-forge.com'),
         ('https://uas-forge.com',     'https://uas-forge.com'),
         ('https://www.uas-intel.com', 'https://uas-patterns.com'),
@@ -1540,6 +1555,7 @@ def build():
         depth = dst_path.count('/')
         
         html = strip_django_tags(html)
+        html = strip_baked_analytics(html)
         html = fix_paths(html, depth)
         html = inject_seo(html, src_name, dst_path)
         html = inject_adapter(html, depth)
