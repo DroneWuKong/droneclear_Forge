@@ -57,8 +57,8 @@
     'groq-proxy':        '/api/wingman/groq',
     'gemini-proxy':      '/api/wingman/gemini',
     'prices-api':        '/api/prices',
-    'analytics-ingest':  '/api/analytics/ingest',
-    'analytics':         '/api/analytics',
+    'analytics-ingest':  '/api/analytics/ingest/ingest',
+    'analytics':         '/api/analytics/ingest',
     'compliance-report': '/api/compliance/report',
   };
 
@@ -182,7 +182,7 @@
       const p = new URLSearchParams({ dataset });
       if (opts.days)    p.set('days',     opts.days);
       if (opts.groupBy) p.set('group_by', opts.groupBy);
-      const r = await _nativeFetch(`${API_BASE}/api/analytics?${p}`);
+      const r = await _nativeFetch(`${API_BASE}/api/analytics/ingest?${p}`);
       return r.ok ? r.json() : null;
     },
 

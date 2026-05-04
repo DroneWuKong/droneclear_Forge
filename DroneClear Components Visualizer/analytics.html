@@ -384,8 +384,8 @@ a{color:var(--blue);text-decoration:none}a:hover{text-decoration:underline}
 <script>
 (function(){'use strict';
 var DB,INTEL=[],COS=[],PROGS=[],PLATS=[],LIVE,GAPS,TOPICMAP,DASH,TRENDS;
-var FN='/api/analytics';                    // Forge: Wingman query/session data
-var DASH_FN='https://thebluefairy.netlify.app/api/analytics-dashboard'; // Ai-Project: page/UI behavior data
+var FN='/api/analytics/ingest';                    // Forge: Wingman query/session data
+var DASH_FN='https://thebluefairy.netlify.app/api/analytics/ingest-dashboard'; // Ai-Project: page/UI behavior data
 var KEY=sessionStorage.getItem('forge_admin_session')||''; // restored from session
 var $=function(id){return document.getElementById(id)};
 var fmt=function(n){return n>=1e6?(n/1e6).toFixed(1)+'M':n>=1e3?(n/1e3).toFixed(1).replace(/\.0$/,'')+'k':String(n)};
@@ -433,7 +433,7 @@ async function checkGate(){
   _gateAbort = new AbortController();
   var timer = setTimeout(function(){ _gateAbort.abort(); }, 8000);
   try {
-    var r = await fetch('/api/analytics?verify=1', {
+    var r = await fetch('/api/analytics/ingest?verify=1', {
       headers: { 'x-admin-key': val },
       signal: _gateAbort.signal
     });
@@ -473,7 +473,7 @@ document.querySelectorAll('#tabs .tab').forEach(function(tab){
 (function(){
   var urlKey = new URLSearchParams(location.search).get('key');
   if(urlKey){
-    fetch('/api/analytics?verify=1', {
+    fetch('/api/analytics/ingest?verify=1', {
       headers: { 'x-admin-key': urlKey }
     }).then(function(r){
       if(r.ok) sessionStorage.setItem(GATE_SESSION_KEY, urlKey);
@@ -529,7 +529,7 @@ async function loadAll(){
     }
     try{var d=await fetch(DASH_FN+'?days=30&key='+encodeURIComponent(KEY));if(d.ok){DASH=await d.json();}}catch(e){}
     try{var g=await fetch('/static/gap_analysis_latest.json');if(g.ok)GAPS=await g.json()}catch(e){}
-    try{var tr=await fetch('/api/forge-data?type=pie_trends');if(tr.ok){var trj=await tr.json();TRENDS=trj.data||trj;}}catch(e){}
+    try{var tr=await fetch('/api/data?type=pie_trends');if(tr.ok){var trj=await tr.json();TRENDS=trj.data||trj;}}catch(e){}
     if(!TRENDS)try{var tr2=await fetch('/pie_trends.json');if(tr2.ok)TRENDS=await tr2.json()}catch(e){}
     $('an-btn').classList.remove('loading');
     $('an-ts').textContent=new Date().toLocaleString();
@@ -933,7 +933,7 @@ window.loadAll=loadAll;
 
 <!-- Enhanced Event Tracking — Full User Journey Collector -->
 <script>
-(function(){var E='/api/analytics',S='sess_'+crypto.randomUUID().replace(/-/g,'').slice(0,16),q=[],t=null,aid=null,ff=true,ps=Date.now(),ms=0,ix=0;
+(function(){var E='/api/analytics/ingest',S='sess_'+crypto.randomUUID().replace(/-/g,'').slice(0,16),q=[],t=null,aid=null,ff=true,ps=Date.now(),ms=0,ix=0;
 function rg(){try{var z=Intl.DateTimeFormat().resolvedOptions().timeZone;if(z.includes('America'))return'Americas';if(z.includes('Europe'))return'Europe';if(z.includes('Asia')||z.includes('Australia')||z.includes('Pacific'))return'Asia-Pacific';if(z.includes('Africa'))return'Africa'}catch(e){}return'Unknown'}
 function ev(tp,ac,p,tier){q.push({event_id:crypto.randomUUID(),timestamp:new Date().toISOString(),surface:'forge',event_type:tp,event_action:ac,context:{session_id:S,account_id:aid,geo_region:rg(),platform:/Android|iPhone|iPad/i.test(navigator.userAgent)?'mobile':'web',viewport:innerWidth+'x'+innerHeight,referrer:document.referrer||'direct',page:location.pathname},payload:p,data_policy:{collection_tier:tier||'anonymous',consent_version:'none',retention_days:tier==='account'?365:90,anonymized:tier!=='account'}});if(q.length>=20)fl();else if(!t)t=setTimeout(fl,5e3)}
 function fl(){if(t){clearTimeout(t);t=null}if(!q.length)return;var b=q.splice(0);navigator.sendBeacon?navigator.sendBeacon(E,JSON.stringify({type:'batch',events:b})):fetch(E,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({type:'batch',events:b}),keepalive:true}).catch(function(){})}
@@ -1002,7 +1002,7 @@ async function pgCheck() {
   if (!val) { err.textContent = 'Enter key'; return; }
   err.textContent = 'Verifying…';
   try {
-    var r = await fetch('/api/analytics?verify=1', {
+    var r = await fetch('/api/analytics/ingest?verify=1', {
       headers: { 'x-admin-key': val }
     });
     if (r.ok) {
@@ -1025,7 +1025,7 @@ async function pgCheck() {
   var saved = sessionStorage.getItem(PG_KEY) || sessionStorage.getItem('forge_admin_session');
   if (saved) {
     // Silently re-verify then unlock
-    fetch('/api/analytics?verify=1', { headers: { 'x-admin-key': saved } })
+    fetch('/api/analytics/ingest?verify=1', { headers: { 'x-admin-key': saved } })
       .then(function(r){ if(r.ok) pgUnlock(); else sessionStorage.clear(); })
       .catch(function(){ pgUnlock(); }); // offline — trust session
   } else {
