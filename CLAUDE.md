@@ -31,7 +31,13 @@ Netlify config is in `netlify.toml`. Build command: `python3 build_static.py`, p
 - **No backend.** Django was removed. All data is static JSON.
 - **20 pages** across: The Bench (home), Builder, Guide, Audit, Academy, Platforms, Browse, Contribute, Analytics, SLAM Selector, and 8 integration guides (FC Firmware, Mesh, TAK, AI, C-UAS, Swarm, SLAM, Guides Hub).
 - **Data flows from Ai-Project repo** → `data/parts-db/*.json` → merged into `forge_database.json` at build time.
-- **Analytics** snippet injected into all pages, reporting to the Netlify Functions endpoint at `thebluefairy.netlify.app/.netlify/functions/analytics-ingest` (see `build_static.py:157`). The canonical product domains are: `uas-forge.com` (Forge, this repo), `uas-handbook.com` (Handbook, `drone-integration-handbook` repo), `uas-patterns.com` (Patterns/PIE intel). Ai-Project itself has no custom domain — it deploys to `thebluefairy.netlify.app`. The `build_static.py` domain-rewrite pass normalizes all old vanity names (`uas-forge.com`, `uas-intel.com`, `uas-handbook.com`, `illdoitmyself.com`) to their canonical equivalents at build time. Source files in this repo have been updated to use canonical domains directly.
+- **Analytics** snippet injected into all pages, reporting to the Netlify Functions endpoint at `thebluefairy.netlify.app/.netlify/functions/analytics-ingest` (see `build_static.py:157`). Ai-Project itself has no custom domain — it deploys to `thebluefairy.netlify.app`.
+- **Sibling product domains** (current canonical → legacy):
+  - `uas-forge.com` ← `nvmillbuilditmyself.com` (Forge, this repo)
+  - `uas-handbook.com` ← `nvmilldoitmyself.com` / `illdoitmyself.com` (Handbook, `drone-integration-handbook` repo)
+  - `uas-patterns.com` ← `nvmillfindoutmyself.com` (Patterns/PIE intel; also subsumes the retired `uas-patterns.pro`)
+  - `uas-intel.com` (Intel surface)
+- **Legacy-domain handling.** `build_static.py` (`fix_domain_links`, ~line 627) auto-rewrites every legacy `nvmill*` / `illdoitmyself` / `uas-patterns.pro` URL in HTML output at build time, so rendered pages always carry the canonical `uas-*` domain. JSON data files are **not** rewritten — fix those at the source. `analytics.mjs` and `analytics-ingest.mjs` keep the legacy domains in `ALLOWED_ORIGINS` during a transition grace period so stale browser tabs can still post analytics; remove when grace period ends.
 
 ## Key Files
 
