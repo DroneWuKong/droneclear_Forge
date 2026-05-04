@@ -1,7 +1,7 @@
 /**
  * prismo-api.js — Forge site API client v3
  *
- * Intercepts static JSON fetches AND all /.netlify/functions/* calls,
+ * Intercepts static JSON fetches AND all /api/* calls,
  * routes them to CF Workers at Cloudflare edge.
  * Falls back to original request if Workers are unavailable.
  *
@@ -74,8 +74,8 @@
     const qs     = urlStr.includes('?') ? urlStr.slice(urlStr.indexOf('?')) : '';
 
     // ── 1. Netlify function intercept ──────────────────────────────────────
-    if (clean.includes('/.netlify/functions/')) {
-      const fnName = clean.split('/.netlify/functions/')[1]?.split('/')[0];
+    if (clean.includes('/api/')) {
+      const fnName = clean.split('/api/')[1]?.split('/')[0];
 
       // forge-data: use FORGE_DATA_ROUTES for ?type= routing
       if (fnName === 'forge-data') {

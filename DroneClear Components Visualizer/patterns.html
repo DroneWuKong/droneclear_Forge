@@ -1478,7 +1478,7 @@ async function loadData() {
   }).catch(()=>{});
 
   // Load entity graph + miner health + procurement (fire-and-forget)
-  fetch('/.netlify/functions/forge-data?type=entity_graph&token='+encodeURIComponent(localStorage.getItem('forge_token')||localStorage.getItem('wingman_sub_token')||'')).then(r=>r.json()).then(d=>{
+  fetch('/api/forge-data?type=entity_graph&token='+encodeURIComponent(localStorage.getItem('forge_token')||localStorage.getItem('wingman_sub_token')||'')).then(r=>r.json()).then(d=>{
     const _d = d.summary_only ? null : (d.data||d);
     if(_d && _d.entities) { ENTITY_GRAPH = _d.entities; }
   }).catch(()=>{});
@@ -1488,7 +1488,7 @@ async function loadData() {
   fetch("../static/miner_registry.json").then(r=>r.ok?r.json():null).then(reg=>{
     if(reg) { window._minerRegistry = reg; renderSources(); }
   }).catch(()=>{});
-  fetch('/.netlify/functions/forge-data?type=solicitations&token='+encodeURIComponent(localStorage.getItem('forge_token')||localStorage.getItem('wingman_sub_token')||'')).then(r=>r.json()).then(d=>{
+  fetch('/api/forge-data?type=solicitations&token='+encodeURIComponent(localStorage.getItem('forge_token')||localStorage.getItem('wingman_sub_token')||'')).then(r=>r.json()).then(d=>{
     const _d = d.summary_only ? null : (d.data||d);
     if(_d) { PROCUREMENT_DATA = _d; renderProcurement(); }
   }).catch(()=>{});
@@ -1506,7 +1506,7 @@ async function loadData() {
 
   try {
     const [fRes, pRes] = await Promise.all([
-      fetch('/.netlify/functions/forge-data?type=pie_flags&token='+encodeURIComponent(localStorage.getItem('forge_token')||localStorage.getItem('wingman_sub_token')||'')).then(r=>r.json()).then(d=>{
+      fetch('/api/forge-data?type=pie_flags&token='+encodeURIComponent(localStorage.getItem('forge_token')||localStorage.getItem('wingman_sub_token')||'')).then(r=>r.json()).then(d=>{
         if(d.summary_only){ return null; }
         const flags = d.data||d;
         // If no usable data, fall through to static fallback
@@ -1523,7 +1523,7 @@ async function loadData() {
                   :fetch('/static/pie_flags.json').then(r=>r.ok?r.json():[]).catch(()=>[]))
           .catch(()=>[]);
       }),
-      fetch('/.netlify/functions/forge-data?type=pie_predictions&token='+encodeURIComponent(localStorage.getItem('forge_token')||localStorage.getItem('wingman_sub_token')||'')).then(r=>r.json()).then(d=>{
+      fetch('/api/forge-data?type=pie_predictions&token='+encodeURIComponent(localStorage.getItem('forge_token')||localStorage.getItem('wingman_sub_token')||'')).then(r=>r.json()).then(d=>{
         if(d.summary_only || d.error){ return []; }
         return d.data||d;
       }),
@@ -1536,7 +1536,7 @@ async function loadData() {
     } else {
       // Live predictions sparse — load best archive as fallback
       try {
-        const bestRes = await fetch('/.netlify/functions/forge-data?type=predictions_best&token='+encodeURIComponent(localStorage.getItem('forge_token')||localStorage.getItem('wingman_sub_token')||''));
+        const bestRes = await fetch('/api/forge-data?type=predictions_best&token='+encodeURIComponent(localStorage.getItem('forge_token')||localStorage.getItem('wingman_sub_token')||''));
         if (bestRes.ok) {
           const bestRaw = await bestRes.json();
           const best = bestRaw.summary_only ? null : (bestRaw.data||bestRaw);
@@ -1564,7 +1564,7 @@ async function loadData() {
     FLAGS = []; PREDICTIONS = [];
     flagList.innerHTML = `<div style="color:var(--red);font-size:12px;padding:20px;text-align:center">
       Failed to load pipeline data: ${e.message}<br>
-      <span style="color:var(--text-d)">Check browser console. Data served via /.netlify/functions/forge-data</span>
+      <span style="color:var(--text-d)">Check browser console. Data served via /api/forge-data</span>
     </div>`;
     return;
   }
@@ -1718,7 +1718,7 @@ async function loadBriefPanel() {
   try {
     let b = null;
     try {
-      const r = await fetch('/.netlify/functions/forge-data?type=pie_brief&token='+encodeURIComponent(localStorage.getItem('forge_token')||localStorage.getItem('wingman_sub_token')||''));
+      const r = await fetch('/api/forge-data?type=pie_brief&token='+encodeURIComponent(localStorage.getItem('forge_token')||localStorage.getItem('wingman_sub_token')||''));
       const d = await r.json();
       if (!d.summary_only) b = d.data||d;
     } catch(e) {}
@@ -1972,7 +1972,7 @@ async function loadBriefPanel(){
     // Try forge-data API — returns {data:...,_free_tier:true} for free, {data:...} for paid
     const tok = localStorage.getItem('forge_token')||localStorage.getItem('wingman_sub_token')||'';
     try {
-      const r = await fetch('/.netlify/functions/forge-data?type=pie_brief&token='+encodeURIComponent(tok));
+      const r = await fetch('/api/forge-data?type=pie_brief&token='+encodeURIComponent(tok));
       if (r.ok) {
         const d = await r.json();
         if (d.summary_only) {
@@ -2934,8 +2934,8 @@ async function loadHistoryData() {
   try {
     const tok = encodeURIComponent(localStorage.getItem('forge_token')||localStorage.getItem('wingman_sub_token')||'');
     const [trendsRes, predRes] = await Promise.all([
-      fetch('/.netlify/functions/forge-data?type=pie_trends&token='+tok).then(r=>r.json()).then(d=>d.summary_only?null:(d.data||d)),
-      fetch('/.netlify/functions/forge-data?type=predictions_archive&token='+tok).then(r=>r.json()).then(d=>d.summary_only?[]:(d.data||d)),
+      fetch('/api/forge-data?type=pie_trends&token='+tok).then(r=>r.json()).then(d=>d.summary_only?null:(d.data||d)),
+      fetch('/api/forge-data?type=predictions_archive&token='+tok).then(r=>r.json()).then(d=>d.summary_only?[]:(d.data||d)),
     ]);
     _trendsData  = trendsRes;
     _predArchive = predRes || [];
@@ -5149,7 +5149,7 @@ async function loadWeeklyBrief() {
   try {
     let w = null;
     try {
-      const r = await fetch('/.netlify/functions/forge-data?type=pie_weekly&token='+encodeURIComponent(localStorage.getItem('forge_token')||localStorage.getItem('wingman_sub_token')||''));
+      const r = await fetch('/api/forge-data?type=pie_weekly&token='+encodeURIComponent(localStorage.getItem('forge_token')||localStorage.getItem('wingman_sub_token')||''));
       const d = await r.json();
       if (!d.summary_only) w = d.data||d;
     } catch(e) {}
@@ -5756,9 +5756,9 @@ function renderProcurement() {
   if (!window._FEDERAL_AWARDS) {
     el.innerHTML = '<div style="color:var(--text-d);font-size:12px;padding:40px;text-align:center">Loading award records…</div>';
     Promise.all([
-      fetch('/.netlify/functions/forge-data?type=federal_awards&token='+encodeURIComponent(localStorage.getItem('forge_token')||localStorage.getItem('wingman_sub_token')||''))
+      fetch('/api/forge-data?type=federal_awards&token='+encodeURIComponent(localStorage.getItem('forge_token')||localStorage.getItem('wingman_sub_token')||''))
         .then(r=>r.json()).then(raw=>{ const d=raw.summary_only?null:(raw.data||raw); return (d&&(d.awards||d))||[]; }).catch(()=>[]),
-      fetch('/.netlify/functions/forge-data?type=sam_watchlist')
+      fetch('/api/forge-data?type=sam_watchlist')
         .then(r=>r.json()).then(raw=>{ const d=raw.data||raw; return (d&&d.notices)||[]; }).catch(()=>[]),
     ]).then(([awards, watchlist])=>{
       window._FEDERAL_AWARDS = awards;
@@ -6173,7 +6173,7 @@ const EXPLORER_DATASETS = {
     label: 'Articles',
     loader: async () => {
       if (window._explorerArticlesCache) return window._explorerArticlesCache;
-      const r = await fetch('/.netlify/functions/forge-data?type=intel_articles&token='+encodeURIComponent(localStorage.getItem('forge_token')||localStorage.getItem('wingman_sub_token')||''));
+      const r = await fetch('/api/forge-data?type=intel_articles&token='+encodeURIComponent(localStorage.getItem('forge_token')||localStorage.getItem('wingman_sub_token')||''));
       const raw = await r.json();
       const d = raw.summary_only ? [] : (raw.data||raw);
       window._explorerArticlesCache = d;
@@ -6185,7 +6185,7 @@ const EXPLORER_DATASETS = {
     label: 'Companies',
     loader: async () => {
       if (window._explorerCompaniesCache) return window._explorerCompaniesCache;
-      const r = await fetch('/.netlify/functions/forge-data?type=intel_companies&token='+encodeURIComponent(localStorage.getItem('forge_token')||localStorage.getItem('wingman_sub_token')||''));
+      const r = await fetch('/api/forge-data?type=intel_companies&token='+encodeURIComponent(localStorage.getItem('forge_token')||localStorage.getItem('wingman_sub_token')||''));
       const raw = await r.json();
       const d = raw.summary_only ? [] : (raw.data||raw);
       window._explorerCompaniesCache = d;
@@ -7142,10 +7142,10 @@ setTimeout(function(){
   }, 2000);
 </script>
 
-<!-- Page Analytics — fires batch events to /.netlify/functions/analytics -->
+<!-- Page Analytics — fires batch events to /api/analytics -->
 <script>
 (function(){
-  var E='https://thebluefairy.netlify.app/.netlify/functions/analytics-ingest';
+  var E='https://thebluefairy.netlify.app/api/analytics-ingest';
   var S='sess_'+crypto.randomUUID().replace(/-/g,'').slice(0,16);
   var surface='forge';
   var q=[],t=null,ps=Date.now(),ms=0,ix=0;
@@ -7237,7 +7237,7 @@ async function applyToken() {
   if (/^[A-Z0-9]{4}-[A-Z0-9]{4}-[A-Z0-9]{4}$/.test(val)) {
     msg.textContent = 'Verifying access code...'; msg.style.color='#6b6358';
     try {
-      var r = await fetch('/.netlify/functions/forge-data?access_code=' + encodeURIComponent(val));
+      var r = await fetch('/api/forge-data?access_code=' + encodeURIComponent(val));
       var d = await r.json();
       if (d.token) {
         localStorage.setItem('forge_token', d.token);

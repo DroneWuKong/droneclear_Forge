@@ -2384,7 +2384,7 @@ document.addEventListener('DOMContentLoaded', () => {
         var localData = JSON.parse(localStorage.getItem('wingman_analytics') || '{}');
         var localQueries = (localData.queries || []).filter(function(q){ return q && q.q && q.q.trim(); });
         if (localQueries.length > 0) {
-          fetch('/.netlify/functions/analytics', {
+          fetch('/api/analytics', {
             method: 'POST',
             headers: {'Content-Type':'application/json'},
             body: JSON.stringify({ type: 'backfill', queries: localQueries })
@@ -2739,14 +2739,13 @@ async function send() {
         systemInstruction: { parts: [{ text: sysPrompt.slice(0, 6000) }] },
         contents: geminiMessages,
         generationConfig: { maxOutputTokens: 4096, temperature: 0.7 },
-        _model: MODEL_CYCLE[modelIdx]?.label || 'gemini-2.0-flash',
       };
 
       // Use proxy (free) if no user key, direct API if BYOK
       const modelName = MODEL_CYCLE[modelIdx]?.label || 'gemini-2.0-flash';
       const geminiUrl = geminiKey
         ? `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${geminiKey}`
-        : '/.netlify/functions/gemini-proxy';
+        : '/api/gemini-proxy';
 
       const res = await fetch(geminiUrl, {
         method: 'POST',
@@ -2786,7 +2785,7 @@ async function send() {
       // Use BYOK if provided, otherwise server proxy
       const groqUrl = groqKey
         ? 'https://api.groq.com/openai/v1/chat/completions'
-        : '/.netlify/functions/groq-proxy';
+        : '/api/groq-proxy';
       const groqHeaders = { 'Content-Type': 'application/json' };
       if (groqKey) groqHeaders['Authorization'] = `Bearer ${groqKey}`;
       const res = await fetch(groqUrl, {
@@ -2808,7 +2807,7 @@ async function send() {
       // or BYOK direct if user has their own key
       const useProxy = (proxySecret || subToken) && !apiKey;
       const claudeUrl = useProxy
-        ? '/.netlify/functions/claude-proxy'
+        ? '/api/claude-proxy'
         : 'https://api.anthropic.com/v1/messages';
       const claudeHeaders = { 'Content-Type': 'application/json' };
       // Sub token also authorizes proxy
@@ -3189,7 +3188,7 @@ function trackQuery(query, hasImage, responseLength, category) {
   if (window.__forgeAnalytics) __forgeAnalytics.query(entry.q, entry.cat, entry.img);
 
   // Send to central analytics (fire and forget)
-  fetch('/.netlify/functions/analytics', {
+  fetch('/api/analytics', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ type: 'query', ...entry }),
@@ -3248,9 +3247,9 @@ function endSession() {
       duration: Math.round((Date.now() - new Date(currentSession.started).getTime()) / 1000),
     });
     if (navigator.sendBeacon) {
-      navigator.sendBeacon('/.netlify/functions/analytics', new Blob([payload], { type: 'application/json' }));
+      navigator.sendBeacon('/api/analytics', new Blob([payload], { type: 'application/json' }));
     } else {
-      fetch('/.netlify/functions/analytics', {
+      fetch('/api/analytics', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: payload,
@@ -3574,7 +3573,7 @@ function trackGapAnalysis(a, b, gaps) {
       data_policy: { collection_tier: 'anonymous' },
     }]
   };
-  fetch('/.netlify/functions/analytics', {
+  fetch('/api/analytics', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(batchPayload),
