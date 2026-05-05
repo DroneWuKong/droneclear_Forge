@@ -1499,7 +1499,16 @@ async function loadData() {
   }).catch(()=>{});
   fetch('/api/data?type=solicitations&token='+encodeURIComponent(localStorage.getItem('forge_token')||localStorage.getItem('wingman_sub_token')||'')).then(r=>r.json()).then(d=>{
     const _d = d.summary_only ? null : (d.data||d);
-    if(_d) { PROCUREMENT_DATA = _d; renderProcurement(); }
+    if(_d) {
+      PROCUREMENT_DATA = _d;
+      // Re-render procurement — if _FEDERAL_AWARDS already loaded, this renders fully
+      // If not yet loaded, renderProcurement handles the loading state itself
+      renderProcurement();
+      // Also re-render if procurement tab is active and explorer has solicitations/federal_awards loaded
+      if (activeTab === 'explorer' && (_explorerDataset === 'solicitations' || _explorerDataset === 'federal_awards')) {
+        explorerLoad();
+      }
+    }
   }).catch(()=>{});
 
   // Co-occurrence + canonical parts data (best-effort, fire-and-forget)
@@ -6258,6 +6267,23 @@ async function explorerLoad() {
     const rows = await def.loader();
     _explorerDataset = key;
     _explorerRows = Array.isArray(rows) ? rows : [];
+
+    // If rows empty for global-backed datasets (FLAGS/PREDICTIONS/PLATFORMS not ready yet),
+    // retry once after loadData completes (up to 5s)
+    if (_explorerRows.length === 0 && ['flags','predictions','platforms'].includes(key)) {
+      let retries = 0;
+      const retry = setInterval(async () => {
+        retries++;
+        const fresh = await def.loader();
+        if ((Array.isArray(fresh) && fresh.length > 0) || retries >= 10) {
+          clearInterval(retry);
+          if (Array.isArray(fresh) && fresh.length > 0) {
+            _explorerRows = fresh;
+            explorerFilter();
+          }
+        }
+      }, 500);
+    }
 
     // Derive columns: use defined cols, fill any missing with top keys from first row
     const definedCols = def.cols || [];
