@@ -1059,17 +1059,17 @@ function showCard(r){
   }
 })();
 Promise.all([
-  fetch('/intel_articles.json').then(r=>r.ok?r.json():[]).catch(()=>[]),
+  fetch('/api/data?type=intel_articles').then(r=>r.ok?r.json():[]).catch(()=>[]),
   fetch('/data/defense/defense_master.json').then(r=>r.ok?r.json():{records:[]}).catch(()=>({records:[]})),
   fetch('/data/commercial/commercial_master.json').then(r=>r.ok?r.json():{records:[]}).catch(()=>({records:[]})),
   fetch('/data/dfr/dfr_master.json').then(r=>r.ok?r.json():{records:[]}).catch(()=>({records:[]})),
   fetch('/forge_intel.json').then(r=>r.ok?r.json():{}).catch(()=>({})),
-  fetch('/pie_flags.json').then(r=>r.ok?r.json():[]).then(d=>Array.isArray(d)?d:(d&&Array.isArray(d.data)?d.data:[])).catch(()=>[]),
-  fetch('/pie_predictions.json').then(r=>r.ok?r.json():[]).then(d=>Array.isArray(d)?d:(d&&Array.isArray(d.data)?d.data:[])).catch(()=>[]),
-  fetch('/pie_brief.json').then(r=>r.ok?r.json():{}).then(d=>(d&&d.data!==undefined)?d.data:(d||{})).catch(()=>({})),
-  fetch('/solicitations.json').then(r=>r.ok?r.json():{meta:{},solicitations:[]}).then(d=>(d&&d.data!==undefined)?d.data:(d||{meta:{},solicitations:[]})).catch(()=>({meta:{},solicitations:[]})),
-  fetch('/intel_programs.json').then(r=>r.ok?r.json():[]).catch(()=>[]),
-  fetch('/intel_companies.json').then(r=>r.ok?r.json():[]).catch(()=>[]),
+  fetch('/api/data?type=pie_flags').then(r=>r.ok?r.json():[]).then(e=>e&&e.data!==undefined?e.data:e).then(d=>Array.isArray(d)?d:(d&&Array.isArray(d.data)?d.data:[])).catch(()=>[]),
+  fetch('/api/data?type=pie_predictions').then(r=>r.ok?r.json():[]).then(e=>e&&e.data!==undefined?e.data:e).then(d=>Array.isArray(d)?d:(d&&Array.isArray(d.data)?d.data:[])).catch(()=>[]),
+  fetch('/api/data?type=pie_brief').then(r=>r.ok?r.json():{}).then(e=>e&&e.data!==undefined?e.data:e).then(d=>(d&&d.data!==undefined)?d.data:(d||{})).catch(()=>({})),
+  fetch('/api/data?type=solicitations').then(r=>r.ok?r.json():{meta:{},solicitations:[]}).then(d=>(d&&d.data!==undefined)?d.data:(d||{meta:{},solicitations:[]})).catch(()=>({meta:{},solicitations:[]})),
+  fetch('/api/data?type=intel_programs').then(r=>r.ok?r.json():[]).catch(()=>[]),
+  fetch('/api/data?type=intel_companies').then(r=>r.ok?r.json():[]).catch(()=>[]),
 ]).then(([articles, defDB, comDB, dfrDB, forgeIntel, pieFlags, piePreds, pieBrief, solData, intelPrograms, intelCompanies])=>{
   ALL=articles;
   INTEL_PROGRAMS=intelPrograms||[];
@@ -1255,7 +1255,7 @@ function fmtUpdated(iso) {
     if (el) el.textContent = 'Pipeline: ' + dt + ' · ' + timeStr;
   } catch(e) {}
 }
-fetch('../static/intel_articles.json').then(r=>r.json()).then(arts=>{
+fetch('/api/data?type=intel_articles').then(r=>r.json()).then(arts=>{
     var dates = arts.map(a=>a.pub_date||a.scraped_date||'').filter(Boolean).sort();
     var latest = dates[dates.length-1];
     if(latest) { var el=document.getElementById('last-updated'); if(el) el.textContent='Latest article: '+latest; }

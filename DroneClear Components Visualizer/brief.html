@@ -464,9 +464,10 @@ function renderBrief(b) {
 
 async function loadBrief() {
   try {
-    const r = await fetch('../static/pie_brief.json');
+    const r = await fetch('/api/data?type=pie_brief');
     if (!r.ok) throw new Error(`HTTP ${r.status}`);
-    const b = await r.json();
+    const env = await r.json();
+    const b = (env && env.data !== undefined) ? env.data : env;
     renderBrief(b);
   } catch(e) {
     document.getElementById('brief-content').innerHTML = `<div class="no-brief">
@@ -491,7 +492,7 @@ function fmtUpdated(iso) {
     if (el) el.textContent = 'Pipeline ' + new Date(iso).toISOString().slice(11,16) + ' UTC · ' + timeStr;
   } catch(e) {}
 }
-fetch('../static/pie_flags.json').then(r=>r.json()).then(flags=>{
+fetch('/api/data?type=pie_flags').then(r=>r.json()).then(flags=>{
   var ts = flags.map(f=>f.timestamp||'').filter(Boolean).sort().pop();
   if(ts) fmtUpdated(ts);
 }).catch(()=>{});

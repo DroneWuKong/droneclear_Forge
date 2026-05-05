@@ -323,7 +323,7 @@
   fetch('/api/data?type=pie_flags&token='+tok)
     .then(r=>r.json()).then(d=>{
       var f=d.data||d;
-      if(!Array.isArray(f)||f.length===0) return fetch('/pie_flags.json').then(r=>r.ok?r.json():[]).catch(()=>[]);
+      if(!Array.isArray(f)||f.length===0) return fetch('/api/data?type=pie_flags').then(r=>r.ok?r.json():[]).catch(()=>[]);
       return f;
     }).then(f=>{
       if(!f.length) return;
@@ -336,7 +336,7 @@
   fetch('/api/data?type=pie_predictions&token='+tok)
     .then(r=>r.json()).then(d=>{
       var p=d.data||d;
-      if(!Array.isArray(p)||p.length===0) return fetch('/pie_predictions.json').then(r=>r.ok?r.json():[]).catch(()=>[]);
+      if(!Array.isArray(p)||p.length===0) return fetch('/api/data?type=pie_predictions').then(r=>r.ok?r.json():[]).catch(()=>[]);
       return p;
     }).then(p=>{
       if(p.length) document.getElementById('s-pred').textContent=p.length;
@@ -344,29 +344,29 @@
 
   // Lens-group module badges (silent fail — pill stays as "—")
   function setBadge(id, txt){ var el=document.getElementById(id); if(el && txt) el.textContent=txt; }
-  fetch('/adversary_bom.json').then(r=>r.ok?r.json():null).then(d=>{
+  fetch('/api/data?type=adversary_bom').then(r=>r.ok?r.json():null).then(e=>e&&e.data!==undefined?e.data:e).then(d=>{
     if(!d) return;
     var rows = (d.meta && d.meta.total_component_rows) || 0;
     var weapons = (d.meta && d.meta.unique_weapon_platforms) || 0;
     if(rows && weapons) setBadge('bom-count', rows+' parts · '+weapons+' weapons');
   }).catch(()=>{});
-  fetch('/component_mirroring_index.json').then(r=>r.ok?r.json():null).then(d=>{
+  fetch('/api/data?type=component_mirroring_index').then(r=>r.ok?r.json():null).then(e=>e&&e.data!==undefined?e.data:e).then(d=>{
     if(!d) return;
     var n = (d.meta && d.meta.top_emitted) || 0;
     setBadge('mirror-count', n ? n+' matches' : 'no matches yet');
   }).catch(()=>{});
-  fetch('/threat_scores.json').then(r=>r.ok?r.json():null).then(d=>{
+  fetch('/api/data?type=threat_scores').then(r=>r.ok?r.json():null).then(e=>e&&e.data!==undefined?e.data:e).then(d=>{
     if(!d) return;
     var n = (d.actors||[]).length;
     if(n) setBadge('actors-count', n+' actors');
   }).catch(()=>{});
-  fetch('/ttp_counter_gap.json').then(r=>r.ok?r.json():null).then(d=>{
+  fetch('/api/data?type=ttp_counter_gap').then(r=>r.ok?r.json():null).then(e=>e&&e.data!==undefined?e.data:e).then(d=>{
     if(!d) return;
     var rs = d.results || [];
     var crit = rs.filter(r=>r.verdict && r.verdict.startsWith('CRITICAL')).length;
     if(rs.length) setBadge('ttps-count', crit+' critical · '+rs.length+' TTPs');
   }).catch(()=>{});
-  fetch('/sanctions_evasion_graph.json').then(r=>r.ok?r.json():null).then(d=>{
+  fetch('/api/data?type=sanctions_evasion_graph').then(r=>r.ok?r.json():null).then(e=>e&&e.data!==undefined?e.data:e).then(d=>{
     if(!d) return;
     var n = (d.meta && d.meta.total_candidates) || 0;
     setBadge('evasion-count', n ? n+' candidates' : 'no matches yet');
