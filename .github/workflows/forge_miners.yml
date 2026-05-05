@@ -345,6 +345,33 @@ jobs:
           cd tools/mining
           python3 miners/mine_pilotinstitute.py $ARGS
 
+      - name: Backfill canonical URLs for curated DFR sources
+        run: |
+          # Curated records (dhs_fema_curated, faa_gov_curated) are synthesized
+          # and never had url populated at creation time. Inject canonical URLs
+          # so DFRIntelFeed.jsx can render the 'src ↗' link.
+          python3 - << 'PYEOF'
+          import json
+          CANONICAL = {
+              "dhs_fema_curated": "https://www.fema.gov/grants/tools/authorized-equipment-list",
+              "faa_gov_curated":  "https://www.faa.gov/uas/advanced_operations/beyond_visual_line_of_sight/beyond",
+          }
+          path = "data/dfr/dfr_master.json"
+          with open(path) as f:
+              d = json.load(f)
+          patched = 0
+          for r in d.get("records", []):
+              if not r.get("url") and r.get("source") in CANONICAL:
+                  r["url"] = CANONICAL[r["source"]]
+                  patched += 1
+          if patched:
+              with open(path, "w") as f:
+                  json.dump(d, f, indent=2)
+              print(f"Backfilled {patched} curated source URLs in dfr_master.json")
+          else:
+              print("No curated URL backfill needed")
+          PYEOF
+
       - name: Commit updated dfr_master.json and raw output
         run: |
           git config user.name  "github-actions[bot]"
