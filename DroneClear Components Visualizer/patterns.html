@@ -1482,10 +1482,10 @@ async function loadData() {
     const _d = d.summary_only ? null : (d.data||d);
     if(_d && _d.entities) { ENTITY_GRAPH = _d.entities; }
   }).catch(()=>{});
-  fetch("../static/miner_health.json").then(r=>r.ok?r.json():null).then(h=>{
+  fetch("/api/data?type=miner_health").then(r=>r.ok?r.json():null).then(e=>e&&e.data!==undefined?e.data:e).then(h=>{
     if(h) { window._minerHealth = h; renderPipelineHealth(h); }
   }).catch(()=>{});
-  fetch("../static/miner_registry.json").then(r=>r.ok?r.json():null).then(reg=>{
+  fetch("/api/data?type=miner_registry").then(r=>r.ok?r.json():null).then(e=>e&&e.data!==undefined?e.data:e).then(reg=>{
     if(reg) { window._minerRegistry = reg; renderSources(); }
   }).catch(()=>{});
   fetch('/api/data?type=solicitations&token='+encodeURIComponent(localStorage.getItem('forge_token')||localStorage.getItem('wingman_sub_token')||'')).then(r=>r.json()).then(d=>{
@@ -7429,7 +7429,7 @@ updateNavTokenStatus();
 </script>
 <script>
 (function(){
-  fetch('/static/miner_health.json').then(function(r){return r.ok?r.json():null})
+  fetch('/api/data?type=miner_health').then(function(r){return r.ok?r.json():null}).then(function(e){return e&&e.data!==undefined?e.data:e;})
   .then(function(h){
     var n = h && h.parts && h.parts.total ? h.parts.total.toLocaleString() : null;
     if(!n) return;
