@@ -2037,6 +2037,8 @@ document.querySelectorAll(".tab").forEach(t => {
   }
     if (activeTab === 'vars') { renderVarSummary(); renderVars(); }
     if (activeTab === 'history') {
+      // Reset to null if previous load failed or returned empty
+      if (!_historyData || _historyData.length === 0) _historyData = null;
       loadHistoryData().then(() => renderHistory());
     }
     if (activeTab === 'explorer') {
@@ -2953,7 +2955,7 @@ async function loadHistoryData() {
     const tok = encodeURIComponent(localStorage.getItem('forge_token')||localStorage.getItem('wingman_sub_token')||'');
     const [trendsRes, predRes] = await Promise.all([
       fetch('/api/data?type=pie_trends&token='+tok).then(r=>r.json()).then(d=>d.summary_only?null:(d.data||d)),
-      fetch('/api/data?type=predictions_archive&token='+tok).then(r=>r.json()).then(d=>d.summary_only?[]:(d.data||d)),
+      fetch('/api/data?type=predictions_archive&token='+tok).then(r=>r.json()).then(d=>d.summary_only?[]:(d.data||d)).catch(()=>[]),
     ]);
     _trendsData  = trendsRes;
     _predArchive = predRes || [];
@@ -2974,8 +2976,11 @@ async function loadHistoryData() {
     }
   } catch(e) {
     console.error('History load failed:', e);
-    _historyData = [];
+    _historyData = null;  // null not [] — allows retry on re-click
     _predArchive = [];
+    // Show error in history panel
+    const obsEl = document.getElementById('history-pipeline-obs');
+    if (obsEl) obsEl.innerHTML = '<div style="color:var(--red);font:400 11px var(--mono);padding:10px">History load error: '+e.message+'</div>';
   }
 }
 
@@ -3027,6 +3032,23 @@ function renderHistory() {
     document.getElementById('history-charts').innerHTML = '';
     document.getElementById('history-timeline').innerHTML = '';
     document.getElementById('history-pred-archive').innerHTML = '';
+    // Still render pipeline-obs so it doesn't stay stuck on "Loading pipeline data..."
+    const obsEl2 = document.getElementById('history-pipeline-obs');
+    if (obsEl2 && window._minerHealth) {
+      const mh = window._minerHealth;
+      const ts = mh.timestamp ? new Date(mh.timestamp) : null;
+      const diffHrs = ts ? Math.round((Date.now()-ts)/3600000) : null;
+      const freshStr = diffHrs==null?'':diffHrs<2?'live':diffHrs<24?diffHrs+'h ago':Math.round(diffHrs/24)+'d ago';
+      const freshColor = diffHrs==null?'var(--text-d)':diffHrs<24?'var(--green)':diffHrs<48?'var(--warning)':'var(--red)';
+      obsEl2.innerHTML = '<div style="background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:10px 12px;border-left:3px solid '+freshColor+'">'
+        +'<span style="font:700 10px var(--mono);color:'+freshColor+'">RUN #'+(mh.run||'—')+'</span>'
+        +' <span style="font:400 10px var(--mono);color:var(--text-d)">'+(ts?ts.toISOString().slice(0,16).replace('T',' ')+' UTC':'')+' · '+freshStr+'</span>'
+        +'<div style="margin-top:6px;font:400 10px var(--mono);color:var(--text-s)">'
+        +(mh.total||0).toLocaleString()+' articles · '+(mh.active||0)+' sources · '+(mh.flags&&mh.flags.total||0)+' flags · '+(mh.miners&&mh.miners.registered||0)+' miners'
+        +'</div></div>';
+    } else if (obsEl2 && !window._minerHealth) {
+      obsEl2.innerHTML = '<div style="font:400 10px var(--font);color:var(--text-d);padding:10px">Loading pipeline data...</div>';
+    }
     return;
   }
 
