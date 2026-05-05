@@ -1484,7 +1484,14 @@ async function loadData() {
   }).catch(()=>{});
   fetch('/api/data?type=miner_health&token='+encodeURIComponent(localStorage.getItem('forge_token')||localStorage.getItem('wingman_sub_token')||'')).then(r=>r.json()).then(d=>{
     const h = d.summary_only ? null : (d.data||d);
-    if(h) { window._minerHealth = h; renderPipelineHealth(h); }
+    if(h) {
+      window._minerHealth = h;
+      renderPipelineHealth(h);
+      // If history tab is active, re-render pipeline observability section now that miner_health is ready
+      if (activeTab === 'history' && typeof renderHistory === 'function' && _historyData) {
+        renderHistory();
+      }
+    }
   }).catch(()=>{});
   fetch('/api/data?type=miner_registry&token='+encodeURIComponent(localStorage.getItem('forge_token')||localStorage.getItem('wingman_sub_token')||'')).then(r=>r.json()).then(d=>{
     const reg = d.summary_only ? null : (d.data||d);
@@ -7110,6 +7117,18 @@ loadData();
       btn.classList.add('active');
       panel.classList.add('active');
       activeTab = saved;
+      // Trigger data load for tabs that need it on restore
+      if (saved === 'history') {
+        // Wait for loadData() to finish (miner_health etc.) then load history
+        var _histWait = setInterval(function() {
+          if (typeof loadHistoryData === 'function' && typeof renderHistory === 'function') {
+            clearInterval(_histWait);
+            loadHistoryData().then(function() { renderHistory(); });
+          }
+        }, 100);
+      }
+      if (saved === 'vars') { if (typeof renderVarSummary==='function') { renderVarSummary(); renderVars(); } }
+      if (saved === 'explorer') { if (typeof explorerLoad==='function') explorerLoad(); }
     }
   }
 })();
