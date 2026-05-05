@@ -134,7 +134,7 @@
                 return { ok: false };
             }
             const [platRes, modelRes] = await Promise.all([
-                tryFetch('/static/intel_platforms.json'),
+                tryFetch('/intel_platforms.json'),
                 tryFetch('/static/forge_database.json'),
             ]);
 

@@ -25,12 +25,18 @@
     '/intel_articles.json':        '/api/articles?limit=500',
     '/solicitations.json':         '/api/procurement/solicitations',
     '/federal_awards.json':        '/api/procurement/federal_awards',
+    '../static/forge_intel.json':  '/api/intel',
+    '/static/forge_intel.json':    '/api/intel',
+    '../static/intel_articles.json': '/api/articles?limit=500',
+    '/static/intel_articles.json': '/api/articles?limit=500',
     '../static/pie_brief.json':    '/api/brief',
     '../static/pie_flags.json':    '/api/flags',
     '/static/pie_brief.json':      '/api/brief',
     '/static/pie_flags.json':      '/api/flags',
     '/static/miner_health.json':   '/api/health',
     '../static/miner_health.json': '/api/health',
+    '/intel_platforms.json':       '/api/data?type=intel_platforms',
+    '/static/intel_platforms.json':'/api/data?type=intel_platforms',
   };
 
   // Map forge-data ?type= → Worker endpoints (wrapped in { data, tier, type })
