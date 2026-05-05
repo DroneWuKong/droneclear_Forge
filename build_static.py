@@ -1510,7 +1510,13 @@ def build():
     ROOT_INTEL_FILES = ['flags.xml', 'brief.xml', 'pie_flags.json', 'pie_predictions.json', 'predictions_best.json',
                         'pie_brief.json', 'pie_trends.json', 'solicitations.json',
                         'intel_articles.json', 'intel_companies.json', 'intel_platforms.json',
-                        'intel_programs.json', 'forge_intel.json', 'entity_graph.json']
+                        'intel_programs.json', 'forge_intel.json', 'entity_graph.json',
+                        # Patterns Hub lens artefacts — fetched as /adversary_bom.json etc.
+                        'adversary_bom.json', 'component_mirroring_index.json',
+                        'sanctions_evasion_graph.json', 'actor_fingerprints.json',
+                        'ttp_counter_gap.json', 'threat_scores.json',
+                        # Health + health history
+                        'miner_health.json', 'miner_registry.json']
     for fname in ROOT_INTEL_FILES:
         src = os.path.join(SRC_DIR, fname)
         dst = os.path.join(BUILD_DIR, fname)
