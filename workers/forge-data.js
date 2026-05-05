@@ -26,6 +26,9 @@ const DATASETS = new Set([
   'pie_weekly','predictions_best','predictions_archive','llm_predictions',
   'gap_analysis_latest','entity_graph','forge_intel','commercial_master',
   'solicitations','federal_awards','sam_watchlist','dfr_master','defense_master',
+  // Patterns Hub lens artefacts
+  'flags','predictions','adversary_bom','component_mirroring_index',
+  'sanctions_evasion_graph','actor_fingerprints','ttp_counter_gap','threat_scores',
 ]);
 
 // KV namespace → dataset list mapping
@@ -37,6 +40,9 @@ const PIE_OUTPUTS_KEYS = new Set([
   'gap_analysis_latest','entity_graph','forge_intel','intel_articles',
   'intel_companies','intel_platforms','intel_programs','miner_health','miner_registry',
   'solicitations','federal_awards','sam_watchlist',
+  // Patterns Hub lens artefacts (all in PIE_OUTPUTS)
+  'flags','predictions','adversary_bom','component_mirroring_index',
+  'sanctions_evasion_graph','actor_fingerprints','ttp_counter_gap','threat_scores',
 ]);
 
 export default {
