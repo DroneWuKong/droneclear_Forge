@@ -1483,7 +1483,12 @@ async function loadData() {
     if(_d && _d.entities) { ENTITY_GRAPH = _d.entities; }
   }).catch(()=>{});
   fetch("/api/data?type=miner_health").then(r=>r.ok?r.json():null).then(e=>e&&e.data!==undefined?e.data:e).then(h=>{
-    if(h) { window._minerHealth = h; renderPipelineHealth(h); }
+    if(h) { window._minerHealth = h; renderPipelineHealth(h);
+      // Re-render history if that tab is active (pipeline obs needs _minerHealth)
+      if(document.getElementById('panel-history')&&document.getElementById('panel-history').style.display!=='none'){
+        renderHistory();
+      }
+    }
   }).catch(()=>{});
   fetch("/api/data?type=miner_registry").then(r=>r.ok?r.json():null).then(e=>e&&e.data!==undefined?e.data:e).then(reg=>{
     if(reg) { window._minerRegistry = reg; renderSources(); }
@@ -3008,8 +3013,7 @@ function renderHistory() {
     cards.innerHTML = '<div style="grid-column:1/-1;font:400 11px var(--font);color:var(--text-d);padding:20px;text-align:center">No history data yet — snapshots accumulate daily after pipeline runs.</div>';
     document.getElementById('history-charts').innerHTML = '';
     document.getElementById('history-timeline').innerHTML = '';
-    document.getElementById('history-pred-archive').innerHTML = '';
-    return;
+    // Don't return early — still render pipeline obs and prediction archive
   }
 
   const first = filtered[0];
