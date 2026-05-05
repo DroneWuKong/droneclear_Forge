@@ -1482,15 +1482,10 @@ async function loadData() {
     const _d = d.summary_only ? null : (d.data||d);
     if(_d && _d.entities) { ENTITY_GRAPH = _d.entities; }
   }).catch(()=>{});
-  fetch("/api/data?type=miner_health").then(r=>r.ok?r.json():null).then(e=>e&&e.data!==undefined?e.data:e).then(h=>{
-    if(h) { window._minerHealth = h; renderPipelineHealth(h);
-      // Re-render history if that tab is active (pipeline obs needs _minerHealth)
-      if(document.getElementById('panel-history')&&document.getElementById('panel-history').classList.contains('active')){
-        renderHistory();
-      }
-    }
+  fetch("../static/miner_health.json").then(r=>r.ok?r.json():null).then(h=>{
+    if(h) { window._minerHealth = h; renderPipelineHealth(h); }
   }).catch(()=>{});
-  fetch("/api/data?type=miner_registry").then(r=>r.ok?r.json():null).then(e=>e&&e.data!==undefined?e.data:e).then(reg=>{
+  fetch("../static/miner_registry.json").then(r=>r.ok?r.json():null).then(reg=>{
     if(reg) { window._minerRegistry = reg; renderSources(); }
   }).catch(()=>{});
   fetch('/api/data?type=solicitations&token='+encodeURIComponent(localStorage.getItem('forge_token')||localStorage.getItem('wingman_sub_token')||'')).then(r=>r.json()).then(d=>{
@@ -1511,7 +1506,7 @@ async function loadData() {
 
   try {
     const [fRes, pRes] = await Promise.all([
-      fetch('/api/data?type=flags&token='+encodeURIComponent(localStorage.getItem('forge_token')||localStorage.getItem('wingman_sub_token')||'')).then(r=>r.json()).then(d=>{
+      fetch('/api/data?type=pie_flags&token='+encodeURIComponent(localStorage.getItem('forge_token')||localStorage.getItem('wingman_sub_token')||'')).then(r=>r.json()).then(d=>{
         if(d.summary_only){ return null; }
         const flags = d.data||d;
         // If no usable data, fall through to static fallback
@@ -1523,12 +1518,12 @@ async function loadData() {
         // served as static build artifact) over /static/pie_flags.json which is
         // a truncated 20-item free-tier preview slice. The old order preferred
         // the 20-item slice because .length was truthy, and never reached root.
-        return fetch('/api/data?type=flags').then(r=>r.ok?r.json():null)
+        return fetch('/api/data?type=pie_flags').then(r=>r.ok?r.json():null)
           .then(d=>Array.isArray(d)&&d.length?d
-                  :fetch('/api/data?type=flags').then(r=>r.ok?r.json():[]).catch(()=>[]))
+                  :fetch('/api/data?type=pie_flags').then(r=>r.ok?r.json():[]).catch(()=>[]))
           .catch(()=>[]);
       }),
-      fetch('/api/data?type=predictions&token='+encodeURIComponent(localStorage.getItem('forge_token')||localStorage.getItem('wingman_sub_token')||'')).then(r=>r.json()).then(d=>{
+      fetch('/api/data?type=pie_predictions&token='+encodeURIComponent(localStorage.getItem('forge_token')||localStorage.getItem('wingman_sub_token')||'')).then(r=>r.json()).then(d=>{
         if(d.summary_only || d.error){ return []; }
         return d.data||d;
       }),
@@ -1578,8 +1573,6 @@ async function loadData() {
   //   Predictions tab → LLM synthesis from intel articles
   //   Brief tab   → brief_generator.py picks top 2-3 predictions inline
   document.getElementById("flag-count").textContent = FLAGS.length;
-  const _flagOpt = document.getElementById("explorer-flags-opt");
-  if (_flagOpt) _flagOpt.textContent = `🚩 Flags (${FLAGS.length})`;
   var _savedTab = typeof activeTab !== "undefined" ? activeTab : "brief";
   renderAll();
   // Data transparency footer
@@ -1608,7 +1601,11 @@ async function loadData() {
 
 
 // ── Brief panel ──
-function pctColorB(p){return p>=0.8?"var(--red)":p>=0.65?"var(--warning,#f59e0b)":"var(--text-s)";}
+function pctColorB(p) {
+  if (p >= 0.8) return 'var(--red)';
+  if (p >= 0.65) return 'var(--warning,#f59e0b)';
+  return 'var(--text-s)';
+}
 function renderSrcs(sources) {
   if (!sources || !sources.length) return '';
   return '<div style="display:flex;flex-wrap:wrap;gap:3px;margin-top:6px">' +
@@ -1617,6 +1614,127 @@ function renderSrcs(sources) {
       : `<span class="brief-source-chip">${s.name}</span>`
     ).join('') + '</div>';
 }
+function renderBriefPanel(b) {
+  const el = document.getElementById('brief-inner');
+  if (!el) return;
+  const sig = b.signal_summary || {};
+  const lead = b.lead_story || {};
+  let html = '';
+  html += `<div class="signal-bar">
+    <div class="signal-stat critical"><span class="num">${sig.critical||0}</span><span class="lbl">Critical</span></div>
+    <div class="signal-stat warning"><span class="num">${sig.warning||0}</span><span class="lbl">Warning</span></div>
+    <div class="signal-stat new"><span class="num">${sig.new_today||0}</span><span class="lbl">New</span></div>
+    <div class="signal-stat"><span class="num">${sig.total_flags||0}</span><span class="lbl">Total</span></div>
+  </div>`;
+  if (sig.top_concern) html += `<div class="concern-bar"><div class="dot"></div>${sig.top_concern}</div>`;
+  if (b.headline) html += `<div class="brief-headline">${b.headline}</div>`;
+  if (lead.title) {
+    html += `<div class="brief-section-label">🔴 Lead Story</div>
+    <div class="brief-card lead">
+      <div class="card-header"><span class="sev sev-critical"></span><span class="card-title">${lead.title}</span></div>
+      <div class="card-body">${lead.body||''}</div>
+      ${lead.action ? `<div class="action-box"><div class="action-label">→ Action</div><div class="action-text">${lead.action}</div></div>` : ''}
+      ${renderSrcs(lead.sources)}
+    </div>`;
+  }
+  for (const e of (b.gray_zone||[])) {
+    html += `<div class="brief-section-label">⚠ Gray Zone</div>
+    <div class="brief-card entity">
+      <div class="card-header"><span class="sev sev-warning"></span><span class="card-title">${e.entity||''}</span></div>
+      ${e.status ? `<div class="entity-status">${e.status}</div>` : ''}
+      <div class="card-body">${e.development||''}</div>
+      ${e.buyer_exposure ? `<div class="entity-exposure"><strong>Buyer exposure:</strong> ${e.buyer_exposure}</div>` : ''}
+      ${e.action ? `<div class="action-box"><div class="action-label">→ Action</div><div class="action-text">${e.action}</div></div>` : ''}
+      ${renderSrcs(e.sources)}
+    </div>`;
+  }
+  if ((b.supply_chain||[]).length) {
+    html += `<div class="brief-section-label">🔩 Supply Chain</div>`;
+    for (const s of b.supply_chain) {
+      html += `<div class="brief-card supply">
+        <div class="card-header"><span class="sev sev-info"></span><span class="card-title">${s.component||''}</span>${s.window ? `<span class="supply-window">⏱ ${s.window}</span>` : ''}</div>
+        <div class="supply-signal">${s.signal||''}</div>
+        ${s.action ? `<div class="action-box"><div class="action-label">→ Action</div><div class="action-text">${s.action}</div></div>` : ''}
+        ${renderSrcs(s.sources)}
+      </div>`;
+    }
+  }
+  if ((b.watch_list||[]).length) {
+    html += `<div class="brief-section-label">👁 Watch List</div><div class="watch-list">`;
+    for (const w of b.watch_list) {
+      html += `<div class="watch-item"><div class="watch-dot"></div><div>
+        <div class="watch-label">${w.item||''}</div>
+        ${w.why ? `<div class="watch-why">${w.why}</div>` : ''}
+        ${w.trigger ? `<div class="watch-trigger"><strong>Trigger:</strong> ${w.trigger}</div>` : ''}
+      </div></div>`;
+    }
+    html += '</div>';
+  }
+  if ((b.predictions||[]).length) {
+    html += `<div class="brief-section-label">🔮 Predictions</div>`;
+    for (const p of b.predictions) {
+      const pct = Math.round((p.probability||0)*100);
+      html += `<div class="brief-card pred">
+        <div class="pred-prob"><span class="pct" style="color:${pctColorB(p.probability)}">${pct}%</span><span class="pct-lbl">prob</span></div>
+        <div class="pred-body">
+          <div class="pred-event">${p.event||''}</div>
+          <div class="pred-timeframe"><span class="badge badge-purple">${p.timeframe||''}</span></div>
+          ${p.hedge ? `<div class="hedge-box"><div class="hedge-label">◎ Action</div><div class="hedge-text">${p.hedge}</div></div>` : ''}
+        </div>
+      </div>`;
+    }
+  }
+  // Top 2 live signals from PREDICTIONS[] — fresher than brief's own predictions
+  const liveSigs = (window.PREDICTIONS||[])
+    .filter(p => !b.predictions || !b.predictions.some(bp => bp.event === p.event))
+    .sort((a,b) => (b.probability||0) - (a.probability||0))
+    .slice(0, 2);
+  if (liveSigs.length) {
+    html += `<div class="brief-section-label" style="opacity:.7">📡 Live Signals</div>`;
+    for (const p of liveSigs) {
+      const pct = Math.round((p.probability||0)*100);
+      const etColor = p.evidence_type === 'validation' ? 'var(--green)' : 'var(--cyan)';
+      html += `<div class="brief-card pred" style="opacity:.85">
+        <div class="pred-prob"><span class="pct" style="color:${pctColorB(p.probability)}">${pct}%</span><span class="pct-lbl">prob</span></div>
+        <div class="pred-body">
+          <div class="pred-event">${p.event||''}</div>
+          <div style="display:flex;gap:4px;margin-top:3px;flex-wrap:wrap">
+            ${p.timeframe ? `<span class="badge badge-purple" style="font-size:10px">${p.timeframe}</span>` : ''}
+            ${p.evidence_type ? `<span class="badge" style="background:${etColor}15;color:${etColor};font-size:10px">${p.evidence_type === 'validation' ? '✓ validates flag' : '◎ new signal'}</span>` : ''}
+          </div>
+          ${p.evidence_basis ? `<div style="font:400 10px var(--font);color:var(--text-d);margin-top:4px;line-height:1.4">${p.evidence_basis}</div>` : ''}
+        </div>
+      </div>`;
+    }
+    html += `<div style="text-align:right;margin-top:4px"><a href="#" onclick="document.querySelector('.tab[data-tab=predictions]').click();return false;" style="font:400 10px var(--mono);color:var(--cyan);text-decoration:none">See all predictions →</a></div>`;
+  }
+  const gen = b.generated_at ? new Date(b.generated_at).toLocaleString() : '';
+  html += `<div class="brief-footer">${b.pipeline_version||'PIE'} · ${gen}</div>`;
+  el.innerHTML = html;
+  wireAllCards(el, b);
+}
+
+async function loadBriefPanel() {
+  try {
+    let b = null;
+    try {
+      const r = await fetch('/api/data?type=pie_brief&token='+encodeURIComponent(localStorage.getItem('forge_token')||localStorage.getItem('wingman_sub_token')||''));
+      const d = await r.json();
+      if (!d.summary_only) b = d.data||d;
+    } catch(e) {}
+    if (!b) throw new Error('No brief data found');
+    renderBriefPanel(b);
+  } catch(e) {
+    const el = document.getElementById('brief-inner');
+    if (el) el.innerHTML = `<div style="color:var(--text-d);font:400 11px var(--font);padding:20px 0;text-align:center">
+      <strong>No brief available yet</strong><br>
+      <span style="font-size:10px">PIE pipeline generates a fresh brief daily at 14:30 UTC</span>
+    </div>`;
+  }
+}
+
+// ── Brief panel ──
+function pctColorB(p){return p>=0.8?"var(--red)":p>=0.65?"var(--warning,#f59e0b)":"var(--text-s)";}
 function deltaBadge(badge, days) {
   if (!badge) return '';
   const color = badge.includes('NEW') ? 'var(--green)' : badge.includes('ESCAL') ? 'var(--red)' : 'var(--text-d)';
@@ -1625,7 +1743,6 @@ function deltaBadge(badge, days) {
 
 function renderBriefPanel(b){
   const el=document.getElementById("brief-inner");if(!el)return;
-  try {
   // ── Signal counts ──
   // Canonical: signal_summary comes from the brief (full or free-tier). If both
   // the brief and FLAGS agree, we prefer signal_summary (authoritative counts
@@ -1847,11 +1964,7 @@ function renderBriefPanel(b){
   const gen=b.generated_at?new Date(b.generated_at).toLocaleString():"";
   html+=`<div class="brief-footer">${b.pipeline_version||"PIE"} · Generated ${gen}</div>`;
   el.innerHTML=html;
-  try { wireAllCards(el, b); } catch(e) { console.error('[brief] wireAllCards crash:', e); }
-  } catch(e) {
-    console.error('[brief] renderBriefPanel crash:', e);
-    el.innerHTML = '<div style="color:#f87171;font:400 11px monospace;padding:16px;background:#1a0a0a;border-radius:8px;white-space:pre-wrap">⚠ Brief render error — check console:\n' + (e.stack||e.message||String(e)) + '</div>';
-  }
+  wireAllCards(el, b);
 }
 async function loadBriefPanel(){
   try{
@@ -2895,7 +3008,8 @@ function renderHistory() {
     cards.innerHTML = '<div style="grid-column:1/-1;font:400 11px var(--font);color:var(--text-d);padding:20px;text-align:center">No history data yet — snapshots accumulate daily after pipeline runs.</div>';
     document.getElementById('history-charts').innerHTML = '';
     document.getElementById('history-timeline').innerHTML = '';
-    // Don't return early — still render pipeline obs and prediction archive
+    document.getElementById('history-pred-archive').innerHTML = '';
+    return;
   }
 
   const first = filtered[0];
@@ -7315,7 +7429,7 @@ updateNavTokenStatus();
 </script>
 <script>
 (function(){
-  fetch('/api/data?type=miner_health').then(function(r){return r.ok?r.json():null}).then(function(e){return e&&e.data!==undefined?e.data:e;})
+  fetch('/static/miner_health.json').then(function(r){return r.ok?r.json():null})
   .then(function(h){
     var n = h && h.parts && h.parts.total ? h.parts.total.toLocaleString() : null;
     if(!n) return;
