@@ -88,6 +88,23 @@ export default {
       console.error(`[forge-data] KV error for ${type}:`, e.message);
     }
 
+    // ── Static asset fallback ──────────────────────────────────────────────
+    // KV miss: try fetching from the static file bundled with the Pages deployment.
+    // Covers miner_health, miner_registry, and any dataset that didn't make it
+    // into KV on the last pipeline run.
+    try {
+      const staticUrl = new URL(req.url);
+      staticUrl.pathname = `/static/${type}.json`;
+      const staticResp = await env.ASSETS.fetch(new Request(staticUrl.toString()));
+      if (staticResp.ok) {
+        const raw = await staticResp.text();
+        const data = JSON.parse(raw);
+        return resp({ data, tier: 'free', type, source: 'static' });
+      }
+    } catch(e) {
+      // ASSETS binding may not be present in local dev — ignore
+    }
+
     return resp({ error: `Dataset ${type} not available` }, 404);
   }
 };
