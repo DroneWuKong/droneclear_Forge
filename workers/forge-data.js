@@ -93,13 +93,19 @@ export default {
     // Covers miner_health, miner_registry, and any dataset that didn't make it
     // into KV on the last pipeline run.
     try {
-      const staticUrl = new URL(req.url);
-      staticUrl.pathname = `/static/${type}.json`;
-      const staticResp = await env.ASSETS.fetch(new Request(staticUrl.toString()));
-      if (staticResp.ok) {
-        const raw = await staticResp.text();
-        const data = JSON.parse(raw);
-        return resp({ data, tier: 'free', type, source: 'static' });
+      // Try root path first (ROOT_INTEL_FILES are served at /{type}.json)
+      // then /static/ as fallback for non-gated assets
+      for (const tryPath of [`/${type}.json`, `/static/${type}.json`]) {
+        try {
+          const staticUrl = new URL(req.url);
+          staticUrl.pathname = tryPath;
+          const staticResp = await env.ASSETS.fetch(new Request(staticUrl.toString()));
+          if (staticResp.ok) {
+            const raw = await staticResp.text();
+            const data = JSON.parse(raw);
+            return resp({ data, tier: 'free', type, source: 'static' });
+          }
+        } catch(e) { /* try next path */ }
       }
     } catch(e) {
       // ASSETS binding may not be present in local dev — ignore
