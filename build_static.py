@@ -577,7 +577,7 @@ def fix_paths(html, depth=0):
         html = re.sub(r"(href|src)='static/", rf"\1='{prefix}static/", html)
         # Fix fetch calls to static JSON
         html = html.replace("fetch('forge_database.json')", f"fetch('{prefix}static/forge_database.json')")
-        html = html.replace("fetch('forge_intel.json')", f"fetch('{prefix}static/forge_intel.json')")
+        html = html.replace("fetch('forge_intel.json')", "fetch('/forge_intel.json')")
         html = html.replace("fetch('forge_troubleshooting.json')", f"fetch('{prefix}static/forge_troubleshooting.json')")
         html = html.replace("fetch('intel_articles.json')", "fetch('/api/data?type=intel_articles&token='+encodeURIComponent(localStorage.getItem('forge_token')||''))")
         html = html.replace("fetch('intel_companies.json')", f"fetch('{prefix}static/intel_companies.json')")
