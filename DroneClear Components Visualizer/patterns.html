@@ -814,7 +814,7 @@ a.brief-source-chip:hover{color:var(--text-s);border-color:var(--border-hi)}
     <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-bottom:12px">
       <span style="font:500 10px var(--mono);color:var(--text-d)">Dataset:</span>
       <select id="explorer-dataset" onchange="explorerLoad()" style="background:var(--surface);border:1px solid var(--border);border-radius:6px;padding:6px 10px;font:11px var(--mono);color:var(--text);outline:none;-webkit-appearance:menulist;appearance:menulist;min-height:32px">
-        <option value="flags">🚩 Flags (210)</option>
+        <option value="flags" id="explorer-flags-opt">🚩 Flags</option>
         <option value="articles">📰 Articles</option>
         <option value="companies">🏢 Companies</option>
         <option value="solicitations">💰 Solicitations</option>
@@ -1485,7 +1485,7 @@ async function loadData() {
   fetch("/api/data?type=miner_health").then(r=>r.ok?r.json():null).then(e=>e&&e.data!==undefined?e.data:e).then(h=>{
     if(h) { window._minerHealth = h; renderPipelineHealth(h);
       // Re-render history if that tab is active (pipeline obs needs _minerHealth)
-      if(document.getElementById('panel-history')&&document.getElementById('panel-history').style.display!=='none'){
+      if(document.getElementById('panel-history')&&document.getElementById('panel-history').classList.contains('active')){
         renderHistory();
       }
     }
@@ -1578,6 +1578,8 @@ async function loadData() {
   //   Predictions tab → LLM synthesis from intel articles
   //   Brief tab   → brief_generator.py picks top 2-3 predictions inline
   document.getElementById("flag-count").textContent = FLAGS.length;
+  const _flagOpt = document.getElementById("explorer-flags-opt");
+  if (_flagOpt) _flagOpt.textContent = `🚩 Flags (${FLAGS.length})`;
   var _savedTab = typeof activeTab !== "undefined" ? activeTab : "brief";
   renderAll();
   // Data transparency footer
