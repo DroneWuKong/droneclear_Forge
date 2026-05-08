@@ -122,12 +122,12 @@
     const _originalFetch = window.fetch;
 
     window.fetch = async function (url, options) {
-        // Only intercept our API paths
-        if (typeof url === 'string' && url.startsWith('/api/')) {
+        // Only intercept our API paths — but NOT /api/data (handled by CF Pages Functions)
+        if (typeof url === 'string' && url.startsWith('/api/') && !url.startsWith('/api/data')) {
             await _ready;
             return handleApiCall(url, options || {});
         }
-        // Pass through everything else (CDN scripts, fonts, etc.)
+        // Pass through /api/data and everything else
         return _originalFetch.apply(this, arguments);
     };
 
