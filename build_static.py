@@ -1564,7 +1564,18 @@ def build():
         html = strip_baked_analytics(html)
         html = fix_paths(html, depth)
         html = inject_seo(html, src_name, dst_path)
-        html = inject_adapter(html, depth)
+        # forge-static-adapter intercepts /api/* and returns [] for /api/data
+        # Skip injection for PIE/intel pages that exclusively use /api/data
+        _NO_ADAPTER = {
+            'patterns.html','brief.html','patterns-home.html',
+            'intel.html','intel-home.html','intel-defense.html',
+            'intel-dfr.html','intel-financial.html','intel-commercial.html',
+            'clock.html','entity-graph.html','analytics.html',
+            'adversary-bom.html','mirroring.html','actors.html',
+            'ttps.html','evasion.html',
+        }
+        if src_name not in _NO_ADAPTER:
+            html = inject_adapter(html, depth)
         html = inject_analytics(html, src_name)
         html = fix_nav_links(html, depth)
         html = rewrite_legacy_domains(html)
