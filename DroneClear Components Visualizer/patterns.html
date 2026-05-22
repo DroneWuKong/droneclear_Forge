@@ -3026,9 +3026,16 @@ function renderHistory() {
         return `${x.toFixed(1)},${y.toFixed(1)}`;
       }).filter(Boolean).join(' ');
       const isArchived = t.signal === 'archived' || t.entity_status === 'discontinued';
-      const dir   = isArchived ? '◼' : t.direction === 'rising' ? '▲' : t.direction === 'falling' ? '▼' : '→';
-      const dc    = isArchived ? 'var(--text-d)' : t.direction === 'rising' ? 'var(--green)' : t.direction === 'falling' ? 'var(--red)' : 'var(--text-d)';
-      const signalLabel = isArchived ? 'archived · discontinued' : (t.signal||'');
+      // Recompute direction/signal from the visible window so the label tracks
+      // the rendered line. The trend object's own direction/signal are fit over
+      // the full history in pie_snapshot.py and can disagree with a 7d view
+      // (e.g. flat-for-a-week metric still tagged "▲ moderate" from a 50d slope).
+      const windowed = isArchived ? null : computeWindowTrend(t.metric, vals);
+      const wDir = windowed ? windowed.direction : t.direction;
+      const wSig = windowed ? windowed.signal    : t.signal;
+      const dir   = isArchived ? '◼' : wDir === 'rising' ? '▲' : wDir === 'falling' ? '▼' : '→';
+      const dc    = isArchived ? 'var(--text-d)' : wDir === 'rising' ? 'var(--green)' : wDir === 'falling' ? 'var(--red)' : 'var(--text-d)';
+      const signalLabel = isArchived ? 'archived · discontinued' : (wSig||'');
       const proj  = (!isArchived && trends.projections) ? trends.projections.find(p => p.label === t.label) : null;
       return `<div style="background:var(--surface);border-radius:8px;padding:10px 12px${isArchived ? ';opacity:0.6' : ''}">
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
@@ -3186,6 +3193,48 @@ function getFilteredTrendValues(trend, filteredHistory) {
     const i = allDates.indexOf(h.date);
     return i >= 0 ? trend.values[i] : null;
   });
+}
+
+// Per-metric "rising" slope thresholds — mirrors pipeline/pie_snapshot.py.
+// Keep in sync when adding new trend metrics there.
+const _DIR_THRESHOLDS = {
+  total_flags:      0.5,
+  critical_flags:   0.2,
+  ndaa_ratio:       0.02,
+  parts_total:      1.0,
+  intel_velocity:   0.05,
+};
+function _dirThresholdFor(metric) {
+  if (metric in _DIR_THRESHOLDS) return _DIR_THRESHOLDS[metric];
+  if (metric && metric.startsWith('price_'))    return 0.05;
+  if (metric && metric.startsWith('grayzone_')) return 0.001;
+  return 0.01;
+}
+
+function computeWindowTrend(metric, values) {
+  // Fit y = mx + b across the windowed values, return {direction, signal}.
+  // Mirrors linear_trend + direction + signal_strength in pie_snapshot.py.
+  const ys = (values || []).filter(v => v != null && !isNaN(v));
+  const n  = ys.length;
+  if (n < 2) return { direction: 'stable', signal: 'insufficient_data' };
+  let sx = 0, sy = 0;
+  for (let i = 0; i < n; i++) { sx += i; sy += ys[i]; }
+  const xm = sx / n, ym = sy / n;
+  let num = 0, den = 0;
+  for (let i = 0; i < n; i++) { num += (i - xm) * (ys[i] - ym); den += (i - xm) ** 2; }
+  const m = den ? num / den : 0;
+  const b = ym - m * xm;
+  let ssRes = 0, ssTot = 0;
+  for (let i = 0; i < n; i++) { ssRes += (ys[i] - (m * i + b)) ** 2; ssTot += (ys[i] - ym) ** 2; }
+  const r2 = ssTot ? 1 - ssRes / ssTot : 1.0;
+  const thr = _dirThresholdFor(metric);
+  const direction = m > thr ? 'rising' : m < -thr ? 'falling' : 'stable';
+  const signal = n < 5 ? 'insufficient_data'
+              : r2 > 0.85 ? 'strong'
+              : r2 > 0.60 ? 'moderate'
+              : r2 > 0.30 ? 'weak'
+              : 'noisy';
+  return { direction, signal };
 }
 
 // ── Report generator ───────────────────────────────────────────────
