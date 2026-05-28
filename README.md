@@ -2,7 +2,7 @@
 
 > The public-facing drone component browser, build planner, and intelligence hub.
 > **Live at [uas-forge.com](https://uas-forge.com)**
-> PIE intelligence at [uas-intel.com](https://uas-intel.com)
+> PIE intelligence at [uas-patterns.com](https://uas-patterns.com)
 
 ## What This Is
 
