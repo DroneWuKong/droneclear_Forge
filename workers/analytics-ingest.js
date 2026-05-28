@@ -10,7 +10,7 @@ const ALLOWED_ORIGINS = [
   'https://uas-forge.com', 'https://www.uas-forge.com',
   'https://uas-patterns.com', 'https://www.uas-patterns.com',
   'https://uas-patterns.pro', 'https://www.uas-patterns.pro',
-  'https://uas-intel.com', 'https://www.uas-intel.com',
+  'https://uas-patterns.com', 'https://www.uas-patterns.com',
   'https://uas-handbook.com', 'https://www.uas-handbook.com',
   'http://localhost:8888', 'http://localhost:3000',
 ];

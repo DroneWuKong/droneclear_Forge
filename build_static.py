@@ -344,19 +344,19 @@ _UNIFIED_NAV = r"""<!-- ── Unified UAS- Nav (5-domain accordion drawer) ─�
     </div>
   </details>
 
-  <details class="dc-dom-group" data-host="uas-intel.com" data-hub-href="https://uas-intel.com/intel/">
+  <details class="dc-dom-group" data-host="uas-patterns.com" data-hub-href="https://uas-patterns.com/intel/">
     <summary>
       <span class="dc-dom-ico">📡</span>
       <div class="dc-dom-info">
         <div class="dc-dom-name">Intel</div>
-        <div class="dc-dom-url">uas-intel.com</div>
+        <div class="dc-dom-url">uas-patterns.com</div>
       </div>
       <span class="dc-dom-chev">▶</span>
     </summary>
     <div class="dc-dom-sublinks">
-      <a class="dc-dom-sublink" href="https://uas-intel.com/intel/feed/" data-page="intel-feed">Intel Feed</a>
-      <a class="dc-dom-sublink" href="https://uas-intel.com/industry/" data-page="industry">Industry Tracker</a>
-      <a class="dc-dom-sublink" href="https://uas-intel.com/tracker/" data-page="tracker">Contract Tracker</a>
+      <a class="dc-dom-sublink" href="https://uas-patterns.com/intel/feed/" data-page="intel-feed">Intel Feed</a>
+      <a class="dc-dom-sublink" href="https://uas-patterns.com/industry/" data-page="industry">Industry Tracker</a>
+      <a class="dc-dom-sublink" href="https://uas-patterns.com/tracker/" data-page="tracker">Contract Tracker</a>
     </div>
   </details>
 
@@ -465,7 +465,7 @@ _UNIFIED_NAV = r"""<!-- ── Unified UAS- Nav (5-domain accordion drawer) ─�
     e.preventDefault();
     if(isForge)         location.href = 'https://uas-forge.com/';
     else if(isPatCom)   location.href = 'https://uas-patterns.com/patterns-home/';
-    else if(isIntel)    location.href = 'https://uas-intel.com/';
+    else if(isIntel)    location.href = 'https://uas-patterns.com/';
     else if(isHandbook) location.href = 'https://uas-handbook.com/';
     else                location.href = 'https://uas-forge.com/hub/';
   };
@@ -473,7 +473,7 @@ _UNIFIED_NAV = r"""<!-- ── Unified UAS- Nav (5-domain accordion drawer) ─�
   // Auto-expand the drawer group matching current host
   var currentHost = isForge    ? 'uas-forge.com'
                   : isPatCom   ? 'uas-patterns.com'
-                  : isIntel    ? 'uas-intel.com'
+                  : isIntel    ? 'uas-patterns.com'
                   : isHandbook ? 'uas-handbook.com'
                   : 'uas-forge.com';
   document.querySelectorAll('.dc-dom-group').forEach(function(g){
@@ -1047,10 +1047,10 @@ def inject_seo(html, src_name, dst_path):
         description = description.replace(_PART_COUNT_PLACEHOLDER, count_str)
 
     clean_path = dst_path.replace('index.html', '')
-    # Patterns pages live on uas-patterns.com (Pro merged — no separate .pro site).
-    # Intel pages live on uas-intel.com (Phase 2B split — dedicated Netlify site).
-    # Main Forge tooling lives on uas-forge.com. Legacy nvmill* domains
-    # 301 → new ones during the transition window (see netlify.toml).
+    # Patterns + Intel pages both live on uas-patterns.com (intel merged into
+    # patterns — no separate uas-intel.com site, no separate .pro site).
+    # Main Forge tooling lives on uas-forge.com. Legacy nvmill*/uas-intel.com
+    # domains 301 → new ones across (see _redirects).
     CANONICAL_OVERRIDES = {
         # UAS- hub — cross-domain landing page, canonical on uas-forge.com
         'hub/':            'https://uas-forge.com/hub/',
@@ -1062,16 +1062,16 @@ def inject_seo(html, src_name, dst_path):
         'ddg/':            'https://uas-patterns.com/ddg/',
         'brief/':          'https://uas-patterns.com/brief/',
         'analytics/':      'https://uas-patterns.com/analytics/',
-        # Intel — uas-intel.com (Phase 2B split, dedicated Netlify site)
-        'intel/':              'https://uas-intel.com/intel/',
-        'intel/feed/':         'https://uas-intel.com/intel/feed/',
-        'intel-defense/':      'https://uas-intel.com/intel-defense/',
-        'intel-commercial/':   'https://uas-intel.com/intel-commercial/',
-        'intel-dfr/':          'https://uas-intel.com/intel-dfr/',
-        'intel-financial/':    'https://uas-intel.com/intel-financial/',
-        'industry/':           'https://uas-intel.com/industry/',
-        'tracker/':            'https://uas-intel.com/tracker/',
-        'timeline/':           'https://uas-intel.com/timeline/',
+        # Intel — merged into uas-patterns.com
+        'intel/':              'https://uas-patterns.com/intel/',
+        'intel/feed/':         'https://uas-patterns.com/intel/feed/',
+        'intel-defense/':      'https://uas-patterns.com/intel-defense/',
+        'intel-commercial/':   'https://uas-patterns.com/intel-commercial/',
+        'intel-dfr/':          'https://uas-patterns.com/intel-dfr/',
+        'intel-financial/':    'https://uas-patterns.com/intel-financial/',
+        'industry/':           'https://uas-patterns.com/industry/',
+        'tracker/':            'https://uas-patterns.com/tracker/',
+        'timeline/':           'https://uas-patterns.com/timeline/',
         # Main Forge — uas-forge.com
         'browse/':             'https://uas-forge.com/browse/',
         'builder/':            'https://uas-forge.com/builder/',
@@ -1602,8 +1602,8 @@ def build():
         shutil.copy2(sw_src, os.path.join(BUILD_DIR, 'sw.js'))
         print(f"  Copied sw.js to build root")
     
-    # netlify.toml lives in the repo root — do not overwrite it from the build script.
-    # All redirect rules are maintained in the root netlify.toml.
+    # Redirect + header rules live in the repo root _redirects / _headers
+    # (Cloudflare Pages format). Netlify config has been retired.
     
     # Summary
     total_files = sum(1 for _, _, files in os.walk(BUILD_DIR) for _ in files)
@@ -1613,7 +1613,7 @@ def build():
     print(f"\n{'Ã¢ÂÂ' * 50}")
     print(f"  Forge static build complete")
     print(f"  {total_files} files, {total_size / 1024 / 1024:.1f} MB")
-    print(f"  Ready for: netlify deploy --dir=build")
+    print(f"  Ready for: Cloudflare Pages (publish dir: build/)")
     print(f"{'Ã¢ÂÂ' * 50}")
 
     # Ã¢ÂÂÃ¢ÂÂ Post-build count validation Ã¢ÂÂÃ¢ÂÂ
