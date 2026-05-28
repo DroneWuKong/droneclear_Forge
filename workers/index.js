@@ -16,6 +16,7 @@ import analyticsIngest from './analytics-ingest.js';
 import complianceReport from './compliance-report.js';
 import doctrineSubmit from './doctrine-submit.js';
 import doctrineQueue  from './doctrine-queue.js';
+import faaLookup     from './faa-lookup.js';
 
 const CORS = {
   'Access-Control-Allow-Origin': '*',
@@ -61,6 +62,9 @@ export default {
     if (path === '/api/doctrine-queue' || path.startsWith('/api/doctrine-queue?'))
       return doctrineQueue.fetch(req, env, ctx);
 
+    if (path === '/api/faa-lookup' || path.startsWith('/api/faa-lookup?'))
+      return faaLookup.fetch(req, env, ctx);
+
     // Legacy /.netlify/functions/* redirect → /api/* equivalents
     if (path.startsWith('/.netlify/functions/')) {
       const fn = path.replace('/.netlify/functions/', '');
@@ -75,6 +79,7 @@ export default {
         'compliance-report': '/api/compliance/report',
         'doctrine-submit':   '/api/doctrine-submit',
         'doctrine-queue':    '/api/doctrine-queue',
+        'faa-lookup':        '/api/faa-lookup',
       };
       const newPath = legacyMap[fn];
       if (newPath) {
