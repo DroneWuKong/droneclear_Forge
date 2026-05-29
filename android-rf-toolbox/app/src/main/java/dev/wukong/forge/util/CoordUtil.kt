@@ -53,7 +53,7 @@ object CoordUtil {
         return try {
             val point = Point.point(lon, lat)
             val mgrs = MGRS.from(point)
-            val utm = mgrs.utm
+            val utm = mgrs.toUTM()
             "%d%s %.0f %.0f".format(utm.zone, utm.hemisphere.name.first(), utm.easting, utm.northing)
         } catch (e: Exception) {
             "UTM error"
