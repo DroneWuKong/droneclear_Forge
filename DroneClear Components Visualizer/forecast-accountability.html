@@ -98,7 +98,7 @@ tbody td.l{text-align:left;font:600 12px var(--font);color:var(--text)}
 
   <div class="stats" id="kpis">
     <div class="st"><span class="st-n" id="k-total">—</span><span class="st-l">Resolved</span></div>
-    <div class="st"><span class="st-n" id="k-rate">—</span><span class="st-l">Graded</span></div>
+    <div class="st"><span class="st-n" id="k-rate">—</span><span class="st-l">Grade rate</span></div>
     <div class="st"><span class="st-n" id="k-mass">—</span><span class="st-l">Mass unverified</span></div>
     <div class="st"><span class="st-n" id="k-brier">—</span><span class="st-l">Brier (graded)</span></div>
   </div>
@@ -168,60 +168,72 @@ var C = {
 };
 
 // ── analysis (mirrors the Python build_dashboard.py math) ───────────────────
+// Numeric coercion that keeps a legitimate 0 (a confident "won't happen"
+// forecast) distinct from a missing/garbage value (→ fallback). `+x || d`
+// would wrongly map a real 0 to the fallback.
+function prob(o){
+  var p = Number(o.predicted_probability);
+  return Number.isFinite(p) ? p : 0.5;
+}
+function isGraded(o){ return typeof o.was_correct === 'boolean'; }
+
 function analyze(outcomes){
   var N = outcomes.length;
-  var graded = outcomes.filter(function(o){ return typeof o.was_correct === 'boolean'; });
-  var correct = graded.filter(function(o){ return o.was_correct === true; });
-  var ungraded = outcomes.filter(function(o){ return typeof o.was_correct !== 'boolean'; });
-
-  // probability mass unverified
+  var graded = [], correct = 0, ungraded = [];
   var totalMass = 0, ungradedMass = 0;
+  var reasons = {}, buckets = {}, dom = {};
+  // finalized = reached a resolution_outcome; gradable excludes unresolvable/
+  // expired so grade_rate matches prediction_resolver.compute_calibration:
+  // grade_rate = graded / (finalized − unresolvable).
+  var gradableCount = 0;
+
   outcomes.forEach(function(o){
-    var p = +o.predicted_probability || 0;
+    var p = prob(o), g = isGraded(o), ro = o.resolution_outcome;
+
     totalMass += p;
-    if(typeof o.was_correct !== 'boolean') ungradedMass += p;
-  });
+    if(!g) ungradedMass += p;
 
-  // Brier on graded
-  var brier = null;
-  if(graded.length){
-    var s = 0;
-    graded.forEach(function(o){
-      var p = +o.predicted_probability || 0.5, y = o.was_correct ? 1 : 0;
-      s += (p - y) * (p - y);
-    });
-    brier = s / graded.length;
-  }
+    if(g){
+      graded.push(o);
+      if(o.was_correct === true) correct++;
+      var b = Math.min(Math.floor(p * 10), 9);
+      (buckets[b] = buckets[b] || []).push(o.was_correct ? 1 : 0);
+    } else {
+      ungraded.push(o);
+    }
 
-  // reasons for ungraded
-  var reasons = {};
-  ungraded.forEach(function(o){
-    var ro = o.resolution_outcome;
-    var key = (ro === 'partial') ? "Ambiguous signal ('partial')"
-            : (UNGRADABLE[ro])    ? 'No evidence match'
-            : 'Other';
-    reasons[key] = (reasons[key] || 0) + 1;
-  });
+    // ungraded-reason tally (only for finalized-but-ungraded records)
+    if(!g && ro){
+      var key = (ro === 'partial') ? "Ambiguous signal ('partial')"
+              : (UNGRADABLE[ro])    ? 'No evidence match'
+              : 'Other';
+      reasons[key] = (reasons[key] || 0) + 1;
+    }
 
-  // reliability buckets
-  var buckets = {};
-  graded.forEach(function(o){
-    var b = Math.min(Math.floor((+o.predicted_probability || 0) * 10), 9);
-    (buckets[b] = buckets[b] || []).push(o.was_correct ? 1 : 0);
-  });
+    if(ro && !UNGRADABLE[ro]) gradableCount++;
 
-  // by domain
-  var dom = {};
-  outcomes.forEach(function(o){
     var d = o.domain || 'unknown';
     dom[d] = dom[d] || {total:0, graded:0};
     dom[d].total++;
-    if(typeof o.was_correct === 'boolean') dom[d].graded++;
+    if(g) dom[d].graded++;
   });
 
+  var brier = null;
+  if(graded.length){
+    var s = 0;
+    graded.forEach(function(o){ var p = prob(o), y = o.was_correct ? 1 : 0; s += (p-y)*(p-y); });
+    brier = s / graded.length;
+  }
+
+  // graded within the gradable population, so grade_rate stays in [0,1] even
+  // if a legacy record is graded but carries no/ungradable resolution_outcome.
+  var gradedInGradable = graded.filter(function(o){
+    var ro = o.resolution_outcome; return ro && !UNGRADABLE[ro];
+  }).length;
+
   return {
-    N:N, graded:graded.length, correct:correct.length, ungraded:ungraded.length,
-    gradeRate: N ? graded.length / N : 0,
+    N:N, graded:graded.length, correct:correct, ungraded:ungraded.length,
+    gradeRate: gradableCount ? gradedInGradable / gradableCount : null,
     massUnverified: totalMass ? ungradedMass / totalMass : 0,
     brier:brier, reasons:reasons, buckets:buckets, dom:dom
   };
@@ -231,8 +243,8 @@ function analyze(outcomes){
 function renderKpis(a){
   document.getElementById('k-total').textContent = a.N;
   var rate = document.getElementById('k-rate');
-  rate.textContent = pct(a.gradeRate);
-  rate.className = 'st-n ' + (a.gradeRate >= 0.6 ? 'good' : a.gradeRate >= 0.3 ? 'warn' : 'bad');
+  rate.textContent = a.gradeRate === null ? '—' : pct(a.gradeRate);
+  rate.className = 'st-n ' + (a.gradeRate === null ? '' : a.gradeRate >= 0.6 ? 'good' : a.gradeRate >= 0.3 ? 'warn' : 'bad');
   var mass = document.getElementById('k-mass');
   mass.textContent = pct(a.massUnverified);
   mass.className = 'st-n ' + (a.massUnverified <= 0.3 ? 'good' : a.massUnverified <= 0.6 ? 'warn' : 'bad');
