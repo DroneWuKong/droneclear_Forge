@@ -1456,6 +1456,7 @@ const COMPONENTS = [
 
 let FLAGS = [];
 let PREDICTIONS = [];
+let DELTA = null;   // day-over-day movement from pie_delta.json (KV: pie_delta)
 let activeTab = "flags";
 let activeSeverity = "all"; // kept for compat but unused in new logic
 // ── Hide-based filter sets (empty = show all, add items to hide them) ──
@@ -1523,7 +1524,7 @@ async function loadData() {
   }).catch(()=>{});
 
   try {
-    const [fRes, pRes] = await Promise.all([
+    const [fRes, pRes, dRes] = await Promise.all([
       fetch('/api/data?type=flags&token='+encodeURIComponent(localStorage.getItem('forge_token')||localStorage.getItem('wingman_sub_token')||'')).then(r=>r.json()).then(d=>{
         if(d.summary_only){ return null; }
         const flags = d.data||d;
@@ -1545,8 +1546,16 @@ async function loadData() {
         if(d.summary_only || d.error){ return []; }
         return d.data||d;
       }),
+      // Day-over-day movement from the flag-state ledger (pie_flag_state.py).
+      // Drives the "What changed / since your last visit" block + card badges.
+      // Tolerant of absence — older deploys without the KV key just get null.
+      fetch('/api/data?type=pie_delta&token='+encodeURIComponent(localStorage.getItem('forge_token')||localStorage.getItem('wingman_sub_token')||'')).then(r=>r.ok?r.json():null).then(d=>{
+        if(!d || d.summary_only || d.error) return null;
+        return d.data||d;
+      }).catch(()=>null),
     ]);
     FLAGS = fRes;
+    DELTA = dRes;
 
     // Use live predictions if healthy (≥10 items), otherwise fall back to best archive
     if (pRes && pRes.length >= 10) {
@@ -1642,6 +1651,95 @@ function deltaBadge(badge, days) {
   return `<span style="font:700 10px var(--mono);padding:2px 5px;border-radius:3px;background:${color}18;color:${color};margin-left:6px;vertical-align:middle">${badge}</span>`;
 }
 
+// ── Tier-1 lifecycle UI ──────────────────────────────────────────────────
+// The pipeline now stamps status / first_seen / last_seen / age_days on every
+// flag (pipeline/pie_flag_state.py) and publishes a day-over-day delta
+// (pie_delta.json → KV "pie_delta"). These helpers surface that so the feed
+// signals change instead of looking frozen.
+
+// Small pill shown on a flag card: NEW / ESCALATED / EASED, plus a "persistent
+// Nd" age cue for long-unresolved signals. Quiet for ordinary active flags.
+function lcBadge(f){
+  if(!f) return '';
+  const s = f.status;
+  const age = (typeof f.age_days === 'number') ? f.age_days : null;
+  let pill = '';
+  if(s === 'new')              pill = `<span style="font:700 8px var(--mono);color:#0c0c0a;background:var(--green,#22c55e);padding:1px 5px;border-radius:3px;letter-spacing:.05em">NEW</span>`;
+  else if(s === 'escalated')   pill = `<span style="font:700 8px var(--mono);color:#fff;background:var(--red,#ef4444);padding:1px 5px;border-radius:3px;letter-spacing:.05em">⬆ ESCALATED</span>`;
+  else if(s === 'deescalated') pill = `<span style="font:700 8px var(--mono);color:#0c0c0a;background:var(--cyan,#22d3ee);padding:1px 5px;border-radius:3px;letter-spacing:.05em">⬇ EASED</span>`;
+  let ageTag = '';
+  if(age !== null){
+    if(age <= 1)       ageTag = `<span style="font:9px var(--mono);color:var(--text-d)">today</span>`;
+    else if(age >= 30) ageTag = `<span title="unresolved ${age} days" style="font:9px var(--mono);color:var(--warning,#f97316)">persistent ${age}d</span>`;
+  }
+  return (pill||ageTag) ? `<span style="display:inline-flex;gap:5px;align-items:center;margin-left:6px;vertical-align:middle">${pill}${ageTag}</span>` : '';
+}
+
+// "Since your last visit" — purely client-side (localStorage, no account needed).
+// Diffs the live flag set against the timestamp of the previous visit using the
+// per-flag first_seen / last_seen the pipeline now provides, then records this
+// visit for next time. Returns '' when there's nothing meaningful to say.
+function sinceLastVisitHTML(){
+  const LAST_KEY = 'pie_last_visit';
+  let out = '';
+  try{
+    const lastVisit = localStorage.getItem(LAST_KEY);
+    if(lastVisit && Array.isArray(FLAGS) && FLAGS.length && FLAGS.some(f=>f.first_seen)){
+      const lv = String(lastVisit).slice(0,10);
+      const newSince = FLAGS.filter(f => f.first_seen && f.first_seen > lv);
+      const escSince = FLAGS.filter(f => f.status === 'escalated' && f.last_seen && f.last_seen > lv);
+      if(newSince.length || escSince.length){
+        const bits = [];
+        if(newSince.length) bits.push(`<b style="color:var(--green)">${newSince.length} new</b>`);
+        if(escSince.length) bits.push(`<b style="color:var(--red)">${escSince.length} escalated</b>`);
+        out = `<div style="margin-bottom:10px;padding:8px 12px;background:var(--green,#22c55e)14;border-left:3px solid var(--green,#22c55e);border-radius:6px;font:500 11px var(--mono);color:var(--text)">
+          <span style="margin-right:6px">👋</span>Since your last visit (${lv}): ${bits.join(' · ')}</div>`;
+      } else {
+        out = `<div style="margin-bottom:10px;padding:8px 12px;background:var(--surface);border-radius:6px;font:500 11px var(--mono);color:var(--text-d)">
+          <span style="margin-right:6px">✓</span>You're caught up — nothing new since ${lv}.</div>`;
+      }
+    }
+  }catch(e){}
+  // Record this visit for the next comparison.
+  try{ localStorage.setItem(LAST_KEY, new Date().toISOString()); }catch(e){}
+  return out;
+}
+
+// Today's movement, preferring the durable ledger (DELTA) over the brief's
+// embedded delta_summary. Renders counts + the actual new/escalated titles.
+function whatChangedHTML(b){
+  const D = (DELTA && DELTA.date) ? DELTA : null;
+  // Map either source into a common shape.
+  let nc, rc, ec, newList, escList, vs, firstRun=false;
+  if(D){
+    nc = D.new_count||0; rc = D.resolved_count||0; ec = D.escalated_count||0;
+    newList = D.new_flags||[]; escList = D.escalated_flags||[];
+    vs = D.vs_yesterday; firstRun = !!D.first_run;
+  } else {
+    const ds = b.delta_summary||{};
+    if(!ds.vs_yesterday) return '';
+    nc = ds.new_flags||0; rc = ds.resolved_flags||0; ec = ds.escalated_flags||0;
+    newList = []; escList = []; vs = ds.vs_yesterday;
+  }
+  const chips = [];
+  chips.push(nc>0 ? `<span style="color:var(--green)">+${nc} new</span>` : `<span style="color:var(--text-d)">0 new</span>`);
+  if(ec>0) chips.push(`<span style="color:var(--red)">⬆ ${ec} escalated</span>`);
+  if(rc>0) chips.push(`<span style="color:var(--cyan)">${rc} resolved</span>`);
+  let html = `<div style="margin-bottom:10px;padding:8px 12px;background:var(--surface);border-radius:6px;font:500 10px var(--mono)">
+    <span style="color:var(--text-d);text-transform:uppercase;letter-spacing:.06em;margin-right:8px">Today</span>${chips.join('<span style="color:var(--border);margin:0 6px">·</span>')}`;
+  // Inline the most newsworthy fresh titles (cap 3) so "new" isn't just a number.
+  const titles = [...escList.map(e=>({t:e.title,c:'var(--red)'})), ...newList.map(n=>({t:n.title,c:'var(--green)'}))].filter(x=>x.t).slice(0,3);
+  if(titles.length){
+    html += `<div style="margin-top:6px;display:flex;flex-direction:column;gap:3px">` +
+      titles.map(x=>`<div style="font:500 11px var(--font);color:var(--text);line-height:1.35"><span style="color:${x.c}">▸</span> ${String(x.t).replace(/</g,'&lt;').slice(0,110)}</div>`).join('') +
+      `</div>`;
+  } else if(firstRun){
+    html += `<div style="margin-top:5px;color:var(--text-d)">Baseline established — tracking starts today; day-over-day movement appears tomorrow.</div>`;
+  }
+  html += `</div>`;
+  return html;
+}
+
 function renderBriefPanel(b){
   const el=document.getElementById("brief-inner");if(!el)return;
   // ── Signal counts ──
@@ -1664,6 +1762,8 @@ function renderBriefPanel(b){
       total_flags: totalFlags
     };
   }
+  // Prefer the durable ledger's new-count for the "New" stat when available.
+  if (sig && DELTA && DELTA.date && typeof DELTA.new_count === 'number') sig.new_today = DELTA.new_count;
   const lead=b.lead_story||{};let html="";
 
   // ── Freshness badge ──
@@ -1731,19 +1831,9 @@ function renderBriefPanel(b){
     }
   } catch(e){}
 
-  // Delta summary bar
-  const ds = b.delta_summary||{};
-  if (ds.vs_yesterday) {
-    const hasNew = (ds.new_flags||0) > 0;
-    const hasEsc = (ds.escalated_flags||0) > 0;
-    const hasRes = (ds.resolved_flags||0) > 0;
-    html += `<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px;padding:7px 10px;background:var(--surface);border-radius:6px;font:500 10px var(--mono)">
-      <span style="color:var(--text-d)">vs yesterday:</span>
-      ${hasNew ? `<span style="color:var(--green)">+${ds.new_flags} new</span>` : '<span style="color:var(--text-d)">no new flags</span>'}
-      ${hasEsc ? `<span style="color:var(--red)">⬆ ${ds.escalated_flags} escalated</span>` : ''}
-      ${hasRes ? `<span style="color:var(--cyan)">${ds.resolved_flags} resolved</span>` : ''}
-    </div>`;
-  }
+  // "Since your last visit" (client-side) + "Today" movement (ledger-preferred).
+  html += sinceLastVisitHTML();
+  html += whatChangedHTML(b);
 
   // Tier-personalized section
   const _tier = getTier();
@@ -2260,7 +2350,7 @@ function renderFlags() {
               return `<div class="flag-card" data-id="${f.id}" style="border-left:2px solid ${sc}">
                 <span class="sev sev-${sev}"></span>
                 <div style="flex:1;min-width:0">
-                  <div class="title">${f.title}</div>
+                  <div class="title">${f.title}${lcBadge(f)}</div>
                   <div style="font-size:10px;color:var(--text-d);margin-top:1px">${sev} · ${Math.round((f.confidence||0)*100)}%</div>
                 </div>
               </div>`;
@@ -2316,7 +2406,7 @@ function renderFlags() {
           <span class="badge ${confBadge}">${conf}%</span>
           ${regionTags}
         </div>
-        <div class="title">${f.title}</div>
+        <div class="title">${f.title}${lcBadge(f)}</div>
       </div>
     </div>`;
   }).join("");
