@@ -336,6 +336,28 @@ _UNIFIED_NAV = r"""<!-- ── Unified UAS- Nav (5-domain accordion drawer) ─�
     </div>
   </details>
 
+  <details class="dc-dom-group" data-host="uas-forge.com" data-hub-href="https://uas-forge.com/guides/">
+    <summary>
+      <span class="dc-dom-ico">📐</span>
+      <div class="dc-dom-info">
+        <div class="dc-dom-name">Guides</div>
+        <div class="dc-dom-url">uas-forge.com</div>
+      </div>
+      <span class="dc-dom-chev">▶</span>
+    </summary>
+    <div class="dc-dom-sublinks">
+      <a class="dc-dom-sublink" href="https://uas-forge.com/guides/" data-page="guides-hub">All Guides</a>
+      <a class="dc-dom-sublink" href="https://uas-forge.com/fc-firmware-guide/" data-page="fc-firmware-guide">FC Firmware</a>
+      <a class="dc-dom-sublink" href="https://uas-forge.com/mesh-guide/" data-page="mesh-guide">Mesh Radio</a>
+      <a class="dc-dom-sublink" href="https://uas-forge.com/tak-guide/" data-page="tak-guide">TAK / CoT</a>
+      <a class="dc-dom-sublink" href="https://uas-forge.com/slam-guide/" data-page="slam-guide">SLAM / VIO</a>
+      <a class="dc-dom-sublink" href="https://uas-forge.com/openhd-guide/" data-page="openhd-guide">OpenHD / FPV</a>
+      <a class="dc-dom-sublink" href="https://uas-forge.com/swarm-guide/" data-page="swarm-guide">Swarm</a>
+      <a class="dc-dom-sublink" href="https://uas-forge.com/cuas-guide/" data-page="cuas-guide">Counter-UAS</a>
+      <a class="dc-dom-sublink" href="https://uas-forge.com/ai-guide/" data-page="ai-guide">AI / Autonomy</a>
+    </div>
+  </details>
+
   <details class="dc-dom-group" data-host="uas-patterns.com" data-hub-href="https://uas-patterns.com/patterns-home/">
     <summary>
       <span class="dc-dom-ico">📊</span>
@@ -371,8 +393,15 @@ _UNIFIED_NAV = r"""<!-- ── Unified UAS- Nav (5-domain accordion drawer) ─�
     </summary>
     <div class="dc-dom-sublinks">
       <a class="dc-dom-sublink" href="https://uas-patterns.com/intel/feed/" data-page="intel-feed">Intel Feed</a>
+      <a class="dc-dom-sublink" href="https://uas-patterns.com/intel-defense/" data-page="intel-defense">Defense Desk</a>
+      <a class="dc-dom-sublink" href="https://uas-patterns.com/intel-commercial/" data-page="intel-commercial">Commercial Desk</a>
+      <a class="dc-dom-sublink" href="https://uas-patterns.com/intel-financial/" data-page="intel-financial">Financial Desk</a>
+      <a class="dc-dom-sublink" href="https://uas-patterns.com/intel-dfr/" data-page="intel-dfr">DFR Desk</a>
       <a class="dc-dom-sublink" href="https://uas-patterns.com/industry/" data-page="industry">Industry Tracker</a>
       <a class="dc-dom-sublink" href="https://uas-patterns.com/tracker/" data-page="tracker">Contract Tracker</a>
+      <a class="dc-dom-sublink" href="https://uas-patterns.com/grants/" data-page="grants">Grants</a>
+      <a class="dc-dom-sublink" href="https://uas-patterns.com/timeline/" data-page="timeline">Regulatory Timeline</a>
+      <a class="dc-dom-sublink" href="https://uas-patterns.com/waiver/" data-page="waiver">Document Builder</a>
     </div>
   </details>
 
