@@ -1,0 +1,492 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Market Lens — uas-patterns</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://unpkg.com/@phosphor-icons/web"></script>
+<style>
+:root{
+  --bg:#0c0c0a;--surface:#141410;--card:#1c1c17;--card-hi:#242420;
+  --border:#2e2e26;--border-hi:#3e3e34;
+  --green:#22c55e;--green-d:rgba(34,197,94,.15);
+  --amber:#f59e0b;--amber-d:rgba(245,158,11,.15);
+  --red:#ef4444;--red-d:rgba(239,68,68,.15);
+  --blue:#3b82f6;--blue-d:rgba(59,130,246,.15);
+  --text:#f5f0e8;--text-s:#b8b0a0;--text-d:#8a8070;--text-xd:#6b6358;
+  --font:'Inter',system-ui,sans-serif;--mono:'JetBrains Mono',monospace;
+  /* Sector palette — kept in lockstep with analyze.py SECTOR_COLORS (also
+     mirrored in meta.sector_colors in market_lens.json). */
+  --sec-prime:#cc3333;--sec-drone:#ee8822;--sec-chip:#3377cc;
+  --sec-intl:#9966cc;--sec-etf:#777777;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--bg);color:var(--text);font-family:var(--font);line-height:1.5;-webkit-font-smoothing:antialiased;min-height:100vh}
+a{text-decoration:none;color:inherit}
+
+.page{max-width:880px;margin:0 auto;padding:32px 24px 60px}
+.eyebrow{font:600 10px var(--mono);text-transform:uppercase;letter-spacing:.12em;color:var(--text-xd);margin-bottom:6px}
+h1{font:700 24px var(--mono);color:#22c55e;letter-spacing:-0.02em;margin-bottom:8px}
+.tagline{font-size:13px;color:var(--text-s);line-height:1.6;max-width:680px}
+.tagline code{font:500 11px var(--mono);background:var(--surface);padding:1px 5px;border-radius:3px;color:var(--text)}
+.tagline a{color:var(--amber);text-decoration:underline;text-decoration-color:rgba(245,158,11,.4)}
+
+/* Disclaimer — reuses .caveat (mirroring.html:84) + a single modifier.
+   See market-lens-plan-hardened.md Part D for the non-negotiable. */
+.caveat{margin-top:24px;padding:12px 14px;background:var(--surface);border-left:3px solid var(--text-xd);border-radius:4px;font:400 11px var(--font);color:var(--text-s);line-height:1.6}
+.caveat-strong{margin-top:0;margin-bottom:20px;border-left-color:var(--red);background:rgba(239,68,68,.08);padding:14px 16px;font-size:12px;color:var(--text-s)}
+.caveat-strong .caveat-tag{font:700 10px var(--mono);letter-spacing:.12em;color:var(--red);text-transform:uppercase;margin-bottom:6px}
+.caveat-strong strong{color:var(--text)}
+.caveat-strong a{color:var(--amber);text-decoration:underline}
+
+.stats{display:flex;gap:0;border:1px solid var(--border);border-radius:8px;overflow:hidden;margin:20px 0}
+.st{flex:1;text-align:center;padding:12px 8px;border-right:1px solid var(--border)}
+.st:last-child{border-right:none}
+.st-n{font:700 18px var(--mono);color:#22c55e;display:block;line-height:1}
+.st-l{font:500 9px var(--font);text-transform:uppercase;letter-spacing:.07em;color:var(--text-d);margin-top:4px;display:block}
+
+.panel{background:var(--card);border:1px solid var(--border);border-radius:8px;padding:16px 14px;margin-top:18px}
+.panel-h{font:600 11px var(--mono);color:var(--text-s);text-transform:uppercase;letter-spacing:.08em;margin-bottom:4px}
+.panel-sub{font:400 11px var(--font);color:var(--text-d);margin-bottom:12px;line-height:1.5}
+.panel-sub code{font:500 10px var(--mono);background:var(--surface);padding:1px 4px;border-radius:3px;color:var(--text-s)}
+.scatter{width:100%;height:300px;display:block}
+.scatter text{font:500 9px var(--mono);fill:var(--text-d)}
+.scatter .axis-label{font:600 10px var(--mono);fill:var(--text-s)}
+.scatter .grid{stroke:var(--border);stroke-width:1}
+.scatter .bench-line{stroke:var(--text-xd);stroke-width:1;stroke-dasharray:3 3}
+.scatter .median-line{stroke:var(--text-xd);stroke-width:1;stroke-dasharray:2 4;opacity:.6}
+.scatter .pt{stroke:var(--bg);stroke-width:1.5}
+.scatter .pt-label{font:600 9px var(--mono);fill:var(--text-s);pointer-events:none}
+.legend{display:flex;flex-wrap:wrap;gap:10px;margin-top:8px;padding-top:8px;border-top:1px dashed var(--border);font:500 10px var(--mono);color:var(--text-d)}
+.legend-swatch{display:inline-block;width:9px;height:9px;border-radius:50%;margin-right:4px;vertical-align:-1px}
+
+table{width:100%;border-collapse:collapse;margin-top:8px;font-size:11px}
+thead th{position:sticky;top:0;background:var(--surface);font:600 9px var(--mono);text-transform:uppercase;letter-spacing:.06em;color:var(--text-d);padding:8px 6px;border-bottom:1px solid var(--border);text-align:right;white-space:nowrap}
+thead th.l{text-align:left}
+tbody td{padding:7px 6px;border-bottom:1px dashed var(--border);text-align:right;font:500 11px var(--mono);color:var(--text-s);white-space:nowrap}
+tbody td.l{text-align:left;font:600 12px var(--font);color:var(--text)}
+tbody td.sec{font:600 9px var(--mono);text-transform:uppercase;letter-spacing:.05em;text-align:left}
+tbody tr.etf{opacity:.6}
+tbody td.pos{color:#22c55e}
+tbody td.neg{color:var(--red)}
+.sec-pill{display:inline-block;padding:1px 6px;border-radius:8px;font:600 9px var(--mono);text-transform:uppercase}
+.sec-prime{background:rgba(204,51,51,.18);color:var(--sec-prime)}
+.sec-drone{background:rgba(238,136,34,.18);color:var(--sec-drone)}
+.sec-chip {background:rgba(51,119,204,.20);color:var(--sec-chip)}
+.sec-intl {background:rgba(153,102,204,.20);color:var(--sec-intl)}
+.sec-etf  {background:rgba(119,119,119,.20);color:var(--sec-etf)}
+
+.methodology{margin-top:28px;padding:14px 16px;background:var(--surface);border-left:3px solid var(--text-xd);border-radius:4px;font-size:12px;color:var(--text-s);line-height:1.65}
+.methodology h2{font:700 12px var(--mono);text-transform:uppercase;letter-spacing:.08em;color:var(--text);margin-bottom:8px}
+.methodology h3{font:600 11px var(--mono);text-transform:uppercase;letter-spacing:.06em;color:var(--text-s);margin:14px 0 6px}
+.methodology ul{padding-left:18px;margin:4px 0}
+.methodology li{margin:3px 0}
+.methodology code{font:500 11px var(--mono);background:var(--bg);padding:1px 5px;border-radius:3px;color:var(--text-s)}
+.methodology a{color:var(--amber);text-decoration:underline;text-decoration-color:rgba(245,158,11,.4)}
+
+.empty{padding:50px 20px;text-align:center;color:var(--text-d);font-size:13px;border:1px dashed var(--border);border-radius:8px;background:var(--surface)}
+
+@media(max-width:640px){
+  .page{padding:20px 14px 40px}
+  h1{font-size:20px}
+  .stats{flex-wrap:wrap}
+  .st{flex:1 1 50%;border-bottom:1px solid var(--border)}
+  .scatter{height:260px}
+  thead th,tbody td{padding:6px 4px;font-size:10px}
+}
+</style>
+</head>
+<body>
+
+<main class="page">
+
+  <!-- ── Disclaimer — first child of <main>, above the fold. NON-NEGOTIABLE. ── -->
+  <!-- Class is `.caveat.caveat-strong` — reuses the existing .caveat pattern    -->
+  <!-- (mirroring.html:84) with one modifier rule, not a whole new class set.    -->
+  <aside class="caveat caveat-strong" role="note" data-test-id="market-lens-disclaimer">
+    <div class="caveat-tag">NOT INVESTMENT ADVICE</div>
+    <p>This page is <strong>descriptive analytics</strong> over an 8-week PIE coverage window
+    (<span id="disclaimer-window">Apr 5 &ndash; May 26, 2026</span>). Sample sizes per ticker are 1&ndash;30 active days. Nothing
+    here is a recommendation, forecast, or backtest. PIE coverage of a ticker is not a buy or
+    sell signal. Past returns shown are <strong>not</strong> indicative of future performance.
+    See <a href="#methodology">methodology</a> below before reading the charts.</p>
+  </aside>
+
+  <div class="eyebrow">Market Lens</div>
+  <h1>PIE &times; Equity &times; Doctrine</h1>
+  <p class="tagline">How PIE coverage and the doctrine corpus line up with sector-relative
+  returns across 20 defense-prime, drone-pure, and chip-supply tickers. Source of truth:
+  <a href="https://github.com/DroneWuKong/Ai-Project/blob/main/docs/research/market-lens/REPORT.md">docs/research/market-lens/REPORT.md</a>.</p>
+
+  <div class="stats">
+    <div class="st"><span class="st-n" id="s-active">&mdash;</span><span class="st-l">active tickers</span></div>
+    <div class="st"><span class="st-n" id="s-window">&mdash;</span><span class="st-l">PIE window (weeks)</span></div>
+    <div class="st"><span class="st-n" id="s-universe">&mdash;</span><span class="st-l">universe</span></div>
+    <div class="st"><span class="st-n" id="s-doctrine">&mdash;</span><span class="st-l">doctrine docs</span></div>
+  </div>
+
+  <div id="content">
+    <div class="empty">Loading&hellip;</div>
+  </div>
+
+  <section class="methodology" id="methodology">
+    <h2>Methodology &amp; caveats</h2>
+    <p><strong>Window:</strong> PIE coverage spans Apr 5 &ndash; May 26, 2026 (8 weeks, 36 trading bars).
+    Equity returns and alpha are computed strictly inside this window.</p>
+
+    <h3>How to read the charts</h3>
+    <ul>
+      <li><strong>Alpha scatter</strong> &mdash; x: PIE mentions (preds + briefs), y: alpha vs sector
+        benchmark (<span id="methodology-benches">ITA for primes/drones/intl, SOXX for chip-supply</span>). Dashed line at y=0
+        is the benchmark; above = outperforming, below = underperforming.</li>
+      <li><strong>Doctrine scatter</strong> &mdash; x: PIE mentions, y: doctrine corpus docs that
+        mention the ticker. Log&ndash;log. Quadrant gridlines at the medians of the non-zero values.
+        Tickers with zero PIE mentions <em>and</em> zero doctrine docs are omitted.</li>
+    </ul>
+
+    <h3>What this is <em>not</em></h3>
+    <ul>
+      <li><strong>Not investment advice, not a backtest, not a recommendation.</strong>
+        Coverage is not a signal of upside or downside.</li>
+      <li><strong>Not entity-resolved.</strong> PIE mentions are surface keyword tagging
+        (e.g. &ldquo;Lockheed&rdquo; in a flag body counts as a mention of LMT). False positives
+        and category confusion exist.</li>
+      <li><strong>No per-flag sentiment label.</strong> A bullish mention and a bearish
+        mention count the same.</li>
+      <li><strong>Doctrine corpus has no per-doc timestamps</strong> in the current chunker.
+        Doctrine docs is a level reading on corpus depth, not a momentum signal.</li>
+      <li><strong>Unadjusted closes</strong> from Yahoo Finance public chart endpoint &mdash;
+        no dividend / split adjustment beyond what Yahoo provides.</li>
+    </ul>
+
+    <h3>Headline observations (descriptive only)</h3>
+    <ul>
+      <li>Doctrine-heavy defense primes (LMT, NOC, BA, RTX) traded in line with or
+        modestly under ITA over the window &mdash; doctrine corpus depth did not
+        translate to PIE-window outperformance.</li>
+      <li>The chip-supply cluster (INTC, STM, ON, QCOM) shows the biggest positive
+        alpha vs SOXX during the window, but this is a <strong>hypothesis worth investigating</strong>,
+        not a finding. <code>n</code> of active days per chip ticker is small
+        (often &lt; 15) and PIE coverage of chip-supply names is itself sparse.</li>
+      <li>Same-day and 5-day-forward correlations between PIE mentions and returns
+        are near-zero in absolute terms (|r| &lt; 0.3 for nearly all rows). No
+        leading or lagging relationship is supported by this window.</li>
+    </ul>
+
+    <p style="margin-top:14px;font-size:11px;color:var(--text-xd)">
+      Full caveats and the source-of-truth numbers live in
+      <a href="https://github.com/DroneWuKong/Ai-Project/blob/main/docs/research/market-lens/REPORT.md">REPORT.md</a>.
+      The packager
+      (<a href="https://github.com/DroneWuKong/Ai-Project/blob/main/pipeline/market_lens_packager.py">pipeline/market_lens_packager.py</a>)
+      imports its window and palette from the research module so the page and report
+      cannot drift apart on the basics.</p>
+  </section>
+</main>
+
+<script>
+var DATA = null;
+// SECTOR_COLORS is a fallback palette — overlaid with meta.sector_colors from
+// the packager inside render(d) so analyze.py-side palette tweaks flow through
+// without a Forge redeploy. Keep this object's identity stable (Object.assign
+// onto it, do not reassign) so other functions keep seeing the live values.
+var SECTOR_COLORS = {prime:'#cc3333',drone:'#ee8822',chip:'#3377cc',intl:'#9966cc',etf:'#777777'};
+
+// Escape user-controlled / JSON-derived strings before SVG / innerHTML
+// interpolation. Numeric fields don't need this; ticker/sector/bench/name
+// fields do. Match the standard 5-char set.
+function escapeHtml(s){
+  return String(s == null ? '' : s).replace(/[&<>"']/g, function(c){
+    return ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'})[c];
+  });
+}
+
+function fmtPct(v){ if(v===null||v===undefined||Number.isNaN(v)) return '—'; return (v>=0?'+':'') + v.toFixed(1) + '%'; }
+function fmtNum(v){ if(v===null||v===undefined||Number.isNaN(v)) return '—'; return Math.round(v); }
+function fmtCorr(v){ if(v===null||v===undefined||Number.isNaN(v)) return '—'; return v.toFixed(2); }
+
+// ── Chart A: Alpha vs PIE mentions ────────────────────────────────────────
+// x = pie_mentions (linear), y = alpha_pie_pct (linear)
+// Horizontal dashed line at y=0 = sector benchmark.
+function renderAlphaScatter(root, points){
+  var W = 820, H = 300, PAD_L = 50, PAD_R = 16, PAD_T = 14, PAD_B = 36;
+  var pts = points.filter(function(p){ return p.sector !== 'etf' && p.alpha_pie_pct !== null; });
+  if(!pts.length){ root.innerHTML = '<div class="empty">No non-ETF rows with alpha.</div>'; return; }
+  var xs = pts.map(function(p){ return p.pie_mentions; });
+  var ys = pts.map(function(p){ return p.alpha_pie_pct; });
+  var xMax = Math.max.apply(null, xs.concat([5]));
+  var yMin = Math.min.apply(null, ys.concat([-5]));
+  var yMax = Math.max.apply(null, ys.concat([5]));
+  // Pad y-range 10% so labels aren't clipped
+  var yPad = (yMax - yMin) * 0.1; yMin -= yPad; yMax += yPad;
+  function sx(v){ return PAD_L + (v / xMax) * (W - PAD_L - PAD_R); }
+  function sy(v){ return H - PAD_B - ((v - yMin) / (yMax - yMin)) * (H - PAD_T - PAD_B); }
+  var svg = ['<svg class="scatter" viewBox="0 0 '+W+' '+H+'" preserveAspectRatio="xMidYMid meet">'];
+  // Gridlines + axis labels
+  svg.push('<line class="grid" x1="'+PAD_L+'" y1="'+(H-PAD_B)+'" x2="'+(W-PAD_R)+'" y2="'+(H-PAD_B)+'"/>');
+  svg.push('<line class="grid" x1="'+PAD_L+'" y1="'+PAD_T+'" x2="'+PAD_L+'" y2="'+(H-PAD_B)+'"/>');
+  // y=0 benchmark line (dashed)
+  var yZero = sy(0);
+  svg.push('<line class="bench-line" x1="'+PAD_L+'" y1="'+yZero+'" x2="'+(W-PAD_R)+'" y2="'+yZero+'"/>');
+  svg.push('<text class="axis-label" x="'+(W-PAD_R-2)+'" y="'+(yZero-4)+'" text-anchor="end">benchmark (alpha=0)</text>');
+  // Axis labels
+  svg.push('<text class="axis-label" x="'+(PAD_L+(W-PAD_L-PAD_R)/2)+'" y="'+(H-6)+'" text-anchor="middle">PIE mentions (preds + briefs)</text>');
+  svg.push('<text class="axis-label" x="14" y="'+(PAD_T+(H-PAD_T-PAD_B)/2)+'" transform="rotate(-90 14 '+(PAD_T+(H-PAD_T-PAD_B)/2)+')" text-anchor="middle">alpha vs bench (%)</text>');
+  // Y-tick at min, max, zero
+  [yMin, 0, yMax].forEach(function(yv){
+    svg.push('<text x="'+(PAD_L-6)+'" y="'+(sy(yv)+3)+'" text-anchor="end">'+yv.toFixed(0)+'</text>');
+  });
+  // X-tick at 0, max
+  svg.push('<text x="'+sx(0)+'" y="'+(H-PAD_B+12)+'" text-anchor="middle">0</text>');
+  svg.push('<text x="'+sx(xMax)+'" y="'+(H-PAD_B+12)+'" text-anchor="middle">'+xMax+'</text>');
+  // Points
+  pts.forEach(function(p){
+    var c = SECTOR_COLORS[p.sector] || '#999';
+    var r = 4 + Math.min(6, Math.sqrt(Math.max(p.doctrine_docs, 1)));
+    var cx = sx(p.pie_mentions), cy = sy(p.alpha_pie_pct);
+    svg.push('<circle class="pt" cx="'+cx+'" cy="'+cy+'" r="'+r+'" fill="'+escapeHtml(c)+'" fill-opacity="0.8"/>');
+    // Skip labels for zero-mention tickers — they stack on the y-axis
+    // (BA, GD, KTOS etc.) and overlap each other unreadably. The circle
+    // still renders at (0, alpha) so the position is shown.
+    if(p.pie_mentions > 0){
+      svg.push('<text class="pt-label" x="'+(cx+r+3)+'" y="'+(cy+3)+'">'+escapeHtml(p.ticker)+'</text>');
+    }
+  });
+  svg.push('</svg>');
+  root.innerHTML = svg.join('');
+}
+
+// ── Chart B: doctrine docs vs PIE mentions (log-log) ──────────────────────
+// Quadrant gridlines at medians of the nonzero values.
+function renderDoctrineScatter(root, points){
+  var W = 820, H = 300, PAD_L = 50, PAD_R = 16, PAD_T = 14, PAD_B = 36;
+  var pts = points.filter(function(p){ return (p.pie_mentions + p.doctrine_docs) > 0; });
+  if(!pts.length){ root.innerHTML = '<div class="empty">No rows with PIE or doctrine signal.</div>'; return; }
+  // log10 with +1 offset so zeros plot at the origin instead of -infinity
+  function lg(v){ return Math.log10((v || 0) + 1); }
+  var xs = pts.map(function(p){ return lg(p.pie_mentions); });
+  var ys = pts.map(function(p){ return lg(p.doctrine_docs); });
+  var xMax = Math.max.apply(null, xs.concat([1]));
+  var yMax = Math.max.apply(null, ys.concat([1]));
+  function sx(v){ return PAD_L + (v / xMax) * (W - PAD_L - PAD_R); }
+  function sy(v){ return H - PAD_B - (v / yMax) * (H - PAD_T - PAD_B); }
+  // Median of nonzero values (raw, not logged — then log for the line position)
+  function median(arr){
+    var a = arr.slice().sort(function(p,q){ return p - q; });
+    if(!a.length) return 0;
+    var n = a.length;
+    return n % 2 ? a[(n-1)/2] : (a[n/2-1] + a[n/2]) / 2;
+  }
+  var xMedRaw = median(pts.map(function(p){ return p.pie_mentions; }).filter(function(v){ return v > 0; }));
+  var yMedRaw = median(pts.map(function(p){ return p.doctrine_docs; }).filter(function(v){ return v > 0; }));
+  var svg = ['<svg class="scatter" viewBox="0 0 '+W+' '+H+'" preserveAspectRatio="xMidYMid meet">'];
+  svg.push('<line class="grid" x1="'+PAD_L+'" y1="'+(H-PAD_B)+'" x2="'+(W-PAD_R)+'" y2="'+(H-PAD_B)+'"/>');
+  svg.push('<line class="grid" x1="'+PAD_L+'" y1="'+PAD_T+'" x2="'+PAD_L+'" y2="'+(H-PAD_B)+'"/>');
+  // Quadrant medians
+  if(xMedRaw > 0){
+    var xMed = sx(lg(xMedRaw));
+    svg.push('<line class="median-line" x1="'+xMed+'" y1="'+PAD_T+'" x2="'+xMed+'" y2="'+(H-PAD_B)+'"/>');
+    svg.push('<text class="axis-label" x="'+(xMed+3)+'" y="'+(PAD_T+10)+'">x-median ('+xMedRaw.toFixed(0)+')</text>');
+  }
+  if(yMedRaw > 0){
+    var yMed = sy(lg(yMedRaw));
+    svg.push('<line class="median-line" x1="'+PAD_L+'" y1="'+yMed+'" x2="'+(W-PAD_R)+'" y2="'+yMed+'"/>');
+    svg.push('<text class="axis-label" x="'+(W-PAD_R-2)+'" y="'+(yMed-3)+'" text-anchor="end">y-median ('+yMedRaw.toFixed(0)+')</text>');
+  }
+  // Axis labels
+  svg.push('<text class="axis-label" x="'+(PAD_L+(W-PAD_L-PAD_R)/2)+'" y="'+(H-6)+'" text-anchor="middle">PIE mentions (log)</text>');
+  svg.push('<text class="axis-label" x="14" y="'+(PAD_T+(H-PAD_T-PAD_B)/2)+'" transform="rotate(-90 14 '+(PAD_T+(H-PAD_T-PAD_B)/2)+')" text-anchor="middle">doctrine docs (log)</text>');
+  // Points
+  pts.forEach(function(p){
+    var c = SECTOR_COLORS[p.sector] || '#999';
+    var cx = sx(lg(p.pie_mentions)), cy = sy(lg(p.doctrine_docs));
+    var r = 4 + Math.min(5, Math.sqrt(Math.max(p.active_days, 1)) * 0.5);
+    svg.push('<circle class="pt" cx="'+cx+'" cy="'+cy+'" r="'+r+'" fill="'+escapeHtml(c)+'" fill-opacity="0.8"/>');
+    // Skip labels when either axis is zero — log floor stacks them on the
+    // axes (AMBA at (0,1), BA at (0,15), etc.) with unreadable overlap.
+    if(p.pie_mentions > 0 && p.doctrine_docs > 0){
+      svg.push('<text class="pt-label" x="'+(cx+r+3)+'" y="'+(cy+3)+'">'+escapeHtml(p.ticker)+'</text>');
+    }
+  });
+  svg.push('</svg>');
+  root.innerHTML = svg.join('');
+}
+
+function renderLegend(root){
+  var html = '';
+  ['prime','drone','chip','intl','etf'].forEach(function(s){
+    html += '<span><span class="legend-swatch" style="background:'+escapeHtml(SECTOR_COLORS[s])+'"></span>'+escapeHtml(s)+'</span>';
+  });
+  root.innerHTML = html;
+}
+
+function renderTable(root, tickers){
+  var rows = tickers.map(function(t){
+    var alphaCls = t.alpha_pie_pct === null ? '' : (t.alpha_pie_pct >= 0 ? 'pos' : 'neg');
+    var retCls = t.ret_pie_pct === null ? '' : (t.ret_pie_pct >= 0 ? 'pos' : 'neg');
+    var isEtf = t.sector === 'etf';
+    return '<tr class="'+(isEtf?'etf':'')+'">'
+      + '<td class="l">'+escapeHtml(t.ticker)+'</td>'
+      + '<td class="sec"><span class="sec-pill sec-'+escapeHtml(t.sector)+'">'+escapeHtml(t.sector)+'</span></td>'
+      + '<td>'+(t.total_preds||0)+'</td>'
+      + '<td>'+(t.total_brief||0)+'</td>'
+      + '<td>'+(t.doctrine_docs||0)+'</td>'
+      + '<td class="'+retCls+'">'+fmtPct(t.ret_pie_pct)+'</td>'
+      + '<td>'+escapeHtml(t.bench||'—')+'</td>'
+      + '<td class="'+alphaCls+'">'+fmtPct(t.alpha_pie_pct)+'</td>'
+      + '<td>'+fmtCorr(t.corr_same_day)+'</td>'
+      + '<td>'+fmtCorr(t.corr_5d_lag)+'</td>'
+      + '</tr>';
+  }).join('');
+  root.innerHTML =
+    '<table>'
+    + '<thead><tr>'
+    +   '<th class="l">Ticker</th>'
+    +   '<th class="l">Sector</th>'
+    +   '<th>PIE preds</th>'
+    +   '<th>PIE briefs</th>'
+    +   '<th>doctrine docs</th>'
+    +   '<th>window ret</th>'
+    +   '<th>bench</th>'
+    +   '<th>&alpha;</th>'
+    +   '<th>corr same-day</th>'
+    +   '<th>corr 5d-fwd</th>'
+    + '</tr></thead>'
+    + '<tbody>'+rows+'</tbody>'
+    + '</table>';
+}
+
+// Pretty-format a YYYY-MM-DD window pair as "Apr 5 – May 26, 2026". If parsing
+// fails, the caller falls back to the hardcoded disclaimer text.
+function fmtWindow(start, end){
+  if(!start || !end) return null;
+  var months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  function parse(s){
+    var m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(String(s));
+    if(!m) return null;
+    return { y: +m[1], mo: +m[2] - 1, d: +m[3] };
+  }
+  var a = parse(start), b = parse(end);
+  if(!a || !b) return null;
+  return months[a.mo]+' '+a.d+' – '+months[b.mo]+' '+b.d+', '+b.y;
+}
+
+// Build "ITA for primes/drones/intl, SOXX for chip-supply"-style description
+// from the benchmarks dict in meta. groups any sectors that share a bench.
+function fmtBenches(benchmarks){
+  if(!benchmarks || typeof benchmarks !== 'object') return null;
+  var SECTOR_LABEL = {prime:'primes', drone:'drones', intl:'intl', chip:'chip-supply'};
+  var byBench = {};
+  Object.keys(benchmarks).forEach(function(sec){
+    var b = benchmarks[sec];
+    if(!b) return;
+    (byBench[b] = byBench[b] || []).push(SECTOR_LABEL[sec] || sec);
+  });
+  var parts = Object.keys(byBench).map(function(b){
+    return b + ' for ' + byBench[b].join('/');
+  });
+  return parts.length ? parts.join(', ') : null;
+}
+
+function render(d){
+  DATA = d;
+  var meta = d.meta || {};
+
+  // Merge in packager-side sector palette BEFORE drawing. Mutate in place so
+  // the existing SECTOR_COLORS reference (used by all the inner renderers)
+  // sees the new values. Fall back silently to the hardcoded defaults if
+  // meta.sector_colors is missing or malformed.
+  if(meta.sector_colors && typeof meta.sector_colors === 'object'){
+    Object.assign(SECTOR_COLORS, meta.sector_colors);
+  }
+
+  document.getElementById('s-active').textContent   = meta.active_tickers ?? '—';
+  // PIE window in weeks — derived from bars_pie (trading days / 5, rounded)
+  var weeks = meta.bars_pie ? Math.round(meta.bars_pie / 5) : null;
+  document.getElementById('s-window').textContent   = weeks !== null ? weeks : '—';
+  document.getElementById('s-universe').textContent = meta.universe_size ?? '—';
+  document.getElementById('s-doctrine').textContent = meta.doctrine_corpus_docs ?? '—';
+
+  // Constant-drift fix: rewrite the disclaimer and methodology bench lines
+  // from meta so a window slide or bench tweak in analyze.py flows through
+  // without editing this HTML. If the meta fields are missing or malformed,
+  // the original hardcoded strings stay in place.
+  var windowText = fmtWindow(meta.window_start, meta.window_end);
+  if(windowText){
+    var dw = document.getElementById('disclaimer-window');
+    if(dw) dw.textContent = windowText;
+  }
+  var benchText = fmtBenches(meta.benchmarks);
+  if(benchText){
+    var mb = document.getElementById('methodology-benches');
+    if(mb) mb.textContent = benchText;
+  }
+
+  var content = document.getElementById('content');
+  content.innerHTML =
+    '<div class="panel">'
+    +   '<div class="panel-h">PIE coverage vs sector-relative return</div>'
+    +   '<div class="panel-sub">x: total PIE mentions in the window. y: <code>alpha_pie_pct</code> (return minus sector benchmark). Dashed line at y=0 is the benchmark. ETF rows are excluded (alpha is undefined for the bench itself).</div>'
+    +   '<div id="pane-scatter-alpha"></div>'
+    +   '<div class="legend" id="lg-alpha"></div>'
+    + '</div>'
+    + '<div class="panel">'
+    +   '<div class="panel-h">PIE coverage vs doctrine corpus depth</div>'
+    +   '<div class="panel-sub">Log&ndash;log. x: PIE mentions. y: doctrine documents mentioning the ticker. Dashed quadrant lines at medians of the nonzero values. Tickers with zero on both axes are omitted.</div>'
+    +   '<div id="pane-scatter-doctrine"></div>'
+    +   '<div class="legend" id="lg-doctrine"></div>'
+    + '</div>'
+    + '<div class="panel">'
+    +   '<div class="panel-h">Per-ticker rollup</div>'
+    +   '<div class="panel-sub">Sorted by &alpha; descending. ETFs at the bottom (alpha undefined). PIE window: <code>'+ escapeHtml(meta.window_start||'') +'</code> &ndash; <code>'+ escapeHtml(meta.window_end||'') +'</code>.</div>'
+    +   '<div id="pane-table"></div>'
+    + '</div>';
+
+  renderAlphaScatter(document.getElementById('pane-scatter-alpha'), d.tickers);
+  renderDoctrineScatter(document.getElementById('pane-scatter-doctrine'), d.tickers);
+  renderLegend(document.getElementById('lg-alpha'));
+  renderLegend(document.getElementById('lg-doctrine'));
+  renderTable(document.getElementById('pane-table'), d.tickers);
+}
+
+// Fetch logic — distinguishes 404 (config error: dataset not allowlisted) from
+// PAYLOAD_THIN (config OK, data not yet generated) so a partial-deploy doesn't
+// silently look like "data not ready yet" for hours. See plan §B1.
+fetch('/api/data?type=market_lens')
+  .then(function(r){
+    if(r.status === 404) return Promise.reject('CONFIG_404');
+    if(r.status !== 200) return Promise.reject('HTTP_'+r.status);
+    return r.json();
+  })
+  .then(function(e){ return e.data || e; })
+  .then(function(d){
+    // Threshold sourced from meta.universe_size so a future universe trim
+    // (e.g. dropping a delisted ticker) doesn't cause every page load to
+    // flip to PAYLOAD_THIN. Falls back to 20 — the packager's hard floor —
+    // when meta is missing entirely.
+    var minRows = (d && d.meta && d.meta.universe_size) || 20;
+    if(!d || !d.tickers || d.tickers.length < minRows) return Promise.reject('PAYLOAD_THIN');
+    render(d);
+  })
+  .catch(function(err){
+    var box = document.getElementById('content');
+    // Use textContent for the err code so a hostile string from a
+    // future error path can't smuggle markup into the empty-state box.
+    if(err === 'CONFIG_404'){
+      box.innerHTML = '<div class="empty">Market lens dataset not registered yet (<span class="err-code"></span>).</div>';
+      box.querySelector('.err-code').textContent = String(err);
+      // Loud console line so a half-deployed allowlist (one of workers/forge-data.js
+      // DATASETS / PIE_OUTPUTS_KEYS landed, the other didn\'t) is visible the next
+      // time anyone opens devtools instead of looking like "data not ready yet".
+      console.error('[market-lens] CONFIG_404 — check workers/forge-data.js DATASETS + PIE_OUTPUTS_KEYS allowlist');
+    } else if(err === 'PAYLOAD_THIN'){
+      box.innerHTML = '<div class="empty">Market lens data pending first pipeline run.</div>';
+    } else {
+      box.innerHTML = '<div class="empty">Failed to load market_lens.json (<span class="err-code"></span>).</div>';
+      box.querySelector('.err-code').textContent = String(err);
+    }
+  });
+</script>
+</body>
+</html>
