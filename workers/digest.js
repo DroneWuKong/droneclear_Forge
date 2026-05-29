@@ -177,6 +177,11 @@ async function subscribe(req, env) {
   const email = normEmail(body.email);
   const cadence = body.cadence === 'weekly' ? 'weekly' : 'daily';
   if (!EMAIL_RE.test(email) || email.length > 200) return json(400, { error: 'invalid email' });
+  // Optional watchlist (array of topic keys, e.g. "component:...", "type:...").
+  // Stored for future per-subscriber digest personalization. Bounded + sanitized.
+  const watch = Array.isArray(body.watch)
+    ? body.watch.filter(w => typeof w === 'string' && w.length <= 80).slice(0, 50)
+    : [];
 
   const key = `sub/${email}`;
   const existing = await env.DIGEST_SUBS.get(key, 'json');
@@ -189,6 +194,7 @@ async function subscribe(req, env) {
     status: 'pending',
     token: (existing && existing.token) || token(),
     created: (existing && existing.created) || new Date().toISOString(),
+    watch: watch.length ? watch : ((existing && existing.watch) || []),
   };
   await env.DIGEST_SUBS.put(key, JSON.stringify(rec));
 

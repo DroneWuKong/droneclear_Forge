@@ -491,6 +491,7 @@ a.brief-source-chip:hover{color:var(--text-s);border-color:var(--border-hi)}
       <div class="filter-row filter-collapsible collapsed" id="region-filters"></div>
     </div>
     <div style="display:flex;gap:8px;align-items:center;margin-bottom:14px;flex-wrap:wrap">
+      <button type="button" id="wl-toggle" onclick="toggleWlFilter()" title="Show only flags matching your watchlist" style="background:var(--surface);border:1px solid var(--border);border-radius:6px;padding:6px 10px;font:600 11px var(--mono);color:var(--text);cursor:pointer;min-height:32px">★ Watchlist</button>
       <span style="font:10px var(--mono);color:var(--text-d)">Sort:</span>
       <select id="flag-sort" onchange="renderFlags()" style="background:var(--surface);border:1px solid var(--border);border-radius:6px;padding:6px 10px;font:11px var(--mono);color:var(--text);outline:none;-webkit-appearance:menulist;appearance:menulist;min-height:32px">
         <option value="confidence-desc">Confidence ↓</option>
@@ -1740,6 +1741,79 @@ function whatChangedHTML(b){
   return html;
 }
 
+// ── Watchlist (Tier 2 personalization) ───────────────────────────────────────
+// Follow an entity / component / program / flag-type. Client-side only
+// (localStorage) — no account needed. A flag "matches" if any of its dimensions
+// is followed, so following a topic also catches future flags about it.
+const WL_KEY = 'pie_watchlist';
+let WATCHLIST = (function(){ try{ return JSON.parse(localStorage.getItem(WL_KEY)||'[]'); }catch(e){ return []; } })();
+let wlFilterOn = false;
+function wlSave(){ try{ localStorage.setItem(WL_KEY, JSON.stringify(WATCHLIST)); }catch(e){} }
+function wlHas(k){ return WATCHLIST.some(w=>w.k===k); }
+function wlSlug(s){ return String(s||'').trim().toLowerCase(); }
+// Candidate follow targets for a flag, most-specific first.
+function flagWatchTargets(f){
+  const t=[];
+  if(f.component_id) t.push({k:'component:'+wlSlug(f.component_id), label:f.component_id});
+  if(f.platform_id)  t.push({k:'platform:'+wlSlug(f.platform_id),  label:f.platform_id});
+  if(f.entity_id)    t.push({k:'entity:'+wlSlug(f.entity_id),      label:f.entity_id});
+  if(f.flag_type)    t.push({k:'type:'+wlSlug(f.flag_type),        label:(FLAG_META[f.flag_type]||{}).label||f.flag_type});
+  return t;
+}
+function wlMatch(f){ return WATCHLIST.length ? flagWatchTargets(f).some(t=>wlHas(t.k)) : false; }
+function wlToggle(k,label){
+  const i=WATCHLIST.findIndex(w=>w.k===k);
+  if(i>=0) WATCHLIST.splice(i,1); else WATCHLIST.push({k:k,label:label||k});
+  wlSave();
+  if(window.__forgeAnalytics) try{ __forgeAnalytics.event && __forgeAnalytics.event('watchlist_toggle'); }catch(e){}
+  if(window.__lastBrief) renderBriefPanel(window.__lastBrief);
+  renderFlags();
+}
+// Quick-follow a flag's primary (most specific) target from a card star.
+function toggleWatchFromEl(ev, el){
+  ev.stopPropagation(); ev.preventDefault();
+  wlToggle(el.getAttribute('data-wl'), el.getAttribute('data-wllabel'));
+}
+function wlStar(f){
+  const tg=flagWatchTargets(f)[0]; if(!tg) return '';
+  const on=wlHas(tg.k);
+  const lbl=(''+tg.label).replace(/"/g,'&quot;');
+  return `<button type="button" class="wl-star" title="${on?'Following':'Follow'} ${lbl}" data-wl="${tg.k}" data-wllabel="${lbl}" onclick="toggleWatchFromEl(event,this)" style="background:none;border:none;cursor:pointer;font-size:13px;line-height:1;padding:0 4px 0 0;color:${on?'var(--amber,#f59e0b)':'var(--text-d)'}">${on?'★':'☆'}</button>`;
+}
+function toggleWlFilter(){
+  wlFilterOn=!wlFilterOn;
+  const btn=document.getElementById('wl-toggle');
+  if(btn){ btn.style.color=wlFilterOn?'#0c0c0a':'var(--text)'; btn.style.background=wlFilterOn?'var(--amber,#f59e0b)':'var(--surface)'; btn.style.borderColor=wlFilterOn?'var(--amber,#f59e0b)':'var(--border)'; }
+  renderFlags();
+}
+// Follow chips for the flag-detail panel — one per dimension.
+function flagFollowChips(f){
+  const tg=flagWatchTargets(f); if(!tg.length) return '';
+  const dim={component:'Component',platform:'Program',entity:'Entity',type:'Type'};
+  const chips=tg.map(t=>{
+    const on=wlHas(t.k); const d=dim[t.k.split(':')[0]]||'Topic';
+    const lbl=(''+t.label).replace(/'/g,"\\'");
+    return `<button type="button" onclick="wlToggle('${t.k.replace(/'/g,"\\'")}','${lbl}')" style="display:inline-flex;align-items:center;gap:5px;background:${on?'var(--amber,#f59e0b)22':'var(--surface)'};border:1px solid ${on?'var(--amber,#f59e0b)':'var(--border)'};border-radius:14px;padding:4px 10px;font:500 11px var(--mono);color:${on?'var(--amber,#f59e0b)':'var(--text)'};cursor:pointer">${on?'★':'☆'} ${d}: ${(''+t.label).slice(0,28).replace(/</g,'&lt;')}</button>`;
+  }).join('');
+  return `<div style="margin:10px 0;padding:8px 10px;background:var(--surface);border-radius:6px">
+    <div style="font:700 9px var(--mono);color:var(--text-d);letter-spacing:.06em;margin-bottom:6px">FOLLOW THIS SIGNAL'S TOPICS</div>
+    <div style="display:flex;gap:6px;flex-wrap:wrap">${chips}</div></div>`;
+}
+function watchlistHTML(){
+  const n=WATCHLIST.length; if(!n) return '';
+  const matched = Array.isArray(FLAGS)?FLAGS.filter(wlMatch):[];
+  let newCnt=0;
+  try{ const lv=(localStorage.getItem('pie_last_visit')||'').slice(0,10); if(lv) newCnt=matched.filter(f=>f.first_seen&&f.first_seen>lv).length; }catch(e){}
+  const chips = WATCHLIST.slice(0,8).map(w=>`<span style="display:inline-flex;align-items:center;gap:4px;background:var(--card);border:1px solid var(--border);border-radius:12px;padding:2px 8px;font:500 10px var(--mono);color:var(--text)">${(''+w.label).slice(0,22).replace(/</g,'&lt;')}<button type="button" title="Unfollow" onclick="wlToggle('${w.k.replace(/'/g,"\\'")}')" style="background:none;border:none;color:var(--text-d);cursor:pointer;font:11px var(--mono);padding:0">×</button></span>`).join('');
+  return `<div style="margin-bottom:12px;padding:10px 12px;background:var(--surface);border:1px solid var(--amber,#f59e0b)44;border-radius:8px">
+    <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:6px">
+      <span style="font:700 10px var(--mono);color:var(--amber,#f59e0b);letter-spacing:.06em">★ YOUR WATCHLIST</span>
+      <span style="font:500 10px var(--mono);color:var(--text-d)">${matched.length} active${newCnt?` · <b style="color:var(--green)">${newCnt} new since last visit</b>`:''}</span>
+    </div>
+    <div style="display:flex;gap:5px;flex-wrap:wrap">${chips}${n>8?`<span style="font:10px var(--mono);color:var(--text-d);align-self:center">+${n-8} more</span>`:''}</div>
+  </div>`;
+}
+
 // Email-digest signup card (Tier 2) — the return-trigger. Posts to the
 // /api/digest/subscribe Worker (double opt-in). Degrades gracefully: if the
 // provider isn't configured server-side, the address is still stored as pending.
@@ -1759,7 +1833,8 @@ function subscribeDigest(){
   const setMsg=(t,c)=>{ if(msg){ msg.textContent=t; msg.style.color=c; } };
   if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)){ setMsg('Enter a valid email.','var(--red)'); return; }
   setMsg('Subscribing…','var(--text-d)');
-  fetch('/api/digest/subscribe',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({email:email,cadence:'daily'})})
+  const watch = (typeof WATCHLIST!=='undefined' && Array.isArray(WATCHLIST)) ? WATCHLIST.map(w=>w.k).slice(0,50) : [];
+  fetch('/api/digest/subscribe',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({email:email,cadence:'daily',watch:watch})})
     .then(r=>r.json()).then(d=>{
       if(d&&d.ok){
         if(d.status==='already_subscribed') setMsg('Already subscribed ✓','var(--green)');
@@ -1795,6 +1870,7 @@ function renderBriefPanel(b){
   }
   // Prefer the durable ledger's new-count for the "New" stat when available.
   if (sig && DELTA && DELTA.date && typeof DELTA.new_count === 'number') sig.new_today = DELTA.new_count;
+  window.__lastBrief = b;   // so watchlist/digest toggles can re-render this panel
   const lead=b.lead_story||{};let html="";
 
   // ── Freshness badge ──
@@ -1865,6 +1941,7 @@ function renderBriefPanel(b){
   // "Since your last visit" (client-side) + "Today" movement (ledger-preferred).
   html += sinceLastVisitHTML();
   html += whatChangedHTML(b);
+  html += watchlistHTML();
   html += digestSignupHTML();
 
   // Tier-personalized section
@@ -2288,6 +2365,9 @@ function renderFlags() {
     );
   }
 
+  // Watchlist filter (show only followed topics)
+  if (wlFilterOn) flags = flags.filter(wlMatch);
+
   // Sort
   const sortVal = document.getElementById("flag-sort")?.value || "date-desc";
   if (sortVal === "confidence-desc") flags.sort((a,b) => (b.confidence||0) - (a.confidence||0));
@@ -2382,7 +2462,7 @@ function renderFlags() {
               return `<div class="flag-card" data-id="${f.id}" style="border-left:2px solid ${sc}">
                 <span class="sev sev-${sev}"></span>
                 <div style="flex:1;min-width:0">
-                  <div class="title">${f.title}${lcBadge(f)}</div>
+                  <div class="title">${wlStar(f)}${f.title}${lcBadge(f)}</div>
                   <div style="font-size:10px;color:var(--text-d);margin-top:1px">${sev} · ${Math.round((f.confidence||0)*100)}%</div>
                 </div>
               </div>`;
@@ -2438,7 +2518,7 @@ function renderFlags() {
           <span class="badge ${confBadge}">${conf}%</span>
           ${regionTags}
         </div>
-        <div class="title">${f.title}${lcBadge(f)}</div>
+        <div class="title">${wlStar(f)}${f.title}${lcBadge(f)}</div>
       </div>
     </div>`;
   }).join("");
@@ -2506,6 +2586,9 @@ function renderFlagDetail() {
     });
     html += `</div></div>`;
   }
+  // Follow this signal's topics (watchlist)
+  html += flagFollowChips(f);
+
   // ── Related Intelligence (entity graph cross-ref) ──
   html += renderRelatedIntel(f);
 
