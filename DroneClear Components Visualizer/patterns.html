@@ -1740,6 +1740,37 @@ function whatChangedHTML(b){
   return html;
 }
 
+// Email-digest signup card (Tier 2) — the return-trigger. Posts to the
+// /api/digest/subscribe Worker (double opt-in). Degrades gracefully: if the
+// provider isn't configured server-side, the address is still stored as pending.
+function digestSignupHTML(){
+  return `<div id="digest-card" style="margin-bottom:12px;padding:10px 12px;background:var(--surface);border:1px solid var(--border);border-radius:8px">
+    <div style="font:700 10px var(--mono);color:var(--cyan,#22d3ee);letter-spacing:.06em;margin-bottom:6px">📬 GET THE DAILY BRIEF</div>
+    <div style="display:flex;gap:6px;flex-wrap:wrap">
+      <input id="digest-email" type="email" placeholder="you@agency.gov" autocomplete="email" style="flex:1;min-width:160px;background:var(--card);border:1px solid var(--border);border-radius:6px;padding:7px 10px;font:12px var(--mono);color:var(--text);outline:none">
+      <button type="button" onclick="subscribeDigest()" style="background:var(--cyan,#22d3ee);color:#0c0c0a;border:none;border-radius:6px;padding:7px 14px;font:700 12px var(--mono);cursor:pointer">Subscribe</button>
+    </div>
+    <div id="digest-msg" style="font:11px var(--mono);color:var(--text-d);margin-top:6px">"What changed since yesterday", in your inbox. Double opt-in · unsubscribe anytime.</div>
+  </div>`;
+}
+function subscribeDigest(){
+  const el=document.getElementById('digest-email'), msg=document.getElementById('digest-msg');
+  const email=((el&&el.value)||'').trim();
+  const setMsg=(t,c)=>{ if(msg){ msg.textContent=t; msg.style.color=c; } };
+  if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)){ setMsg('Enter a valid email.','var(--red)'); return; }
+  setMsg('Subscribing…','var(--text-d)');
+  fetch('/api/digest/subscribe',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({email:email,cadence:'daily'})})
+    .then(r=>r.json()).then(d=>{
+      if(d&&d.ok){
+        if(d.status==='already_subscribed') setMsg('Already subscribed ✓','var(--green)');
+        else if(d.email_sent)               setMsg('Check your inbox to confirm ✓','var(--green)');
+        else                                setMsg('Saved — confirmation pending email setup.','var(--green)');
+        if(el) el.value='';
+        if(window.__forgeAnalytics) try{ __forgeAnalytics.event && __forgeAnalytics.event('digest_subscribe'); }catch(e){}
+      } else setMsg((d&&d.error)||'Something went wrong.','var(--red)');
+    }).catch(()=>setMsg('Network error — try again.','var(--red)'));
+}
+
 function renderBriefPanel(b){
   const el=document.getElementById("brief-inner");if(!el)return;
   // ── Signal counts ──
@@ -1834,6 +1865,7 @@ function renderBriefPanel(b){
   // "Since your last visit" (client-side) + "Today" movement (ledger-preferred).
   html += sinceLastVisitHTML();
   html += whatChangedHTML(b);
+  html += digestSignupHTML();
 
   // Tier-personalized section
   const _tier = getTier();
