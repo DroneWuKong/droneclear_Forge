@@ -73,6 +73,13 @@ tbody td.l{text-align:left;font:600 12px var(--font);color:var(--text)}
 
 .empty{padding:28px 14px;text-align:center;color:var(--text-d);font:500 12px var(--mono)}
 .err-code{color:var(--amber)}
+/* Live insight line under a chart — the finding, computed from the data, not
+   static prose. Left border keys to severity (red/amber/green). */
+.insight{margin-top:12px;padding:8px 12px;border-left:3px solid var(--text-xd);background:var(--surface);border-radius:4px;font:500 12px var(--font);color:var(--text-s);line-height:1.5}
+.insight.bad{border-left-color:var(--red)}
+.insight.warn{border-left-color:var(--amber)}
+.insight.good{border-left-color:var(--green)}
+.insight b{color:var(--text);font-weight:700}
 .footnote{margin-top:14px;font-size:11px;color:var(--text-xd);line-height:1.6}
 .footnote a{color:var(--amber);text-decoration:underline}
 </style>
@@ -121,11 +128,26 @@ tbody td.l{text-align:left;font:600 12px var(--font);color:var(--text)}
     </div>
 
     <div class="panel">
+      <div class="panel-h">Grading coverage by impact tier</div>
+      <div class="panel-sub">Graded (green) vs ungraded (red), split by the stakes of the call.</div>
+      <svg class="chart" id="impact-bars" viewBox="0 0 820 240" preserveAspectRatio="xMidYMid meet"></svg>
+      <div class="legend" id="impact-legend"></div>
+      <div class="insight" id="impact-insight" hidden></div>
+    </div>
+
+    <div class="panel">
+      <div class="panel-h">Where the engine places its confidence</div>
+      <div class="panel-sub">Histogram of predicted probability across all resolved forecasts.</div>
+      <svg class="chart" id="conf-hist" viewBox="0 0 820 240" preserveAspectRatio="xMidYMid meet"></svg>
+      <div class="insight" id="conf-insight" hidden></div>
+    </div>
+
+    <div class="panel">
       <div class="panel-h">Reliability diagram</div>
       <div class="panel-sub">Each point is a probability bucket: x = predicted, y = observed
-        frequency. Points should sit on the dashed line. Bubble size = sample count.
-        With a thin graded set, treat this as indicative.</div>
+        frequency. Points should sit on the dashed line. Bubble size = sample count.</div>
       <svg class="chart" id="reliability" viewBox="0 0 820 320" preserveAspectRatio="xMidYMid meet"></svg>
+      <div class="insight" id="reliability-insight" hidden></div>
     </div>
 
     <div class="panel">
@@ -157,6 +179,16 @@ function escapeHtml(s){
 }
 function pct(v){ return (v*100).toFixed(0) + '%'; }
 
+// Set a live insight line (the finding, derived from the data) under a chart.
+// sev ∈ {bad,warn,good}; html may contain <b> for emphasis.
+function setInsight(id, sev, html){
+  var el = document.getElementById(id);
+  if(!el) return;
+  el.className = 'insight ' + (sev || '');
+  el.innerHTML = html;
+  el.hidden = false;
+}
+
 // Outcomes that mean "the engine could not grade this" — excluded from the
 // calibration denominator. Kept in lockstep with prediction_resolver.py
 // (UNGRADABLE = {"unresolvable","expired"}); "expired" is the legacy label.
@@ -182,6 +214,8 @@ function analyze(outcomes){
   var graded = [], correct = 0, ungraded = [];
   var totalMass = 0, ungradedMass = 0;
   var reasons = {}, buckets = {}, dom = {};
+  // impact = critical/high/medium/low; confHist = 0.0–1.0 probability histogram
+  var impact = {}, confHist = {};
   // finalized = reached a resolution_outcome; gradable excludes unresolvable/
   // expired so grade_rate matches prediction_resolver.compute_calibration:
   // grade_rate = graded / (finalized − unresolvable).
@@ -216,6 +250,16 @@ function analyze(outcomes){
     dom[d] = dom[d] || {total:0, graded:0};
     dom[d].total++;
     if(g) dom[d].graded++;
+
+    // impact tier: total vs graded (the "critical calls are least-graded" story)
+    var im = o.predicted_impact || 'unknown';
+    impact[im] = impact[im] || {total:0, graded:0};
+    impact[im].total++;
+    if(g) impact[im].graded++;
+
+    // confidence histogram: where the engine places its probability mass
+    var hb = Math.min(Math.floor(p * 10), 9);
+    confHist[hb] = (confHist[hb] || 0) + 1;
   });
 
   var brier = null;
@@ -235,7 +279,8 @@ function analyze(outcomes){
     N:N, graded:graded.length, correct:correct, ungraded:ungraded.length,
     gradeRate: gradableCount ? gradedInGradable / gradableCount : null,
     massUnverified: totalMass ? ungradedMass / totalMass : 0,
-    brier:brier, reasons:reasons, buckets:buckets, dom:dom
+    brier:brier, reasons:reasons, buckets:buckets, dom:dom,
+    impact:impact, confHist:confHist
   };
 }
 
@@ -319,6 +364,98 @@ function renderReliability(a){
   s += '<text class="axis-label" x="'+(W/2)+'" y="'+(H-8)+'" text-anchor="middle">predicted probability →</text>';
   s += '<text class="axis-label" x="14" y="'+(H/2)+'" text-anchor="middle" transform="rotate(-90 14 '+(H/2)+')">observed frequency →</text>';
   document.getElementById('reliability').innerHTML = s;
+
+  // Insight: is the graded set large enough to call calibration at all?
+  var nBuckets = Object.keys(a.buckets).length;
+  if(a.graded < 10){
+    setInsight('reliability-insight', 'warn',
+      'Only <b>'+a.graded+'</b> graded forecasts across <b>'+nBuckets+'</b> probability bucket'
+      +(nBuckets===1?'':'s')+' — too few to establish calibration. The curve is <b>indicative, not conclusive</b>'
+      +(a.brier!==null?'; Brier '+a.brier.toFixed(3)+' on this thin set.':'.')
+      +' Grade rate is the metric to move first.');
+  } else {
+    setInsight('reliability-insight', a.brier!==null && a.brier<0.2 ? 'good' : 'warn',
+      'Calibration over <b>'+a.graded+'</b> graded forecasts'
+      +(a.brier!==null?', Brier <b>'+a.brier.toFixed(3)+'</b> (0=perfect, 0.25=coin-flip)':'')+'.');
+  }
+}
+
+// ── impact-tier stacked bars (graded vs ungraded per tier) ──────────────────
+function renderImpact(a){
+  var order = ['critical','high','medium','low'];
+  var tiers = order.filter(function(t){ return a.impact[t]; })
+    .concat(Object.keys(a.impact).filter(function(t){ return order.indexOf(t) < 0; }));
+  if(!tiers.length){ document.getElementById('impact-bars').innerHTML=''; return; }
+  var W=820,H=240,PAD_L=80,PAD_R=50,PAD_T=14,PAD_B=28;
+  var rowH=(H-PAD_T-PAD_B)/tiers.length, barH=Math.min(34,rowH*0.6);
+  var maxTot=Math.max.apply(null,tiers.map(function(t){return a.impact[t].total;}));
+  var plotW=W-PAD_L-PAD_R;
+  var s='';
+  tiers.forEach(function(t,i){
+    var st=a.impact[t], y=PAD_T+i*rowH+(rowH-barH)/2;
+    var totW=plotW*(st.total/maxTot), gradW=totW*(st.graded/st.total);
+    // ungraded (red) base, graded (green) overlay
+    s+='<rect x="'+PAD_L+'" y="'+y+'" width="'+totW.toFixed(1)+'" height="'+barH+'" rx="4" fill="'+C.unresolvable+'" fill-opacity="0.55"/>';
+    s+='<rect x="'+PAD_L+'" y="'+y+'" width="'+gradW.toFixed(1)+'" height="'+barH+'" rx="4" fill="'+C.graded+'" fill-opacity="0.9"/>';
+    s+='<text x="'+(PAD_L-10)+'" y="'+(y+barH/2+4)+'" text-anchor="end" style="font:600 11px var(--mono);fill:var(--text-s)">'+escapeHtml(t)+'</text>';
+    var rate=st.total?Math.round(st.graded/st.total*100):0;
+    s+='<text x="'+(PAD_L+totW+8)+'" y="'+(y+barH/2+4)+'" style="font:600 10px var(--mono);fill:var(--text-d)">'+st.graded+'/'+st.total+' · '+rate+'%</text>';
+  });
+  document.getElementById('impact-bars').innerHTML=s;
+  document.getElementById('impact-legend').innerHTML=
+    '<span><span class="legend-swatch" style="background:'+C.graded+'"></span>graded</span>'
+    +'<span><span class="legend-swatch" style="background:'+C.unresolvable+';opacity:.55"></span>ungraded</span>';
+
+  // Insight: how well are the high-stakes tiers graded vs the rest?
+  var hi = (a.impact.critical||{total:0,graded:0});
+  var hiTot = hi.total + (a.impact.high?a.impact.high.total:0);
+  var hiGr  = hi.graded + (a.impact.high?a.impact.high.graded:0);
+  var hiRate = hiTot ? hiGr/hiTot : null;
+  if(hiRate !== null){
+    var sev = hiRate < 0.25 ? 'bad' : hiRate < 0.5 ? 'warn' : 'good';
+    setInsight('impact-insight', sev,
+      'Of the <b>'+hiTot+'</b> critical/high-impact forecasts — the calls that matter most — only '
+      + '<b>'+hiGr+' ('+pct(hiRate)+')</b> were graded'
+      + (hi.total ? '; critical alone sits at <b>'+hi.graded+'/'+hi.total+'</b>.' : '.'));
+  }
+}
+
+// ── confidence histogram (probability mass distribution) ────────────────────
+function renderConfHist(a){
+  var W=820,H=240,PAD_L=44,PAD_R=16,PAD_T=16,PAD_B=34;
+  var plotW=W-PAD_L-PAD_R, plotH=H-PAD_T-PAD_B;
+  var counts=[]; for(var b=0;b<10;b++) counts.push(a.confHist[b]||0);
+  var maxC=Math.max.apply(null,counts.concat([1]));
+  var bw=plotW/10;
+  var s='';
+  // y gridlines
+  for(var g=0; g<=maxC; g+=Math.max(1,Math.ceil(maxC/4))){
+    var gy=PAD_T+plotH-(g/maxC)*plotH;
+    s+='<line class="grid" x1="'+PAD_L+'" y1="'+gy+'" x2="'+(W-PAD_R)+'" y2="'+gy+'"/>';
+    s+='<text x="'+(PAD_L-8)+'" y="'+(gy+3)+'" text-anchor="end">'+g+'</text>';
+  }
+  counts.forEach(function(c,b){
+    var x=PAD_L+b*bw, h=(c/maxC)*plotH, y=PAD_T+plotH-h;
+    // shade the high-confidence tail amber to flag overconfidence visually
+    var col=b>=7?C.verdict:C.resolved;
+    s+='<rect x="'+(x+3)+'" y="'+y.toFixed(1)+'" width="'+(bw-6)+'" height="'+h.toFixed(1)+'" rx="3" fill="'+col+'" fill-opacity="0.85"/>';
+    if(c>0) s+='<text x="'+(x+bw/2)+'" y="'+(y-4).toFixed(1)+'" text-anchor="middle" style="font:600 9px var(--mono);fill:var(--text-s)">'+c+'</text>';
+    s+='<text x="'+(x+bw/2)+'" y="'+(PAD_T+plotH+16)+'" text-anchor="middle">'+(b/10).toFixed(1)+'</text>';
+  });
+  s+='<text class="axis-label" x="'+(PAD_L+plotW/2)+'" y="'+(H-4)+'" text-anchor="middle">predicted probability →</text>';
+  document.getElementById('conf-hist').innerHTML=s;
+
+  // Insight: how concentrated is the probability mass at the high end?
+  var total=counts.reduce(function(x,y){return x+y;},0);
+  var hiConf=counts[7]+counts[8]+counts[9];
+  if(total){
+    var share=hiConf/total;
+    var sev = share>=0.6 ? 'warn' : 'good';
+    setInsight('conf-insight', sev,
+      '<b>'+hiConf+' of '+total+' ('+pct(share)+')</b> forecasts sit at 0.7 or higher. '
+      + (share>=0.6 ? 'The engine rarely hedges — a concentration that reads as overconfidence until calibration is established on a larger graded set.'
+                    : 'Probability is spread across the range rather than piled at the high end.'));
+  }
 }
 
 // ── domain table ─────────────────────────────────────────────────────────────
@@ -336,7 +473,8 @@ function renderDomains(a){
 
 function render(outcomes){
   var a = analyze(outcomes);
-  renderKpis(a); renderFunnel(a); renderReasons(a); renderReliability(a); renderDomains(a);
+  renderKpis(a); renderFunnel(a); renderReasons(a); renderReliability(a);
+  renderImpact(a); renderConfHist(a); renderDomains(a);
   document.getElementById('loading').hidden = true;
   document.getElementById('content').hidden = false;
 }
