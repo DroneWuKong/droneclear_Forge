@@ -3229,7 +3229,12 @@ function computeWindowTrend(metric, values) {
   const r2 = ssTot ? 1 - ssRes / ssTot : 1.0;
   const thr = _dirThresholdFor(metric);
   const direction = m > thr ? 'rising' : m < -thr ? 'falling' : 'stable';
-  const signal = n < 5 ? 'insufficient_data'
+  // n < 3 (was n < 5): a 5-day window collapses to 'insufficient_data' on
+  // every metric the moment the daily pipeline misses 2 days, even though
+  // pie_trends.json (computed server-side over the full series) carries a
+  // real signal. Three points is enough for a slope + r²; the sparkline
+  // conveys the trajectory visually regardless.
+  const signal = n < 3 ? 'insufficient_data'
               : r2 > 0.85 ? 'strong'
               : r2 > 0.60 ? 'moderate'
               : r2 > 0.30 ? 'weak'
