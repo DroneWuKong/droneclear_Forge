@@ -115,9 +115,10 @@ tbody td.neg{color:var(--red)}
   </aside>
 
   <div class="eyebrow">Market Lens</div>
-  <h1>PIE &times; Equity &times; Doctrine</h1>
-  <p class="tagline">How PIE coverage and the doctrine corpus line up with sector-relative
-  returns across 20 defense-prime, drone-pure, and chip-supply tickers. Source of truth:
+  <h1>PIE &times; Equity</h1>
+  <p class="tagline">How PIE coverage lines up with sector-relative
+  returns across 20 defense-prime, drone-pure, and chip-supply tickers. Doctrine
+  corpus depth is shown alongside as context. Source of truth:
   <a href="https://github.com/DroneWuKong/Ai-Project/blob/main/docs/research/market-lens/REPORT.md">docs/research/market-lens/REPORT.md</a>.</p>
 
   <div class="stats">
@@ -141,9 +142,9 @@ tbody td.neg{color:var(--red)}
       <li><strong>Alpha scatter</strong> &mdash; x: PIE mentions (preds + briefs), y: alpha vs sector
         benchmark (<span id="methodology-benches">ITA for primes/drones/intl, SOXX for chip-supply</span>). Dashed line at y=0
         is the benchmark; above = outperforming, below = underperforming.</li>
-      <li><strong>Doctrine scatter</strong> &mdash; x: PIE mentions, y: doctrine corpus docs that
-        mention the ticker. Log&ndash;log. Quadrant gridlines at the medians of the non-zero values.
-        Tickers with zero PIE mentions <em>and</em> zero doctrine docs are omitted.</li>
+      <li><strong>Doctrine docs</strong> &mdash; shown as a context column in the table (not a chart
+        axis): the count of doctrine-corpus documents mentioning the ticker. A level reading on how
+        embedded a name is in defense doctrine, independent of this window's PIE coverage.</li>
     </ul>
 
     <h3>What this is <em>not</em></h3>
@@ -250,62 +251,6 @@ function renderAlphaScatter(root, points){
     // (BA, GD, KTOS etc.) and overlap each other unreadably. The circle
     // still renders at (0, alpha) so the position is shown.
     if(p.pie_mentions > 0){
-      svg.push('<text class="pt-label" x="'+(cx+r+3)+'" y="'+(cy+3)+'">'+escapeHtml(p.ticker)+'</text>');
-    }
-  });
-  svg.push('</svg>');
-  root.innerHTML = svg.join('');
-}
-
-// ── Chart B: doctrine docs vs PIE mentions (log-log) ──────────────────────
-// Quadrant gridlines at medians of the nonzero values.
-function renderDoctrineScatter(root, points){
-  var W = 820, H = 300, PAD_L = 50, PAD_R = 16, PAD_T = 14, PAD_B = 36;
-  var pts = points.filter(function(p){ return (p.pie_mentions + p.doctrine_docs) > 0; });
-  if(!pts.length){ root.innerHTML = '<div class="empty">No rows with PIE or doctrine signal.</div>'; return; }
-  // log10 with +1 offset so zeros plot at the origin instead of -infinity
-  function lg(v){ return Math.log10((v || 0) + 1); }
-  var xs = pts.map(function(p){ return lg(p.pie_mentions); });
-  var ys = pts.map(function(p){ return lg(p.doctrine_docs); });
-  var xMax = Math.max.apply(null, xs.concat([1]));
-  var yMax = Math.max.apply(null, ys.concat([1]));
-  function sx(v){ return PAD_L + (v / xMax) * (W - PAD_L - PAD_R); }
-  function sy(v){ return H - PAD_B - (v / yMax) * (H - PAD_T - PAD_B); }
-  // Median of nonzero values (raw, not logged — then log for the line position)
-  function median(arr){
-    var a = arr.slice().sort(function(p,q){ return p - q; });
-    if(!a.length) return 0;
-    var n = a.length;
-    return n % 2 ? a[(n-1)/2] : (a[n/2-1] + a[n/2]) / 2;
-  }
-  var xMedRaw = median(pts.map(function(p){ return p.pie_mentions; }).filter(function(v){ return v > 0; }));
-  var yMedRaw = median(pts.map(function(p){ return p.doctrine_docs; }).filter(function(v){ return v > 0; }));
-  var svg = ['<svg class="scatter" viewBox="0 0 '+W+' '+H+'" preserveAspectRatio="xMidYMid meet">'];
-  svg.push('<line class="grid" x1="'+PAD_L+'" y1="'+(H-PAD_B)+'" x2="'+(W-PAD_R)+'" y2="'+(H-PAD_B)+'"/>');
-  svg.push('<line class="grid" x1="'+PAD_L+'" y1="'+PAD_T+'" x2="'+PAD_L+'" y2="'+(H-PAD_B)+'"/>');
-  // Quadrant medians
-  if(xMedRaw > 0){
-    var xMed = sx(lg(xMedRaw));
-    svg.push('<line class="median-line" x1="'+xMed+'" y1="'+PAD_T+'" x2="'+xMed+'" y2="'+(H-PAD_B)+'"/>');
-    svg.push('<text class="axis-label" x="'+(xMed+3)+'" y="'+(PAD_T+10)+'">x-median ('+xMedRaw.toFixed(0)+')</text>');
-  }
-  if(yMedRaw > 0){
-    var yMed = sy(lg(yMedRaw));
-    svg.push('<line class="median-line" x1="'+PAD_L+'" y1="'+yMed+'" x2="'+(W-PAD_R)+'" y2="'+yMed+'"/>');
-    svg.push('<text class="axis-label" x="'+(W-PAD_R-2)+'" y="'+(yMed-3)+'" text-anchor="end">y-median ('+yMedRaw.toFixed(0)+')</text>');
-  }
-  // Axis labels
-  svg.push('<text class="axis-label" x="'+(PAD_L+(W-PAD_L-PAD_R)/2)+'" y="'+(H-6)+'" text-anchor="middle">PIE mentions (log)</text>');
-  svg.push('<text class="axis-label" x="14" y="'+(PAD_T+(H-PAD_T-PAD_B)/2)+'" transform="rotate(-90 14 '+(PAD_T+(H-PAD_T-PAD_B)/2)+')" text-anchor="middle">doctrine docs (log)</text>');
-  // Points
-  pts.forEach(function(p){
-    var c = SECTOR_COLORS[p.sector] || '#999';
-    var cx = sx(lg(p.pie_mentions)), cy = sy(lg(p.doctrine_docs));
-    var r = 4 + Math.min(5, Math.sqrt(Math.max(p.active_days, 1)) * 0.5);
-    svg.push('<circle class="pt" cx="'+cx+'" cy="'+cy+'" r="'+r+'" fill="'+escapeHtml(c)+'" fill-opacity="0.8"/>');
-    // Skip labels when either axis is zero — log floor stacks them on the
-    // axes (AMBA at (0,1), BA at (0,15), etc.) with unreadable overlap.
-    if(p.pie_mentions > 0 && p.doctrine_docs > 0){
       svg.push('<text class="pt-label" x="'+(cx+r+3)+'" y="'+(cy+3)+'">'+escapeHtml(p.ticker)+'</text>');
     }
   });
@@ -432,21 +377,13 @@ function render(d){
     +   '<div class="legend" id="lg-alpha"></div>'
     + '</div>'
     + '<div class="panel">'
-    +   '<div class="panel-h">PIE coverage vs doctrine corpus depth</div>'
-    +   '<div class="panel-sub">Log&ndash;log. x: PIE mentions. y: doctrine documents mentioning the ticker. Dashed quadrant lines at medians of the nonzero values. Tickers with zero on both axes are omitted.</div>'
-    +   '<div id="pane-scatter-doctrine"></div>'
-    +   '<div class="legend" id="lg-doctrine"></div>'
-    + '</div>'
-    + '<div class="panel">'
     +   '<div class="panel-h">Per-ticker rollup</div>'
     +   '<div class="panel-sub">Sorted by &alpha; descending. ETFs at the bottom (alpha undefined). PIE window: <code>'+ escapeHtml(meta.window_start||'') +'</code> &ndash; <code>'+ escapeHtml(meta.window_end||'') +'</code>.</div>'
     +   '<div id="pane-table"></div>'
     + '</div>';
 
   renderAlphaScatter(document.getElementById('pane-scatter-alpha'), d.tickers);
-  renderDoctrineScatter(document.getElementById('pane-scatter-doctrine'), d.tickers);
   renderLegend(document.getElementById('lg-alpha'));
-  renderLegend(document.getElementById('lg-doctrine'));
   renderTable(document.getElementById('pane-table'), d.tickers);
 }
 
