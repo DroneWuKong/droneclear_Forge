@@ -93,6 +93,7 @@ PAGES = {
     'evasion.html': 'evasion/index.html',
     'market-lens.html': 'market-lens/index.html',
     'forecast-accountability.html': 'forecast-accountability/index.html',
+    'pie-trends.html': 'pie-trends/index.html',
     # Doctrine submission + audit (Cloudflare/Netlify-Function backed)
     'contribute-doctrine.html': 'contribute-doctrine/index.html',
     'audit-doctrine.html': 'audit-doctrine/index.html',
@@ -177,6 +178,7 @@ _PAGE_SLUGS = {
     'actors.html': 'actors', 'ttps.html': 'ttps', 'evasion.html': 'evasion',
     'market-lens.html': 'market-lens',
     'forecast-accountability.html': 'forecast-accountability',
+    'pie-trends.html': 'pie-trends',
     'contribute-doctrine.html': 'contribute-doctrine', 'audit-doctrine.html': 'audit-doctrine',
     'intel.html': 'intel-feed', 'intel-home.html': 'intel-home',
     'intel-defense.html': 'intel-defense', 'intel-commercial.html': 'intel-commercial',
@@ -354,6 +356,7 @@ _UNIFIED_NAV = r"""<!-- ── Unified UAS- Nav (5-domain accordion drawer) ─�
       <a class="dc-dom-sublink" href="https://uas-patterns.com/evasion/" data-page="evasion">Sanctions-Evasion</a>
       <a class="dc-dom-sublink" href="https://uas-patterns.com/market-lens/" data-page="market-lens">Market Lens</a>
       <a class="dc-dom-sublink" href="https://uas-patterns.com/forecast-accountability/" data-page="forecast-accountability">Forecast Accountability</a>
+      <a class="dc-dom-sublink" href="https://uas-patterns.com/pie-trends/" data-page="pie-trends">PIE Trends</a>
     </div>
   </details>
 
@@ -454,7 +457,7 @@ _UNIFIED_NAV = r"""<!-- ── Unified UAS- Nav (5-domain accordion drawer) ─�
     'patterns-home':'P.I.E Hub','brief':'Brief','patterns':'Flags','clock':'UAS Clock','ddg':'DDG Tracker',
     'adversary-bom':'Adversary BOM','mirroring':'Component Mirroring','actors':'Threat Actors',
     'ttps':'TTP Defense Gap','evasion':'Sanctions-Evasion','market-lens':'Market Lens',
-    'forecast-accountability':'Forecast Accountability',
+    'forecast-accountability':'Forecast Accountability','pie-trends':'PIE Trends',
     'contribute-doctrine':'Contribute Doctrine','audit-doctrine':'Doctrine Audit',
     'start':'Getting Started','grants':'Grants','waiver':'Doc Builder',
     'verify':'Verify','vault':'Vault','troubleshoot':'Troubleshoot','support':'Support','hub':'Hub','gallery':'Featured Builds','entity-graph':'Entity Graph',
