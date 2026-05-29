@@ -91,6 +91,7 @@ PAGES = {
     'actors.html': 'actors/index.html',
     'ttps.html': 'ttps/index.html',
     'evasion.html': 'evasion/index.html',
+    'market-lens.html': 'market-lens/index.html',
     # Doctrine submission + audit (Cloudflare/Netlify-Function backed)
     'contribute-doctrine.html': 'contribute-doctrine/index.html',
     'audit-doctrine.html': 'audit-doctrine/index.html',
@@ -173,6 +174,7 @@ _PAGE_SLUGS = {
     'patterns.html': 'patterns', 'patterns-home.html': 'patterns-home',
     'adversary-bom.html': 'adversary-bom', 'mirroring.html': 'mirroring',
     'actors.html': 'actors', 'ttps.html': 'ttps', 'evasion.html': 'evasion',
+    'market-lens.html': 'market-lens',
     'contribute-doctrine.html': 'contribute-doctrine', 'audit-doctrine.html': 'audit-doctrine',
     'intel.html': 'intel-feed', 'intel-home.html': 'intel-home',
     'intel-defense.html': 'intel-defense', 'intel-commercial.html': 'intel-commercial',
@@ -340,7 +342,15 @@ _UNIFIED_NAV = r"""<!-- ── Unified UAS- Nav (5-domain accordion drawer) ─�
       <span class="dc-dom-chev">▶</span>
     </summary>
     <div class="dc-dom-sublinks">
+      <a class="dc-dom-sublink" href="https://uas-patterns.com/patterns-home/" data-page="patterns-home">P.I.E Hub</a>
+      <a class="dc-dom-sublink" href="https://uas-patterns.com/brief/" data-page="brief">Daily Brief</a>
       <a class="dc-dom-sublink" href="https://uas-patterns.com/patterns/" data-page="patterns">Flags Dashboard</a>
+      <a class="dc-dom-sublink" href="https://uas-patterns.com/adversary-bom/" data-page="adversary-bom">Adversary BOM</a>
+      <a class="dc-dom-sublink" href="https://uas-patterns.com/mirroring/" data-page="mirroring">Component Mirroring</a>
+      <a class="dc-dom-sublink" href="https://uas-patterns.com/actors/" data-page="actors">Threat Actors</a>
+      <a class="dc-dom-sublink" href="https://uas-patterns.com/ttps/" data-page="ttps">TTP Defense Gap</a>
+      <a class="dc-dom-sublink" href="https://uas-patterns.com/evasion/" data-page="evasion">Sanctions-Evasion</a>
+      <a class="dc-dom-sublink" href="https://uas-patterns.com/market-lens/" data-page="market-lens">Market Lens</a>
     </div>
   </details>
 
@@ -440,7 +450,7 @@ _UNIFIED_NAV = r"""<!-- ── Unified UAS- Nav (5-domain accordion drawer) ─�
     'software-library':'Software Library','industry':'Industry','tracker':'Contract Tracker',
     'patterns-home':'P.I.E Hub','brief':'Brief','patterns':'Flags','clock':'UAS Clock','ddg':'DDG Tracker',
     'adversary-bom':'Adversary BOM','mirroring':'Component Mirroring','actors':'Threat Actors',
-    'ttps':'TTP Defense Gap','evasion':'Sanctions-Evasion',
+    'ttps':'TTP Defense Gap','evasion':'Sanctions-Evasion','market-lens':'Market Lens',
     'contribute-doctrine':'Contribute Doctrine','audit-doctrine':'Doctrine Audit',
     'start':'Getting Started','grants':'Grants','waiver':'Doc Builder',
     'verify':'Verify','vault':'Vault','troubleshoot':'Troubleshoot','support':'Support','hub':'Hub','gallery':'Featured Builds','entity-graph':'Entity Graph',
@@ -1515,6 +1525,7 @@ def build():
                         'adversary_bom.json', 'component_mirroring_index.json',
                         'sanctions_evasion_graph.json', 'actor_fingerprints.json',
                         'ttp_counter_gap.json', 'threat_scores.json',
+                        'market_lens.json',
                         # Health + health history
                         'miner_health.json', 'miner_registry.json']
     for fname in ROOT_INTEL_FILES:
