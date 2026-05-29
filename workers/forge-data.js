@@ -29,7 +29,7 @@ const DATASETS = new Set([
   // Patterns Hub lens artefacts
   'flags','predictions','adversary_bom','component_mirroring_index',
   'sanctions_evasion_graph','actor_fingerprints','ttp_counter_gap','threat_scores',
-  'market_lens',
+  'market_lens','prediction_outcomes','calibration_scores',
 ]);
 
 // KV namespace → dataset list mapping
@@ -44,7 +44,7 @@ const PIE_OUTPUTS_KEYS = new Set([
   // Patterns Hub lens artefacts (all in PIE_OUTPUTS)
   'flags','predictions','adversary_bom','component_mirroring_index',
   'sanctions_evasion_graph','actor_fingerprints','ttp_counter_gap','threat_scores',
-  'market_lens',
+  'market_lens','prediction_outcomes','calibration_scores',
 ]);
 
 export default {

@@ -1,0 +1,361 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Forecast Accountability — uas-patterns</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://unpkg.com/@phosphor-icons/web"></script>
+<style>
+:root{
+  --bg:#0c0c0a;--surface:#141410;--card:#1c1c17;--card-hi:#242420;
+  --border:#2e2e26;--border-hi:#3e3e34;
+  --green:#22c55e;--green-d:rgba(34,197,94,.15);
+  --amber:#f59e0b;--amber-d:rgba(245,158,11,.15);
+  --red:#ef4444;--red-d:rgba(239,68,68,.15);
+  --blue:#3b82f6;--blue-d:rgba(59,130,246,.15);
+  --text:#f5f0e8;--text-s:#b8b0a0;--text-d:#8a8070;--text-xd:#6b6358;
+  --font:'Inter',system-ui,sans-serif;--mono:'JetBrains Mono',monospace;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--bg);color:var(--text);font-family:var(--font);line-height:1.5;-webkit-font-smoothing:antialiased;min-height:100vh}
+a{text-decoration:none;color:inherit}
+
+.page{max-width:880px;margin:0 auto;padding:32px 24px 60px}
+.eyebrow{font:600 10px var(--mono);text-transform:uppercase;letter-spacing:.12em;color:var(--text-xd);margin-bottom:6px}
+h1{font:700 24px var(--mono);color:#22c55e;letter-spacing:-0.02em;margin-bottom:8px}
+.tagline{font-size:13px;color:var(--text-s);line-height:1.6;max-width:680px}
+.tagline code{font:500 11px var(--mono);background:var(--surface);padding:1px 5px;border-radius:3px;color:var(--text)}
+.tagline a{color:var(--amber);text-decoration:underline;text-decoration-color:rgba(245,158,11,.4)}
+
+/* Caveat — reuses .caveat (mirroring.html:84) + the .caveat-strong modifier,
+   identical to market-lens.html. */
+.caveat{margin-top:24px;padding:12px 14px;background:var(--surface);border-left:3px solid var(--text-xd);border-radius:4px;font:400 11px var(--font);color:var(--text-s);line-height:1.6}
+.caveat-strong{margin-top:0;margin-bottom:20px;border-left-color:var(--amber);background:rgba(245,158,11,.08);padding:14px 16px;font-size:12px;color:var(--text-s)}
+.caveat-strong .caveat-tag{font:700 10px var(--mono);letter-spacing:.12em;color:var(--amber);text-transform:uppercase;margin-bottom:6px}
+.caveat-strong strong{color:var(--text)}
+
+.stats{display:flex;gap:0;border:1px solid var(--border);border-radius:8px;overflow:hidden;margin:20px 0}
+.st{flex:1;text-align:center;padding:12px 8px;border-right:1px solid var(--border)}
+.st:last-child{border-right:none}
+.st-n{font:700 18px var(--mono);display:block;line-height:1}
+.st-n.good{color:var(--green)}.st-n.warn{color:var(--amber)}.st-n.bad{color:var(--red)}
+.st-l{font:500 9px var(--font);text-transform:uppercase;letter-spacing:.07em;color:var(--text-d);margin-top:4px;display:block}
+
+.panel{background:var(--card);border:1px solid var(--border);border-radius:8px;padding:16px 14px;margin-top:18px}
+.panel-h{font:600 11px var(--mono);color:var(--text-s);text-transform:uppercase;letter-spacing:.08em;margin-bottom:4px}
+.panel-sub{font:400 11px var(--font);color:var(--text-d);margin-bottom:12px;line-height:1.5}
+.panel-sub code{font:500 10px var(--mono);background:var(--surface);padding:1px 4px;border-radius:3px;color:var(--text-s)}
+
+.chart{width:100%;display:block}
+.chart text{font:500 9px var(--mono);fill:var(--text-d)}
+.chart .axis-label{font:600 10px var(--mono);fill:var(--text-s)}
+.chart .grid{stroke:var(--border);stroke-width:1}
+.chart .diag{stroke:var(--text-xd);stroke-width:1.5;stroke-dasharray:5 4}
+.chart .pt{stroke:var(--bg);stroke-width:1.5}
+.chart .pt-label{font:600 9px var(--mono);fill:var(--text-s);pointer-events:none}
+
+.legend{display:flex;flex-wrap:wrap;gap:12px;margin-top:8px;padding-top:8px;border-top:1px dashed var(--border);font:500 10px var(--mono);color:var(--text-d)}
+.legend-swatch{display:inline-block;width:10px;height:10px;border-radius:3px;margin-right:5px;vertical-align:-1px}
+
+.funnel-row{display:flex;align-items:center;gap:12px;margin:10px 0}
+.funnel-bar{height:46px;border-radius:5px;display:flex;align-items:center;padding-left:12px;min-width:46px;transition:width .4s ease}
+.funnel-bar .fn{font:700 20px var(--mono);color:var(--bg)}
+.funnel-meta{font:500 11px var(--font);color:var(--text-s)}
+.funnel-meta b{color:var(--text);font-family:var(--font)}
+
+table{width:100%;border-collapse:collapse;margin-top:8px;font-size:11px}
+thead th{background:var(--surface);font:600 9px var(--mono);text-transform:uppercase;letter-spacing:.06em;color:var(--text-d);padding:8px 6px;border-bottom:1px solid var(--border);text-align:right;white-space:nowrap}
+thead th.l{text-align:left}
+tbody td{padding:7px 6px;border-bottom:1px dashed var(--border);text-align:right;font:500 11px var(--mono);color:var(--text-s);white-space:nowrap}
+tbody td.l{text-align:left;font:600 12px var(--font);color:var(--text)}
+
+.empty{padding:28px 14px;text-align:center;color:var(--text-d);font:500 12px var(--mono)}
+.err-code{color:var(--amber)}
+.footnote{margin-top:14px;font-size:11px;color:var(--text-xd);line-height:1.6}
+.footnote a{color:var(--amber);text-decoration:underline}
+</style>
+</head>
+<body>
+<main class="page">
+  <div class="eyebrow">uas-patterns · PIE intelligence</div>
+  <h1>Forecast Accountability</h1>
+  <p class="tagline">
+    PIE issues confident probabilistic forecasts every day. This page asks the
+    uncomfortable question back: <strong>how many does it actually grade — and is
+    it calibrated?</strong> Reads <code>prediction_outcomes</code> live from the
+    intel API; everything below is computed in the browser from that payload.
+  </p>
+
+  <div class="caveat caveat-strong" data-test-id="forecast-accountability-disclaimer">
+    <div class="caveat-tag">Descriptive accountability metric — not a forecast</div>
+    This page measures the engine&rsquo;s <strong>self-grading coverage and calibration</strong>,
+    not future events. A high grade-rate means more forecasts were checked against
+    intel evidence; it is not a claim about what will happen. Calibration figures on a
+    small graded set are indicative, not conclusive.
+  </div>
+
+  <div class="stats" id="kpis">
+    <div class="st"><span class="st-n" id="k-total">—</span><span class="st-l">Resolved</span></div>
+    <div class="st"><span class="st-n" id="k-rate">—</span><span class="st-l">Graded</span></div>
+    <div class="st"><span class="st-n" id="k-mass">—</span><span class="st-l">Mass unverified</span></div>
+    <div class="st"><span class="st-n" id="k-brier">—</span><span class="st-l">Brier (graded)</span></div>
+  </div>
+
+  <section id="content" hidden>
+    <div class="panel">
+      <div class="panel-h">The accountability funnel</div>
+      <div class="panel-sub">How many resolved predictions survive to a real verdict
+        (<code>confirmed</code>/<code>refuted</code>).</div>
+      <div id="funnel"></div>
+    </div>
+
+    <div class="panel">
+      <div class="panel-h">Why predictions go ungraded</div>
+      <div class="panel-sub">Most losses are evidence-matching failures
+        (<code>unresolvable</code> / legacy <code>expired</code>) or ambiguous
+        <code>partial</code> signal — not wrong calls.</div>
+      <div id="reasons"></div>
+      <div class="legend" id="reasons-legend"></div>
+    </div>
+
+    <div class="panel">
+      <div class="panel-h">Reliability diagram</div>
+      <div class="panel-sub">Each point is a probability bucket: x = predicted, y = observed
+        frequency. Points should sit on the dashed line. Bubble size = sample count.
+        With a thin graded set, treat this as indicative.</div>
+      <svg class="chart" id="reliability" viewBox="0 0 820 320" preserveAspectRatio="xMidYMid meet"></svg>
+    </div>
+
+    <div class="panel">
+      <div class="panel-h">Grading rate by domain</div>
+      <div class="panel-sub">Where forecasts go to die — volume vs. how often they close.</div>
+      <table id="domain-table">
+        <thead><tr><th class="l">Domain</th><th>Total</th><th>Graded</th><th>Rate</th></tr></thead>
+        <tbody></tbody>
+      </table>
+    </div>
+  </section>
+
+  <div id="loading" class="panel"><div class="empty">Loading prediction outcomes…</div></div>
+
+  <p class="footnote">
+    Source: <code>prediction_outcomes</code> via <code>/api/data</code>, generated by
+    <a href="https://github.com/DroneWuKong/Ai-Project/blob/main/pipeline/prediction_resolver.py">pipeline/prediction_resolver.py</a>.
+    The resolver grades each prediction by matching it against the intel article DB;
+    the <code>grade_rate</code> it emits is the headline number here.
+  </p>
+</main>
+
+<script>
+// ── helpers ────────────────────────────────────────────────────────────────
+function escapeHtml(s){
+  return String(s == null ? '' : s).replace(/[&<>"']/g, function(c){
+    return ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'})[c];
+  });
+}
+function pct(v){ return (v*100).toFixed(0) + '%'; }
+
+// Outcomes that mean "the engine could not grade this" — excluded from the
+// calibration denominator. Kept in lockstep with prediction_resolver.py
+// (UNGRADABLE = {"unresolvable","expired"}); "expired" is the legacy label.
+var UNGRADABLE = {unresolvable:1, expired:1};
+
+var C = {
+  graded:'#22c55e', verdict:'#f59e0b', resolved:'#3b82f6',
+  unresolvable:'#ef4444', partial:'#f59e0b', other:'#777'
+};
+
+// ── analysis (mirrors the Python build_dashboard.py math) ───────────────────
+function analyze(outcomes){
+  var N = outcomes.length;
+  var graded = outcomes.filter(function(o){ return typeof o.was_correct === 'boolean'; });
+  var correct = graded.filter(function(o){ return o.was_correct === true; });
+  var ungraded = outcomes.filter(function(o){ return typeof o.was_correct !== 'boolean'; });
+
+  // probability mass unverified
+  var totalMass = 0, ungradedMass = 0;
+  outcomes.forEach(function(o){
+    var p = +o.predicted_probability || 0;
+    totalMass += p;
+    if(typeof o.was_correct !== 'boolean') ungradedMass += p;
+  });
+
+  // Brier on graded
+  var brier = null;
+  if(graded.length){
+    var s = 0;
+    graded.forEach(function(o){
+      var p = +o.predicted_probability || 0.5, y = o.was_correct ? 1 : 0;
+      s += (p - y) * (p - y);
+    });
+    brier = s / graded.length;
+  }
+
+  // reasons for ungraded
+  var reasons = {};
+  ungraded.forEach(function(o){
+    var ro = o.resolution_outcome;
+    var key = (ro === 'partial') ? "Ambiguous signal ('partial')"
+            : (UNGRADABLE[ro])    ? 'No evidence match'
+            : 'Other';
+    reasons[key] = (reasons[key] || 0) + 1;
+  });
+
+  // reliability buckets
+  var buckets = {};
+  graded.forEach(function(o){
+    var b = Math.min(Math.floor((+o.predicted_probability || 0) * 10), 9);
+    (buckets[b] = buckets[b] || []).push(o.was_correct ? 1 : 0);
+  });
+
+  // by domain
+  var dom = {};
+  outcomes.forEach(function(o){
+    var d = o.domain || 'unknown';
+    dom[d] = dom[d] || {total:0, graded:0};
+    dom[d].total++;
+    if(typeof o.was_correct === 'boolean') dom[d].graded++;
+  });
+
+  return {
+    N:N, graded:graded.length, correct:correct.length, ungraded:ungraded.length,
+    gradeRate: N ? graded.length / N : 0,
+    massUnverified: totalMass ? ungradedMass / totalMass : 0,
+    brier:brier, reasons:reasons, buckets:buckets, dom:dom
+  };
+}
+
+// ── KPIs ────────────────────────────────────────────────────────────────────
+function renderKpis(a){
+  document.getElementById('k-total').textContent = a.N;
+  var rate = document.getElementById('k-rate');
+  rate.textContent = pct(a.gradeRate);
+  rate.className = 'st-n ' + (a.gradeRate >= 0.6 ? 'good' : a.gradeRate >= 0.3 ? 'warn' : 'bad');
+  var mass = document.getElementById('k-mass');
+  mass.textContent = pct(a.massUnverified);
+  mass.className = 'st-n ' + (a.massUnverified <= 0.3 ? 'good' : a.massUnverified <= 0.6 ? 'warn' : 'bad');
+  document.getElementById('k-brier').textContent = a.brier === null ? '—' : a.brier.toFixed(3);
+}
+
+// ── funnel (CSS bars) ─────────────────────────────────────────────────────
+function renderFunnel(a){
+  var stages = [
+    {label:'Resolved predictions', val:a.N, col:C.resolved},
+    {label:'Got a real verdict', val:a.graded, col:C.verdict},
+    {label:'Graded correct', val:a.correct, col:C.graded}
+  ];
+  var html = '';
+  stages.forEach(function(s){
+    var w = a.N ? Math.max(s.val / a.N * 100, 6) : 6;
+    html += '<div class="funnel-row">'
+      + '<div class="funnel-bar" style="width:' + w + '%;background:' + s.col + '"><span class="fn">' + s.val + '</span></div>'
+      + '<div class="funnel-meta"><b>' + escapeHtml(s.label) + '</b> · ' + (a.N ? Math.round(s.val/a.N*100) : 0) + '% of resolved</div>'
+      + '</div>';
+  });
+  document.getElementById('funnel').innerHTML = html;
+}
+
+// ── reasons (donut via SVG) ─────────────────────────────────────────────────
+function renderReasons(a){
+  var entries = Object.keys(a.reasons).map(function(k){ return [k, a.reasons[k]]; })
+                  .sort(function(x,y){ return y[1]-x[1]; });
+  var total = entries.reduce(function(s,e){ return s+e[1]; }, 0) || 1;
+  var cols = [C.unresolvable, C.partial, C.other];
+  var W=300,H=200,cx=100,cy=100,r=78,rin=46;
+  var svg = '<svg class="chart" viewBox="0 0 '+W+' '+H+'" style="height:200px">';
+  var a0 = -Math.PI/2;
+  entries.forEach(function(e,i){
+    var frac=e[1]/total, a1=a0+frac*2*Math.PI, large=frac>0.5?1:0;
+    var x0=cx+r*Math.cos(a0), y0=cy+r*Math.sin(a0), x1=cx+r*Math.cos(a1), y1=cy+r*Math.sin(a1);
+    var xi0=cx+rin*Math.cos(a1), yi0=cy+rin*Math.sin(a1), xi1=cx+rin*Math.cos(a0), yi1=cy+rin*Math.sin(a0);
+    svg += '<path d="M'+x0.toFixed(1)+','+y0.toFixed(1)+' A'+r+','+r+' 0 '+large+' 1 '+x1.toFixed(1)+','+y1.toFixed(1)
+         + ' L'+xi0.toFixed(1)+','+yi0.toFixed(1)+' A'+rin+','+rin+' 0 '+large+' 0 '+xi1.toFixed(1)+','+yi1.toFixed(1)+' Z" fill="'+cols[i%cols.length]+'" fill-opacity="0.88"/>';
+    a0=a1;
+  });
+  svg += '<text x="'+cx+'" y="'+(cy-2)+'" text-anchor="middle" style="font:700 26px var(--mono);fill:var(--text)">'+total+'</text>';
+  svg += '<text x="'+cx+'" y="'+(cy+16)+'" text-anchor="middle" style="font:500 10px var(--mono);fill:var(--text-d)">ungraded</text>';
+  svg += '</svg>';
+  document.getElementById('reasons').innerHTML = svg;
+  document.getElementById('reasons-legend').innerHTML = entries.map(function(e,i){
+    return '<span><span class="legend-swatch" style="background:'+cols[i%cols.length]+'"></span>'
+      + escapeHtml(e[0]) + ' · ' + e[1] + '</span>';
+  }).join('');
+}
+
+// ── reliability diagram ─────────────────────────────────────────────────────
+function renderReliability(a){
+  var W=820,H=320,PAD=52;
+  var pw=W-2*PAD, ph=H-2*PAD;
+  function X(p){ return PAD + p*pw; }
+  function Y(p){ return PAD + (1-p)*ph; }
+  var s = '';
+  for(var g=0; g<=10; g+=2){
+    s += '<line class="grid" x1="'+X(g/10)+'" y1="'+PAD+'" x2="'+X(g/10)+'" y2="'+(PAD+ph)+'"/>';
+    s += '<line class="grid" x1="'+PAD+'" y1="'+Y(g/10)+'" x2="'+(PAD+pw)+'" y2="'+Y(g/10)+'"/>';
+    s += '<text x="'+X(g/10)+'" y="'+(PAD+ph+16)+'" text-anchor="middle">'+(g/10).toFixed(1)+'</text>';
+    s += '<text x="'+(PAD-10)+'" y="'+(Y(g/10)+3)+'" text-anchor="end">'+(g/10).toFixed(1)+'</text>';
+  }
+  s += '<line class="diag" x1="'+X(0)+'" y1="'+Y(0)+'" x2="'+X(1)+'" y2="'+Y(1)+'"/>';
+  Object.keys(a.buckets).forEach(function(b){
+    var arr=a.buckets[b], px=(+b+0.5)/10, py=arr.reduce(function(s,v){return s+v;},0)/arr.length;
+    var rad=4+Math.min(arr.length,12);
+    s += '<circle class="pt" cx="'+X(px).toFixed(1)+'" cy="'+Y(py).toFixed(1)+'" r="'+rad+'" fill="'+C.verdict+'" fill-opacity="0.85"/>';
+    s += '<text class="pt-label" x="'+X(px).toFixed(1)+'" y="'+(Y(py)-rad-4).toFixed(1)+'" text-anchor="middle">n='+arr.length+'</text>';
+  });
+  s += '<text class="axis-label" x="'+(W/2)+'" y="'+(H-8)+'" text-anchor="middle">predicted probability →</text>';
+  s += '<text class="axis-label" x="14" y="'+(H/2)+'" text-anchor="middle" transform="rotate(-90 14 '+(H/2)+')">observed frequency →</text>';
+  document.getElementById('reliability').innerHTML = s;
+}
+
+// ── domain table ─────────────────────────────────────────────────────────────
+function renderDomains(a){
+  var rows = Object.keys(a.dom).map(function(d){ return [d, a.dom[d]]; })
+               .sort(function(x,y){ return y[1].total - x[1].total; });
+  var tb = document.querySelector('#domain-table tbody');
+  tb.innerHTML = rows.map(function(r){
+    var st=r[1], rate = st.total ? st.graded/st.total*100 : 0;
+    var col = rate < 25 ? C.unresolvable : rate < 60 ? C.partial : C.graded;
+    return '<tr><td class="l">'+escapeHtml(r[0])+'</td><td>'+st.total+'</td><td>'+st.graded
+      + '</td><td style="color:'+col+'">'+rate.toFixed(0)+'%</td></tr>';
+  }).join('');
+}
+
+function render(outcomes){
+  var a = analyze(outcomes);
+  renderKpis(a); renderFunnel(a); renderReasons(a); renderReliability(a); renderDomains(a);
+  document.getElementById('loading').hidden = true;
+  document.getElementById('content').hidden = false;
+}
+
+// ── fetch (mirrors market-lens.html: CONFIG_404 vs PAYLOAD_THIN) ────────────
+fetch('/api/data?type=prediction_outcomes')
+  .then(function(r){
+    if(r.status === 404) return Promise.reject('CONFIG_404');
+    if(!r.ok) return Promise.reject('HTTP_' + r.status);
+    return r.json();
+  })
+  .then(function(payload){
+    var d = payload && payload.data ? payload.data : payload;
+    if(!Array.isArray(d) || d.length < 1) return Promise.reject('PAYLOAD_THIN');
+    render(d);
+  })
+  .catch(function(err){
+    var box = document.getElementById('loading');
+    if(err === 'CONFIG_404'){
+      box.innerHTML = '<div class="empty">Outcomes dataset not deployed yet '
+        + '(<span class="err-code">CONFIG_404</span>). Check the <code>prediction_outcomes</code> '
+        + 'allowlist in <code>workers/forge-data.js</code>.</div>';
+      console.error('[forecast-accountability] CONFIG_404 — add prediction_outcomes to DATASETS + PIE_OUTPUTS_KEYS');
+    } else if(err === 'PAYLOAD_THIN'){
+      box.innerHTML = '<div class="empty">No resolved predictions yet '
+        + '(<span class="err-code">PAYLOAD_THIN</span>). The resolver has not graded anything in this window.</div>';
+    } else {
+      box.innerHTML = '<div class="empty">Failed to load prediction_outcomes '
+        + '(<span class="err-code">' + escapeHtml(err) + '</span>).</div>';
+    }
+  });
+</script>
+</body>
+</html>
