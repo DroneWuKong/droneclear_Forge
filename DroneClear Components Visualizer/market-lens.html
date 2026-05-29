@@ -108,7 +108,7 @@ tbody td.neg{color:var(--red)}
   <aside class="caveat caveat-strong" role="note" data-test-id="market-lens-disclaimer">
     <div class="caveat-tag">NOT INVESTMENT ADVICE</div>
     <p>This page is <strong>descriptive analytics</strong> over an 8-week PIE coverage window
-    (Apr 5 &ndash; May 26, 2026). Sample sizes per ticker are 1&ndash;30 active days. Nothing
+    (<span id="disclaimer-window">Apr 5 &ndash; May 26, 2026</span>). Sample sizes per ticker are 1&ndash;30 active days. Nothing
     here is a recommendation, forecast, or backtest. PIE coverage of a ticker is not a buy or
     sell signal. Past returns shown are <strong>not</strong> indicative of future performance.
     See <a href="#methodology">methodology</a> below before reading the charts.</p>
@@ -139,7 +139,7 @@ tbody td.neg{color:var(--red)}
     <h3>How to read the charts</h3>
     <ul>
       <li><strong>Alpha scatter</strong> &mdash; x: PIE mentions (preds + briefs), y: alpha vs sector
-        benchmark (ITA for primes/drones/intl, SOXX for chip-supply). Dashed line at y=0
+        benchmark (<span id="methodology-benches">ITA for primes/drones/intl, SOXX for chip-supply</span>). Dashed line at y=0
         is the benchmark; above = outperforming, below = underperforming.</li>
       <li><strong>Doctrine scatter</strong> &mdash; x: PIE mentions, y: doctrine corpus docs that
         mention the ticker. Log&ndash;log. Quadrant gridlines at the medians of the non-zero values.
@@ -187,7 +187,20 @@ tbody td.neg{color:var(--red)}
 
 <script>
 var DATA = null;
+// SECTOR_COLORS is a fallback palette — overlaid with meta.sector_colors from
+// the packager inside render(d) so analyze.py-side palette tweaks flow through
+// without a Forge redeploy. Keep this object's identity stable (Object.assign
+// onto it, do not reassign) so other functions keep seeing the live values.
 var SECTOR_COLORS = {prime:'#cc3333',drone:'#ee8822',chip:'#3377cc',intl:'#9966cc',etf:'#777777'};
+
+// Escape user-controlled / JSON-derived strings before SVG / innerHTML
+// interpolation. Numeric fields don't need this; ticker/sector/bench/name
+// fields do. Match the standard 5-char set.
+function escapeHtml(s){
+  return String(s == null ? '' : s).replace(/[&<>"']/g, function(c){
+    return ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'})[c];
+  });
+}
 
 function fmtPct(v){ if(v===null||v===undefined||Number.isNaN(v)) return '—'; return (v>=0?'+':'') + v.toFixed(1) + '%'; }
 function fmtNum(v){ if(v===null||v===undefined||Number.isNaN(v)) return '—'; return Math.round(v); }
@@ -232,8 +245,13 @@ function renderAlphaScatter(root, points){
     var c = SECTOR_COLORS[p.sector] || '#999';
     var r = 4 + Math.min(6, Math.sqrt(Math.max(p.doctrine_docs, 1)));
     var cx = sx(p.pie_mentions), cy = sy(p.alpha_pie_pct);
-    svg.push('<circle class="pt" cx="'+cx+'" cy="'+cy+'" r="'+r+'" fill="'+c+'" fill-opacity="0.8"/>');
-    svg.push('<text class="pt-label" x="'+(cx+r+3)+'" y="'+(cy+3)+'">'+p.ticker+'</text>');
+    svg.push('<circle class="pt" cx="'+cx+'" cy="'+cy+'" r="'+r+'" fill="'+escapeHtml(c)+'" fill-opacity="0.8"/>');
+    // Skip labels for zero-mention tickers — they stack on the y-axis
+    // (BA, GD, KTOS etc.) and overlap each other unreadably. The circle
+    // still renders at (0, alpha) so the position is shown.
+    if(p.pie_mentions > 0){
+      svg.push('<text class="pt-label" x="'+(cx+r+3)+'" y="'+(cy+3)+'">'+escapeHtml(p.ticker)+'</text>');
+    }
   });
   svg.push('</svg>');
   root.innerHTML = svg.join('');
@@ -284,8 +302,12 @@ function renderDoctrineScatter(root, points){
     var c = SECTOR_COLORS[p.sector] || '#999';
     var cx = sx(lg(p.pie_mentions)), cy = sy(lg(p.doctrine_docs));
     var r = 4 + Math.min(5, Math.sqrt(Math.max(p.active_days, 1)) * 0.5);
-    svg.push('<circle class="pt" cx="'+cx+'" cy="'+cy+'" r="'+r+'" fill="'+c+'" fill-opacity="0.8"/>');
-    svg.push('<text class="pt-label" x="'+(cx+r+3)+'" y="'+(cy+3)+'">'+p.ticker+'</text>');
+    svg.push('<circle class="pt" cx="'+cx+'" cy="'+cy+'" r="'+r+'" fill="'+escapeHtml(c)+'" fill-opacity="0.8"/>');
+    // Skip labels when either axis is zero — log floor stacks them on the
+    // axes (AMBA at (0,1), BA at (0,15), etc.) with unreadable overlap.
+    if(p.pie_mentions > 0 && p.doctrine_docs > 0){
+      svg.push('<text class="pt-label" x="'+(cx+r+3)+'" y="'+(cy+3)+'">'+escapeHtml(p.ticker)+'</text>');
+    }
   });
   svg.push('</svg>');
   root.innerHTML = svg.join('');
@@ -294,7 +316,7 @@ function renderDoctrineScatter(root, points){
 function renderLegend(root){
   var html = '';
   ['prime','drone','chip','intl','etf'].forEach(function(s){
-    html += '<span><span class="legend-swatch" style="background:'+SECTOR_COLORS[s]+'"></span>'+s+'</span>';
+    html += '<span><span class="legend-swatch" style="background:'+escapeHtml(SECTOR_COLORS[s])+'"></span>'+escapeHtml(s)+'</span>';
   });
   root.innerHTML = html;
 }
@@ -305,13 +327,13 @@ function renderTable(root, tickers){
     var retCls = t.ret_pie_pct === null ? '' : (t.ret_pie_pct >= 0 ? 'pos' : 'neg');
     var isEtf = t.sector === 'etf';
     return '<tr class="'+(isEtf?'etf':'')+'">'
-      + '<td class="l">'+t.ticker+'</td>'
-      + '<td class="sec"><span class="sec-pill sec-'+t.sector+'">'+t.sector+'</span></td>'
+      + '<td class="l">'+escapeHtml(t.ticker)+'</td>'
+      + '<td class="sec"><span class="sec-pill sec-'+escapeHtml(t.sector)+'">'+escapeHtml(t.sector)+'</span></td>'
       + '<td>'+(t.total_preds||0)+'</td>'
       + '<td>'+(t.total_brief||0)+'</td>'
       + '<td>'+(t.doctrine_docs||0)+'</td>'
       + '<td class="'+retCls+'">'+fmtPct(t.ret_pie_pct)+'</td>'
-      + '<td>'+(t.bench||'—')+'</td>'
+      + '<td>'+escapeHtml(t.bench||'—')+'</td>'
       + '<td class="'+alphaCls+'">'+fmtPct(t.alpha_pie_pct)+'</td>'
       + '<td>'+fmtCorr(t.corr_same_day)+'</td>'
       + '<td>'+fmtCorr(t.corr_5d_lag)+'</td>'
@@ -335,15 +357,71 @@ function renderTable(root, tickers){
     + '</table>';
 }
 
+// Pretty-format a YYYY-MM-DD window pair as "Apr 5 – May 26, 2026". If parsing
+// fails, the caller falls back to the hardcoded disclaimer text.
+function fmtWindow(start, end){
+  if(!start || !end) return null;
+  var months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  function parse(s){
+    var m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(String(s));
+    if(!m) return null;
+    return { y: +m[1], mo: +m[2] - 1, d: +m[3] };
+  }
+  var a = parse(start), b = parse(end);
+  if(!a || !b) return null;
+  return months[a.mo]+' '+a.d+' – '+months[b.mo]+' '+b.d+', '+b.y;
+}
+
+// Build "ITA for primes/drones/intl, SOXX for chip-supply"-style description
+// from the benchmarks dict in meta. groups any sectors that share a bench.
+function fmtBenches(benchmarks){
+  if(!benchmarks || typeof benchmarks !== 'object') return null;
+  var SECTOR_LABEL = {prime:'primes', drone:'drones', intl:'intl', chip:'chip-supply'};
+  var byBench = {};
+  Object.keys(benchmarks).forEach(function(sec){
+    var b = benchmarks[sec];
+    if(!b) return;
+    (byBench[b] = byBench[b] || []).push(SECTOR_LABEL[sec] || sec);
+  });
+  var parts = Object.keys(byBench).map(function(b){
+    return b + ' for ' + byBench[b].join('/');
+  });
+  return parts.length ? parts.join(', ') : null;
+}
+
 function render(d){
   DATA = d;
   var meta = d.meta || {};
+
+  // Merge in packager-side sector palette BEFORE drawing. Mutate in place so
+  // the existing SECTOR_COLORS reference (used by all the inner renderers)
+  // sees the new values. Fall back silently to the hardcoded defaults if
+  // meta.sector_colors is missing or malformed.
+  if(meta.sector_colors && typeof meta.sector_colors === 'object'){
+    Object.assign(SECTOR_COLORS, meta.sector_colors);
+  }
+
   document.getElementById('s-active').textContent   = meta.active_tickers ?? '—';
   // PIE window in weeks — derived from bars_pie (trading days / 5, rounded)
   var weeks = meta.bars_pie ? Math.round(meta.bars_pie / 5) : null;
   document.getElementById('s-window').textContent   = weeks !== null ? weeks : '—';
   document.getElementById('s-universe').textContent = meta.universe_size ?? '—';
   document.getElementById('s-doctrine').textContent = meta.doctrine_corpus_docs ?? '—';
+
+  // Constant-drift fix: rewrite the disclaimer and methodology bench lines
+  // from meta so a window slide or bench tweak in analyze.py flows through
+  // without editing this HTML. If the meta fields are missing or malformed,
+  // the original hardcoded strings stay in place.
+  var windowText = fmtWindow(meta.window_start, meta.window_end);
+  if(windowText){
+    var dw = document.getElementById('disclaimer-window');
+    if(dw) dw.textContent = windowText;
+  }
+  var benchText = fmtBenches(meta.benchmarks);
+  if(benchText){
+    var mb = document.getElementById('methodology-benches');
+    if(mb) mb.textContent = benchText;
+  }
 
   var content = document.getElementById('content');
   content.innerHTML =
@@ -361,7 +439,7 @@ function render(d){
     + '</div>'
     + '<div class="panel">'
     +   '<div class="panel-h">Per-ticker rollup</div>'
-    +   '<div class="panel-sub">Sorted by &alpha; descending. ETFs at the bottom (alpha undefined). PIE window: <code>'+ (meta.window_start||'') +'</code> &ndash; <code>'+ (meta.window_end||'') +'</code>.</div>'
+    +   '<div class="panel-sub">Sorted by &alpha; descending. ETFs at the bottom (alpha undefined). PIE window: <code>'+ escapeHtml(meta.window_start||'') +'</code> &ndash; <code>'+ escapeHtml(meta.window_end||'') +'</code>.</div>'
     +   '<div id="pane-table"></div>'
     + '</div>';
 
@@ -383,13 +461,21 @@ fetch('/api/data?type=market_lens')
   })
   .then(function(e){ return e.data || e; })
   .then(function(d){
-    if(!d || !d.tickers || d.tickers.length < 20) return Promise.reject('PAYLOAD_THIN');
+    // Threshold sourced from meta.universe_size so a future universe trim
+    // (e.g. dropping a delisted ticker) doesn't cause every page load to
+    // flip to PAYLOAD_THIN. Falls back to 20 — the packager's hard floor —
+    // when meta is missing entirely.
+    var minRows = (d && d.meta && d.meta.universe_size) || 20;
+    if(!d || !d.tickers || d.tickers.length < minRows) return Promise.reject('PAYLOAD_THIN');
     render(d);
   })
   .catch(function(err){
     var box = document.getElementById('content');
+    // Use textContent for the err code so a hostile string from a
+    // future error path can't smuggle markup into the empty-state box.
     if(err === 'CONFIG_404'){
-      box.innerHTML = '<div class="empty">Market lens dataset not registered yet (' + err + ').</div>';
+      box.innerHTML = '<div class="empty">Market lens dataset not registered yet (<span class="err-code"></span>).</div>';
+      box.querySelector('.err-code').textContent = String(err);
       // Loud console line so a half-deployed allowlist (one of workers/forge-data.js
       // DATASETS / PIE_OUTPUTS_KEYS landed, the other didn\'t) is visible the next
       // time anyone opens devtools instead of looking like "data not ready yet".
@@ -397,7 +483,8 @@ fetch('/api/data?type=market_lens')
     } else if(err === 'PAYLOAD_THIN'){
       box.innerHTML = '<div class="empty">Market lens data pending first pipeline run.</div>';
     } else {
-      box.innerHTML = '<div class="empty">Failed to load market_lens.json (' + err + ').</div>';
+      box.innerHTML = '<div class="empty">Failed to load market_lens.json (<span class="err-code"></span>).</div>';
+      box.querySelector('.err-code').textContent = String(err);
     }
   });
 </script>
