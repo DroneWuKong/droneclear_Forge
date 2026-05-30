@@ -17,6 +17,7 @@ import complianceReport from './compliance-report.js';
 import doctrineSubmit from './doctrine-submit.js';
 import doctrineQueue  from './doctrine-queue.js';
 import faaLookup     from './faa-lookup.js';
+import digest        from './digest.js';
 
 const CORS = {
   'Access-Control-Allow-Origin': '*',
@@ -64,6 +65,10 @@ export default {
 
     if (path === '/api/faa-lookup' || path.startsWith('/api/faa-lookup?'))
       return faaLookup.fetch(req, env, ctx);
+
+    // PIE email digest (subscribe / confirm / unsubscribe / preview / admin send)
+    if (path.startsWith('/api/digest/'))
+      return digest.fetch(req, env, ctx);
 
     // Legacy /.netlify/functions/* redirect → /api/* equivalents
     if (path.startsWith('/.netlify/functions/')) {

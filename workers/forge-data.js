@@ -30,6 +30,7 @@ const DATASETS = new Set([
   'flags','predictions','adversary_bom','component_mirroring_index',
   'sanctions_evasion_graph','actor_fingerprints','ttp_counter_gap','threat_scores',
   'market_lens','prediction_outcomes','calibration_scores',
+  'pie_delta',  // day-over-day flag movement (pie_flag_state.py → KV)
 ]);
 
 // KV namespace → dataset list mapping
@@ -45,6 +46,7 @@ const PIE_OUTPUTS_KEYS = new Set([
   'flags','predictions','adversary_bom','component_mirroring_index',
   'sanctions_evasion_graph','actor_fingerprints','ttp_counter_gap','threat_scores',
   'market_lens','prediction_outcomes','calibration_scores',
+  'pie_delta',  // synced from Ai-Project pie-daily.yml (PIE_OUTPUTS namespace)
 ]);
 
 export default {
