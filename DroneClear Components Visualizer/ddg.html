@@ -900,6 +900,10 @@
     Camp Grayling, MI) and narrows through Qualifier → Production &amp; Delivery Test → Gauntlet II. Probabilities are
     qualitative estimates — not official program data.
   </p>
+
+  <!-- ═══ DDG2 SCOREBOARD (pipeline-fed via /api/data?type=ddg2) ═══ -->
+  <div id="ddg2-board" data-ts="" style="margin-bottom:28px;"></div>
+
   <!-- G-II KEY SCENARIO ANALYSIS -->
   <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:1px;background:var(--border);border:1px solid var(--border);">
     <div style="background:var(--bg2);padding:16px 18px;">
@@ -960,12 +964,12 @@
     <div style="background:var(--bg2);padding:14px 18px;">
       <div style="font:600 9px var(--mono);letter-spacing:2px;text-transform:uppercase;color:var(--text-d2);margin-bottom:8px;">Key Dates — G-II Runway</div>
       <div style="font-size:12px;color:var(--text-dim);line-height:1.9;font-family:var(--mono);">
-        <span style="color:var(--green)">APR 2026</span> — RFS publication expected (accelerated per SASC testimony)<br>
-        <span style="color:var(--amber)">~AUG 2026</span> — Chinese motor/battery ban enforcement begins<br>
-        <span style="color:var(--amber)">~AUG 2026</span> — G-II test package due (~20 drones, 8 GCS per vendor)<br>
-        <span style="color:var(--amber)">~SEP 2026</span> — Gauntlet II evaluation window (est.)<br>
-        <span style="color:var(--green)">~OCT 2026</span> — G-II orders announced (~$250M, 60K units)<br>
-        <span style="color:var(--text-d2)">~MAR 2027</span> — G-III evaluation (est., field → ~7 vendors)
+        <span style="color:var(--green)">LATE MAY 2026</span> — Phase II Qualifier invitees announced (~49 vendors / 79 designs)<br>
+        <span style="color:var(--green)">JUN 8–20 2026</span> — Phase II Qualifier, Camp Grayling, MI<br>
+        <span style="color:var(--amber)">PHASE II</span> — China motor/battery preclusion takes effect (Supply Chain Framework)<br>
+        <span style="color:var(--amber)">~AUG 2026</span> — Gauntlet II evaluation (continuous jamming, multi-drone C2)<br>
+        <span style="color:var(--green)">POST G-II</span> — Phase II orders (≥$300M; ~30K units, some sources cite 60K)<br>
+        <span style="color:var(--text-d2)">2027</span> — Phases III–IV (field narrows toward ~3–5 vendors)
       </div>
     </div>
   </div>
@@ -1031,6 +1035,153 @@
 </div>
 
 </main>
+
+<script>
+// ═══════════════════════════════════════════════════════════════════════════
+// DDG2 SCOREBOARD — pipeline-fed (Ai-Project pipeline/ddg2.py → KV → /api/data)
+// Renders: program-facts strip, prediction probability scoreboard, and a
+// sortable vendor standings board. Falls back to DDG2_FALLBACK if KV misses so
+// the page always renders.
+// ═══════════════════════════════════════════════════════════════════════════
+function ddgEsc(s){return String(s==null?'':s).replace(/[&<>"]/g,function(c){return({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'})[c];});}
+
+// Minimal baked snapshot (mirrors data/ddg2.json) — only used if the API misses.
+const DDG2_FALLBACK = {
+  as_of: "late May 2026",
+  program: {
+    invitees:{vendors:49,designs:79,announced:"late May 2026"},
+    qualifier:{window:"~June 8–20, 2026",location:"Camp Grayling, MI"},
+    gauntlet_ii:{window:"late August 2026"},
+    price_ceiling:{long_range:"~$5,500",close_quarters:"~$4,500"},
+    units_phase2:{value:"~30,000"}
+  },
+  predictions:[
+    {prob:0.95,impact:"high",timeframe:"Jun–Aug 2026",title:"Large new-entrant wave reshapes the field",detail:"~49 vendors / 79 designs invited vs. ~18 planned.",status:"pending"},
+    {prob:0.91,impact:"critical",timeframe:"Aug 2026",title:"China motor/battery ban disqualifies ≥1 G-I order-winner",detail:"Phase II covered-country preclusion bites at Gauntlet II.",status:"pending"},
+    {prob:0.85,impact:"high",timeframe:"Aug 2026",title:"Multi-drone single-operator C2 is a scored advantage",detail:"Favors autonomy-led platforms.",status:"pending"},
+    {prob:0.84,impact:"high",timeframe:"Sep 2026",title:"Neros Archer Fiber becomes the G-II performance baseline",detail:"NDAA-clean fiber answers the EW gap.",status:"pending"},
+    {prob:0.73,impact:"high",timeframe:"Jun–Aug 2026",title:"Skycutter FOCI/structure review creates friction",detail:"DCMA scrutiny of the SkyFall relationship.",status:"pending"},
+    {prob:0.68,impact:"medium",timeframe:"Oct 2026",title:"Competitive pricing lands well under the cap",detail:"Capable vendors at $1,500–$2,500 pull pricing down.",status:"pending"},
+    {prob:0.44,impact:"high",timeframe:"Oct 2026",title:"Fiber-optic platforms sweep the G-II top 3",detail:"Only two confirmed fiber platforms today.",status:"pending"}
+  ],
+  vendors:[
+    {name:"Neros",platform:"Archer / Archer Fiber",g1:"G-I #2 (87.5)",g2_status:"invited",readiness:8.5,scores:{compliance:9,production:8,ew:8,funding:9},note:"Blue UAS-cleared, China-free audit. $121M raised, ~2,500→5,000/mo."},
+    {name:"AeroVironment",platform:"Switchblade-class / new FPV",g1:"new entrant",g2_status:"invited",readiness:7.5,scores:{compliance:8,production:8,ew:6,funding:8},note:"Well-capitalized NDAA-native prime."},
+    {name:"Skycutter",platform:"Shrike 10 Fiber",g1:"G-I #1 (99.3)",g2_status:"invited",readiness:7.2,scores:{compliance:5,production:8,ew:10,funding:6},note:"Best-in-class fiber EW immunity; FOCI review is the swing risk."},
+    {name:"XTEND Reality",platform:"XOS autonomy OS",g1:"did not win G-I orders",g2_status:"invited",readiness:6.8,scores:{compliance:8,production:6,ew:7,funding:6},note:"NDAA via XFAB; SPAC merger mid-2026."},
+    {name:"ModalAI",platform:"VOXL autonomy / FPV",g1:"G-I winner (~77)",g2_status:"invited",readiness:6.2,scores:{compliance:8,production:5,ew:7,funding:5},note:"US-assembled NDAA flight controllers; GPS-denied autonomy."},
+    {name:"Auterion",platform:"PX4 / Skynode OWA",g1:"G-I winner (~77)",g2_status:"invited",readiness:6.2,scores:{compliance:6,production:6,ew:7,funding:6},note:"Autonomy/multi-drone C2 strength."},
+    {name:"Kratos",platform:"Low-cost UAS",g1:"new entrant",g2_status:"invited",readiness:6.2,scores:{compliance:7,production:6,ew:5,funding:7},note:"Publicly traded prime; FPV-scale unproven."},
+    {name:"Griffon Aerospace",platform:"RF FPV OWA",g1:"G-I winner (72.9)",g2_status:"invited",readiness:5.5,scores:{compliance:7,production:6,ew:4,funding:5},note:"Aerospace supply chain; RF exposed to jamming."},
+    {name:"Performance Drone Works",platform:"FPV OWA",g1:"did not win G-I orders",g2_status:"invited",readiness:5.0,scores:{compliance:6,production:5,ew:4,funding:5},note:"Prior Army eval history; re-entry opening."},
+    {name:"Ascent AeroSystems",platform:"Spirit coaxial",g1:"G-I winner (70.5)",g2_status:"invited",readiness:5.2,scores:{compliance:7,production:5,ew:4,funding:5},note:"Domestic mfg; RF link exposed."},
+    {name:"Napatree",platform:"Classified UAS attack",g1:"G-I #3 (80.3)",g2_status:"invited (verify)",readiness:5.0,scores:{compliance:6,production:5,ew:4,funding:5},note:"Strong G-I finish; little public data."},
+    {name:"Ukrainian Defense Drones",platform:"Combat FPV OWA",g1:"G-I winner (72.0)",g2_status:"invited",readiness:4.2,scores:{compliance:3,production:6,ew:4,funding:4},note:"Combat-proven but Chinese-dependent BOM — highest ban exposure."}
+  ]
+};
+
+function probColor(p){return p>=0.85?'var(--red)':p>=0.7?'var(--amber)':p>=0.5?'var(--blue)':'var(--text-dim)';}
+function axisColor(v){return v>=8?'var(--green)':v>=6?'var(--amber)':v>=4?'var(--blue)':'var(--red)';}
+
+let _ddg2 = null, _vendorSort = 'readiness';
+
+function renderDDG2(d){
+  const host = document.getElementById('ddg2-board'); if(!host) return;
+  const pr = d.program||{}, inv = pr.invitees||{}, q = pr.qualifier||{}, g2 = pr.gauntlet_ii||{}, pc = pr.price_ceiling||{}, un = pr.units_phase2||{};
+  let h = '';
+
+  // ── Program facts strip ──
+  const facts = [
+    ['Invitees', (inv.vendors||'—')+' vendors · '+(inv.designs||'—')+' designs'],
+    ['Qualifier', (q.window||'—')+' · '+(q.location||'')],
+    ['Gauntlet II', g2.window||'—'],
+    ['Price cap', (pc.long_range||'—')+' LR / '+(pc.close_quarters||'—')+' CQ'],
+    ['Units (Ph II)', un.value||'—']
+  ];
+  h += '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:1px;background:var(--border);border:1px solid var(--border);margin-bottom:18px;">'
+    + facts.map(function(f){return '<div style="background:var(--bg2);padding:12px 14px;">'
+        + '<div style="font:600 8px var(--mono);letter-spacing:1.5px;text-transform:uppercase;color:var(--text-dim);margin-bottom:5px;">'+ddgEsc(f[0])+'</div>'
+        + '<div style="font:600 12px var(--body);color:var(--text);line-height:1.4;">'+ddgEsc(f[1])+'</div></div>';}).join('')
+    + '</div>';
+
+  // ── Prediction probability scoreboard ──
+  const preds = (d.predictions||[]).slice().sort(function(a,b){return b.prob-a.prob;});
+  h += '<div style="font:600 9px var(--mono);letter-spacing:2px;text-transform:uppercase;color:var(--green);margin-bottom:10px;">Gauntlet II — Prediction Scoreboard</div>';
+  h += '<div style="display:flex;flex-direction:column;gap:6px;margin-bottom:24px;">';
+  preds.forEach(function(p){
+    const pct = Math.round(p.prob*100), col = probColor(p.prob);
+    const impactCol = p.impact==='critical'?'var(--red)':p.impact==='high'?'var(--amber)':'var(--blue)';
+    h += '<div style="background:var(--bg2);border:1px solid var(--border);border-left:3px solid '+col+';padding:10px 12px;">'
+      + '<div style="display:flex;align-items:center;gap:10px;">'
+      +   '<div style="font:700 18px var(--mono);color:'+col+';min-width:46px;">'+pct+'%</div>'
+      +   '<div style="flex:1;min-width:0;">'
+      +     '<div style="font:600 13px var(--body);color:var(--text);line-height:1.35;">'+ddgEsc(p.title)+'</div>'
+      +     '<div style="font:500 9px var(--mono);color:var(--text-dim);margin-top:2px;"><span style="color:'+impactCol+';text-transform:uppercase;">'+ddgEsc(p.impact)+'</span> · '+ddgEsc(p.timeframe)+(p.status&&p.status!=='pending'?' · '+ddgEsc(p.status):'')+'</div>'
+      +   '</div>'
+      + '</div>'
+      + '<div style="height:3px;background:var(--border);border-radius:2px;margin-top:8px;overflow:hidden;"><div style="width:'+pct+'%;height:100%;background:'+col+';"></div></div>'
+      + (p.detail?'<div style="font:400 11px var(--body);color:var(--text-dim);line-height:1.55;margin-top:7px;">'+ddgEsc(p.detail)+'</div>':'')
+      + '</div>';
+  });
+  h += '</div>';
+
+  // ── Vendor standings board ──
+  const axes = [['readiness','Overall'],['compliance','Compliance'],['production','Production'],['ew','EW / Fiber'],['funding','Funding']];
+  h += '<div style="display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap;margin-bottom:10px;">'
+    + '<div style="font:600 9px var(--mono);letter-spacing:2px;text-transform:uppercase;color:var(--green);">Vendor Standings — G-II Readiness</div>'
+    + '<div style="display:flex;gap:4px;flex-wrap:wrap;">'
+    + axes.map(function(a){return '<button type="button" onclick="ddgSortVendors(\''+a[0]+'\')" style="background:'+(_vendorSort===a[0]?'var(--green)':'var(--bg2)')+';color:'+(_vendorSort===a[0]?'#0c0c0a':'var(--text-dim)')+';border:1px solid var(--border);border-radius:5px;padding:4px 9px;font:600 9px var(--mono);cursor:pointer;">'+a[1]+'</button>';}).join('')
+    + '</div></div>';
+
+  const vendors = (d.vendors||[]).slice().sort(function(a,b){
+    const av = _vendorSort==='readiness'?a.readiness:(a.scores||{})[_vendorSort]||0;
+    const bv = _vendorSort==='readiness'?b.readiness:(b.scores||{})[_vendorSort]||0;
+    return bv-av;
+  });
+  h += '<div style="display:flex;flex-direction:column;gap:1px;background:var(--border);border:1px solid var(--border);">';
+  vendors.forEach(function(v,i){
+    const sc = v.scores||{};
+    const statusCol = /did not|verify/i.test(v.g2_status||'')?'var(--amber)':'var(--green)';
+    h += '<div style="background:var(--bg2);padding:11px 13px;">'
+      + '<div style="display:flex;align-items:center;gap:10px;margin-bottom:7px;">'
+      +   '<div style="font:700 13px var(--mono);color:var(--text-dim);min-width:22px;">'+(i+1)+'</div>'
+      +   '<div style="flex:1;min-width:0;">'
+      +     '<div style="font:600 13px var(--body);color:var(--text);">'+ddgEsc(v.name)+' <span style="font:400 11px var(--body);color:var(--text-dim);">— '+ddgEsc(v.platform)+'</span></div>'
+      +     '<div style="font:500 9px var(--mono);color:var(--text-dim);margin-top:1px;">'+ddgEsc(v.g1||'')+' · <span style="color:'+statusCol+';">'+ddgEsc(v.g2_status||'')+'</span></div>'
+      +   '</div>'
+      +   '<div style="font:800 20px var(--mono);color:'+axisColor(v.readiness)+';">'+(v.readiness!=null?v.readiness.toFixed(1):'—')+'</div>'
+      + '</div>'
+      + '<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:'+(v.note?'7px':'0')+';">'
+      + [['compliance','Compliance'],['production','Production'],['ew','EW/Fiber'],['funding','Funding']].map(function(a){
+          const val = sc[a[0]]||0;
+          return '<div><div style="display:flex;justify-content:space-between;font:500 8px var(--mono);color:var(--text-dim);text-transform:uppercase;letter-spacing:1px;margin-bottom:3px;"><span>'+a[1]+'</span><span style="color:'+axisColor(val)+';">'+val+'</span></div>'
+            + '<div style="height:4px;background:var(--border);border-radius:2px;overflow:hidden;"><div style="width:'+(val*10)+'%;height:100%;background:'+axisColor(val)+';"></div></div></div>';
+        }).join('')
+      + '</div>'
+      + (v.note?'<div style="font:400 11px var(--body);color:var(--text-dim);line-height:1.5;">'+ddgEsc(v.note)+'</div>':'')
+      + '</div>';
+  });
+  h += '</div>';
+
+  // ── Footer: as-of + source link ──
+  h += '<div style="font:400 10px var(--mono);color:var(--text-dim);margin-top:10px;">'
+    + 'As of '+ddgEsc(d.as_of||'')+' · '+(d.disclaimer? ddgEsc(d.disclaimer):'Qualitative analyst estimates, not official program data.')
+    + ' · <a href="/forecast-accountability/" style="color:var(--green);text-decoration:none;">forecast accountability →</a></div>';
+
+  host.innerHTML = h;
+}
+function ddgSortVendors(axis){ _vendorSort = axis; if(_ddg2) renderDDG2(_ddg2); }
+
+(function loadDDG2(){
+  fetch('/api/data?type=ddg2').then(function(r){return r.ok?r.json():null;}).then(function(raw){
+    const d = (raw && raw.data) ? raw.data : raw;
+    _ddg2 = (d && d.vendors && d.vendors.length) ? d : DDG2_FALLBACK;
+  }).catch(function(){ _ddg2 = DDG2_FALLBACK; }).finally(function(){
+    renderDDG2(_ddg2);
+    const host=document.getElementById('ddg2-board'); if(host&&_ddg2&&_ddg2.generated) host.setAttribute('data-ts',_ddg2.generated);
+  });
+})();
+</script>
 
 <script>
 // ─────────────────────────────────────────

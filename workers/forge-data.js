@@ -32,6 +32,7 @@ const DATASETS = new Set([
   'market_lens','prediction_outcomes','calibration_scores',
   'pie_delta',  // day-over-day flag movement (pie_flag_state.py → KV)
   'clock_score',  // UAS Ecosystem Clock UERI snapshot (clock_score.py → KV)
+  'ddg2',  // Gauntlet II scoreboard + vendor standings (ddg2.py → KV)
 ]);
 
 // KV namespace → dataset list mapping
@@ -49,6 +50,7 @@ const PIE_OUTPUTS_KEYS = new Set([
   'market_lens','prediction_outcomes','calibration_scores',
   'pie_delta',  // synced from Ai-Project pie-daily.yml (PIE_OUTPUTS namespace)
   'clock_score',  // UAS Ecosystem Clock — synced from pie-daily.yml
+  'ddg2',  // Gauntlet II scoreboard — synced from pie-daily.yml
 ]);
 
 export default {
