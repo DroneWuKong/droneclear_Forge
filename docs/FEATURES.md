@@ -161,8 +161,8 @@ Frontend `emitBuildEvent()` queues events (500ms debounce), `flushEventQueue()` 
 
 Parts can be bulk-imported via structured JSON format. This enables an LLM-assisted workflow where users can scrape product pages and format the output for import.
 
-- **Import file format**: `DroneClear Components Visualizer/parts_import_template.json`
-- **LLM-assisted import guide**: `DroneClear Components Visualizer/llm_parts_import_guide.md`
+- **Import file format**: `forge-source/parts_import_template.json`
+- **LLM-assisted import guide**: `forge-source/llm_parts_import_guide.md`
 - **In-app**: Parts Library Editor → "Import Parts" button → Upload JSON tab
 
 The import endpoint (`POST /api/import/parts/`) performs upsert by PID and returns: `{ created, updated, errors }`.

@@ -2,12 +2,12 @@
 
 ## Overview
 
-Forge is a **static site** built from HTML/CSS/JS source files in `DroneClear Components Visualizer/`. A Python build script (`build_static.py`) copies and routes pages into `build/` for Netlify deployment.
+Forge is a **static site** built from HTML/CSS/JS source files in `forge-source/`. A Python build script (`build_static.py`) copies and routes pages into `build/` for Cloudflare Pages deployment.
 
 ## Build Pipeline
 
 ```
-DroneClear Components Visualizer/*.html  →  build_static.py  →  build/  →  Netlify
+forge-source/*.html  →  build_static.py  →  build/  →  Cloudflare Pages
                                               ↑
                                     Ai-Project/data/parts-db/*.json
                                     (pulled via sparse-checkout if GITHUB_PAT set)

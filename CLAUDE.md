@@ -6,9 +6,9 @@ DroneClear Forge is a **static site** that serves as the public-facing drone com
 
 ## Quick Orientation
 
-- **Static pages**: `DroneClear Components Visualizer/` — 20 HTML pages, ~20 JS files, ~7 CSS files
+- **Static pages**: `forge-source/` — 20 HTML pages, ~20 JS files, ~7 CSS files
 - **Build script**: `build_static.py` — Python script that copies HTML/CSS/JS into `build/` directory with proper routing
-- **Data**: `DroneClear Components Visualizer/forge_database.json` — local fallback; build script pulls fresh data from Ai-Project repo if `GITHUB_PAT` env var is set
+- **Data**: `forge-source/forge_database.json` — local fallback; build script pulls fresh data from Ai-Project repo if `GITHUB_PAT` env var is set
 - **Domain knowledge**: `docs/fpv_domain_knowledge.md` — FPV drone expertise (compatibility rules, naming conventions, specs)
 - **Backlog**: [BACKLOG.md](BACKLOG.md) — tracked issues
 - **Changelog**: [CHANGELOG.md](CHANGELOG.md) — session-by-session history
@@ -43,6 +43,6 @@ Cloudflare Pages config is in `wrangler.jsonc` (`pages_build_output_dir: build`)
 | `wrangler.jsonc` | Cloudflare Pages config + KV/R2/queue bindings |
 | `_redirects` / `_headers` | CF Pages redirect + header rules |
 | `workers/` + `functions/api/[[path]].js` | `/api/*` Cloudflare Workers |
-| `DroneClear Components Visualizer/*.html` | Source HTML pages |
-| `DroneClear Components Visualizer/forge_database.json` | Local data fallback |
+| `forge-source/*.html` | Source HTML pages |
+| `forge-source/forge_database.json` | Local data fallback |
 | `docs/fpv_domain_knowledge.md` | Domain expertise reference |

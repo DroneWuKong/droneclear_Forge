@@ -2,7 +2,7 @@
 Normalizer: SAM.gov raw records → solicitations.json
 
 Reads  tools/mining/output/raw/sam_gov-*.jsonl
-Merges into  DroneClear Components Visualizer/solicitations.json
+Merges into  forge-source/solicitations.json
 
 New entries are added with source='sam'. Existing sam entries are updated
 in-place by notice_id. usaspending/news entries are never touched.
@@ -18,7 +18,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 RAW_DIR  = Path("tools/mining/output/raw")
-SOL_FILE = Path("DroneClear Components Visualizer/solicitations.json")
+SOL_FILE = Path("forge-source/solicitations.json")
 
 # NAICS codes associated with UAS/drone procurement
 DRONE_NAICS = {

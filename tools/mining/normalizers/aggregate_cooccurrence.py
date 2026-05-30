@@ -2,7 +2,7 @@
 Normalizer: RotorBuilds raw records -> forge_co_occurrence.json
 
 Reads tools/mining/output/raw/rotorbuilds-*.jsonl
-Writes DroneClear Components Visualizer/forge_co_occurrence.json
+Writes forge-source/forge_co_occurrence.json
 
 Output schema:
 {
@@ -37,7 +37,7 @@ from pathlib import Path
 
 
 RAW_DIR = Path("tools/mining/output/raw")
-OUT_FILE = Path("DroneClear Components Visualizer/forge_co_occurrence.json")
+OUT_FILE = Path("forge-source/forge_co_occurrence.json")
 
 # Common brand prefixes to normalise out of part names for matching
 _BRAND_PREFIXES = {

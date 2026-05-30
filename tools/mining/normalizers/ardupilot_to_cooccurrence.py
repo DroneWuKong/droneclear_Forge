@@ -2,7 +2,7 @@
 Normalizer: ArduPilot Discourse raw records → forge_co_occurrence.json supplement
 
 Reads  tools/mining/output/raw/ardupilot_discourse-*.jsonl
-Merges into  DroneClear Components Visualizer/forge_co_occurrence.json
+Merges into  forge-source/forge_co_occurrence.json
 
 ArduPilot threads carry hardware tags (e.g. 'cube-orange', 'matek-h743',
 'f9p'). When a thread has multiple hardware tags from different categories,
@@ -23,7 +23,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 RAW_DIR  = Path("tools/mining/output/raw")
-OUT_FILE = Path("DroneClear Components Visualizer/forge_co_occurrence.json")
+OUT_FILE = Path("forge-source/forge_co_occurrence.json")
 
 # Map Discourse hardware tags → (forge_category, canonical_name)
 TAG_MAP: dict[str, tuple[str, str]] = {
