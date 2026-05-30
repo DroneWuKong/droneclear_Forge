@@ -55,3 +55,24 @@ to opt-in subscribers. It's built on the flag-state ledger (`pie_delta`) and is
 - **One-click unsubscribe**: every email carries `List-Unsubscribe` headers + a
   footer link; unsubscribe is tokened and doesn't reveal subscription state.
 - **Cap**: at most `MAX_BROADCAST` (5000) recipients per send as a guardrail.
+
+## Slack / Teams alerts (Tier 2 #9)
+
+A push channel for teams that live in chat, not inbox. `POST /api/digest/notify`
+(admin-gated, called by `pie-daily.yml` after the digest send) pings a channel
+**only when something critical or escalated moved today** — severity-tiered to
+avoid alert fatigue (`?force=1` overrides; silent below threshold).
+
+Enable by setting either/both incoming-webhook secrets (Cloudflare):
+- `SLACK_WEBHOOK_URL` — a Slack [incoming webhook](https://api.slack.com/messaging/webhooks) URL
+- `TEAMS_WEBHOOK_URL` — a Microsoft Teams incoming-webhook URL
+
+No webhook set → the endpoint is a no-op (`skipped:"no_webhook_configured"`).
+Test it:
+```
+curl -X POST "https://uas-patterns.com/api/digest/notify?force=1" \
+  -H "X-Digest-Key: $DIGEST_ADMIN_KEY"
+```
+The daily trigger is already wired in `Ai-Project/.github/workflows/pie-daily.yml`
+(reuses `DIGEST_SEND_URL` + `DIGEST_ADMIN_KEY`), so once a webhook URL is set the
+alerts start flowing on the next pipeline run.
