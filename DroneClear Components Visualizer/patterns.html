@@ -1458,6 +1458,8 @@ const COMPONENTS = [
 let FLAGS = [];
 let PREDICTIONS = [];
 let DELTA = null;   // day-over-day movement from pie_delta.json (KV: pie_delta)
+let CALIB = null;   // calibration_scores.json — forecast track record headline
+let OUTCOMES = [];  // prediction_outcomes.json — resolved calls (✓/✗)
 let activeTab = "flags";
 let activeSeverity = "all"; // kept for compat but unused in new logic
 // ── Hide-based filter sets (empty = show all, add items to hide them) ──
@@ -1525,7 +1527,7 @@ async function loadData() {
   }).catch(()=>{});
 
   try {
-    const [fRes, pRes, dRes] = await Promise.all([
+    const [fRes, pRes, dRes, cRes, oRes] = await Promise.all([
       fetch('/api/data?type=flags&token='+encodeURIComponent(localStorage.getItem('forge_token')||localStorage.getItem('wingman_sub_token')||'')).then(r=>r.json()).then(d=>{
         if(d.summary_only){ return null; }
         const flags = d.data||d;
@@ -1554,9 +1556,18 @@ async function loadData() {
         if(!d || d.summary_only || d.error) return null;
         return d.data||d;
       }).catch(()=>null),
+      // Forecast track record (calibration + resolved outcomes) — Tier 3 trust surface.
+      fetch('/api/data?type=calibration_scores&token='+encodeURIComponent(localStorage.getItem('forge_token')||localStorage.getItem('wingman_sub_token')||'')).then(r=>r.ok?r.json():null).then(d=>{
+        if(!d || d.summary_only || d.error) return null; return d.data||d;
+      }).catch(()=>null),
+      fetch('/api/data?type=prediction_outcomes&token='+encodeURIComponent(localStorage.getItem('forge_token')||localStorage.getItem('wingman_sub_token')||'')).then(r=>r.ok?r.json():null).then(d=>{
+        if(!d || d.summary_only || d.error) return null; return d.data||d;
+      }).catch(()=>null),
     ]);
     FLAGS = fRes;
     DELTA = dRes;
+    CALIB = cRes || null;
+    OUTCOMES = Array.isArray(oRes) ? oRes : [];
 
     // Use live predictions if healthy (≥10 items), otherwise fall back to best archive
     if (pRes && pRes.length >= 10) {
@@ -1814,6 +1825,40 @@ function watchlistHTML(){
   </div>`;
 }
 
+// Forecast track record (Tier 3) — promote PIE's accountability onto the main
+// board instead of burying it on /forecast-accountability/. "We called X, here's
+// how it resolved" is the most defensible trust/retention asset for an analyst
+// audience. Built from calibration_scores + prediction_outcomes.
+function trackRecordHTML(){
+  if(!CALIB || !CALIB.resolved) return '';
+  const acc = Math.round((CALIB.accuracy||0)*100);
+  const brier = (typeof CALIB.brier_score==='number') ? CALIB.brier_score.toFixed(3) : '—';
+  const calLabel = (typeof CALIB.brier_score==='number')
+    ? (CALIB.brier_score<0.1?'well-calibrated':CALIB.brier_score<0.25?'calibrated':'noisy') : '';
+  const resolved = (Array.isArray(OUTCOMES)?OUTCOMES:[])
+    .filter(o=>o && (o.was_correct===true||o.was_correct===false) && o.resolution_date)
+    .sort((a,b)=>(b.resolution_date||'').localeCompare(a.resolution_date||''))
+    .slice(0,3);
+  const rows = resolved.map(o=>{
+    const ok=o.was_correct, c=ok?'var(--green)':'var(--red)';
+    return `<div style="display:flex;gap:7px;align-items:flex-start;padding:5px 0;border-top:1px solid var(--border)">
+      <span style="color:${c};font:700 12px var(--mono);line-height:1.3">${ok?'✓':'✗'}</span>
+      <div style="flex:1;min-width:0">
+        <div style="font:500 11px var(--font);color:var(--text);line-height:1.35">${(''+(o.event||'')).replace(/</g,'&lt;').slice(0,120)}</div>
+        <div style="font:9px var(--mono);color:var(--text-d);margin-top:1px">called ${Math.round((o.predicted_probability||0)*100)}% · resolved ${esc_(o.resolution_date)}</div>
+      </div></div>`;
+  }).join('');
+  return `<div style="margin-bottom:12px;padding:10px 12px;background:var(--surface);border:1px solid var(--border);border-radius:8px">
+    <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:4px">
+      <span style="font:700 10px var(--mono);color:var(--cyan,#22d3ee);letter-spacing:.06em">◎ FORECAST TRACK RECORD</span>
+      <a href="/forecast-accountability/" style="font:500 10px var(--mono);color:var(--text-d);text-decoration:none">full record →</a>
+    </div>
+    <div style="font:600 13px var(--font);color:var(--text)">${CALIB.resolved} resolved · <span style="color:var(--green)">${acc}% hit rate</span> · Brier ${brier}${calLabel?` <span style="color:var(--text-d);font-weight:400">(${calLabel})</span>`:''}</div>
+    ${rows?`<div style="margin-top:6px">${rows}</div>`:''}
+  </div>`;
+}
+function esc_(s){ return String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
+
 // Email-digest signup card (Tier 2) — the return-trigger. Posts to the
 // /api/digest/subscribe Worker (double opt-in). Degrades gracefully: if the
 // provider isn't configured server-side, the address is still stored as pending.
@@ -1942,6 +1987,7 @@ function renderBriefPanel(b){
   html += sinceLastVisitHTML();
   html += whatChangedHTML(b);
   html += watchlistHTML();
+  html += trackRecordHTML();
   html += digestSignupHTML();
 
   // Tier-personalized section
