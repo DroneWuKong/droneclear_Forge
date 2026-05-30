@@ -65,6 +65,22 @@ h1{font:700 24px var(--mono);color:#22c55e;letter-spacing:-0.02em;margin-bottom:
 .funnel-meta{font:500 11px var(--font);color:var(--text-s)}
 .funnel-meta b{color:var(--text);font-family:var(--font)}
 
+.resolved-controls{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px}
+.rc-btn{background:var(--surface);border:1px solid var(--border);border-radius:6px;padding:5px 11px;font:600 10px var(--mono);color:var(--text-s);cursor:pointer}
+.rc-btn.on{background:var(--text-s);color:var(--bg);border-color:var(--text-s)}
+.rcall{border:1px solid var(--border);border-radius:7px;padding:11px 13px;margin:8px 0;border-left:3px solid var(--border)}
+.rcall.ok{border-left-color:#22c55e}
+.rcall.miss{border-left-color:#ef4444}
+.rcall-top{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:5px}
+.rcall-v{font:700 10px var(--mono);padding:1px 7px;border-radius:3px;letter-spacing:.04em}
+.rcall-v.ok{background:#22c55e22;color:#22c55e}
+.rcall-v.miss{background:#ef444422;color:#ef4444}
+.rcall-meta{font:500 10px var(--mono);color:var(--text-d)}
+.rcall-event{font:600 13px var(--font);color:var(--text);line-height:1.4;margin-bottom:5px}
+.rcall-ev{font:400 11px var(--font);color:var(--text-d);line-height:1.5;border-top:1px dashed var(--border);padding-top:6px;margin-top:6px}
+.rcall-ev a{color:var(--text-s);text-decoration:none;font:500 10px var(--mono)}
+.rcall-ev a:hover{color:#22d3ee}
+
 table{width:100%;border-collapse:collapse;margin-top:8px;font-size:11px}
 thead th{background:var(--surface);font:600 9px var(--mono);text-transform:uppercase;letter-spacing:.06em;color:var(--text-d);padding:8px 6px;border-bottom:1px solid var(--border);text-align:right;white-space:nowrap}
 thead th.l{text-align:left}
@@ -116,6 +132,15 @@ tbody td.l{text-align:left;font:600 12px var(--font);color:var(--text)}
       <div class="panel-sub">How many resolved predictions survive to a real verdict
         (<code>confirmed</code>/<code>refuted</code>).</div>
       <div id="funnel"></div>
+    </div>
+
+    <div class="panel">
+      <div class="panel-h">Resolved calls — the actual verdicts</div>
+      <div class="panel-sub">Every graded prediction: what PIE called, the
+        confidence it assigned, and the open-source evidence that confirmed or
+        refuted it. Newest first.</div>
+      <div class="resolved-controls" id="resolved-controls"></div>
+      <div id="resolved-list"></div>
     </div>
 
     <div class="panel">
@@ -471,9 +496,77 @@ function renderDomains(a){
   }).join('');
 }
 
+// ── resolved calls list ───────────────────────────────────────────────────────
+// The per-prediction detail behind the aggregate charts: what PIE called, the
+// confidence, and the evidence that graded it. Keeps its own little filter state.
+var _resolved = [], _resolvedFilter = 'all';
+
+function rcallHtml(o){
+  var ok = o.was_correct === true;
+  var prob = (typeof o.predicted_probability === 'number')
+    ? Math.round(o.predicted_probability * 100) + '%' : '—';
+  var meta = [
+    o.predicted_timeframe,
+    o.domain,
+    o.resolution_date ? 'resolved ' + o.resolution_date : null
+  ].filter(Boolean).map(escapeHtml).join(' · ');
+  var ev = '';
+  if (o.resolution_evidence) {
+    ev = '<div class="rcall-ev">' + escapeHtml(String(o.resolution_evidence).slice(0, 280));
+    if (o.resolution_url) {
+      ev += ' <a href="' + escapeHtml(o.resolution_url) + '" target="_blank" rel="noopener">source ↗</a>';
+    }
+    ev += '</div>';
+  } else if (o.resolution_url) {
+    ev = '<div class="rcall-ev"><a href="' + escapeHtml(o.resolution_url) + '" target="_blank" rel="noopener">source ↗</a></div>';
+  }
+  return '<div class="rcall ' + (ok ? 'ok' : 'miss') + '">'
+    + '<div class="rcall-top">'
+    +   '<span class="rcall-v ' + (ok ? 'ok' : 'miss') + '">' + (ok ? '✓ CONFIRMED' : '✗ REFUTED') + '</span>'
+    +   '<span class="rcall-meta">called ' + prob + (meta ? ' · ' + meta : '') + '</span>'
+    + '</div>'
+    + '<div class="rcall-event">' + escapeHtml(o.event || '') + '</div>'
+    + ev
+    + '</div>';
+}
+
+function renderResolved(){
+  var list = document.getElementById('resolved-list');
+  var ctrl = document.getElementById('resolved-controls');
+  if (!list) return;
+  var nOk = _resolved.filter(function(o){ return o.was_correct === true; }).length;
+  var nMiss = _resolved.filter(function(o){ return o.was_correct === false; }).length;
+
+  if (!_resolved.length){
+    if (ctrl) ctrl.innerHTML = '';
+    list.innerHTML = '<div class="empty" style="padding:10px 0;color:var(--text-d);font:400 11px var(--font)">'
+      + 'No predictions have been graded yet. Verdicts appear here as the resolver matches forecasts against incoming intel.</div>';
+    return;
+  }
+  if (ctrl){
+    var defs = [['all','All ('+_resolved.length+')'],['ok','✓ Confirmed ('+nOk+')'],['miss','✗ Refuted ('+nMiss+')']];
+    ctrl.innerHTML = defs.map(function(d){
+      return '<button type="button" class="rc-btn'+(_resolvedFilter===d[0]?' on':'')
+        +'" onclick="setResolvedFilter(\''+d[0]+'\')">'+d[1]+'</button>';
+    }).join('');
+  }
+  var rows = _resolved.filter(function(o){
+    return _resolvedFilter === 'all'
+      || (_resolvedFilter === 'ok' && o.was_correct === true)
+      || (_resolvedFilter === 'miss' && o.was_correct === false);
+  });
+  list.innerHTML = rows.map(rcallHtml).join('') ||
+    '<div class="empty" style="padding:10px 0;color:var(--text-d)">No calls in this filter.</div>';
+}
+function setResolvedFilter(f){ _resolvedFilter = f; renderResolved(); }
+
 function render(outcomes){
   var a = analyze(outcomes);
-  renderKpis(a); renderFunnel(a); renderReasons(a); renderReliability(a);
+  // Graded = a real ✓/✗ verdict; sort newest resolution first.
+  _resolved = (outcomes || [])
+    .filter(function(o){ return typeof o.was_correct === 'boolean'; })
+    .sort(function(x, y){ return String(y.resolution_date||'').localeCompare(String(x.resolution_date||'')); });
+  renderKpis(a); renderFunnel(a); renderResolved(); renderReasons(a); renderReliability(a);
   renderImpact(a); renderConfHist(a); renderDomains(a);
   document.getElementById('loading').hidden = true;
   document.getElementById('content').hidden = false;
