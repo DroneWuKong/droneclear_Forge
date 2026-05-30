@@ -971,11 +971,24 @@ function renderClock() {
   if (DATA && DATA.ueri_score != null) {
     normalized = DATA.ueri_score;
     // Always derive from scoreToTime for fractional accuracy
-    const t = scoreToTime(normalized);
-    minutesToMidnight = t.minutesToMidnight;
-    secondsComponent = t.secondsComponent;
-    display = t.display;
-    angleDeg = t.angleDeg;
+    // Prefer the pipeline's own minutes_to_midnight (clock_score.py is the
+    // source of truth — it uses a nonlinear 0–90 min curve, not a simple linear
+    // scale, so re-deriving from the score here can never match it exactly).
+    // Only fall back to scoreToTime when the field is absent.
+    if (DATA.minutes_to_midnight != null) {
+      const stored = Number(DATA.minutes_to_midnight);
+      minutesToMidnight = Math.floor(stored);
+      secondsComponent = Math.round((stored - minutesToMidnight) * 60);
+      display = `${minutesToMidnight}m ${secondsComponent.toString().padStart(2,'0')}s`;
+      // Hand maps minutes onto the 60-min dial (clamped for the >60 range).
+      angleDeg = -(Math.min(stored, 60) / 60) * 360;
+    } else {
+      const t = scoreToTime(normalized);
+      minutesToMidnight = t.minutesToMidnight;
+      secondsComponent = t.secondsComponent;
+      display = t.display;
+      angleDeg = t.angleDeg;
+    }
   } else {
     const computed = computeClockScore();
     normalized = computed.normalized;
