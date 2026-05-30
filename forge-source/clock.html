@@ -926,8 +926,14 @@ function computeClockScore() {
 }
 
 function scoreToTime(score) {
-  // Scale: 30 min at UERI 0 → 1 min at UERI 100 (fractional, not rounded)
-  const totalMinutesExact = Math.max(0.1, (100 - score) / 100 * 30);
+  // Scale MUST match pipeline/clock_score.py (the source of truth):
+  //   UERI 0 → 60 min to midnight; UERI 100 → 0 min.
+  //   minutes_to_midnight = (100 - UERI)/100 * 60
+  // This was previously *30 (a 30-min scale), which halved the displayed number
+  // vs. the pipeline's own minutes_to_midnight — e.g. UERI 69 showed "9m" on the
+  // page while the data said ~19m. renderClock() now also prefers the stored
+  // minutes_to_midnight when present so page == pipeline exactly.
+  const totalMinutesExact = Math.max(0.1, (100 - score) / 100 * 60);
   const minutesToMidnight = Math.floor(totalMinutesExact);
   const secondsComponent = Math.round((totalMinutesExact - minutesToMidnight) * 60);
   // SVG hand uses exact fractional minutes for accurate positioning
