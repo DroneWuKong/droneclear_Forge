@@ -1179,7 +1179,66 @@ function renderDDG2(d){
           return w.url ? '<a href="'+ddgEsc(w.url)+'" target="_blank" rel="noopener" style="font:600 11px var(--body);padding:4px 10px;border-radius:12px;border:1px solid var(--amber);color:var(--amber);text-decoration:none;background:rgba(201,162,39,0.06);">'+nm+' ↗</a>'
                        : '<span style="font:600 11px var(--body);padding:4px 10px;border-radius:12px;border:1px solid var(--border);color:var(--text-dim);">'+nm+'</span>';
         }).join('')
-      + '</div></div>';
+      + '</div>';
+    // Prize-challenge terms + sUPI + safety + timeline (from the DDP Lethality Brief).
+    var pcg = lp.prize_challenge;
+    if(pcg){
+      h += '<div style="margin-top:12px;display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:10px;">';
+      if(Array.isArray(pcg.what_winners_get)) h += '<div><div style="font:600 8px var(--mono);letter-spacing:1.5px;color:var(--amber);margin-bottom:4px;">WHAT WINNERS GET</div><ul style="margin:0 0 0 15px;padding:0;">'+pcg.what_winners_get.map(function(x){return '<li style="font:400 10px var(--body);color:var(--text-dim);line-height:1.5;">'+ddgEsc(x)+'</li>';}).join('')+'</ul></div>';
+      if(Array.isArray(pcg.core_requirements)) h += '<div><div style="font:600 8px var(--mono);letter-spacing:1.5px;color:var(--amber);margin-bottom:4px;">CORE REQUIREMENTS</div><ul style="margin:0 0 0 15px;padding:0;">'+pcg.core_requirements.map(function(x){return '<li style="font:400 10px var(--body);color:var(--text-dim);line-height:1.5;">'+ddgEsc(x)+'</li>';}).join('')+'</ul></div>';
+      if(Array.isArray(pcg.functional_minimum)) h += '<div><div style="font:600 8px var(--mono);letter-spacing:1.5px;color:var(--amber);margin-bottom:4px;">FUNCTIONAL MINIMUM</div><ul style="margin:0 0 0 15px;padding:0;">'+pcg.functional_minimum.map(function(x){return '<li style="font:400 10px var(--body);color:var(--text-dim);line-height:1.5;">'+ddgEsc(x)+'</li>';}).join('')+'</ul></div>';
+      h += '</div>';
+      var bits = [];
+      if(Array.isArray(pcg.effects)) bits.push('Effects: '+pcg.effects.map(ddgEsc).join(', '));
+      if(pcg.architecture) bits.push(ddgEsc(pcg.architecture));
+      if(pcg.integration) bits.push(ddgEsc(pcg.integration));
+      if(pcg.delivery) bits.push('Delivery: '+ddgEsc(pcg.delivery));
+      if(bits.length) h += '<div style="font:400 10px var(--body);color:var(--text-dim);line-height:1.6;margin-top:8px;">'+bits.join('<br>')+'</div>';
+    }
+    if(lp.sUPI){ h += '<div style="margin-top:10px;border-left:3px solid var(--blue);padding:4px 10px;"><span style="font:700 10px var(--mono);color:var(--blue);">'+ddgEsc(lp.sUPI.name||'sUPI')+'</span><div style="font:400 10px var(--body);color:var(--text-dim);line-height:1.5;margin-top:2px;">'+ddgEsc(lp.sUPI.detail||'')+(lp.sUPI.icd?' '+ddgEsc(lp.sUPI.icd):'')+'</div></div>'; }
+    if(lp.safety){ var sf=lp.safety;
+      h += '<div style="margin-top:8px;border-left:3px solid var(--red);padding:4px 10px;"><span style="font:700 10px var(--mono);color:var(--red);">SAFETY — PATHWAY TO CONCURRENCE</span>'
+        + '<div style="font:400 10px var(--body);color:var(--text-dim);line-height:1.5;margin-top:2px;">'+ddgEsc(sf.process||'')+'</div>'
+        + (Array.isArray(sf.esad_requirements)?'<ul style="margin:5px 0 0 15px;padding:0;">'+sf.esad_requirements.map(function(x){return '<li style="font:400 10px var(--body);color:var(--text-dim);line-height:1.5;">'+ddgEsc(x)+'</li>';}).join('')+'</ul>':'')
+        + (sf.warhead_requirements?'<div style="font:400 10px var(--body);color:var(--text-dim);line-height:1.5;margin-top:4px;">'+ddgEsc(sf.warhead_requirements)+'</div>':'')
+        + '</div>';
+    }
+    if(Array.isArray(lp.timeline) && lp.timeline.length){
+      h += '<div style="margin-top:10px;"><div style="font:600 8px var(--mono);letter-spacing:1.5px;color:var(--amber);margin-bottom:5px;">LETHALITY TIMELINE</div><div style="display:flex;flex-direction:column;gap:3px;">'
+        + lp.timeline.map(function(t){return '<div style="display:flex;gap:10px;align-items:baseline;"><span style="font:700 9px var(--mono);color:var(--amber);min-width:120px;">'+ddgEsc(t.date)+'</span><span style="font:400 10px var(--body);color:var(--text-dim);line-height:1.4;">'+ddgEsc(t.event)+'</span></div>';}).join('')
+        + '</div></div>';
+    }
+    h += '</div>';
+  }
+
+  // ── Industry Day expectations (pre-RFS planning brief) ──
+  var idy = d.industry_day;
+  if(idy && Array.isArray(idy.mission_tracks)){
+    h += '<div style="margin-top:22px;padding:14px 16px;background:var(--bg2);border:1px solid var(--border);border-radius:8px;">'
+      + '<div style="font:600 9px var(--mono);letter-spacing:2px;text-transform:uppercase;color:var(--blue);margin-bottom:4px;">Industry Day — Gauntlet II Expectations</div>'
+      + (idy.as_of?'<div style="font:400 10px var(--mono);color:var(--text-dim);margin-bottom:10px;">'+ddgEsc(idy.as_of)+'</div>':'');
+    // Two mission tracks
+    h += '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:1px;background:var(--border);border:1px solid var(--border);margin-bottom:10px;">'
+      + idy.mission_tracks.map(function(m){return '<div style="background:var(--bg2);padding:10px 12px;"><div style="font:700 11px var(--body);color:var(--text);margin-bottom:3px;">'+ddgEsc(m.area)+'</div><div style="font:400 10px var(--body);color:var(--text-dim);line-height:1.45;">'+ddgEsc(m.mission)+'</div><div style="font:500 9px var(--mono);color:var(--green);margin-top:4px;">'+ddgEsc(m.range||'')+' · '+ddgEsc(m.packability||'')+'</div></div>';}).join('')
+      + '</div>';
+    // Stages
+    if(Array.isArray(idy.stages)) h += '<div style="display:flex;flex-direction:column;gap:5px;margin-bottom:10px;">'
+      + idy.stages.map(function(s){return '<div style="border-left:3px solid var(--blue);padding:4px 10px;"><span style="font:700 10px var(--mono);color:var(--blue);">'+ddgEsc(s.stage)+'</span><div style="font:400 10px var(--body);color:var(--text-dim);line-height:1.45;margin-top:2px;">'+ddgEsc(s.detail)+'</div></div>';}).join('')+'</div>';
+    // Discriminators
+    if(Array.isArray(idy.discriminators)) h += '<div style="font:600 8px var(--mono);letter-spacing:1.5px;color:var(--green);margin-bottom:5px;">COMPETITIVE DISCRIMINATORS</div><div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:8px;margin-bottom:10px;">'
+      + idy.discriminators.map(function(x){return '<div style="background:rgba(0,229,160,0.05);border:1px solid var(--border);border-radius:6px;padding:8px 10px;"><div style="font:600 11px var(--body);color:var(--text);">'+ddgEsc(x.name)+'</div><div style="font:400 9px var(--body);color:var(--text-dim);line-height:1.4;margin-top:3px;">'+ddgEsc(x.benefit||'')+(x.example?'<br><span style="color:var(--green);">e.g.</span> '+ddgEsc(x.example):'')+'</div></div>';}).join('')+'</div>';
+    // Projected quantities (pre-RFS estimates)
+    var pq = idy.projected_quantities;
+    if(pq && pq.area_a && pq.area_b){
+      function qtbl(a){return '<div style="flex:1;min-width:160px;"><div style="font:600 10px var(--body);color:var(--text);margin-bottom:3px;">'+ddgEsc(a.label)+'</div><div style="font:500 9px var(--mono);color:var(--text-dim);margin-bottom:4px;">'+ddgEsc(a.cost_per_drone)+' · '+ddgEsc(a.ratio)+'</div>'
+        + Object.keys(a.by_rank).map(function(k){return '<div style="display:flex;justify-content:space-between;font:500 10px var(--mono);color:var(--text-dim);"><span>'+ddgEsc(k)+'</span><span style="color:var(--text);">'+a.by_rank[k].toLocaleString()+'</span></div>';}).join('')
+        + '<div style="display:flex;justify-content:space-between;font:700 10px var(--mono);color:var(--green);border-top:1px solid var(--border);margin-top:3px;padding-top:3px;"><span>Total</span><span>'+a.total.toLocaleString()+'</span></div></div>';}
+      h += '<div style="font:600 8px var(--mono);letter-spacing:1.5px;color:var(--text-dim);margin-bottom:5px;">PROJECTED ORDER QUANTITIES <span style="color:var(--amber);">(pre-RFS estimate — RFS governs)</span></div>'
+        + '<div style="display:flex;gap:14px;flex-wrap:wrap;margin-bottom:8px;">'+qtbl(pq.area_a)+qtbl(pq.area_b)+'</div>';
+    }
+    if(Array.isArray(idy.delivery_specs)) h += '<div style="font:400 10px var(--body);color:var(--text-dim);line-height:1.55;">Delivery: '+idy.delivery_specs.map(ddgEsc).join(' · ')+'</div>';
+    if(idy.note) h += '<div style="font:400 9px var(--mono);color:var(--text-dim);margin-top:6px;font-style:italic;">'+ddgEsc(idy.note)+'</div>';
+    h += '</div>';
   }
 
   // ── Phase II process (official RFS) + Supply-chain migration ──
@@ -1210,6 +1269,25 @@ function renderDDG2(d){
     if(Array.isArray(scn.component_areas)){
       h += '<div style="font:400 10px var(--mono);color:var(--text-dim);margin-top:8px;">Component areas: '+scn.component_areas.map(ddgEsc).join(' · ')+'</div>';}
     if(scn.stance) h += '<div style="font:400 10px var(--mono);color:var(--text-dim);margin-top:4px;">'+ddgEsc(scn.stance)+'</div>';
+    h += '</div>';
+  }
+
+  // ── UAS Marketplace (where champions sell after the Gauntlet) ──
+  var mk = d.marketplace;
+  if(mk && Array.isArray(mk.phases)){
+    h += '<div style="margin-top:14px;padding:14px 16px;background:var(--bg2);border:1px solid var(--border);border-radius:8px;">'
+      + '<div style="font:600 9px var(--mono);letter-spacing:2px;text-transform:uppercase;color:var(--green);margin-bottom:4px;">UAS Marketplace <span style="color:var(--text-dim);font-weight:400;">— after the Gauntlet</span></div>'
+      + (mk.tagline?'<div style="font:400 11px var(--body);color:var(--text-dim);line-height:1.55;margin-bottom:10px;">'+ddgEsc(mk.tagline)+'</div>':'');
+    // Onboarding phases
+    h += '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:1px;background:var(--border);border:1px solid var(--border);margin-bottom:10px;">'
+      + mk.phases.map(function(p){return '<div style="background:var(--bg2);padding:9px 11px;"><div style="font:700 11px var(--body);color:var(--text);margin-bottom:3px;">'+ddgEsc(p.phase)+'</div><div style="font:400 10px var(--body);color:var(--text-dim);line-height:1.45;">'+ddgEsc(p.detail)+'</div></div>';}).join('')
+      + '</div>';
+    if(mk.assessors){
+      var oa=(mk.assessors.organic||[]).map(ddgEsc).join(', '), ra=(mk.assessors.recognized||[]).map(ddgEsc).join(', ');
+      h += '<div style="font:400 10px var(--mono);color:var(--text-dim);line-height:1.6;"><span style="color:var(--green);">NDAA assessors</span> — Organic: '+oa+' · Recognized: '+ra+'</div>';
+    }
+    if(Array.isArray(mk.contracting)) h += '<div style="font:400 10px var(--mono);color:var(--text-dim);line-height:1.6;margin-top:3px;"><span style="color:var(--green);">Contracting</span> — '+mk.contracting.map(ddgEsc).join(' · ')+'</div>';
+    if(mk.model) h += '<div style="font:400 10px var(--body);color:var(--text-dim);line-height:1.55;margin-top:6px;">'+ddgEsc(mk.model)+'</div>';
     h += '</div>';
   }
 
