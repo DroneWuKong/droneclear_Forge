@@ -14,6 +14,7 @@
  *   GET  /api/digest/unsubscribe    ?e=&t=             → one-click unsubscribe
  *   GET  /api/digest/preview        [?cadence=]        → render the digest HTML (no send)
  *   POST /api/digest/send           {cadence}          → admin-gated broadcast (cron-driven)
+ *   POST /api/digest/notify         [?force=1]         → admin-gated Slack/Teams push
  *
  * Storage — KV namespace DIGEST_SUBS:
  *   sub/<email>  -> {email, status:'pending'|'confirmed'|'unsubscribed', cadence, token, created, confirmed_at}
@@ -26,8 +27,10 @@
  * Secrets / vars (CF dashboard or `wrangler secret put`):
  *   RESEND_API_KEY     — email provider key (https://resend.com)
  *   DIGEST_FROM        — verified From, e.g. "PIE <brief@uas-patterns.com>"
- *   DIGEST_ADMIN_KEY   — gates POST /api/digest/send (X-Digest-Key header)
+ *   DIGEST_ADMIN_KEY   — gates POST /api/digest/send + /api/digest/notify (X-Digest-Key)
  *   DIGEST_BASE_URL    — public origin for links (default https://uas-patterns.com)
+ *   SLACK_WEBHOOK_URL  — optional; incoming-webhook URL for Slack pushes
+ *   TEAMS_WEBHOOK_URL  — optional; incoming-webhook URL for Microsoft Teams pushes
  */
 
 const CORS = {
@@ -293,6 +296,74 @@ async function send(req, env) {
     provider_configured: !!(env.RESEND_API_KEY && env.DIGEST_FROM) });
 }
 
+async function postWebhook(url, payload) {
+  try {
+    const r = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    });
+    return r.ok ? { sent: true } : { error: `http_${r.status}` };
+  } catch (e) { return { error: String(e && e.message) }; }
+}
+
+// Slack / Teams push (Tier 2 #9) — pings a channel when something CRITICAL or
+// ESCALATED moved today, so teams don't have to remember to check the board.
+// Admin-gated, called by the daily pipeline. Severity-tiered to avoid alert
+// fatigue: silent unless there's new-critical or escalated movement (?force=1
+// overrides). No-op if no webhook URL is configured.
+async function notify(req, env) {
+  const provided = req.headers.get('X-Digest-Key') || '';
+  if (!env.DIGEST_ADMIN_KEY) return json(503, { error: 'DIGEST_ADMIN_KEY not configured' });
+  if (provided !== env.DIGEST_ADMIN_KEY) return json(401, { error: 'unauthorized' });
+
+  const delta = await loadKV(env, 'pie_delta');
+  const date = (delta && delta.date) || new Date().toISOString().slice(0, 10);
+  const newCrit = (((delta && delta.new_flags) || []).filter(f => f && f.severity === 'critical'));
+  const esc = (delta && delta.escalated_flags) || [];
+  const force = new URL(req.url).searchParams.get('force') === '1';
+  if (!newCrit.length && !esc.length && !force) {
+    return json(200, { ok: true, skipped: 'no_material_movement', date });
+  }
+  if (!env.SLACK_WEBHOOK_URL && !env.TEAMS_WEBHOOK_URL) {
+    return json(200, { ok: true, skipped: 'no_webhook_configured', date,
+      new_critical: newCrit.length, escalated: esc.length });
+  }
+
+  const B = baseUrl(env);
+  const lines = [
+    ...esc.map(e => `⬆ *ESCALATED* — ${e.title}`),
+    ...newCrit.map(n => `🔴 *NEW* — ${n.title}`),
+  ].filter(Boolean).slice(0, 8).map(s => s.slice(0, 160));
+  const summary = `PIE ${date}: ${newCrit.length} new critical · ${esc.length} escalated`;
+
+  let slack = null, teams = null;
+  if (env.SLACK_WEBHOOK_URL) {
+    slack = await postWebhook(env.SLACK_WEBHOOK_URL, {
+      text: summary,
+      blocks: [
+        { type: 'header', text: { type: 'plain_text', text: `PIE — ${date}` } },
+        { type: 'section', text: { type: 'mrkdwn', text: `*${summary}*\n${lines.join('\n') || '_movement below threshold_'}` } },
+        { type: 'actions', elements: [{ type: 'button', text: { type: 'plain_text', text: 'Open the board' }, url: `${B}/patterns/` }] },
+      ],
+    });
+  }
+  if (env.TEAMS_WEBHOOK_URL) {
+    teams = await postWebhook(env.TEAMS_WEBHOOK_URL, {
+      '@type': 'MessageCard',
+      '@context': 'http://schema.org/extensions',
+      themeColor: newCrit.length ? 'D7263D' : 'F59E0B',
+      summary,
+      title: `PIE — ${date}`,
+      text: `**${summary}**`,
+      sections: [{ text: lines.join('  \n') || '_movement below threshold_' }],
+      potentialAction: [{ '@type': 'OpenUri', name: 'Open the board', targets: [{ os: 'default', uri: `${B}/patterns/` }] }],
+    });
+  }
+  return json(200, { ok: true, date, new_critical: newCrit.length, escalated: esc.length,
+    slack: slack || 'not_configured', teams: teams || 'not_configured' });
+}
+
 function _page(msg, ok = false) {
   return `<!doctype html><body style="background:#0c0c0a;padding:48px 24px;font-family:-apple-system,Segoe UI,sans-serif;text-align:center">
     <div style="max-width:440px;margin:0 auto;color:#e8e8e3">
@@ -312,6 +383,7 @@ export default {
       if (path === '/api/digest/unsubscribe') return await unsubscribe(req, env);
       if (path === '/api/digest/preview') return await preview(req, env);
       if (path === '/api/digest/send' && req.method === 'POST') return await send(req, env);
+      if (path === '/api/digest/notify' && req.method === 'POST') return await notify(req, env);
       return json(404, { error: 'unknown digest route' });
     } catch (e) {
       return json(500, { error: 'digest error: ' + (e && e.message) });
