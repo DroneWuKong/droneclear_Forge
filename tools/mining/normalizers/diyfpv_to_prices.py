@@ -2,7 +2,7 @@
 Normalizer: DIYFPV catalog raw records → forge_database.json price patches
 
 Reads  tools/mining/output/raw/diyfpv_catalog-*.jsonl
-Patches  DroneClear Components Visualizer/forge_database.json
+Patches  forge-source/forge_database.json
 
 For each DIYFPV 'part' record, find matching components in forge_database.json
 by name similarity and patch their price/availability fields. Never creates
@@ -28,7 +28,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 RAW_DIR  = Path("tools/mining/output/raw")
-DB_FILE  = Path("DroneClear Components Visualizer/forge_database.json")
+DB_FILE  = Path("forge-source/forge_database.json")
 
 # Tokens to strip before name matching
 _NOISE = re.compile(

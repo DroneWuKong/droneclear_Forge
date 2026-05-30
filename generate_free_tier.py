@@ -21,7 +21,7 @@ SEARCH_PATHS = [
         os.environ.get('AI_PROJECT_DATA'),
         '../Ai-Project/data',
         'data',
-        'DroneClear Components Visualizer/static',  # pie_flags.json, pie_predictions.json live here
+        'forge-source/static',  # pie_flags.json, pie_predictions.json live here
     ] if p
 ]
 

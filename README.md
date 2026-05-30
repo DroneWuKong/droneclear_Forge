@@ -27,7 +27,7 @@ The build pulls fresh data from the Ai-Project repo if `GITHUB_PAT` is set. With
 
 ## Deploy
 
-Netlify auto-deploys from `master` branch. Config in `netlify.toml`.
+Cloudflare Pages auto-deploys from the `master` branch (project `forge`; config in `wrangler.jsonc`).
 
 | Setting | Value |
 |---------|-------|
@@ -38,9 +38,9 @@ Netlify auto-deploys from `master` branch. Config in `netlify.toml`.
 ## Project Structure
 
 ```
-├── DroneClear Components Visualizer/   # Source HTML/CSS/JS (20 pages)
+├── forge-source/                       # Source HTML/CSS/JS (20 pages)
 ├── build_static.py                     # Static site generator
-├── netlify.toml                        # Netlify config + redirects
+├── wrangler.jsonc                      # Cloudflare Pages config + bindings
 ├── archive/                            # Historical data (CSVs, old JSON)
 ├── docs/
 │   ├── ARCHITECTURE.md                 # How the build pipeline works

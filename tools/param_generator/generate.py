@@ -36,7 +36,7 @@ from pathlib import Path
 from typing import Optional
 
 
-DB_PATH = Path(__file__).resolve().parents[2] / "DroneClear Components Visualizer" / "forge_database.json"
+DB_PATH = Path(__file__).resolve().parents[2] / "forge-source" / "forge_database.json"
 
 
 # ── ArduPilot constants ─────────────────────────────────────────────────────

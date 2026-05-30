@@ -29,7 +29,7 @@ tools/mining/
 └── README.md               # this file
 ```
 
-Output files land in `DroneClear Components Visualizer/`:
+Output files land in `forge-source/`:
 - `forge_co_occurrence.json` — pair counts for "part A appears with part B in N builds"
 - (future) `forge_price_observations.json` — price points across retailers
 - (future) `forge_pro_archetypes.json` — canonical build templates

@@ -2,7 +2,7 @@
 Normalizer: Blue UAS raw records -> forge_blue_uas_cleared.json
 
 Reads tools/mining/output/raw/blue_uas-*.jsonl
-Writes DroneClear Components Visualizer/forge_blue_uas_cleared.json
+Writes forge-source/forge_blue_uas_cleared.json
 
 Output schema:
 {
@@ -32,7 +32,7 @@ from pathlib import Path
 
 
 RAW_DIR = Path("tools/mining/output/raw")
-OUT_FILE = Path("DroneClear Components Visualizer/forge_blue_uas_cleared.json")
+OUT_FILE = Path("forge-source/forge_blue_uas_cleared.json")
 
 
 def load_raw() -> list[dict]:

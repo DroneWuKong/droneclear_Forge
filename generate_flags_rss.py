@@ -2,7 +2,7 @@
 """
 generate_flags_rss.py
 Generates an RSS 2.0 feed from DroneClear Patterns flags.json
-Output: DroneClear Components Visualizer/static/flags.xml
+Output: forge-source/static/flags.xml
 """
 
 import json
@@ -12,8 +12,8 @@ from xml.etree.ElementTree import Element, SubElement, ElementTree, indent
 from pathlib import Path
 
 BASE_DIR = Path(__file__).parent
-FLAGS_PATH = BASE_DIR / "DroneClear Components Visualizer" / "static" / "data" / "flags.json"
-OUTPUT_PATH = BASE_DIR / "DroneClear Components Visualizer" / "static" / "flags.xml"
+FLAGS_PATH = BASE_DIR / "forge-source" / "static" / "data" / "flags.json"
+OUTPUT_PATH = BASE_DIR / "forge-source" / "static" / "flags.xml"
 
 SITE_URL = "https://uas-patterns.com"
 FEED_TITLE = "DroneClear Patterns — Intel Flags"

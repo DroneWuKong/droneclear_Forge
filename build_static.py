@@ -7,7 +7,7 @@ Builds static HTML pages for Netlify deployment from source files.
 - Assembles forge_database.json from handbook JSON files + local industry data
 - Strips {% load static %} and {% static 'file' %} template tags
 - Injects forge-static-adapter.js before any app scripts
-- Copies all assets to a build/ directory ready for Netlify
+- Copies all assets to a build/ directory ready for Cloudflare Pages
 """
 
 import os
@@ -17,7 +17,7 @@ import json
 import subprocess
 import sys
 
-SRC_DIR = 'DroneClear Components Visualizer'
+SRC_DIR = 'forge-source'
 BUILD_DIR = 'build'
 
 # Pages to process  [rebuild 2026-04-10]
