@@ -770,8 +770,13 @@ body {
 let DATA = null;
 
 async function loadData() {
-  // Try to load from Forge static files (deployed by pipeline)
+  // Prefer live KV via the intel API (synced daily by the PIE pipeline), then
+  // fall back to the static build artifact, then the embedded snapshot. The
+  // page used to read ONLY the static file, which froze whenever the build
+  // artifact lagged the pipeline — that's why the clock showed a date weeks
+  // behind the Dashboard. /api/data keeps it in lockstep with the rest of PIE.
   const sources = [
+    '/api/data?type=clock_score',
     '/static/clock_score.json',
     '../static/clock_score.json',
   ];
@@ -779,11 +784,14 @@ async function loadData() {
     try {
       const r = await fetch(src);
       if (r.ok) {
-        const cs = await r.json();
-        // Map clock_score.json shape to widget DATA shape
-        DATA = mapClockScore(cs);
-        console.log('[UAS Clock] Loaded live data:', cs.ueri_score, cs.threat_level);
-        return;
+        const raw = await r.json();
+        // /api/data wraps payloads as {data:...}; static files are bare.
+        const cs = (raw && raw.data) ? raw.data : raw;
+        if (cs && cs.generated) {
+          DATA = mapClockScore(cs);
+          console.log('[UAS Clock] Loaded live data from', src, ':', cs.ueri_score, cs.threat_level);
+          return;
+        }
       }
     } catch(e) {}
   }
