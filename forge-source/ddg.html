@@ -896,6 +896,7 @@
       </tbody>
     </table>
   </div>
+  <div id="g1-breakdown" style="margin-top:18px;"></div>
 </div>
 
 <!-- G-II PREDICTIONS -->
@@ -1278,6 +1279,26 @@ let dnfVendors = [{"name": "Anno.ai", "detail": "AI autonomy stack developer. Lo
 // ─────────────────────────────────────────
 // RENDER LEADERBOARD
 // ─────────────────────────────────────────
+var G1_BREAKDOWN = {"note": "Official Gauntlet I per-mission + per-component results (drone-dominance.io leaderboard — Missions & Component View).", "missions": [{"name": "Mission 1 — Long Distance Strike (7.5–10 KM)", "desc": "Striking targets at 2.5/5/7.5/10 KM. Military operators. Ranked.", "ranked": true, "results": ["Skycutter", "Neros", "Napatree", "UDD", "ModalAI", "Auterion", "General Cherry"]}, {"name": "Mission 2 — Urban Strike", "desc": "9 companies scored a perfect mission; differentiated on user feedback. Simultaneous strike on two outdoor targets, then an indoor target. Military operators. Ranked.", "ranked": true, "results": ["Neros", "Skycutter", "Griffon Aerospace", "Greensight", "Ascent", "Vector Defense", "Firestorm", "Draganfly", "W.S. Darley"]}, {"name": "Mission 3 — Kinetic Strike (optional)", "desc": "Optional live kinetic strike; partial-to-full success. Vendor pilots. Listed alphabetically (not ranked).", "ranked": false, "results": ["Auterion", "DZYNE Technologies", "Farage Precision", "Greensight", "Griffon Aerospace", "Halo Aeronautics", "ModalAI", "Napatree", "Neros", "Nokturnal AI", "Skycutter", "UDD", "Vector Defense", "W.S. Darley", "XTEND Reality"]}], "components": [{"name": "Military Operator Evaluation", "desc": "Usability, situational awareness, field practicality, warfighter preference. Highest overall operator scores. Ranked.", "ranked": true, "results": ["Napatree", "Neros", "Skycutter", "Griffon Aerospace", "ModalAI", "Farage Precision"]}, {"name": "Production Capabilities", "desc": "Top 5th percentile for strong production/manufacturing capability. Listed alphabetically (not ranked).", "ranked": false, "results": ["Ascent Aerosystems", "Halo Aeronautics", "Napatree", "Neros", "Performance Drone Works", "Skycutter", "W.S. Darley"]}]};
+function ddgEscB(x){return String(x==null?'':x).replace(/[&<>"]/g,function(c){return({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'})[c];});}
+function renderG1Breakdown(){
+  var host=document.getElementById('g1-breakdown'); if(!host||!G1_BREAKDOWN) return;
+  var bd=G1_BREAKDOWN, groups=(bd.missions||[]).concat(bd.components||[]);
+  if(!groups.length){host.innerHTML='';return;}
+  var h='<div style="font:600 11px var(--mono);letter-spacing:2px;text-transform:uppercase;color:var(--green);margin-bottom:10px;">Gauntlet I — Mission &amp; Component Breakdown</div>'
+    + '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:1px;background:var(--border);border:1px solid var(--border);">';
+  groups.forEach(function(g){
+    h+='<div style="background:var(--bg2);padding:12px 14px;">'
+      + '<div style="font:600 12px var(--body);color:var(--text);margin-bottom:3px;">'+ddgEscB(g.name)+'</div>'
+      + (g.desc?'<div style="font:400 10px var(--body);color:var(--text-dim);line-height:1.5;margin-bottom:8px;">'+ddgEscB(g.desc)+'</div>':'')
+      + '<ol style="margin:0;padding:0;list-style:none;">'
+      + g.results.map(function(n,i){return '<li style="font:500 11px var(--body);color:var(--text-dim);padding:2px 0;">'+(g.ranked?('<span style="color:var(--green);font:700 11px var(--mono);">'+(i+1)+'.</span> '):'• ')+ddgEscB(n)+'</li>';}).join('')
+      + '</ol></div>';
+  });
+  h+='</div><div style="font:400 10px var(--mono);color:var(--text-dim);margin-top:6px;">'+ddgEscB(bd.note||'')+'</div>';
+  host.innerHTML=h;
+}
+
 function renderLB() {
   const tbody = document.getElementById('lb-body');
   tbody.innerHTML = '';
@@ -1458,6 +1479,7 @@ function renderDNF() {
 
 renderLB();
 renderDNF();
+renderG1Breakdown();
 renderG2OutcomePredictions();
 renderG2Predictions();
 
@@ -1477,6 +1499,7 @@ fetch('/api/data?type=ddg1').then(function(r){return r.ok?r.json():null;}).then(
   var d=(raw&&raw.data)?raw.data:raw;
   if(d&&Array.isArray(d.competitors)&&d.competitors.length){ competitors=d.competitors; renderLB(); }
   if(d&&Array.isArray(d.dnf)&&d.dnf.length){ dnfVendors=d.dnf; renderDNF(); }
+  if(d&&d.g1_breakdown){ G1_BREAKDOWN=d.g1_breakdown; renderG1Breakdown(); }
 }).catch(function(){});
 
 // ─────────────────────────────────────────
