@@ -173,6 +173,9 @@
     padding: 32px;
     border-bottom: 1px solid var(--border);
   }
+  .ddg-tabs{position:sticky;top:0;z-index:50;display:flex;gap:6px;flex-wrap:wrap;background:var(--bg);padding:10px 0;margin:0 0 6px;border-bottom:1px solid var(--border)}
+  .ddg-tab{background:var(--bg2);border:1px solid var(--border);color:var(--text-dim);font:600 12px var(--mono);padding:8px 16px;border-radius:6px;cursor:pointer}
+  .ddg-tab.on{background:var(--green);color:#06120d;border-color:var(--green)}
   .section-title {
     font-family: var(--head);
     font-size: 11px;
@@ -650,7 +653,12 @@
 </div>
 
 <!-- SCORING METHODOLOGY -->
-<div class="section">
+<div class="ddg-tabs" id="ddg-tabs">
+  <button type="button" class="ddg-tab on" data-phase="g2" onclick="showPhase('g2')">Gauntlet II</button>
+  <button type="button" class="ddg-tab" data-phase="g1" onclick="showPhase('g1')">Gauntlet I</button>
+  <button type="button" class="ddg-tab" data-phase="program" onclick="showPhase('program')">Program &amp; Method</button>
+</div>
+<div class="section" data-phase="program">
   <div class="section-title">Scoring Methodology — How Gauntlets Are Scored</div>
   <div class="scoring-grid">
     <div class="scoring-cell">
@@ -698,7 +706,7 @@
 </div>
 
 <!-- PHASE TIMELINE -->
-<div class="section">
+<div class="section" data-phase="program">
   <div class="section-title">Program Phase Timeline</div>
   <div class="phase-timeline">
     <div class="phase-card active">
@@ -757,8 +765,8 @@
 </div>
 
 <!-- PHASE II QUALIFIER INVITEES -->
-<div class="section">
-  <div class="section-title">Phase II Qualifier — 48 Invitees Confirmed</div>
+<div class="section" data-phase="g2">
+  <div class="section-title">Phase II Qualifier — ~49 Invitees Confirmed</div>
   <p style="font-size:12px;color:var(--text-dim);margin-bottom:12px;max-width:840px;">
     On <strong style="color:var(--text);">May 21, 2026</strong> the Department of War invited 48 companies to the
     Phase 2 Qualifier at <strong style="color:var(--text);">Camp Grayling, MI</strong>. The event will put
@@ -868,7 +876,7 @@
 </div>
 
 <!-- LEADERBOARD -->
-<div class="section">
+<div class="section" data-phase="g1">
   <div class="section-title">Gauntlet I Leaderboard — Full Intelligence</div>
   <p style="font-size:11px;color:var(--text-dim);margin-bottom:16px;">Click any row to expand full competitor intelligence profile.</p>
   <div class="leaderboard-wrapper">
@@ -891,7 +899,7 @@
 </div>
 
 <!-- G-II PREDICTIONS -->
-<div class="section" id="g2-predictions">
+<div class="section" data-phase="g2" id="g2-predictions">
   <div class="section-title">Gauntlet II — Field Predictions</div>
   <p style="font-size:12px;color:var(--text-dim);margin-bottom:20px;max-width:760px;">
     Analyst assessment of G-II outcomes based on G-I performance, compliance posture, production scale, and capitalization depth.
@@ -949,7 +957,7 @@
 </div>
 
 <!-- G-II PREDICTIONS -->
-<div class="section">
+<div class="section" data-phase="g2">
   <div class="section-title">Gauntlet II Predictions — Forge Intel Assessment</div>
   <div style="display:grid;grid-template-columns:1fr 1fr;gap:1px;background:var(--border);border:1px solid var(--border);margin-bottom:20px;">
     <div style="background:var(--bg2);padding:14px 18px;">
@@ -987,7 +995,7 @@
 </div>
 
 <!-- DNF SECTION -->
-<div class="section">
+<div class="section" data-phase="g1">
   <div class="section-title">Did Not Qualify — Gauntlet I (14 vendors)</div>
   <p style="font-size:12px;color:var(--text-dim);margin-bottom:16px;">
     All non-qualifying vendors remain eligible for Gauntlet II and subsequent phases.
@@ -1001,7 +1009,7 @@
 </div>
 
 <!-- ORQA POSITIONING NOTE -->
-<div class="section" style="background: linear-gradient(135deg, rgba(0,229,160,0.03) 0%, transparent 60%);">
+<div class="section" data-phase="program" style="background: linear-gradient(135deg, rgba(0,229,160,0.03) 0%, transparent 60%);">
   <div class="section-title">ORQA / IronGhost — Forge Positioning Analysis</div>
   <div style="display:grid;grid-template-columns:1fr 1fr;gap:1px;background:var(--border);border:1px solid var(--border);">
     <div style="background:var(--bg2);padding:18px 20px;">
@@ -1199,7 +1207,7 @@ function ddgSortVendors(axis){ _vendorSort = axis; if(_ddg2) renderDDG2(_ddg2); 
 // ─────────────────────────────────────────
 // COMPETITOR DATA
 // ─────────────────────────────────────────
-const competitors = [
+let competitors = [
   {
     rank: 1,
     name: "Skycutter",
@@ -1729,7 +1737,7 @@ const competitors = [
   }
 ];
 
-const dnfVendors = [
+let dnfVendors = [
   { name: "Anno.ai", detail: "AI autonomy stack developer. Lost on mission performance; AI capability may have been penalized by 2-hour training constraint limiting operator familiarity with AI-assisted systems." },
   { name: "Draganfly", detail: "Canadian publicly-traded UAS company (DPRO). Excluded possibly due to foreign origin or performance. Blue UAS listed for ISR platforms but OWA was likely underdeveloped." },
   { name: "DZYNE Technologies", detail: "Advanced VTOL and fixed-wing UAS designer. May have fielded a non-quadcopter platform disadvantaged in close-range FPV urban scenarios." },
@@ -1931,6 +1939,24 @@ renderLB();
 renderDNF();
 renderG2OutcomePredictions();
 renderG2Predictions();
+
+// ── Phase tabs — land on Gauntlet II; G-I and Program one tap away (no scroll) ──
+function showPhase(p){
+  document.querySelectorAll('.section[data-phase]').forEach(function(sec){
+    sec.style.display = (sec.getAttribute('data-phase')===p) ? '' : 'none';
+  });
+  document.querySelectorAll('.ddg-tab').forEach(function(t){ t.classList.toggle('on', t.dataset.phase===p); });
+  try{ history.replaceState(null,'','#'+p); }catch(e){}
+  window.scrollTo(0,0);
+}
+(function(){ var p=(location.hash||'').replace('#',''); showPhase(['g1','g2','program'].indexOf(p)>=0?p:'g2'); })();
+
+// ── DDG1 results: prefer pipeline KV (parity with DDG2), fall back to baked ──
+fetch('/api/data?type=ddg1').then(function(r){return r.ok?r.json():null;}).then(function(raw){
+  var d=(raw&&raw.data)?raw.data:raw;
+  if(d&&Array.isArray(d.competitors)&&d.competitors.length){ competitors=d.competitors; renderLB(); }
+  if(d&&Array.isArray(d.dnf)&&d.dnf.length){ dnfVendors=d.dnf; renderDNF(); }
+}).catch(function(){});
 
 // ─────────────────────────────────────────
 // G-II OUTCOME PREDICTIONS
