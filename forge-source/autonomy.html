@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Autonomy Datasets & Benchmarks — Forge</title>
+    <meta name="description" content="Filterable catalog of drone autonomy datasets and benchmarks — VIO/SLAM, CV detection, RF — with license class and a usability verdict.">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&family=Source+Serif+4:opsz,wght@8..60,400;8..60,600;8..60,700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="{% static 'base.css' %}?v=2">
+    <link rel="stylesheet" href="{% static 'layout.css' %}?v=4">
+    <link rel="stylesheet" href="{% static 'utilities.css' %}?v=2">
+    <script src="https://unpkg.com/@phosphor-icons/web"></script>
+    <script>(function(){const s=localStorage.getItem('dc-theme');document.documentElement.setAttribute('data-theme',s||'dark')})();</script>
+    <style>
+        body { overflow-y: auto !important; }
+        .app-container { height: auto !important; min-height: 100vh; overflow: visible !important; }
+        .au-wrap { max-width: 1100px; margin: 0 auto; padding: 32px 20px 80px; }
+        .au-hero h1 { font-size: 26px; font-weight: 700; margin: 0 0 8px; background: linear-gradient(135deg,var(--accent-green) 0%,var(--accent-cyan) 100%); -webkit-background-clip:text; -webkit-text-fill-color:transparent; background-clip:text; }
+        .au-hero p { color: var(--text-muted); font-size: 13px; max-width: 720px; line-height: 1.7; margin: 0 0 6px; }
+        .au-hero a { color: var(--accent-cyan); }
+        .au-controls { display: flex; flex-wrap: wrap; gap: 10px; margin: 22px 0 16px; align-items: center; }
+        .au-controls select, .au-controls input { background: var(--bg-panel); border: 1px solid var(--border-color); color: var(--text-main); border-radius: var(--radius-sm); padding: 7px 10px; font-size: 12px; font-family: inherit; }
+        .au-count { font-size: 11px; color: var(--text-faint); margin-left: auto; }
+        table.au { width: 100%; border-collapse: collapse; font-size: 12px; }
+        table.au th { text-align: left; color: var(--text-faint); font-weight: 600; text-transform: uppercase; letter-spacing: .08em; font-size: 10px; padding: 8px 10px; border-bottom: 1px solid var(--border-color); }
+        table.au td { padding: 10px; border-bottom: 1px solid var(--border-color); vertical-align: top; }
+        table.au tr:hover td { background: var(--bg-panel); }
+        .au-name a { color: var(--text-main); font-weight: 600; text-decoration: none; }
+        .au-name a:hover { color: var(--accent-cyan); }
+        .au-note { color: var(--text-muted); font-size: 11px; line-height: 1.5; }
+        .au-eco { color: var(--text-faint); font-size: 10px; margin-top: 3px; }
+        .badge { display: inline-block; padding: 2px 8px; border-radius: 12px; font-size: 10px; font-weight: 600; white-space: nowrap; }
+        .v-integrated { background: rgba(74,222,128,.14); color: var(--accent-green); }
+        .v-usable { background: rgba(34,211,238,.12); color: var(--accent-cyan); }
+        .v-research-only { background: rgba(251,191,36,.12); color: #fbbf24; }
+        .v-reference { background: var(--bg-dark); color: var(--text-faint); border: 1px solid var(--border-color); }
+        .v-blocked { background: rgba(248,113,113,.12); color: var(--negative-red); }
+        .lc { font-size: 10px; color: var(--text-muted); }
+        .lc-permissive { color: var(--accent-green); }
+        .lc-noncommercial { color: #fbbf24; }
+        .lc-restrictive, .lc-unconfirmed { color: var(--negative-red); }
+        .au-empty { padding: 40px; text-align: center; color: var(--text-faint); font-size: 13px; }
+    </style>
+    <style>html,body{background:#0c0c0a!important;color:#f5f0e8;overflow-x:hidden}</style>
+</head>
+<body>
+<div class="app-container" style="flex-direction: column;">
+  <div class="au-wrap">
+    <div class="au-hero">
+      <h1>Autonomy Datasets &amp; Benchmarks</h1>
+      <p>Public datasets for drone perception, detection, and GPS-denied state estimation —
+         each tagged with its <strong>license class</strong> and a <strong>usability verdict</strong>.
+         A dataset being public does not mean you can ship it: check the license before you build.</p>
+      <p>Reference reading: the Handbook's <a href="https://uas-handbook.com/" target="_blank" rel="noopener">Part 6 — Autonomy</a>
+         (datasets, perception, detection, onboard AI). Source of truth:
+         <a href="https://github.com/DroneWuKong/forge-data" target="_blank" rel="noopener">forge-data</a>.</p>
+    </div>
+
+    <div class="au-controls">
+      <select id="f-task"><option value="">All tasks</option></select>
+      <select id="f-lic"><option value="">All licenses</option></select>
+      <select id="f-verdict"><option value="">All verdicts</option></select>
+      <input id="f-search" type="search" placeholder="Search…" style="min-width:160px">
+      <span class="au-count" id="count"></span>
+    </div>
+
+    <div id="table-host"><div class="au-empty">Loading datasets…</div></div>
+  </div>
+</div>
+
+<script>
+(function () {
+  var FEED = "https://dronewukong.github.io/forge-data/autonomy/datasets.json";
+  var ALL = [], FACETS = {};
+
+  function badge(v){ return '<span class="badge v-'+v+'">'+v+'</span>'; }
+  function opt(sel, vals){ vals.forEach(function(v){ var o=document.createElement('option'); o.value=v; o.textContent=v; sel.appendChild(o); }); }
+
+  function render() {
+    var t=val('f-task'), l=val('f-lic'), vd=val('f-verdict'), q=val('f-search').toLowerCase();
+    var rows = ALL.filter(function(d){
+      if (t && d.task!==t) return false;
+      if (l && d.license_class!==l) return false;
+      if (vd && d.verdict!==vd) return false;
+      if (q && (d.name+' '+d.note+' '+(d.ecosystem_use||[]).join(' ')).toLowerCase().indexOf(q)<0) return false;
+      return true;
+    });
+    document.getElementById('count').textContent = rows.length + ' of ' + ALL.length;
+    if (!rows.length){ document.getElementById('table-host').innerHTML='<div class="au-empty">No datasets match these filters.</div>'; return; }
+    var html = '<table class="au"><thead><tr><th>Dataset</th><th>Task</th><th>License</th><th>Verdict</th></tr></thead><tbody>';
+    rows.forEach(function(d){
+      html += '<tr>'
+        + '<td class="au-name"><a href="'+esc(d.url)+'" target="_blank" rel="noopener">'+esc(d.name)+'</a>'
+          + '<div class="au-note">'+esc(d.note||'')+'</div>'
+          + (d.ecosystem_use&&d.ecosystem_use.length ? '<div class="au-eco">→ '+esc(d.ecosystem_use.join(' · '))+'</div>':'')
+        + '</td>'
+        + '<td>'+esc(d.task||'')+'</td>'
+        + '<td><span class="lc lc-'+esc(d.license_class)+'">'+esc(d.license_class)+'</span><br><span class="au-note">'+esc(d.license||'')+'</span></td>'
+        + '<td>'+badge(d.verdict)+'</td>'
+        + '</tr>';
+    });
+    document.getElementById('table-host').innerHTML = html + '</tbody></table>';
+    if (window.__fa && window.__fa.filter) window.__fa.filter('autonomy_datasets', {task:t,license:l,verdict:vd}, rows.length);
+  }
+  function val(id){ return (document.getElementById(id).value||'').trim(); }
+  function esc(s){ return (s==null?'':String(s)).replace(/[&<>"]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c];}); }
+
+  fetch(FEED, {cache:'no-store'})
+    .then(function(r){ if(!r.ok) throw new Error(r.status); return r.json(); })
+    .then(function(j){
+      ALL = j.datasets || [];
+      FACETS = j.facets || {};
+      opt(document.getElementById('f-task'), FACETS.task || []);
+      opt(document.getElementById('f-lic'), FACETS.license_class || []);
+      opt(document.getElementById('f-verdict'), FACETS.verdict || []);
+      ['f-task','f-lic','f-verdict','f-search'].forEach(function(id){
+        document.getElementById(id).addEventListener('input', render);
+      });
+      render();
+    })
+    .catch(function(){
+      document.getElementById('table-host').innerHTML =
+        '<div class="au-empty">Dataset feed unavailable. It publishes from '
+        + '<a href="https://github.com/DroneWuKong/forge-data" target="_blank" rel="noopener">forge-data</a>'
+        + ' (<code>autonomy/datasets.json</code>) when that branch deploys.</div>';
+    });
+})();
+</script>
+</body>
+</html>
