@@ -51,6 +51,7 @@
 
 | ID | Feature | Description | Added |
 |----|---------|-------------|-------|
+| FEAT-028 | Autonomy page | New user-facing Autonomy page (interactive dataset/benchmark browser). Fetches `forge-data/autonomy/datasets.json`; filter by task (VIO/SLAM, CV detection, RF), modality, and license-class (badge non-commercial datasets). Cards link to Handbook Part 6 chapters. Cross-property — full plan in `drone-integration-handbook/docs/AUTONOMY_PAGE_PLAN.md`. ~1-day effort. | 2026-05-31 |
 | FEAT-003 | Photo AI analysis | Run CV models on captured step photos for quality assurance. Needs backend CV server. | 2026-03-06 |
 | FEAT-004 | Schema audit logging | Track who changed what in the schema and parts library. Needs database persistence. | 2026-03-06 |
 | FEAT-005 | Tag vocabulary | Controlled tag taxonomy per category instead of free-form strings. Needs schema changes. | 2026-03-06 |
