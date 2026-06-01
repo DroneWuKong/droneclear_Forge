@@ -64,6 +64,7 @@ PAGES = {
     'tools.html': 'tools/index.html',
     'wingman.html': 'wingman/index.html',
     'start.html': 'start/index.html',
+    'forge-home.html': 'forge/index.html',
     'report.html': 'report/index.html',
     'waiver.html': 'waiver/index.html',
     'terms.html': 'terms/index.html',
@@ -178,7 +179,7 @@ _PAGE_SLUGS = {
     'forecast-accountability.html': 'forecast-accountability',
     'pie-trends.html': 'pie-trends',
     'contribute-doctrine.html': 'contribute-doctrine', 'audit-doctrine.html': 'audit-doctrine',
-    'intel.html': 'intel-feed', 'intel-home.html': 'intel-home',
+    'intel.html': 'intel-feed', 'intel-home.html': 'intel-home', 'forge-home.html': 'forge',
     'intel-commercial.html': 'intel-commercial',
     'intel-dfr.html': 'intel-dfr',
     'wingman.html': 'wingman', 'browse.html': 'browse',
@@ -310,7 +311,7 @@ _UNIFIED_NAV = r"""<!-- ── Unified UAS- Nav (5-domain accordion drawer) ─�
     <button id="dc-drawer-close" onclick="dcNavClose()">✕</button>
   </div>
 
-  <details class="dc-dom-group" data-host="uas-forge.com">
+  <details class="dc-dom-group" data-host="uas-forge.com" data-hub-href="https://uas-forge.com/forge/">
     <summary>
       <span class="dc-dom-ico">🔨</span>
       <div class="dc-dom-info">
@@ -320,6 +321,7 @@ _UNIFIED_NAV = r"""<!-- ── Unified UAS- Nav (5-domain accordion drawer) ─�
       <span class="dc-dom-chev">▶</span>
     </summary>
     <div class="dc-dom-sublinks">
+      <a class="dc-dom-sublink" href="https://uas-forge.com/forge/" data-page="forge">Forge Hub</a>
       <a class="dc-dom-sublink" href="https://uas-forge.com/browse/" data-page="browse">Parts Database</a>
       <a class="dc-dom-sublink" href="https://uas-forge.com/builder/" data-page="builder">Model Builder</a>
       <a class="dc-dom-sublink" href="https://uas-forge.com/platforms/" data-page="platforms">Platforms</a>
@@ -484,7 +486,7 @@ _UNIFIED_NAV = r"""<!-- ── Unified UAS- Nav (5-domain accordion drawer) ─�
     'ttps':'TTP Defense Gap','evasion':'Sanctions-Evasion','market-lens':'Market Lens',
     'forecast-accountability':'Forecast Accountability','pie-trends':'PIE Trends',
     'contribute-doctrine':'Contribute Doctrine','audit-doctrine':'Doctrine Audit',
-    'start':'Getting Started','grants':'Grants','waiver':'Doc Builder',
+    'start':'Getting Started','grants':'Grants','waiver':'Doc Builder','forge':'Forge Hub',
     'verify':'Verify','vault':'Vault','troubleshoot':'Troubleshoot','support':'Support','hub':'Hub','gallery':'Featured Builds','entity-graph':'Entity Graph',
     'builder':'Builder','cost':'Cost','analytics':'Analytics'
   };
@@ -505,7 +507,7 @@ _UNIFIED_NAV = r"""<!-- ── Unified UAS- Nav (5-domain accordion drawer) ─�
   // Brand-click home target per domain
   window.dcNavBrandClick = function(e){
     e.preventDefault();
-    if(isForge)         location.href = 'https://uas-forge.com/';
+    if(isForge)         location.href = 'https://uas-forge.com/forge/';
     else if(isPatCom)   location.href = 'https://uas-patterns.com/patterns-home/';
     else if(isIntel)    location.href = 'https://uas-patterns.com/';
     else if(isHandbook) location.href = 'https://uas-handbook.com/';
@@ -1010,6 +1012,11 @@ SEO_META = {
         'Track active SBIR and STTR grants for drone and UAS technology development. Filter by agency, phase, topic area, and award amount.',
         'SBIR drone grants, STTR UAS funding, drone R&D grants, DoD drone SBIR, UAS technology funding',
     ),
+    'forge-home.html': (
+        'Forge — Drone Build Hub, Parts Database & Compliance Toolkit',
+        'The Forge hub: 3,500+ vetted drone components, 272 platforms, a build planner with a 12-check compatibility engine, NDAA compliance tools, and integration guides for FPV, commercial, and defense UAS.',
+        'drone parts database, UAS build planner, NDAA compliance, drone component browser, FPV parts, Blue UAS platforms',
+    ),
     'vault.html': (
         'Forge Vault — Combat & Gray-Area UAS Components',
         'Restricted access database of 580+ combat, tactical, and gray-area drone components including MAFIA FPV, Ukrainian wartime hardware, and loitering munition subsystems.',
@@ -1103,6 +1110,7 @@ def inject_seo(html, src_name, dst_path):
         'tracker/':            'https://uas-patterns.com/tracker/',
         'timeline/':           'https://uas-patterns.com/timeline/',
         # Main Forge — uas-forge.com
+        'forge/':              'https://uas-forge.com/forge/',
         'browse/':             'https://uas-forge.com/browse/',
         'builder/':            'https://uas-forge.com/builder/',
         'compare/':            'https://uas-forge.com/compare/',
