@@ -57,9 +57,7 @@ PAGES = {
     'vault.html': 'vault/index.html',
     'troubleshoot.html': 'troubleshoot/index.html',  # Unlisted — no nav links
     'industry.html': 'industry/index.html',
-    'intel-defense.html': 'intel-defense/index.html',
     'intel-dfr.html': 'intel-dfr/index.html',
-    'intel-financial.html': 'intel-financial/index.html',
     'intel-commercial.html': 'intel-commercial/index.html',
     'payload-compare.html': 'payload-compare/index.html',
     'stack-builder.html': 'stack-builder/index.html',
@@ -181,8 +179,8 @@ _PAGE_SLUGS = {
     'pie-trends.html': 'pie-trends',
     'contribute-doctrine.html': 'contribute-doctrine', 'audit-doctrine.html': 'audit-doctrine',
     'intel.html': 'intel-feed', 'intel-home.html': 'intel-home',
-    'intel-defense.html': 'intel-defense', 'intel-commercial.html': 'intel-commercial',
-    'intel-dfr.html': 'intel-dfr', 'intel-financial.html': 'intel-financial',
+    'intel-commercial.html': 'intel-commercial',
+    'intel-dfr.html': 'intel-dfr',
     'wingman.html': 'wingman', 'browse.html': 'browse',
     'platforms.html': 'platforms', 'compare.html': 'compare',
     'cost.html': 'cost', 'payload-compare.html': 'payload-compare',
@@ -329,6 +327,7 @@ _UNIFIED_NAV = r"""<!-- ── Unified UAS- Nav (5-domain accordion drawer) ─�
       <a class="dc-dom-sublink" href="https://uas-forge.com/compliance/" data-page="compliance">Compliance Dashboard</a>
       <a class="dc-dom-sublink" href="https://uas-forge.com/stack-builder/" data-page="stack-builder">Stack Builder</a>
       <a class="dc-dom-sublink" href="https://uas-forge.com/cost/" data-page="cost">Cost Estimator</a>
+      <a class="dc-dom-sublink" href="https://uas-forge.com/waiver/" data-page="waiver">Document Builder</a>
       <a class="dc-dom-sublink" href="https://uas-forge.com/wingman/" data-page="wingman">Wingman AI</a>
       <a class="dc-dom-sublink" href="https://uas-forge.com/gallery/" data-page="gallery">Featured Builds</a>
       <a class="dc-dom-sublink" href="https://uas-forge.com/entity-graph/" data-page="entity-graph">Entity Graph</a>
@@ -393,15 +392,12 @@ _UNIFIED_NAV = r"""<!-- ── Unified UAS- Nav (5-domain accordion drawer) ─�
     </summary>
     <div class="dc-dom-sublinks">
       <a class="dc-dom-sublink" href="https://uas-patterns.com/intel/feed/" data-page="intel-feed">Intel Feed</a>
-      <a class="dc-dom-sublink" href="https://uas-patterns.com/intel-defense/" data-page="intel-defense">Defense Desk</a>
       <a class="dc-dom-sublink" href="https://uas-patterns.com/intel-commercial/" data-page="intel-commercial">Commercial Desk</a>
-      <a class="dc-dom-sublink" href="https://uas-patterns.com/intel-financial/" data-page="intel-financial">Financial Desk</a>
       <a class="dc-dom-sublink" href="https://uas-patterns.com/intel-dfr/" data-page="intel-dfr">DFR Desk</a>
       <a class="dc-dom-sublink" href="https://uas-patterns.com/industry/" data-page="industry">Industry Tracker</a>
       <a class="dc-dom-sublink" href="https://uas-patterns.com/tracker/" data-page="tracker">Contract Tracker</a>
       <a class="dc-dom-sublink" href="https://uas-patterns.com/grants/" data-page="grants">Grants</a>
       <a class="dc-dom-sublink" href="https://uas-patterns.com/timeline/" data-page="timeline">Regulatory Timeline</a>
-      <a class="dc-dom-sublink" href="https://uas-patterns.com/waiver/" data-page="waiver">Document Builder</a>
     </div>
   </details>
 
@@ -1019,11 +1015,6 @@ SEO_META = {
         'Restricted access database of 580+ combat, tactical, and gray-area drone components including MAFIA FPV, Ukrainian wartime hardware, and loitering munition subsystems.',
         'combat drone parts, FPV wartime components, MAFIA drone, Ukrainian FPV, loitering munition components',
     ),
-    'intel-defense.html': (
-        'Defense Intel Feed — DoD UAS Contracts & Programs',
-        'Defense-focused drone intelligence: DoD contract awards, program updates, NDAA procurement signals, Blue UAS adoption, and military UAS developments.',
-        'DoD drone contracts, military UAS intelligence, drone defense procurement, NDAA programs, Blue UAS contracts',
-    ),
     'intel-commercial.html': (
         'Commercial Intel Feed — UAS Industry News & Signals',
         'Commercial drone intelligence: funding rounds, M&A activity, product launches, market signals, and supply chain developments across the civilian UAS sector.',
@@ -1033,11 +1024,6 @@ SEO_META = {
         'DFR Intel Feed — Drone as First Responder Programs',
         'Intelligence feed for Drone as First Responder programs: public safety procurement, DFR platform deployments, regulatory approvals, and agency adoption.',
         'drone first responder, DFR program, public safety drone, police drone procurement, DFR platform',
-    ),
-    'intel-financial.html': (
-        'Financial Intel Feed — Drone Industry Funding & M&A',
-        'Drone industry financial intelligence: funding rounds, valuations, M&A deals, SPAC activity, earnings signals, and investor activity across the UAS sector.',
-        'drone funding rounds, UAS investment, drone M&A, FPV industry finance, drone startup funding',
     ),
     'contribute.html': (
         'Contribute to Forge — Submit Parts & Intelligence',
@@ -1111,10 +1097,8 @@ def inject_seo(html, src_name, dst_path):
         # Intel — merged into uas-patterns.com
         'intel/':              'https://uas-patterns.com/intel/',
         'intel/feed/':         'https://uas-patterns.com/intel/feed/',
-        'intel-defense/':      'https://uas-patterns.com/intel-defense/',
         'intel-commercial/':   'https://uas-patterns.com/intel-commercial/',
         'intel-dfr/':          'https://uas-patterns.com/intel-dfr/',
-        'intel-financial/':    'https://uas-patterns.com/intel-financial/',
         'industry/':           'https://uas-patterns.com/industry/',
         'tracker/':            'https://uas-patterns.com/tracker/',
         'timeline/':           'https://uas-patterns.com/timeline/',
@@ -1616,8 +1600,8 @@ def build():
         # Skip injection for PIE/intel pages that exclusively use /api/data
         _NO_ADAPTER = {
             'patterns.html','brief.html','patterns-home.html',
-            'intel.html','intel-home.html','intel-defense.html',
-            'intel-dfr.html','intel-financial.html','intel-commercial.html',
+            'intel.html','intel-home.html',
+            'intel-dfr.html','intel-commercial.html',
             'clock.html','entity-graph.html','analytics.html',
             'adversary-bom.html','mirroring.html','actors.html',
             'ttps.html','evasion.html',
