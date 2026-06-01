@@ -507,7 +507,7 @@ _UNIFIED_NAV = r"""<!-- ── Unified UAS- Nav (5-domain accordion drawer) ─�
   // Brand-click home target per domain
   window.dcNavBrandClick = function(e){
     e.preventDefault();
-    if(isForge)         location.href = 'https://uas-forge.com/';
+    if(isForge)         location.href = 'https://uas-forge.com/forge/';
     else if(isPatCom)   location.href = 'https://uas-patterns.com/patterns-home/';
     else if(isIntel)    location.href = 'https://uas-patterns.com/';
     else if(isHandbook) location.href = 'https://uas-handbook.com/';
