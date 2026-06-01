@@ -329,6 +329,7 @@ _UNIFIED_NAV = r"""<!-- ── Unified UAS- Nav (5-domain accordion drawer) ─�
       <a class="dc-dom-sublink" href="https://uas-forge.com/compliance/" data-page="compliance">Compliance Dashboard</a>
       <a class="dc-dom-sublink" href="https://uas-forge.com/stack-builder/" data-page="stack-builder">Stack Builder</a>
       <a class="dc-dom-sublink" href="https://uas-forge.com/cost/" data-page="cost">Cost Estimator</a>
+      <a class="dc-dom-sublink" href="https://uas-forge.com/waiver/" data-page="waiver">Document Builder</a>
       <a class="dc-dom-sublink" href="https://uas-forge.com/wingman/" data-page="wingman">Wingman AI</a>
       <a class="dc-dom-sublink" href="https://uas-forge.com/gallery/" data-page="gallery">Featured Builds</a>
       <a class="dc-dom-sublink" href="https://uas-forge.com/entity-graph/" data-page="entity-graph">Entity Graph</a>
@@ -393,15 +394,12 @@ _UNIFIED_NAV = r"""<!-- ── Unified UAS- Nav (5-domain accordion drawer) ─�
     </summary>
     <div class="dc-dom-sublinks">
       <a class="dc-dom-sublink" href="https://uas-patterns.com/intel/feed/" data-page="intel-feed">Intel Feed</a>
-      <a class="dc-dom-sublink" href="https://uas-patterns.com/intel-defense/" data-page="intel-defense">Defense Desk</a>
       <a class="dc-dom-sublink" href="https://uas-patterns.com/intel-commercial/" data-page="intel-commercial">Commercial Desk</a>
-      <a class="dc-dom-sublink" href="https://uas-patterns.com/intel-financial/" data-page="intel-financial">Financial Desk</a>
       <a class="dc-dom-sublink" href="https://uas-patterns.com/intel-dfr/" data-page="intel-dfr">DFR Desk</a>
       <a class="dc-dom-sublink" href="https://uas-patterns.com/industry/" data-page="industry">Industry Tracker</a>
       <a class="dc-dom-sublink" href="https://uas-patterns.com/tracker/" data-page="tracker">Contract Tracker</a>
       <a class="dc-dom-sublink" href="https://uas-patterns.com/grants/" data-page="grants">Grants</a>
       <a class="dc-dom-sublink" href="https://uas-patterns.com/timeline/" data-page="timeline">Regulatory Timeline</a>
-      <a class="dc-dom-sublink" href="https://uas-patterns.com/waiver/" data-page="waiver">Document Builder</a>
     </div>
   </details>
 
