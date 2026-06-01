@@ -43,6 +43,7 @@ PAGES = {
     'swarm-guide.html': 'swarm-guide/index.html',
     'swarm-selector.html': 'swarm/index.html',
     'guides-hub.html': 'guides/index.html',
+    'autonomy.html': 'autonomy/index.html',
     'fc-firmware-guide.html': 'fc-firmware-guide/index.html',
     'compliance.html': 'compliance/index.html',
     'spec-sheets.html': 'spec-sheets/index.html',
