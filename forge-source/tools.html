@@ -3084,7 +3084,7 @@ renderVtxTable();
         if(!L||!document.getElementById('rf-map'))return;
         rfMap=L.map('rf-map',{center:[39.0,-98.0],zoom:4,zoomControl:true});
         window._rfMapRef=rfMap;
-        rfTileLayer=L.tileLayer(RF_LAYERS.topo,{attribution:'&copy; USGS',maxZoom:19}).addTo(rfMap);
+        rfTileLayer=L.tileLayer(RF_LAYERS.dark,{attribution:'&copy; OpenStreetMap contributors &copy; CARTO',maxZoom:19}).addTo(rfMap);
         rfMap.on('click',rfMapClick);
         rfSetupAutocomplete();
         // Route trace slider
@@ -3994,6 +3994,14 @@ renderVtxTable();
     };
 
     // Hash routing handled by global router below
+    // Auto-initialize RF map since it is the default active panel on page load.
+    // Without this, the map div stays dark until the user clicks another tool
+    // and back, because initRFMap() is only triggered via showTool().
+    if (document.readyState === 'complete' || document.readyState === 'interactive') {
+        setTimeout(initRFMap, 150);
+    } else {
+        document.addEventListener('DOMContentLoaded', function(){ setTimeout(initRFMap, 150); });
+    }
 })();
 // MESH / SWARM RF PLANNER
 // ═══════════════════════════════════════════════════════════════════

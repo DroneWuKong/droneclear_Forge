@@ -23,7 +23,7 @@
   .nav-pills { display: flex; gap: 6px; margin-left: auto; flex-wrap: nowrap; }
   .nav-pill  { font: 500 11px var(--sans); color: var(--g2); padding: 4px 10px; border: 1px solid var(--border); border-radius: 20px; text-decoration: none; transition: all .15s; white-space: nowrap; }
   .nav-pill:hover { color: var(--g1); border-color: var(--g2); }
-  .nav-pill.pro { color: var(--cyan); border-color: rgba(34,197,94,.3); }
+  .nav-pill.active { color: var(--cyan); border-color: rgba(34,197,94,.3); }
 
   .page { display: grid; grid-template-columns: 210px 1fr; min-height: calc(100vh - 48px); max-width: 1080px; margin: 0 auto; }
 
@@ -35,7 +35,6 @@
   .sidebar-link.active { color: var(--cyan); border-left-color: var(--cyan); background: rgba(34,197,94,.04); }
   .badge { display: inline-block; font: 700 8px var(--mono); padding: 1px 5px; border-radius: 3px; margin-left: 5px; vertical-align: middle; background: rgba(34,197,94,.12); color: var(--cyan); border: 1px solid rgba(34,197,94,.2); }
   .badge.free { background: rgba(94,90,80,.2); color: var(--g2); border-color: var(--border); }
-  .badge.tester { background: rgba(201,162,39,.12); color: var(--amber); border-color: rgba(201,162,39,.25); }
 
   .content { padding: 36px 44px 80px; max-width: 740px; }
   .doc-section { margin-bottom: 52px; scroll-margin-top: 64px; }
@@ -74,7 +73,7 @@
   .tool-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin: 14px 0; }
   .tool-card { background: var(--card); border: 1px solid var(--border); border-radius: 8px; padding: 13px 14px; text-decoration: none; display: block; transition: all .15s; border-left: 3px solid var(--border); }
   .tool-card:hover { border-color: var(--g2); }
-  .tool-card.pro { border-left-color: var(--cyan); }
+  .tool-card.highlight { border-left-color: var(--cyan); }
   .tool-card-title { font: 600 12px var(--sans); color: var(--white); margin-bottom: 3px; }
   .tool-card-url { font: 500 10px var(--mono); color: var(--cyan); margin-bottom: 4px; }
   .tool-card-desc { font-size: 11px; color: var(--g2); line-height: 1.4; }
@@ -88,21 +87,6 @@
   .faq-a a { color: var(--cyan); }
   .faq-item.open .faq-a { display: block; }
 
-  /* Tester card */
-  .tester-card { background: var(--card); border: 1px solid rgba(201,162,39,.3); border-radius: 8px; padding: 16px 18px; margin: 14px 0; }
-  .tester-card-head { font: 700 11px var(--mono); color: var(--amber); letter-spacing: .08em; margin-bottom: 6px; }
-  .tester-item { font-size: 12px; color: var(--g1); padding: 5px 0; border-bottom: 1px solid var(--border2); line-height: 1.5; }
-  .tester-item:last-child { border-bottom: none; padding-bottom: 0; }
-  .tester-item strong { color: var(--white); display: block; font-size: 11px; }
-
-  .token-checker { background: var(--card); border: 1px solid var(--border); border-radius: 8px; padding: 18px; margin-top: 14px; }
-  .token-checker label { font: 700 9px var(--mono); color: var(--g2); text-transform: uppercase; letter-spacing: .1em; display: block; margin-bottom: 7px; }
-  .token-row { display: flex; gap: 8px; }
-  .token-row input { flex: 1; background: var(--bg); border: 1px solid var(--border); color: var(--white); font: 12px var(--mono); padding: 9px 11px; border-radius: 6px; outline: none; transition: border-color .15s; }
-  .token-row input:focus { border-color: var(--cyan); }
-  .token-row input::placeholder { color: var(--g3); }
-  .token-check-btn { font: 600 11px var(--sans); padding: 9px 15px; background: var(--cyan); color: #0c0c0a; border: none; border-radius: 6px; cursor: pointer; white-space: nowrap; }
-  .token-result { margin-top: 9px; font-size: 12px; min-height: 16px; }
 
   @media (max-width: 680px) {
     .page { grid-template-columns: 1fr; }
@@ -210,15 +194,6 @@
 <script>
 (function(){
   var path = location.pathname.replace(/\/$/, '').split('/').pop() || 'home';
-  var isPro = (function(){
-    try {
-      var tok = localStorage.getItem('forge_token') || localStorage.getItem('wingman_sub_token') || '';
-      if(!tok || tok.length < 20) return false;
-      var p = JSON.parse(atob(tok.split('.')[1] || tok));
-      var payload = p.payload || p;
-      return !!(payload.tier && payload.tier !== 'free' && (!payload.exp || payload.exp > Date.now()));
-    } catch(e){ return false; }
-  })();
   var host = location.hostname;
   var isForge = host.includes('builditmyself') || host.includes('forgeprole') || host === 'localhost' || host === '127.0.0.1';
   var isPIE   = host.includes('findoutmyself') || host.includes('nvmillfindout') || host.includes('uas-intel');
@@ -278,8 +253,7 @@
   <a href="/" class="nav-logo">UAS-</a>
   <div class="nav-pills">
     <a href="/wingman/" class="nav-pill">Wingman AI</a>
-    <a href="/pro/" class="nav-pill pro">Activate</a>
-    <a href="/report/" class="nav-pill pro">Reports</a>
+    <a href="/report/" class="nav-pill">Reports</a>
   </div>
 </nav>
 
@@ -287,7 +261,6 @@
   <div class="sidebar">
     <div class="sidebar-section">Getting Started</div>
     <a href="#quickstart"  class="sidebar-link active">Quick Start</a>
-    <a href="#activate"   class="sidebar-link">Activate Your Token</a>
     <a href="#alltools"   class="sidebar-link">All Tools</a>
     <a href="#features"   class="sidebar-link">Features</a>
 
@@ -297,10 +270,6 @@
     <a href="#wingman"    class="sidebar-link">Wingman AI</a>
     <a href="#gap"        class="sidebar-link">Gap Analyzer</a>
     <a href="#grayzone"   class="sidebar-link">Gray Zone</a>
-
-    <div class="sidebar-section">For Testers</div>
-    <a href="#tester"     class="sidebar-link">Tester Guide <span class="badge tester">Beta</span></a>
-    <a href="#feedback"   class="sidebar-link">What We Need</a>
 
     <div class="sidebar-section">Help</div>
     <a href="#faq"        class="sidebar-link">FAQ</a>
@@ -317,85 +286,26 @@
       <p>Everything is free. The full intelligence layer — Claude-powered Wingman, gray zone scoring, supply chain predictions, waiver templates, grant narratives, and the public safety intel layer — is open to everyone, no subscription required.</p>
 
       <div class="tool-grid">
-        <a href="/pro/" class="tool-card pro">
-          <div class="tool-card-title">Your Dashboard</div>
-          <div class="tool-card-url">/pro/</div>
-          <div class="tool-card-desc">Start here after activating. Links to all tools.</div>
-        </a>
-        <a href="/wingman/" class="tool-card pro">
+        <a href="/wingman/" class="tool-card highlight">
           <div class="tool-card-title">Wingman AI</div>
           <div class="tool-card-url">/wingman/</div>
           <div class="tool-card-desc">Ask anything — NDAA questions, hardware triage, photo analysis.</div>
         </a>
-        <a href="/report/" class="tool-card pro">
+        <a href="/report/" class="tool-card highlight">
           <div class="tool-card-title">Compliance Reports</div>
           <div class="tool-card-url">/report/</div>
           <div class="tool-card-desc">Generate PDF reports for procurement submissions.</div>
         </a>
-        <a href="/patterns/" class="tool-card pro">
+        <a href="/patterns/" class="tool-card highlight">
           <div class="tool-card-title">PIE Intelligence</div>
           <div class="tool-card-url">/patterns/</div>
           <div class="tool-card-desc">Gray zone scoring and supply chain predictions.</div>
         </a>
-      </div>
-    </div>
-
-    <hr class="section-divider"/>
-
-    <!-- ACTIVATE TOKEN -->
-    <div class="doc-section" id="activate">
-      <div class="section-eyebrow">// Token Activation</div>
-      <h2 class="section-title">I have a token. How do I activate?</h2>
-      <p>Two ways — pick whichever is faster:</p>
-
-      <p><strong style="color:var(--white)">Option 1 — From the activation page (easiest):</strong></p>
-      <div class="steps">
-        <div class="step">
-          <div class="step-num">1</div>
-          <div class="step-body">
-            <div class="step-title">Go to <a href="/pro/">/pro/</a></div>
-            <div class="step-detail">Scroll down to the dark card that says <span class="code">// Already have a token?</span></div>
-          </div>
-        </div>
-        <div class="step">
-          <div class="step-num">2</div>
-          <div class="step-body">
-            <div class="step-title">Paste your token and hit Enter</div>
-            <div class="step-detail">Token starts with <span class="code">eyJ</span> and ends with <span class="code">==</span>. Copy the entire thing from the email. The page reloads as your dashboard.</div>
-          </div>
-        </div>
-      </div>
-
-      <p style="margin-top:16px"><strong style="color:var(--white)">Option 2 — From Wingman Settings (to enable Claude AI):</strong></p>
-      <div class="steps">
-        <div class="step">
-          <div class="step-num">1</div>
-          <div class="step-body">
-            <div class="step-title">Go to <a href="/wingman/">/wingman/</a> → tap the gear ⚙ icon</div>
-            <div class="step-detail">Settings panel opens. Find the <span class="code">Subscription Token</span> field near the top.</div>
-          </div>
-        </div>
-        <div class="step">
-          <div class="step-num">2</div>
-          <div class="step-body">
-            <div class="step-title">Paste token → Save &amp; Connect</div>
-            <div class="step-detail">Claude activates automatically. Status shows <span class="code">✓ Active · N days remaining</span> below the field.</div>
-          </div>
-        </div>
-      </div>
-
-      <div class="callout warn" style="margin-top:16px">
-        <div class="callout-icon">⚠</div>
-        <div><strong>Token stored per device.</strong> On a new phone or after clearing browser data, paste it again. Search your inbox for <em>"UAS-access token"</em> — it's in that email.</div>
-      </div>
-
-      <div class="token-checker">
-        <label>Check your token status</label>
-        <div class="token-row">
-          <input type="password" id="tc-input" placeholder="Paste token to verify…"/>
-          <button class="token-check-btn" onclick="checkToken()">Check</button>
-        </div>
-        <div class="token-result" id="tc-result"></div>
+        <a href="/browse/" class="tool-card highlight">
+          <div class="tool-card-title">Parts Browser</div>
+          <div class="tool-card-url">/browse/</div>
+          <div class="tool-card-desc">4,000+ vetted parts with NDAA filter and inline PIE flags.</div>
+        </a>
       </div>
     </div>
 
@@ -407,27 +317,21 @@
       <h2 class="section-title">Every tool and where to find it</h2>
 
       <div class="tool-grid">
-        <a href="/pro/" class="tool-card pro">
-          <div class="tool-card-title">Dashboard</div>
-          <div class="tool-card-url">/pro/</div>
-          <div class="tool-card-desc">Your home base. Activate your token and access every tool.</div>
-        </a>
-        <a href="/report/" class="tool-card pro">
+        <a href="/report/" class="tool-card">
           <div class="tool-card-title">Compliance Reports</div>
           <div class="tool-card-url">/report/</div>
           <div class="tool-card-desc">Generate NDAA + gray zone + supply chain PDFs. Free.</div>
         </a>
-        <a href="/patterns/" class="tool-card pro">
+        <a href="/patterns/" class="tool-card">
           <div class="tool-card-title">PIE Intelligence</div>
           <div class="tool-card-url">/patterns/</div>
           <div class="tool-card-desc">Gray zone entity scoring, PIE predictions, supply chain alerts. Free.</div>
         </a>
-        <a href="/wingman/" class="tool-card pro">
+        <a href="/wingman/" class="tool-card">
           <div class="tool-card-title">Wingman AI</div>
           <div class="tool-card-url">/wingman/</div>
-          <div class="tool-card-desc">AI chat with drone KB. Free — Gemini/Groq or Claude (server-side).</div>
+          <div class="tool-card-desc">AI chat with drone KB. Claude server-side, no API key needed. Free.</div>
         </a>
-        <a href="/browse/" class="sidebar-link">Parts Browser <span class="badge free">Free</span></a>
         <a href="/platforms/" class="tool-card">
           <div class="tool-card-title">Platform Browser</div>
           <div class="tool-card-url">/platforms/</div>
@@ -538,7 +442,7 @@
       <h2 class="section-title">Using the Gap Analyzer</h2>
       <p>In Wingman AI, scroll down to the Gap Analyzer panel. Enter any two entities and hit Run — Claude pulls context from the Forge database and produces up to 8 gaps across spec, compliance, and supply chain.</p>
       <p>Good examples: <span class="code">Skydio X10D</span> vs <span class="code">DJI Matrice 350</span> · <span class="code">Silvus SC3822</span> vs <span class="code">TrellisWare TW-950</span> · <span class="code">STM32H743</span> vs <span class="code">STM32H750</span></p>
-      <div class="callout tip"><div class="callout-icon">🔓</div><div><strong>Free.</strong> If you see a lock icon, activate your token first at <a href="/pro/">/pro/</a> — it costs nothing.</div></div>
+      <div class="callout tip"><div class="callout-icon">◎</div><div><strong>Free for everyone.</strong> No token or account required.</div></div>
     </div>
 
     <hr class="section-divider"/>
@@ -553,76 +457,6 @@
       <p><strong style="color:var(--white)">Legal exposure:</strong> NDAA §848 prohibits procurement of covered entity products with federal funds. State and local agencies using federal grants (SOAR, DHS) are included. The Texas AG lawsuit against a gray zone vendor (Feb 2026) is the first signal that buyer liability is real, not just seller liability.</p>
     </div>
 
-    <hr class="section-divider"/>
-
-    <!-- TESTER GUIDE -->
-    <div class="doc-section" id="tester">
-      <div class="section-eyebrow">// For Testers</div>
-      <h2 class="section-title">You have a demo token. Here's how to test it.</h2>
-      <p>You've been given a demo token. It gives you full access for the duration shown. Here's what to actually try — in order of what gives the most signal:</p>
-
-      <div class="tester-card">
-        <div class="tester-card-head">// START HERE — takes 5 minutes</div>
-        <div class="tester-item">
-          <strong>1. Activate at <a href="/pro/" style="color:var(--cyan)">/pro/</a></strong>
-          Scroll to "Already have a token?" — paste your token, hit Enter. Page reloads as your dashboard.
-        </div>
-        <div class="tester-item">
-          <strong>2. Generate a compliance report at <a href="/report/" style="color:var(--cyan)">/report/</a></strong>
-          Click "SkyRover / Knowact" chip → Full Intelligence Report → Generate. Read the executive assessment. Is the intelligence genuinely useful?
-        </div>
-        <div class="tester-item">
-          <strong>3. Check the PIE predictions at <a href="/patterns/" style="color:var(--cyan)">/patterns/</a></strong>
-          Tap the Predictions tab. Tap any card to expand it. Is the model breakdown useful? Do the drivers make sense?
-        </div>
-        <div class="tester-item">
-          <strong>4. Ask Wingman something real at <a href="/wingman/" style="color:var(--cyan)">/wingman/</a></strong>
-          Try: "Is SkyRover NDAA compliant and why?" or "Compare Silvus vs TrellisWare for DDP Gauntlet II". Claude should answer with actual depth.
-        </div>
-        <div class="tester-item">
-          <strong>5. Open a part in the Parts Browser at <a href="/browse/" style="color:var(--cyan)">/browse/</a></strong>
-          Go to Parts Browser → click Flight Controllers → open any Chinese FC. You should see red PIE flags for supply chain exposure. Then open an Orqa or ARK part — should show clean (no flags). Does the intelligence feel useful in context?
-        </div>
-        <div class="tester-item">
-          <strong>6. Try the Gap Analyzer</strong>
-          In Wingman, scroll to Gap Analyzer panel. Enter "DJI Matrice 350" vs "Skydio X10D" and run it. Does the output give you something actionable?
-        </div>
-      </div>
-    </div>
-
-    <hr class="section-divider"/>
-
-    <!-- FEEDBACK -->
-    <div class="doc-section" id="feedback">
-      <div class="section-eyebrow">// Feedback We Need</div>
-      <h2 class="section-title">What to tell us after testing</h2>
-      <p>Honest answers to these questions are more valuable than anything else:</p>
-
-      <div class="tester-card">
-        <div class="tester-card-head">// The 4 questions</div>
-        <div class="tester-item">
-          <strong>1. Is the compliance report genuinely useful?</strong>
-          Not "is it impressive" — would you actually use it in a procurement workflow? Would you attach it to anything? What's missing?
-        </div>
-        <div class="tester-item">
-          <strong>2. Is the ICP right?</strong>
-          Who do you think the actual buyer is — police procurement officer, defense integrator, program manager, BD person at a prime? Who would pay without hesitation and who would never?
-        </div>
-        <div class="tester-item">
-          <strong>3. What's broken or confusing?</strong>
-          Anything that made you stop and think "what do I do next" is a bug. Anything that didn't work is a bug. Be blunt.
-        </div>
-        <div class="tester-item">
-          <strong>4. Who should I be talking to?</strong>
-          Names, programs, agencies, or organizations where this would land immediately. Introductions welcome.
-        </div>
-      </div>
-
-      <div class="callout tip" style="margin-top:16px">
-        <div class="callout-icon">✉</div>
-        <div>Send feedback to <a href="mailto:Jeremiah@midwestniceuas.com">Jeremiah@midwestniceuas.com</a> — text, voice memo, whatever. No format required.</div>
-      </div>
-    </div>
 
     <hr class="section-divider"/>
 
@@ -632,16 +466,8 @@
       <h2 class="section-title">Common questions</h2>
 
       <div class="faq-item">
-        <button class="faq-q" onclick="toggleFaq(this)">My token isn't working<span class="faq-arrow">▼</span></button>
-        <div class="faq-a">Make sure you copied the entire token — it's long and may wrap across lines in email. Starts with <span class="code">eyJ</span>, ends with <span class="code">==</span>. Use the token checker above. If it still fails, email Jeremiah@midwestniceuas.com with the first 8 characters of your token (never the full thing).</div>
-      </div>
-      <div class="faq-item">
         <button class="faq-q" onclick="toggleFaq(this)">Do I need my own Claude API key?<span class="faq-arrow">▼</span></button>
-        <div class="faq-a">No. Server-side Claude is included free — the API key lives on the server. Just activate your token and Claude works automatically on any device.</div>
-      </div>
-      <div class="faq-item">
-        <button class="faq-q" onclick="toggleFaq(this)">I switched phones — do I need to re-enter my token?<span class="faq-arrow">▼</span></button>
-        <div class="faq-a">Yes — tokens are stored in your browser's localStorage. On a new device, go to <a href="/pro/">/pro/</a>, paste your token in the "Already have a token?" field, and hit Enter.</div>
+        <div class="faq-a">No. Server-side Claude is included free — the API key lives on the server. Just go to <a href="/wingman/">/wingman/</a> and start asking questions.</div>
       </div>
       <div class="faq-item">
         <button class="faq-q" onclick="toggleFaq(this)">Is it really free?<span class="faq-arrow">▼</span></button>
@@ -664,7 +490,7 @@
         <div>
           <strong>Jeremiah Wong</strong> — Midwest Nice Advisory LLC<br>
           <a href="mailto:Jeremiah@midwestniceuas.com">Jeremiah@midwestniceuas.com</a><br>
-          <span style="font-size:11px;color:var(--g2);margin-top:3px;display:block">This goes directly to me. Include the first 8 chars of your token for access issues (not the full token).</span>
+          <span style="font-size:11px;color:var(--g2);margin-top:3px;display:block">This goes directly to me.</span>
         </div>
       </div>
     </div>
@@ -688,27 +514,6 @@ sections.forEach(s => obs.observe(s));
 
 function toggleFaq(btn) { btn.closest('.faq-item').classList.toggle('open'); }
 
-function checkToken() {
-  const tok = document.getElementById('tc-input').value.trim();
-  const res = document.getElementById('tc-result');
-  if (!tok) { res.textContent = 'Paste a token first.'; res.style.color = 'var(--g2)'; return; }
-  try {
-    const { payload } = JSON.parse(atob(tok));
-    if (!payload) throw new Error();
-    const expired  = payload.exp && Date.now() > payload.exp;
-    const daysLeft = payload.exp ? Math.max(0, Math.ceil((payload.exp - Date.now()) / 86400000)) : null;
-    if (expired) { res.innerHTML = '⚠ Expired. <a href="/pro/" style="color:var(--cyan)">Renew →</a>'; res.style.color = 'var(--amber)'; return; }
-    res.textContent = ['✓ Valid', payload.email ? '· ' + payload.email : '', payload.tier ? '· ' + payload.tier.toUpperCase() : '', payload.demo ? '· demo' : '', daysLeft !== null ? '· ' + daysLeft + ' days remaining' : ''].filter(Boolean).join(' ');
-    res.style.color = 'var(--cyan)';
-  } catch {
-    fetch(`/api/subscription-check?action=verify&token=${encodeURIComponent(tok)}`)
-      .then(r => r.json()).then(d => {
-        if (d.valid) { const dl = d.exp ? Math.max(0, Math.ceil((d.exp - Date.now()) / 86400000)) : null; res.textContent = '✓ Valid · ' + (d.tier||'pro').toUpperCase() + (dl ? ' · ' + dl + ' days' : ''); res.style.color = 'var(--cyan)'; }
-        else { res.textContent = d.reason === 'revoked' ? '✗ Revoked.' : '✗ Not recognized — check you copied it fully.'; res.style.color = 'var(--red)'; }
-      }).catch(() => { res.textContent = '✗ Invalid format.'; res.style.color = 'var(--red)'; });
-  }
-}
-document.getElementById('tc-input').addEventListener('keydown', e => { if (e.key === 'Enter') checkToken(); });
 </script>
 <!-- Analytics injected by build_static.py (unified _ANALYTICS_SNIPPET + _UNIFIED_NAV) -->
 </body>

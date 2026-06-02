@@ -2726,11 +2726,14 @@ async function send() {
       for (const m of messages) {
         const role = m.role === 'assistant' ? 'model' : 'user';
         const parts = [];
-        if (Array.isArray(m.content)) {
+        if (Array.isArray(m.content) && m.content.length > 0) {
           for (const c of m.content) {
             if (c.type === 'text') parts.push({ text: c.text });
             else if (c.type === 'image') parts.push({ inlineData: { mimeType: c.source.media_type, data: c.source.data } });
           }
+        } else if (m.role === 'assistant' && m.text) {
+          // Assistant messages store text in msg.text, not msg.content
+          parts.push({ text: m.text });
         }
         if (parts.length) geminiMessages.push({ role, parts });
       }
@@ -2739,6 +2742,7 @@ async function send() {
         systemInstruction: { parts: [{ text: sysPrompt.slice(0, 6000) }] },
         contents: geminiMessages,
         generationConfig: { maxOutputTokens: 4096, temperature: 0.7 },
+        tools: [{ google_search: {} }],
       };
 
       // Use proxy (free) if no user key, direct API if BYOK
@@ -2755,8 +2759,19 @@ async function send() {
       const data = await res.json();
       if (data.error) {
         text = `Gemini error: ${data.error.message || JSON.stringify(data.error)}`;
+      } else if (data.promptFeedback?.blockReason) {
+        text = `Query blocked (${data.promptFeedback.blockReason}). Try rephrasing your question.`;
       } else {
         text = (data.candidates?.[0]?.content?.parts || []).map(p => p.text || '').join('');
+        if (!text) {
+          const reason = data.candidates?.[0]?.finishReason;
+          if (reason && reason !== 'STOP') {
+            text = `Response ended (${reason}). Try rephrasing your question.`;
+          }
+        }
+        if (data.candidates?.[0]?.groundingMetadata?.webSearchQueries?.length) {
+          searched = true;
+        }
       }
 
     } else if (provider === 'groq') {

@@ -926,17 +926,14 @@ function computeClockScore() {
 }
 
 function scoreToTime(score) {
-  // Scale MUST match pipeline/clock_score.py (the source of truth):
-  //   UERI 0 → 60 min to midnight; UERI 100 → 0 min.
-  //   minutes_to_midnight = (100 - UERI)/100 * 60
-  // This was previously *30 (a 30-min scale), which halved the displayed number
-  // vs. the pipeline's own minutes_to_midnight — e.g. UERI 69 showed "9m" on the
-  // page while the data said ~19m. renderClock() now also prefers the stored
-  // minutes_to_midnight when present so page == pipeline exactly.
-  const totalMinutesExact = Math.max(0.1, (100 - score) / 100 * 60);
+  // 0–30 min scale: UERI 0 → 30 min to midnight, UERI 100 → 0 min.
+  // Keeps the hand on the upper half of the clock face for any meaningful
+  // threat level (≥50 UERI puts the hand above 9 o'clock).
+  const totalMinutesExact = Math.max(0.1, (100 - score) / 100 * 30);
   const minutesToMidnight = Math.floor(totalMinutesExact);
   const secondsComponent = Math.round((totalMinutesExact - minutesToMidnight) * 60);
-  // SVG hand uses exact fractional minutes for accurate positioning
+  // SVG hand: negative rotation = counterclockwise from 12 o'clock.
+  // N min before midnight → minute hand at (60-N) mark → -(N/60)*360°.
   const angleDeg = -(totalMinutesExact / 60) * 360;
   return {
     minutesToMidnight,
@@ -966,34 +963,20 @@ function _startCountdown(minutesToMidnight, secondsComponent) {
 
 // ── RENDER CLOCK ─────────────────────────────────────────────────────────────
 function renderClock() {
-  // Use live UERI score if available, otherwise compute from embedded data
+  // Always derive time from UERI score via scoreToTime() so the hand always
+  // moves toward midnight as risk increases, regardless of pipeline scale.
   let normalized, minutesToMidnight, secondsComponent, display, angleDeg;
   if (DATA && DATA.ueri_score != null) {
     normalized = DATA.ueri_score;
-    // Always derive from scoreToTime for fractional accuracy
-    // Prefer the pipeline's own minutes_to_midnight (clock_score.py is the
-    // source of truth — it uses a nonlinear 0–90 min curve, not a simple linear
-    // scale, so re-deriving from the score here can never match it exactly).
-    // Only fall back to scoreToTime when the field is absent.
-    if (DATA.minutes_to_midnight != null) {
-      const stored = Number(DATA.minutes_to_midnight);
-      minutesToMidnight = Math.floor(stored);
-      secondsComponent = Math.round((stored - minutesToMidnight) * 60);
-      display = `${minutesToMidnight}m ${secondsComponent.toString().padStart(2,'0')}s`;
-      // Hand maps minutes onto the 60-min dial (clamped for the >60 range).
-      angleDeg = -(Math.min(stored, 60) / 60) * 360;
-    } else {
-      const t = scoreToTime(normalized);
-      minutesToMidnight = t.minutesToMidnight;
-      secondsComponent = t.secondsComponent;
-      display = t.display;
-      angleDeg = t.angleDeg;
-    }
   } else {
     const computed = computeClockScore();
     normalized = computed.normalized;
-    ({ minutesToMidnight, secondsComponent, display, angleDeg } = scoreToTime(normalized));
   }
+  const t = scoreToTime(normalized);
+  minutesToMidnight = t.minutesToMidnight;
+  secondsComponent = t.secondsComponent;
+  display = t.display;
+  angleDeg = t.angleDeg;
 
   // Update time display with real fractional precision
   _startCountdown(minutesToMidnight, secondsComponent);
