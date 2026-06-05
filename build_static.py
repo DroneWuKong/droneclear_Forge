@@ -54,7 +54,7 @@ PAGES = {
     'cost.html': 'cost/index.html',
     'intel-home.html': 'intel/index.html',
     'intel.html': 'intel/feed/index.html',
-    'ddg.html': 'ddg/index.html',
+    # 'ddg.html': 'ddg/index.html',  # DDG (Defense Drone Gauntlet) temporarily disabled — re-enable by uncommenting
     'vault.html': 'vault/index.html',
     'troubleshoot.html': 'troubleshoot/index.html',  # Unlisted — no nav links
     'industry.html': 'industry/index.html',
