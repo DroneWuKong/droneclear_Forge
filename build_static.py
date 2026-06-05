@@ -54,7 +54,7 @@ PAGES = {
     'cost.html': 'cost/index.html',
     'intel-home.html': 'intel/index.html',
     'intel.html': 'intel/feed/index.html',
-    'ddg.html': 'ddg/index.html',
+    # 'ddg.html': 'ddg/index.html',  # DDG (Defense Drone Gauntlet) temporarily disabled — re-enable by uncommenting
     'vault.html': 'vault/index.html',
     'troubleshoot.html': 'troubleshoot/index.html',  # Unlisted — no nav links
     'industry.html': 'industry/index.html',
@@ -436,7 +436,7 @@ _UNIFIED_NAV = r"""<!-- ── Unified UAS- Nav (5-domain accordion drawer) ─�
       <div class="dc-dom-url">uas-patterns.com/clock/</div>
     </div>
   </a>
-  <a class="dc-dom-standalone" href="https://uas-patterns.com/ddg/" data-page="ddg">
+  <a class="dc-dom-standalone" aria-disabled="true" data-page="ddg">
     <span class="dc-dom-ico">🎯</span>
     <div class="dc-dom-info">
       <div class="dc-dom-name">DDG Tracker</div>
