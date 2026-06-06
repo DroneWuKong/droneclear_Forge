@@ -56,6 +56,22 @@
   .c-C{color:var(--green)} .c-I{color:var(--amber)} .c-S{color:#e08a3c} .c-U{color:var(--red)}
   .muted{color:var(--text-d2);font:400 12px var(--mono)}
   #status{padding:40px;text-align:center;color:var(--text-d2);font:400 13px var(--mono)}
+  .menu-toggle{display:none}
+  @media(max-width:860px){
+    .nav-pill{padding:3px 7px}
+    .wrap{padding:12px 12px 60px}
+    header.page{margin-bottom:12px}
+    header.page h1{font-size:23px}
+    .menu-toggle{display:block;width:100%;margin-bottom:10px;background:var(--bg2);border:1px solid var(--border);border-radius:6px;color:var(--green);font:600 13px var(--mono);padding:11px 12px;text-align:left;cursor:pointer}
+    .layout:not(.menu-open) .sidebar{display:none}
+    .sidebar{position:static;max-height:60vh}
+    .reader{padding:16px 14px}
+    .reader h1{font-size:20px}
+    .reader h2{font-size:15px}
+    .reader p,.reader li{font-size:14px}
+    .reader table{font-size:11.5px;display:block;overflow-x:auto;white-space:nowrap}
+    .reader th,.reader td{padding:4px 7px}
+  }
 </style>
 </head>
 <body>
@@ -76,6 +92,7 @@
   </header>
 
   <div class="layout">
+    <button class="menu-toggle" id="menuToggle">☰ Browse dossiers</button>
     <aside class="sidebar">
       <div class="side-search"><input id="q" type="text" placeholder="filter dossiers…" autocomplete="off"></div>
       <div id="nav-list"></div>
@@ -137,6 +154,11 @@ async function loadDoc(slug){
     if(!res.ok)throw new Error(res.status);
     r.innerHTML=mdToHtml(await res.text());r.scrollTop=0;
     history.replaceState(null,'','#'+slug);
+    // mobile: collapse the menu and jump to the article
+    if(window.matchMedia('(max-width:860px)').matches){
+      document.querySelector('.layout').classList.remove('menu-open');
+      r.scrollIntoView({behavior:'smooth',block:'start'});
+    }
   }catch(e){r.innerHTML='<div id="status">could not load dossier ('+e.message+'). If you see 403, the private gate is active — sign in via Cloudflare Access.</div>';}
 }
 function renderNav(filter){
@@ -156,6 +178,7 @@ function renderNav(filter){
     const slug=location.hash.replace('#','')||(INDEX[0]&&INDEX[0].slug);
     if(slug)loadDoc(slug);
     document.getElementById('q').addEventListener('input',e=>renderNav(e.target.value));
+    document.getElementById('menuToggle').addEventListener('click',()=>document.querySelector('.layout').classList.toggle('menu-open'));
   }catch(e){
     document.getElementById('status').innerHTML='dossier index unavailable ('+e.message+').<br>If 403: the private gate is active — authenticate via Cloudflare Access. If 404: run the build with GITHUB_PAT set to pull dossiers from Ai-Project.';
   }
