@@ -101,6 +101,7 @@ PAGES = {
     # DDG is served ONLY here (the public /ddg/ route above stays disabled).
     'private/index.html': 'private/index.html',
     'private/dossiers.html': 'private/dossiers/index.html',
+    'private/supply-web.html': 'private/supply-web/index.html',
     'ddg.html': 'private/ddg/index.html',
 }
 
@@ -1574,6 +1575,19 @@ def sync_private_dossiers():
     index.sort(key=lambda d: (d['group'] != 'Company dossiers', d['title'].lower()))
     with open(os.path.join(out_dir, 'index.json'), 'w', encoding='utf-8') as f:
         json.dump(index, f, separators=(',', ':'))
+
+    # Also pull the structured supplier->platform web that drives the gated
+    # /private/supply-web/ visual. Same gate, same never-committed rule.
+    repo_root = os.path.dirname(research.rstrip('/'))
+    supply_src = os.path.join(repo_root, 'data', 'ddg_supply_links.json')
+    if os.path.isfile(supply_src):
+        priv_dir = os.path.join(BUILD_DIR, 'private')
+        os.makedirs(priv_dir, exist_ok=True)
+        shutil.copy2(supply_src, os.path.join(priv_dir, 'supply_links.json'))
+        print("    Copied ddg_supply_links.json to build/private/supply_links.json")
+    else:
+        print("    NOTE: data/ddg_supply_links.json not found — supply-web page will show empty state")
+
     if tmp_clone:
         shutil.rmtree(tmp_clone, ignore_errors=True)
     print(f"    Copied {n} dossiers + index.json to build/private/dossiers/")
