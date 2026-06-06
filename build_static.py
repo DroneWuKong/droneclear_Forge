@@ -1534,10 +1534,13 @@ def sync_private_dossiers():
         # the dossiers live on a feature branch before PR merge). CF sets
         # CF_PAGES_BRANCH; AI_PROJECT_REF is a manual override. Fall back to the
         # repo default branch (production / merged state).
-        refs, seen_ref = [], set()
-        for r in (os.environ.get('AI_PROJECT_REF'), os.environ.get('CF_PAGES_BRANCH'), None):
-            if r not in seen_ref:
-                seen_ref.add(r); refs.append(r)
+        refs = []
+        for r in (os.environ.get('AI_PROJECT_REF'), os.environ.get('CF_PAGES_BRANCH')):
+            r = (r or '').strip()
+            if r and r not in refs:
+                refs.append(r)
+        refs.append(None)  # repo default branch, tried last (production state)
+        print(f"    dossier clone refs (in order): {[r or 'default' for r in refs]}")
         cloned = False
         for ref in refs:
             cmd = ['git', 'clone', '--depth', '1', '--filter=blob:none']
