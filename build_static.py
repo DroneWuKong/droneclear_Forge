@@ -1530,12 +1530,33 @@ def sync_private_dossiers():
             return False
         tmp_clone = tempfile.mkdtemp(prefix='aiproj_')
         url = DATA_REPO.replace('https://', f'https://x-access-token:{pat}@')
-        try:
-            subprocess.run(['git', 'clone', '--depth', '1', '--filter=blob:none', url, tmp_clone],
-                           check=True, capture_output=True, text=True, timeout=180)
-            research = os.path.join(tmp_clone, 'research')
-        except Exception as e:
-            print(f"    SKIP: clone failed ({e}) — dossiers omitted")
+        # On a Pages preview build, prefer the matching Ai-Project branch (e.g.
+        # the dossiers live on a feature branch before PR merge). CF sets
+        # CF_PAGES_BRANCH; AI_PROJECT_REF is a manual override. Fall back to the
+        # repo default branch (production / merged state).
+        refs, seen_ref = [], set()
+        for r in (os.environ.get('AI_PROJECT_REF'), os.environ.get('CF_PAGES_BRANCH'), None):
+            if r not in seen_ref:
+                seen_ref.add(r); refs.append(r)
+        cloned = False
+        for ref in refs:
+            cmd = ['git', 'clone', '--depth', '1', '--filter=blob:none']
+            if ref:
+                cmd += ['--branch', ref]
+            try:
+                subprocess.run(cmd + [url, tmp_clone],
+                               check=True, capture_output=True, text=True, timeout=180)
+                research = os.path.join(tmp_clone, 'research')
+                print(f"    cloned Ai-Project ref={ref or 'default'}")
+                cloned = True
+                break
+            except Exception as e:
+                msg = (getattr(e, 'stderr', '') or str(e)).strip().splitlines()[-1:] or ['']
+                print(f"    ref={ref or 'default'} not usable ({msg[0]})")
+                shutil.rmtree(tmp_clone, ignore_errors=True)
+                tmp_clone = tempfile.mkdtemp(prefix='aiproj_')
+        if not cloned:
+            print("    SKIP: clone failed for all refs — dossiers omitted")
             shutil.rmtree(tmp_clone, ignore_errors=True)
             return False
 
