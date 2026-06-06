@@ -5853,17 +5853,22 @@ function renderSources() {
         ? `<span style="font:700 11px var(--mono);color:var(--green)">${live}</span><span style="font:500 10px var(--mono);color:var(--text-s)"> art</span>`
         : `<span style="font:600 10px var(--mono);color:var(--text-xd);background:var(--surface);padding:1px 6px;border-radius:3px">${m.schedule}</span>`;
 
-      // Last-seen age label
+      // Last-seen age label. Guard against unparseable / out-of-range dates so a
+      // malformed last_seen can never render as "NaNd ago" or an absurd age —
+      // the upstream pipeline normalizes to ISO, this is defense-in-depth.
       let ageHtml = '';
-      if (seen) {
-        const daysAgo = Math.floor((Date.now() - new Date(seen).getTime()) / 86400000);
-        const ageLabel = daysAgo === 0 ? 'today'
-                       : daysAgo === 1 ? '1d ago'
-                       : daysAgo + 'd ago';
-        const ageColor = daysAgo <= 1 ? 'var(--green)'
-                       : daysAgo <= 7 ? 'var(--amber)'
-                       : 'var(--red)';
-        ageHtml = `<span style="font:500 10px var(--mono);color:${ageColor}">${ageLabel}</span>`;
+      const seenMs = seen ? new Date(seen).getTime() : NaN;
+      if (!isNaN(seenMs)) {
+        const daysAgo = Math.floor((Date.now() - seenMs) / 86400000);
+        if (daysAgo >= 0 && daysAgo < 3650) {
+          const ageLabel = daysAgo === 0 ? 'today'
+                         : daysAgo === 1 ? '1d ago'
+                         : daysAgo + 'd ago';
+          const ageColor = daysAgo <= 1 ? 'var(--green)'
+                         : daysAgo <= 7 ? 'var(--amber)'
+                         : 'var(--red)';
+          ageHtml = `<span style="font:500 10px var(--mono);color:${ageColor}">${ageLabel}</span>`;
+        }
       }
 
       // Latest headline (truncated, linked)
