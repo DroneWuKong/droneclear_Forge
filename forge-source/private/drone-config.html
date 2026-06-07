@@ -218,6 +218,9 @@ function initControls(){
     "a prop-class×cells table; hover power = AUW × an efficiency factor (W/kg) that "+
     "improves with prop size; endurance = 80% usable pack Wh ÷ hover power. "+
     "Thrust-to-weight and flight time are first-order — validate on the bench. "+
+    "Frame export builds a parametric plate from the chosen parts: STL (3D print), "+
+    "DXF (laser/CNC carbon cut), and OpenSCAD (open in OpenSCAD/FreeCAD to export "+
+    "STEP or STL — a browser can't reliably author CAD-kernel STEP). "+
     "Gated content: do not screenshot or redistribute.";
 }
 function seg(el,cb){el.querySelectorAll('button').forEach(b=>b.onclick=()=>{el.querySelectorAll('button').forEach(x=>x.classList.remove('on'));b.classList.add('on');cb(b.dataset.v);});}
@@ -375,11 +378,13 @@ function renderBuild(b){
     '<button class="btn" id="send">Send to Builder →</button>'+
     '<button class="btn sec" id="copy">Copy BOM</button>'+
     '<button class="btn sec" id="regen">Regenerate</button></div>';
+  html+=framePanelHTML();
   document.getElementById('results').innerHTML=html;
   document.getElementById('send').onclick=sendToBuilder;
   document.getElementById('copy').onclick=copyBOM;
   document.getElementById('regen').onclick=()=>renderBuild(solve());
   bindSwaps();
+  bindFrame();
 }
 function swapHTML(cat,part,idx){
   // alternatives that still pass compat against the current build
@@ -409,6 +414,139 @@ function copyBOM(){
   SLOTS_ORDER.forEach(([cat,label])=>{const p=idx[cat];if(!p)return;const q=({motors:motorCount,propellers:motorCount})[cat]||1;lines.push(`${label}: ${p.name}${q>1?' ×'+q:''}${p._p?' ($'+p._p*q+')':''}`);});
   lines.push('',`AUW ~${Math.round(sim.auw)} g · TWR ~${sim.twr?sim.twr.toFixed(2):'?'}:1 · ~${Math.round(sim.time)} min (estimated)`);
   navigator.clipboard.writeText(lines.join('\n')).then(()=>{const b=document.getElementById('copy');b.textContent='Copied ✓';setTimeout(()=>b.textContent='Copy BOM',1500);});
+}
+// ── earcut 2.2.4 (ISC, Mapbox) — polygon-with-holes triangulation for STL ────
+function earcut(data,holeIndices,dim){dim=dim||2;var hasHoles=holeIndices&&holeIndices.length,outerLen=hasHoles?holeIndices[0]*dim:data.length,outerNode=linkedList(data,0,outerLen,dim,true),triangles=[];if(!outerNode||outerNode.next===outerNode.prev)return triangles;var minX,minY,maxX,maxY,x,y,invSize;if(hasHoles)outerNode=eliminateHoles(data,holeIndices,outerNode,dim);if(data.length>80*dim){minX=maxX=data[0];minY=maxY=data[1];for(var i=dim;i<outerLen;i+=dim){x=data[i];y=data[i+1];if(x<minX)minX=x;if(y<minY)minY=y;if(x>maxX)maxX=x;if(y>maxY)maxY=y;}invSize=Math.max(maxX-minX,maxY-minY);invSize=invSize!==0?32767/invSize:0;}earcutLinked(outerNode,triangles,dim,minX,minY,invSize,0);return triangles;}
+function linkedList(data,start,end,dim,clockwise){var i,last;if(clockwise===(signedAreaEC(data,start,end,dim)>0)){for(i=start;i<end;i+=dim)last=insertNodeEC(i/dim|0,data[i],data[i+1],last);}else{for(i=end-dim;i>=start;i-=dim)last=insertNodeEC(i/dim|0,data[i],data[i+1],last);}if(last&&equalsEC(last,last.next)){removeNodeEC(last);last=last.next;}return last;}
+function filterPoints(start,end){if(!start)return start;if(!end)end=start;var p=start,again;do{again=false;if(!p.steiner&&(equalsEC(p,p.next)||areaEC(p.prev,p,p.next)===0)){removeNodeEC(p);p=end=p.prev;if(p===p.next)break;again=true;}else{p=p.next;}}while(again||p!==end);return end;}
+function earcutLinked(ear,triangles,dim,minX,minY,invSize,pass){if(!ear)return;if(!pass&&invSize)indexCurve(ear,minX,minY,invSize);var stop=ear,prev,next;while(ear.prev!==ear.next){prev=ear.prev;next=ear.next;if(invSize?isEarHashed(ear,minX,minY,invSize):isEar(ear)){triangles.push(prev.i,ear.i,next.i);removeNodeEC(ear);ear=next.next;stop=next.next;continue;}ear=next;if(ear===stop){if(!pass)earcutLinked(filterPoints(ear),triangles,dim,minX,minY,invSize,1);else if(pass===1){ear=cureLocalIntersections(filterPoints(ear),triangles);earcutLinked(ear,triangles,dim,minX,minY,invSize,2);}else if(pass===2)splitEarcut(ear,triangles,dim,minX,minY,invSize);break;}}}
+function isEar(ear){var a=ear.prev,b=ear,c=ear.next;if(areaEC(a,b,c)>=0)return false;var ax=a.x,bx=b.x,cx=c.x,ay=a.y,by=b.y,cy=c.y,x0=Math.min(ax,bx,cx),y0=Math.min(ay,by,cy),x1=Math.max(ax,bx,cx),y1=Math.max(ay,by,cy),p=c.next;while(p!==a){if(p.x>=x0&&p.x<=x1&&p.y>=y0&&p.y<=y1&&pointInTriangleEC(ax,ay,bx,by,cx,cy,p.x,p.y)&&areaEC(p.prev,p,p.next)>=0)return false;p=p.next;}return true;}
+function isEarHashed(ear,minX,minY,invSize){var a=ear.prev,b=ear,c=ear.next;if(areaEC(a,b,c)>=0)return false;var ax=a.x,bx=b.x,cx=c.x,ay=a.y,by=b.y,cy=c.y,x0=Math.min(ax,bx,cx),y0=Math.min(ay,by,cy),x1=Math.max(ax,bx,cx),y1=Math.max(ay,by,cy),minZ=zOrderEC(x0,y0,minX,minY,invSize),maxZ=zOrderEC(x1,y1,minX,minY,invSize),p=ear.prevZ,n=ear.nextZ;while(p&&p.z>=minZ&&n&&n.z<=maxZ){if(p.x>=x0&&p.x<=x1&&p.y>=y0&&p.y<=y1&&p!==a&&p!==c&&pointInTriangleEC(ax,ay,bx,by,cx,cy,p.x,p.y)&&areaEC(p.prev,p,p.next)>=0)return false;p=p.prevZ;if(n.x>=x0&&n.x<=x1&&n.y>=y0&&n.y<=y1&&n!==a&&n!==c&&pointInTriangleEC(ax,ay,bx,by,cx,cy,n.x,n.y)&&areaEC(n.prev,n,n.next)>=0)return false;n=n.nextZ;}while(p&&p.z>=minZ){if(p.x>=x0&&p.x<=x1&&p.y>=y0&&p.y<=y1&&p!==a&&p!==c&&pointInTriangleEC(ax,ay,bx,by,cx,cy,p.x,p.y)&&areaEC(p.prev,p,p.next)>=0)return false;p=p.prevZ;}while(n&&n.z<=maxZ){if(n.x>=x0&&n.x<=x1&&n.y>=y0&&n.y<=y1&&n!==a&&n!==c&&pointInTriangleEC(ax,ay,bx,by,cx,cy,n.x,n.y)&&areaEC(n.prev,n,n.next)>=0)return false;n=n.nextZ;}return true;}
+function cureLocalIntersections(start,triangles){var p=start;do{var a=p.prev,b=p.next.next;if(!equalsEC(a,b)&&intersectsEC(a,p,p.next,b)&&locallyInside(a,b)&&locallyInside(b,a)){triangles.push(a.i,p.i,b.i);removeNodeEC(p);removeNodeEC(p.next);p=start=b;}p=p.next;}while(p!==start);return filterPoints(p);}
+function splitEarcut(start,triangles,dim,minX,minY,invSize){var a=start;do{var b=a.next.next;while(b!==a.prev){if(a.i!==b.i&&isValidDiagonal(a,b)){var c=splitPolygon(a,b);a=filterPoints(a,a.next);c=filterPoints(c,c.next);earcutLinked(a,triangles,dim,minX,minY,invSize,0);earcutLinked(c,triangles,dim,minX,minY,invSize,0);return;}b=b.next;}a=a.next;}while(a!==start);}
+function eliminateHoles(data,holeIndices,outerNode,dim){var queue=[],i,len,start,end,list;for(i=0,len=holeIndices.length;i<len;i++){start=holeIndices[i]*dim;end=i<len-1?holeIndices[i+1]*dim:data.length;list=linkedList(data,start,end,dim,false);if(list===list.next)list.steiner=true;queue.push(getLeftmost(list));}queue.sort(compareXEC);for(i=0;i<queue.length;i++)outerNode=eliminateHole(queue[i],outerNode);return outerNode;}
+function compareXEC(a,b){return a.x-b.x;}
+function eliminateHole(hole,outerNode){var bridge=findHoleBridge(hole,outerNode);if(!bridge)return outerNode;var bridgeReverse=splitPolygon(bridge,hole);filterPoints(bridgeReverse,bridgeReverse.next);return filterPoints(bridge,bridge.next);}
+function findHoleBridge(hole,outerNode){var p=outerNode,hx=hole.x,hy=hole.y,qx=-Infinity,m;do{if(hy<=p.y&&hy>=p.next.y&&p.next.y!==p.y){var x=p.x+(hy-p.y)*(p.next.x-p.x)/(p.next.y-p.y);if(x<=hx&&x>qx){qx=x;m=p.x<p.next.x?p:p.next;if(x===hx)return m;}}p=p.next;}while(p!==outerNode);if(!m)return null;var stop=m,mx=m.x,my=m.y,tanMin=Infinity,tan;p=m;do{if(hx>=p.x&&p.x>=mx&&hx!==p.x&&pointInTriangleEC(hy<my?hx:qx,hy,mx,my,hy<my?qx:hx,hy,p.x,p.y)){tan=Math.abs(hy-p.y)/(hx-p.x);if(locallyInside(p,hole)&&(tan<tanMin||(tan===tanMin&&(p.x>m.x||(p.x===m.x&&sectorContainsSector(m,p)))))){m=p;tanMin=tan;}}p=p.next;}while(p!==stop);return m;}
+function sectorContainsSector(m,p){return areaEC(m.prev,m,p.prev)<0&&areaEC(p.next,m,m.next)<0;}
+function indexCurve(start,minX,minY,invSize){var p=start;do{if(p.z===0)p.z=zOrderEC(p.x,p.y,minX,minY,invSize);p.prevZ=p.prev;p.nextZ=p.next;p=p.next;}while(p!==start);p.prevZ.nextZ=null;p.prevZ=null;sortLinked(p);}
+function sortLinked(list){var i,p,q,e,tail,numMerges,pSize,qSize,inSize=1;do{p=list;list=null;tail=null;numMerges=0;while(p){numMerges++;q=p;pSize=0;for(i=0;i<inSize;i++){pSize++;q=q.nextZ;if(!q)break;}qSize=inSize;while(pSize>0||(qSize>0&&q)){if(pSize!==0&&(qSize===0||!q||p.z<=q.z)){e=p;p=p.nextZ;pSize--;}else{e=q;q=q.nextZ;qSize--;}if(tail)tail.nextZ=e;else list=e;e.prevZ=tail;tail=e;}p=q;}tail.nextZ=null;inSize*=2;}while(numMerges>1);return list;}
+function zOrderEC(x,y,minX,minY,invSize){x=(x-minX)*invSize|0;y=(y-minY)*invSize|0;x=(x|(x<<8))&0x00FF00FF;x=(x|(x<<4))&0x0F0F0F0F;x=(x|(x<<2))&0x33333333;x=(x|(x<<1))&0x55555555;y=(y|(y<<8))&0x00FF00FF;y=(y|(y<<4))&0x0F0F0F0F;y=(y|(y<<2))&0x33333333;y=(y|(y<<1))&0x55555555;return x|(y<<1);}
+function getLeftmost(start){var p=start,leftmost=start;do{if(p.x<leftmost.x||(p.x===leftmost.x&&p.y<leftmost.y))leftmost=p;p=p.next;}while(p!==start);return leftmost;}
+function pointInTriangleEC(ax,ay,bx,by,cx,cy,px,py){return (cx-px)*(ay-py)-(ax-px)*(cy-py)>=0&&(ax-px)*(by-py)-(bx-px)*(ay-py)>=0&&(bx-px)*(cy-py)-(cx-px)*(by-py)>=0;}
+function isValidDiagonal(a,b){return a.next.i!==b.i&&a.prev.i!==b.i&&!intersectsPolygon(a,b)&&(locallyInside(a,b)&&locallyInside(b,a)&&middleInside(a,b)&&(areaEC(a.prev,a,b.prev)||areaEC(a,b.prev,b))||equalsEC(a,b)&&areaEC(a.prev,a,a.next)>0&&areaEC(b.prev,b,b.next)>0);}
+function areaEC(p,q,r){return (q.y-p.y)*(r.x-q.x)-(q.x-p.x)*(r.y-q.y);}
+function equalsEC(p1,p2){return p1.x===p2.x&&p1.y===p2.y;}
+function intersectsEC(p1,q1,p2,q2){var o1=signEC(areaEC(p1,q1,p2)),o2=signEC(areaEC(p1,q1,q2)),o3=signEC(areaEC(p2,q2,p1)),o4=signEC(areaEC(p2,q2,q1));if(o1!==o2&&o3!==o4)return true;if(o1===0&&onSegmentEC(p1,p2,q1))return true;if(o2===0&&onSegmentEC(p1,q2,q1))return true;if(o3===0&&onSegmentEC(p2,p1,q2))return true;if(o4===0&&onSegmentEC(p2,q1,q2))return true;return false;}
+function onSegmentEC(p,q,r){return q.x<=Math.max(p.x,r.x)&&q.x>=Math.min(p.x,r.x)&&q.y<=Math.max(p.y,r.y)&&q.y>=Math.min(p.y,r.y);}
+function signEC(num){return num>0?1:num<0?-1:0;}
+function intersectsPolygon(a,b){var p=a;do{if(p.i!==a.i&&p.next.i!==a.i&&p.i!==b.i&&p.next.i!==b.i&&intersectsEC(p,p.next,a,b))return true;p=p.next;}while(p!==a);return false;}
+function locallyInside(a,b){return areaEC(a.prev,a,a.next)<0?areaEC(a,b,a.next)>=0&&areaEC(a,a.prev,b)>=0:areaEC(a,b,a.prev)<0||areaEC(a,a.next,b)<0;}
+function middleInside(a,b){var p=a,inside=false,px=(a.x+b.x)/2,py=(a.y+b.y)/2;do{if(((p.y>py)!==(p.next.y>py))&&p.next.y!==p.y&&(px<(p.next.x-p.x)*(py-p.y)/(p.next.y-p.y)+p.x))inside=!inside;p=p.next;}while(p!==a);return inside;}
+function splitPolygon(a,b){var a2=new NodeEC(a.i,a.x,a.y),b2=new NodeEC(b.i,b.x,b.y),an=a.next,bp=b.prev;a.next=b;b.prev=a;a2.next=an;an.prev=a2;b2.next=a2;a2.prev=b2;bp.next=b2;b2.prev=bp;return b2;}
+function insertNodeEC(i,x,y,last){var p=new NodeEC(i,x,y);if(!last){p.prev=p;p.next=p;}else{p.next=last.next;p.prev=last;last.next.prev=p;last.next=p;}return p;}
+function removeNodeEC(p){p.next.prev=p.prev;p.prev.next=p.next;if(p.prevZ)p.prevZ.nextZ=p.nextZ;if(p.nextZ)p.nextZ.prevZ=p.prevZ;}
+function NodeEC(i,x,y){this.i=i;this.x=x;this.y=y;this.prev=null;this.next=null;this.z=0;this.prevZ=null;this.nextZ=null;this.steiner=false;}
+function signedAreaEC(data,start,end,dim){var sum=0;for(var i=start,j=end-dim;i<end;i+=dim){sum+=(data[j]-data[i])*(data[i+1]+data[j+1]);j=i;}return sum;}
+
+// ── Parametric frame generator + CAD export ─────────────────────────────────
+// Builds a printable/cuttable plate from the build (arm count, prop clearance,
+// motor-mount pattern, FC pattern). Circular hub between arms is sized to hold
+// the FC bolt-circle + optional center hole. Exports watertight STL (3D print),
+// DXF (laser/CNC carbon cut) and parametric OpenSCAD (→ STEP/STL in OpenSCAD/
+// FreeCAD — a browser can't reliably author CAD-kernel STEP).
+function buildFrame(o){
+  const arms=o.arms||4, propMm=o.propDiaIn*25.4, clr=o.clearanceMm??14;
+  const bolt=o.boltDia||3.2, ms=o.motorSpacingMm||16, fp=o.fcPatternMm||30.5;
+  const hw=Math.max((o.armW||16)/2, ms/2+bolt+2.5);
+  const R=Math.max((propMm+clr)/(2*Math.sin(Math.PI/arms)), propMm*0.55);
+  const tip=R+ms/2+bolt+3, centerHole=o.centerHoleDia||0;
+  const Rhub=Math.max(fp/2*Math.SQRT2+bolt+3, centerHole/2+4, hw*1.6, hw/Math.tan(Math.PI/arms)*1.2);
+  const t=Math.sqrt(Math.max(Rhub*Rhub-hw*hw,1));
+  const off=(arms===4)?Math.PI/4:(arms%2?Math.PI/2:0);
+  const ang=[]; for(let i=0;i<arms;i++)ang.push(off+i*2*Math.PI/arms); ang.sort((a,b)=>a-b);
+  const outline=[], motors=[];
+  for(let i=0;i<arms;i++){
+    const th=ang[i], u=[Math.cos(th),Math.sin(th)], v=[-Math.sin(th),Math.cos(th)];
+    const Pt=(rad,s)=>[u[0]*rad+v[0]*s, u[1]*rad+v[1]*s];
+    outline.push(Pt(t,-hw),Pt(tip,-hw),Pt(tip,hw),Pt(t,hw));
+    motors.push({c:Pt(R,0),u,v});
+    const cc=Pt(t,hw), a0=Math.atan2(cc[1],cc[0]);
+    const thN=ang[(i+1)%arms]+(i+1>=arms?2*Math.PI:0), uN=[Math.cos(thN),Math.sin(thN)], vN=[-Math.sin(thN),Math.cos(thN)];
+    const nextCW=[uN[0]*t+vN[0]*(-hw), uN[1]*t+vN[1]*(-hw)];
+    let a1=Math.atan2(nextCW[1],nextCW[0]); if(a1<=a0)a1+=2*Math.PI;
+    const steps=Math.max(2,Math.round((a1-a0)/0.20));
+    for(let k=1;k<steps;k++){const a=a0+(a1-a0)*k/steps; outline.push([Math.cos(a)*Rhub,Math.sin(a)*Rhub]);}
+  }
+  let area=0; for(let i=0;i<outline.length;i++){const p=outline[i],q=outline[(i+1)%outline.length];area+=p[0]*q[1]-q[0]*p[1];}
+  if(area<0)outline.reverse();
+  const holes=[], fph=fp/2;
+  [[fph,fph],[fph,-fph],[-fph,fph],[-fph,-fph]].forEach(p=>holes.push({cx:p[0],cy:p[1],d:bolt}));
+  if(centerHole>0)holes.push({cx:0,cy:0,d:centerHole});
+  const h=ms/2;
+  motors.forEach(m=>[[h,h],[h,-h],[-h,h],[-h,-h]].forEach(p=>
+    holes.push({cx:m.c[0]+m.u[0]*p[0]+m.v[0]*p[1], cy:m.c[1]+m.u[1]*p[0]+m.v[1]*p[1], d:bolt})));
+  return {outline,holes,plateT:o.plateT||4,seg:o.seg||32};
+}
+function frameTris(M){
+  const seg=M.seg,T=M.plateT,flat=[]; M.outline.forEach(p=>flat.push(p[0],p[1]));
+  const holeIdx=[], rings=[{s:0,n:M.outline.length}];
+  M.holes.forEach(h=>{holeIdx.push(flat.length/2);for(let k=0;k<seg;k++){const a=-2*Math.PI*k/seg;flat.push(h.cx+Math.cos(a)*h.d/2,h.cy+Math.sin(a)*h.d/2);}rings.push({s:(flat.length-2*seg)/2,n:seg});});
+  const tri=earcut(flat,holeIdx,2),V=[];for(let i=0;i<flat.length;i+=2)V.push([flat[i],flat[i+1]]);
+  const tris=[],P=(i,z)=>[V[i][0],V[i][1],z];
+  for(let i=0;i<tri.length;i+=3)tris.push([P(tri[i],T),P(tri[i+1],T),P(tri[i+2],T)]);
+  for(let i=0;i<tri.length;i+=3)tris.push([P(tri[i+2],0),P(tri[i+1],0),P(tri[i],0)]);
+  rings.forEach((r,ri)=>{for(let k=0;k<r.n;k++){const a=r.s+k,b=r.s+(k+1)%r.n;
+    if(ri===0){tris.push([P(a,0),P(b,0),P(b,T)]);tris.push([P(a,0),P(b,T),P(a,T)]);}
+    else{tris.push([P(b,0),P(a,0),P(a,T)]);tris.push([P(b,0),P(a,T),P(b,T)]);}}});
+  return tris;
+}
+function triNormal(t){const ux=t[1][0]-t[0][0],uy=t[1][1]-t[0][1],uz=t[1][2]-t[0][2],vx=t[2][0]-t[0][0],vy=t[2][1]-t[0][1],vz=t[2][2]-t[0][2];let nx=uy*vz-uz*vy,ny=uz*vx-ux*vz,nz=ux*vy-uy*vx;const l=Math.hypot(nx,ny,nz)||1;return [nx/l,ny/l,nz/l];}
+function toSTL(M){
+  const tris=frameTris(M),ab=new ArrayBuffer(84+tris.length*50),dv=new DataView(ab),lbl="Forge frame plate";
+  for(let i=0;i<lbl.length;i++)dv.setUint8(i,lbl.charCodeAt(i));
+  dv.setUint32(80,tris.length,true);let off=84;
+  tris.forEach(t=>{const n=triNormal(t);dv.setFloat32(off,n[0],true);dv.setFloat32(off+4,n[1],true);dv.setFloat32(off+8,n[2],true);off+=12;for(const v of t){dv.setFloat32(off,v[0],true);dv.setFloat32(off+4,v[1],true);dv.setFloat32(off+8,v[2],true);off+=12;}dv.setUint16(off,0,true);off+=2;});
+  return new Uint8Array(ab);
+}
+function toDXF(M){let s="0\nSECTION\n2\nENTITIES\n";const o=M.outline;
+  for(let i=0;i<o.length;i++){const a=o[i],b=o[(i+1)%o.length];s+=`0\nLINE\n8\nframe\n10\n${a[0].toFixed(3)}\n20\n${a[1].toFixed(3)}\n30\n0\n11\n${b[0].toFixed(3)}\n21\n${b[1].toFixed(3)}\n31\n0\n`;}
+  M.holes.forEach(h=>s+=`0\nCIRCLE\n8\nholes\n10\n${h.cx.toFixed(3)}\n20\n${h.cy.toFixed(3)}\n30\n0\n40\n${(h.d/2).toFixed(3)}\n`);
+  return s+"0\nENDSEC\n0\nEOF\n";
+}
+function toSCAD(M){const r=x=>(+x).toFixed(3);const pts=M.outline.map(p=>`[${r(p[0])},${r(p[1])}]`).join(",");
+  let s=`// Forge auto-generated frame plate — open in OpenSCAD or FreeCAD,\n// then File > Export as STL or STEP.\n$fn=64;\nthick=${M.plateT};\nlinear_extrude(thick) difference(){\n  polygon([${pts}]);\n`;
+  M.holes.forEach(h=>s+=`  translate([${r(h.cx)},${r(h.cy)}]) circle(d=${r(h.d)});\n`);
+  return s+"}\n";
+}
+function frameOpts(){
+  const idx=CURRENT.idx, motor=idx.motors, frame=idx.frames;
+  let fcPat=30.5; const pats=frame&&frame.fc_mounting_patterns_mm;
+  if(Array.isArray(pats)&&pats.length)fcPat=Math.max(...pats.filter(x=>x>0))||30.5;
+  else if(typeof pats==="number"&&pats>0)fcPat=pats;
+  else if(idx.stacks&&idx.stacks.mounting_pattern_mm)fcPat=idx.stacks.mounting_pattern_mm;
+  else if(idx.flight_controllers&&idx.flight_controllers.mounting_pattern_mm)fcPat=idx.flight_controllers.mounting_pattern_mm;
+  const ms=(motor&&motor.motor_mount_hole_spacing_mm)||(frame&&frame.motor_mount_hole_spacing_mm)||16;
+  return {arms:CURRENT.motorCount||4, propDiaIn:target.prop, motorSpacingMm:ms, fcPatternMm:fcPat, boltDia:3.2,
+    armW:+document.getElementById("fr-arm").value||18, plateT:+document.getElementById("fr-th").value||4,
+    centerHoleDia:+document.getElementById("fr-ctr").value||0};
+}
+function framePanelHTML(){
+  const fld=(id,label,val)=>'<div class="field" style="flex:1;min-width:120px"><label>'+label+'</label><input type="number" id="'+id+'" value="'+val+'" min="0" step="0.5"></div>';
+  return '<div class="panel" style="margin-top:16px"><h2>Frame &amp; CAD export</h2>'+
+    '<div class="spec" style="margin-bottom:10px">Parametric plate from this build — '+(CURRENT.motorCount||4)+'-arm, '+target.prop+'" props, motor &amp; FC patterns from the selected parts. '+
+    '<b>STL</b> = 3D print · <b>DXF</b> = laser/CNC carbon cut · <b>OpenSCAD</b> = parametric source (export STEP or STL from OpenSCAD/FreeCAD). Estimated geometry — verify before cutting.</div>'+
+    '<div style="display:flex;gap:10px;flex-wrap:wrap">'+fld("fr-th","Plate thickness (mm)",4)+fld("fr-arm","Arm width (mm)",18)+fld("fr-ctr","Center hole Ø (mm)",0)+'</div>'+
+    '<div class="actions"><button class="btn" id="dl-stl">Download STL</button>'+
+    '<button class="btn sec" id="dl-dxf">Download DXF</button>'+
+    '<button class="btn sec" id="dl-scad">OpenSCAD</button></div></div>';
+}
+function dlFile(name,data,type){const blob=new Blob([data],{type});const u=URL.createObjectURL(blob);const a=document.createElement("a");a.href=u;a.download=name;document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(u),2000);}
+function bindFrame(){
+  const base=()=>"forge-frame-"+target.prop+"in-"+(CURRENT.motorCount||4)+"arm";
+  const stl=document.getElementById("dl-stl"); if(stl)stl.onclick=()=>dlFile(base()+".stl",toSTL(buildFrame(frameOpts())),"model/stl");
+  const dxf=document.getElementById("dl-dxf"); if(dxf)dxf.onclick=()=>dlFile(base()+".dxf",toDXF(buildFrame(frameOpts())),"image/vnd.dxf");
+  const scad=document.getElementById("dl-scad"); if(scad)scad.onclick=()=>dlFile(base()+".scad",toSCAD(buildFrame(frameOpts())),"text/plain");
 }
 function esc(s){return String(s==null?"":s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;"}[c]));}
 </script>
