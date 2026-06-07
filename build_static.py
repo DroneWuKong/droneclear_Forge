@@ -102,6 +102,7 @@ PAGES = {
     'private/index.html': 'private/index.html',
     'private/dossiers.html': 'private/dossiers/index.html',
     'private/supply-web.html': 'private/supply-web/index.html',
+    'private/components-bom.html': 'private/components-bom/index.html',
     'ddg.html': 'private/ddg/index.html',
 }
 
@@ -973,6 +974,11 @@ SEO_META = {
         'Defense Drone Gauntlet Tracker — G-I & G-II Program Analysis',
         'Live tracker for the Defense Drone Gauntlet (DDG) program. Competitor scoring, NDAA compliance posture, production readiness, funding depth, and G-II phase predictions for all 8 awardees.',
         'Defense Drone Gauntlet, DDG program, drone procurement, NDAA compliant drones, DoD drone competition, G-I G-II tracker',
+    ),
+    'private/components-bom.html': (
+        'Component BOMs — DDG Platform Bill-of-Materials (Private)',
+        'Gated, best-effort per-platform bill-of-materials reconstruction for Drone Dominance / Gauntlet participant platforms, inverted from confidence-tagged OSINT supply-chain links.',
+        'DDG component BOM, drone bill of materials, supply chain intelligence, platform teardown',
     ),
     'waiver.html': (
         'Drone Document Builder — Part 107, COI, Ops Manuals & More',
