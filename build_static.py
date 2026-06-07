@@ -429,6 +429,25 @@ _UNIFIED_NAV = r"""<!-- ── Unified UAS- Nav (5-domain accordion drawer) ─�
     </div>
   </details>
 
+  <!-- Intel (gated) — links live in the public menu but require Cloudflare Access -->
+  <details class="dc-dom-group" data-host="uas-forge.com" data-hub-href="https://uas-forge.com/private/">
+    <summary>
+      <span class="dc-dom-ico">🔒</span>
+      <div class="dc-dom-info">
+        <div class="dc-dom-name">Intel (Private)</div>
+        <div class="dc-dom-url">uas-forge.com/private · gated</div>
+      </div>
+      <span class="dc-dom-chev">▶</span>
+    </summary>
+    <div class="dc-dom-sublinks">
+      <a class="dc-dom-sublink" href="https://uas-forge.com/private/ddg/" data-page="ddg">DDG Tracker</a>
+      <a class="dc-dom-sublink" href="https://uas-forge.com/private/dossiers/" data-page="dossiers">Intel Dossiers</a>
+      <a class="dc-dom-sublink" href="https://uas-forge.com/private/supply-web/" data-page="supply-web">Supply Web</a>
+      <a class="dc-dom-sublink" href="https://uas-forge.com/private/components-bom/" data-page="components-bom">Component BOMs</a>
+      <a class="dc-dom-sublink" href="https://uas-forge.com/private/drone-config/" data-page="drone-config">Build Configurator</a>
+    </div>
+  </details>
+
   <!-- Standalone quick links — not grouped under any domain -->
   <a class="dc-dom-standalone" href="https://uas-forge.com/wingman/" data-page="wingman">
     <span class="dc-dom-ico">🤖</span>
