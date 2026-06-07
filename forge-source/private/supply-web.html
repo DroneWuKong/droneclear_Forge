@@ -1,0 +1,286 @@
+<!DOCTYPE html><html lang="en"><head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0">
+<meta name="robots" content="noindex, nofollow">
+<title>Supply Web — DroneWuKong Intel</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600;700&family=DM+Sans:wght@400;600;700&family=Barlow+Condensed:wght@700;900&display=swap');
+:root{--bg:#0c0c0a;--bg2:#141410;--bg3:#1c1c18;--border:#2a2a22;--green:#22c55e;--blue:#3b82f6;--amber:#f59e0b;--red:#d62828;--text:#d8d4ca;--text-d2:#7a7268;--mono:'JetBrains Mono',monospace;--head:'Barlow Condensed',sans-serif;--body:'DM Sans',system-ui,sans-serif}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%}
+body{background:var(--bg);color:var(--text);font-family:var(--body);display:flex;flex-direction:column;overflow:hidden}
+body::before{content:'';position:fixed;inset:0;background:repeating-linear-gradient(0deg,transparent,transparent 2px,rgba(0,0,0,.04) 2px,rgba(0,0,0,.04) 4px);pointer-events:none;z-index:5}
+nav{height:48px;flex:0 0 48px;display:flex;align-items:center;padding:0 20px;border-bottom:1px solid var(--border);background:rgba(12,12,10,.96);z-index:10}
+.nav-inner{display:flex;align-items:center;gap:14px;width:100%}
+.nav-logo{font:700 15px var(--mono);color:var(--green);text-decoration:none;white-space:nowrap}
+.gate-badge{font:600 10px var(--mono);color:var(--red);border:1px solid var(--red);border-radius:3px;padding:2px 6px;letter-spacing:.05em}
+.nav-pills{display:flex;gap:6px;margin-left:auto}
+.nav-pill{font:600 12px var(--mono);color:var(--text-d2);text-decoration:none;padding:5px 10px;border:1px solid var(--border);border-radius:4px}
+.nav-pill:hover{color:var(--text);border-color:var(--text-d2)}
+.nav-pill.active{color:var(--green);border-color:var(--green)}
+.main{flex:1;display:flex;min-height:0}
+#graph{flex:1;position:relative;min-width:0}
+svg{width:100%;height:100%;display:block;cursor:grab}
+svg.dragging{cursor:grabbing}
+.edge{stroke-opacity:.32;transition:stroke-opacity .15s}
+.edge.C{stroke:var(--green)}
+.edge.S,.edge.I{stroke:var(--amber);stroke-dasharray:4 3}
+.node circle{stroke:#0c0c0a;stroke-width:1.5;cursor:pointer}
+.node text{font:600 10px var(--mono);fill:var(--text);pointer-events:none;paint-order:stroke;stroke:#0c0c0a;stroke-width:3px}
+.node.supplier circle{fill:var(--blue)}
+.node.platform circle{fill:#3a3a30}
+.node.platform text{fill:var(--text-d2)}
+.dim{opacity:.12}
+.hl-edge{stroke-opacity:.95!important;stroke-width:2.4px!important}
+aside{flex:0 0 290px;border-left:1px solid var(--border);background:var(--bg2);overflow-y:auto;padding:16px 16px 40px;z-index:8}
+aside h1{font:900 24px var(--head);text-transform:uppercase;letter-spacing:.5px;line-height:1}
+aside .sub{font:400 11px var(--mono);color:var(--text-d2);margin:6px 0 16px}
+.panel-h{font:700 12px var(--mono);color:var(--green);text-transform:uppercase;letter-spacing:.08em;margin:18px 0 8px;border-bottom:1px solid var(--border);padding-bottom:5px}
+.rank{display:flex;align-items:center;gap:8px;padding:5px 6px;border-radius:4px;cursor:pointer;font-size:12.5px}
+.rank:hover{background:var(--bg3)}
+.rank .n{font:700 11px var(--mono);color:var(--text-d2);width:16px;text-align:right}
+.rank .bar{flex:1;height:5px;background:var(--bg3);border-radius:3px;overflow:hidden}
+.rank .bar i{display:block;height:100%;background:var(--blue)}
+.rank .cnt{font:700 11px var(--mono);color:var(--blue);width:14px}
+.rank .nm{flex:1.6;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.legend{display:flex;flex-wrap:wrap;gap:8px 14px;font-size:11px;color:var(--text-d2);margin-top:6px}
+.legend span{display:flex;align-items:center;gap:5px}
+.dot{width:10px;height:10px;border-radius:50%;display:inline-block}
+.ln{width:16px;height:0;border-top:2px solid;display:inline-block}
+#detail{font-size:12.5px;line-height:1.5;color:var(--text)}
+#detail .d-name{font:700 16px var(--head);text-transform:uppercase;color:var(--green);letter-spacing:.5px}
+#detail .d-sub{font:400 11px var(--mono);color:var(--text-d2);margin-bottom:8px}
+#detail .feed{padding:5px 0;border-bottom:1px dotted var(--border)}
+#detail .feed b{color:var(--text)}
+#detail .feed .cf{font:700 9px var(--mono);padding:1px 4px;border-radius:3px;margin-left:6px;vertical-align:middle}
+#detail .cf.C{color:var(--green);border:1px solid var(--green)}
+#detail .cf.S,#detail .cf.I{color:var(--amber);border:1px solid var(--amber)}
+#detail a{color:var(--blue);font:400 10px var(--mono);word-break:break-all;display:block;margin-top:2px}
+#detail .placeholder{color:var(--text-d2);font-style:italic}
+.toolbar{position:absolute;top:10px;left:10px;display:flex;gap:6px;z-index:9}
+.toolbar button{font:600 11px var(--mono);color:var(--text-d2);background:var(--bg2);border:1px solid var(--border);border-radius:4px;padding:5px 9px;cursor:pointer}
+.toolbar button:hover{color:var(--text);border-color:var(--text-d2)}
+.banner{position:absolute;bottom:10px;left:10px;font:400 10px var(--mono);color:var(--text-d2);background:rgba(12,12,10,.8);border:1px solid var(--border);border-radius:4px;padding:5px 9px;max-width:60%}
+.empty{display:flex;align-items:center;justify-content:center;height:100%;color:var(--text-d2);font:400 13px var(--mono);text-align:center;padding:20px}
+@media(max-width:720px){
+  .nav-pills{gap:4px}
+  .nav-pill{padding:5px 7px}
+  .main{flex-direction:column;overflow-y:auto}
+  #graph{flex:0 0 auto;height:46vh;border-bottom:1px solid var(--border)}
+  aside{flex:0 0 auto;width:100%;border-left:none;overflow-y:visible}
+  .toolbar button{padding:6px 10px}
+  .node text{font-size:9px}
+}
+</style></head><body>
+<nav><div class="nav-inner">
+  <a class="nav-logo" href="/private/">DRONEWUKONG // INTEL</a>
+  <span class="gate-badge">● PRIVATE</span>
+  <div class="nav-pills">
+    <a class="nav-pill" href="/private/ddg/">DDG Tracker</a>
+    <a class="nav-pill" href="/private/dossiers/">Dossiers</a>
+    <a class="nav-pill active" href="/private/supply-web/">Supply Web</a>
+  </div>
+</div></nav>
+<div class="main">
+  <div id="graph">
+    <div class="toolbar">
+      <button id="btn-reset">⟳ reset</button>
+      <button id="btn-clear">✕ clear selection</button>
+    </div>
+    <svg id="svg"></svg>
+    <div class="banner" id="banner"></div>
+  </div>
+  <aside>
+    <h1>Supply Web</h1>
+    <div class="sub">supplier&nbsp;→&nbsp;platform · the shared-supplier spine</div>
+
+    <div class="panel-h">Legend</div>
+    <div class="legend">
+      <span><i class="dot" style="background:var(--blue)"></i>supplier</span>
+      <span><i class="dot" style="background:#3a3a30"></i>platform</span>
+      <span><i class="ln" style="border-color:var(--green)"></i>confirmed</span>
+      <span><i class="ln" style="border-color:var(--amber);border-top-style:dashed"></i>single/inferred</span>
+    </div>
+
+    <div class="panel-h">Most-shared suppliers</div>
+    <div id="rank"></div>
+
+    <div class="panel-h">Detail</div>
+    <div id="detail"><div class="placeholder">Click a node to inspect its links and sources.</div></div>
+  </aside>
+</div>
+<script>
+// Gated visual — fetches /private/supply_links.json (synced at build time from
+// the private Ai-Project repo; never committed to the forge repo). All client-side.
+const SVG_NS='http://www.w3.org/2000/svg';
+const SUB_LABEL={rf_datalink:'datalink',thermal_camera:'EO/IR',soc:'SoC',fc:'flight ctrl',mcu:'MCU',warhead:'warhead',battery:'battery',camera:'camera',airframe:'airframe',gcs:'GCS',sigint:'SIGINT',visual_nav:'visual nav'};
+
+const svg=document.getElementById('svg');
+let W=svg.clientWidth,H=svg.clientHeight;
+let nodes=[],links=[],byId={},selected=null;
+
+fetch('/private/supply_links.json',{cache:'no-store'})
+  .then(r=>{if(!r.ok)throw new Error(r.status);return r.json();})
+  .then(build)
+  .catch(()=>{document.getElementById('graph').innerHTML='<div class="empty">supply_links.json unavailable.<br>Build with a sibling ../Ai-Project checkout or GITHUB_PAT.</div>';});
+
+function build(data){
+  const suppliers=data.suppliers||[];
+  // Build node + link sets. One supplier node per supplier *name* (merge
+  // multiple component rows of the same vendor, e.g. Qualcomm x2).
+  const supMeta={}; // name -> {subsystems:Set, components:Set, feeds:[], sources:Set}
+  suppliers.forEach(s=>{
+    const nm=s.supplier;
+    const m=supMeta[nm]||(supMeta[nm]={name:nm,subsystems:new Set(),components:new Set(),feeds:[],sources:new Set()});
+    if(s.subsystem)m.subsystems.add(s.subsystem);
+    if(s.component)m.components.add(s.component);
+    (s.sources||[]).forEach(u=>m.sources.add(u));
+    (s.feeds||[]).forEach(f=>{
+      m.feeds.push(f);
+      links.push({s:'S:'+nm,t:'P:'+f.platform,conf:(f.confidence||'I'),component:s.component,subsystem:s.subsystem});
+    });
+  });
+  // supplier nodes
+  Object.values(supMeta).forEach(m=>{
+    const deg=m.feeds.length;
+    nodes.push({id:'S:'+m.name,name:m.name,type:'supplier',deg,r:8+Math.min(deg,6)*2.6,meta:m});
+  });
+  // platform nodes
+  const platMeta={};
+  suppliers.forEach(s=>(s.feeds||[]).forEach(f=>{
+    const p=platMeta[f.platform]||(platMeta[f.platform]={name:f.platform,company:f.company,suppliers:0});
+    p.suppliers++;
+  }));
+  Object.values(platMeta).forEach(p=>{
+    nodes.push({id:'P:'+p.name,name:p.name,type:'platform',deg:p.suppliers,r:6+Math.min(p.suppliers,5)*1.8,meta:p});
+  });
+  nodes.forEach(n=>byId[n.id]=n);
+
+  // adjacency for highlight
+  nodes.forEach(n=>n.adj=new Set());
+  links.forEach(l=>{byId[l.s].adj.add(l.t);byId[l.t].adj.add(l.s);l.S=byId[l.s];l.T=byId[l.t];});
+
+  seedLayout();
+  render();
+  buildRank(supMeta);
+  banner(`${Object.keys(supMeta).length} suppliers · ${Object.keys(platMeta).length} platforms · ${links.length} links — green = confirmed, amber dashed = single/inferred`);
+  for(let i=0;i<320;i++)tick();
+  draw();
+}
+
+function seedLayout(){
+  W=svg.clientWidth||900;H=svg.clientHeight||600;
+  nodes.forEach((n,i)=>{
+    const a=i*2.399963; const rad=Math.min(W,H)*(0.18+0.30*Math.random());
+    n.x=W/2+Math.cos(a)*rad; n.y=H/2+Math.sin(a)*rad; n.vx=0; n.vy=0;
+  });
+}
+
+let gEdges,gNodes;
+function render(){
+  svg.innerHTML='';
+  svg.setAttribute('viewBox',`0 0 ${W} ${H}`);
+  gEdges=el('g'); gNodes=el('g');
+  links.forEach(l=>{l.line=el('line',{class:'edge '+l.conf});gEdges.appendChild(l.line);});
+  nodes.forEach(n=>{
+    n.g=el('g',{class:'node '+n.type});
+    n.c=el('circle',{r:n.r});
+    n.tx=el('text',{x:n.r+3,y:4});n.tx.textContent=n.name;
+    n.g.appendChild(n.c);n.g.appendChild(n.tx);
+    n.c.addEventListener('click',e=>{e.stopPropagation();select(n);});
+    n.c.addEventListener('mousedown',e=>startDrag(e,n));
+    gNodes.appendChild(n.g);
+  });
+  svg.appendChild(gEdges);svg.appendChild(gNodes);
+  svg.addEventListener('click',()=>select(null));
+}
+
+// --- simple force sim ---
+function tick(){
+  const k=0.025, rep=4200, spring=0.012, L=80;
+  for(let i=0;i<nodes.length;i++){
+    const a=nodes[i];a.vx*=0.86;a.vy*=0.86;
+    for(let j=i+1;j<nodes.length;j++){
+      const b=nodes[j];let dx=a.x-b.x,dy=a.y-b.y;let d2=dx*dx+dy*dy||0.01;
+      const f=rep/d2;const d=Math.sqrt(d2);const ux=dx/d,uy=dy/d;
+      a.vx+=ux*f;a.vy+=uy*f;b.vx-=ux*f;b.vy-=uy*f;
+    }
+    a.vx+=(W/2-a.x)*k*0.04;a.vy+=(H/2-a.y)*k*0.04;
+  }
+  links.forEach(l=>{
+    const a=l.S,b=l.T;let dx=b.x-a.x,dy=b.y-a.y;const d=Math.sqrt(dx*dx+dy*dy)||0.01;
+    const f=(d-L)*spring;const ux=dx/d,uy=dy/d;
+    a.vx+=ux*f;a.vy+=uy*f;b.vx-=ux*f;b.vy-=uy*f;
+  });
+  nodes.forEach(n=>{if(n!==dragging){n.x+=n.vx;n.y+=n.vy;}
+    n.x=Math.max(n.r+6,Math.min(W-n.r-6,n.x));n.y=Math.max(n.r+18,Math.min(H-n.r-6,n.y));});
+}
+function draw(){
+  links.forEach(l=>{l.line.setAttribute('x1',l.S.x);l.line.setAttribute('y1',l.S.y);l.line.setAttribute('x2',l.T.x);l.line.setAttribute('y2',l.T.y);});
+  nodes.forEach(n=>n.g.setAttribute('transform',`translate(${n.x},${n.y})`));
+}
+let raf=null;
+function animate(n){let i=0;cancelAnimationFrame(raf);(function loop(){tick();draw();if(++i<n)raf=requestAnimationFrame(loop);})();}
+
+// --- drag ---
+let dragging=null,dragOff=null;
+function startDrag(e,n){e.preventDefault();dragging=n;svg.classList.add('dragging');
+  const p=pt(e);dragOff={x:p.x-n.x,y:p.y-n.y};
+  window.addEventListener('mousemove',onDrag);window.addEventListener('mouseup',endDrag);}
+function onDrag(e){if(!dragging)return;const p=pt(e);dragging.x=p.x-dragOff.x;dragging.y=p.y-dragOff.y;dragging.vx=0;dragging.vy=0;animate(40);}
+function endDrag(){dragging=null;svg.classList.remove('dragging');window.removeEventListener('mousemove',onDrag);window.removeEventListener('mouseup',endDrag);}
+function pt(e){const r=svg.getBoundingClientRect();return{x:(e.clientX-r.left)/r.width*W,y:(e.clientY-r.top)/r.height*H};}
+
+// --- selection / highlight ---
+function select(n){
+  selected=n;
+  if(!n){nodes.forEach(x=>x.g.classList.remove('dim'));links.forEach(l=>{l.line.classList.remove('dim','hl-edge');});showDetail(null);return;}
+  const keep=new Set([n.id,...n.adj]);
+  nodes.forEach(x=>x.g.classList.toggle('dim',!keep.has(x.id)));
+  links.forEach(l=>{const on=(l.s===n.id||l.t===n.id);l.line.classList.toggle('hl-edge',on);l.line.classList.toggle('dim',!on);});
+  showDetail(n);
+  if(window.matchMedia('(max-width:720px)').matches){document.getElementById('detail').scrollIntoView({behavior:'smooth',block:'nearest'});}
+}
+function showDetail(n){
+  const d=document.getElementById('detail');
+  if(!n){d.innerHTML='<div class="placeholder">Click a node to inspect its links and sources.</div>';return;}
+  if(n.type==='supplier'){
+    const m=n.meta;
+    const subs=[...m.subsystems].map(s=>SUB_LABEL[s]||s).join(', ');
+    let h=`<div class="d-name">${esc(m.name)}</div><div class="d-sub">${subs} · feeds ${m.feeds.length} platform${m.feeds.length>1?'s':''}</div>`;
+    m.feeds.forEach(f=>{h+=`<div class="feed"><b>${esc(f.platform)}</b> <span class="cf ${f.confidence}">${f.confidence}</span><br><span style="color:var(--text-d2)">${esc(f.company||'')}</span></div>`;});
+    if(m.sources.size){h+='<div style="margin-top:8px">';[...m.sources].forEach(u=>h+=`<a href="${esc(u)}" target="_blank" rel="noopener">${esc(u)}</a>`);h+='</div>';}
+    d.innerHTML=h;
+  }else{
+    const p=n.meta;
+    const feeders=links.filter(l=>l.t===n.id);
+    let h=`<div class="d-name">${esc(p.name)}</div><div class="d-sub">${esc(p.company||'')} · ${feeders.length} known supplier${feeders.length>1?'s':''}</div>`;
+    feeders.forEach(l=>{h+=`<div class="feed"><b>${esc(l.S.name)}</b> <span class="cf ${l.conf}">${l.conf}</span><br><span style="color:var(--text-d2)">${esc(SUB_LABEL[l.subsystem]||l.subsystem||'')}${l.component?(' · '+esc(l.component)):''}</span></div>`;});
+    d.innerHTML=h;
+  }
+}
+
+function buildRank(supMeta){
+  const r=document.getElementById('rank');
+  const arr=Object.values(supMeta).map(m=>({name:m.name,cnt:new Set(m.feeds.map(f=>f.platform)).size,id:'S:'+m.name}))
+    .sort((a,b)=>b.cnt-a.cnt);
+  const max=arr[0]?arr[0].cnt:1;
+  r.innerHTML='';
+  arr.forEach((x,i)=>{
+    const row=el2('div','rank');
+    row.innerHTML=`<span class="n">${i+1}</span><span class="nm">${esc(x.name)}</span><span class="bar"><i style="width:${Math.round(x.cnt/max*100)}%"></i></span><span class="cnt">${x.cnt}</span>`;
+    row.addEventListener('click',()=>{const n=byId[x.id];if(n)select(n);});
+    r.appendChild(row);
+  });
+}
+
+// helpers
+function el(tag,attrs){const e=document.createElementNS(SVG_NS,tag);if(attrs)for(const k in attrs)e.setAttribute(k,attrs[k]);return e;}
+function el2(tag,cls){const e=document.createElement(tag);if(cls)e.className=cls;return e;}
+function esc(s){return String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));}
+function banner(t){document.getElementById('banner').textContent=t;}
+
+document.getElementById('btn-reset').addEventListener('click',()=>{seedLayout();for(let i=0;i<320;i++)tick();draw();select(selected);});
+document.getElementById('btn-clear').addEventListener('click',()=>select(null));
+window.addEventListener('resize',()=>{W=svg.clientWidth;H=svg.clientHeight;svg.setAttribute('viewBox',`0 0 ${W} ${H}`);});
+</script>
+</body></html>

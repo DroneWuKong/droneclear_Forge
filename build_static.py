@@ -97,6 +97,12 @@ PAGES = {
     # Doctrine submission + audit (Cloudflare/Netlify-Function backed)
     'contribute-doctrine.html': 'contribute-doctrine/index.html',
     'audit-doctrine.html': 'audit-doctrine/index.html',
+    # ── PRIVATE gated area (Cloudflare Access on /private/*; see docs/PRIVATE_GATE.md) ──
+    # DDG is served ONLY here (the public /ddg/ route above stays disabled).
+    'private/index.html': 'private/index.html',
+    'private/dossiers.html': 'private/dossiers/index.html',
+    'private/supply-web.html': 'private/supply-web/index.html',
+    'ddg.html': 'private/ddg/index.html',
 }
 
 # Static assets to copy (JS, CSS, JSON, images)
@@ -1500,6 +1506,117 @@ def sync_handbook_data():
     return True
 
 
+def sync_private_dossiers():
+    """Pull the OSINT dossiers from the PRIVATE Ai-Project repo into
+    build/private/dossiers/ at build time. The markdown is NEVER committed to
+    this (forge) repo — it only exists in the gated build output, served behind
+    Cloudflare Access (/private/*). Source resolution:
+      1. sibling checkout ../Ai-Project/research (local/dev), else
+      2. shallow clone via GITHUB_PAT (CI).
+    If neither is available, the dossier viewer degrades to its 404 message.
+    """
+    import glob, tempfile
+    print("  Syncing private dossiers from Ai-Project...")
+    research = None
+    sibling = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'Ai-Project', 'research')
+    tmp_clone = None
+    if os.path.isdir(sibling):
+        research = sibling
+        print("    using sibling ../Ai-Project/research")
+    else:
+        pat = os.environ.get('GITHUB_PAT', '')
+        if not pat:
+            print("    SKIP: no sibling checkout and no GITHUB_PAT — dossiers omitted from build")
+            return False
+        tmp_clone = tempfile.mkdtemp(prefix='aiproj_')
+        url = DATA_REPO.replace('https://', f'https://x-access-token:{pat}@')
+        # On a Pages preview build, prefer the matching Ai-Project branch (e.g.
+        # the dossiers live on a feature branch before PR merge). CF sets
+        # CF_PAGES_BRANCH; AI_PROJECT_REF is a manual override. Fall back to the
+        # repo default branch (production / merged state).
+        refs = []
+        for r in (os.environ.get('AI_PROJECT_REF'), os.environ.get('CF_PAGES_BRANCH')):
+            r = (r or '').strip()
+            if r and r not in refs:
+                refs.append(r)
+        refs.append(None)  # repo default branch, tried last (production state)
+        print(f"    dossier clone refs (in order): {[r or 'default' for r in refs]}")
+        cloned = False
+        for ref in refs:
+            cmd = ['git', 'clone', '--depth', '1', '--filter=blob:none']
+            if ref:
+                cmd += ['--branch', ref]
+            try:
+                subprocess.run(cmd + [url, tmp_clone],
+                               check=True, capture_output=True, text=True, timeout=180)
+                research = os.path.join(tmp_clone, 'research')
+                print(f"    cloned Ai-Project ref={ref or 'default'}")
+                cloned = True
+                break
+            except Exception as e:
+                msg = (getattr(e, 'stderr', '') or str(e)).strip().splitlines()[-1:] or ['']
+                print(f"    ref={ref or 'default'} not usable ({msg[0]})")
+                shutil.rmtree(tmp_clone, ignore_errors=True)
+                tmp_clone = tempfile.mkdtemp(prefix='aiproj_')
+        if not cloned:
+            print("    SKIP: clone failed for all refs — dossiers omitted")
+            shutil.rmtree(tmp_clone, ignore_errors=True)
+            return False
+
+    out_dir = os.path.join(BUILD_DIR, 'private', 'dossiers')
+    os.makedirs(out_dir, exist_ok=True)
+    SKIP = {'_TEMPLATE.md', 'README.md'}
+
+    def title_of(path):
+        try:
+            for line in open(path, encoding='utf-8'):
+                if line.startswith('# '):
+                    return line[2:].split('—')[0].strip()
+        except Exception:
+            pass
+        return os.path.basename(path)[:-3]
+
+    # (source glob, output slug-prefix, group label)
+    specs = [
+        (os.path.join(research, 'profiles', '*.md'), '', 'Company dossiers'),
+        (os.path.join(research, 'ddg_supply_chain_intel.md'), '', 'Cross-cutting'),
+        (os.path.join(research, 'ddg_deep_dig.md'), '', 'Cross-cutting'),
+    ]
+    index, n = [], 0
+    seen = set()
+    for pattern, _pref, group in specs:
+        for src in sorted(glob.glob(pattern)):
+            fn = os.path.basename(src)
+            if fn in SKIP or fn in seen:
+                continue
+            seen.add(fn)
+            slug = fn[:-3]
+            shutil.copy2(src, os.path.join(out_dir, fn))
+            g = 'Cross-cutting' if fn in ('ddg2-roster.md',) else group
+            index.append({'slug': slug, 'title': title_of(src), 'group': g})
+            n += 1
+    # sort: Company dossiers first (alpha), Cross-cutting last
+    index.sort(key=lambda d: (d['group'] != 'Company dossiers', d['title'].lower()))
+    with open(os.path.join(out_dir, 'index.json'), 'w', encoding='utf-8') as f:
+        json.dump(index, f, separators=(',', ':'))
+
+    # Also pull the structured supplier->platform web that drives the gated
+    # /private/supply-web/ visual. Same gate, same never-committed rule.
+    repo_root = os.path.dirname(research.rstrip('/'))
+    supply_src = os.path.join(repo_root, 'data', 'ddg_supply_links.json')
+    if os.path.isfile(supply_src):
+        priv_dir = os.path.join(BUILD_DIR, 'private')
+        os.makedirs(priv_dir, exist_ok=True)
+        shutil.copy2(supply_src, os.path.join(priv_dir, 'supply_links.json'))
+        print("    Copied ddg_supply_links.json to build/private/supply_links.json")
+    else:
+        print("    NOTE: data/ddg_supply_links.json not found — supply-web page will show empty state")
+
+    if tmp_clone:
+        shutil.rmtree(tmp_clone, ignore_errors=True)
+    print(f"    Copied {n} dossiers + index.json to build/private/dossiers/")
+    return True
+
 
 def build():
     # Step 0: Sync data from handbook repo
@@ -1694,6 +1811,12 @@ def build():
         if os.path.exists(src_cf):
             shutil.copy2(src_cf, dst_cf)
             print(f"  ✓ Copied {cf_file} to build/")
+
+    # ── PRIVATE gated dossiers (pulled from Ai-Project; served behind Access) ──
+    try:
+        sync_private_dossiers()
+    except Exception as e:
+        print(f"  NOTE: private dossier sync skipped ({e})")
 
 
 if __name__ == '__main__':
