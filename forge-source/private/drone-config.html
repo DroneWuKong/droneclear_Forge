@@ -1,0 +1,415 @@
+<!DOCTYPE html><html lang="en"><head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0">
+<meta name="robots" content="noindex, nofollow">
+<title>Configurator — DroneWuKong Intel</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600;700&family=DM+Sans:wght@400;600;700&family=Barlow+Condensed:wght@700;900&display=swap');
+:root{--bg:#0c0c0a;--bg2:#141410;--bg3:#1c1c18;--border:#2a2a22;--green:#22c55e;--blue:#3b82f6;--amber:#f59e0b;--red:#d62828;--text:#d8d4ca;--text-d2:#7a7268;--mono:'JetBrains Mono',monospace;--head:'Barlow Condensed',sans-serif;--body:'DM Sans',system-ui,sans-serif}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--bg);color:var(--text);font-family:var(--body);min-height:100vh;display:flex;flex-direction:column}
+body::before{content:'';position:fixed;inset:0;background:repeating-linear-gradient(0deg,transparent,transparent 2px,rgba(0,0,0,.04) 2px,rgba(0,0,0,.04) 4px);pointer-events:none;z-index:5}
+nav{height:48px;flex:0 0 48px;display:flex;align-items:center;padding:0 20px;border-bottom:1px solid var(--border);background:rgba(12,12,10,.96);z-index:10}
+.nav-inner{display:flex;align-items:center;gap:14px;width:100%}
+.nav-logo{font:700 15px var(--mono);color:var(--green);text-decoration:none;white-space:nowrap}
+.gate-badge{font:600 10px var(--mono);color:var(--red);border:1px solid var(--red);border-radius:3px;padding:2px 6px;letter-spacing:.05em}
+.nav-pills{display:flex;gap:6px;margin-left:auto;flex-wrap:wrap}
+.nav-pill{font:600 12px var(--mono);color:var(--text-d2);text-decoration:none;padding:5px 10px;border:1px solid var(--border);border-radius:4px}
+.nav-pill:hover{color:var(--text);border-color:var(--text-d2)}
+.nav-pill.active{color:var(--green);border-color:var(--green)}
+.wrap{max-width:1180px;width:100%;margin:0 auto;padding:30px 20px 60px;flex:1;position:relative;z-index:6}
+h1{font:900 38px var(--head);text-transform:uppercase;letter-spacing:.5px;line-height:1}
+.sub{font:400 13px var(--mono);color:var(--text-d2);margin:8px 0 22px;max-width:780px;line-height:1.5}
+.layout{display:grid;grid-template-columns:300px 1fr;gap:22px;align-items:start}
+@media(max-width:880px){.layout{grid-template-columns:1fr}.nav-pills{gap:4px}.nav-pill{padding:5px 7px}}
+.panel{background:var(--bg2);border:1px solid var(--border);border-radius:8px;padding:18px}
+.panel h2{font:700 12px var(--mono);color:var(--green);text-transform:uppercase;letter-spacing:.08em;margin-bottom:14px;border-bottom:1px solid var(--border);padding-bottom:8px}
+.field{margin-bottom:14px}
+.field label{display:block;font:600 11px var(--mono);color:var(--text-d2);text-transform:uppercase;letter-spacing:.05em;margin-bottom:5px}
+.field .val{float:right;color:var(--amber);font-weight:700}
+.field select,.field input[type=number]{width:100%;background:var(--bg3);border:1px solid var(--border);border-radius:5px;color:var(--text);font:600 13px var(--mono);padding:8px 10px}
+.field input[type=range]{width:100%;accent-color:var(--green)}
+.seg{display:flex;gap:4px;flex-wrap:wrap}
+.seg button{flex:1;min-width:42px;background:var(--bg3);border:1px solid var(--border);border-radius:5px;color:var(--text-d2);font:600 12px var(--mono);padding:7px 4px;cursor:pointer}
+.seg button.on{color:var(--bg);background:var(--green);border-color:var(--green)}
+.chkrow{display:flex;align-items:center;gap:8px;font:600 12px var(--mono);color:var(--text-d2);cursor:pointer;user-select:none;margin-bottom:10px}
+.btn{width:100%;background:var(--green);color:#08140a;border:none;border-radius:6px;font:700 14px var(--mono);padding:11px;cursor:pointer;text-transform:uppercase;letter-spacing:.05em}
+.btn:hover{filter:brightness(1.08)}
+.btn.sec{background:transparent;color:var(--text);border:1px solid var(--border)}
+.btn.sec:hover{border-color:var(--text-d2)}
+.results .empty{color:var(--text-d2);font:400 13px var(--mono);text-align:center;padding:70px 20px;border:1px dashed var(--border);border-radius:8px}
+.gauges{display:flex;flex-wrap:wrap;gap:10px;margin-bottom:14px}
+.g{flex:1;min-width:96px;background:var(--bg2);border:1px solid var(--border);border-radius:6px;padding:10px 12px}
+.g .v{font:900 22px var(--head)}
+.g .l{font:600 9px var(--mono);color:var(--text-d2);text-transform:uppercase;letter-spacing:.05em;margin-top:2px}
+.g.ok .v{color:var(--green)} .g.warn .v{color:var(--amber)} .g.bad .v{color:var(--red)} .g.neutral .v{color:var(--text)}
+.alerts{margin-bottom:14px}
+.alert{font:600 12px var(--mono);padding:8px 11px;border-radius:5px;margin-bottom:6px;border-left:3px solid}
+.alert.warn{color:var(--amber);background:rgba(245,158,11,.07);border-color:var(--amber)}
+.alert.bad{color:var(--red);background:rgba(214,40,40,.07);border-color:var(--red)}
+.alert.ok{color:var(--green);background:rgba(34,197,94,.07);border-color:var(--green)}
+table{width:100%;border-collapse:collapse;font-size:13px}
+th{text-align:left;font:700 9px var(--mono);color:var(--text-d2);text-transform:uppercase;letter-spacing:.05em;padding:6px;border-bottom:1px solid var(--border)}
+td{padding:8px 6px;border-bottom:1px dotted var(--border);vertical-align:middle}
+.slot{font:600 11px var(--mono);color:var(--text-d2);white-space:nowrap}
+.pname b{color:var(--text);font-weight:600}
+.pname .mfr{display:block;font:400 10px var(--mono);color:var(--text-d2)}
+td.num{text-align:right;font:600 12px var(--mono);white-space:nowrap}
+.swap{width:100%;max-width:230px;background:var(--bg3);border:1px solid var(--border);border-radius:4px;color:var(--text);font:400 11px var(--mono);padding:4px 6px;margin-top:4px}
+.miss{color:var(--red);font-style:italic}
+tfoot td{font:700 12px var(--mono);border-top:1px solid var(--border)}
+.actions{display:flex;gap:10px;margin-top:16px;flex-wrap:wrap}
+.actions .btn{width:auto;flex:1;min-width:160px}
+.note{margin-top:24px;font:400 12px var(--mono);color:var(--text-d2);border-left:2px solid var(--border);padding-left:12px;line-height:1.6;max-width:880px}
+.tag{font:700 8px var(--mono);padding:1px 5px;border-radius:3px;margin-left:5px}
+.tag.ndaa{color:var(--green);border:1px solid var(--green)}
+</style></head><body>
+<nav><div class="nav-inner">
+  <a class="nav-logo" href="/private/">DRONEWUKONG // INTEL</a>
+  <span class="gate-badge">● PRIVATE</span>
+  <div class="nav-pills">
+    <a class="nav-pill" href="/private/ddg/">DDG Tracker</a>
+    <a class="nav-pill" href="/private/dossiers/">Dossiers</a>
+    <a class="nav-pill" href="/private/supply-web/">Supply Web</a>
+    <a class="nav-pill" href="/private/components-bom/">Component BOMs</a>
+    <a class="nav-pill active" href="/private/drone-config/">Configurator</a>
+  </div>
+</div></nav>
+<div class="wrap">
+  <h1>Build Configurator</h1>
+  <div class="sub">
+    Constraint-driven auto-builder. Set a prop class, battery, payload and a
+    flight-time target — it greedily picks a <b>compatibility-valid</b>
+    component build from the parts DB (same 12-check engine as the Builder),
+    then estimates thrust-to-weight and hover endurance. Thrust &amp; flight-time
+    figures are <b>first-order estimates</b>, not bench data.
+  </div>
+
+  <div class="layout">
+    <div class="panel" id="controls">
+      <h2>Constraints</h2>
+      <div class="field"><label>Prop class</label><div class="seg" id="seg-prop"></div></div>
+      <div class="field"><label>Battery</label><div class="seg" id="seg-cells"></div></div>
+      <div class="field"><label>Payload <span class="val" id="v-payload">0 g</span></label>
+        <input type="range" id="payload" min="0" max="5000" step="50" value="0"></div>
+      <div class="field"><label>Target flight time <span class="val" id="v-time">15 min</span></label>
+        <input type="range" id="time" min="3" max="60" step="1" value="15"></div>
+      <div class="field"><label>Optimize for</label>
+        <select id="optimize">
+          <option value="time">Max flight time</option>
+          <option value="cost">Lowest cost</option>
+          <option value="weight">Lowest weight</option>
+        </select></div>
+      <label class="chkrow"><input type="checkbox" id="ndaa"> NDAA-compliant parts only</label>
+      <div class="field"><label>Budget cap (USD, optional)</label>
+        <input type="number" id="budget" min="0" step="50" placeholder="no cap"></div>
+      <button class="btn" id="go">Generate build</button>
+    </div>
+
+    <div class="results" id="results">
+      <div class="empty">Set your constraints and hit <b>Generate build</b>.</div>
+    </div>
+  </div>
+
+  <div class="note" id="methodology"></div>
+</div>
+
+<script>
+// Gated, client-side. Uses the public parts DB (/static/forge_database.json).
+// Auto-builder = greedy slot fill (frame → motors → power → props → battery →
+// FPV → support), each candidate validated by the Builder's compatibility
+// rules (mirrored below). Thrust/endurance are estimated from prop class +
+// cells + AUW; they are order-of-magnitude, not measured.
+
+// ── Compatibility rules — mirrored verbatim from forge-source/index.html
+// (the Builder's 12-check engine). Keep in sync if the Builder's change. ──
+const COMPAT_RULES={
+  motors:[
+    (p,bi)=>{const b=bi.batteries;if(!b?.cell_count||!p.cell_count_min)return null;const ok=b.cell_count>=p.cell_count_min&&(!p.cell_count_max||b.cell_count<=p.cell_count_max);return ok?{r:'yes'}:{r:'no',why:`Needs ≥${p.cell_count_min}S`};},
+    (p,bi)=>{const f=bi.frames;if(!f?.prop_size_max_in||!p.prop_size_min_in||!p.prop_size_max_in)return null;const ok=f.prop_size_max_in>=p.prop_size_min_in&&f.prop_size_max_in<=p.prop_size_max_in;return ok?{r:'yes'}:{r:'no',why:`Props ${p.prop_size_min_in}–${p.prop_size_max_in}"`};},
+    (p,bi)=>{const f=bi.frames;if(!f?.motor_mount_hole_spacing_mm||!p.motor_mount_hole_spacing_mm)return null;const ok=f.motor_mount_hole_spacing_mm===p.motor_mount_hole_spacing_mm;return ok?{r:'yes'}:{r:'no',why:`Mount ${p.motor_mount_hole_spacing_mm}mm`};},
+  ],
+  escs:[
+    (p,bi)=>{const b=bi.batteries;if(!b?.cell_count||!p.cell_count_min||!p.cell_count_max)return null;const ok=b.cell_count>=p.cell_count_min&&b.cell_count<=p.cell_count_max;return ok?{r:'yes'}:{r:'no',why:`Needs ${p.cell_count_min}–${p.cell_count_max}S`};},
+  ],
+  flight_controllers:[
+    (p,bi)=>{const b=bi.batteries;if(!b?.cell_count||!p.cell_count_min||!p.cell_count_max)return null;const ok=b.cell_count>=p.cell_count_min&&b.cell_count<=p.cell_count_max;return ok?{r:'yes'}:{r:'no',why:`Needs ${p.cell_count_min}–${p.cell_count_max}S`};},
+    (p,bi)=>{const f=bi.frames;if(!f?.fc_mounting_patterns_mm||!p.mounting_pattern_mm)return null;const pats=Array.isArray(f.fc_mounting_patterns_mm)?f.fc_mounting_patterns_mm:[f.fc_mounting_patterns_mm];const ok=pats.includes(p.mounting_pattern_mm);return ok?{r:'yes'}:{r:'no',why:`Frame: ${pats.map(x=>x+'mm').join('/')}`};},
+  ],
+  stacks:[
+    (p,bi)=>{const b=bi.batteries;if(!b?.cell_count||!p.cell_count_min||!p.cell_count_max)return null;const ok=b.cell_count>=p.cell_count_min&&b.cell_count<=p.cell_count_max;return ok?{r:'yes'}:{r:'no',why:`Needs ${p.cell_count_min}–${p.cell_count_max}S`};},
+    (p,bi)=>{const f=bi.frames;if(!f?.fc_mounting_patterns_mm||!p.mounting_pattern_mm)return null;const pats=Array.isArray(f.fc_mounting_patterns_mm)?f.fc_mounting_patterns_mm:[f.fc_mounting_patterns_mm];const ok=pats.includes(p.mounting_pattern_mm);return ok?{r:'yes'}:{r:'no',why:`Frame: ${pats.map(x=>x+'mm').join('/')}`};},
+  ],
+  propellers:[
+    (p,bi)=>{const f=bi.frames;if(!f?.prop_size_max_in||!p.diameter_in)return null;const ok=Math.abs(p.diameter_in-f.prop_size_max_in)<=0.5;return ok?{r:'yes'}:{r:'no',why:`Frame: ${f.prop_size_max_in}"`};},
+    (p,bi)=>{const m=bi.motors;if(!m?.prop_size_min_in||!m?.prop_size_max_in||!p.diameter_in)return null;const ok=p.diameter_in>=m.prop_size_min_in&&p.diameter_in<=m.prop_size_max_in;return ok?{r:'yes'}:{r:'no',why:`Motor: ${m.prop_size_min_in}–${m.prop_size_max_in}"`};},
+  ],
+  batteries:[
+    (p,bi)=>{const fc=bi.flight_controllers||bi.stacks;if(!fc?.cell_count_min||!fc?.cell_count_max||!p.cell_count)return null;const ok=p.cell_count>=fc.cell_count_min&&p.cell_count<=fc.cell_count_max;return ok?{r:'yes'}:{r:'no',why:`FC: ${fc.cell_count_min}–${fc.cell_count_max}S`};},
+    (p,bi)=>{const e=bi.escs;if(!e?.cell_count_min||!e?.cell_count_max||!p.cell_count)return null;const ok=p.cell_count>=e.cell_count_min&&p.cell_count<=e.cell_count_max;return ok?{r:'yes'}:{r:'no',why:`ESC: ${e.cell_count_min}–${e.cell_count_max}S`};},
+    (p,bi)=>{const m=bi.motors;if(!m?.cell_count_min||!p.cell_count)return null;const ok=p.cell_count>=m.cell_count_min;return ok?{r:'yes'}:{r:'no',why:`Motor: min ${m.cell_count_min}S`};},
+  ],
+  fpv_cameras:[
+    (p,bi)=>{const v=bi.video_transmitters;if(!v?.video_system||!p.video_system)return null;const vs=s=>s.toLowerCase().replace(/\s+/g,'');const ok=vs(v.video_system)===vs(p.video_system)||vs(v.video_system).includes(vs(p.video_system))||vs(p.video_system).includes(vs(v.video_system));return ok?{r:'yes'}:{r:'no',why:`VTX: ${v.video_system}`};},
+  ],
+  video_transmitters:[
+    (p,bi)=>{const c=bi.fpv_cameras;if(!c?.video_system||!p.video_system)return null;const vs=s=>s.toLowerCase().replace(/\s+/g,'');const ok=vs(p.video_system)===vs(c.video_system)||vs(p.video_system).includes(vs(c.video_system))||vs(c.video_system).includes(vs(p.video_system));return ok?{r:'yes'}:{r:'no',why:`Camera: ${c.video_system}`};},
+  ],
+};
+function compatFor(cat,part,idx){
+  const rules=COMPAT_RULES[cat];if(!rules)return{r:null};
+  let any=false;
+  for(const rule of rules){const res=rule(part,idx);if(res===null)continue;any=true;if(res.r==='no')return res;}
+  return any?{r:'yes'}:{r:null};
+}
+
+// ── Estimation tables (rough, community-derived) ──
+// Per-motor static thrust ceiling (g) by prop class × cells.
+const THRUST={5:{4:1100,6:1700,8:2100},7:{4:1800,6:2800,8:3500,12:5000},10:{6:4200,8:5200,12:7000},13:{6:6000,12:9500}};
+// Hover efficiency (W per kg AUW) by prop class — bigger props hover cheaper.
+const EFF={5:280,7:200,10:150,13:125};
+// Fallback component weights (g) when a part has no weight_g, so AUW/TWR stay
+// realistic. Frame/motor scale with prop class; battery from pack Wh (~7 g/Wh).
+const WFALL={frames:{5:90,7:160,10:320,13:520},motors:{5:30,7:65,10:115,13:165}};
+function wOf(p,cat){
+  if(p._w>0)return p._w;
+  if(cat==='batteries'&&p.capacity_mah&&p.cell_count)return Math.round(p.capacity_mah/1000*p.cell_count*3.7*7);
+  if(WFALL[cat])return near(WFALL[cat],target.prop);
+  return ({stacks:14,flight_controllers:8,escs:16,propellers:6,fpv_cameras:8,video_transmitters:9,receivers:5,gps_modules:14,antennas:8})[cat]||10;
+}
+// Minimum ESC continuous current (A/motor) by prop class.
+const ESC_MIN={5:35,7:45,10:65,13:80};
+function near(map,key){const ks=Object.keys(map).map(Number);return map[ks.reduce((a,b)=>Math.abs(b-key)<Math.abs(a-key)?b:a)];}
+function thrustPerMotor(prop,cells){const t=near(THRUST,prop);return t[cells]||near(t,cells)||Math.round(prop*prop*cells*8);}
+function effWkg(prop){return near(EFF,prop);}
+function escMinA(prop){return near(ESC_MIN,prop);}
+
+let DB=null,P={};
+const PROPS=[5,7,10],CELLS=[4,6,8,12];
+let target={prop:5,cells:6,payload:0,time:15,optimize:'time',ndaa:false,budget:null};
+
+fetch('/static/forge_database.json',{cache:'no-store'}).then(r=>r.ok?r.json():null).then(db=>{
+  if(!db){document.getElementById('results').innerHTML='<div class="empty">parts database unavailable.</div>';return;}
+  DB=db;
+  for(const cat in db.components)P[cat]=db.components[cat].map(c=>({...c,_cat:cat,
+    _w:(typeof c.weight_g==='number'?c.weight_g:((c.schema_data||{}).weight_g||0)),
+    _p:(typeof c.approx_price==='number'?c.approx_price:(c.price_usd||0)),
+    _ndaa:!!(c.ndaa_compliant||(c.compliance&&c.compliance.ndaa_compliant))}));
+  initControls();
+});
+
+function initControls(){
+  const sp=document.getElementById('seg-prop');
+  sp.innerHTML=PROPS.map(v=>`<button data-v="${v}">${v}"</button>`).join('');
+  const sc=document.getElementById('seg-cells');
+  sc.innerHTML=CELLS.map(v=>`<button data-v="${v}">${v}S</button>`).join('');
+  seg(sp,v=>{target.prop=+v;});seg(sc,v=>{target.cells=+v;});
+  setOn(sp,target.prop);setOn(sc,target.cells);
+  const py=document.getElementById('payload'),tm=document.getElementById('time');
+  py.oninput=()=>{target.payload=+py.value;document.getElementById('v-payload').textContent=(+py.value>=1000?(py.value/1000)+' kg':py.value+' g');};
+  tm.oninput=()=>{target.time=+tm.value;document.getElementById('v-time').textContent=tm.value+' min';};
+  document.getElementById('optimize').onchange=e=>target.optimize=e.target.value;
+  document.getElementById('ndaa').onchange=e=>target.ndaa=e.target.checked;
+  document.getElementById('budget').oninput=e=>target.budget=e.target.value?+e.target.value:null;
+  document.getElementById('go').onclick=()=>{const b=solve();renderBuild(b);};
+  document.getElementById('methodology').innerHTML=
+    "Auto-build is a greedy slot fill: frame → motors → power (AIO stack preferred, "+
+    "else FC+ESC) → props → battery → FPV pair → support, with every candidate run "+
+    "through the Builder's compatibility rules. Estimates: per-motor static thrust from "+
+    "a prop-class×cells table; hover power = AUW × an efficiency factor (W/kg) that "+
+    "improves with prop size; endurance = 80% usable pack Wh ÷ hover power. "+
+    "Thrust-to-weight and flight time are first-order — validate on the bench. "+
+    "Gated content: do not screenshot or redistribute.";
+}
+function seg(el,cb){el.querySelectorAll('button').forEach(b=>b.onclick=()=>{el.querySelectorAll('button').forEach(x=>x.classList.remove('on'));b.classList.add('on');cb(b.dataset.v);});}
+function setOn(el,v){el.querySelectorAll('button').forEach(b=>b.classList.toggle('on',+b.dataset.v===+v));}
+
+// ── greedy solver ──
+function pick(cat,filterFn,scoreFn){
+  let list=(P[cat]||[]).filter(filterFn);
+  if(target.ndaa)list=list.filter(p=>p._ndaa);
+  if(!list.length&&target.ndaa)list=(P[cat]||[]).filter(filterFn); // relax NDAA if it empties a slot
+  if(!list.length)return null;
+  list.sort((a,b)=>scoreFn(a)-scoreFn(b));
+  return list[0];
+}
+const byCost=p=>p._p||1e9, byWeight=p=>p._w||1e9;
+function tiebreak(){return target.optimize==='cost'?byCost:byWeight;}
+
+function solve(){
+  const t=target,idx={},warn=[];
+  // 1) FRAME — prop class match, prefer quad
+  const frame=pick('frames',
+    f=>f.prop_size_max_in&&Math.abs(f.prop_size_max_in-t.prop)<=0.6,
+    f=>(f.motor_count&&f.motor_count!==4?1:0)*1e6+tiebreak()(f));
+  if(frame)idx.frames=frame;
+  const motorCount=(frame&&frame.motor_count)||4;
+  // 2) MOTORS — compat vs frame + target cells (proxy battery), thrust-biased
+  const fakeBat={cell_count:t.cells};
+  const motor=pick('motors',
+    m=>compatFor('motors',m,{frames:frame,batteries:fakeBat}).r!=='no'
+       &&m.prop_size_max_in&&m.prop_size_min_in
+       &&t.prop>=m.prop_size_min_in-0.6&&t.prop<=m.prop_size_max_in+0.6,
+    m=>{ // for time/weight bias light; payload/lift needs bigger stator → bias larger stator when payload high
+      const big=t.optimize==='cost'?byCost(m):(t.payload>800? -(parseInt(m.stator_size)||0): byWeight(m));
+      return big;});
+  if(motor)idx.motors=motor;
+  // 3) POWER — try AIO stack, else FC + ESC
+  const stack=pick('stacks',
+    s=>compatFor('stacks',s,{frames:frame,batteries:fakeBat}).r!=='no'
+       &&(!s.esc_current_a||s.esc_current_a>=escMinA(t.prop)*0.7),
+    tiebreak());
+  let fc=null,esc=null;
+  if(stack){idx.stacks=stack;}
+  else{
+    fc=pick('flight_controllers',f=>compatFor('flight_controllers',f,{frames:frame,batteries:fakeBat}).r!=='no',tiebreak());
+    esc=pick('escs',e=>compatFor('escs',e,{batteries:fakeBat}).r!=='no'
+        &&(!e.continuous_current_per_motor_a||e.continuous_current_per_motor_a>=escMinA(t.prop)*0.7),tiebreak());
+    if(fc)idx.flight_controllers=fc;if(esc)idx.escs=esc;
+    if(!fc||!esc)warn.push({t:'warn',m:'No single AIO stack fit — used discrete FC + ESC (verify the stack height/mount).'});
+  }
+  // 4) PROPS — compat vs frame + motor
+  const prop=pick('propellers',
+    pr=>compatFor('propellers',pr,{frames:frame,motors:motor}).r!=='no'&&pr.diameter_in,
+    pr=>tiebreak()(pr));
+  if(prop)idx.propellers=prop;
+  // 5) BATTERY — cell match + compat; choose to hit flight-time target within TWR budget
+  const batCands=(P['batteries']||[]).filter(b=>b.cell_count===t.cells&&b.capacity_mah
+      &&compatFor('batteries',b,idx).r!=='no'&&(!target.ndaa||b._ndaa));
+  let battery=chooseBattery(batCands,idx,motor,motorCount,frame);
+  if(battery)idx.batteries=battery;
+  // 6) FPV pair — pick VTX then matching camera
+  const vtx=pick('video_transmitters',v=>!!v.video_system,tiebreak());
+  if(vtx)idx.video_transmitters=vtx;
+  const cam=pick('fpv_cameras',c=>compatFor('fpv_cameras',c,{video_transmitters:vtx}).r!=='no'&&c.video_system,tiebreak());
+  if(cam)idx.fpv_cameras=cam;
+  // 7) support — lightweight defaults
+  const rx=pick('receivers',()=>true,byWeight);if(rx)idx.receivers=rx;
+  if(t.payload>0||t.prop>=7){const gps=pick('gps_modules',()=>true,byWeight);if(gps)idx.gps_modules=gps;}
+  const ant=pick('antennas',()=>true,byWeight);if(ant)idx.antennas=ant;
+
+  return finalize(idx,motorCount,warn);
+}
+
+function chooseBattery(cands,idx,motor,motorCount,frame){
+  if(!cands.length)return null;
+  const scored=cands.map(b=>({b,sim:simulate({...idx,batteries:b},motorCount)}));
+  // keep packs that leave a sane thrust envelope — not underbuilt (TWR too high
+  // ⇒ pack too small to be the real build) nor unflyable (TWR < 2). Relax if empty.
+  let pool=scored.filter(x=>x.sim.twr>=2&&x.sim.twr<=12);
+  if(!pool.length)pool=scored.filter(x=>x.sim.twr>=1.6);
+  if(!pool.length)pool=scored;
+  // honour the flight-time target as a soft constraint for every mode
+  const meetT=pool.filter(x=>x.sim.time>=target.time);
+  // can't reach the target ⇒ best effort: the longest-endurance pack
+  if(!meetT.length){pool.sort((a,b)=>b.sim.time-a.sim.time);return pool[0].b;}
+  if(target.optimize==='cost'){meetT.sort((a,b)=>(a.b._p||1e9)-(b.b._p||1e9));return meetT[0].b;}
+  if(target.optimize==='weight'){meetT.sort((a,b)=>(a.b._w||1e9)-(b.b._w||1e9));return meetT[0].b;}
+  // time: smallest pack that still meets the target (least overbuild)
+  meetT.sort((a,b)=>a.sim.time-b.sim.time);return meetT[0].b;
+}
+
+function sumWeight(idx,motorCount){
+  let w=0;
+  for(const cat in idx){const m=({motors:motorCount,propellers:motorCount})[cat]||1;w+=wOf(idx[cat],cat)*m;}
+  return w+target.payload;
+}
+function simulate(idx,motorCount){
+  const auw=sumWeight(idx,motorCount);
+  const tpm=thrustPerMotor(target.prop,target.cells);
+  const maxThrust=tpm*motorCount;
+  const twr=auw>0?maxThrust/auw:0;
+  const b=idx.batteries;
+  let time=0;
+  if(b&&b.capacity_mah){const wh=b.capacity_mah/1000*target.cells*3.7;const pw=(auw/1000)*effWkg(target.prop);time=pw>0?(wh*0.8/pw*60):0;}
+  return {auw,maxThrust,twr,time};
+}
+const SLOT_LBL={frames:'frame',motors:'motors',stacks:'AIO stack',flight_controllers:'flight controller',escs:'ESC',propellers:'propellers',batteries:'battery',fpv_cameras:'FPV camera',video_transmitters:'video TX',receivers:'receiver',gps_modules:'GPS',antennas:'antenna'};
+function finalize(idx,motorCount,warn){
+  const sim=simulate(idx,motorCount);
+  // missing essential slots
+  const miss=[];
+  ['frames','motors','propellers','batteries'].forEach(c=>{if(!idx[c])miss.push(SLOT_LBL[c]);});
+  if(!idx.stacks&&!(idx.flight_controllers&&idx.escs))miss.push('power (stack or FC+ESC)');
+  if(miss.length)warn.unshift({t:'bad',m:`No compatible ${miss.join(', ')} found for ${target.prop}" / ${target.cells}S in the parts DB — try a different prop class or cell count.`});
+  // NDAA relaxation: filter emptied a slot so a non-NDAA part was used
+  if(target.ndaa){
+    const relaxed=Object.keys(idx).filter(c=>!idx[c]._ndaa).map(c=>SLOT_LBL[c]);
+    if(relaxed.length)warn.push({t:'warn',m:`NDAA-only could not be met for: ${relaxed.join(', ')} — no compliant + compatible option in the DB, so a non-NDAA part was substituted.`});
+  }
+  // alerts
+  if(sim.twr&&sim.twr<2)warn.unshift({t:sim.twr<1.5?'bad':'warn',m:`Thrust-to-weight ≈ ${sim.twr.toFixed(2)}:1 — ${sim.twr<1.5?'will struggle to fly':'sluggish; lighter payload or bigger motors recommended'}.`});
+  if(sim.time&&sim.time<target.time)warn.push({t:'warn',m:`Estimated endurance ${Math.round(sim.time)} min is below your ${target.time} min target — try a larger pack or lighter payload.`});
+  if(idx.batteries&&sim.twr>=2&&(!sim.time||sim.time>=target.time))warn.push({t:'ok',m:`Build hits target: TWR ${sim.twr.toFixed(2)}:1, ≈${Math.round(sim.time)} min endurance.`});
+  return {idx,motorCount,sim,warn};
+}
+
+// ── render ──
+const SLOTS_ORDER=[['frames','Frame'],['motors','Motors'],['stacks','AIO stack'],['flight_controllers','Flight controller'],['escs','ESC'],['propellers','Propellers'],['batteries','Battery'],['fpv_cameras','FPV camera'],['video_transmitters','Video TX'],['receivers','Receiver'],['gps_modules','GPS'],['antennas','Antenna']];
+let CURRENT=null;
+function renderBuild(b){
+  CURRENT=b;
+  const {idx,motorCount,sim,warn}=b;
+  const tcost=Object.keys(idx).reduce((n,c)=>n+(idx[c]._p||0)*(({motors:motorCount,propellers:motorCount})[c]||1),0);
+  const g=(cls,v,l)=>`<div class="g ${cls}"><div class="v">${v}</div><div class="l">${l}</div></div>`;
+  const twrCls=!sim.twr?'neutral':sim.twr>=2?'ok':sim.twr>=1.5?'warn':'bad';
+  const timeCls=!sim.time?'neutral':sim.time>=target.time?'ok':'warn';
+  let html='<div class="gauges">'+
+    g(twrCls,sim.twr?sim.twr.toFixed(2)+':1':'—','thrust : weight')+
+    g(timeCls,sim.time?Math.round(sim.time)+' min':'—','est. endurance')+
+    g('neutral',(sim.auw>=1000?(sim.auw/1000).toFixed(2)+' kg':Math.round(sim.auw)+' g'),'AUW (incl payload)')+
+    g('neutral','$'+Math.round(tcost).toLocaleString(),'parts cost')+
+    '</div>';
+  if(warn.length)html+='<div class="alerts">'+warn.map(w=>`<div class="alert ${w.t}">${w.m}</div>`).join('')+'</div>';
+  html+='<table><thead><tr><th>Slot</th><th>Part</th><th class="num">Qty</th><th class="num">Wt (g)</th><th class="num">$</th></tr></thead><tbody>';
+  SLOTS_ORDER.forEach(([cat,label])=>{
+    const part=idx[cat];if(!part&&!['frames','motors','stacks','batteries','propellers'].includes(cat))return;
+    const qty=({motors:motorCount,propellers:motorCount})[cat]||1;
+    if(!part){html+=`<tr><td class="slot">${label}</td><td class="miss">— none found —</td><td class="num">${qty}</td><td class="num">—</td><td class="num">—</td></tr>`;return;}
+    html+=`<tr><td class="slot">${label}</td>`+
+      `<td class="pname"><b>${esc(part.name)}</b>${part._ndaa?'<span class="tag ndaa">NDAA</span>':''}<span class="mfr">${esc(part.manufacturer||'')}</span>`+
+      swapHTML(cat,part,idx)+`</td>`+
+      `<td class="num">${qty}</td><td class="num">${part._w?(part._w*qty):('~'+wOf(part,cat)*qty)}</td><td class="num">${part._p?'$'+(part._p*qty).toLocaleString():'—'}</td></tr>`;
+  });
+  html+=`</tbody><tfoot><tr><td colspan="3">Total</td><td class="num">${sim.auw-target.payload?Math.round(sim.auw-target.payload):'—'}</td><td class="num">$${Math.round(tcost).toLocaleString()}</td></tr></tfoot></table>`;
+  html+='<div class="actions">'+
+    '<button class="btn" id="send">Send to Builder →</button>'+
+    '<button class="btn sec" id="copy">Copy BOM</button>'+
+    '<button class="btn sec" id="regen">Regenerate</button></div>';
+  document.getElementById('results').innerHTML=html;
+  document.getElementById('send').onclick=sendToBuilder;
+  document.getElementById('copy').onclick=copyBOM;
+  document.getElementById('regen').onclick=()=>renderBuild(solve());
+  bindSwaps();
+}
+function swapHTML(cat,part,idx){
+  // alternatives that still pass compat against the current build
+  const alts=(P[cat]||[]).filter(p=>p.pid!==part.pid&&compatFor(cat,p,idx).r!=='no'&&(!target.ndaa||p._ndaa));
+  if(alts.length<1)return'';
+  alts.sort((a,b)=>(a._p||1e9)-(b._p||1e9));
+  return `<select class="swap" data-cat="${cat}"><option value="">swap… (${alts.length} compatible)</option>`+
+    alts.slice(0,40).map(p=>`<option value="${esc(p.pid)}">${esc(p.name)} · ${p._p?'$'+p._p:'?'} · ${p._w||'?'}g</option>`).join('')+'</select>';
+}
+function bindSwaps(){
+  document.querySelectorAll('.swap').forEach(sel=>sel.onchange=()=>{
+    const cat=sel.dataset.cat,pid=sel.value;if(!pid)return;
+    const part=(P[cat]||[]).find(p=>p.pid===pid);if(!part)return;
+    CURRENT.idx[cat]=part;
+    const b=finalize(CURRENT.idx,CURRENT.motorCount,[]);
+    renderBuild(b);
+  });
+}
+function sendToBuilder(){
+  const {idx,motorCount}=CURRENT;const build=[];
+  for(const cat in idx){const q=({motors:motorCount,propellers:motorCount})[cat]||1;for(let i=0;i<q;i++)build.push({pid:idx[cat].pid,name:idx[cat].name,cat});}
+  try{localStorage.setItem('forge-build',JSON.stringify(build));location.href='/builder/';}
+  catch(e){alert('Could not write build to local storage.');}
+}
+function copyBOM(){
+  const {idx,motorCount,sim}=CURRENT;const lines=['# Forge auto-build',''];
+  SLOTS_ORDER.forEach(([cat,label])=>{const p=idx[cat];if(!p)return;const q=({motors:motorCount,propellers:motorCount})[cat]||1;lines.push(`${label}: ${p.name}${q>1?' ×'+q:''}${p._p?' ($'+p._p*q+')':''}`);});
+  lines.push('',`AUW ~${Math.round(sim.auw)} g · TWR ~${sim.twr?sim.twr.toFixed(2):'?'}:1 · ~${Math.round(sim.time)} min (estimated)`);
+  navigator.clipboard.writeText(lines.join('\n')).then(()=>{const b=document.getElementById('copy');b.textContent='Copied ✓';setTimeout(()=>b.textContent='Copy BOM',1500);});
+}
+function esc(s){return String(s==null?"":s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;"}[c]));}
+</script>
+</body></html>
