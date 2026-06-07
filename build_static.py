@@ -103,6 +103,7 @@ PAGES = {
     'private/dossiers.html': 'private/dossiers/index.html',
     'private/supply-web.html': 'private/supply-web/index.html',
     'private/components-bom.html': 'private/components-bom/index.html',
+    'private/drone-config.html': 'private/drone-config/index.html',
     'ddg.html': 'private/ddg/index.html',
 }
 
@@ -979,6 +980,11 @@ SEO_META = {
         'Component BOMs — DDG Platform Bill-of-Materials (Private)',
         'Gated, best-effort per-platform bill-of-materials reconstruction for Drone Dominance / Gauntlet participant platforms, inverted from confidence-tagged OSINT supply-chain links.',
         'DDG component BOM, drone bill of materials, supply chain intelligence, platform teardown',
+    ),
+    'private/drone-config.html': (
+        'Build Configurator — Constraint-Driven Auto-Builder (Private)',
+        'Gated parts auto-builder: set prop class, battery, payload and a flight-time target to get a compatibility-valid component build with estimated thrust-to-weight and endurance.',
+        'drone build configurator, auto-builder, FPV component selector, thrust to weight, flight time estimator',
     ),
     'waiver.html': (
         'Drone Document Builder — Part 107, COI, Ops Manuals & More',
