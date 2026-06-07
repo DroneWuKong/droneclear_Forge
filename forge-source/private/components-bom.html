@@ -148,8 +148,29 @@ const SLOT_ORDER=Object.fromEntries(SLOTS.map((s,i)=>[s[0],i]));
 
 const STOP=new Set(["inc","llc","corp","co","ltd","usa","us","the","and","group","holdings","technologies","technology","defense","aerospace","systems","system","drones","drone","reality","ventures","solutions","government","industries","tech","partners","company","skyfall"]);
 function canon(s){return String(s||"").toLowerCase().replace(/\([^)]*\)/g," ").replace(/[^a-z0-9 ]/g," ").split(/\s+/).filter(w=>w&&!STOP.has(w)).join(" ");}
-function coKey(s){return canon(s).split(" ").slice(0,2).join(" ");}
-function nameMatch(a,b){a=canon(a);b=canon(b);if(!a||!b)return false;return a===b||a.includes(b)||b.includes(a)||a.split(" ")[0]===b.split(" ")[0];}
+function toks(s){const c=canon(s);return new Set(c?c.split(" "):[]);}
+function overlap(a,b){let n=0;a.forEach(t=>{if(b.has(t))n++;});return n;}
+// Tight platform -> drone_model match: score on model NAME tokens only
+// (manufacturer strings are noisy, e.g. "Red Cat Holdings / Teal Drones"),
+// require >=2 shared tokens, tie-break on precision (overlap / name length).
+function bestModel(p){
+  const pt=toks((p.company||"")+" "+p.name);
+  let best=null,bo=0,bp=0;
+  for(const m of MODELS){
+    const nt=toks(m.name||"");if(!nt.size)continue;
+    const ov=overlap(pt,nt);
+    if(ov<2)continue;
+    const prec=ov/nt.size;
+    if(ov>bo||(ov===bo&&prec>bp)){bo=ov;bp=prec;best=m;}
+  }
+  return best;
+}
+// Roster coverage: a Gauntlet II vendor is "covered" when its distinctive,
+// stop-word-stripped name shares a token with a platform's vendor/company.
+function rosterMatch(rosterName,company){
+  if(!company)return false;
+  return overlap(toks(rosterName),toks(company))>=1;
+}
 function esc(s){return String(s==null?"":s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;"}[c]));}
 
 let PLATFORMS=[],ROSTER=ROSTER_FALLBACK,MODELS=[],GENERATED="";
@@ -192,9 +213,9 @@ function buildPlatforms(suppliers){
   PLATFORMS.forEach(p=>{
     p.items.sort((a,b)=>(SLOT_ORDER[a.subsystem]??99)-(SLOT_ORDER[b.subsystem]??99));
     // enrich from forge_database drone_models
-    p.model=MODELS.find(m=>nameMatch(m.name,p.name))||null;
+    p.model=bestModel(p);
     // does this platform belong to a current Gauntlet II roster vendor?
-    p.onRoster=ROSTER.some(r=>nameMatch(r,p.company)||nameMatch(r,p.name));
+    p.onRoster=ROSTER.some(r=>rosterMatch(r,p.company));
     p.slots=new Set(p.items.map(i=>i.subsystem));
   });
 }
@@ -208,7 +229,7 @@ function render(){
   // ── stats ──
   const lineItems=PLATFORMS.reduce((n,p)=>n+p.items.length,0);
   const suppliers=new Set();PLATFORMS.forEach(p=>p.items.forEach(i=>suppliers.add(i.supplier)));
-  const covered=ROSTER.filter(r=>PLATFORMS.some(p=>nameMatch(r,p.company)||nameMatch(r,p.name))).length;
+  const covered=ROSTER.filter(r=>PLATFORMS.some(p=>rosterMatch(r,p.company))).length;
   document.getElementById("stats").innerHTML=
     stat(PLATFORMS.length,"platforms")+
     stat(lineItems,"component lines")+
@@ -219,7 +240,7 @@ function render(){
   // ── coverage chips ──
   const cov=document.getElementById("coverage");
   cov.innerHTML=ROSTER.map(r=>{
-    const plat=PLATFORMS.filter(p=>nameMatch(r,p.company)||nameMatch(r,p.name));
+    const plat=PLATFORMS.filter(p=>rosterMatch(r,p.company));
     if(plat.length){
       const cnt=plat.reduce((n,p)=>n+p.items.length,0);
       return '<span class="chip cov" data-target="'+esc(plat[0].name)+'">'+esc(rosterShort(r))+'<span class="d">'+cnt+' parts</span></span>';
