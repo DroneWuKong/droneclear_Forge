@@ -36,7 +36,7 @@
 
 | ID | Issue | Location | Description | Added |
 |----|-------|----------|-------------|-------|
-| DEBT-013 | Zero test coverage for seed.py | `components/seed.py` | `seed_golden()` and `seed_examples()` completely untested. Affects auto-seeding on migration. N/A for static Forge — Django backend only. | 2026-03-08 |
+| ~~DEBT-013~~ | ~~Zero test coverage for seed.py~~ | ~~`components/seed.py`~~ | **Resolved / N-A** — the Django backend (incl. `components/seed.py`) was removed Feb 2026. Forge is now a fully static site with no backend; this debt no longer applies. | 2026-03-08 |
 | | *(All other DEBT items completed — see Completed section)* | | | |
 
 ## Low — Polish

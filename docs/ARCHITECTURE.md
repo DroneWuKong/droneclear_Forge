@@ -35,7 +35,7 @@ Build script maps source HTML to clean URL paths:
 
 ## Analytics
 
-All pages include an inline analytics snippet that reports to `uas-handbook.com/.netlify/functions/analytics-ingest`. No cookies, no PII.
+All pages include an inline analytics snippet that reports to the same-origin Cloudflare Worker endpoint `/api/analytics/ingest` (routed via `functions/api/[[path]].js` → `workers/analytics-ingest.js`). No cookies, no PII.
 
 ## Key Decisions
 
