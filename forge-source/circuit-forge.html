@@ -99,7 +99,10 @@
   .cf-tabpane{min-height:400px;margin-top:16px;}
   .cf-diagram{height:450px;background:var(--panel-2);border:1px solid var(--line);border-radius:12px;overflow:hidden;position:relative;}
   .cf-diagram svg{width:100%;height:100%;background:transparent;}
-  .cf-diagram .hint{position:absolute;bottom:8px;left:12px;font-size:9px;color:var(--ink-4);letter-spacing:.06em;pointer-events:none;}
+  .cf-diagram .hint{position:absolute;bottom:8px;left:12px;right:12px;font-size:9px;color:var(--ink-4);letter-spacing:.06em;pointer-events:none;}
+  .cf-legend{position:absolute;top:8px;left:10px;display:flex;flex-wrap:wrap;gap:4px 10px;max-width:calc(100% - 20px);pointer-events:none;}
+  .cf-leg-item{display:inline-flex;align-items:center;gap:4px;font-size:9px;color:var(--ink-2);font-family:var(--mono);}
+  .cf-leg-item i{width:9px;height:3px;border-radius:2px;display:inline-block;}
 
   .cf-bom-wrap{background:var(--panel-2);border:1px solid var(--line);border-radius:12px;overflow:hidden;}
   table.cf-bom{width:100%;border-collapse:collapse;font-size:12px;}
@@ -156,9 +159,36 @@
   [hidden]{display:none!important;}
 
   @media(max-width:640px){
-    .cf-input-row{flex-direction:column;}
-    #cf-run{padding:12px;}
+    html,body{font-size:12px;}
+    .cf-header{padding:12px 14px;gap:10px;}
+    .cf-logo{width:30px;height:30px;border-radius:7px;font-size:14px;}
+    .cf-title{font-size:15px;}
+    .cf-sub{display:none;}
+    .cf-tags{width:100%;margin-left:0;gap:5px;}
+    .cf-tag{font-size:8px;padding:2px 6px;}
+    .cf-main{padding:12px;gap:14px;}
+    .cf-card{padding:14px;border-radius:10px;}
+    .cf-label{font-size:10px;margin-bottom:8px;}
+    .cf-input-row{flex-direction:column;gap:8px;}
+    #cf-prompt{height:84px;font-size:13px;padding:10px 12px;}
+    #cf-run{padding:0;height:42px;font-size:12px;}
+    .cf-byok{gap:6px;}
+    .cf-byok label{width:100%;}
+    #cf-provider{flex:1;}
+    #cf-key{min-width:0;width:100%;flex-basis:100%;}
+    .cf-key-hint{white-space:normal;width:100%;}
+    .cf-kbnote{font-size:10px;line-height:1.5;}
+    .cf-ex{max-width:100%;flex:1 1 100%;}
     .cf-step-lbl{display:none;}
+    .cf-proj-head{gap:8px;}
+    .cf-sev-badges{margin-left:0;width:100%;}
+    .cf-actions{width:100%;}
+    .cf-action{flex:1 1 100%;text-align:center;}
+    .cf-tab{padding:8px 10px;}
+    .cf-diagram{height:380px;}
+    .cf-fmt{width:100%;}
+    .cf-fmt-btn{flex:1 1 auto;}
+    .cf-code-bar #cf-copy,.cf-code-bar .cf-dl{flex:1;}
     .cf-conn-row .a{min-width:0;}
     .cf-bom .c-notes{display:none;}
   }
@@ -664,6 +694,24 @@ function downloadText(filename, text){
 let _graphAnim = null, _graphRunning = false, _clipSeq = 0;
 const SVGNS = "http://www.w3.org/2000/svg";
 
+// Classify a wire by its pin names so the schematic can colour-code the harness
+// (power/ground/motor/UART/I2C/SPI/video) the way a real wiring diagram does.
+const NET_COLORS = { power:"#EF4444", gnd:"#9CA3AF", motor:"#F59E0B", uart:"#22C55E", i2c:"#3B82F6", spi:"#A855F7", video:"#EC4899", signal:"#64748B" };
+const NET_LABELS = { power:"Power", gnd:"GND", motor:"Motor / ESC", uart:"UART", i2c:"I²C", spi:"SPI", video:"Video", signal:"Signal" };
+const NET_RULES = [
+  ["power", /^(vbat\+?|vcc|vin|vdd|vddio|vsys|vbus|5v|9v|10v|12v|3v3|3\.3v|4v5|v0|positive|anode)$/i],
+  ["gnd",   /^(gnd\d?|agnd|vss|vbat-|negative|cathode)$/i],
+  ["motor", /^(m[1-8]|out[1-4]|phase[abc]|ena|enb|in[1-4]|signal)$/i],
+  ["i2c",   /^(sda|scl)$/i],
+  ["spi",   /^(miso|mosi|sck|cs|csn|ce)$/i],
+  ["uart",  /^(tx\d?|rx\d?|tx[0-9]|rx[0-9]|t[1-6]|r[1-6]|txd|rxd|tlm|smartaudio|sa|tramp|sbus|ppm|data|key|state)$/i],
+  ["video", /^(video|cam|osd|audio|vtx)$/i],
+];
+function netTypeOf(a, b){
+  for(const p of [a, b]){ const s = String(p || "").trim(); for(const [t, re] of NET_RULES) if(re.test(s)) return t; }
+  return "signal";
+}
+
 function renderGraph(svg, components, connections){
   if(_graphAnim){ cancelAnimationFrame(_graphAnim); _graphAnim = null; }
   _graphRunning = false;
@@ -681,12 +729,20 @@ function renderGraph(svg, components, connections){
   const nodeMap = {};
   nodes.forEach(n => { nodeMap[n.id] = n; });
 
+  // FC-centric layout: pin the main controller at the centre and let the
+  // peripherals fan out around it (closer to a real wiring diagram).
+  const HUB_PRIORITY = ["Flight Controller","Companion Computer","Raspberry Pi Pico","ESP32","Arduino Uno","Arduino Nano","Power Module / PDB","Power Supply"];
+  let hub = null;
+  for(const t of HUB_PRIORITY){ hub = nodes.find(n => n.type === t); if(hub) break; }
+  if(!hub && nodes.length) hub = nodes[0];
+  if(hub){ hub.x = W/2; hub.y = H/2; }
+
   const links = connections.map(([a,b]) => {
     const [aId,aPin] = a.split("."), [bId,bPin] = b.split(".");
-    return { source:nodeMap[aId], target:nodeMap[bId], labelA:aPin, labelB:bPin };
+    return { source:nodeMap[aId], target:nodeMap[bId], labelA:aPin, labelB:bPin, net: netTypeOf(aPin, bPin) };
   }).filter(l => l.source && l.target);
 
-  const K=0.05, REPEL=9000, DAMPING=0.85, IDEAL=170;
+  const K=0.05, REPEL=11000, DAMPING=0.85, IDEAL=150;
   _graphRunning = true;
 
   function tick(){
@@ -708,6 +764,7 @@ function renderGraph(svg, components, connections){
     const cx=nodes.reduce((s,n)=>s+n.x,0)/nodes.length, cy=nodes.reduce((s,n)=>s+n.y,0)/nodes.length;
     nodes.forEach(n => { n.vx+=(W/2-cx)*0.01; n.vy+=(H/2-cy)*0.01; });
     nodes.forEach(n => {
+      if(n===hub){ n.x=W/2; n.y=H/2; n.vx=0; n.vy=0; return; }
       n.vx*=DAMPING; n.vy*=DAMPING; n.x+=n.vx; n.y+=n.vy;
       n.x=Math.max(70,Math.min(W-70,n.x)); n.y=Math.max(50,Math.min(H-50,n.y));
     });
@@ -720,15 +777,16 @@ function renderGraph(svg, components, connections){
     links.forEach(l => {
       const g=document.createElementNS(SVGNS,"g");
       const line=document.createElementNS(SVGNS,"line");
+      const wireCol = NET_COLORS[l.net] || "#64748B";
       line.setAttribute("x1",l.source.x); line.setAttribute("y1",l.source.y);
       line.setAttribute("x2",l.target.x); line.setAttribute("y2",l.target.y);
-      line.setAttribute("stroke","#3B82F6"); line.setAttribute("stroke-width","1.5"); line.setAttribute("stroke-opacity","0.5");
+      line.setAttribute("stroke",wireCol); line.setAttribute("stroke-width","2"); line.setAttribute("stroke-opacity","0.7");
       g.appendChild(line);
       const mx=(l.source.x+l.target.x)/2, my=(l.source.y+l.target.y)/2;
       const badge=document.createElementNS(SVGNS,"text");
       badge.setAttribute("x",mx); badge.setAttribute("y",my);
-      badge.setAttribute("text-anchor","middle"); badge.setAttribute("font-size","8");
-      badge.setAttribute("fill","#94A3B8"); badge.setAttribute("font-family","monospace");
+      badge.setAttribute("text-anchor","middle"); badge.setAttribute("font-size","7.5");
+      badge.setAttribute("fill",wireCol); badge.setAttribute("fill-opacity","0.95"); badge.setAttribute("font-family","monospace");
       badge.textContent=`${l.labelA}↔${l.labelB}`;
       g.appendChild(badge);
       svg.appendChild(g);
@@ -891,7 +949,11 @@ function renderTab(){
   if(state.activeTab==="diagram"){
     const box=document.createElement("div"); box.className="cf-diagram";
     const svg=document.createElementNS(SVGNS,"svg"); box.appendChild(svg);
-    const hint=document.createElement("div"); hint.className="hint"; hint.textContent="click a part with a photo to open it in the catalog";
+    const legend=document.createElement("div"); legend.className="cf-legend";
+    const present=[...new Set((r.connections||[]).map(c => netTypeOf((c[0].split(".")[1]||""), (c[1].split(".")[1]||""))))];
+    present.forEach(t => { const it=document.createElement("span"); it.className="cf-leg-item"; it.innerHTML=`<i style="background:${NET_COLORS[t]}"></i>${NET_LABELS[t]}`; legend.appendChild(it); });
+    box.appendChild(legend);
+    const hint=document.createElement("div"); hint.className="hint"; hint.textContent="flight controller centred · wires coloured by signal · click a part to open it in the catalog";
     box.appendChild(hint); pane.appendChild(box);
     requestAnimationFrame(()=>renderGraph(svg, r.components, r.connections));
   } else if(state.activeTab==="bom"){
