@@ -1,0 +1,720 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover"/>
+<title>Circuit Forge — AI Hardware Design</title>
+<style>
+  :root{
+    --bg:#050A14; --panel:rgba(15,23,42,0.8); --panel-2:rgba(2,8,23,0.7);
+    --line:rgba(59,130,246,0.15); --line-2:rgba(59,130,246,0.2); --line-3:rgba(59,130,246,0.3);
+    --blue:#3B82F6; --cyan:#06B6D4; --ink:#E2E8F0; --ink-2:#94A3B8; --ink-3:#64748B; --ink-4:#475569;
+    --mono:'JetBrains Mono','Fira Code','Courier New',monospace;
+  }
+  *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+  html,body{background:var(--bg);color:var(--ink);font-family:var(--mono);font-size:13px;}
+  body{min-height:100vh;display:flex;flex-direction:column;}
+
+  /* faint engineering grid */
+  #cf-grid{
+    position:fixed;inset:0;pointer-events:none;z-index:0;
+    background-image:linear-gradient(rgba(59,130,246,0.04) 1px,transparent 1px),
+                     linear-gradient(90deg,rgba(59,130,246,0.04) 1px,transparent 1px);
+    background-size:40px 40px;
+  }
+  #cf-app{position:relative;z-index:1;flex:1;display:flex;flex-direction:column;}
+
+  /* header */
+  .cf-header{padding:18px 24px;border-bottom:1px solid var(--line);display:flex;align-items:center;gap:16px;flex-wrap:wrap;}
+  .cf-logo{width:36px;height:36px;border-radius:8px;background:linear-gradient(135deg,var(--blue),var(--cyan));display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0;}
+  .cf-title{font-size:18px;font-weight:700;letter-spacing:.05em;color:#F1F5F9;}
+  .cf-title span{color:var(--blue);}
+  .cf-sub{font-size:10px;color:var(--ink-3);letter-spacing:.1em;}
+  .cf-tags{margin-left:auto;display:flex;gap:8px;flex-wrap:wrap;}
+  .cf-tag{font-size:9px;padding:3px 8px;border:1px solid var(--line-3);border-radius:4px;color:var(--blue);letter-spacing:.05em;}
+
+  .cf-main{flex:1;display:flex;flex-direction:column;padding:24px;gap:20px;max-width:1100px;width:100%;margin:0 auto;}
+
+  /* input */
+  .cf-card{background:var(--panel);border:1px solid var(--line-2);border-radius:12px;padding:20px;}
+  .cf-label{font-size:11px;color:var(--blue);letter-spacing:.1em;margin-bottom:12px;}
+  .cf-input-row{display:flex;gap:12px;}
+  #cf-prompt{flex:1;background:rgba(2,8,23,0.8);border:1px solid var(--line-2);border-radius:8px;color:var(--ink);font-family:inherit;font-size:13px;padding:12px 16px;resize:none;height:72px;outline:none;line-height:1.6;}
+  #cf-prompt:focus{border-color:var(--line-3);}
+  #cf-run{padding:0 24px;background:linear-gradient(135deg,var(--blue),var(--cyan));border:none;border-radius:8px;color:#fff;font-family:inherit;font-size:12px;font-weight:700;cursor:pointer;letter-spacing:.1em;white-space:nowrap;transition:all .2s;}
+  #cf-run:disabled{background:rgba(59,130,246,0.1);color:var(--ink-4);cursor:not-allowed;}
+  .cf-examples{margin-top:12px;display:flex;flex-wrap:wrap;gap:6px;align-items:center;}
+  .cf-examples .lbl{font-size:10px;color:var(--ink-4);margin-right:4px;}
+  .cf-ex{font-size:10px;padding:3px 10px;background:rgba(59,130,246,0.08);border:1px solid var(--line-2);border-radius:4px;color:var(--ink-3);font-family:inherit;cursor:pointer;max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+  .cf-ex:hover{color:var(--ink-2);border-color:var(--line-3);}
+
+  /* pipeline */
+  .cf-pipeline{background:var(--panel);border:1px solid var(--line-3);border-radius:12px;padding:20px;}
+  .cf-steps{display:flex;align-items:center;}
+  .cf-step{display:flex;align-items:center;flex:1;}
+  .cf-step-inner{display:flex;flex-direction:column;align-items:center;flex:1;}
+  .cf-dot{width:32px;height:32px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:11px;color:var(--ink-4);background:rgba(255,255,255,0.05);border:2px solid transparent;transition:all .3s;}
+  .cf-dot.done{background:var(--blue);color:#fff;font-size:14px;}
+  .cf-dot.active{background:rgba(59,130,246,0.3);border-color:var(--blue);color:var(--blue);}
+  .cf-step-lbl{font-size:9px;color:var(--ink-4);margin-top:4px;text-align:center;max-width:100px;}
+  .cf-step-lbl.active{color:var(--ink-2);}
+  .cf-step-line{height:1px;flex:.5;background:rgba(255,255,255,0.1);margin-bottom:20px;}
+  .cf-step-line.done{background:var(--blue);}
+  .cf-stage-msg{margin-top:12px;font-size:11px;color:var(--ink-3);text-align:center;}
+  .cf-stage-msg span{color:var(--blue);}
+
+  .cf-error{background:rgba(239,68,68,0.1);border:1px solid rgba(239,68,68,0.3);border-radius:8px;padding:16px;font-size:12px;color:#FCA5A5;}
+
+  /* results */
+  .cf-proj-head{display:flex;align-items:center;gap:16px;flex-wrap:wrap;}
+  .cf-proj-title{font-size:16px;font-weight:700;color:#F1F5F9;}
+  .cf-proj-over{font-size:11px;color:var(--ink-3);margin-top:2px;}
+  .cf-sev-badges{margin-left:auto;display:flex;gap:8px;flex-wrap:wrap;}
+  .cf-sev{font-size:10px;padding:3px 8px;border-radius:4px;}
+
+  .cf-tabbar{display:flex;gap:2px;border-bottom:1px solid var(--line);flex-wrap:wrap;}
+  .cf-tab{padding:8px 16px;font-size:10px;font-family:inherit;background:none;border:none;border-bottom:2px solid transparent;color:var(--ink-4);cursor:pointer;letter-spacing:.1em;transition:all .15s;}
+  .cf-tab.active{border-bottom-color:var(--blue);color:var(--blue);}
+
+  .cf-tabpane{min-height:400px;margin-top:16px;}
+  .cf-diagram{height:450px;background:var(--panel-2);border:1px solid var(--line);border-radius:12px;overflow:hidden;}
+  .cf-diagram svg{width:100%;height:100%;background:transparent;}
+
+  table.cf-bom{width:100%;border-collapse:collapse;font-size:12px;}
+  .cf-bom-wrap{background:var(--panel-2);border:1px solid var(--line);border-radius:12px;overflow:hidden;}
+  .cf-bom th{padding:10px 14px;text-align:left;font-size:10px;color:var(--blue);letter-spacing:.08em;border-bottom:1px solid var(--line);background:rgba(59,130,246,0.08);}
+  .cf-bom td{padding:8px 14px;border-bottom:1px solid rgba(255,255,255,0.04);color:var(--ink-2);}
+  .cf-bom .c-id{color:var(--ink-3);font-size:11px;}
+  .cf-bom .c-name{color:var(--ink);font-weight:600;}
+  .cf-bom .c-cost{color:#22C55E;}
+  .cf-bom .c-notes{color:var(--ink-3);font-size:10px;}
+  .cf-bom-total{padding:12px 14px;border-top:1px solid var(--line);font-size:11px;color:var(--ink-4);}
+
+  .cf-code-wrap{background:var(--panel-2);border:1px solid var(--line);border-radius:12px;overflow:hidden;}
+  .cf-code-bar{display:flex;align-items:center;padding:10px 16px;border-bottom:1px solid var(--line);}
+  .cf-code-bar span{font-size:10px;color:var(--ink-3);letter-spacing:.08em;}
+  #cf-copy{margin-left:auto;font-size:10px;padding:4px 12px;background:rgba(59,130,246,0.1);border:1px solid var(--line-3);border-radius:4px;color:var(--blue);font-family:inherit;cursor:pointer;}
+  #cf-copy.copied{background:rgba(34,197,94,0.15);border-color:rgba(34,197,94,0.4);color:#22C55E;}
+  .cf-code-wrap pre{margin:0;padding:16px 20px;font-size:11px;line-height:1.7;color:var(--ink-2);overflow:auto;max-height:380px;white-space:pre-wrap;}
+
+  .cf-erc-list{display:flex;flex-direction:column;gap:8px;}
+  .cf-erc-ok{background:rgba(34,197,94,0.1);border:1px solid rgba(34,197,94,0.3);border-radius:8px;padding:20px;font-size:12px;color:#22C55E;text-align:center;}
+  .cf-erc-item{display:flex;align-items:flex-start;gap:12px;border-radius:8px;padding:12px 16px;}
+  .cf-erc-item .badge{font-size:9px;padding:3px 8px;border-radius:4px;white-space:nowrap;font-weight:700;}
+  .cf-erc-item .msg{font-size:12px;color:#CBD5E1;}
+  .cf-erc-foot{margin-top:8px;font-size:10px;color:var(--ink-4);}
+
+  .cf-notes-list{display:flex;flex-direction:column;gap:8px;}
+  .cf-note{background:rgba(6,182,212,0.05);border:1px solid rgba(6,182,212,0.2);border-radius:8px;padding:12px 16px;font-size:12px;color:var(--ink-2);line-height:1.6;}
+  .cf-note span{color:var(--cyan);}
+  .cf-conn-table{background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:16px;}
+  .cf-conn-table .hd{font-size:10px;color:var(--blue);margin-bottom:12px;letter-spacing:.08em;}
+  .cf-conn-row{display:flex;gap:12px;font-size:11px;}
+  .cf-conn-row .a{color:var(--blue);min-width:180px;}
+  .cf-conn-row .arr{color:var(--ink-4);}
+  .cf-conn-row .b{color:var(--cyan);}
+
+  [hidden]{display:none!important;}
+
+  @media(max-width:640px){
+    .cf-input-row{flex-direction:column;}
+    #cf-run{padding:12px;}
+    .cf-step-lbl{display:none;}
+    .cf-conn-row .a{min-width:0;}
+  }
+</style>
+</head>
+<body>
+<div id="cf-grid"></div>
+<div id="cf-app">
+
+  <header class="cf-header">
+    <div class="cf-logo">⚡</div>
+    <div>
+      <div class="cf-title">CIRCUIT<span>FORGE</span></div>
+      <div class="cf-sub">AI HARDWARE DESIGN · MULTI-STAGE PIPELINE · ERC VALIDATED</div>
+    </div>
+    <div class="cf-tags">
+      <span class="cf-tag">RAG·PINOUTS</span>
+      <span class="cf-tag">CHAIN·OF·THOUGHT</span>
+      <span class="cf-tag">FORCE·GRAPH</span>
+      <span class="cf-tag">ERC·ENGINE</span>
+    </div>
+  </header>
+
+  <div class="cf-main">
+    <!-- input -->
+    <div class="cf-card">
+      <div class="cf-label">// DESCRIBE YOUR HARDWARE PROJECT</div>
+      <div class="cf-input-row">
+        <textarea id="cf-prompt" placeholder="e.g. Arduino-based quadcopter controller with IMU, RC receiver, and 4 ESC outputs..."></textarea>
+        <button id="cf-run">▶ GENERATE</button>
+      </div>
+      <div class="cf-examples" id="cf-examples">
+        <span class="lbl">EXAMPLES:</span>
+      </div>
+    </div>
+
+    <!-- pipeline -->
+    <div class="cf-pipeline" id="cf-pipeline" hidden>
+      <div class="cf-label" style="margin-bottom:16px;">// PIPELINE EXECUTION</div>
+      <div class="cf-steps" id="cf-steps"></div>
+      <div class="cf-stage-msg" id="cf-stage-msg" hidden></div>
+    </div>
+
+    <!-- error -->
+    <div class="cf-error" id="cf-error" hidden></div>
+
+    <!-- results -->
+    <div id="cf-results" hidden>
+      <div class="cf-proj-head">
+        <div>
+          <div class="cf-proj-title" id="cf-proj-title"></div>
+          <div class="cf-proj-over" id="cf-proj-over"></div>
+        </div>
+        <div class="cf-sev-badges" id="cf-sev-badges"></div>
+      </div>
+      <div class="cf-tabbar" id="cf-tabbar"></div>
+      <div class="cf-tabpane" id="cf-tabpane"></div>
+    </div>
+  </div>
+</div>
+
+<script>
+// ─── COMPONENT KNOWLEDGE BASE ────────────────────────────────────────────────
+// Canonical pinouts to prevent LLM hallucination
+const COMPONENT_KB = {
+  "Arduino Uno": { type:"microcontroller", color:"#00979D", shape:"rect",
+    pins:["5V","3.3V","GND","VIN","A0","A1","A2","A3","A4","A5","D0","D1","D2","D3","D4","D5","D6","D7","D8","D9","D10","D11","D12","D13","RESET","AREF"],
+    desc:"ATmega328P 16MHz, 14 digital I/O, 6 analog" },
+  "Arduino Nano": { type:"microcontroller", color:"#00979D", shape:"rect",
+    pins:["5V","3.3V","GND","VIN","A0","A1","A2","A3","A4","A5","A6","A7","D2","D3","D4","D5","D6","D7","D8","D9","D10","D11","D12","D13","TX","RX","RESET"],
+    desc:"Compact ATmega328P, breadboard-friendly" },
+  "ESP32": { type:"microcontroller", color:"#E7352B", shape:"rect",
+    pins:["3.3V","GND","EN","GPIO0","GPIO2","GPIO4","GPIO5","GPIO12","GPIO13","GPIO14","GPIO15","GPIO16","GPIO17","GPIO18","GPIO19","GPIO21","GPIO22","GPIO23","GPIO25","GPIO26","GPIO27","GPIO32","GPIO33","GPIO34","GPIO35","RX0","TX0"],
+    desc:"WiFi+BT, dual-core 240MHz, 34 GPIO" },
+  "Raspberry Pi Pico": { type:"microcontroller", color:"#C51A4A", shape:"rect",
+    pins:["3.3V","AGND","GND","VSYS","VBUS","GP0","GP1","GP2","GP3","GP4","GP5","GP6","GP7","GP8","GP9","GP10","GP11","GP12","GP13","GP14","GP15","GP16","GP17","GP18","GP19","GP20","GP21","GP22","GP26","GP27","GP28","RUN"],
+    desc:"RP2040 133MHz, 26 GPIO, dual-core" },
+  "LED": { type:"passive", color:"#FFD700", shape:"circle", pins:["anode","cathode"], desc:"Light emitting diode — needs current-limiting resistor" },
+  "Resistor": { type:"passive", color:"#A0522D", shape:"rect", pins:["pin1","pin2"], desc:"Current limiting / pull-up / pull-down" },
+  "Capacitor": { type:"passive", color:"#4169E1", shape:"circle", pins:["positive","negative"], desc:"Decoupling / filtering — 100nF standard decoupling" },
+  "Push Button": { type:"passive", color:"#808080", shape:"rect", pins:["pin1_1","pin1_r","pin2_1","pin2_r"], desc:"Momentary switch — use pull-up resistor" },
+  "DHT22": { type:"sensor", color:"#2ECC71", shape:"rect", pins:["VCC","DATA","NC","GND"], desc:"Temp+Humidity sensor, 3.3-5V, 1-wire protocol" },
+  "HC-SR04": { type:"sensor", color:"#3498DB", shape:"rect", pins:["VCC","TRIG","ECHO","GND"], desc:"Ultrasonic distance sensor, 5V, 2cm-400cm" },
+  "MPU6050": { type:"sensor", color:"#9B59B6", shape:"rect", pins:["VCC","GND","SCL","SDA","XDA","XCL","AD0","INT"], desc:"6-axis IMU, I2C, 3.3-5V — pull-ups on SDA/SCL" },
+  "BMP280": { type:"sensor", color:"#1ABC9C", shape:"rect", pins:["VDD","VDDIO","GND","SDI","SDO","SCK","CSB"], desc:"Pressure+Temp sensor, I2C/SPI, 1.8-3.6V" },
+  "HC-05": { type:"communication", color:"#E74C3C", shape:"rect", pins:["VCC","GND","TXD","RXD","KEY","STATE"], desc:"Bluetooth module, 5V, UART 9600-38400 baud" },
+  "SSD1306 OLED": { type:"display", color:"#F39C12", shape:"rect", pins:["VCC","GND","SCL","SDA","RESET","DC","CS"], desc:"128x64 OLED display, I2C or SPI, 3.3-5V" },
+  "16x2 LCD": { type:"display", color:"#27AE60", shape:"rect", pins:["VSS","VDD","V0","RS","RW","E","D0","D1","D2","D3","D4","D5","D6","D7","A","K"], desc:"Character LCD, 5V, parallel interface" },
+  "L298N": { type:"driver", color:"#E67E22", shape:"rect", pins:["VCC","GND","VSS","OUT1","OUT2","IN1","IN2","ENA","OUT3","OUT4","IN3","IN4","ENB"], desc:"Dual H-bridge motor driver, 5-35V 2A per channel" },
+  "Servo Motor": { type:"actuator", color:"#16A085", shape:"rect", pins:["GND","VCC","SIGNAL"], desc:"PWM servo, 5V, 50Hz 1-2ms pulse width" },
+  "DC Motor": { type:"actuator", color:"#8E44AD", shape:"circle", pins:["VCC","GND"], desc:"Requires motor driver (L298N, L293D)" },
+  "SD Card Module": { type:"storage", color:"#2980B9", shape:"rect", pins:["VCC","GND","MISO","MOSI","SCK","CS"], desc:"SPI interface, 3.3V logic (use voltage divider for 5V)" },
+  "Power Supply": { type:"power", color:"#C0392B", shape:"rect", pins:["VCC","GND"], desc:"External power source" },
+  "Buzzer": { type:"actuator", color:"#D35400", shape:"circle", pins:["positive","negative"], desc:"Active buzzer ~5V, use transistor for MCU drive" },
+  "PIR Sensor": { type:"sensor", color:"#7F8C8D", shape:"rect", pins:["VCC","GND","OUT"], desc:"Motion sensor, 5V, adjustable sensitivity and delay" },
+  "NRF24L01": { type:"communication", color:"#E74C3C", shape:"rect", pins:["GND","VCC","CE","CSN","SCK","MOSI","MISO","IRQ"], desc:"2.4GHz RF module, 3.3V — add 100uF cap on power" },
+};
+
+// ─── ERC ENGINE ──────────────────────────────────────────────────────────────
+function runERC(components, connections){
+  const errors = [];
+  const compMap = {};
+  components.forEach(c => { compMap[c.id] = c; });
+
+  const hasPower = components.some(c =>
+    c.type==="Arduino Uno" || c.type==="Arduino Nano" ||
+    c.type==="ESP32" || c.type==="Raspberry Pi Pico" || c.type==="Power Supply");
+  if(!hasPower) errors.push({ severity:"CRITICAL", msg:"No microcontroller or power source found" });
+
+  connections.forEach(conn => {
+    const [a,b] = conn;
+    const [aId,aPin] = a.split(".");
+    const [bId,bPin] = b.split(".");
+    const aComp = compMap[aId], bComp = compMap[bId];
+    if(!aComp) errors.push({ severity:"CRITICAL", msg:`Connection references unknown component: ${aId}` });
+    if(!bComp) errors.push({ severity:"CRITICAL", msg:`Connection references unknown component: ${bId}` });
+    if(aComp){ const kb=COMPONENT_KB[aComp.type]; if(kb && !kb.pins.includes(aPin)) errors.push({ severity:"MAJOR", msg:`Invalid pin "${aPin}" on ${aId} (${aComp.type})` }); }
+    if(bComp){ const kb=COMPONENT_KB[bComp.type]; if(kb && !kb.pins.includes(bPin)) errors.push({ severity:"MAJOR", msg:`Invalid pin "${bPin}" on ${bId} (${bComp.type})` }); }
+  });
+
+  const leds = components.filter(c=>c.type==="LED");
+  const resistors = components.filter(c=>c.type==="Resistor");
+  if(leds.length>0 && resistors.length===0) errors.push({ severity:"MAJOR", msg:`${leds.length} LED(s) detected but no current-limiting resistors found` });
+
+  const i2cDevices = components.filter(c=>["MPU6050","BMP280","SSD1306 OLED"].includes(c.type));
+  if(i2cDevices.length>0 && resistors.length<2) errors.push({ severity:"MINOR", msg:"I2C devices detected — ensure 4.7kΩ pull-ups on SDA and SCL" });
+
+  const motors = components.filter(c=>c.type==="DC Motor");
+  const drivers = components.filter(c=>c.type==="L298N");
+  if(motors.length>0 && drivers.length===0) errors.push({ severity:"CRITICAL", msg:"DC Motor(s) without motor driver — direct MCU connection will damage the board" });
+
+  const nrf = components.filter(c=>c.type==="NRF24L01");
+  if(nrf.length>0){ const caps=components.filter(c=>c.type==="Capacitor"); if(caps.length===0) errors.push({ severity:"MINOR", msg:"NRF24L01 needs 100μF decoupling cap on VCC for stable operation" }); }
+
+  const gndConns = connections.filter(conn => conn.some(p => p.includes("GND") || p.includes("gnd")));
+  if(components.length>2 && gndConns.length<2) errors.push({ severity:"MAJOR", msg:"Insufficient GND connections — all components need common ground" });
+
+  return errors;
+}
+
+// ─── CLAUDE CALL ─────────────────────────────────────────────────────────────
+// Routes through the Forge /api/wingman Cloudflare Worker — the same public
+// Anthropic proxy that Wingman AI uses. The server holds the API key; model and
+// token caps are enforced worker-side. No key ever ships to the browser.
+async function callClaude(prompt){
+  const res = await fetch("/api/wingman", {
+    method:"POST",
+    headers:{ "Content-Type":"application/json" },
+    body: JSON.stringify({
+      max_tokens: 2048,
+      messages: [{ role:"user", content: prompt }],
+    }),
+  });
+  let data;
+  try { data = await res.json(); }
+  catch { throw new Error(`Proxy returned ${res.status} (non-JSON response)`); }
+  if(data.error) throw new Error(data.error.message || data.error);
+  if(!data.content || !data.content[0]) throw new Error("Empty response from model");
+  return data.content[0].text;
+}
+
+// ─── MULTI-STAGE PIPELINE ────────────────────────────────────────────────────
+async function runPipeline(prompt, onStageUpdate){
+  const kbSummary = Object.entries(COMPONENT_KB)
+    .map(([name,info]) => `${name}: pins=[${info.pins.join(",")}] desc="${info.desc}"`)
+    .join("\n");
+
+  // Stage 1: Component Identification
+  onStageUpdate("identifying","Identifying components...");
+  const stage1 = await callClaude(
+`You are a hardware component identification agent. Given a project description, list ALL required components.
+
+Available components and their canonical pinouts:
+${kbSummary}
+
+User project: "${prompt}"
+
+Respond with ONLY a JSON array, no markdown, no explanation:
+[
+  {"id": "arduino1", "type": "Arduino Uno"},
+  {"id": "led1", "type": "LED"}
+]
+
+Rules:
+- id must be componentType + number (e.g. "arduino1", "dht221", "resistor1")
+- type must exactly match one of the available component names
+- Include all necessary passive components (resistors for LEDs, caps for decoupling, pull-ups for I2C)
+- If motors are needed, always include a motor driver`);
+
+  let components;
+  try { components = JSON.parse(stripFences(stage1)); }
+  catch { throw new Error("Component identification failed: " + stage1); }
+
+  // Stage 2: Expert Reasoning (Chain-of-Thought)
+  onStageUpdate("reasoning","Expert agent reasoning through connections...");
+  const compList = components.map(c=>`${c.id} (${c.type})`).join(", ");
+  const pinouts = components.map(c => {
+    const kb = COMPONENT_KB[c.type];
+    return kb ? `${c.id} [${c.type}] pins: ${kb.pins.join(", ")}` : `${c.id} [${c.type}]`;
+  }).join("\n");
+
+  const stage2 = await callClaude(
+`You are an expert electronics engineer. Reason through how to wire this circuit correctly.
+
+Project: "${prompt}"
+Components: ${compList}
+
+Canonical pinouts:
+${pinouts}
+
+Think step by step about:
+1. Power distribution (which components share VCC/GND rails?)
+2. Signal connections (which pins connect for each peripheral?)
+3. Bus connections (I2C needs SDA+SCL+pull-ups, SPI needs MISO+MOSI+SCK+CS)
+4. Protection (current-limiting resistors for LEDs, decoupling caps)
+5. Any voltage level considerations (3.3V vs 5V devices)
+
+Provide a brief reasoning summary, then end with a "WIRING_PLAN:" section listing each connection as "componentA.pinX → componentB.pinY"`);
+
+  // Stage 3: CircuitJSON Generation
+  onStageUpdate("generating","Synthesizing CircuitJSON schematic...");
+  const stage3 = await callClaude(
+`You are a circuit schematic synthesis agent. Convert the wiring plan into CircuitJSON.
+
+Project: "${prompt}"
+
+Components (use EXACTLY these ids and types):
+${pinouts}
+
+Wiring plan from expert agent:
+${stage2}
+
+Generate CircuitJSON. Respond ONLY with valid JSON, no markdown:
+{
+  "components": [
+    {"id": "arduino1", "type": "Arduino Uno", "properties": {"voltage": "5V"}}
+  ],
+  "connections": [
+    ["arduino1.5V", "dht221.VCC"],
+    ["arduino1.GND", "dht221.GND"]
+  ],
+  "notes": ["Note about special considerations"]
+}
+
+Rules:
+- connections are arrays of exactly 2 strings: "componentId.pinName"
+- Pin names must EXACTLY match the canonical pinout provided
+- Every component must have at least one GND connection
+- Include ALL connections from the wiring plan`);
+
+  let circuit;
+  try { circuit = JSON.parse(stripFences(stage3)); }
+  catch { throw new Error("JSON synthesis failed"); }
+
+  // Stage 4: BOM + Code
+  onStageUpdate("bom_code","Generating BOM and firmware code...");
+  const stage4 = await callClaude(
+`You are a hardware documentation and firmware agent.
+
+Project: "${prompt}"
+Components: ${JSON.stringify(circuit.components)}
+
+Generate a JSON response with BOM and Arduino code. No markdown, only JSON:
+{
+  "bom": [
+    {"id": "arduino1", "component": "Arduino Uno", "qty": 1, "spec": "ATmega328P, USB-B", "approxCost": "$25", "notes": "Any clone works"}
+  ],
+  "code": "// Full Arduino sketch here\\n#include ...\\n\\nvoid setup() {\\n  ...\\n}\\n\\nvoid loop() {\\n  ...\\n}",
+  "title": "Short project title",
+  "overview": "2-3 sentence project description"
+}`);
+
+  let bomCode;
+  try { bomCode = JSON.parse(stripFences(stage4)); }
+  catch { bomCode = { bom:[], code:"// Code generation failed", title:"Project", overview:"" }; }
+
+  return { components: circuit.components, connections: circuit.connections, notes: circuit.notes || [], ...bomCode };
+}
+
+function stripFences(s){ return String(s).replace(/```json|```/g,"").trim(); }
+
+// ─── FORCE-DIRECTED GRAPH ────────────────────────────────────────────────────
+let _graphAnim = null;
+let _graphRunning = false;
+
+function renderGraph(svg, components, connections){
+  if(_graphAnim){ cancelAnimationFrame(_graphAnim); _graphAnim = null; }
+  _graphRunning = false;
+  while(svg.firstChild) svg.removeChild(svg.firstChild);
+  if(!components.length) return;
+
+  const W = svg.clientWidth || 700, H = svg.clientHeight || 420;
+  const ns = "http://www.w3.org/2000/svg";
+
+  const nodes = components.map(c => ({
+    id:c.id, type:c.type,
+    x:W/2 + (Math.random()-0.5)*200,
+    y:H/2 + (Math.random()-0.5)*200,
+    vx:0, vy:0,
+  }));
+  const nodeMap = {};
+  nodes.forEach(n => { nodeMap[n.id] = n; });
+
+  const links = connections.map(([a,b]) => {
+    const [aId,aPin] = a.split("."), [bId,bPin] = b.split(".");
+    return { source:nodeMap[aId], target:nodeMap[bId], labelA:aPin, labelB:bPin };
+  }).filter(l => l.source && l.target);
+
+  const K=0.05, REPEL=8000, DAMPING=0.85, IDEAL=160;
+  _graphRunning = true;
+
+  function tick(){
+    if(!_graphRunning) return;
+    for(let i=0;i<nodes.length;i++){
+      for(let j=i+1;j<nodes.length;j++){
+        const dx=nodes[j].x-nodes[i].x, dy=nodes[j].y-nodes[i].y;
+        const d2=dx*dx+dy*dy+0.01, f=REPEL/d2, sd=Math.sqrt(d2);
+        nodes[i].vx-=f*dx/sd; nodes[i].vy-=f*dy/sd;
+        nodes[j].vx+=f*dx/sd; nodes[j].vy+=f*dy/sd;
+      }
+    }
+    links.forEach(l => {
+      const dx=l.target.x-l.source.x, dy=l.target.y-l.source.y;
+      const d=Math.sqrt(dx*dx+dy*dy)+0.01, f=K*(d-IDEAL);
+      l.source.vx+=f*dx/d; l.source.vy+=f*dy/d;
+      l.target.vx-=f*dx/d; l.target.vy-=f*dy/d;
+    });
+    const cx=nodes.reduce((s,n)=>s+n.x,0)/nodes.length, cy=nodes.reduce((s,n)=>s+n.y,0)/nodes.length;
+    nodes.forEach(n => { n.vx+=(W/2-cx)*0.01; n.vy+=(H/2-cy)*0.01; });
+    nodes.forEach(n => {
+      n.vx*=DAMPING; n.vy*=DAMPING; n.x+=n.vx; n.y+=n.vy;
+      n.x=Math.max(60,Math.min(W-60,n.x)); n.y=Math.max(40,Math.min(H-40,n.y));
+    });
+    draw();
+    _graphAnim = requestAnimationFrame(tick);
+  }
+
+  function draw(){
+    while(svg.firstChild) svg.removeChild(svg.firstChild);
+    links.forEach(l => {
+      const g=document.createElementNS(ns,"g");
+      const line=document.createElementNS(ns,"line");
+      line.setAttribute("x1",l.source.x); line.setAttribute("y1",l.source.y);
+      line.setAttribute("x2",l.target.x); line.setAttribute("y2",l.target.y);
+      line.setAttribute("stroke","#3B82F6"); line.setAttribute("stroke-width","1.5"); line.setAttribute("stroke-opacity","0.5");
+      g.appendChild(line);
+      const mx=(l.source.x+l.target.x)/2, my=(l.source.y+l.target.y)/2;
+      const badge=document.createElementNS(ns,"text");
+      badge.setAttribute("x",mx); badge.setAttribute("y",my);
+      badge.setAttribute("text-anchor","middle"); badge.setAttribute("font-size","8");
+      badge.setAttribute("fill","#94A3B8"); badge.setAttribute("font-family","monospace");
+      badge.textContent=`${l.labelA}↔${l.labelB}`;
+      g.appendChild(badge);
+      svg.appendChild(g);
+    });
+    nodes.forEach(n => {
+      const g=document.createElementNS(ns,"g");
+      g.setAttribute("transform",`translate(${n.x},${n.y})`);
+      const col=COMPONENT_KB[n.type]?.color || "#555";
+      const shape=COMPONENT_KB[n.type]?.shape || "rect";
+      if(shape==="circle"){
+        const c=document.createElementNS(ns,"circle");
+        c.setAttribute("r","22"); c.setAttribute("fill",col); c.setAttribute("fill-opacity","0.15");
+        c.setAttribute("stroke",col); c.setAttribute("stroke-width","1.5");
+        g.appendChild(c);
+      } else {
+        const r=document.createElementNS(ns,"rect");
+        r.setAttribute("x","-30"); r.setAttribute("y","-18"); r.setAttribute("width","60"); r.setAttribute("height","36");
+        r.setAttribute("rx","5"); r.setAttribute("fill",col); r.setAttribute("fill-opacity","0.12");
+        r.setAttribute("stroke",col); r.setAttribute("stroke-width","1.5");
+        g.appendChild(r);
+      }
+      const t1=document.createElementNS(ns,"text");
+      t1.setAttribute("text-anchor","middle"); t1.setAttribute("y","-4"); t1.setAttribute("font-size","7");
+      t1.setAttribute("fill",col); t1.setAttribute("font-family","monospace"); t1.setAttribute("font-weight","600");
+      t1.textContent = n.type.length>12 ? n.type.slice(0,11)+"…" : n.type;
+      g.appendChild(t1);
+      const t2=document.createElementNS(ns,"text");
+      t2.setAttribute("text-anchor","middle"); t2.setAttribute("y","8"); t2.setAttribute("font-size","9");
+      t2.setAttribute("fill","#E2E8F0"); t2.setAttribute("font-family","monospace");
+      t2.textContent = n.id;
+      g.appendChild(t2);
+      svg.appendChild(g);
+    });
+  }
+
+  _graphAnim = requestAnimationFrame(tick);
+}
+
+// ─── UI STATE + RENDERING ────────────────────────────────────────────────────
+const STAGE_LABELS = {
+  identifying:"Identifying components",
+  reasoning:"Expert agent reasoning",
+  generating:"Synthesizing CircuitJSON",
+  bom_code:"Generating BOM & code",
+};
+const STAGE_KEYS = Object.keys(STAGE_LABELS);
+const SEVERITY_COLOR = { CRITICAL:"#EF4444", MAJOR:"#F97316", MINOR:"#EAB308", WARNING:"#3B82F6" };
+const EXAMPLE_PROMPTS = [
+  "A drone distance alarm using an HC-SR04 ultrasonic sensor that beeps a buzzer when an obstacle is closer than 30cm, controlled by Arduino Uno",
+  "ESP32-based telemetry logger that reads GPS and IMU data from MPU6050 and logs to SD card via SPI",
+  "Arduino Nano motor controller for a 2WD robot using L298N with IR sensor obstacle avoidance",
+  "Temperature and humidity station with DHT22, SSD1306 OLED display, and Bluetooth HC-05 data output",
+];
+
+const el = id => document.getElementById(id);
+let state = { stage:null, result:null, ercErrors:[], activeTab:"diagram", copied:false };
+
+function setStage(stage, msg){
+  state.stage = stage;
+  const pipeline = el("cf-pipeline");
+  el("cf-run").disabled = !!stage || !el("cf-prompt").value.trim();
+  el("cf-run").textContent = stage ? "RUNNING..." : "▶ GENERATE";
+  if(!stage){ pipeline.hidden = true; return; }
+  pipeline.hidden = false;
+  const idx = STAGE_KEYS.indexOf(stage);
+  const steps = el("cf-steps");
+  steps.innerHTML = "";
+  STAGE_KEYS.forEach((s,i) => {
+    const wrap = document.createElement("div"); wrap.className="cf-step";
+    const inner = document.createElement("div"); inner.className="cf-step-inner";
+    const dot = document.createElement("div");
+    dot.className = "cf-dot" + (i<idx?" done":i===idx?" active":"");
+    dot.textContent = i<idx ? "✓" : String(i+1);
+    const lbl = document.createElement("div");
+    lbl.className = "cf-step-lbl" + (i===idx?" active":"");
+    lbl.textContent = STAGE_LABELS[s];
+    inner.appendChild(dot); inner.appendChild(lbl); wrap.appendChild(inner);
+    if(i<STAGE_KEYS.length-1){
+      const line=document.createElement("div");
+      line.className="cf-step-line"+(i<idx?" done":"");
+      wrap.appendChild(line);
+    }
+    steps.appendChild(wrap);
+  });
+  const msgEl = el("cf-stage-msg");
+  if(msg){ msgEl.hidden=false; msgEl.innerHTML = `<span>›</span> ${escapeHtml(msg)}`; }
+  else msgEl.hidden = true;
+}
+
+function escapeHtml(s){ const d=document.createElement("div"); d.textContent=String(s); return d.innerHTML; }
+
+function renderResults(){
+  const r = state.result;
+  el("cf-results").hidden = !r;
+  if(!r) return;
+  el("cf-proj-title").textContent = r.title || "Project";
+  el("cf-proj-over").textContent = r.overview || "";
+
+  // severity badges
+  const badges = el("cf-sev-badges");
+  badges.innerHTML = "";
+  ["CRITICAL","MAJOR","MINOR","WARNING"].forEach(sev => {
+    const cnt = state.ercErrors.filter(e=>e.severity===sev).length;
+    if(!cnt) return;
+    const span=document.createElement("span");
+    span.className="cf-sev";
+    span.style.background = SEVERITY_COLOR[sev]+"20";
+    span.style.border = "1px solid "+SEVERITY_COLOR[sev]+"50";
+    span.style.color = SEVERITY_COLOR[sev];
+    span.textContent = `${cnt} ${sev}`;
+    badges.appendChild(span);
+  });
+
+  // tab bar
+  const tabs = [["diagram","⬡ SCHEMATIC"],["bom","⊞ BOM"],["code","{ } CODE"],["erc","⚠ ERC"],["notes","✎ NOTES"]];
+  const bar = el("cf-tabbar");
+  bar.innerHTML = "";
+  tabs.forEach(([id,label]) => {
+    const b=document.createElement("button");
+    b.className="cf-tab"+(state.activeTab===id?" active":"");
+    b.textContent=label;
+    b.onclick=()=>{ state.activeTab=id; renderResults(); };
+    bar.appendChild(b);
+  });
+
+  renderTab();
+}
+
+function renderTab(){
+  const r = state.result, pane = el("cf-tabpane");
+  pane.innerHTML = "";
+  if(state.activeTab==="diagram"){
+    const box=document.createElement("div"); box.className="cf-diagram";
+    const svg=document.createElementNS("http://www.w3.org/2000/svg","svg");
+    box.appendChild(svg); pane.appendChild(box);
+    // defer so the SVG has layout dimensions
+    requestAnimationFrame(()=>renderGraph(svg, r.components, r.connections));
+  } else if(state.activeTab==="bom"){
+    const wrap=document.createElement("div"); wrap.className="cf-bom-wrap";
+    const rows=(r.bom||[]).map(item=>`<tr>
+      <td class="c-id">${escapeHtml(item.id||"")}</td>
+      <td class="c-name">${escapeHtml(item.component||"")}</td>
+      <td>${escapeHtml(String(item.qty??""))}</td>
+      <td class="c-id">${escapeHtml(item.spec||"")}</td>
+      <td class="c-cost">${escapeHtml(item.approxCost||"")}</td>
+      <td class="c-notes">${escapeHtml(item.notes||"")}</td></tr>`).join("");
+    const total=(r.bom||[]).reduce((s,i)=>s+(i.qty||1),0);
+    wrap.innerHTML = `<table class="cf-bom"><thead><tr>
+      <th>ID</th><th>COMPONENT</th><th>QTY</th><th>SPEC</th><th>COST</th><th>NOTES</th>
+      </tr></thead><tbody>${rows}</tbody></table>
+      <div class="cf-bom-total">Total components: ${total}</div>`;
+    pane.appendChild(wrap);
+  } else if(state.activeTab==="code"){
+    const wrap=document.createElement("div"); wrap.className="cf-code-wrap";
+    const bar=document.createElement("div"); bar.className="cf-code-bar";
+    bar.innerHTML = `<span>ARDUINO FIRMWARE</span>`;
+    const copy=document.createElement("button"); copy.id="cf-copy";
+    copy.className = state.copied?"copied":"";
+    copy.textContent = state.copied?"✓ COPIED":"⧉ COPY";
+    copy.onclick=()=>{
+      navigator.clipboard.writeText(r.code||"");
+      state.copied=true; renderTab();
+      setTimeout(()=>{ state.copied=false; if(state.activeTab==="code") renderTab(); },2000);
+    };
+    bar.appendChild(copy);
+    const pre=document.createElement("pre"); pre.textContent=r.code||"";
+    wrap.appendChild(bar); wrap.appendChild(pre); pane.appendChild(wrap);
+  } else if(state.activeTab==="erc"){
+    const list=document.createElement("div"); list.className="cf-erc-list";
+    if(state.ercErrors.length===0){
+      const ok=document.createElement("div"); ok.className="cf-erc-ok";
+      ok.textContent="✓ ERC PASSED — No electrical rule violations detected";
+      list.appendChild(ok);
+    } else {
+      state.ercErrors.forEach(e=>{
+        const item=document.createElement("div"); item.className="cf-erc-item";
+        item.style.background = SEVERITY_COLOR[e.severity]+"10";
+        item.style.border = "1px solid "+SEVERITY_COLOR[e.severity]+"30";
+        const badge=document.createElement("span"); badge.className="badge";
+        badge.style.background = SEVERITY_COLOR[e.severity]+"20";
+        badge.style.color = SEVERITY_COLOR[e.severity];
+        badge.textContent = e.severity;
+        const msg=document.createElement("span"); msg.className="msg"; msg.textContent=e.msg;
+        item.appendChild(badge); item.appendChild(msg); list.appendChild(item);
+      });
+    }
+    const foot=document.createElement("div"); foot.className="cf-erc-foot";
+    foot.textContent="ERC checks: power source, pin validity, LED resistors, I2C pull-ups, motor drivers, GND continuity";
+    list.appendChild(foot);
+    pane.appendChild(list);
+  } else if(state.activeTab==="notes"){
+    const list=document.createElement("div"); list.className="cf-notes-list";
+    (r.notes||[]).forEach(note=>{
+      const n=document.createElement("div"); n.className="cf-note";
+      n.innerHTML = `<span>›</span> ${escapeHtml(note)}`;
+      list.appendChild(n);
+    });
+    const ct=document.createElement("div"); ct.className="cf-conn-table";
+    const rows=(r.connections||[]).map(c=>`<div class="cf-conn-row">
+      <span class="a">${escapeHtml(c[0])}</span><span class="arr">→</span><span class="b">${escapeHtml(c[1])}</span></div>`).join("");
+    ct.innerHTML = `<div class="hd">CONNECTION TABLE</div>${rows}`;
+    list.appendChild(ct);
+    pane.appendChild(list);
+  }
+}
+
+async function handleRun(){
+  const prompt = el("cf-prompt").value.trim();
+  if(!prompt || state.stage) return;
+  state.result=null; state.ercErrors=[]; state.copied=false;
+  el("cf-results").hidden=true; el("cf-error").hidden=true;
+  setStage("identifying","Identifying components...");
+  try {
+    const res = await runPipeline(prompt, (s,msg)=>setStage(s,msg));
+    state.result = res;
+    state.ercErrors = runERC(res.components, res.connections);
+    state.activeTab = "diagram";
+    setStage(null);
+    if(window.__fa && window.__fa.query) window.__fa.query(prompt, "circuit-forge", false);
+    renderResults();
+  } catch(e){
+    setStage(null);
+    const errEl = el("cf-error");
+    errEl.hidden=false; errEl.textContent = "✗ " + e.message;
+  }
+}
+
+// ─── WIRE UP ─────────────────────────────────────────────────────────────────
+(function init(){
+  const ex = el("cf-examples");
+  EXAMPLE_PROMPTS.forEach(p => {
+    const b=document.createElement("button"); b.className="cf-ex";
+    b.textContent = p.slice(0,50)+"…"; b.title=p;
+    b.onclick=()=>{ el("cf-prompt").value=p; el("cf-run").disabled=false; };
+    ex.appendChild(b);
+  });
+  el("cf-run").onclick = handleRun;
+  el("cf-prompt").addEventListener("input", ()=>{
+    if(!state.stage) el("cf-run").disabled = !el("cf-prompt").value.trim();
+  });
+  el("cf-prompt").addEventListener("keydown", e=>{
+    if(e.key==="Enter" && (e.metaKey||e.ctrlKey)) handleRun();
+  });
+  el("cf-run").disabled = true;
+})();
+</script>
+</body>
+</html>

@@ -62,6 +62,7 @@ PAGES = {
     'intel-commercial.html': 'intel-commercial/index.html',
     'payload-compare.html': 'payload-compare/index.html',
     'stack-builder.html': 'stack-builder/index.html',
+    'circuit-forge.html': 'circuit-forge/index.html',
     'tools.html': 'tools/index.html',
     'wingman.html': 'wingman/index.html',
     'start.html': 'start/index.html',
@@ -194,7 +195,7 @@ _PAGE_SLUGS = {
     'wingman.html': 'wingman', 'browse.html': 'browse',
     'platforms.html': 'platforms', 'compare.html': 'compare',
     'cost.html': 'cost', 'payload-compare.html': 'payload-compare',
-    'stack-builder.html': 'stack-builder', 'industry.html': 'industry',
+    'stack-builder.html': 'stack-builder', 'circuit-forge.html': 'circuit-forge', 'industry.html': 'industry',
     'tools.html': 'tools', 'tools-home.html': 'tools-home',
     'software-library.html': 'software-library',
     'brief.html': 'brief', 'report.html': 'report',
@@ -337,6 +338,7 @@ _UNIFIED_NAV = r"""<!-- ── Unified UAS- Nav (5-domain accordion drawer) ─�
       <a class="dc-dom-sublink" href="https://uas-forge.com/compare/" data-page="compare">Compare</a>
       <a class="dc-dom-sublink" href="https://uas-forge.com/compliance/" data-page="compliance">Compliance Dashboard</a>
       <a class="dc-dom-sublink" href="https://uas-forge.com/stack-builder/" data-page="stack-builder">Stack Builder</a>
+      <a class="dc-dom-sublink" href="https://uas-forge.com/circuit-forge/" data-page="circuit-forge">Circuit Forge (AI)</a>
       <a class="dc-dom-sublink" href="https://uas-forge.com/cost/" data-page="cost">Cost Estimator</a>
       <a class="dc-dom-sublink" href="https://uas-forge.com/waiver/" data-page="waiver">Document Builder</a>
       <a class="dc-dom-sublink" href="https://uas-forge.com/wingman/" data-page="wingman">Wingman AI</a>
@@ -507,7 +509,7 @@ _UNIFIED_NAV = r"""<!-- ── Unified UAS- Nav (5-domain accordion drawer) ─�
   var labels = {
     'browse':'Browse','wingman':'Wingman','intel':'Intel Hub','compare':'Compare',
     'compliance':'Compliance','dossier':'Dossier','platforms':'Platforms','regs':'Regs',
-    'stack-builder':'Stack Builder','report':'Compliance Report','tools-home':'Tools',
+    'stack-builder':'Stack Builder','circuit-forge':'Circuit Forge','report':'Compliance Report','tools-home':'Tools',
     'software-library':'Software Library','industry':'Industry','tracker':'Contract Tracker',
     'patterns-home':'P.I.E Hub','brief':'Brief','patterns':'Flags','clock':'UAS Clock','ddg':'DDG Tracker',
     'adversary-bom':'Adversary BOM','mirroring':'Component Mirroring','actors':'Threat Actors',
@@ -799,6 +801,11 @@ SEO_META = {
         'Wingman AI — Drone Troubleshooter & Wiring Analyzer',
         'AI-powered FPV drone troubleshooter. Upload photos for wiring analysis, get PID tuning help, firmware guidance, and real-time web search. Powered by Gemini.',
         'drone troubleshooter AI, FPV wiring analyzer, Betaflight help, drone repair assistant, PID tuning AI',
+    ),
+    'circuit-forge.html': (
+        'Circuit Forge — AI Hardware Design & Wiring Diagram Generator',
+        'Describe a hardware project in plain English and get a wired schematic, bill of materials, Arduino firmware, and an automated electrical-rule check. Grounded with canonical Arduino/ESP32/sensor pinouts.',
+        'AI circuit designer, wiring diagram generator, Arduino schematic AI, ESP32 wiring, bill of materials generator, electrical rule check',
     ),
     'pid-tuning.html': (
         'PID Tuning Tool — Blackbox FFT Spectral Analysis & Calculator',
@@ -1158,6 +1165,7 @@ def inject_seo(html, src_name, dst_path):
         'payload-compare/':    'https://uas-forge.com/payload-compare/',
         'platforms/':          'https://uas-forge.com/platforms/',
         'stack-builder/':      'https://uas-forge.com/stack-builder/',
+        'circuit-forge/':      'https://uas-forge.com/circuit-forge/',
         'spec-sheets/':        'https://uas-forge.com/spec-sheets/',
         'dossier/':            'https://uas-forge.com/dossier/',
         'grants/':             'https://uas-forge.com/grants/',
@@ -1239,6 +1247,7 @@ def generate_sitemap(pages):
     priority_map = {
         'mission-control.html': '1.0',
         'index.html': '0.9', 'platforms.html': '0.9', 'wingman.html': '0.9',
+        'circuit-forge.html': '0.8',
         'pid-tuning.html': '0.8', 'tools.html': '0.8', 'compliance.html': '0.8',
         'intel.html': '0.8', 'industry.html': '0.8',
         'compare.html': '0.7', 'browse.html': '0.7',
@@ -1762,6 +1771,9 @@ def build():
             'clock.html','entity-graph.html','analytics.html',
             'adversary-bom.html','mirroring.html','actors.html',
             'ttps.html','evasion.html',
+            # Circuit Forge talks only to the live /api/wingman CF Worker; the
+            # static adapter would intercept /api/* and return [] for it.
+            'circuit-forge.html',
         }
         if src_name not in _NO_ADAPTER:
             html = inject_adapter(html, depth)
