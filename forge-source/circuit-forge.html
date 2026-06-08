@@ -103,6 +103,8 @@
   .cf-legend{position:absolute;top:8px;left:10px;display:flex;flex-wrap:wrap;gap:4px 10px;max-width:calc(100% - 20px);pointer-events:none;}
   .cf-leg-item{display:inline-flex;align-items:center;gap:4px;font-size:9px;color:var(--ink-2);font-family:var(--mono);}
   .cf-leg-item i{width:9px;height:3px;border-radius:2px;display:inline-block;}
+  .cf-export{position:absolute;top:8px;right:10px;font-size:10px;padding:4px 10px;background:rgba(6,182,212,0.12);border:1px solid rgba(6,182,212,.4);border-radius:4px;color:var(--cyan);font-family:var(--mono);cursor:pointer;z-index:2;}
+  .cf-export:hover{background:rgba(6,182,212,0.22);}
 
   .cf-bom-wrap{background:var(--panel-2);border:1px solid var(--line);border-radius:12px;overflow:hidden;}
   table.cf-bom{width:100%;border-collapse:collapse;font-size:12px;}
@@ -690,6 +692,22 @@ function downloadText(filename, text){
   setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
 
+// Export the live schematic as a standalone SVG (vector, shareable).
+function exportSVG(svg){
+  if(!svg) return;
+  const W = svg.clientWidth || 700, H = svg.clientHeight || 450;
+  const clone = svg.cloneNode(true);
+  clone.setAttribute("xmlns", "http://www.w3.org/2000/svg");
+  clone.setAttribute("xmlns:xlink", "http://www.w3.org/1999/xlink");
+  clone.setAttribute("width", W); clone.setAttribute("height", H);
+  clone.setAttribute("viewBox", `0 0 ${W} ${H}`);
+  const bg = document.createElementNS("http://www.w3.org/2000/svg", "rect");
+  bg.setAttribute("x", 0); bg.setAttribute("y", 0); bg.setAttribute("width", W); bg.setAttribute("height", H); bg.setAttribute("fill", "#050A14");
+  clone.insertBefore(bg, clone.firstChild);
+  const xml = new XMLSerializer().serializeToString(clone);
+  downloadText("circuit-forge-wiring.svg", '<?xml version="1.0" encoding="UTF-8"?>\n' + xml);
+}
+
 // ─── FORCE-DIRECTED GRAPH ────────────────────────────────────────────────────
 let _graphAnim = null, _graphRunning = false, _clipSeq = 0;
 const SVGNS = "http://www.w3.org/2000/svg";
@@ -722,10 +740,15 @@ function renderGraph(svg, components, connections){
   const defs = document.createElementNS(SVGNS, "defs");
   svg.appendChild(defs);
 
-  const nodes = components.map(c => ({
-    id:c.id, type:c.type, cat:catFor(c.type),
-    x:W/2 + (Math.random()-0.5)*200, y:H/2 + (Math.random()-0.5)*200, vx:0, vy:0,
-  }));
+  const nodes = components.map(c => {
+    const cat = catFor(c.type), kb = COMPONENT_KB[c.type] || {};
+    const hasImg = !!(cat && cat.image), shape = kb.shape || "rect";
+    let w, h;
+    if(shape === "circle"){ const r = hasImg ? 24 : 22; w = 2*r; h = 2*r; }
+    else { w = hasImg ? 72 : 60; h = hasImg ? 52 : 36; }
+    return { id:c.id, type:c.type, cat, w, h,
+      x:W/2 + (Math.random()-0.5)*200, y:H/2 + (Math.random()-0.5)*200, vx:0, vy:0 };
+  });
   const nodeMap = {};
   nodes.forEach(n => { nodeMap[n.id] = n; });
 
@@ -772,25 +795,59 @@ function renderGraph(svg, components, connections){
     _graphAnim = requestAnimationFrame(tick);
   }
 
+  // Exit point on a node's bounding box toward (tx,ty), shifted along that edge
+  // by `off` so the strands of one bundle fan out as a tidy ribbon.
+  function edgePoint(node, tx, ty, off){
+    const dx=tx-node.x, dy=ty-node.y, hw=node.w/2+2, hh=node.h/2+2;
+    const sx = dx===0 ? 1e9 : hw/Math.abs(dx), sy = dy===0 ? 1e9 : hh/Math.abs(dy);
+    const s = Math.min(sx, sy);
+    let x = node.x + dx*s, y = node.y + dy*s;
+    if(Math.abs(dx)*hh >= Math.abs(dy)*hw) y += off;   // exits a vertical (L/R) edge
+    else x += off;                                     // exits a horizontal (T/B) edge
+    return { x, y };
+  }
+
+  // Orthogonal (right-angle) elbow between two perimeter points.
+  function elbow(a, b, off){
+    const dx=b.x-a.x, dy=b.y-a.y;
+    if(Math.abs(dx) >= Math.abs(dy)){ const mx=a.x+dx*0.5+off; return [a,{x:mx,y:a.y},{x:mx,y:b.y},b]; }
+    const my=a.y+dy*0.5+off; return [a,{x:a.x,y:my},{x:b.x,y:my},b];
+  }
+
+  function drawWires(){
+    // Bundle parallel wires between the same pair of components into a ribbon.
+    const bundles = {};
+    links.forEach(l => { const k=[l.source.id,l.target.id].sort().join("|"); (bundles[k]=bundles[k]||[]).push(l); });
+    Object.values(bundles).forEach(group => {
+      const n = group.length, SP = 5;
+      group.forEach((l, i) => {
+        const off = (i - (n-1)/2) * SP;
+        const a = edgePoint(l.source, l.target.x, l.target.y, off);
+        const b = edgePoint(l.target, l.source.x, l.source.y, -off);
+        const col = NET_COLORS[l.net] || "#64748B";
+        const pts = elbow(a, b, off);
+        const poly = document.createElementNS(SVGNS,"polyline");
+        poly.setAttribute("points", pts.map(p => `${p.x.toFixed(1)},${p.y.toFixed(1)}`).join(" "));
+        poly.setAttribute("fill","none"); poly.setAttribute("stroke",col);
+        poly.setAttribute("stroke-width","1.8"); poly.setAttribute("stroke-opacity","0.8"); poly.setAttribute("stroke-linejoin","round");
+        svg.appendChild(poly);
+        // Port label — the controller-side pad name, at the hub end (CubePilot style).
+        let end=null, pin=null;
+        if(l.source===hub){ end=a; pin=l.labelA; } else if(l.target===hub){ end=b; pin=l.labelB; } else { end=a; pin=l.labelA; }
+        const t=document.createElementNS(SVGNS,"text");
+        t.setAttribute("x", end.x + (end.x<((l.source===hub||l.target===hub)?hub.x:l.source.x) ? -3 : 3));
+        t.setAttribute("y", end.y - 2);
+        t.setAttribute("font-size","6.5"); t.setAttribute("fill",col); t.setAttribute("font-family","monospace");
+        t.setAttribute("text-anchor", end.x < (l.source===hub?hub.x:(l.target===hub?hub.x:l.source.x)) ? "end" : "start");
+        t.textContent = pin;
+        svg.appendChild(t);
+      });
+    });
+  }
+
   function draw(){
     while(svg.lastChild && svg.lastChild !== defs) svg.removeChild(svg.lastChild);
-    links.forEach(l => {
-      const g=document.createElementNS(SVGNS,"g");
-      const line=document.createElementNS(SVGNS,"line");
-      const wireCol = NET_COLORS[l.net] || "#64748B";
-      line.setAttribute("x1",l.source.x); line.setAttribute("y1",l.source.y);
-      line.setAttribute("x2",l.target.x); line.setAttribute("y2",l.target.y);
-      line.setAttribute("stroke",wireCol); line.setAttribute("stroke-width","2"); line.setAttribute("stroke-opacity","0.7");
-      g.appendChild(line);
-      const mx=(l.source.x+l.target.x)/2, my=(l.source.y+l.target.y)/2;
-      const badge=document.createElementNS(SVGNS,"text");
-      badge.setAttribute("x",mx); badge.setAttribute("y",my);
-      badge.setAttribute("text-anchor","middle"); badge.setAttribute("font-size","7.5");
-      badge.setAttribute("fill",wireCol); badge.setAttribute("fill-opacity","0.95"); badge.setAttribute("font-family","monospace");
-      badge.textContent=`${l.labelA}↔${l.labelB}`;
-      g.appendChild(badge);
-      svg.appendChild(g);
-    });
+    drawWires();
     nodes.forEach(n => drawNode(n));
   }
 
@@ -953,7 +1010,10 @@ function renderTab(){
     const present=[...new Set((r.connections||[]).map(c => netTypeOf((c[0].split(".")[1]||""), (c[1].split(".")[1]||""))))];
     present.forEach(t => { const it=document.createElement("span"); it.className="cf-leg-item"; it.innerHTML=`<i style="background:${NET_COLORS[t]}"></i>${NET_LABELS[t]}`; legend.appendChild(it); });
     box.appendChild(legend);
-    const hint=document.createElement("div"); hint.className="hint"; hint.textContent="flight controller centred · wires coloured by signal · click a part to open it in the catalog";
+    const exp=document.createElement("button"); exp.className="cf-export"; exp.textContent="⤓ SVG";
+    exp.title="Download the wiring diagram as SVG"; exp.onclick=()=>exportSVG(svg);
+    box.appendChild(exp);
+    const hint=document.createElement("div"); hint.className="hint"; hint.textContent="flight controller centred · wires coloured by signal · pads labelled at the FC · click a part to open it in the catalog";
     box.appendChild(hint); pane.appendChild(box);
     requestAnimationFrame(()=>renderGraph(svg, r.components, r.connections));
   } else if(state.activeTab==="bom"){
