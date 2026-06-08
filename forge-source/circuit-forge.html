@@ -125,8 +125,15 @@
   .cf-code-wrap{background:var(--panel-2);border:1px solid var(--line);border-radius:12px;overflow:hidden;}
   .cf-code-bar{display:flex;align-items:center;padding:10px 16px;border-bottom:1px solid var(--line);}
   .cf-code-bar span{font-size:10px;color:var(--ink-3);letter-spacing:.08em;}
-  #cf-copy{margin-left:auto;font-size:10px;padding:4px 12px;background:rgba(59,130,246,0.1);border:1px solid var(--line-3);border-radius:4px;color:var(--blue);font-family:inherit;cursor:pointer;}
+  .cf-code-bar{flex-wrap:wrap;gap:8px;}
+  .cf-fmt{display:flex;gap:4px;flex-wrap:wrap;}
+  .cf-fmt-btn{font-size:10px;padding:4px 9px;background:rgba(59,130,246,0.06);border:1px solid var(--line-2);border-radius:4px;color:var(--ink-3);font-family:inherit;cursor:pointer;transition:all .15s;}
+  .cf-fmt-btn:hover{color:var(--ink-2);border-color:var(--line-3);}
+  .cf-fmt-btn.active{background:rgba(59,130,246,0.16);border-color:var(--blue);color:var(--blue);}
+  #cf-copy{font-size:10px;padding:4px 12px;background:rgba(59,130,246,0.1);border:1px solid var(--line-3);border-radius:4px;color:var(--blue);font-family:inherit;cursor:pointer;}
   #cf-copy.copied{background:rgba(34,197,94,0.15);border-color:rgba(34,197,94,0.4);color:var(--green);}
+  .cf-dl{font-size:10px;padding:4px 12px;background:rgba(6,182,212,0.1);border:1px solid rgba(6,182,212,.4);border-radius:4px;color:var(--cyan);font-family:inherit;cursor:pointer;}
+  .cf-warn{padding:8px 16px;font-size:10px;line-height:1.5;color:#FBBF24;background:rgba(245,158,11,0.08);border-bottom:1px solid var(--line);}
   .cf-code-wrap pre{margin:0;padding:16px 20px;font-size:11px;line-height:1.7;color:var(--ink-2);overflow:auto;max-height:380px;white-space:pre-wrap;}
 
   .cf-erc-list{display:flex;flex-direction:column;gap:8px;}
@@ -330,6 +337,10 @@ function priceNum(p){
 }
 
 // ─── ERC ENGINE ──────────────────────────────────────────────────────────────
+// Pin names vary in case across firmwares/boards (SmartAudio vs SMARTAUDIO),
+// so match case-insensitively to avoid false "invalid pin" flags.
+function pinValid(kb, pin){ return kb.pins.some(p => p.toLowerCase() === String(pin).toLowerCase()); }
+
 function runERC(components, connections){
   const errors = [];
   const compMap = {};
@@ -346,8 +357,8 @@ function runERC(components, connections){
     const aComp = compMap[aId], bComp = compMap[bId];
     if(!aComp) errors.push({ severity:"CRITICAL", msg:`Connection references unknown component: ${aId}` });
     if(!bComp) errors.push({ severity:"CRITICAL", msg:`Connection references unknown component: ${bId}` });
-    if(aComp){ const kb=COMPONENT_KB[aComp.type]; if(kb && !kb.pins.includes(aPin)) errors.push({ severity:"MAJOR", msg:`Invalid pin "${aPin}" on ${aId} (${aComp.type})` }); }
-    if(bComp){ const kb=COMPONENT_KB[bComp.type]; if(kb && !kb.pins.includes(bPin)) errors.push({ severity:"MAJOR", msg:`Invalid pin "${bPin}" on ${bId} (${bComp.type})` }); }
+    if(aComp){ const kb=COMPONENT_KB[aComp.type]; if(kb && !pinValid(kb, aPin)) errors.push({ severity:"MAJOR", msg:`Invalid pin "${aPin}" on ${aId} (${aComp.type})` }); }
+    if(bComp){ const kb=COMPONENT_KB[bComp.type]; if(kb && !pinValid(kb, bPin)) errors.push({ severity:"MAJOR", msg:`Invalid pin "${bPin}" on ${bId} (${bComp.type})` }); }
   });
 
   const leds = components.filter(c=>c.type==="LED");
@@ -404,41 +415,84 @@ async function callLLM(prompt){
   throw new Error("Unknown engine");
 }
 
+const sleep = ms => new Promise(r => setTimeout(r, ms));
+
+// Pull a retry delay (ms) out of a 429 response: Retry-After header, Google's
+// RetryInfo detail, or a "retry in 12.3s" string. Capped at 30s.
+function retryDelayMs(res, data){
+  const h = res.headers.get("retry-after");
+  if(h && !isNaN(h)) return Math.min(+h * 1000, 30000);
+  const details = data?.error?.details;
+  if(Array.isArray(details)){
+    const ri = details.find(d => String(d["@type"] || "").includes("RetryInfo"));
+    const m = ri && String(ri.retryDelay || "").match(/([0-9.]+)s/);
+    if(m) return Math.min(Math.ceil(parseFloat(m[1]) * 1000), 30000);
+  }
+  const m = JSON.stringify(data || "").match(/retry in ([0-9.]+)s/i);
+  if(m) return Math.min(Math.ceil(parseFloat(m[1]) * 1000), 30000);
+  return 0;
+}
+
+// "limit: 0" on a free-tier metric means the key's project has no free allowance
+// here (billing-enabled project, brand-new key, or unsupported region) — retrying
+// won't help, so explain it and point at the reliably-free Groq engine.
+function quotaHint(data){
+  const s = JSON.stringify(data || "");
+  if(/"limit":\s*0|limit:\s*0|free_tier/.test(s))
+    return " — this key's project has no free-tier quota here (billing-enabled project, brand-new key, or unsupported region). Switch the engine to Groq (free), or use a Gemini key from a free-tier Google account.";
+  return "";
+}
+
+// POST JSON with up to 2 automatic retries on HTTP 429, honouring the provider's
+// retry delay. A network failure (often a CORS block on a direct browser call)
+// throws a friendly error pointing at the engines that allow browser calls.
+async function postJSON(url, opts, label){
+  for(let attempt = 0; ; attempt++){
+    let res;
+    try { res = await fetch(url, opts); }
+    catch(e){ throw new Error(`${label}: request blocked (the provider may not allow direct browser calls — try the free Gemini or Groq engine instead).`); }
+    let data; try { data = await res.json(); } catch { data = {}; }
+    if(res.status === 429 && attempt < 2){
+      const wait = retryDelayMs(res, data) || (2000 * (attempt + 1));
+      if(wait <= 25000){
+        if(state.stage) setStage(state.stage, `${label} rate-limited — retrying in ${Math.ceil(wait/1000)}s…`);
+        await sleep(wait);
+        continue;
+      }
+    }
+    return { res, data };
+  }
+}
+
 async function callAnthropic(prompt, key){
-  const res = await fetch("https://api.anthropic.com/v1/messages", {
+  const { data } = await postJSON("https://api.anthropic.com/v1/messages", {
     method:"POST",
     headers:{ "Content-Type":"application/json", "x-api-key":key, "anthropic-version":"2023-06-01", "anthropic-dangerous-direct-browser-access":"true" },
     body: JSON.stringify({ model:"claude-sonnet-4-6", max_tokens: MAX_TOKENS, messages:[{ role:"user", content: prompt }] }),
-  });
-  const data = await res.json();
-  if(data.error) throw new Error("Claude: " + (data.error.message || JSON.stringify(data.error)));
+  }, "Claude");
+  if(data.error) throw new Error("Claude: " + (data.error.message || JSON.stringify(data.error)) + quotaHint(data));
   const t = data.content?.[0]?.text;
   if(!t) throw new Error("Claude: empty response");
   return t;
 }
 
 async function callGemini(prompt, key){
-  const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${encodeURIComponent(key)}`, {
+  const { data } = await postJSON(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${encodeURIComponent(key)}`, {
     method:"POST", headers:{ "Content-Type":"application/json" },
     body: JSON.stringify({ contents:[{ parts:[{ text: prompt }] }], generationConfig:{ maxOutputTokens: MAX_TOKENS } }),
-  });
-  const data = await res.json();
-  if(data.error) throw new Error("Gemini: " + (data.error.message || "request failed"));
+  }, "Gemini");
+  if(data.error) throw new Error("Gemini: " + (data.error.message || "request failed") + quotaHint(data));
   const t = (data.candidates?.[0]?.content?.parts || []).map(x => x.text || "").join("");
   if(!t) throw new Error("Gemini: empty response (check key / quota)");
   return t;
 }
 
 async function callOpenAICompat(prompt, key, url, model, label){
-  let res;
-  try {
-    res = await fetch(url, {
-      method:"POST", headers:{ "Content-Type":"application/json", "Authorization":`Bearer ${key}` },
-      body: JSON.stringify({ model, max_tokens: MAX_TOKENS, messages:[{ role:"user", content: prompt }] }),
-    });
-  } catch(e){ throw new Error(`${label}: request blocked (the provider may not allow direct browser calls — try the free Gemini or Groq engine instead).`); }
-  const data = await res.json();
-  if(data.error) throw new Error(`${label}: ` + (data.error.message || JSON.stringify(data.error)));
+  const { data } = await postJSON(url, {
+    method:"POST", headers:{ "Content-Type":"application/json", "Authorization":`Bearer ${key}` },
+    body: JSON.stringify({ model, max_tokens: MAX_TOKENS, messages:[{ role:"user", content: prompt }] }),
+  }, label);
+  if(data.error) throw new Error(`${label}: ` + (data.error.message || JSON.stringify(data.error)) + quotaHint(data));
   const t = data.choices?.[0]?.message?.content;
   if(!t) throw new Error(`${label}: empty response`);
   return t;
@@ -531,27 +585,79 @@ Rules:
   try { circuit = JSON.parse(stripFences(stage3)); }
   catch { throw new Error("JSON synthesis failed"); }
 
-  onStageUpdate("bom_code","Generating BOM and firmware code...");
+  onStageUpdate("bom_code","Generating bill of materials...");
   const stage4 = await callLLM(
-`You are a hardware documentation and firmware agent.
+`You are a hardware documentation agent.
 
 Project: "${prompt}"
 Components: ${JSON.stringify(circuit.components)}
 
-Generate a JSON response with BOM and code. No markdown, only JSON:
+Generate a JSON response. No markdown, only JSON:
 {
   "bom": [{"id": "fc1", "component": "Flight Controller", "qty": 1, "spec": "F7, 8 UART", "approxCost": "$45", "notes": "Check UART map"}],
-  "code": "// Arduino/firmware sketch or config notes here\\n",
   "title": "Short project title",
   "overview": "2-3 sentence project description"
 }
 Note: "component" must match the component type names exactly so they can be linked to the parts catalog.`);
 
-  let bomCode;
-  try { bomCode = JSON.parse(stripFences(stage4)); }
-  catch { bomCode = { bom:[], code:"// Code generation failed", title:"Project", overview:"" }; }
+  let bomData;
+  try { bomData = JSON.parse(stripFences(stage4)); }
+  catch { bomData = { bom:[], title:"Project", overview:"" }; }
 
-  return { components: circuit.components, connections: circuit.connections, notes: circuit.notes || [], ...bomCode };
+  // Firmware config (Betaflight diff / ArduPilot param / etc.) is generated
+  // on demand from the CODE tab so we only spend a call on the format the user
+  // actually wants — see genConfig().
+  return { components: circuit.components, connections: circuit.connections, notes: circuit.notes || [], prompt, ...bomData };
+}
+
+// ─── FIRMWARE CONFIG GENERATION (on demand, per format) ──────────────────────
+const CONFIG_FORMATS = {
+  betaflight: { label:"Betaflight CLI", filename:"betaflight_diff.txt",
+    instr:`Produce a Betaflight 4.x CLI "diff"-style configuration for THIS build. Include only the relevant lines: 'resource' remaps if implied by the wiring, 'serial' assignments mapping each UART to its peripheral (RX/ELRS receiver, VTX SmartAudio, GPS, ESC telemetry), 'feature' toggles (TELEMETRY, OSD, GPS, RX_SERIAL...), and the key 'set' lines (motor_pwm_protocol DSHOT600, vtx_*, osd_*, rssi/telemetry). Add motor 'mixer'/order only if non-default. Begin with '# Betaflight CLI' and end with 'save'.` },
+  inav: { label:"iNav CLI", filename:"inav_diff.txt",
+    instr:`Produce an iNav 7.x CLI "diff"-style configuration for THIS build. Map each serial port to its function (MSP, SERIAL_RX, GPS, VTX SmartAudio, ESC telemetry) with 'serial' lines, set the relevant 'feature' and 'set' values (motor protocol, GPS, OSD, RSSI), and any 'aux' mode lines. Begin with '# iNav CLI' and end with 'save'.` },
+  ardupilot: { label:"ArduPilot .param", filename:"ardupilot.param",
+    instr:`Produce an ArduPilot parameter file, one 'NAME,VALUE' per line (no spaces around the comma). Set SERIALx_PROTOCOL and SERIALx_BAUD for each wired UART (RC input, telemetry/companion MAVLink, GPS), MOT_PWM_TYPE for the ESC/DShot protocol, GPS_TYPE, RSSI_TYPE if used, and the core frame/board params implied by the components. Comment lines begin with '#'.` },
+  px4: { label:"PX4 params", filename:"px4.params",
+    instr:`Produce a PX4 parameter set as 'param set NAME VALUE' lines for THIS build: map serial ports (RC, telemetry/companion MAVLink, GPS) via the *_CONFIG params, set the DShot/PWM output mode, GPS, and RC protocol params implied by the components. One 'param set' per line.` },
+  arduino: { label:"Arduino sketch", filename:"sketch.ino",
+    instr:`Produce a complete, compilable Arduino sketch (C++): include the right libraries, #define pin names that match the wiring plan, and implement setup() and loop() to drive this circuit.` },
+};
+
+function defaultFormat(r){
+  const hasFC = (r.components||[]).some(c => c.type === "Flight Controller");
+  if(!hasFC) return "arduino";
+  const s = ((r.prompt||"") + " " + (r.overview||"")).toLowerCase();
+  if(/\bpx4\b/.test(s)) return "px4";
+  if(/ardupilot|pixhawk|\bcube\b|mapping|bvlos|mavlink|waypoint/.test(s)) return "ardupilot";
+  if(/inav|fixed.?wing|\bplane\b|\brover\b|\bwing\b/.test(s)) return "inav";
+  return "betaflight";
+}
+
+async function genConfig(fmt){
+  const r = state.result, spec = CONFIG_FORMATS[fmt];
+  const comps = r.components.map(c => `${c.id} (${c.type})`).join(", ");
+  const conns = (r.connections||[]).map(c => `${c[0]} -> ${c[1]}`).join("\n");
+  const prompt =
+`You are a flight-controller / firmware configuration agent.
+
+Project: "${r.prompt || r.title || ""}"
+Components: ${comps}
+Wiring plan:
+${conns}
+
+${spec.instr}
+
+Respond with ONLY the raw ${spec.label} file content — no markdown code fences, no commentary.`;
+  return stripFences(await callLLM(prompt));
+}
+
+function downloadText(filename, text){
+  const blob = new Blob([text], { type:"text/plain" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url; a.download = filename; document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
 
 // ─── FORCE-DIRECTED GRAPH ────────────────────────────────────────────────────
@@ -700,7 +806,7 @@ function renderGraph(svg, components, connections){
 }
 
 // ─── UI STATE + RENDERING ────────────────────────────────────────────────────
-const STAGE_LABELS = { identifying:"Identifying components", reasoning:"Expert agent reasoning", generating:"Synthesizing CircuitJSON", bom_code:"Generating BOM & code" };
+const STAGE_LABELS = { identifying:"Identifying components", reasoning:"Expert agent reasoning", generating:"Synthesizing CircuitJSON", bom_code:"Bill of materials" };
 const STAGE_KEYS = Object.keys(STAGE_LABELS);
 const SEVERITY_COLOR = { CRITICAL:"#EF4444", MAJOR:"#F97316", MINOR:"#EAB308", WARNING:"#3B82F6" };
 const EXAMPLE_PROMPTS = [
@@ -710,7 +816,7 @@ const EXAMPLE_PROMPTS = [
   "Arduino Nano 2WD robot using an L298N motor driver with two DC motors and an HC-SR04 for obstacle avoidance",
 ];
 const el = id => document.getElementById(id);
-let state = { stage:null, result:null, ercErrors:[], activeTab:"diagram", copied:false };
+let state = { stage:null, result:null, ercErrors:[], activeTab:"diagram", copied:false, configCache:{}, configBusy:{}, configFormat:null };
 
 function escapeHtml(s){ const d=document.createElement("div"); d.textContent=String(s==null?"":s); return d.innerHTML; }
 
@@ -823,14 +929,50 @@ function renderTab(){
       ${dbTotal>0?`<span>Catalog subtotal: <b>$${dbTotal.toFixed(0)}</b></span>`:""}</div>`;
     pane.appendChild(wrap);
   } else if(state.activeTab==="code"){
+    if(!state.configFormat) state.configFormat = defaultFormat(r);
+    const fmt = state.configFormat, spec = CONFIG_FORMATS[fmt];
     const wrap=document.createElement("div"); wrap.className="cf-code-wrap";
-    const bar=document.createElement("div"); bar.className="cf-code-bar"; bar.innerHTML = `<span>FIRMWARE / CONFIG</span>`;
+    const bar=document.createElement("div"); bar.className="cf-code-bar";
+
+    const fsel=document.createElement("div"); fsel.className="cf-fmt";
+    Object.entries(CONFIG_FORMATS).forEach(([id,sp])=>{
+      const b=document.createElement("button"); b.className="cf-fmt-btn"+(id===fmt?" active":"");
+      b.textContent=sp.label;
+      b.onclick=()=>{ state.configFormat=id; state.copied=false; renderTab(); };
+      fsel.appendChild(b);
+    });
+    bar.appendChild(fsel);
+
+    const code = state.configCache[fmt];
+    const ready = (code != null && !state.configBusy[fmt]);
+    const acts=document.createElement("div"); acts.style.cssText="margin-left:auto;display:flex;gap:8px;";
     const copy=document.createElement("button"); copy.id="cf-copy";
     copy.className = state.copied?"copied":""; copy.textContent = state.copied?"✓ COPIED":"⧉ COPY";
-    copy.onclick=()=>{ navigator.clipboard.writeText(r.code||""); state.copied=true; renderTab(); setTimeout(()=>{ state.copied=false; if(state.activeTab==="code") renderTab(); },2000); };
-    bar.appendChild(copy);
-    const pre=document.createElement("pre"); pre.textContent=r.code||"";
-    wrap.appendChild(bar); wrap.appendChild(pre); pane.appendChild(wrap);
+    copy.disabled = !ready; copy.style.opacity = ready?"1":"0.4";
+    copy.onclick=()=>{ if(!ready) return; navigator.clipboard.writeText(code); state.copied=true; renderTab(); setTimeout(()=>{ state.copied=false; if(state.activeTab==="code") renderTab(); },2000); };
+    const dl=document.createElement("button"); dl.className="cf-dl"; dl.textContent="⤓ "+spec.filename;
+    dl.disabled = !ready; dl.style.opacity = ready?"1":"0.4";
+    dl.onclick=()=>{ if(ready) downloadText(spec.filename, code); };
+    acts.appendChild(copy); acts.appendChild(dl); bar.appendChild(acts);
+
+    const pre=document.createElement("pre");
+    if(code != null && !state.configBusy[fmt]){
+      pre.textContent = code;
+    } else {
+      pre.textContent = `Generating ${spec.label} from the wiring plan…  (one ${PROVIDERS[provider].label} call)`;
+      if(!state.configBusy[fmt]){
+        state.configBusy[fmt] = true;
+        genConfig(fmt)
+          .then(txt => { state.configCache[fmt] = txt || "# (empty response)"; })
+          .catch(e => { state.configCache[fmt] = `# generation failed — ${e.message}`; })
+          .finally(() => { state.configBusy[fmt] = false; if(state.activeTab==="code" && state.configFormat===fmt) renderTab(); });
+      }
+    }
+    wrap.appendChild(bar);
+    const warn=document.createElement("div"); warn.className="cf-warn";
+    warn.textContent = "⚠ AI-generated starting point — diff against your board's actual target and verify UART/pad assignments before flashing.";
+    wrap.appendChild(warn);
+    wrap.appendChild(pre); pane.appendChild(wrap);
   } else if(state.activeTab==="erc"){
     const list=document.createElement("div"); list.className="cf-erc-list";
     if(state.ercErrors.length===0){
@@ -863,6 +1005,7 @@ async function handleRun(){
   if(!prompt || state.stage) return;
   try { if(kbReady) await kbReady; await ensureCatalog(); } catch(e){}
   state.result=null; state.ercErrors=[]; state.copied=false;
+  state.configCache={}; state.configBusy={}; state.configFormat=null;
   el("cf-results").hidden=true; el("cf-error").hidden=true;
   setStage("identifying","Identifying components...");
   try {
