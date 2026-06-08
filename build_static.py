@@ -586,6 +586,132 @@ _UNIFIED_NAV = r"""<!-- ── Unified UAS- Nav (5-domain accordion drawer) ─�
 <!-- ── /Unified UAS- Nav ─────────────────────────────────────────── -->"""
 
 
+# ── Global "point of reliance" disclaimer ────────────────────────────────
+# Forge/Patterns/Clock carry compliance labels, risk scores, threat/sanctions
+# signals and procurement intel that are AI-assisted, public-source analysis —
+# NOT legal/compliance findings or accusations. The protective language used to
+# live only in internal notes (compliance/README, research/*.md) and a couple of
+# page-specific caveats (market-lens, forecast-accountability). This injects a
+# visible, non-dismissible banner at the top of the content on every
+# risk-bearing surface so a reasonable reader sees the framing at the point of
+# reliance. Styles are self-contained (no dependence on per-page CSS vars) so
+# the banner renders identically regardless of which template it lands in.
+_DISCLAIMER_CSS = """<style id="forge-disclaimer-styles">
+.forge-disclaimer{max-width:1100px;margin:14px auto 18px;padding:13px 16px;background:rgba(239,68,68,.07);border:1px solid rgba(239,68,68,.28);border-left:3px solid #ef4444;border-radius:6px;font-family:'DM Sans',system-ui,-apple-system,sans-serif;color:#b8b0a0;line-height:1.6;box-sizing:border-box}
+@media(max-width:1140px){.forge-disclaimer{margin-left:16px;margin-right:16px}}
+.forge-disclaimer__tag{display:block;font:700 10px 'JetBrains Mono',ui-monospace,monospace;letter-spacing:.12em;text-transform:uppercase;color:#f87171;margin-bottom:6px}
+.forge-disclaimer p{margin:0 0 6px;font-size:12px}
+.forge-disclaimer p:last-child{margin-bottom:0}
+.forge-disclaimer strong{color:#e8e2d6}
+.forge-disclaimer a{color:#f59e0b;text-decoration:underline;text-decoration-color:rgba(245,158,11,.4)}
+</style>"""
+
+# The general line — used on every risk-bearing surface.
+_DISCLAIMER_GENERAL = (
+    "<strong>AI-assisted public-source analysis.</strong> Not legal, procurement, "
+    "export-control, airworthiness, or operational advice. Compliance labels and "
+    "risk scores are informational and may be incomplete or stale. Verify against "
+    "official sources, vendor attestations, and qualified counsel before relying "
+    "on them."
+)
+
+# The Patterns/threat line — adds the "signals, not allegations" framing on
+# pages that score, flag, or rank companies / platforms / actors.
+_DISCLAIMER_SIGNALS = (
+    "<strong>Risk labels are analytic signals, not allegations of unlawful "
+    "conduct.</strong> They reflect public-source indicators, confidence levels, "
+    "and available data at the time generated."
+)
+
+_DISCLAIMER_TAGS = {
+    "compliance": "Informational — Not Legal or Compliance Advice",
+    "patterns": "Analytic Signal — Not an Allegation",
+}
+
+# Map source page → disclaimer variant.
+#   "compliance" → general line only (legal / procurement / export / airworthiness)
+#   "patterns"   → general line + "signals, not allegations" (scoring / threat / intel)
+# Pages that already carry a prominent above-the-fold `.caveat-strong` of their
+# own (market-lens, forecast-accountability) are intentionally omitted so we
+# don't stack two red banners.
+_DISCLAIMER_PAGES = {
+    # Compliance / procurement / regulatory
+    "compliance.html": "compliance",
+    "compliance-matrix.html": "compliance",
+    "audit.html": "compliance",
+    "audit-doctrine.html": "compliance",
+    "regs.html": "compliance",
+    "waiver.html": "compliance",
+    "grants.html": "compliance",
+    "verify.html": "compliance",
+    "spec-sheets.html": "compliance",
+    # Patterns / PIE / threat / sanctions / gray-zone / intel + the Clock
+    "patterns.html": "patterns",
+    "patterns-home.html": "patterns",
+    "pie-trends.html": "patterns",
+    "brief.html": "patterns",
+    "ttps.html": "patterns",
+    "evasion.html": "patterns",
+    "actors.html": "patterns",
+    "adversary-bom.html": "patterns",
+    "mirroring.html": "patterns",
+    "entity-graph.html": "patterns",
+    "tracker.html": "patterns",
+    "dossier.html": "patterns",
+    "intel.html": "patterns",
+    "intel-home.html": "patterns",
+    "intel-dfr.html": "patterns",
+    "intel-commercial.html": "patterns",
+    "clock.html": "patterns",
+}
+
+
+def _disclaimer_block(variant):
+    """Build the self-contained <style> + <aside> banner for a variant."""
+    tag = _DISCLAIMER_TAGS["patterns" if variant == "patterns" else "compliance"]
+    paras = "<p>" + _DISCLAIMER_GENERAL + "</p>"
+    if variant == "patterns":
+        paras += "\n  <p>" + _DISCLAIMER_SIGNALS + "</p>"
+    aside = (
+        '<aside class="forge-disclaimer" role="note" '
+        'data-test-id="forge-global-disclaimer">\n'
+        f'  <span class="forge-disclaimer__tag">{tag}</span>\n'
+        f'  {paras}\n'
+        '</aside>'
+    )
+    return _DISCLAIMER_CSS + "\n" + aside
+
+
+def inject_disclaimer(html, src_name):
+    """Inject the visible point-of-reliance disclaimer at the top of content.
+
+    Inserted right after the unified nav (so it's the first scrollable element)
+    or, on nav-less pages (clock/analytics), right after <body>. Idempotent and
+    a no-op for pages not in _DISCLAIMER_PAGES.
+    """
+    variant = _DISCLAIMER_PAGES.get(src_name)
+    if not variant:
+        return html
+    if 'data-test-id="forge-global-disclaimer"' in html:
+        return html
+
+    block = "\n" + _disclaimer_block(variant) + "\n"
+
+    # Prefer immediately after the injected unified nav end-marker.
+    m = re.search(r'<!-- ── /Unified[^\n]*?-->', html)
+    if m:
+        idx = m.end()
+        return html[:idx] + block + html[idx:]
+
+    # Fallback: right after the opening <body> tag.
+    m = re.search(r'<body[^>]*>', html)
+    if m:
+        idx = m.end()
+        return html[:idx] + block + html[idx:]
+
+    return block + html
+
+
 def inject_nav(html, src_name):
     """Inject unified nav after <body> on every page except analytics and clock.
 
@@ -1829,6 +1955,7 @@ def build():
         if src_name not in _NO_ADAPTER:
             html = inject_adapter(html, depth)
         html = inject_analytics(html, src_name)
+        html = inject_disclaimer(html, src_name)
         html = fix_nav_links(html, depth)
         html = rewrite_legacy_domains(html)
         
