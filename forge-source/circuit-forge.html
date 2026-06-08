@@ -191,7 +191,7 @@
       <div class="cf-examples" id="cf-examples">
         <span class="lbl">EXAMPLES:</span>
       </div>
-      <div class="cf-kbnote" id="cf-kbnote">Grounded with canonical pinouts. Drone parts are matched to the <b>Forge catalog</b> for real thumbnails, prices, and NDAA status. Default engine is free — or bring your own key (kept in your browser, sent straight to the provider).</div>
+      <div class="cf-kbnote" id="cf-kbnote">Grounded with canonical pinouts. Drone parts are matched to the <b>Forge catalog</b> for real thumbnails, prices, and NDAA status. <b>Bring your own API key</b> — <b>Gemini</b> and <b>Groq</b> are free. Your key stays in your browser and goes straight to the provider.</div>
     </div>
 
     <div class="cf-pipeline" id="cf-pipeline" hidden>
@@ -376,46 +376,32 @@ function runERC(components, connections){
   return errors;
 }
 
-// ─── LLM PROVIDERS (free default + bring-your-own-key) ───────────────────────
-// Default routes through the Forge /api/wingman Worker — free, no key, the same
-// proxy Wingman uses (the server holds the Anthropic key). The other providers
-// are BYOK: the key is stored in the browser (localStorage) and the request goes
-// DIRECT to the provider, so the key never touches our servers and costs us nothing.
+// ─── LLM PROVIDERS (bring-your-own-key) ──────────────────────────────────────
+// Every engine is BYOK: the user's key is stored in their browser (localStorage)
+// and the request goes DIRECT to the provider. The key never touches our servers
+// and there is NO owner-funded default — this site runs for free, so it can't
+// foot the API bill for anonymous traffic. Gemini and Groq are free to the user.
 const MAX_TOKENS = 2048;
 const PROVIDERS = {
-  forge:     { label:"Forge — free (Claude)", needsKey:false, tier:"free" },
-  gemini:    { label:"Gemini (free tier)",    needsKey:true, tier:"free", ls:"cf_key_gemini",    keyUrl:"https://aistudio.google.com/apikey",          keyName:"Google AI Studio" },
-  groq:      { label:"Groq · Llama (free)",   needsKey:true, tier:"free", ls:"cf_key_groq",      keyUrl:"https://console.groq.com/keys",               keyName:"Groq Console" },
-  anthropic: { label:"Claude — your key",     needsKey:true, tier:"paid", ls:"cf_key_anthropic", keyUrl:"https://console.anthropic.com/settings/keys", keyName:"Anthropic Console" },
-  openai:    { label:"ChatGPT — your key",    needsKey:true, tier:"paid", ls:"cf_key_openai",    keyUrl:"https://platform.openai.com/api-keys",        keyName:"OpenAI Platform" },
-  xai:       { label:"Grok · xAI — your key", needsKey:true, tier:"paid", ls:"cf_key_xai",       keyUrl:"https://console.x.ai/",                       keyName:"xAI Console" },
+  gemini:    { label:"Gemini (free)",         tier:"free", ls:"cf_key_gemini",    keyUrl:"https://aistudio.google.com/apikey",          keyName:"Google AI Studio" },
+  groq:      { label:"Groq · Llama (free)",   tier:"free", ls:"cf_key_groq",      keyUrl:"https://console.groq.com/keys",               keyName:"Groq Console" },
+  anthropic: { label:"Claude — your key",     tier:"paid", ls:"cf_key_anthropic", keyUrl:"https://console.anthropic.com/settings/keys", keyName:"Anthropic Console" },
+  openai:    { label:"ChatGPT — your key",    tier:"paid", ls:"cf_key_openai",    keyUrl:"https://platform.openai.com/api-keys",        keyName:"OpenAI Platform" },
+  xai:       { label:"Grok · xAI — your key", tier:"paid", ls:"cf_key_xai",       keyUrl:"https://console.x.ai/",                       keyName:"xAI Console" },
 };
-let provider = (localStorage.getItem("cf_provider") && PROVIDERS[localStorage.getItem("cf_provider")]) ? localStorage.getItem("cf_provider") : "forge";
+let provider = (localStorage.getItem("cf_provider") && PROVIDERS[localStorage.getItem("cf_provider")]) ? localStorage.getItem("cf_provider") : "gemini";
 function getKey(p){ const m=PROVIDERS[p]; return (m && m.ls) ? (localStorage.getItem(m.ls)||"").trim() : ""; }
 
 async function callLLM(prompt){
   const p = provider;
-  if(p === "forge") return callForge(prompt);
   const key = getKey(p);
-  if(!key) throw new Error(`Enter your ${PROVIDERS[p].label} API key above, or switch the engine to "Forge — free".`);
+  if(!key) throw new Error(`Add your ${PROVIDERS[p].label} API key above to generate. Gemini and Groq are free — grab a key from the link next to the engine picker.`);
   if(p === "gemini")    return callGemini(prompt, key);
   if(p === "groq")      return callOpenAICompat(prompt, key, "https://api.groq.com/openai/v1/chat/completions", "llama-3.3-70b-versatile", "Groq");
   if(p === "openai")    return callOpenAICompat(prompt, key, "https://api.openai.com/v1/chat/completions", "gpt-4o-mini", "OpenAI");
   if(p === "xai")       return callOpenAICompat(prompt, key, "https://api.x.ai/v1/chat/completions", "grok-2-latest", "xAI");
   if(p === "anthropic") return callAnthropic(prompt, key);
   throw new Error("Unknown engine");
-}
-
-async function callForge(prompt){
-  const res = await fetch("/api/wingman", {
-    method:"POST", headers:{ "Content-Type":"application/json" },
-    body: JSON.stringify({ max_tokens: MAX_TOKENS, messages: [{ role:"user", content: prompt }] }),
-  });
-  let data;
-  try { data = await res.json(); } catch { throw new Error(`Proxy returned ${res.status} (non-JSON response)`); }
-  if(data.error) throw new Error(data.error.message || data.error);
-  if(!data.content || !data.content[0]) throw new Error("Empty response from model");
-  return data.content[0].text;
 }
 
 async function callAnthropic(prompt, key){
@@ -450,7 +436,7 @@ async function callOpenAICompat(prompt, key, url, model, label){
       method:"POST", headers:{ "Content-Type":"application/json", "Authorization":`Bearer ${key}` },
       body: JSON.stringify({ model, max_tokens: MAX_TOKENS, messages:[{ role:"user", content: prompt }] }),
     });
-  } catch(e){ throw new Error(`${label}: request blocked (the provider may not allow direct browser calls — try Gemini, Groq, or the free Forge engine).`); }
+  } catch(e){ throw new Error(`${label}: request blocked (the provider may not allow direct browser calls — try the free Gemini or Groq engine instead).`); }
   const data = await res.json();
   if(data.error) throw new Error(`${label}: ` + (data.error.message || JSON.stringify(data.error)));
   const t = data.choices?.[0]?.message?.content;
@@ -912,7 +898,7 @@ async function handleRun(){
 
 // ─── PROVIDER / KEY PICKER ───────────────────────────────────────────────────
 function setupProviderUI(){
-  const sel = el("cf-provider"), keyInput = el("cf-key");
+  const sel = el("cf-provider"), keyInput = el("cf-key"), hint = el("cf-key-hint");
   for(const [id, m] of Object.entries(PROVIDERS)){
     const o = document.createElement("option"); o.value = id; o.textContent = m.label;
     sel.appendChild(o);
@@ -920,18 +906,11 @@ function setupProviderUI(){
   sel.value = provider;
   function refresh(){
     const m = PROVIDERS[provider];
-    keyInput.hidden = !m.needsKey;
-    if(m.needsKey){
-      keyInput.value = getKey(provider);
-      keyInput.placeholder = "Your API key (stored only in this browser)";
-    }
-    const hint = el("cf-key-hint");
-    if(!m.needsKey){
-      hint.innerHTML = `<span class="free">free</span> · no key needed`;
-    } else {
-      const tier = m.tier === "free" ? `<span class="free">free tier</span>` : `<span class="paid">paid · your account</span>`;
-      hint.innerHTML = `${tier} · <a href="${m.keyUrl}" target="_blank" rel="noopener">get a key ↗</a>`;
-    }
+    keyInput.hidden = false;
+    keyInput.value = getKey(provider);
+    keyInput.placeholder = "Your API key (stored only in this browser)";
+    const tier = m.tier === "free" ? `<span class="free">free</span>` : `<span class="paid">paid · your account</span>`;
+    hint.innerHTML = `${tier} · <a href="${m.keyUrl}" target="_blank" rel="noopener">get a ${m.keyName} key ↗</a>`;
   }
   sel.addEventListener("change", () => {
     provider = sel.value; localStorage.setItem("cf_provider", provider); refresh();
