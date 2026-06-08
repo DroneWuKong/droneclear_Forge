@@ -1380,30 +1380,69 @@ def sync_handbook_data():
             print("  Refusing to merge into a structurally broken database — aborting sync")
             return False
 
-    # Replace components from handbook
-    # Component categories to sync from handbook
-    COMPONENT_CATEGORIES = [
-        'antennas', 'batteries', 'escs', 'flight_controllers', 'fpv_cameras',
-        'frames', 'gps_modules', 'motors', 'propellers', 'receivers',
-        'stacks', 'video_transmitters', 'mesh_radios',
-        'companion_computers', 'integrated_stacks', 'counter_uas',
-        'esad', 'lidar', 'sensors', 'thermal_cameras',
-        'c2_datalinks', 'ew_systems', 'navigation_pnt',
-        'ai_accelerators', 'ground_control_stations',
-    ]
+    # Sync EVERY component category present in parts-db — never a hardcoded
+    # allowlist. The previous static COMPONENT_CATEGORIES list (25 categories)
+    # silently froze the site's coverage while parts-db — and the canonical
+    # forge-data mirror built from it by Ai-Project/scripts/merge-forge-data.py —
+    # carried far more. That under-reported the catalog (the site showed
+    # 4,093 parts / 34 categories against the canonical 4,210 / 43) and let the
+    # two surfaces drift apart. Discover categories dynamically so the site and
+    # forge-data can never diverge on category coverage again.
+    #
+    # Files in parts-db that are NOT component categories and must be skipped:
+    #   drone_models / build_guides  — surfaced separately (platforms, guides)
+    #   platform_images              — a platform→image asset lookup (a dict)
+    #   drone_parts_schema_v3        — the schema, not data
+    # Any other non-list file is treated as an asset and skipped too.
+    NON_COMPONENT_FILES = {
+        'drone_models', 'build_guides', 'platform_images', 'drone_parts_schema_v3',
+    }
+    discovered = []
+    for fname in sorted(os.listdir(parts_dir)):
+        if not fname.endswith('.json'):
+            continue
+        stem = fname[:-5]
+        if stem in NON_COMPONENT_FILES:
+            continue
+        with open(os.path.join(parts_dir, fname), 'r', encoding='utf-8') as f:
+            data = json.load(f)
+        if not isinstance(data, list):
+            continue  # asset / lookup file, not a component category
+        # MERGE: handbook data wins for existing entries, but keep local-only entries
+        handbook_names = {e.get('name', '').lower() for e in data}
+        local_only = [e for e in forge_db['components'].get(stem, [])
+                      if e.get('name', '').lower() not in handbook_names]
+        forge_db['components'][stem] = data + local_only
+        discovered.append(stem)
+        print(f"  {stem}: {len(data)} from handbook + {len(local_only)} local-only = {len(forge_db['components'][stem])}")
+    print(f"  → {len(discovered)} component categories discovered from parts-db (no allowlist)")
 
-    for cat in COMPONENT_CATEGORIES:
-        json_path = os.path.join(parts_dir, f'{cat}.json')
-        if os.path.exists(json_path):
-            with open(json_path, 'r', encoding='utf-8') as f:
-                data = json.load(f)
-            if isinstance(data, list):
-                # MERGE: handbook data wins for existing entries, but keep local-only entries
-                handbook_names = {e.get('name', '').lower() for e in data}
-                local_only = [e for e in forge_db['components'].get(cat, [])
-                              if e.get('name', '').lower() not in handbook_names]
-                forge_db['components'][cat] = data + local_only
-                print(f"  {cat}: {len(data)} from handbook + {len(local_only)} local-only = {len(forge_db['components'][cat])}")
+    # Anti-drift gate: the merged catalog must carry AT LEAST every parts-db
+    # component record (>= because curated local-only entries are additive).
+    # If it carries fewer, a category was dropped or a merge bug ate records —
+    # fail the sync rather than silently ship a short catalog and let the site
+    # under-report itself against the canonical forge-data mirror again.
+    parts_db_component_total = 0
+    parts_db_component_cats = 0
+    for fname in os.listdir(parts_dir):
+        if not fname.endswith('.json') or fname[:-5] in NON_COMPONENT_FILES:
+            continue
+        with open(os.path.join(parts_dir, fname), 'r', encoding='utf-8') as f:
+            _d = json.load(f)
+        if isinstance(_d, list):
+            parts_db_component_total += len(_d)
+            parts_db_component_cats += 1
+    merged_component_total = sum(len(v) for v in forge_db['components'].values())
+    if (len(forge_db['components']) < parts_db_component_cats
+            or merged_component_total < parts_db_component_total):
+        print(f"  ERROR: catalog parity drift — merged "
+              f"{merged_component_total} parts / {len(forge_db['components'])} categories "
+              f"< parts-db {parts_db_component_total} / {parts_db_component_cats}. "
+              f"Refusing to ship a short catalog.")
+        shutil.rmtree(DATA_CLONE_DIR, ignore_errors=True)
+        return False
+    print(f"  parity OK: {merged_component_total} parts / {len(forge_db['components'])} "
+          f"categories ≥ parts-db {parts_db_component_total} / {parts_db_component_cats}")
 
     # MERGE drone_models from handbook (don't overwrite local-only entries)
     models_path = os.path.join(parts_dir, 'drone_models.json')
