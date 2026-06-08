@@ -1643,6 +1643,18 @@ def sync_private_dossiers():
     else:
         print("    NOTE: data/ddg_supply_links.json not found — supply-web page will show empty state")
 
+    # Manufacturer-published / first-party per-platform BOM rows (same
+    # supplier->feeds schema). Kept separate from ddg_supply_links.json so the
+    # Supply Web graph stays third-party-only; the Component BOMs page merges both.
+    pbom_src = os.path.join(repo_root, 'data', 'platform_boms.json')
+    if os.path.isfile(pbom_src):
+        priv_dir = os.path.join(BUILD_DIR, 'private')
+        os.makedirs(priv_dir, exist_ok=True)
+        shutil.copy2(pbom_src, os.path.join(priv_dir, 'platform_boms.json'))
+        print("    Copied platform_boms.json to build/private/platform_boms.json")
+    else:
+        print("    NOTE: data/platform_boms.json not found — Component BOMs page falls back to supply_links only")
+
     if tmp_clone:
         shutil.rmtree(tmp_clone, ignore_errors=True)
     print(f"    Copied {n} dossiers + index.json to build/private/dossiers/")
