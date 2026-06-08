@@ -243,7 +243,8 @@ Promise.allSettled([
   fetch("/private/supply_links.json",{cache:"no-store"}).then(r=>{if(!r.ok)throw 0;return r.json();}),
   fetch("/static/forge_database.json",{cache:"no-store"}).then(r=>r.ok?r.json():null).catch(()=>null),
   fetch("/api/data?type=ddg2",{cache:"no-store"}).then(r=>r.ok?r.json():null).catch(()=>null),
-]).then(([sl,db,ddg2])=>{
+  fetch("/private/platform_boms.json",{cache:"no-store"}).then(r=>r.ok?r.json():null).catch(()=>null),
+]).then(([sl,db,ddg2,pb])=>{
   if(sl.status!=="fulfilled"||!sl.value){
     document.getElementById("cards").innerHTML='<div class="empty-state">supply_links.json unavailable.<br>Build with a sibling ../Ai-Project checkout or GITHUB_PAT, then re-deploy.</div>';
     return;
@@ -259,7 +260,12 @@ Promise.allSettled([
     }
   }
   if(ddg2.status==="fulfilled"&&ddg2.value&&Array.isArray(ddg2.value.official_roster)&&ddg2.value.official_roster.length)ROSTER=ddg2.value.official_roster;
-  buildPlatforms(data.suppliers||[]);
+  // Merge the manufacturer-published / first-party BOM rows (platform_boms.json,
+  // same supplier->feeds schema) into the shared-supplier intel from supply_links.
+  // Kept in a separate file so the Supply Web graph stays third-party-only.
+  let suppliers=data.suppliers||[];
+  if(pb.status==="fulfilled"&&pb.value&&Array.isArray(pb.value.suppliers))suppliers=suppliers.concat(pb.value.suppliers);
+  buildPlatforms(suppliers);
   render();
 });
 
