@@ -49,6 +49,19 @@
   .cf-kbnote{margin-top:10px;font-size:10px;color:var(--ink-4);}
   .cf-kbnote b{color:var(--ink-2);font-weight:600;}
 
+  .cf-byok{display:flex;align-items:center;gap:8px;margin-top:12px;flex-wrap:wrap;}
+  .cf-byok label{font-size:10px;color:var(--ink-4);letter-spacing:.08em;}
+  #cf-provider{background:rgba(2,8,23,0.8);border:1px solid var(--line-2);border-radius:6px;color:var(--ink);font-family:inherit;font-size:11px;padding:6px 8px;outline:none;cursor:pointer;}
+  #cf-provider:focus{border-color:var(--line-3);}
+  #cf-key{flex:1;min-width:160px;background:rgba(2,8,23,0.8);border:1px solid var(--line-2);border-radius:6px;color:var(--ink);font-family:inherit;font-size:11px;padding:6px 10px;outline:none;}
+  #cf-key:focus{border-color:var(--line-3);}
+  #cf-key::placeholder{color:var(--ink-4);}
+  .cf-key-hint{font-size:10px;color:var(--ink-4);white-space:nowrap;}
+  .cf-key-hint a{color:var(--blue);text-decoration:none;}
+  .cf-key-hint a:hover{text-decoration:underline;}
+  .cf-key-hint .free{color:var(--green);}
+  .cf-key-hint .paid{color:#f59e0b;}
+
   .cf-pipeline{background:var(--panel);border:1px solid var(--line-3);border-radius:12px;padding:20px;}
   .cf-steps{display:flex;align-items:center;}
   .cf-step{display:flex;align-items:center;flex:1;}
@@ -169,10 +182,16 @@
         <textarea id="cf-prompt" placeholder="e.g. 5-inch FPV quad: F7 flight controller, 4-in-1 ESC, 4 brushless motors, ELRS receiver, analog VTX + FPV camera, and a GPS module..."></textarea>
         <button id="cf-run">▶ GENERATE</button>
       </div>
+      <div class="cf-byok">
+        <label>ENGINE</label>
+        <select id="cf-provider"></select>
+        <input id="cf-key" type="password" autocomplete="off" spellcheck="false" placeholder="Your API key" hidden>
+        <span class="cf-key-hint" id="cf-key-hint"></span>
+      </div>
       <div class="cf-examples" id="cf-examples">
         <span class="lbl">EXAMPLES:</span>
       </div>
-      <div class="cf-kbnote" id="cf-kbnote">Grounded with canonical pinouts. Drone parts are matched to the <b>Forge catalog</b> for real thumbnails, prices, and NDAA status.</div>
+      <div class="cf-kbnote" id="cf-kbnote">Grounded with canonical pinouts. Drone parts are matched to the <b>Forge catalog</b> for real thumbnails, prices, and NDAA status. <b>Bring your own API key</b> — <b>Gemini</b> and <b>Groq</b> are free. Your key stays in your browser and goes straight to the provider.</div>
     </div>
 
     <div class="cf-pipeline" id="cf-pipeline" hidden>
@@ -357,22 +376,72 @@ function runERC(components, connections){
   return errors;
 }
 
-// ─── CLAUDE CALL ─────────────────────────────────────────────────────────────
-// Routes through the Forge /api/wingman Cloudflare Worker — the same public
-// Anthropic proxy Wingman AI uses. The server holds the API key; model and token
-// caps are enforced worker-side. No key ever ships to the browser.
-async function callClaude(prompt){
-  const res = await fetch("/api/wingman", {
+// ─── LLM PROVIDERS (bring-your-own-key) ──────────────────────────────────────
+// Every engine is BYOK: the user's key is stored in their browser (localStorage)
+// and the request goes DIRECT to the provider. The key never touches our servers
+// and there is NO owner-funded default — this site runs for free, so it can't
+// foot the API bill for anonymous traffic. Gemini and Groq are free to the user.
+const MAX_TOKENS = 2048;
+const PROVIDERS = {
+  gemini:    { label:"Gemini (free)",         tier:"free", ls:"cf_key_gemini",    keyUrl:"https://aistudio.google.com/apikey",          keyName:"Google AI Studio" },
+  groq:      { label:"Groq · Llama (free)",   tier:"free", ls:"cf_key_groq",      keyUrl:"https://console.groq.com/keys",               keyName:"Groq Console" },
+  anthropic: { label:"Claude — your key",     tier:"paid", ls:"cf_key_anthropic", keyUrl:"https://console.anthropic.com/settings/keys", keyName:"Anthropic Console" },
+  openai:    { label:"ChatGPT — your key",    tier:"paid", ls:"cf_key_openai",    keyUrl:"https://platform.openai.com/api-keys",        keyName:"OpenAI Platform" },
+  xai:       { label:"Grok · xAI — your key", tier:"paid", ls:"cf_key_xai",       keyUrl:"https://console.x.ai/",                       keyName:"xAI Console" },
+};
+let provider = (localStorage.getItem("cf_provider") && PROVIDERS[localStorage.getItem("cf_provider")]) ? localStorage.getItem("cf_provider") : "gemini";
+function getKey(p){ const m=PROVIDERS[p]; return (m && m.ls) ? (localStorage.getItem(m.ls)||"").trim() : ""; }
+
+async function callLLM(prompt){
+  const p = provider;
+  const key = getKey(p);
+  if(!key) throw new Error(`Add your ${PROVIDERS[p].label} API key above to generate. Gemini and Groq are free — grab a key from the link next to the engine picker.`);
+  if(p === "gemini")    return callGemini(prompt, key);
+  if(p === "groq")      return callOpenAICompat(prompt, key, "https://api.groq.com/openai/v1/chat/completions", "llama-3.3-70b-versatile", "Groq");
+  if(p === "openai")    return callOpenAICompat(prompt, key, "https://api.openai.com/v1/chat/completions", "gpt-4o-mini", "OpenAI");
+  if(p === "xai")       return callOpenAICompat(prompt, key, "https://api.x.ai/v1/chat/completions", "grok-2-latest", "xAI");
+  if(p === "anthropic") return callAnthropic(prompt, key);
+  throw new Error("Unknown engine");
+}
+
+async function callAnthropic(prompt, key){
+  const res = await fetch("https://api.anthropic.com/v1/messages", {
     method:"POST",
-    headers:{ "Content-Type":"application/json" },
-    body: JSON.stringify({ max_tokens: 2048, messages: [{ role:"user", content: prompt }] }),
+    headers:{ "Content-Type":"application/json", "x-api-key":key, "anthropic-version":"2023-06-01", "anthropic-dangerous-direct-browser-access":"true" },
+    body: JSON.stringify({ model:"claude-sonnet-4-6", max_tokens: MAX_TOKENS, messages:[{ role:"user", content: prompt }] }),
   });
-  let data;
-  try { data = await res.json(); }
-  catch { throw new Error(`Proxy returned ${res.status} (non-JSON response)`); }
-  if(data.error) throw new Error(data.error.message || data.error);
-  if(!data.content || !data.content[0]) throw new Error("Empty response from model");
-  return data.content[0].text;
+  const data = await res.json();
+  if(data.error) throw new Error("Claude: " + (data.error.message || JSON.stringify(data.error)));
+  const t = data.content?.[0]?.text;
+  if(!t) throw new Error("Claude: empty response");
+  return t;
+}
+
+async function callGemini(prompt, key){
+  const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${encodeURIComponent(key)}`, {
+    method:"POST", headers:{ "Content-Type":"application/json" },
+    body: JSON.stringify({ contents:[{ parts:[{ text: prompt }] }], generationConfig:{ maxOutputTokens: MAX_TOKENS } }),
+  });
+  const data = await res.json();
+  if(data.error) throw new Error("Gemini: " + (data.error.message || "request failed"));
+  const t = (data.candidates?.[0]?.content?.parts || []).map(x => x.text || "").join("");
+  if(!t) throw new Error("Gemini: empty response (check key / quota)");
+  return t;
+}
+
+async function callOpenAICompat(prompt, key, url, model, label){
+  let res;
+  try {
+    res = await fetch(url, {
+      method:"POST", headers:{ "Content-Type":"application/json", "Authorization":`Bearer ${key}` },
+      body: JSON.stringify({ model, max_tokens: MAX_TOKENS, messages:[{ role:"user", content: prompt }] }),
+    });
+  } catch(e){ throw new Error(`${label}: request blocked (the provider may not allow direct browser calls — try the free Gemini or Groq engine instead).`); }
+  const data = await res.json();
+  if(data.error) throw new Error(`${label}: ` + (data.error.message || JSON.stringify(data.error)));
+  const t = data.choices?.[0]?.message?.content;
+  if(!t) throw new Error(`${label}: empty response`);
+  return t;
 }
 
 function stripFences(s){ return String(s).replace(/```json|```/g,"").trim(); }
@@ -384,7 +453,7 @@ async function runPipeline(prompt, onStageUpdate){
     .join("\n");
 
   onStageUpdate("identifying","Identifying components...");
-  const stage1 = await callClaude(
+  const stage1 = await callLLM(
 `You are a hardware component identification agent. Given a project description, list ALL required components.
 
 Available components and their canonical pinouts (includes Arduino/breadboard parts AND drone/FPV parts like Flight Controller, 4-in-1 ESC, Brushless Motor, Video Transmitter, FPV Camera, ELRS Receiver, GPS Module, Companion Computer, Mesh Radio):
@@ -415,7 +484,7 @@ Rules:
     return kb ? `${c.id} [${c.type}] pins: ${kb.pins.join(", ")}` : `${c.id} [${c.type}]`;
   }).join("\n");
 
-  const stage2 = await callClaude(
+  const stage2 = await callLLM(
 `You are an expert electronics engineer. Reason through how to wire this circuit correctly.
 
 Project: "${prompt}"
@@ -434,7 +503,7 @@ Think step by step about:
 Provide a brief reasoning summary, then end with a "WIRING_PLAN:" section listing each connection as "componentA.pinX → componentB.pinY"`);
 
   onStageUpdate("generating","Synthesizing CircuitJSON schematic...");
-  const stage3 = await callClaude(
+  const stage3 = await callLLM(
 `You are a circuit schematic synthesis agent. Convert the wiring plan into CircuitJSON.
 
 Project: "${prompt}"
@@ -463,7 +532,7 @@ Rules:
   catch { throw new Error("JSON synthesis failed"); }
 
   onStageUpdate("bom_code","Generating BOM and firmware code...");
-  const stage4 = await callClaude(
+  const stage4 = await callLLM(
 `You are a hardware documentation and firmware agent.
 
 Project: "${prompt}"
@@ -820,11 +889,38 @@ async function handleRun(){
   el("cf-prompt").addEventListener("input", ()=>{ if(!state.stage) el("cf-run").disabled = !el("cf-prompt").value.trim(); });
   el("cf-prompt").addEventListener("keydown", e=>{ if(e.key==="Enter" && (e.metaKey||e.ctrlKey)) handleRun(); });
   el("cf-run").disabled = true;
+  setupProviderUI();
 
   // Load the small shared KB at startup (a few KB). The heavy parts DB that
   // powers catalog matching is loaded lazily on the first generate (ensureCatalog).
   kbReady = loadKB().catch(()=>{});
 })();
+
+// ─── PROVIDER / KEY PICKER ───────────────────────────────────────────────────
+function setupProviderUI(){
+  const sel = el("cf-provider"), keyInput = el("cf-key"), hint = el("cf-key-hint");
+  for(const [id, m] of Object.entries(PROVIDERS)){
+    const o = document.createElement("option"); o.value = id; o.textContent = m.label;
+    sel.appendChild(o);
+  }
+  sel.value = provider;
+  function refresh(){
+    const m = PROVIDERS[provider];
+    keyInput.hidden = false;
+    keyInput.value = getKey(provider);
+    keyInput.placeholder = "Your API key (stored only in this browser)";
+    const tier = m.tier === "free" ? `<span class="free">free</span>` : `<span class="paid">paid · your account</span>`;
+    hint.innerHTML = `${tier} · <a href="${m.keyUrl}" target="_blank" rel="noopener">get a ${m.keyName} key ↗</a>`;
+  }
+  sel.addEventListener("change", () => {
+    provider = sel.value; localStorage.setItem("cf_provider", provider); refresh();
+  });
+  keyInput.addEventListener("input", () => {
+    const m = PROVIDERS[provider];
+    if(m.ls) localStorage.setItem(m.ls, keyInput.value.trim());
+  });
+  refresh();
+}
 </script>
 </body>
 </html>
