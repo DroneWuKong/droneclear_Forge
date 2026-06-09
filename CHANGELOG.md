@@ -1,5 +1,25 @@
 # Changelog
 
+## [Session] - 2026-06-08 — Visible point-of-reliance disclaimers
+
+### Added
+- **build_static.py** — `inject_disclaimer()` injects a visible, non-dismissible
+  disclaimer banner at the top of the content on every risk-bearing surface
+  (compliance, procurement/regulatory, Patterns/PIE, threat/sanctions/gray-zone
+  intel, and the UAS Ecosystem Clock). Two variants:
+  - **General** (compliance/audit/regs/waiver/grants/verify/spec-sheets): "AI-assisted
+    public-source analysis. Not legal, procurement, export-control, airworthiness, or
+    operational advice. Compliance labels and risk scores are informational and may be
+    incomplete or stale. Verify against official sources, vendor attestations, and
+    qualified counsel before relying on them."
+  - **Patterns/threat** (patterns/pie-trends/brief/ttps/evasion/actors/adversary-bom/
+    mirroring/entity-graph/tracker/dossier/intel*/clock): the general line plus "Risk
+    labels are analytic signals, not allegations of unlawful conduct. They reflect
+    public-source indicators, confidence levels, and available data at the time generated."
+  - Self-contained styles (no per-page CSS-var dependence); reaches `uas-patterns.com`
+    via the shared Forge build. `market-lens` / `forecast-accountability` are skipped
+    (they already carry a prominent above-the-fold `.caveat-strong`).
+
 ## [Session] - 2026-04-13 — Full audit + enrichment + routing fixes
 
 ### Fixed
