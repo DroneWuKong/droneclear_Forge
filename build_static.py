@@ -103,6 +103,7 @@ PAGES = {
     'private/index.html': 'private/index.html',
     'private/dossiers.html': 'private/dossiers/index.html',
     'private/supply-web.html': 'private/supply-web/index.html',
+    'private/data.html': 'private/data/index.html',
     'private/components-bom.html': 'private/components-bom/index.html',
     'private/drone-config.html': 'private/drone-config/index.html',
     'ddg.html': 'private/ddg/index.html',
@@ -1817,6 +1818,39 @@ def sync_private_dossiers():
     else:
         print("    NOTE: data/ddg_supply_links.json not found — supply-web page will show empty state")
 
+    # Pull the genuinely-private Ai-Project datasets (never on public /api/data)
+    # into build/private/data/ for the gated Intel Data browser. Each entry:
+    #   (source path under the repo, output filename, label, one-line description)
+    PRIVATE_DATASETS = [
+        ('data/gur_teardowns.json', 'gur_teardowns.json', 'GUR Teardowns (raw)',
+         'Raw adversary teardown BOMs — the source the public Adversary BOM lens is derived from.'),
+        ('data/ownership_graph.json', 'ownership_graph.json', 'Ownership Graph',
+         'Who-owns-who semiconductor acquisition chains behind drone silicon.'),
+        ('data/component_platform_map.json', 'component_platform_map.json', 'Component → Platform Map',
+         'Which components sit inside which platforms (feeds the mirroring index).'),
+        ('data/grayzone/entities.json', 'grayzone_entities.json', 'Gray-Zone Entities',
+         'Gray-zone actor tracking — entities under watch.'),
+        ('data/grayzone/risk_scores.json', 'grayzone_risk_scores.json', 'Gray-Zone Risk Scores',
+         'Risk scoring for tracked gray-zone entities.'),
+        ('data/grayzone/indicators.json', 'grayzone_indicators.json', 'Gray-Zone Indicators',
+         'Indicators feeding the gray-zone risk model.'),
+        ('data/intel-db/vendor_pricing_flir_czi.json', 'vendor_pricing_flir_czi.json', 'Vendor Pricing — FLIR / CZI',
+         'Collected vendor pricing intel (Teledyne FLIR / CZI).'),
+        ('data/intel-db/vendor_pricing_skydio.json', 'vendor_pricing_skydio.json', 'Vendor Pricing — Skydio',
+         'Collected vendor pricing intel (Skydio).'),
+    ]
+    data_out = os.path.join(BUILD_DIR, 'private', 'data')
+    os.makedirs(data_out, exist_ok=True)
+    data_index = []
+    for rel, outname, label, desc in PRIVATE_DATASETS:
+        src = os.path.join(repo_root, rel)
+        if os.path.isfile(src):
+            shutil.copy2(src, os.path.join(data_out, outname))
+            data_index.append({'file': outname, 'label': label, 'desc': desc,
+                               'bytes': os.path.getsize(src)})
+    with open(os.path.join(data_out, 'index.json'), 'w', encoding='utf-8') as f:
+        json.dump(data_index, f, separators=(',', ':'))
+    print(f"    Copied {len(data_index)}/{len(PRIVATE_DATASETS)} private datasets to build/private/data/")
     # Manufacturer-published / first-party per-platform BOM rows (same
     # supplier->feeds schema). Kept separate from ddg_supply_links.json so the
     # Supply Web graph stays third-party-only; the Component BOMs page merges both.
@@ -1828,7 +1862,6 @@ def sync_private_dossiers():
         print("    Copied platform_boms.json to build/private/platform_boms.json")
     else:
         print("    NOTE: data/platform_boms.json not found — Component BOMs page falls back to supply_links only")
-
     if tmp_clone:
         shutil.rmtree(tmp_clone, ignore_errors=True)
     print(f"    Copied {n} dossiers + index.json to build/private/dossiers/")
