@@ -26,6 +26,7 @@ PAGES = {
     'mission-control.html': 'index.html',      # / (home — The Bench)
     'academy.html': 'academy/index.html',
     'support.html': 'support/index.html',
+    'donate.html': 'donate/index.html',
     'audit.html': 'audit/index.html',
     'editor.html': 'library/index.html',
     'guide.html': 'guide/index.html',
@@ -308,6 +309,10 @@ _UNIFIED_NAV = r"""<!-- ── Unified UAS- Nav (5-domain accordion drawer) ─�
     <span id="dc-nav-page">—</span>
   </div>
   <div id="dc-nav-right">
+    <a class="dc-nav-top-btn" href="https://uas-forge.com/donate/" data-page="donate" title="Support the project">
+      <span class="dc-nav-top-ico">❤️</span>
+      <span class="dc-nav-top-label">Donate</span>
+    </a>
     <a class="dc-nav-top-btn" href="https://uas-forge.com/wingman/" data-page="wingman" title="Wingman AI">
       <span class="dc-nav-top-ico">🤖</span>
       <span class="dc-nav-top-label">Wingman</span>
@@ -480,6 +485,13 @@ _UNIFIED_NAV = r"""<!-- ── Unified UAS- Nav (5-domain accordion drawer) ─�
       <div class="dc-dom-url">all 5 domains</div>
     </div>
   </a>
+  <a class="dc-dom-standalone" href="https://uas-forge.com/donate/" data-page="donate">
+    <span class="dc-dom-ico">❤️</span>
+    <div class="dc-dom-info">
+      <div class="dc-dom-name">Support / Donate</div>
+      <div class="dc-dom-url">keep the tools free</div>
+    </div>
+  </a>
 
   <div id="dc-drawer-foot">
     <span>Midwest Nice Advisory LLC</span>
@@ -518,7 +530,7 @@ _UNIFIED_NAV = r"""<!-- ── Unified UAS- Nav (5-domain accordion drawer) ─�
     'forecast-accountability':'Forecast Accountability','pie-trends':'PIE Trends',
     'contribute-doctrine':'Contribute Doctrine','audit-doctrine':'Doctrine Audit',
     'start':'Getting Started','grants':'Grants','waiver':'Doc Builder','forge':'Forge Hub',
-    'verify':'Verify','vault':'Vault','troubleshoot':'Troubleshoot','support':'Support','hub':'Hub','gallery':'Featured Builds','entity-graph':'Entity Graph',
+    'verify':'Verify','vault':'Vault','troubleshoot':'Troubleshoot','support':'Support','donate':'Support','hub':'Hub','gallery':'Featured Builds','entity-graph':'Entity Graph',
     'builder':'Builder','cost':'Cost','analytics':'Analytics'
   };
   var pageEl = document.getElementById('dc-nav-page');
