@@ -7,14 +7,10 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&family=Source+Serif+4:opsz,wght@8..60,400;8..60,600;8..60,700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="">
     <link rel="stylesheet" href="{% static 'base.css' %}">
     <link rel="stylesheet" href="{% static 'layout.css' %}?v=4">
     <link rel="stylesheet" href="{% static 'components.css' %}">
     <link rel="stylesheet" href="{% static 'utilities.css' %}">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
-    <link rel="stylesheet" href="">
-    <link rel="stylesheet" href="">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/geotiff@2.1.3/dist-browser/geotiff.bundle.min.js"></script>
@@ -1208,7 +1204,12 @@
 
             <!-- Map container with layer controls -->
             <div style="position:relative;">
-                <div id="rf-map" style="width:100%; height:clamp(250px, 40vh, 500px); border-radius:var(--radius-md); border:1px solid var(--border-color); background:var(--bg-dark); cursor:crosshair;"></div>
+                <div id="rf-map" style="width:100%; height:clamp(250px, 40vh, 500px); border-radius:var(--radius-md); border:1px solid var(--border-color); background:var(--bg-dark); cursor:crosshair; position:relative;">
+                    <div id="rf-map-placeholder" style="position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;pointer-events:none;z-index:1;">
+                        <i class="ph ph-map-trifold" style="font-size:32px;color:var(--text-faint);"></i>
+                        <span style="font-size:11px;color:var(--text-faint);font-family:var(--font-family);">Loading map…</span>
+                    </div>
+                </div>
                 <!-- Map layer switcher -->
                 <div style="position:absolute; top:8px; right:8px; z-index:999; display:flex; gap:2px; background:rgba(11,15,20,0.85); border-radius:var(--radius-sm); padding:3px; border:1px solid var(--border-color);">
                     <button class="rf-layer-btn active" data-layer="dark" onclick="rfSetLayer('dark')" title="Dark" style="padding:3px 7px; border:none; border-radius:3px; background:rgba(34,211,238,0.12); color:var(--accent-red); font-size:10px; cursor:pointer; font-family:var(--font-family);">Dark</button>
@@ -3085,13 +3086,14 @@ renderVtxTable();
         if(mapInited)return;
         mapInited=true;
         const L=window.L;
-        if(!L||!document.getElementById('rf-map'))return;
+        if(!L||!document.getElementById('rf-map')){mapInited=false;return;}
+        var ph=document.getElementById('rf-map-placeholder');
+        if(ph)ph.style.display='none';
         rfMap=L.map('rf-map',{center:[39.0,-98.0],zoom:4,zoomControl:true});
         window._rfMapRef=rfMap;
         rfTileLayer=L.tileLayer(RF_LAYERS.dark,{attribution:'&copy; OpenStreetMap contributors &copy; CARTO',maxZoom:19}).addTo(rfMap);
         rfMap.on('click',rfMapClick);
         rfSetupAutocomplete();
-        // Route trace slider
         var slider=document.getElementById('rf-trace-slider');
         if(slider)slider.addEventListener('input',rfTraceUpdate);
         setTimeout(function(){rfMap.invalidateSize();},200);
@@ -3997,14 +3999,14 @@ renderVtxTable();
         if(w){w.document.write(html);w.document.close();}
     };
 
-    // Hash routing handled by global router below
-    // Auto-initialize RF map since it is the default active panel on page load.
-    // Without this, the map div stays dark until the user clicks another tool
-    // and back, because initRFMap() is only triggered via showTool().
-    if (document.readyState === 'complete' || document.readyState === 'interactive') {
-        setTimeout(initRFMap, 150);
-    } else {
-        document.addEventListener('DOMContentLoaded', function(){ setTimeout(initRFMap, 150); });
+    // Auto-init: fire as soon as DOM + Leaflet are ready, with multiple fallbacks.
+    // DOMContentLoaded covers the normal case; window.load covers slow networks
+    // where Leaflet itself might still be loading when DOMContentLoaded fires.
+    document.addEventListener('DOMContentLoaded', function(){ setTimeout(initRFMap, 100); });
+    window.addEventListener('load', function(){ setTimeout(initRFMap, 100); });
+    // Immediate fallback for pages already past DOMContentLoaded
+    if (document.readyState === 'complete') {
+        setTimeout(initRFMap, 100);
     }
 })();
 // MESH / SWARM RF PLANNER
@@ -4791,7 +4793,7 @@ renderVtxTable();
     function routeHash() {
         var hash = (location.hash || '').replace('#','');
         if (hash && HASH_MAP[hash]) {
-            setTimeout(function(){ showTool(HASH_MAP[hash]); }, 100);
+            setTimeout(function(){ (window.showTool||showTool)(HASH_MAP[hash]); }, 100);
         }
     }
     routeHash();
