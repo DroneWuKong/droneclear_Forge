@@ -1,0 +1,1191 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover"/>
+<title>Circuit Forge — AI Hardware Design</title>
+<style>
+  :root{
+    --bg:#050A14; --panel:rgba(15,23,42,0.8); --panel-2:rgba(2,8,23,0.7);
+    --line:rgba(59,130,246,0.15); --line-2:rgba(59,130,246,0.2); --line-3:rgba(59,130,246,0.3);
+    --blue:#3B82F6; --cyan:#06B6D4; --ink:#E2E8F0; --ink-2:#94A3B8; --ink-3:#64748B; --ink-4:#475569;
+    --green:#22C55E;
+    --mono:'JetBrains Mono','Fira Code','Courier New',monospace;
+  }
+  *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+  html,body{background:var(--bg);color:var(--ink);font-family:var(--mono);font-size:13px;}
+  body{min-height:100vh;display:flex;flex-direction:column;}
+
+  #cf-grid{
+    position:fixed;inset:0;pointer-events:none;z-index:0;
+    background-image:linear-gradient(rgba(59,130,246,0.04) 1px,transparent 1px),
+                     linear-gradient(90deg,rgba(59,130,246,0.04) 1px,transparent 1px);
+    background-size:40px 40px;
+  }
+  #cf-app{position:relative;z-index:1;flex:1;display:flex;flex-direction:column;}
+
+  .cf-header{padding:18px 24px;border-bottom:1px solid var(--line);display:flex;align-items:center;gap:16px;flex-wrap:wrap;}
+  .cf-logo{width:36px;height:36px;border-radius:8px;background:linear-gradient(135deg,var(--blue),var(--cyan));display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0;}
+  .cf-title{font-size:18px;font-weight:700;letter-spacing:.05em;color:#F1F5F9;}
+  .cf-title span{color:var(--blue);}
+  .cf-sub{font-size:10px;color:var(--ink-3);letter-spacing:.1em;}
+  .cf-tags{margin-left:auto;display:flex;gap:8px;flex-wrap:wrap;}
+  .cf-tag{font-size:9px;padding:3px 8px;border:1px solid var(--line-3);border-radius:4px;color:var(--blue);letter-spacing:.05em;}
+  .cf-tag.green{border-color:rgba(34,197,94,.4);color:var(--green);}
+
+  .cf-main{flex:1;display:flex;flex-direction:column;padding:24px;gap:20px;max-width:1100px;width:100%;margin:0 auto;}
+
+  .cf-card{background:var(--panel);border:1px solid var(--line-2);border-radius:12px;padding:20px;}
+  .cf-label{font-size:11px;color:var(--blue);letter-spacing:.1em;margin-bottom:12px;}
+  .cf-input-row{display:flex;gap:12px;}
+  #cf-prompt{flex:1;background:rgba(2,8,23,0.8);border:1px solid var(--line-2);border-radius:8px;color:var(--ink);font-family:inherit;font-size:13px;padding:12px 16px;resize:none;height:72px;outline:none;line-height:1.6;}
+  #cf-prompt:focus{border-color:var(--line-3);}
+  #cf-run{padding:0 24px;background:linear-gradient(135deg,var(--blue),var(--cyan));border:none;border-radius:8px;color:#fff;font-family:inherit;font-size:12px;font-weight:700;cursor:pointer;letter-spacing:.1em;white-space:nowrap;transition:all .2s;}
+  #cf-run:disabled{background:rgba(59,130,246,0.1);color:var(--ink-4);cursor:not-allowed;}
+  .cf-examples{margin-top:12px;display:flex;flex-wrap:wrap;gap:6px;align-items:center;}
+  .cf-examples .lbl{font-size:10px;color:var(--ink-4);margin-right:4px;}
+  .cf-ex{font-size:10px;padding:3px 10px;background:rgba(59,130,246,0.08);border:1px solid var(--line-2);border-radius:4px;color:var(--ink-3);font-family:inherit;cursor:pointer;max-width:240px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+  .cf-ex:hover{color:var(--ink-2);border-color:var(--line-3);}
+  .cf-kbnote{margin-top:10px;font-size:10px;color:var(--ink-4);}
+  .cf-kbnote b{color:var(--ink-2);font-weight:600;}
+
+  .cf-byok{display:flex;align-items:center;gap:8px;margin-top:12px;flex-wrap:wrap;}
+  .cf-byok label{font-size:10px;color:var(--ink-4);letter-spacing:.08em;}
+  #cf-provider{background:rgba(2,8,23,0.8);border:1px solid var(--line-2);border-radius:6px;color:var(--ink);font-family:inherit;font-size:11px;padding:6px 8px;outline:none;cursor:pointer;}
+  #cf-provider:focus{border-color:var(--line-3);}
+  #cf-key{flex:1;min-width:160px;background:rgba(2,8,23,0.8);border:1px solid var(--line-2);border-radius:6px;color:var(--ink);font-family:inherit;font-size:11px;padding:6px 10px;outline:none;}
+  #cf-key:focus{border-color:var(--line-3);}
+  #cf-key::placeholder{color:var(--ink-4);}
+  .cf-key-hint{font-size:10px;color:var(--ink-4);white-space:nowrap;}
+  .cf-key-hint a{color:var(--blue);text-decoration:none;}
+  .cf-key-hint a:hover{text-decoration:underline;}
+  .cf-key-hint .free{color:var(--green);}
+  .cf-key-hint .paid{color:#f59e0b;}
+
+  .cf-pipeline{background:var(--panel);border:1px solid var(--line-3);border-radius:12px;padding:20px;}
+  .cf-steps{display:flex;align-items:center;}
+  .cf-step{display:flex;align-items:center;flex:1;}
+  .cf-step-inner{display:flex;flex-direction:column;align-items:center;flex:1;}
+  .cf-dot{width:32px;height:32px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:11px;color:var(--ink-4);background:rgba(255,255,255,0.05);border:2px solid transparent;transition:all .3s;}
+  .cf-dot.done{background:var(--blue);color:#fff;font-size:14px;}
+  .cf-dot.active{background:rgba(59,130,246,0.3);border-color:var(--blue);color:var(--blue);}
+  .cf-step-lbl{font-size:9px;color:var(--ink-4);margin-top:4px;text-align:center;max-width:100px;}
+  .cf-step-lbl.active{color:var(--ink-2);}
+  .cf-step-line{height:1px;flex:.5;background:rgba(255,255,255,0.1);margin-bottom:20px;}
+  .cf-step-line.done{background:var(--blue);}
+  .cf-stage-msg{margin-top:12px;font-size:11px;color:var(--ink-3);text-align:center;}
+  .cf-stage-msg span{color:var(--blue);}
+
+  .cf-error{background:rgba(239,68,68,0.1);border:1px solid rgba(239,68,68,0.3);border-radius:8px;padding:16px;font-size:12px;color:#FCA5A5;}
+
+  .cf-proj-head{display:flex;align-items:center;gap:16px;flex-wrap:wrap;}
+  .cf-proj-title{font-size:16px;font-weight:700;color:#F1F5F9;}
+  .cf-proj-over{font-size:11px;color:var(--ink-3);margin-top:2px;}
+  .cf-sev-badges{margin-left:auto;display:flex;gap:8px;flex-wrap:wrap;align-items:center;}
+  .cf-sev{font-size:10px;padding:3px 8px;border-radius:4px;}
+
+  .cf-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:4px;}
+  .cf-action{font-size:10px;padding:6px 12px;border-radius:6px;text-decoration:none;font-family:inherit;letter-spacing:.04em;border:1px solid var(--line-3);color:var(--blue);background:rgba(59,130,246,0.08);transition:all .15s;cursor:pointer;}
+  .cf-action:hover{background:rgba(59,130,246,0.16);}
+  .cf-action.amber{border-color:rgba(245,158,11,.4);color:#f59e0b;background:rgba(245,158,11,.08);}
+  .cf-action.amber:hover{background:rgba(245,158,11,.16);}
+  .cf-action.cyan{border-color:rgba(6,182,212,.4);color:var(--cyan);background:rgba(6,182,212,.08);}
+  .cf-action.cyan:hover{background:rgba(6,182,212,.16);}
+
+  .cf-tabbar{display:flex;gap:2px;border-bottom:1px solid var(--line);flex-wrap:wrap;}
+  .cf-tab{padding:8px 16px;font-size:10px;font-family:inherit;background:none;border:none;border-bottom:2px solid transparent;color:var(--ink-4);cursor:pointer;letter-spacing:.1em;transition:all .15s;}
+  .cf-tab.active{border-bottom-color:var(--blue);color:var(--blue);}
+
+  .cf-tabpane{min-height:400px;margin-top:16px;}
+  .cf-diagram{height:450px;background:var(--panel-2);border:1px solid var(--line);border-radius:12px;overflow:hidden;position:relative;}
+  .cf-diagram svg{width:100%;height:100%;background:transparent;}
+  .cf-diagram .hint{position:absolute;bottom:8px;left:12px;right:12px;font-size:9px;color:var(--ink-4);letter-spacing:.06em;pointer-events:none;}
+  .cf-legend{position:absolute;top:8px;left:10px;display:flex;flex-wrap:wrap;gap:4px 10px;max-width:calc(100% - 20px);pointer-events:none;}
+  .cf-leg-item{display:inline-flex;align-items:center;gap:4px;font-size:9px;color:var(--ink-2);font-family:var(--mono);}
+  .cf-leg-item i{width:9px;height:3px;border-radius:2px;display:inline-block;}
+  .cf-export{position:absolute;top:8px;right:10px;font-size:10px;padding:4px 10px;background:rgba(6,182,212,0.12);border:1px solid rgba(6,182,212,.4);border-radius:4px;color:var(--cyan);font-family:var(--mono);cursor:pointer;z-index:2;}
+  .cf-export:hover{background:rgba(6,182,212,0.22);}
+
+  .cf-bom-wrap{background:var(--panel-2);border:1px solid var(--line);border-radius:12px;overflow:hidden;}
+  table.cf-bom{width:100%;border-collapse:collapse;font-size:12px;}
+  .cf-bom th{padding:10px 14px;text-align:left;font-size:10px;color:var(--blue);letter-spacing:.08em;border-bottom:1px solid var(--line);background:rgba(59,130,246,0.08);}
+  .cf-bom td{padding:8px 14px;border-bottom:1px solid rgba(255,255,255,0.04);color:var(--ink-2);vertical-align:middle;}
+  .cf-bom .c-thumb{width:40px;}
+  .cf-bom .c-thumb img{width:34px;height:34px;object-fit:contain;border-radius:5px;background:#fff;border:1px solid var(--line);}
+  .cf-bom .c-thumb .ph{width:34px;height:34px;border-radius:5px;border:1px dashed var(--line-2);display:flex;align-items:center;justify-content:center;font-size:9px;color:var(--ink-4);}
+  .cf-bom .c-name{color:var(--ink);font-weight:600;}
+  .cf-bom .c-name a{color:var(--ink);text-decoration:none;border-bottom:1px dotted var(--ink-4);}
+  .cf-bom .c-name a:hover{color:var(--blue);border-bottom-color:var(--blue);}
+  .cf-bom .c-match{display:block;font-size:9px;color:var(--ink-4);margin-top:2px;}
+  .cf-bom .c-id{color:var(--ink-3);font-size:11px;}
+  .cf-bom .c-cost{color:var(--green);white-space:nowrap;}
+  .cf-bom .c-notes{color:var(--ink-3);font-size:10px;}
+  .cf-chip{display:inline-block;font-size:8px;padding:1px 5px;border-radius:3px;margin-left:4px;letter-spacing:.04em;vertical-align:middle;}
+  .cf-chip.ndaa{background:rgba(34,197,94,.12);color:var(--green);border:1px solid rgba(34,197,94,.35);}
+  .cf-chip.cat{background:rgba(59,130,246,.1);color:var(--blue);border:1px solid var(--line-3);text-decoration:none;}
+  .cf-chip.cat:hover{background:rgba(59,130,246,.2);}
+  .cf-bom-total{padding:12px 14px;border-top:1px solid var(--line);font-size:11px;color:var(--ink-4);display:flex;justify-content:space-between;flex-wrap:wrap;gap:8px;}
+  .cf-bom-total b{color:var(--ink-2);}
+
+  .cf-code-wrap{background:var(--panel-2);border:1px solid var(--line);border-radius:12px;overflow:hidden;}
+  .cf-code-bar{display:flex;align-items:center;padding:10px 16px;border-bottom:1px solid var(--line);}
+  .cf-code-bar span{font-size:10px;color:var(--ink-3);letter-spacing:.08em;}
+  .cf-code-bar{flex-wrap:wrap;gap:8px;}
+  .cf-fmt{display:flex;gap:4px;flex-wrap:wrap;}
+  .cf-fmt-btn{font-size:10px;padding:4px 9px;background:rgba(59,130,246,0.06);border:1px solid var(--line-2);border-radius:4px;color:var(--ink-3);font-family:inherit;cursor:pointer;transition:all .15s;}
+  .cf-fmt-btn:hover{color:var(--ink-2);border-color:var(--line-3);}
+  .cf-fmt-btn.active{background:rgba(59,130,246,0.16);border-color:var(--blue);color:var(--blue);}
+  #cf-copy{font-size:10px;padding:4px 12px;background:rgba(59,130,246,0.1);border:1px solid var(--line-3);border-radius:4px;color:var(--blue);font-family:inherit;cursor:pointer;}
+  #cf-copy.copied{background:rgba(34,197,94,0.15);border-color:rgba(34,197,94,0.4);color:var(--green);}
+  .cf-dl{font-size:10px;padding:4px 12px;background:rgba(6,182,212,0.1);border:1px solid rgba(6,182,212,.4);border-radius:4px;color:var(--cyan);font-family:inherit;cursor:pointer;}
+  .cf-warn{padding:8px 16px;font-size:10px;line-height:1.5;color:#FBBF24;background:rgba(245,158,11,0.08);border-bottom:1px solid var(--line);}
+  .cf-code-wrap pre{margin:0;padding:16px 20px;font-size:11px;line-height:1.7;color:var(--ink-2);overflow:auto;max-height:380px;white-space:pre-wrap;}
+
+  .cf-erc-list{display:flex;flex-direction:column;gap:8px;}
+  .cf-erc-ok{background:rgba(34,197,94,0.1);border:1px solid rgba(34,197,94,0.3);border-radius:8px;padding:20px;font-size:12px;color:var(--green);text-align:center;}
+  .cf-erc-item{display:flex;align-items:flex-start;gap:12px;border-radius:8px;padding:12px 16px;}
+  .cf-erc-item .badge{font-size:9px;padding:3px 8px;border-radius:4px;white-space:nowrap;font-weight:700;}
+  .cf-erc-item .msg{font-size:12px;color:#CBD5E1;}
+  .cf-erc-foot{margin-top:8px;font-size:10px;color:var(--ink-4);}
+
+  .cf-notes-list{display:flex;flex-direction:column;gap:8px;}
+  .cf-note{background:rgba(6,182,212,0.05);border:1px solid rgba(6,182,212,0.2);border-radius:8px;padding:12px 16px;font-size:12px;color:var(--ink-2);line-height:1.6;}
+  .cf-note span{color:var(--cyan);}
+  .cf-conn-table{background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:16px;}
+  .cf-conn-table .hd{font-size:10px;color:var(--blue);margin-bottom:12px;letter-spacing:.08em;}
+  .cf-conn-row{display:flex;gap:12px;font-size:11px;}
+  .cf-conn-row .a{color:var(--blue);min-width:180px;}
+  .cf-conn-row .arr{color:var(--ink-4);}
+  .cf-conn-row .b{color:var(--cyan);}
+
+  [hidden]{display:none!important;}
+
+  @media(max-width:640px){
+    html,body{font-size:12px;}
+    .cf-header{padding:12px 14px;gap:10px;}
+    .cf-logo{width:30px;height:30px;border-radius:7px;font-size:14px;}
+    .cf-title{font-size:15px;}
+    .cf-sub{display:none;}
+    .cf-tags{width:100%;margin-left:0;gap:5px;}
+    .cf-tag{font-size:8px;padding:2px 6px;}
+    .cf-main{padding:12px;gap:14px;}
+    .cf-card{padding:14px;border-radius:10px;}
+    .cf-label{font-size:10px;margin-bottom:8px;}
+    .cf-input-row{flex-direction:column;gap:8px;}
+    #cf-prompt{height:84px;font-size:13px;padding:10px 12px;}
+    #cf-run{padding:0;height:42px;font-size:12px;}
+    .cf-byok{gap:6px;}
+    .cf-byok label{width:100%;}
+    #cf-provider{flex:1;}
+    #cf-key{min-width:0;width:100%;flex-basis:100%;}
+    .cf-key-hint{white-space:normal;width:100%;}
+    .cf-kbnote{font-size:10px;line-height:1.5;}
+    .cf-ex{max-width:100%;flex:1 1 100%;}
+    .cf-step-lbl{display:none;}
+    .cf-proj-head{gap:8px;}
+    .cf-sev-badges{margin-left:0;width:100%;}
+    .cf-actions{width:100%;}
+    .cf-action{flex:1 1 100%;text-align:center;}
+    .cf-tab{padding:8px 10px;}
+    .cf-diagram{height:380px;}
+    .cf-fmt{width:100%;}
+    .cf-fmt-btn{flex:1 1 auto;}
+    .cf-code-bar #cf-copy,.cf-code-bar .cf-dl{flex:1;}
+    .cf-conn-row .a{min-width:0;}
+    .cf-bom .c-notes{display:none;}
+  }
+</style>
+</head>
+<body>
+<div id="cf-grid"></div>
+<div id="cf-app">
+
+  <header class="cf-header">
+    <div class="cf-logo">⚡</div>
+    <div>
+      <div class="cf-title">CIRCUIT<span>FORGE</span></div>
+      <div class="cf-sub">AI HARDWARE DESIGN · MULTI-STAGE PIPELINE · ERC VALIDATED</div>
+    </div>
+    <div class="cf-tags">
+      <span class="cf-tag">RAG·PINOUTS</span>
+      <span class="cf-tag">CHAIN·OF·THOUGHT</span>
+      <span class="cf-tag green" id="cf-catalog-tag">FORGE·CATALOG</span>
+      <span class="cf-tag">ERC·ENGINE</span>
+    </div>
+  </header>
+
+  <div class="cf-main">
+    <div class="cf-card">
+      <div class="cf-label">// DESCRIBE YOUR HARDWARE PROJECT</div>
+      <div class="cf-input-row">
+        <textarea id="cf-prompt" placeholder="e.g. 5-inch FPV quad: F7 flight controller, 4-in-1 ESC, 4 brushless motors, ELRS receiver, analog VTX + FPV camera, and a GPS module..."></textarea>
+        <button id="cf-run">▶ GENERATE</button>
+      </div>
+      <div class="cf-byok">
+        <label>ENGINE</label>
+        <select id="cf-provider"></select>
+        <input id="cf-key" type="password" autocomplete="off" spellcheck="false" placeholder="Your API key" hidden>
+        <span class="cf-key-hint" id="cf-key-hint"></span>
+      </div>
+      <div class="cf-examples" id="cf-examples">
+        <span class="lbl">EXAMPLES:</span>
+      </div>
+      <div class="cf-kbnote" id="cf-kbnote">Grounded with canonical pinouts. Drone parts are matched to the <b>Forge catalog</b> for real thumbnails, prices, and NDAA status. <b>Bring your own API key</b> — <b>Gemini</b> and <b>Groq</b> are free. Your key stays in your browser and goes straight to the provider.</div>
+    </div>
+
+    <div class="cf-pipeline" id="cf-pipeline" hidden>
+      <div class="cf-label" style="margin-bottom:16px;">// PIPELINE EXECUTION</div>
+      <div class="cf-steps" id="cf-steps"></div>
+      <div class="cf-stage-msg" id="cf-stage-msg" hidden></div>
+    </div>
+
+    <div class="cf-error" id="cf-error" hidden></div>
+
+    <div id="cf-results" hidden>
+      <div class="cf-proj-head">
+        <div>
+          <div class="cf-proj-title" id="cf-proj-title"></div>
+          <div class="cf-proj-over" id="cf-proj-over"></div>
+        </div>
+        <div class="cf-sev-badges" id="cf-sev-badges"></div>
+      </div>
+      <div class="cf-actions" id="cf-actions"></div>
+      <div class="cf-tabbar" id="cf-tabbar" style="margin-top:8px;"></div>
+      <div class="cf-tabpane" id="cf-tabpane"></div>
+    </div>
+  </div>
+</div>
+
+<script>
+// ─── FALLBACK KB ─────────────────────────────────────────────────────────────
+// Minimal built-in set so the tool still works if the shared KB JSON fails to
+// load. The full KB (incl. UAS/FPV parts + Forge-catalog hints) is fetched from
+// /static/circuit_forge_kb.json — canonical source: Ai-Project + forge-data.
+const FALLBACK_KB = {
+  "Arduino Uno": { type:"microcontroller", color:"#00979D", shape:"rect",
+    pins:["5V","3.3V","GND","VIN","A0","A1","A2","A3","A4","A5","D0","D1","D2","D3","D4","D5","D6","D7","D8","D9","D10","D11","D12","D13","RESET","AREF"], desc:"ATmega328P 16MHz, 14 digital I/O, 6 analog" },
+  "Arduino Nano": { type:"microcontroller", color:"#00979D", shape:"rect",
+    pins:["5V","3.3V","GND","VIN","A0","A1","A2","A3","A4","A5","A6","A7","D2","D3","D4","D5","D6","D7","D8","D9","D10","D11","D12","D13","TX","RX","RESET"], desc:"Compact ATmega328P, breadboard-friendly" },
+  "ESP32": { type:"microcontroller", color:"#E7352B", shape:"rect",
+    pins:["3.3V","GND","EN","GPIO0","GPIO2","GPIO4","GPIO5","GPIO12","GPIO13","GPIO14","GPIO15","GPIO16","GPIO17","GPIO18","GPIO19","GPIO21","GPIO22","GPIO23","GPIO25","GPIO26","GPIO27","GPIO32","GPIO33","GPIO34","GPIO35","RX0","TX0"], desc:"WiFi+BT, dual-core 240MHz, 34 GPIO" },
+  "LED": { type:"passive", color:"#FFD700", shape:"circle", pins:["anode","cathode"], desc:"Light emitting diode — needs current-limiting resistor" },
+  "Resistor": { type:"passive", color:"#A0522D", shape:"rect", pins:["pin1","pin2"], desc:"Current limiting / pull-up / pull-down" },
+  "Capacitor": { type:"passive", color:"#4169E1", shape:"circle", pins:["positive","negative"], desc:"Decoupling / filtering — 100nF standard decoupling" },
+  "DHT22": { type:"sensor", color:"#2ECC71", shape:"rect", pins:["VCC","DATA","NC","GND"], desc:"Temp+Humidity sensor, 3.3-5V, 1-wire protocol" },
+  "HC-SR04": { type:"sensor", color:"#3498DB", shape:"rect", pins:["VCC","TRIG","ECHO","GND"], desc:"Ultrasonic distance sensor, 5V, 2cm-400cm" },
+  "MPU6050": { type:"sensor", color:"#9B59B6", shape:"rect", pins:["VCC","GND","SCL","SDA","XDA","XCL","AD0","INT"], desc:"6-axis IMU, I2C, 3.3-5V — pull-ups on SDA/SCL" },
+  "L298N": { type:"driver", color:"#E67E22", shape:"rect", pins:["VCC","GND","VSS","OUT1","OUT2","IN1","IN2","ENA","OUT3","OUT4","IN3","IN4","ENB"], desc:"Dual H-bridge motor driver, 5-35V 2A per channel" },
+  "Servo Motor": { type:"actuator", color:"#16A085", shape:"rect", pins:["GND","VCC","SIGNAL"], desc:"PWM servo, 5V, 50Hz 1-2ms pulse width" },
+  "DC Motor": { type:"actuator", color:"#8E44AD", shape:"circle", pins:["VCC","GND"], desc:"Requires motor driver (L298N, L293D)" },
+  "Buzzer": { type:"actuator", color:"#D35400", shape:"circle", pins:["positive","negative"], desc:"Active buzzer ~5V, use transistor for MCU drive" },
+  "Power Supply": { type:"power", color:"#C0392B", shape:"rect", pins:["VCC","GND"], desc:"External power source" },
+  "NRF24L01": { type:"communication", color:"#E74C3C", shape:"rect", pins:["GND","VCC","CE","CSN","SCK","MOSI","MISO","IRQ"], desc:"2.4GHz RF module, 3.3V — add 100uF cap on power" },
+};
+
+let COMPONENT_KB = Object.assign({}, FALLBACK_KB);   // replaced by loadKB()
+let CATALOG = {};                                    // KB type name -> matched catalog part
+let kbReady = null;                                  // resolves once the (small) KB JSON loads
+let catalogReady = null;                             // lazy — the 7.6MB parts DB loads on first generate
+
+function ensureCatalog(){
+  if(!catalogReady) catalogReady = loadCatalog().then(updateCatalogTag).catch(()=>{});
+  return catalogReady;
+}
+function updateCatalogTag(){
+  const tag = el("cf-catalog-tag"); if(!tag) return;
+  const n = Object.keys(CATALOG).length;
+  if(n) tag.textContent = `FORGE·CATALOG·${n}`;
+}
+
+async function loadKB(){
+  try {
+    const res = await fetch("/static/circuit_forge_kb.json", { cache:"force-cache" });
+    if(res.ok){
+      const j = await res.json();
+      if(j && j.components && Object.keys(j.components).length) COMPONENT_KB = j.components;
+    }
+  } catch(e){ /* keep fallback */ }
+}
+
+// Build the catalog-match layer from the live Forge parts DB. Each KB component
+// that carries a "catalog" hint is matched to a real part so the schematic and
+// BOM can show its photo, price, NDAA status, and a link into the catalog.
+async function loadCatalog(){
+  let db;
+  try {
+    const res = await fetch("/static/forge_database.json", { cache:"force-cache" });
+    if(!res.ok) return;
+    db = await res.json();
+  } catch(e){ return; }
+  const byCat = {};
+  for(const [cat, parts] of Object.entries(db.components || {})){
+    if(Array.isArray(parts)) byCat[cat] = parts;
+  }
+  for(const [name, kb] of Object.entries(COMPONENT_KB)){
+    if(!kb.catalog) continue;
+    const m = matchPart(kb.catalog, byCat);
+    if(m) CATALOG[name] = m;
+  }
+}
+
+function matchPart(hint, byCat){
+  const arr = byCat[hint.category];
+  if(!arr || !arr.length) return null;
+  const terms = (hint.match || []).map(t => String(t).toLowerCase());
+  let best = null, bestScore = -1;
+  for(const p of arr){
+    const hay = `${p.name||""} ${p.manufacturer||""} ${(p.tags||[]).join(" ")}`.toLowerCase();
+    let score = 0;
+    for(const t of terms) if(hay.includes(t)) score += 3;
+    if(p.image_file || p.image_url || p.image) score += 2;   // favour parts with a photo
+    if(p.ndaa_compliant) score += 1;
+    if(score > bestScore){ bestScore = score; best = p; }
+  }
+  if(!best) best = arr[0];
+  return {
+    pid: best.pid, name: best.name, manufacturer: best.manufacturer,
+    image: best.image_file || best.image_url || best.image || "",
+    link: best.link || "",
+    price: (best.approx_price != null ? best.approx_price : (best.price_usd != null ? best.price_usd : null)),
+    category: hint.category,
+    ndaa: !!best.ndaa_compliant,
+  };
+}
+
+function catFor(typeName){ return CATALOG[typeName] || null; }
+function browseUrl(cat){ return "/browse/?category=" + encodeURIComponent(cat); }
+
+// approx_price / price_usd can be a number, a "$x" string, or a "$x–$y" range.
+function fmtPrice(p){
+  if(p==null || p==="") return null;
+  if(typeof p === "number") return "$"+p;
+  const s = String(p).trim();
+  return s.startsWith("$") ? s : "$"+s;
+}
+function priceNum(p){
+  if(p==null) return 0;
+  const m = String(p).replace(/[, ]/g,"").match(/[0-9]+(\.[0-9]+)?/);
+  return m ? parseFloat(m[0]) : 0;
+}
+
+// ─── ERC ENGINE ──────────────────────────────────────────────────────────────
+// Pin names vary in case across firmwares/boards (SmartAudio vs SMARTAUDIO),
+// so match case-insensitively to avoid false "invalid pin" flags.
+function pinValid(kb, pin){ return kb.pins.some(p => p.toLowerCase() === String(pin).toLowerCase()); }
+
+function runERC(components, connections){
+  const errors = [];
+  const compMap = {};
+  components.forEach(c => { compMap[c.id] = c; });
+
+  const POWER = ["Arduino Uno","Arduino Nano","ESP32","Raspberry Pi Pico","Power Supply",
+                 "Flight Controller","Power Module / PDB","Companion Computer"];
+  const hasPower = components.some(c => POWER.includes(c.type));
+  if(!hasPower) errors.push({ severity:"CRITICAL", msg:"No microcontroller or power source found" });
+
+  connections.forEach(conn => {
+    const [a,b] = conn;
+    const [aId,aPin] = a.split("."), [bId,bPin] = b.split(".");
+    const aComp = compMap[aId], bComp = compMap[bId];
+    if(!aComp) errors.push({ severity:"CRITICAL", msg:`Connection references unknown component: ${aId}` });
+    if(!bComp) errors.push({ severity:"CRITICAL", msg:`Connection references unknown component: ${bId}` });
+    if(aComp){ const kb=COMPONENT_KB[aComp.type]; if(kb && !pinValid(kb, aPin)) errors.push({ severity:"MAJOR", msg:`Invalid pin "${aPin}" on ${aId} (${aComp.type})` }); }
+    if(bComp){ const kb=COMPONENT_KB[bComp.type]; if(kb && !pinValid(kb, bPin)) errors.push({ severity:"MAJOR", msg:`Invalid pin "${bPin}" on ${bId} (${bComp.type})` }); }
+  });
+
+  const leds = components.filter(c=>c.type==="LED");
+  const resistors = components.filter(c=>c.type==="Resistor");
+  if(leds.length>0 && resistors.length===0) errors.push({ severity:"MAJOR", msg:`${leds.length} LED(s) detected but no current-limiting resistors found` });
+
+  const i2cDevices = components.filter(c=>["MPU6050","BMP280","SSD1306 OLED"].includes(c.type));
+  if(i2cDevices.length>0 && resistors.length<2) errors.push({ severity:"MINOR", msg:"I2C devices detected — ensure 4.7kΩ pull-ups on SDA and SCL" });
+
+  const dcMotors = components.filter(c=>c.type==="DC Motor");
+  const drivers = components.filter(c=>c.type==="L298N");
+  if(dcMotors.length>0 && drivers.length===0) errors.push({ severity:"CRITICAL", msg:"DC Motor(s) without motor driver — direct MCU connection will damage the board" });
+
+  // Brushless motors need one ESC channel each (a 4-in-1 ESC covers 4)
+  const bldc = components.filter(c=>c.type==="Brushless Motor");
+  const escs = components.filter(c=>c.type==="4-in-1 ESC");
+  const escCh = escs.length * 4 + components.filter(c=>c.type==="ESC").length;
+  if(bldc.length>0 && escCh < bldc.length) errors.push({ severity:"CRITICAL", msg:`${bldc.length} brushless motor(s) but only ${escCh} ESC channel(s) — each motor needs its own ESC output` });
+
+  const nrf = components.filter(c=>c.type==="NRF24L01");
+  if(nrf.length>0){ const caps=components.filter(c=>c.type==="Capacitor"); if(caps.length===0) errors.push({ severity:"MINOR", msg:"NRF24L01 needs 100μF decoupling cap on VCC for stable operation" }); }
+
+  const gndConns = connections.filter(conn => conn.some(p => p.includes("GND") || p.includes("gnd")));
+  if(components.length>2 && gndConns.length<2) errors.push({ severity:"MAJOR", msg:"Insufficient GND connections — all components need common ground" });
+
+  return errors;
+}
+
+// ─── LLM PROVIDERS (bring-your-own-key) ──────────────────────────────────────
+// Every engine is BYOK: the user's key is stored in their browser (localStorage)
+// and the request goes DIRECT to the provider. The key never touches our servers
+// and there is NO owner-funded default — this site runs for free, so it can't
+// foot the API bill for anonymous traffic. Gemini and Groq are free to the user.
+const MAX_TOKENS = 2048;
+const PROVIDERS = {
+  gemini:    { label:"Gemini (free)",         tier:"free", ls:"cf_key_gemini",    keyUrl:"https://aistudio.google.com/apikey",          keyName:"Google AI Studio" },
+  groq:      { label:"Groq · Llama (free)",   tier:"free", ls:"cf_key_groq",      keyUrl:"https://console.groq.com/keys",               keyName:"Groq Console" },
+  anthropic: { label:"Claude — your key",     tier:"paid", ls:"cf_key_anthropic", keyUrl:"https://console.anthropic.com/settings/keys", keyName:"Anthropic Console" },
+  openai:    { label:"ChatGPT — your key",    tier:"paid", ls:"cf_key_openai",    keyUrl:"https://platform.openai.com/api-keys",        keyName:"OpenAI Platform" },
+  xai:       { label:"Grok · xAI — your key", tier:"paid", ls:"cf_key_xai",       keyUrl:"https://console.x.ai/",                       keyName:"xAI Console" },
+};
+let provider = (localStorage.getItem("cf_provider") && PROVIDERS[localStorage.getItem("cf_provider")]) ? localStorage.getItem("cf_provider") : "gemini";
+function getKey(p){ const m=PROVIDERS[p]; return (m && m.ls) ? (localStorage.getItem(m.ls)||"").trim() : ""; }
+
+async function callLLM(prompt){
+  const p = provider;
+  const key = getKey(p);
+  if(!key) throw new Error(`Add your ${PROVIDERS[p].label} API key above to generate. Gemini and Groq are free — grab a key from the link next to the engine picker.`);
+  if(p === "gemini")    return callGemini(prompt, key);
+  if(p === "groq")      return callOpenAICompat(prompt, key, "https://api.groq.com/openai/v1/chat/completions", "llama-3.3-70b-versatile", "Groq");
+  if(p === "openai")    return callOpenAICompat(prompt, key, "https://api.openai.com/v1/chat/completions", "gpt-4o-mini", "OpenAI");
+  if(p === "xai")       return callOpenAICompat(prompt, key, "https://api.x.ai/v1/chat/completions", "grok-2-latest", "xAI");
+  if(p === "anthropic") return callAnthropic(prompt, key);
+  throw new Error("Unknown engine");
+}
+
+const sleep = ms => new Promise(r => setTimeout(r, ms));
+
+// Pull a retry delay (ms) out of a 429 response: Retry-After header, Google's
+// RetryInfo detail, or a "retry in 12.3s" string. Capped at 30s.
+function retryDelayMs(res, data){
+  const h = res.headers.get("retry-after");
+  if(h && !isNaN(h)) return Math.min(+h * 1000, 30000);
+  const details = data?.error?.details;
+  if(Array.isArray(details)){
+    const ri = details.find(d => String(d["@type"] || "").includes("RetryInfo"));
+    const m = ri && String(ri.retryDelay || "").match(/([0-9.]+)s/);
+    if(m) return Math.min(Math.ceil(parseFloat(m[1]) * 1000), 30000);
+  }
+  const m = JSON.stringify(data || "").match(/retry in ([0-9.]+)s/i);
+  if(m) return Math.min(Math.ceil(parseFloat(m[1]) * 1000), 30000);
+  return 0;
+}
+
+// "limit: 0" on a free-tier metric means the key's project has no free allowance
+// here (billing-enabled project, brand-new key, or unsupported region) — retrying
+// won't help, so explain it and point at the reliably-free Groq engine.
+function quotaHint(data){
+  const s = JSON.stringify(data || "");
+  if(/"limit":\s*0|limit:\s*0|free_tier/.test(s))
+    return " — this key's project has no free-tier quota here (billing-enabled project, brand-new key, or unsupported region). Switch the engine to Groq (free), or use a Gemini key from a free-tier Google account.";
+  return "";
+}
+
+// POST JSON with up to 2 automatic retries on HTTP 429, honouring the provider's
+// retry delay. A network failure (often a CORS block on a direct browser call)
+// throws a friendly error pointing at the engines that allow browser calls.
+async function postJSON(url, opts, label){
+  for(let attempt = 0; ; attempt++){
+    let res;
+    try { res = await fetch(url, opts); }
+    catch(e){ throw new Error(`${label}: request blocked (the provider may not allow direct browser calls — try the free Gemini or Groq engine instead).`); }
+    let data; try { data = await res.json(); } catch { data = {}; }
+    if(res.status === 429 && attempt < 2){
+      const wait = retryDelayMs(res, data) || (2000 * (attempt + 1));
+      if(wait <= 25000){
+        if(state.stage) setStage(state.stage, `${label} rate-limited — retrying in ${Math.ceil(wait/1000)}s…`);
+        await sleep(wait);
+        continue;
+      }
+    }
+    return { res, data };
+  }
+}
+
+async function callAnthropic(prompt, key){
+  const { data } = await postJSON("https://api.anthropic.com/v1/messages", {
+    method:"POST",
+    headers:{ "Content-Type":"application/json", "x-api-key":key, "anthropic-version":"2023-06-01", "anthropic-dangerous-direct-browser-access":"true" },
+    body: JSON.stringify({ model:"claude-sonnet-4-6", max_tokens: MAX_TOKENS, messages:[{ role:"user", content: prompt }] }),
+  }, "Claude");
+  if(data.error) throw new Error("Claude: " + (data.error.message || JSON.stringify(data.error)) + quotaHint(data));
+  const t = data.content?.[0]?.text;
+  if(!t) throw new Error("Claude: empty response");
+  return t;
+}
+
+async function callGemini(prompt, key){
+  const { data } = await postJSON(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${encodeURIComponent(key)}`, {
+    method:"POST", headers:{ "Content-Type":"application/json" },
+    body: JSON.stringify({ contents:[{ parts:[{ text: prompt }] }], generationConfig:{ maxOutputTokens: MAX_TOKENS } }),
+  }, "Gemini");
+  if(data.error) throw new Error("Gemini: " + (data.error.message || "request failed") + quotaHint(data));
+  const t = (data.candidates?.[0]?.content?.parts || []).map(x => x.text || "").join("");
+  if(!t) throw new Error("Gemini: empty response (check key / quota)");
+  return t;
+}
+
+async function callOpenAICompat(prompt, key, url, model, label){
+  const { data } = await postJSON(url, {
+    method:"POST", headers:{ "Content-Type":"application/json", "Authorization":`Bearer ${key}` },
+    body: JSON.stringify({ model, max_tokens: MAX_TOKENS, messages:[{ role:"user", content: prompt }] }),
+  }, label);
+  if(data.error) throw new Error(`${label}: ` + (data.error.message || JSON.stringify(data.error)) + quotaHint(data));
+  const t = data.choices?.[0]?.message?.content;
+  if(!t) throw new Error(`${label}: empty response`);
+  return t;
+}
+
+function stripFences(s){ return String(s).replace(/```json|```/g,"").trim(); }
+
+// ─── MULTI-STAGE PIPELINE ────────────────────────────────────────────────────
+async function runPipeline(prompt, onStageUpdate){
+  const kbSummary = Object.entries(COMPONENT_KB)
+    .map(([name,info]) => `${name}: pins=[${info.pins.join(",")}] desc="${info.desc}"`)
+    .join("\n");
+
+  onStageUpdate("identifying","Identifying components...");
+  const stage1 = await callLLM(
+`You are a hardware component identification agent. Given a project description, list ALL required components.
+
+Available components and their canonical pinouts (includes Arduino/breadboard parts AND drone/FPV parts like Flight Controller, 4-in-1 ESC, Brushless Motor, Video Transmitter, FPV Camera, ELRS Receiver, GPS Module, Companion Computer, Mesh Radio):
+${kbSummary}
+
+User project: "${prompt}"
+
+Respond with ONLY a JSON array, no markdown, no explanation:
+[
+  {"id": "fc1", "type": "Flight Controller"},
+  {"id": "esc1", "type": "4-in-1 ESC"}
+]
+
+Rules:
+- id must be componentType + number (e.g. "fc1", "motor1", "resistor1")
+- type must exactly match one of the available component names
+- Include all necessary passive components (resistors for LEDs, caps for decoupling, pull-ups for I2C)
+- For a multirotor: include one Brushless Motor per arm and a 4-in-1 ESC; for DC motors include a motor driver`);
+
+  let components;
+  try { components = JSON.parse(stripFences(stage1)); }
+  catch { throw new Error("Component identification failed: " + stage1); }
+
+  onStageUpdate("reasoning","Expert agent reasoning through connections...");
+  const compList = components.map(c=>`${c.id} (${c.type})`).join(", ");
+  const pinouts = components.map(c => {
+    const kb = COMPONENT_KB[c.type];
+    return kb ? `${c.id} [${c.type}] pins: ${kb.pins.join(", ")}` : `${c.id} [${c.type}]`;
+  }).join("\n");
+
+  const stage2 = await callLLM(
+`You are an expert electronics engineer. Reason through how to wire this circuit correctly.
+
+Project: "${prompt}"
+Components: ${compList}
+
+Canonical pinouts:
+${pinouts}
+
+Think step by step about:
+1. Power distribution (which components share VBAT/VCC/GND rails?)
+2. Signal connections (motor outputs, UART pairs, PWM)
+3. Bus connections (I2C needs SDA+SCL+pull-ups, SPI needs MISO+MOSI+SCK+CS)
+4. Protection (current-limiting resistors for LEDs, decoupling caps)
+5. Voltage levels (3.3V vs 5V vs VBAT) and UART TX↔RX crossing
+
+Provide a brief reasoning summary, then end with a "WIRING_PLAN:" section listing each connection as "componentA.pinX → componentB.pinY"`);
+
+  onStageUpdate("generating","Synthesizing CircuitJSON schematic...");
+  const stage3 = await callLLM(
+`You are a circuit schematic synthesis agent. Convert the wiring plan into CircuitJSON.
+
+Project: "${prompt}"
+
+Components (use EXACTLY these ids and types):
+${pinouts}
+
+Wiring plan from expert agent:
+${stage2}
+
+Generate CircuitJSON. Respond ONLY with valid JSON, no markdown:
+{
+  "components": [{"id": "fc1", "type": "Flight Controller", "properties": {"voltage": "VBAT"}}],
+  "connections": [["fc1.M1", "esc1.M1"], ["fc1.GND", "esc1.GND"]],
+  "notes": ["Note about special considerations"]
+}
+
+Rules:
+- connections are arrays of exactly 2 strings: "componentId.pinName"
+- Pin names must EXACTLY match the canonical pinout provided
+- Every component must have at least one GND connection
+- Include ALL connections from the wiring plan`);
+
+  let circuit;
+  try { circuit = JSON.parse(stripFences(stage3)); }
+  catch { throw new Error("JSON synthesis failed"); }
+
+  onStageUpdate("bom_code","Generating bill of materials...");
+  const stage4 = await callLLM(
+`You are a hardware documentation agent.
+
+Project: "${prompt}"
+Components: ${JSON.stringify(circuit.components)}
+
+Generate a JSON response. No markdown, only JSON:
+{
+  "bom": [{"id": "fc1", "component": "Flight Controller", "qty": 1, "spec": "F7, 8 UART", "approxCost": "$45", "notes": "Check UART map"}],
+  "title": "Short project title",
+  "overview": "2-3 sentence project description"
+}
+Note: "component" must match the component type names exactly so they can be linked to the parts catalog.`);
+
+  let bomData;
+  try { bomData = JSON.parse(stripFences(stage4)); }
+  catch { bomData = { bom:[], title:"Project", overview:"" }; }
+
+  // Firmware config (Betaflight diff / ArduPilot param / etc.) is generated
+  // on demand from the CODE tab so we only spend a call on the format the user
+  // actually wants — see genConfig().
+  return { components: circuit.components, connections: circuit.connections, notes: circuit.notes || [], prompt, ...bomData };
+}
+
+// ─── FIRMWARE CONFIG GENERATION (on demand, per format) ──────────────────────
+const CONFIG_FORMATS = {
+  betaflight: { label:"Betaflight CLI", filename:"betaflight_diff.txt",
+    instr:`Produce a Betaflight 4.x CLI "diff"-style configuration for THIS build. Include only the relevant lines: 'resource' remaps if implied by the wiring, 'serial' assignments mapping each UART to its peripheral (RX/ELRS receiver, VTX SmartAudio, GPS, ESC telemetry), 'feature' toggles (TELEMETRY, OSD, GPS, RX_SERIAL...), and the key 'set' lines (motor_pwm_protocol DSHOT600, vtx_*, osd_*, rssi/telemetry). Add motor 'mixer'/order only if non-default. Begin with '# Betaflight CLI' and end with 'save'.` },
+  inav: { label:"iNav CLI", filename:"inav_diff.txt",
+    instr:`Produce an iNav 7.x CLI "diff"-style configuration for THIS build. Map each serial port to its function (MSP, SERIAL_RX, GPS, VTX SmartAudio, ESC telemetry) with 'serial' lines, set the relevant 'feature' and 'set' values (motor protocol, GPS, OSD, RSSI), and any 'aux' mode lines. Begin with '# iNav CLI' and end with 'save'.` },
+  ardupilot: { label:"ArduPilot .param", filename:"ardupilot.param",
+    instr:`Produce an ArduPilot parameter file, one 'NAME,VALUE' per line (no spaces around the comma). Set SERIALx_PROTOCOL and SERIALx_BAUD for each wired UART (RC input, telemetry/companion MAVLink, GPS), MOT_PWM_TYPE for the ESC/DShot protocol, GPS_TYPE, RSSI_TYPE if used, and the core frame/board params implied by the components. Comment lines begin with '#'.` },
+  px4: { label:"PX4 params", filename:"px4.params",
+    instr:`Produce a PX4 parameter set as 'param set NAME VALUE' lines for THIS build: map serial ports (RC, telemetry/companion MAVLink, GPS) via the *_CONFIG params, set the DShot/PWM output mode, GPS, and RC protocol params implied by the components. One 'param set' per line.` },
+  arduino: { label:"Arduino sketch", filename:"sketch.ino",
+    instr:`Produce a complete, compilable Arduino sketch (C++): include the right libraries, #define pin names that match the wiring plan, and implement setup() and loop() to drive this circuit.` },
+};
+
+function defaultFormat(r){
+  const hasFC = (r.components||[]).some(c => c.type === "Flight Controller");
+  if(!hasFC) return "arduino";
+  const s = ((r.prompt||"") + " " + (r.overview||"")).toLowerCase();
+  if(/\bpx4\b/.test(s)) return "px4";
+  if(/ardupilot|pixhawk|\bcube\b|mapping|bvlos|mavlink|waypoint/.test(s)) return "ardupilot";
+  if(/inav|fixed.?wing|\bplane\b|\brover\b|\bwing\b/.test(s)) return "inav";
+  return "betaflight";
+}
+
+async function genConfig(fmt){
+  const r = state.result, spec = CONFIG_FORMATS[fmt];
+  const comps = r.components.map(c => `${c.id} (${c.type})`).join(", ");
+  const conns = (r.connections||[]).map(c => `${c[0]} -> ${c[1]}`).join("\n");
+  const prompt =
+`You are a flight-controller / firmware configuration agent.
+
+Project: "${r.prompt || r.title || ""}"
+Components: ${comps}
+Wiring plan:
+${conns}
+
+${spec.instr}
+
+Respond with ONLY the raw ${spec.label} file content — no markdown code fences, no commentary.`;
+  return stripFences(await callLLM(prompt));
+}
+
+function downloadText(filename, text){
+  const blob = new Blob([text], { type:"text/plain" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url; a.download = filename; document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+
+// Export the live schematic as a standalone SVG (vector, shareable).
+function exportSVG(svg){
+  if(!svg) return;
+  const W = svg.clientWidth || 700, H = svg.clientHeight || 450;
+  const clone = svg.cloneNode(true);
+  clone.setAttribute("xmlns", "http://www.w3.org/2000/svg");
+  clone.setAttribute("xmlns:xlink", "http://www.w3.org/1999/xlink");
+  clone.setAttribute("width", W); clone.setAttribute("height", H);
+  clone.setAttribute("viewBox", `0 0 ${W} ${H}`);
+  const bg = document.createElementNS("http://www.w3.org/2000/svg", "rect");
+  bg.setAttribute("x", 0); bg.setAttribute("y", 0); bg.setAttribute("width", W); bg.setAttribute("height", H); bg.setAttribute("fill", "#050A14");
+  clone.insertBefore(bg, clone.firstChild);
+  const xml = new XMLSerializer().serializeToString(clone);
+  downloadText("circuit-forge-wiring.svg", '<?xml version="1.0" encoding="UTF-8"?>\n' + xml);
+}
+
+// ─── FORCE-DIRECTED GRAPH ────────────────────────────────────────────────────
+let _graphAnim = null, _graphRunning = false, _clipSeq = 0;
+const SVGNS = "http://www.w3.org/2000/svg";
+
+// Classify a wire by its pin names so the schematic can colour-code the harness
+// (power/ground/motor/UART/I2C/SPI/video) the way a real wiring diagram does.
+const NET_COLORS = { power:"#EF4444", gnd:"#9CA3AF", motor:"#F59E0B", uart:"#22C55E", i2c:"#3B82F6", spi:"#A855F7", video:"#EC4899", signal:"#64748B" };
+const NET_LABELS = { power:"Power", gnd:"GND", motor:"Motor / ESC", uart:"UART", i2c:"I²C", spi:"SPI", video:"Video", signal:"Signal" };
+const NET_RULES = [
+  ["power", /^(vbat\+?|vcc|vin|vdd|vddio|vsys|vbus|5v|9v|10v|12v|3v3|3\.3v|4v5|v0|positive|anode)$/i],
+  ["gnd",   /^(gnd\d?|agnd|vss|vbat-|negative|cathode)$/i],
+  ["motor", /^(m[1-8]|out[1-4]|phase[abc]|ena|enb|in[1-4]|signal)$/i],
+  ["i2c",   /^(sda|scl)$/i],
+  ["spi",   /^(miso|mosi|sck|cs|csn|ce)$/i],
+  ["uart",  /^(tx\d?|rx\d?|tx[0-9]|rx[0-9]|t[1-6]|r[1-6]|txd|rxd|tlm|smartaudio|sa|tramp|sbus|ppm|data|key|state)$/i],
+  ["video", /^(video|cam|osd|audio|vtx)$/i],
+];
+function netTypeOf(a, b){
+  for(const p of [a, b]){ const s = String(p || "").trim(); for(const [t, re] of NET_RULES) if(re.test(s)) return t; }
+  return "signal";
+}
+
+function renderGraph(svg, components, connections){
+  if(_graphAnim){ cancelAnimationFrame(_graphAnim); _graphAnim = null; }
+  _graphRunning = false;
+  while(svg.firstChild) svg.removeChild(svg.firstChild);
+  if(!components.length) return;
+
+  const W = svg.clientWidth || 700, H = svg.clientHeight || 420;
+  const defs = document.createElementNS(SVGNS, "defs");
+  svg.appendChild(defs);
+
+  const nodes = components.map(c => {
+    const cat = catFor(c.type), kb = COMPONENT_KB[c.type] || {};
+    const hasImg = !!(cat && cat.image), shape = kb.shape || "rect";
+    let w, h;
+    if(shape === "circle"){ const r = hasImg ? 24 : 22; w = 2*r; h = 2*r; }
+    else { w = hasImg ? 72 : 60; h = hasImg ? 52 : 36; }
+    return { id:c.id, type:c.type, cat, w, h,
+      x:W/2 + (Math.random()-0.5)*200, y:H/2 + (Math.random()-0.5)*200, vx:0, vy:0 };
+  });
+  const nodeMap = {};
+  nodes.forEach(n => { nodeMap[n.id] = n; });
+
+  // FC-centric layout: pin the main controller at the centre and let the
+  // peripherals fan out around it (closer to a real wiring diagram).
+  const HUB_PRIORITY = ["Flight Controller","Companion Computer","Raspberry Pi Pico","ESP32","Arduino Uno","Arduino Nano","Power Module / PDB","Power Supply"];
+  let hub = null;
+  for(const t of HUB_PRIORITY){ hub = nodes.find(n => n.type === t); if(hub) break; }
+  if(!hub && nodes.length) hub = nodes[0];
+  if(hub){ hub.x = W/2; hub.y = H/2; }
+
+  const links = connections.map(([a,b]) => {
+    const [aId,aPin] = a.split("."), [bId,bPin] = b.split(".");
+    return { source:nodeMap[aId], target:nodeMap[bId], labelA:aPin, labelB:bPin, net: netTypeOf(aPin, bPin) };
+  }).filter(l => l.source && l.target);
+
+  const K=0.05, REPEL=11000, DAMPING=0.85, IDEAL=150;
+  _graphRunning = true;
+
+  function tick(){
+    if(!_graphRunning) return;
+    for(let i=0;i<nodes.length;i++){
+      for(let j=i+1;j<nodes.length;j++){
+        const dx=nodes[j].x-nodes[i].x, dy=nodes[j].y-nodes[i].y;
+        const d2=dx*dx+dy*dy+0.01, f=REPEL/d2, sd=Math.sqrt(d2);
+        nodes[i].vx-=f*dx/sd; nodes[i].vy-=f*dy/sd;
+        nodes[j].vx+=f*dx/sd; nodes[j].vy+=f*dy/sd;
+      }
+    }
+    links.forEach(l => {
+      const dx=l.target.x-l.source.x, dy=l.target.y-l.source.y;
+      const d=Math.sqrt(dx*dx+dy*dy)+0.01, f=K*(d-IDEAL);
+      l.source.vx+=f*dx/d; l.source.vy+=f*dy/d;
+      l.target.vx-=f*dx/d; l.target.vy-=f*dy/d;
+    });
+    const cx=nodes.reduce((s,n)=>s+n.x,0)/nodes.length, cy=nodes.reduce((s,n)=>s+n.y,0)/nodes.length;
+    nodes.forEach(n => { n.vx+=(W/2-cx)*0.01; n.vy+=(H/2-cy)*0.01; });
+    nodes.forEach(n => {
+      if(n===hub){ n.x=W/2; n.y=H/2; n.vx=0; n.vy=0; return; }
+      n.vx*=DAMPING; n.vy*=DAMPING; n.x+=n.vx; n.y+=n.vy;
+      n.x=Math.max(70,Math.min(W-70,n.x)); n.y=Math.max(50,Math.min(H-50,n.y));
+    });
+    draw();
+    _graphAnim = requestAnimationFrame(tick);
+  }
+
+  // Exit point on a node's bounding box toward (tx,ty), shifted along that edge
+  // by `off` so the strands of one bundle fan out as a tidy ribbon.
+  function edgePoint(node, tx, ty, off){
+    const dx=tx-node.x, dy=ty-node.y, hw=node.w/2+2, hh=node.h/2+2;
+    const sx = dx===0 ? 1e9 : hw/Math.abs(dx), sy = dy===0 ? 1e9 : hh/Math.abs(dy);
+    const s = Math.min(sx, sy);
+    let x = node.x + dx*s, y = node.y + dy*s;
+    if(Math.abs(dx)*hh >= Math.abs(dy)*hw) y += off;   // exits a vertical (L/R) edge
+    else x += off;                                     // exits a horizontal (T/B) edge
+    return { x, y };
+  }
+
+  // Orthogonal (right-angle) elbow between two perimeter points.
+  function elbow(a, b, off){
+    const dx=b.x-a.x, dy=b.y-a.y;
+    if(Math.abs(dx) >= Math.abs(dy)){ const mx=a.x+dx*0.5+off; return [a,{x:mx,y:a.y},{x:mx,y:b.y},b]; }
+    const my=a.y+dy*0.5+off; return [a,{x:a.x,y:my},{x:b.x,y:my},b];
+  }
+
+  function drawWires(){
+    // Bundle parallel wires between the same pair of components into a ribbon.
+    const bundles = {};
+    links.forEach(l => { const k=[l.source.id,l.target.id].sort().join("|"); (bundles[k]=bundles[k]||[]).push(l); });
+    Object.values(bundles).forEach(group => {
+      const n = group.length, SP = 5;
+      group.forEach((l, i) => {
+        const off = (i - (n-1)/2) * SP;
+        const a = edgePoint(l.source, l.target.x, l.target.y, off);
+        const b = edgePoint(l.target, l.source.x, l.source.y, -off);
+        const col = NET_COLORS[l.net] || "#64748B";
+        const pts = elbow(a, b, off);
+        const poly = document.createElementNS(SVGNS,"polyline");
+        poly.setAttribute("points", pts.map(p => `${p.x.toFixed(1)},${p.y.toFixed(1)}`).join(" "));
+        poly.setAttribute("fill","none"); poly.setAttribute("stroke",col);
+        poly.setAttribute("stroke-width","1.8"); poly.setAttribute("stroke-opacity","0.8"); poly.setAttribute("stroke-linejoin","round");
+        svg.appendChild(poly);
+        // Port label — the controller-side pad name, at the hub end (CubePilot style).
+        let end=null, pin=null;
+        if(l.source===hub){ end=a; pin=l.labelA; } else if(l.target===hub){ end=b; pin=l.labelB; } else { end=a; pin=l.labelA; }
+        const t=document.createElementNS(SVGNS,"text");
+        t.setAttribute("x", end.x + (end.x<((l.source===hub||l.target===hub)?hub.x:l.source.x) ? -3 : 3));
+        t.setAttribute("y", end.y - 2);
+        t.setAttribute("font-size","6.5"); t.setAttribute("fill",col); t.setAttribute("font-family","monospace");
+        t.setAttribute("text-anchor", end.x < (l.source===hub?hub.x:(l.target===hub?hub.x:l.source.x)) ? "end" : "start");
+        t.textContent = pin;
+        svg.appendChild(t);
+      });
+    });
+  }
+
+  function draw(){
+    while(svg.lastChild && svg.lastChild !== defs) svg.removeChild(svg.lastChild);
+    drawWires();
+    nodes.forEach(n => drawNode(n));
+  }
+
+  function drawNode(n){
+    const kb = COMPONENT_KB[n.type] || {};
+    const col = kb.color || "#555";
+    const shape = kb.shape || "rect";
+    const hasImg = n.cat && n.cat.image;
+    const g=document.createElementNS(SVGNS,"g");
+    g.setAttribute("transform",`translate(${n.x},${n.y})`);
+
+    if(shape==="circle"){
+      const r = hasImg ? 24 : 22;
+      const c=document.createElementNS(SVGNS,"circle");
+      c.setAttribute("r",r); c.setAttribute("fill",col); c.setAttribute("fill-opacity","0.15");
+      c.setAttribute("stroke",col); c.setAttribute("stroke-width","1.5"); g.appendChild(c);
+      if(hasImg){
+        const cid="cfclip"+(++_clipSeq);
+        const cp=document.createElementNS(SVGNS,"clipPath"); cp.setAttribute("id",cid);
+        const cc=document.createElementNS(SVGNS,"circle"); cc.setAttribute("r",r-3); cp.appendChild(cc); defs.appendChild(cp);
+        const img=document.createElementNS(SVGNS,"image");
+        img.setAttributeNS("http://www.w3.org/1999/xlink","href",n.cat.image);
+        img.setAttribute("href",n.cat.image);
+        img.setAttribute("x",-(r-3)); img.setAttribute("y",-(r-3)); img.setAttribute("width",(r-3)*2); img.setAttribute("height",(r-3)*2);
+        img.setAttribute("preserveAspectRatio","xMidYMid slice"); img.setAttribute("clip-path",`url(#${cid})`);
+        g.appendChild(img);
+      }
+    } else {
+      const w = hasImg ? 72 : 60, h = hasImg ? 52 : 36;
+      const r=document.createElementNS(SVGNS,"rect");
+      r.setAttribute("x",-w/2); r.setAttribute("y",-h/2); r.setAttribute("width",w); r.setAttribute("height",h);
+      r.setAttribute("rx","5"); r.setAttribute("fill",col); r.setAttribute("fill-opacity","0.12");
+      r.setAttribute("stroke",col); r.setAttribute("stroke-width","1.5"); g.appendChild(r);
+      if(hasImg){
+        const iw=w-8, ih=26;
+        const cid="cfclip"+(++_clipSeq);
+        const cp=document.createElementNS(SVGNS,"clipPath"); cp.setAttribute("id",cid);
+        const cr=document.createElementNS(SVGNS,"rect"); cr.setAttribute("x",-iw/2); cr.setAttribute("y",-h/2+4); cr.setAttribute("width",iw); cr.setAttribute("height",ih); cr.setAttribute("rx","3"); cp.appendChild(cr); defs.appendChild(cp);
+        const img=document.createElementNS(SVGNS,"image");
+        img.setAttributeNS("http://www.w3.org/1999/xlink","href",n.cat.image);
+        img.setAttribute("href",n.cat.image);
+        img.setAttribute("x",-iw/2); img.setAttribute("y",-h/2+4); img.setAttribute("width",iw); img.setAttribute("height",ih);
+        img.setAttribute("preserveAspectRatio","xMidYMid slice"); img.setAttribute("clip-path",`url(#${cid})`);
+        g.appendChild(img);
+      }
+    }
+
+    const yType = hasImg ? (shape==="circle" ? 30 : 18) : -4;
+    const yId   = hasImg ? (shape==="circle" ? 39 : 28) : 8;
+    const t1=document.createElementNS(SVGNS,"text");
+    t1.setAttribute("text-anchor","middle"); t1.setAttribute("y",yType); t1.setAttribute("font-size","7");
+    t1.setAttribute("fill",col); t1.setAttribute("font-family","monospace"); t1.setAttribute("font-weight","600");
+    t1.textContent = n.type.length>13 ? n.type.slice(0,12)+"…" : n.type; g.appendChild(t1);
+    const t2=document.createElementNS(SVGNS,"text");
+    t2.setAttribute("text-anchor","middle"); t2.setAttribute("y",yId); t2.setAttribute("font-size","9");
+    t2.setAttribute("fill","#E2E8F0"); t2.setAttribute("font-family","monospace");
+    t2.textContent = n.id; g.appendChild(t2);
+
+    if(n.cat){
+      g.style.cursor="pointer";
+      const dest = n.cat.link || browseUrl(n.cat.category);
+      const title=document.createElementNS(SVGNS,"title");
+      title.textContent = `${n.cat.name}${fmtPrice(n.cat.price)?` · ${fmtPrice(n.cat.price)}`:""}${n.cat.ndaa?" · NDAA":""} — open in catalog`;
+      g.appendChild(title);
+      g.addEventListener("click", ()=> window.open(dest, "_blank", "noopener"));
+    }
+    svg.appendChild(g);
+  }
+
+  _graphAnim = requestAnimationFrame(tick);
+}
+
+// ─── UI STATE + RENDERING ────────────────────────────────────────────────────
+const STAGE_LABELS = { identifying:"Identifying components", reasoning:"Expert agent reasoning", generating:"Synthesizing CircuitJSON", bom_code:"Bill of materials" };
+const STAGE_KEYS = Object.keys(STAGE_LABELS);
+const SEVERITY_COLOR = { CRITICAL:"#EF4444", MAJOR:"#F97316", MINOR:"#EAB308", WARNING:"#3B82F6" };
+const EXAMPLE_PROMPTS = [
+  "5-inch FPV freestyle quad: F7 flight controller, 4-in-1 ESC, 4 brushless motors, ELRS receiver, analog VTX with FPV camera, and a buzzer",
+  "Long-range mapping drone: ArduPilot flight controller, GPS module, companion computer for MAVLink, and a mesh radio for the C2 link",
+  "A drone distance alarm using an HC-SR04 ultrasonic sensor that beeps a buzzer when an obstacle is closer than 30cm, controlled by Arduino Uno",
+  "Arduino Nano 2WD robot using an L298N motor driver with two DC motors and an HC-SR04 for obstacle avoidance",
+];
+const el = id => document.getElementById(id);
+let state = { stage:null, result:null, ercErrors:[], activeTab:"diagram", copied:false, configCache:{}, configBusy:{}, configFormat:null };
+
+function escapeHtml(s){ const d=document.createElement("div"); d.textContent=String(s==null?"":s); return d.innerHTML; }
+
+function setStage(stage, msg){
+  state.stage = stage;
+  el("cf-run").disabled = !!stage || !el("cf-prompt").value.trim();
+  el("cf-run").textContent = stage ? "RUNNING..." : "▶ GENERATE";
+  const pipeline = el("cf-pipeline");
+  if(!stage){ pipeline.hidden = true; return; }
+  pipeline.hidden = false;
+  const idx = STAGE_KEYS.indexOf(stage);
+  const steps = el("cf-steps"); steps.innerHTML = "";
+  STAGE_KEYS.forEach((s,i) => {
+    const wrap = document.createElement("div"); wrap.className="cf-step";
+    const inner = document.createElement("div"); inner.className="cf-step-inner";
+    const dot = document.createElement("div");
+    dot.className = "cf-dot" + (i<idx?" done":i===idx?" active":"");
+    dot.textContent = i<idx ? "✓" : String(i+1);
+    const lbl = document.createElement("div");
+    lbl.className = "cf-step-lbl" + (i===idx?" active":""); lbl.textContent = STAGE_LABELS[s];
+    inner.appendChild(dot); inner.appendChild(lbl); wrap.appendChild(inner);
+    if(i<STAGE_KEYS.length-1){ const line=document.createElement("div"); line.className="cf-step-line"+(i<idx?" done":""); wrap.appendChild(line); }
+    steps.appendChild(wrap);
+  });
+  const msgEl = el("cf-stage-msg");
+  if(msg){ msgEl.hidden=false; msgEl.innerHTML = `<span>›</span> ${escapeHtml(msg)}`; } else msgEl.hidden = true;
+}
+
+function renderResults(){
+  const r = state.result;
+  el("cf-results").hidden = !r;
+  if(!r) return;
+  el("cf-proj-title").textContent = r.title || "Project";
+  el("cf-proj-over").textContent = r.overview || "";
+
+  const badges = el("cf-sev-badges"); badges.innerHTML = "";
+  ["CRITICAL","MAJOR","MINOR","WARNING"].forEach(sev => {
+    const cnt = state.ercErrors.filter(e=>e.severity===sev).length;
+    if(!cnt) return;
+    const span=document.createElement("span"); span.className="cf-sev";
+    span.style.background = SEVERITY_COLOR[sev]+"20";
+    span.style.border = "1px solid "+SEVERITY_COLOR[sev]+"50";
+    span.style.color = SEVERITY_COLOR[sev];
+    span.textContent = `${cnt} ${sev}`; badges.appendChild(span);
+  });
+
+  // cross-link actions
+  const matched = (r.components||[]).filter(c=>catFor(c.type)).length;
+  const actions = el("cf-actions"); actions.innerHTML = "";
+  const mk = (cls,txt,href)=>{ const a=document.createElement("a"); a.className="cf-action "+cls; a.textContent=txt; a.href=href; a.target="_blank"; a.rel="noopener"; return a; };
+  actions.appendChild(mk("amber","🔨 Build the full drone in Model Builder","/builder/"));
+  actions.appendChild(mk("cyan","🤖 Ask Wingman about this build","/wingman/"));
+  if(matched){
+    const note=document.createElement("span");
+    note.style.cssText="font-size:10px;color:var(--ink-4);align-self:center;";
+    note.textContent = `${matched} part(s) matched to the Forge catalog`;
+    actions.appendChild(note);
+  }
+
+  const tabs = [["diagram","⬡ SCHEMATIC"],["bom","⊞ BOM"],["code","{ } CODE"],["erc","⚠ ERC"],["notes","✎ NOTES"]];
+  const bar = el("cf-tabbar"); bar.innerHTML = "";
+  tabs.forEach(([id,label]) => {
+    const b=document.createElement("button");
+    b.className="cf-tab"+(state.activeTab===id?" active":""); b.textContent=label;
+    b.onclick=()=>{ state.activeTab=id; renderResults(); }; bar.appendChild(b);
+  });
+  renderTab();
+}
+
+function renderTab(){
+  const r = state.result, pane = el("cf-tabpane"); pane.innerHTML = "";
+  if(state.activeTab==="diagram"){
+    const box=document.createElement("div"); box.className="cf-diagram";
+    const svg=document.createElementNS(SVGNS,"svg"); box.appendChild(svg);
+    const legend=document.createElement("div"); legend.className="cf-legend";
+    const present=[...new Set((r.connections||[]).map(c => netTypeOf((c[0].split(".")[1]||""), (c[1].split(".")[1]||""))))];
+    present.forEach(t => { const it=document.createElement("span"); it.className="cf-leg-item"; it.innerHTML=`<i style="background:${NET_COLORS[t]}"></i>${NET_LABELS[t]}`; legend.appendChild(it); });
+    box.appendChild(legend);
+    const exp=document.createElement("button"); exp.className="cf-export"; exp.textContent="⤓ SVG";
+    exp.title="Download the wiring diagram as SVG"; exp.onclick=()=>exportSVG(svg);
+    box.appendChild(exp);
+    const hint=document.createElement("div"); hint.className="hint"; hint.textContent="flight controller centred · wires coloured by signal · pads labelled at the FC · click a part to open it in the catalog";
+    box.appendChild(hint); pane.appendChild(box);
+    requestAnimationFrame(()=>renderGraph(svg, r.components, r.connections));
+  } else if(state.activeTab==="bom"){
+    const wrap=document.createElement("div"); wrap.className="cf-bom-wrap";
+    let matched=0, dbTotal=0;
+    const rows=(r.bom||[]).map(item=>{
+      const cat = catFor(item.component);
+      let thumb = `<div class="ph">n/a</div>`;
+      if(cat && cat.image) thumb = `<img src="${escapeHtml(cat.image)}" alt="" loading="lazy" onerror="this.outerHTML='<div class=\\'ph\\'>n/a</div>'">`;
+      let name = escapeHtml(item.component||"");
+      if(cat && cat.link) name = `<a href="${escapeHtml(cat.link)}" target="_blank" rel="noopener">${name}</a>`;
+      let sub = "";
+      if(cat){
+        matched++;
+        sub = `<span class="c-match">${escapeHtml(cat.manufacturer||"")} · ${escapeHtml(cat.name||"").slice(0,46)}</span>`;
+        if(cat.ndaa) name += `<span class="cf-chip ndaa">NDAA</span>`;
+        name += `<a class="cf-chip cat" href="${browseUrl(cat.category)}" target="_blank" rel="noopener">${escapeHtml(cat.category)} ↗</a>`;
+      }
+      let cost = escapeHtml(item.approxCost||"—");
+      const catCost = cat ? fmtPrice(cat.price) : null;
+      if(catCost){ cost = escapeHtml(catCost); dbTotal += priceNum(cat.price)*(item.qty||1); }
+      return `<tr>
+        <td class="c-thumb">${thumb}</td>
+        <td class="c-name">${name}${sub}</td>
+        <td>${escapeHtml(String(item.qty??""))}</td>
+        <td class="c-id">${escapeHtml(item.spec||"")}</td>
+        <td class="c-cost">${cost}</td>
+        <td class="c-notes">${escapeHtml(item.notes||"")}</td></tr>`;
+    }).join("");
+    const total=(r.bom||[]).reduce((s,i)=>s+(i.qty||1),0);
+    wrap.innerHTML = `<table class="cf-bom"><thead><tr>
+      <th></th><th>COMPONENT</th><th>QTY</th><th>SPEC</th><th>COST</th><th>NOTES</th>
+      </tr></thead><tbody>${rows}</tbody></table>
+      <div class="cf-bom-total"><span>Total components: <b>${total}</b> · matched to catalog: <b>${matched}</b></span>
+      ${dbTotal>0?`<span>Catalog subtotal: <b>$${dbTotal.toFixed(0)}</b></span>`:""}</div>`;
+    pane.appendChild(wrap);
+  } else if(state.activeTab==="code"){
+    if(!state.configFormat) state.configFormat = defaultFormat(r);
+    const fmt = state.configFormat, spec = CONFIG_FORMATS[fmt];
+    const wrap=document.createElement("div"); wrap.className="cf-code-wrap";
+    const bar=document.createElement("div"); bar.className="cf-code-bar";
+
+    const fsel=document.createElement("div"); fsel.className="cf-fmt";
+    Object.entries(CONFIG_FORMATS).forEach(([id,sp])=>{
+      const b=document.createElement("button"); b.className="cf-fmt-btn"+(id===fmt?" active":"");
+      b.textContent=sp.label;
+      b.onclick=()=>{ state.configFormat=id; state.copied=false; renderTab(); };
+      fsel.appendChild(b);
+    });
+    bar.appendChild(fsel);
+
+    const code = state.configCache[fmt];
+    const ready = (code != null && !state.configBusy[fmt]);
+    const acts=document.createElement("div"); acts.style.cssText="margin-left:auto;display:flex;gap:8px;";
+    const copy=document.createElement("button"); copy.id="cf-copy";
+    copy.className = state.copied?"copied":""; copy.textContent = state.copied?"✓ COPIED":"⧉ COPY";
+    copy.disabled = !ready; copy.style.opacity = ready?"1":"0.4";
+    copy.onclick=()=>{ if(!ready) return; navigator.clipboard.writeText(code); state.copied=true; renderTab(); setTimeout(()=>{ state.copied=false; if(state.activeTab==="code") renderTab(); },2000); };
+    const dl=document.createElement("button"); dl.className="cf-dl"; dl.textContent="⤓ "+spec.filename;
+    dl.disabled = !ready; dl.style.opacity = ready?"1":"0.4";
+    dl.onclick=()=>{ if(ready) downloadText(spec.filename, code); };
+    acts.appendChild(copy); acts.appendChild(dl); bar.appendChild(acts);
+
+    const pre=document.createElement("pre");
+    if(code != null && !state.configBusy[fmt]){
+      pre.textContent = code;
+    } else {
+      pre.textContent = `Generating ${spec.label} from the wiring plan…  (one ${PROVIDERS[provider].label} call)`;
+      if(!state.configBusy[fmt]){
+        state.configBusy[fmt] = true;
+        genConfig(fmt)
+          .then(txt => { state.configCache[fmt] = txt || "# (empty response)"; })
+          .catch(e => { state.configCache[fmt] = `# generation failed — ${e.message}`; })
+          .finally(() => { state.configBusy[fmt] = false; if(state.activeTab==="code" && state.configFormat===fmt) renderTab(); });
+      }
+    }
+    wrap.appendChild(bar);
+    const warn=document.createElement("div"); warn.className="cf-warn";
+    warn.textContent = "⚠ AI-generated starting point — diff against your board's actual target and verify UART/pad assignments before flashing.";
+    wrap.appendChild(warn);
+    wrap.appendChild(pre); pane.appendChild(wrap);
+  } else if(state.activeTab==="erc"){
+    const list=document.createElement("div"); list.className="cf-erc-list";
+    if(state.ercErrors.length===0){
+      const ok=document.createElement("div"); ok.className="cf-erc-ok"; ok.textContent="✓ ERC PASSED — No electrical rule violations detected"; list.appendChild(ok);
+    } else {
+      state.ercErrors.forEach(e=>{
+        const item=document.createElement("div"); item.className="cf-erc-item";
+        item.style.background = SEVERITY_COLOR[e.severity]+"10"; item.style.border = "1px solid "+SEVERITY_COLOR[e.severity]+"30";
+        const badge=document.createElement("span"); badge.className="badge";
+        badge.style.background = SEVERITY_COLOR[e.severity]+"20"; badge.style.color = SEVERITY_COLOR[e.severity]; badge.textContent = e.severity;
+        const msg=document.createElement("span"); msg.className="msg"; msg.textContent=e.msg;
+        item.appendChild(badge); item.appendChild(msg); list.appendChild(item);
+      });
+    }
+    const foot=document.createElement("div"); foot.className="cf-erc-foot";
+    foot.textContent="ERC checks: power source, pin validity, LED resistors, I2C pull-ups, motor drivers, ESC channels, GND continuity";
+    list.appendChild(foot); pane.appendChild(list);
+  } else if(state.activeTab==="notes"){
+    const list=document.createElement("div"); list.className="cf-notes-list";
+    (r.notes||[]).forEach(note=>{ const n=document.createElement("div"); n.className="cf-note"; n.innerHTML = `<span>›</span> ${escapeHtml(note)}`; list.appendChild(n); });
+    const ct=document.createElement("div"); ct.className="cf-conn-table";
+    const rows=(r.connections||[]).map(c=>`<div class="cf-conn-row"><span class="a">${escapeHtml(c[0])}</span><span class="arr">→</span><span class="b">${escapeHtml(c[1])}</span></div>`).join("");
+    ct.innerHTML = `<div class="hd">CONNECTION TABLE</div>${rows}`; list.appendChild(ct);
+    pane.appendChild(list);
+  }
+}
+
+async function handleRun(){
+  const prompt = el("cf-prompt").value.trim();
+  if(!prompt || state.stage) return;
+  try { if(kbReady) await kbReady; await ensureCatalog(); } catch(e){}
+  state.result=null; state.ercErrors=[]; state.copied=false;
+  state.configCache={}; state.configBusy={}; state.configFormat=null;
+  el("cf-results").hidden=true; el("cf-error").hidden=true;
+  setStage("identifying","Identifying components...");
+  try {
+    const res = await runPipeline(prompt, (s,msg)=>setStage(s,msg));
+    state.result = res;
+    state.ercErrors = runERC(res.components, res.connections);
+    state.activeTab = "diagram";
+    setStage(null);
+    if(window.__fa && window.__fa.query) window.__fa.query(prompt, "circuit-forge", false);
+    renderResults();
+  } catch(e){
+    setStage(null);
+    const errEl = el("cf-error"); errEl.hidden=false; errEl.textContent = "✗ " + e.message;
+  }
+}
+
+(function init(){
+  const ex = el("cf-examples");
+  EXAMPLE_PROMPTS.forEach(p => {
+    const b=document.createElement("button"); b.className="cf-ex"; b.textContent = p.slice(0,52)+"…"; b.title=p;
+    b.onclick=()=>{ el("cf-prompt").value=p; el("cf-run").disabled=false; }; ex.appendChild(b);
+  });
+  el("cf-run").onclick = handleRun;
+  el("cf-prompt").addEventListener("input", ()=>{ if(!state.stage) el("cf-run").disabled = !el("cf-prompt").value.trim(); });
+  el("cf-prompt").addEventListener("keydown", e=>{ if(e.key==="Enter" && (e.metaKey||e.ctrlKey)) handleRun(); });
+  el("cf-run").disabled = true;
+  setupProviderUI();
+
+  // Load the small shared KB at startup (a few KB). The heavy parts DB that
+  // powers catalog matching is loaded lazily on the first generate (ensureCatalog).
+  kbReady = loadKB().catch(()=>{});
+})();
+
+// ─── PROVIDER / KEY PICKER ───────────────────────────────────────────────────
+function setupProviderUI(){
+  const sel = el("cf-provider"), keyInput = el("cf-key"), hint = el("cf-key-hint");
+  for(const [id, m] of Object.entries(PROVIDERS)){
+    const o = document.createElement("option"); o.value = id; o.textContent = m.label;
+    sel.appendChild(o);
+  }
+  sel.value = provider;
+  function refresh(){
+    const m = PROVIDERS[provider];
+    keyInput.hidden = false;
+    keyInput.value = getKey(provider);
+    keyInput.placeholder = "Your API key (stored only in this browser)";
+    const tier = m.tier === "free" ? `<span class="free">free</span>` : `<span class="paid">paid · your account</span>`;
+    hint.innerHTML = `${tier} · <a href="${m.keyUrl}" target="_blank" rel="noopener">get a ${m.keyName} key ↗</a>`;
+  }
+  sel.addEventListener("change", () => {
+    provider = sel.value; localStorage.setItem("cf_provider", provider); refresh();
+  });
+  keyInput.addEventListener("input", () => {
+    const m = PROVIDERS[provider];
+    if(m.ls) localStorage.setItem(m.ls, keyInput.value.trim());
+  });
+  refresh();
+}
+</script>
+</body>
+</html>

@@ -31,7 +31,7 @@ Cloudflare Pages config is in `wrangler.jsonc` (`pages_build_output_dir: build`)
 ## Architecture
 
 - **No backend.** Django was removed. All data is static JSON.
-- **20 pages** across: The Bench (home), Builder, Guide, Audit, Academy, Platforms, Browse, Contribute, Analytics, SLAM Selector, and 8 integration guides (FC Firmware, Mesh, TAK, AI, C-UAS, Swarm, SLAM, Guides Hub).
+- **76 pages** (the `PAGES` dict in `build_static.py` is the source of truth) spanning the core surfaces — The Bench (home), Builder, Guide, Audit, Academy, Platforms, Browse, Contribute, Analytics, SLAM Selector — the integration guides (FC Firmware, Mesh, TAK, AI, C-UAS, Swarm, SLAM, Guides Hub), plus reference, legal, and intel pages.
 - **Data flows from Ai-Project repo** → `data/parts-db/*.json` → merged into `forge_database.json` at build time.
 - **Analytics** snippet injected into all pages, reporting to the same-origin Cloudflare Worker endpoint at `/api/analytics/ingest` (see `build_static.py` `_ANALYTICS_SNIPPET`). The canonical product domains are: `uas-forge.com` (Forge, this repo), `uas-handbook.com` (Handbook, `drone-integration-handbook` repo), `uas-patterns.com` (Patterns/PIE intel — **`uas-intel.com` has been merged into this**; old intel URLs 301 to `uas-patterns.com`). The `build_static.py` `rewrite_legacy_domains()` pass still normalizes any stray legacy vanity names (`uas-intel.com`, `illdoitmyself.com`, `uas-patterns.pro`) to their canonical equivalents at build time as a safety net; source files now use canonical domains directly.
 

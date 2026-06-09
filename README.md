@@ -38,7 +38,7 @@ Cloudflare Pages auto-deploys from the `master` branch (project `forge`; config 
 ## Project Structure
 
 ```
-├── forge-source/                       # Source HTML/CSS/JS (20 pages)
+├── forge-source/                       # Source HTML/CSS/JS (76 pages)
 ├── build_static.py                     # Static site generator
 ├── wrangler.jsonc                      # Cloudflare Pages config + bindings
 ├── archive/                            # Historical data (CSVs, old JSON)
