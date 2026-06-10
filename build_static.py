@@ -16,9 +16,42 @@ import shutil
 import json
 import subprocess
 import sys
+import hashlib
 
 SRC_DIR = 'forge-source'
 BUILD_DIR = 'build'
+
+# ── forge_database.json cache-buster ─────────────────────────────────────────
+# `/static/*` is served `immutable, max-age=1yr` (see _headers) on the
+# assumption that every asset URL carries a `?v=` buster. forge_database.json
+# was fetched WITHOUT one, so refreshed parts/platform/category counts stayed
+# pinned to a stale cached copy for up to a year — the page would flash the
+# correct hardcoded numbers, then snap to the cached-stale data. We append a
+# content-hash buster to every forge_database.json reference (HTML + JS) so a
+# data refresh produces a new URL (cache miss → fresh fetch) while unchanged
+# data keeps hitting cache. Computed lazily AFTER sync_handbook_data() has
+# written the merged DB, so the hash reflects the actually-deployed bytes.
+_DB_VERSION_CACHE = None
+# Match `forge_database.json` not already followed by `?` (idempotent) and not
+# part of a longer name (e.g. forge_database.schema.json is unaffected).
+_DB_BUSTER_RE = re.compile(r'forge_database\.json(?!\?)')
+
+
+def _db_version():
+    """Short content hash of the deployed forge_database.json (cached)."""
+    global _DB_VERSION_CACHE
+    if _DB_VERSION_CACHE is None:
+        try:
+            with open(os.path.join(SRC_DIR, 'forge_database.json'), 'rb') as f:
+                _DB_VERSION_CACHE = hashlib.sha1(f.read()).hexdigest()[:10]
+        except Exception:
+            _DB_VERSION_CACHE = '0'
+    return _DB_VERSION_CACHE
+
+
+def add_db_cache_buster(text):
+    """Append `?v=<hash>` to bare forge_database.json references."""
+    return _DB_BUSTER_RE.sub(lambda m: f'{m.group(0)}?v={_db_version()}', text)
 
 # Pages to process  [rebuild 2026-04-10]
 PAGES = {
@@ -825,7 +858,13 @@ def fix_paths(html, depth=0):
     
     # Fix nav links to use clean URLs
     html = html.replace('href="/"', 'href="/"')
-    
+
+    # Cache-bust forge_database.json (immutable /static/* otherwise pins stale
+    # parts/platform counts). Runs for ALL depths, after the relative-fetch
+    # rewrites above, so it also catches the absolute `/static/forge_database.json`
+    # literals used by forge-home.html, index.html, mission-control.html, etc.
+    html = add_db_cache_buster(html)
+
     return html
 
 
@@ -1918,7 +1957,17 @@ def build():
             continue
         src = os.path.join(SRC_DIR, fname)
         dst = os.path.join(BUILD_DIR, 'static', fname)
-        shutil.copy2(src, dst)
+        # JS files (components.js, forge-static-adapter.js, …) fetch
+        # forge_database.json by absolute path — bust it the same as the HTML
+        # so they don't read a stale immutable-cached copy. Other assets copy
+        # verbatim.
+        if ext == '.js':
+            with open(src, 'r', encoding='utf-8') as _f:
+                _js = _f.read()
+            with open(dst, 'w', encoding='utf-8') as _f:
+                _f.write(add_db_cache_buster(_js))
+        else:
+            shutil.copy2(src, dst)
         copied += 1
 
     print(f"  Copied {copied} static assets, skipped {skipped} gated files")
