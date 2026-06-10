@@ -38,6 +38,45 @@
     }, Promise.resolve(null));
   }
 
+  // Fetch from /api/data?type=… honoring its envelope: payloads come back as
+  // {data: …}; free-tier gating returns {summary_only:true}. Unwrap `.data`,
+  // treat summary_only/error as a miss, and fall back to the public static/root
+  // files (same pattern the pages use). This is THE fix for the all-"—" bug:
+  // the previous code read fields straight off the envelope.
+  function apiData(type, fallbacks) {
+    var token = '';
+    try { token = localStorage.getItem('forge_token') || localStorage.getItem('wingman_sub_token') || ''; } catch (e) {}
+    var url = '/api/data?type=' + type + (token ? '&token=' + encodeURIComponent(token) : '');
+    return fetch(url).then(function (r) { return r.ok ? r.json() : null; }).then(function (d) {
+      if (d && !d.summary_only && !d.error) {
+        var u = (d.data != null) ? d.data : d;
+        if (u != null && typeof u === 'object') return u;
+      }
+      return null;
+    }).catch(function () { return null; }).then(function (d) {
+      return d || getJSON(fallbacks || []);
+    });
+  }
+
+  // Count flags by severity (field `f.severity`: critical/warning/high/info).
+  function countSeverity(flags) {
+    var c = { critical: 0, warning: 0, high: 0, info: 0, other: 0 };
+    (flags || []).forEach(function (f) {
+      var s = ((f && f.severity) || '').toLowerCase();
+      if (c[s] != null) c[s]++; else c.other++;
+    });
+    return c;
+  }
+
+  // Count flags first seen within the last `days` days (best-effort).
+  function newWithin(flags, days) {
+    var cut = Date.now() - days * 864e5;
+    return (flags || []).filter(function (f) {
+      var t = Date.parse((f && (f.first_seen || f.firstSeen)) || '');
+      return !isNaN(t) && t >= cut;
+    }).length;
+  }
+
   // Map a threat / severity word to a tone class.
   function tone(word) {
     var t = String(word || '').toUpperCase();
@@ -57,7 +96,7 @@
   // ── per-surface builders → {oneLiner, stats:[{label,value,tone}], changed:[str], narrative} ──
   var BUILDERS = {
     clock: function () {
-      return getJSON(['/api/data?type=clock_score', '/static/clock_score.json']).then(function (d) {
+      return apiData('clock_score', ['/static/clock_score.json']).then(function (d) {
         if (!d) return null;
         var f = d.factors || {}, changed = [];
         Object.keys(f).forEach(function (k) {
@@ -79,42 +118,54 @@
     },
 
     patterns: function () {
-      return getJSON(['/api/data?type=pie_brief', '/static/pie_brief.json']).then(function (d) {
-        if (!d) return null;
-        var s = d.signal_summary || {}, dl = d.delta_summary || {};
-        var changed = [dl.vs_yesterday || (num(s.new_today) + ' new today')];
+      // Counts come from the authoritative flags array (matches the page's badge);
+      // pie_brief supplies the FCC countdown, delta line, and analyst headline.
+      return Promise.all([
+        apiData('flags', ['/pie_flags.json', '/static/pie_flags.json']),
+        apiData('pie_brief', ['/static/pie_brief.json', '/pie_brief.json'])
+      ]).then(function (r) {
+        var flags = Array.isArray(r[0]) ? r[0] : [];
+        var pb = (r[1] && typeof r[1] === 'object') ? r[1] : {};
+        var s = pb.signal_summary || {}, dl = pb.delta_summary || {};
+        if (!flags.length && !s.total_flags) return null;
+        var c = countSeverity(flags);
+        var changed = [dl.vs_yesterday || (num(newWithin(flags, 1)) + ' new in the last 24h')];
         if (dl.new_flag_titles && dl.new_flag_titles.length) changed.push('New: ' + dl.new_flag_titles.slice(0, 2).join('; '));
         return {
           oneLiner: 'Active PIE flags — public-source risk indicators across regulatory, gray-zone, and supply-chain signals. Severity is an analytic signal, not an allegation of wrongdoing.',
           stats: [
-            { label: 'Total flags', value: num(s.total_flags) },
-            { label: 'Critical', value: num(s.critical), tone: 'bad' },
-            { label: 'Warning', value: num(s.warning), tone: 'warn' },
+            { label: 'Total flags', value: num(flags.length || s.total_flags) },
+            { label: 'Critical', value: num(flags.length ? c.critical : s.critical), tone: 'bad' },
+            { label: 'Warning', value: num(flags.length ? c.warning : s.warning), tone: 'warn' },
             { label: 'FCC days left', value: num(s.fcc_days_remaining) }
           ],
           changed: changed,
-          narrative: narrativeOf(d)
+          narrative: narrativeOf(pb)
         };
       });
     },
 
     'patterns-home': function () {
       return Promise.all([
-        getJSON(['/api/data?type=pie_brief', '/static/pie_brief.json']),
-        getJSON(['/api/data?type=clock_score', '/static/clock_score.json'])
+        apiData('flags', ['/pie_flags.json', '/static/pie_flags.json']),
+        apiData('clock_score', ['/static/clock_score.json']),
+        apiData('pie_brief', ['/static/pie_brief.json', '/pie_brief.json'])
       ]).then(function (r) {
-        var pb = r[0], ck = r[1];
-        if (!pb && !ck) return null;
-        var s = (pb && pb.signal_summary) || {};
+        var flags = Array.isArray(r[0]) ? r[0] : [];
+        var ck = (r[1] && typeof r[1] === 'object') ? r[1] : {};
+        var pb = (r[2] && typeof r[2] === 'object') ? r[2] : {};
+        var s = pb.signal_summary || {};
+        if (!flags.length && !ck.display && !s.total_flags) return null;
+        var c = countSeverity(flags);
         return {
           oneLiner: 'Patterns / PIE — the public-source intelligence surface: the risk clock, active flags, predictions, and gray-zone tracking, refreshed by the daily pipeline.',
           stats: [
-            { label: 'Risk clock', value: (ck && ck.display) || '—', tone: tone(ck && ck.threat_level) },
-            { label: 'Active flags', value: num(s.total_flags) },
-            { label: 'Critical', value: num(s.critical), tone: 'bad' },
-            { label: 'New today', value: num(s.new_today) }
+            { label: 'Risk clock', value: ck.display || '—', tone: tone(ck.threat_level) },
+            { label: 'Active flags', value: num(flags.length || s.total_flags) },
+            { label: 'Critical', value: num(flags.length ? c.critical : s.critical), tone: 'bad' },
+            { label: 'New 24h', value: num(newWithin(flags, 1)) }
           ],
-          changed: [(pb && pb.delta_summary && pb.delta_summary.vs_yesterday) || 'See the daily brief for what moved.'],
+          changed: [(pb.delta_summary && pb.delta_summary.vs_yesterday) || 'See the daily brief for what moved.'],
           narrative: narrativeOf(pb) || narrativeOf(ck)
         };
       });
