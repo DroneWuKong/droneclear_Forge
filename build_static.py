@@ -729,10 +729,9 @@ def _disclaimer_block(variant):
 
 
 def inject_disclaimer(html, src_name):
-    """Inject the visible point-of-reliance disclaimer at the top of content.
+    """Inject the visible point-of-reliance disclaimer at the BOTTOM of the page.
 
-    Inserted right after the unified nav (so it's the first scrollable element)
-    or, on nav-less pages (clock/analytics), right after <body>. Idempotent and
+    Inserted right before </body> (a footer-style advisory). Idempotent and
     a no-op for pages not in _DISCLAIMER_PAGES.
     """
     variant = _DISCLAIMER_PAGES.get(src_name)
@@ -743,19 +742,14 @@ def inject_disclaimer(html, src_name):
 
     block = "\n" + _disclaimer_block(variant) + "\n"
 
-    # Prefer immediately after the injected unified nav end-marker.
-    m = re.search(r'<!-- ── /Unified[^\n]*?-->', html)
+    # Place at the bottom of the page, just before </body>.
+    m = re.search(r'</body>', html)
     if m:
-        idx = m.end()
+        idx = m.start()
         return html[:idx] + block + html[idx:]
 
-    # Fallback: right after the opening <body> tag.
-    m = re.search(r'<body[^>]*>', html)
-    if m:
-        idx = m.end()
-        return html[:idx] + block + html[idx:]
-
-    return block + html
+    # Fallback: append to the end.
+    return html + block
 
 
 def inject_nav(html, src_name):
@@ -2050,11 +2044,6 @@ def build():
             html = inject_adapter(html, depth)
         html = inject_analytics(html, src_name)
         html = inject_disclaimer(html, src_name)
-        # Generated "At a glance" brief on the dash.uas-forge.com intel surfaces
-        # (computed summary + optional analyst narrative; see dash-brief.js). Bump
-        # ?v= when dash-brief.js changes — /static/* is immutable-cached.
-        if src_name in {'tracker.html', 'patterns.html', 'patterns-home.html', 'clock.html'}:
-            html = html.replace('</body>', '  <script defer src="/static/dash-brief.js?v=3"></script>\n</body>', 1)
         html = fix_nav_links(html, depth)
         html = rewrite_legacy_domains(html)
         
