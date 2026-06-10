@@ -2054,7 +2054,7 @@ def build():
         # (computed summary + optional analyst narrative; see dash-brief.js). Bump
         # ?v= when dash-brief.js changes — /static/* is immutable-cached.
         if src_name in {'tracker.html', 'patterns.html', 'patterns-home.html', 'clock.html'}:
-            html = html.replace('</body>', '  <script defer src="/static/dash-brief.js?v=2"></script>\n</body>', 1)
+            html = html.replace('</body>', '  <script defer src="/static/dash-brief.js?v=3"></script>\n</body>', 1)
         html = fix_nav_links(html, depth)
         html = rewrite_legacy_domains(html)
         
