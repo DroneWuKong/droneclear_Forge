@@ -2050,6 +2050,11 @@ def build():
             html = inject_adapter(html, depth)
         html = inject_analytics(html, src_name)
         html = inject_disclaimer(html, src_name)
+        # Generated "At a glance" brief on the dash.uas-forge.com intel surfaces
+        # (computed summary + optional analyst narrative; see dash-brief.js). Bump
+        # ?v= when dash-brief.js changes — /static/* is immutable-cached.
+        if src_name in {'tracker.html', 'patterns.html', 'patterns-home.html', 'clock.html'}:
+            html = html.replace('</body>', '  <script defer src="/static/dash-brief.js?v=1"></script>\n</body>', 1)
         html = fix_nav_links(html, depth)
         html = rewrite_legacy_domains(html)
         
