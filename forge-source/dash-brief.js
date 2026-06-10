@@ -104,7 +104,7 @@
           if (tr && tr !== 'stable') changed.push(titleCase(k) + (tr === 'up' ? ' ↑ rising' : tr === 'down' ? ' ↓ easing' : ' ' + tr));
         });
         return {
-          oneLiner: 'The UAS Ecosystem Risk Index (UERI) — a composite "doomsday clock" for the drone ecosystem. Fewer minutes-to-midnight means higher system-wide stress.',
+          oneLiner: 'UAS Ecosystem Risk Index — a composite "doomsday clock"; fewer minutes-to-midnight = more system-wide stress.',
           stats: [
             { label: 'Clock', value: d.display || '—', tone: tone(d.threat_level) },
             { label: 'Threat level', value: d.threat_level || '—', tone: tone(d.threat_level) },
@@ -132,7 +132,7 @@
         var changed = [dl.vs_yesterday || (num(newWithin(flags, 1)) + ' new in the last 24h')];
         if (dl.new_flag_titles && dl.new_flag_titles.length) changed.push('New: ' + dl.new_flag_titles.slice(0, 2).join('; '));
         return {
-          oneLiner: 'Active PIE flags — public-source risk indicators across regulatory, gray-zone, and supply-chain signals. Severity is an analytic signal, not an allegation of wrongdoing.',
+          oneLiner: 'Active PIE flags — public-source risk indicators across regulatory, gray-zone, and supply-chain signals.',
           stats: [
             { label: 'Total flags', value: num(flags.length || s.total_flags) },
             { label: 'Critical', value: num(flags.length ? c.critical : s.critical), tone: 'bad' },
@@ -158,7 +158,7 @@
         if (!flags.length && !ck.display && !s.total_flags) return null;
         var c = countSeverity(flags);
         return {
-          oneLiner: 'Patterns / PIE — the public-source intelligence surface: the risk clock, active flags, predictions, and gray-zone tracking, refreshed by the daily pipeline.',
+          oneLiner: 'Public-source intel at a glance — the risk clock, active flags, and what moved today.',
           stats: [
             { label: 'Risk clock', value: ck.display || '—', tone: tone(ck.threat_level) },
             { label: 'Active flags', value: num(flags.length || s.total_flags) },
@@ -187,7 +187,7 @@
                        : 'Everything current — nothing due in the next 30 days.')]
         : ['No items tracked yet — add a cert/rating to populate this brief.'];
       return Promise.resolve({
-        oneLiner: 'Your personal cert & currency tracker — certificates, ratings, and recurring requirements you have logged (kept in this browser only).',
+        oneLiner: 'Your cert & currency tracker — what you have logged and what needs renewal (stored in this browser).',
         stats: [
           { label: 'Tracked', value: num(items.length) },
           { label: 'Current', value: num(cur), tone: 'ok' },
@@ -220,19 +220,25 @@
     var css = document.createElement('style');
     css.id = 'dash-brief-css';
     css.textContent = [
-      '.dash-brief{background:var(--card,#15150f);border:1px solid var(--border,#2a2a22);border-left:3px solid var(--cyan,#22d3ee);border-radius:10px;padding:14px 16px;margin:0 0 20px;font-family:var(--font,system-ui,sans-serif)}',
-      '.dash-brief__hd{display:flex;align-items:center;gap:8px;font:700 11px var(--font,system-ui);letter-spacing:.08em;text-transform:uppercase;color:var(--cyan,#22d3ee);margin-bottom:6px}',
-      '.dash-brief__hd .t{margin-left:auto;font-weight:500;letter-spacing:0;text-transform:none;color:var(--text-d,#7a7a6a);font-size:10px}',
-      '.dash-brief__one{font-size:12.5px;line-height:1.5;color:var(--text-s,#b8b8a8);margin:0 0 10px}',
-      '.dash-brief__stats{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:10px}',
-      '.dash-brief__chip{background:var(--bg,#0c0c0a);border:1px solid var(--border,#2a2a22);border-radius:7px;padding:6px 10px;min-width:64px}',
-      '.dash-brief__chip .v{font:800 16px var(--mono,ui-monospace,monospace);color:var(--text,#e8e8d8)}',
+      '.dash-brief{background:var(--card,#15150f);border:1px solid var(--border,#2a2a22);border-left:3px solid var(--cyan,#22d3ee);border-radius:9px;padding:11px 13px;margin:0 0 16px;font-family:var(--font,system-ui,sans-serif)}',
+      '.dash-brief__hd{display:flex;align-items:baseline;gap:7px;font:700 10.5px var(--font,system-ui);letter-spacing:.07em;text-transform:uppercase;color:var(--cyan,#22d3ee);margin-bottom:5px}',
+      '.dash-brief__hd .one{flex:1;font-weight:500;letter-spacing:0;text-transform:none;color:var(--text-s,#b8b8a8);font-size:11.5px;line-height:1.4}',
+      '.dash-brief__hd .t{font-weight:500;letter-spacing:0;text-transform:none;color:var(--text-d,#7a7a6a);font-size:10px;white-space:nowrap}',
+      '.dash-brief__stats{display:flex;flex-wrap:wrap;gap:6px;margin:8px 0 0}',
+      '.dash-brief__chip{background:var(--bg,#0c0c0a);border:1px solid var(--border,#2a2a22);border-radius:6px;padding:5px 9px;flex:1 1 auto;min-width:58px}',
+      '.dash-brief__chip .v{font:800 15px var(--mono,ui-monospace,monospace);color:var(--text,#e8e8d8);line-height:1.1}',
       '.dash-brief__chip .v.ok{color:var(--green,#16a34a)}.dash-brief__chip .v.warn{color:var(--amber,#f59e0b)}.dash-brief__chip .v.bad{color:var(--red,#dc2626)}',
-      '.dash-brief__chip .l{font:500 10px var(--font,system-ui);color:var(--text-d,#7a7a6a);margin-top:1px}',
-      '.dash-brief__chg{font-size:11.5px;color:var(--text-s,#b8b8a8);margin:0 0 4px}.dash-brief__chg b{color:var(--text,#e8e8d8);font-weight:600}',
-      '.dash-brief__chg .lbl{color:var(--cyan,#22d3ee);font-weight:700;margin-right:5px}',
-      '.dash-brief__narr{font-size:12px;line-height:1.55;color:var(--text-s,#b8b8a8);border-top:1px solid var(--border,#2a2a22);margin-top:10px;padding-top:9px}',
-      '.dash-brief__narr .lbl{display:block;font:700 9.5px var(--font,system-ui);letter-spacing:.08em;text-transform:uppercase;color:var(--text-d,#7a7a6a);margin-bottom:3px}'
+      '.dash-brief__chip .l{font:500 9.5px var(--font,system-ui);color:var(--text-d,#7a7a6a);margin-top:1px;white-space:nowrap}',
+      '.dash-brief__chg{font-size:11px;color:var(--text-s,#b8b8a8);margin-top:7px}.dash-brief__chg .lbl{color:var(--cyan,#22d3ee);font-weight:700;margin-right:4px}',
+      '.dash-brief__narr{font-size:11.5px;line-height:1.5;color:var(--text-s,#b8b8a8);border-top:1px solid var(--border,#2a2a22);margin-top:8px;padding-top:7px}',
+      '.dash-brief__narr .lbl{font:700 9px var(--font,system-ui);letter-spacing:.07em;text-transform:uppercase;color:var(--text-d,#7a7a6a);margin-right:5px}',
+      '@media(max-width:600px){',
+      '  .dash-brief{padding:10px 11px;margin-bottom:12px}',
+      '  .dash-brief__hd{flex-wrap:wrap}',
+      '  .dash-brief__hd .t{display:none}',
+      '  .dash-brief__hd .one{flex:1 1 100%;-webkit-line-clamp:2;display:-webkit-box;-webkit-box-orient:vertical;overflow:hidden}',
+      '  .dash-brief__chip{flex:1 1 calc(50% - 3px)}',
+      '}'
     ].join('');
     document.head.appendChild(css);
   }
@@ -265,8 +271,8 @@
 
     card.innerHTML =
       '<div class="dash-brief__hd"><i class="ph ph-newspaper-clipping"></i>Brief' +
-        '<span class="t">auto-generated · ' + new Date().toLocaleString() + '</span></div>' +
-      '<p class="dash-brief__one">' + esc(b.oneLiner) + '</p>' +
+        '<span class="one">' + esc(b.oneLiner) + '</span>' +
+        '<span class="t">' + esc(new Date().toLocaleDateString()) + '</span></div>' +
       (stats ? '<div class="dash-brief__stats">' + stats + '</div>' : '') +
       changed + narr;
 
