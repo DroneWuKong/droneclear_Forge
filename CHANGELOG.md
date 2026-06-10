@@ -1,5 +1,27 @@
 # Changelog
 
+## [Session] - 2026-06-10 — Forge Hub stat fixes (display + caching)
+
+### Fixed
+- **forge-home.html (#91)** — Platform Browser module pill was hardcoded to the
+  stale `272`; corrected to `335` to match the hero stat row and the canonical
+  `forge-data` count (`platforms.json` / `manifest.json` = 335). The prior
+  build (#84) refreshed the hero (3,500→4,210 parts, 272→335 platforms,
+  34→43 categories) and the Parts Database card but missed this pill.
+- **build_static.py (#92)** — cache-bust `forge_database.json`. `_headers`
+  serves `/static/*` as `immutable, max-age=1yr` assuming a `?v=` buster, but
+  the DB was fetched as a bare `/static/forge_database.json` — so refreshed
+  parts/platform/category counts were pinned to a stale immutable-cached copy
+  (the hub flashed the correct hardcoded numbers, then snapped to stale
+  3,500/272/34). Now appends a content-hash buster `?v=<sha1[:10]>` to every
+  `forge_database.json` reference at build time — in HTML via `fix_paths`
+  (all pages/depths, after the relative-fetch rewrites, so it also catches the
+  absolute `/static/` literals in forge-home/index/mission-control/…) and in
+  the copied `.js` files (components.js, forge-static-adapter.js). A data
+  refresh now yields a new URL (cache miss → fresh) including for
+  already-cached clients; unchanged data keeps hitting cache.
+  `forge_database.schema.json` is untouched; the pass is idempotent.
+
 ## [Session] - 2026-06-08 — Visible point-of-reliance disclaimers
 
 ### Added
