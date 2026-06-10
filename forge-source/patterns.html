@@ -451,6 +451,7 @@ a.brief-source-chip:hover{color:var(--text-s);border-color:var(--border-hi)}
   <button type="button" class="tab" data-tab="history">📈 History</button>
   <button type="button" class="tab" data-tab="procurement">💰 Procurement</button>
   <button type="button" class="tab" data-tab="explorer">🔬 Explorer</button>
+  <button type="button" class="tab" data-tab="datasources">📡 Data Sources</button>
 </div>
 
 <!-- ═══ Content ═══ -->
@@ -837,6 +838,20 @@ a.brief-source-chip:hover{color:var(--text-s);border-color:var(--border-hi)}
       </table>
     </div>
     <div id="explorer-empty" style="display:none;font:400 11px var(--font);color:var(--text-d);padding:24px;text-align:center">No rows match.</div>
+  </div>
+
+  <!-- DATA SOURCES PANEL (Phase 11 — intel source expansion) -->
+  <div class="panel" id="panel-datasources">
+    <div style="font:700 10px var(--mono);color:var(--text-d);letter-spacing:.1em;margin-bottom:4px">SOURCE EXPANSION — RAW DATASETS</div>
+    <p style="font-size:11px;color:var(--text-d);margin-bottom:14px;line-height:1.5">
+      Collection-layer datasets feeding PIE: flight-stack commits, SEC filings, trade flows, sanctions cross-reference lists,
+      entity registries, media-tone signal, trademark and federal-hiring early indicators, and trade-show exhibitor lists.
+      Raw cross-reference data only — derived scoring (e.g. sanctions auto-tagging) ships in a later phase.
+      Presence on a sanctions cross-reference list is not a sanctions determination.
+    </p>
+    <div id="datasources-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:8px">
+      <div style="font:400 11px var(--font);color:var(--text-d);padding:24px;text-align:center">Loading datasets…</div>
+    </div>
   </div>
 
   <div class="footer">
@@ -2095,8 +2110,85 @@ document.querySelectorAll(".tab").forEach(t => {
     if (activeTab === 'dashboard') {
       if (window._minerRegistry) renderSources();
     }
+    if (activeTab === 'datasources') {
+      loadDataSources();
+    }
   });
 });
+
+// ── Data Sources tab (Phase 11 raw datasets) ──
+// Each descriptor: API type key, display name, upstream source, what the signal means,
+// and a count() that knows that dataset's top-level shape.
+const P11_DATASETS = [
+  {key:'github_hwdef', name:'GitHub hwdef Commits', src:'ArduPilot · Betaflight · PX4 · Meshtastic',
+   desc:'New flight-controller board definitions committed to open flight stacks — FC pre-announcements, often before retail listing.',
+   count:d=>Array.isArray(d)?d.length:(d.entries||[]).length, unit:'commits'},
+  {key:'sanctions_lists', name:'Sanctions Cross-Reference', src:'trade.gov CSL · OFAC SDN',
+   desc:'Raw consolidated-screening and SDN entries matching UAS/aviation-electronics queries. Cross-reference data only.',
+   count:d=>((d.csl_entries||[]).length+(d.ofac_entries||[]).length), unit:'entries'},
+  {key:'gleif_entities', name:'GLEIF LEI Registry', src:'GLEIF Golden Copy',
+   desc:'Canonical Legal Entity Identifiers for tracked companies — stable IDs for entity resolution.',
+   count:d=>(d.entities||[]).length, unit:'entities'},
+  {key:'wikidata_entities', name:'Wikidata Enrichment', src:'Wikidata SPARQL',
+   desc:'Ownership, headquarters-country, and founding data for tracked entities.',
+   count:d=>(d.entities||[]).length, unit:'entities'},
+  {key:'gdelt_events', name:'GDELT Media Signal', src:'GDELT DOC API',
+   desc:'Near-real-time UAS/drone media coverage with tone scoring — rolling window.',
+   count:d=>(d.articles||[]).length, unit:'articles'},
+  {key:'conference_exhibitors', name:'Trade-Show Exhibitors', src:'XPONENTIAL · AUSA · SHOT Show',
+   desc:'UAS-relevant exhibitor lists — new market entrants surface here before press coverage.',
+   count:d=>Object.values(d.shows||{}).reduce((n,s)=>n+(s.exhibitors||[]).length,0), unit:'exhibitors'},
+  {key:'uspto_marks', name:'USPTO Trademark Filings', src:'USPTO IBD API',
+   desc:'Intent-to-use trademark filings mentioning drone/UAS keywords — product-launch early warning.',
+   count:d=>(d.marks||[]).length, unit:'filings'},
+  {key:'usajobs', name:'Federal UAS Hiring', src:'USAJOBS Search API',
+   desc:'DoD job postings for UAS-related roles — program-ramp signal ahead of contract awards.',
+   count:d=>(d.jobs||[]).length, unit:'postings'},
+  {key:'comtrade_data', name:'Trade Flows', src:'UN Comtrade · US Census',
+   desc:'HS-code import/export volumes for UAS-relevant commodities (8806/8501/8507/8526/8803) with YoY surge flags.',
+   count:d=>Object.keys(d.hs_codes||{}).length, unit:'HS codes'},
+];
+
+let _dataSourcesLoaded = false;
+function loadDataSources() {
+  if (_dataSourcesLoaded) return;
+  _dataSourcesLoaded = true;
+  const grid = document.getElementById('datasources-grid');
+  if (!grid) return;
+  const tok = encodeURIComponent(localStorage.getItem('forge_token')||localStorage.getItem('wingman_sub_token')||'');
+  Promise.all(P11_DATASETS.map(ds =>
+    fetch('/api/data?type='+ds.key+'&token='+tok)
+      .then(r=>r.ok?r.json():null)
+      .then(d=>({ds, data: d && !d.error ? (d.data||d) : null}))
+      .catch(()=>({ds, data:null}))
+  )).then(results => {
+    grid.innerHTML = results.map(({ds, data}) => {
+      let n = 0, updated = '';
+      if (data) {
+        try { n = ds.count(data) || 0; } catch(e) { n = 0; }
+        updated = (data.last_updated||'').slice(0,10);
+      }
+      const live = data && n > 0;
+      const status = !data
+        ? '<span style="color:var(--text-d)">awaiting first pipeline run</span>'
+        : n === 0
+          ? '<span style="color:var(--amber)">connected — no records yet</span>'
+          : '<span style="color:var(--green)">live</span>';
+      return `<div style="background:var(--card);border:1px solid var(--border);border-radius:8px;padding:12px">
+        <div style="display:flex;justify-content:space-between;align-items:baseline;gap:8px">
+          <div style="font:600 12px var(--font);color:var(--text)">${ds.name}</div>
+          <div style="font:700 14px var(--mono);color:${live?'var(--cyan)':'var(--text-d)'}">${n.toLocaleString()}</div>
+        </div>
+        <div style="font:500 9px var(--mono);color:var(--text-d);letter-spacing:.05em;margin:2px 0 6px">${ds.src} · ${ds.unit}</div>
+        <div style="font:400 10px var(--font);color:var(--text-s);line-height:1.5">${ds.desc}</div>
+        <div style="font:500 9px var(--mono);margin-top:8px;display:flex;justify-content:space-between">
+          ${status}
+          <span style="color:var(--text-d)">${updated ? 'updated '+updated : ''}</span>
+        </div>
+      </div>`;
+    }).join('');
+  });
+}
 
 // ── Region extraction from flag detail text ──
 // Single source of truth: REGION_DATA.countries arrays
@@ -7293,6 +7385,7 @@ loadData();
       }
       if (saved === 'vars') { if (typeof renderVarSummary==='function') { renderVarSummary(); renderVars(); } }
       if (saved === 'explorer') { if (typeof explorerLoad==='function') explorerLoad(); }
+      if (saved === 'datasources') { if (typeof loadDataSources==='function') loadDataSources(); }
     }
   }
 })();

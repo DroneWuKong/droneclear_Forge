@@ -34,6 +34,9 @@ const DATASETS = new Set([
   'clock_score',  // UAS Ecosystem Clock UERI snapshot (clock_score.py → KV)
   'ddg2',  // Gauntlet II scoreboard + vendor standings (ddg2.py → KV)
   'ddg1',  // Gauntlet I results leaderboard (ddg1.py → KV)
+  // Phase 11 intel-source-expansion raw datasets (synced from Ai-Project forge-pipeline.yml)
+  'github_hwdef','sanctions_lists','gleif_entities','wikidata_entities',
+  'gdelt_events','conference_exhibitors','uspto_marks','usajobs','comtrade_data',
 ]);
 
 // KV namespace → dataset list mapping
@@ -53,6 +56,9 @@ const PIE_OUTPUTS_KEYS = new Set([
   'clock_score',  // UAS Ecosystem Clock — synced from pie-daily.yml
   'ddg2',  // Gauntlet II scoreboard — synced from pie-daily.yml
   'ddg1',  // Gauntlet I results — synced from pie-daily.yml
+  // Phase 11 raw datasets — synced from forge-pipeline.yml KV sync step
+  'github_hwdef','sanctions_lists','gleif_entities','wikidata_entities',
+  'gdelt_events','conference_exhibitors','uspto_marks','usajobs','comtrade_data',
 ]);
 
 export default {
