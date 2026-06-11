@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Data API — uas-patterns</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#0c0c0a;--surface:#141410;--card:#1c1c17;--card-hi:#242420;
+  --border:#2e2e26;--border-hi:#3e3e34;
+  --green:#22c55e;--amber:#f59e0b;--red:#ef4444;--blue:#3b82f6;--cyan:#22d3ee;
+  --text:#f5f0e8;--text-s:#b8b0a0;--text-d:#8a8070;--text-xd:#6b6358;
+  --font:'Inter',system-ui,sans-serif;--mono:'JetBrains Mono',monospace;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--bg);color:var(--text);font-family:var(--font);line-height:1.5;-webkit-font-smoothing:antialiased;min-height:100vh}
+a{text-decoration:none;color:inherit}
+
+.page{max-width:880px;margin:0 auto;padding:32px 24px 60px}
+.eyebrow{font:600 10px var(--mono);text-transform:uppercase;letter-spacing:.12em;color:var(--text-xd);margin-bottom:6px}
+h1{font:700 24px var(--mono);color:#22c55e;letter-spacing:-0.02em;margin-bottom:8px}
+.tagline{font-size:13px;color:var(--text-s);line-height:1.6;max-width:680px}
+.tagline code,.card code,td code{font:500 11px var(--mono);background:var(--surface);padding:1px 5px;border-radius:3px;color:var(--text)}
+.tagline a{color:var(--amber);text-decoration:underline;text-decoration-color:rgba(245,158,11,.4)}
+
+.group-lbl{font:600 10px var(--mono);text-transform:uppercase;letter-spacing:.1em;color:var(--text-xd);margin:28px 0 10px;display:flex;align-items:center;gap:8px}
+.group-lbl::after{content:'';flex:1;height:1px;background:var(--border)}
+
+.card{background:var(--card);border:1px solid var(--border);border-radius:8px;padding:14px;margin-bottom:10px}
+.card p{font-size:12px;color:var(--text-s);line-height:1.6}
+.card p+p,.card pre+p,.card p+pre{margin-top:8px}
+.card strong{color:var(--text)}
+pre{background:var(--surface);border:1px solid var(--border);border-radius:6px;padding:10px 12px;overflow-x:auto;font:400 11px var(--mono);color:var(--text-s);line-height:1.6}
+pre .k{color:var(--cyan)}pre .s{color:var(--green)}
+
+table{width:100%;border-collapse:collapse;font-size:12px}
+th{font:600 10px var(--mono);text-transform:uppercase;letter-spacing:.06em;color:var(--text-d);text-align:left;padding:6px 8px;border-bottom:1px solid var(--border)}
+td{padding:7px 8px;border-bottom:1px solid var(--border);color:var(--text-s);vertical-align:top;line-height:1.5}
+tr:last-child td{border-bottom:none}
+
+.caveat{margin:20px 0 0;padding:12px 14px;background:var(--surface);border-left:3px solid var(--text-xd);border-radius:4px;font:400 11px var(--font);color:var(--text-s);line-height:1.6}
+.caveat .caveat-tag{font:700 10px var(--mono);letter-spacing:.12em;color:var(--text-d);text-transform:uppercase;margin-bottom:6px;display:block}
+.caveat strong{color:var(--text)}
+
+.footnote{margin-top:24px;font-size:11px;color:var(--text-xd);line-height:1.6}
+.footnote a{color:var(--amber);text-decoration:underline}
+</style>
+</head>
+<body>
+<main class="page">
+  <div class="eyebrow">uas-patterns · PIE intelligence</div>
+  <h1>Data API</h1>
+  <p class="tagline">
+    Every dataset behind this site is readable as JSON from one endpoint —
+    <code>GET /api/data?type=&lt;dataset&gt;</code> — no key required. The same data that
+    renders the <a href="/patterns/">flags board</a>, the <a href="/brief/">daily brief</a>,
+    and the lens pages, refreshed by the PIE pipeline every day at <strong>11:30 UTC</strong>.
+  </p>
+
+  <div class="group-lbl">Endpoint</div>
+  <div class="card">
+    <pre><span class="k">GET</span> https://uas-patterns.com/api/data?type=<span class="s">pie_brief</span></pre>
+    <p>Response envelope (HTTP 200):</p>
+    <pre>{
+  "data":  { …dataset payload… },
+  "type":  "pie_brief",
+  "tier":  "free",
+  "source": "static"   // present only when served from the static fallback
+}</pre>
+    <p>Datasets are served from Cloudflare KV (written by the daily pipeline); if a
+    dataset missed the last sync, the worker falls back to the static copy bundled with
+    the deployment and marks it <code>"source": "static"</code>. Errors:
+    <code>400</code> missing <code>type</code> (the body lists all available datasets),
+    <code>404</code> unknown or unavailable dataset. CORS is open
+    (<code>Access-Control-Allow-Origin: *</code>) — you can call this from a browser app.</p>
+  </div>
+
+  <div class="group-lbl">Core PIE datasets</div>
+  <div class="card">
+    <table>
+      <tr><th>type</th><th>Contents</th><th>Cadence</th></tr>
+      <tr><td><code>flags</code></td><td>The full current flag set (~470 signals) with severity, confidence, lifecycle (<code>first_seen</code>/<code>last_seen</code>/<code>age_days</code>/<code>status</code>), sources, and component/platform references.</td><td>daily</td></tr>
+      <tr><td><code>pie_flags</code></td><td>Board-serving flag artefact (same schema; what <a href="/patterns/">/patterns/</a> renders).</td><td>daily</td></tr>
+      <tr><td><code>pie_brief</code></td><td>Daily synthesized brief: headline, lead story, supply-chain and gray-zone windows, watch list, predictions, delta summary.</td><td>daily</td></tr>
+      <tr><td><code>pie_brief_history</code></td><td>Rolling archive of past briefs (~90 days).</td><td>daily</td></tr>
+      <tr><td><code>pie_delta</code></td><td>Day-over-day flag movement: new / resolved / escalated / de-escalated.</td><td>daily</td></tr>
+      <tr><td><code>pie_trends</code></td><td>56-day metric history + linear projections (flag counts, prices, gray-zone scores, NDAA ratio).</td><td>daily</td></tr>
+      <tr><td><code>pie_weekly</code></td><td>Weekly digest.</td><td>weekly</td></tr>
+      <tr><td><code>clock_score</code></td><td>UAS Ecosystem Clock — UERI (urgency/escalation/risk) snapshot.</td><td>daily</td></tr>
+    </table>
+  </div>
+
+  <div class="group-lbl">Predictions &amp; accountability</div>
+  <div class="card">
+    <table>
+      <tr><th>type</th><th>Contents</th></tr>
+      <tr><td><code>predictions</code></td><td>Current ensemble forecasts: probability, confidence, drivers, hedge.</td></tr>
+      <tr><td><code>pie_predictions</code></td><td>Board-serving prediction artefact.</td></tr>
+      <tr><td><code>llm_predictions</code></td><td>Raw multi-provider LLM forecasts (audit copy, cross-validation marks).</td></tr>
+      <tr><td><code>predictions_best</code> / <code>predictions_archive</code></td><td>Highest-graded picks / full historical archive.</td></tr>
+      <tr><td><code>prediction_outcomes</code> / <code>calibration_scores</code></td><td>Resolved calls and Brier-score calibration — the data behind <a href="/forecast-accountability/">Forecast Accountability</a>.</td></tr>
+      <tr><td><code>gap_analysis_latest</code></td><td>Latest coverage-gap analysis.</td></tr>
+    </table>
+  </div>
+
+  <div class="group-lbl">Analytical lenses</div>
+  <div class="card">
+    <table>
+      <tr><th>type</th><th>Contents</th></tr>
+      <tr><td><code>entity_graph</code></td><td>Entity relationship graph with gray-zone risk scores.</td></tr>
+      <tr><td><code>actor_fingerprints</code> / <code>threat_scores</code></td><td>Threat-actor behavioral signatures and composite scores.</td></tr>
+      <tr><td><code>adversary_bom</code></td><td>Captured-platform teardown component rows.</td></tr>
+      <tr><td><code>component_mirroring_index</code></td><td>Western parts profiles resembling captured platforms.</td></tr>
+      <tr><td><code>sanctions_evasion_graph</code></td><td>Entities reachable from gray-zone seeds.</td></tr>
+      <tr><td><code>ttp_counter_gap</code></td><td>UAS TTPs scored against defensive procurement signal.</td></tr>
+      <tr><td><code>market_lens</code></td><td>Supply concentration, lead-time and NDAA-alignment cuts.</td></tr>
+      <tr><td><code>ddg1</code> / <code>ddg2</code></td><td>Defense Drone Gauntlet scoreboards.</td></tr>
+    </table>
+  </div>
+
+  <div class="group-lbl">Intel feeds &amp; reference data</div>
+  <div class="card">
+    <table>
+      <tr><th>type</th><th>Contents</th></tr>
+      <tr><td><code>intel_articles</code> / <code>intel_companies</code> / <code>intel_platforms</code> / <code>intel_programs</code></td><td>Mined article corpus, funding/M&amp;A, platform and program intelligence.</td></tr>
+      <tr><td><code>forge_intel</code> / <code>commercial_master</code> / <code>dfr_master</code> / <code>defense_master</code></td><td>Sector intel masters (commercial, DFR, defense desks).</td></tr>
+      <tr><td><code>solicitations</code> / <code>federal_awards</code> / <code>sam_watchlist</code></td><td>Procurement: open solicitations, award history, watchlist matches.</td></tr>
+      <tr><td><code>forge_database</code> / <code>drone_database</code></td><td>Forge parts catalog and platform database.</td></tr>
+      <tr><td><code>forge_firmware_versions</code> / <code>forge_troubleshooting</code> / <code>forge_incompatibilities</code> / <code>topic_component_map</code></td><td>Firmware matrix, troubleshooting KB, incompatibility rules, topic map.</td></tr>
+      <tr><td><code>miner_health</code> / <code>miner_registry</code></td><td>Pipeline observability: per-miner status and registry.</td></tr>
+    </table>
+  </div>
+
+  <div class="group-lbl">RSS</div>
+  <div class="card">
+    <p>Pull-based feeds: <code>/flags.xml</code> (all flags) and <code>/brief.xml</code>
+    (daily brief), updated on the same daily cycle.</p>
+  </div>
+
+  <div class="caveat">
+    <span class="caveat-tag">Fair use &amp; interpretation</span>
+    The API is free for research, journalism, and internal tooling — cache responses
+    (data changes once daily; there is no need to poll more than hourly) and attribute
+    <strong>uas-patterns.com</strong> when you republish. Risk labels are
+    <strong>analytic signals, not allegations</strong>; before acting on a flag, read what
+    its confidence score actually means in the
+    <a href="/lexicon/" style="color:var(--amber);text-decoration:underline">estimative-language reference</a>
+    and the methodology at
+    <a href="https://uas-handbook.com/pipeline/pie-methodology" style="color:var(--amber);text-decoration:underline" target="_blank" rel="noopener">uas-handbook.com</a>.
+    Schemas are stable but unversioned; breaking changes will be announced in the brief.
+  </div>
+
+  <p class="footnote">
+    Generated by the PIE pipeline (DroneWuKong/Ai-Project) · served via Cloudflare KV ·
+    <a href="/patterns/">flags board</a> · <a href="/brief/">daily brief</a> ·
+    <a href="/lexicon/">lexicon</a>
+  </p>
+</main>
+</body>
+</html>

@@ -129,6 +129,8 @@ PAGES = {
     'market-lens.html': 'market-lens/index.html',
     'forecast-accountability.html': 'forecast-accountability/index.html',
     'pie-trends.html': 'pie-trends/index.html',
+    'lexicon.html': 'lexicon/index.html',         # estimative-language reference
+    'api-docs.html': 'api-docs/index.html',       # /api/data reference (NOT /api/* — that's worker-routed)
     # Doctrine submission + audit (Cloudflare/Netlify-Function backed)
     'contribute-doctrine.html': 'contribute-doctrine/index.html',
     'audit-doctrine.html': 'audit-doctrine/index.html',
@@ -223,6 +225,7 @@ _PAGE_SLUGS = {
     'market-lens.html': 'market-lens',
     'forecast-accountability.html': 'forecast-accountability',
     'pie-trends.html': 'pie-trends',
+    'lexicon.html': 'lexicon', 'api-docs.html': 'api-docs',
     'contribute-doctrine.html': 'contribute-doctrine', 'audit-doctrine.html': 'audit-doctrine',
     'intel.html': 'intel-feed', 'intel-home.html': 'intel-home', 'forge-home.html': 'forge',
     'intel-commercial.html': 'intel-commercial',
@@ -1270,6 +1273,16 @@ SEO_META = {
         'Every configurator, GCS, simulator, and firmware tool for FPV, commercial UAS, and defense platforms. Betaflight, QGroundControl, Mission Planner, ELRS, and 40+ more with direct download links.',
         'drone software, FPV configurator, ground control station, Betaflight configurator, ELRS configurator, Mission Planner, QGroundControl, drone tools download',
     ),
+    'lexicon.html': (
+        'Estimative Language — How PIE Expresses Confidence & Likelihood',
+        'The fixed lexicon behind every PIE flag, prediction, and brief judgment: evidence tiers, ICD 203-style likelihood bands, confidence levels, and source types.',
+        'estimative language, intelligence confidence levels, ICD 203, PIE methodology, analytic standards, likelihood scale',
+    ),
+    'api-docs.html': (
+        'Data API — Machine-Readable PIE Intelligence & Forge Datasets',
+        'Free JSON API for PIE flags, the daily brief, predictions, trends, entity graph, and the Forge parts database. One endpoint, no key, refreshed daily.',
+        'drone intelligence API, PIE flags JSON, UAS supply chain data API, drone parts database API, open intelligence data',
+    ),
     'privacy.html': (
         'Privacy Policy — Forge Drone Intelligence Platform',
         'Forge privacy policy. No cookies, no PII collection, no tracking. Analytics are anonymized session data only.',
@@ -1324,6 +1337,8 @@ def inject_seo(html, src_name, dst_path):
         'ddg/':            'https://uas-patterns.com/ddg/',
         'brief/':          'https://uas-patterns.com/brief/',
         'analytics/':      'https://uas-patterns.com/analytics/',
+        'lexicon/':        'https://uas-patterns.com/lexicon/',
+        'api-docs/':       'https://uas-patterns.com/api-docs/',
         # Intel — merged into uas-patterns.com
         'intel/':              'https://uas-patterns.com/intel/',
         'intel/feed/':         'https://uas-patterns.com/intel/feed/',

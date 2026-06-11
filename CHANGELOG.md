@@ -1,5 +1,28 @@
 # Changelog
 
+## [Session] - 2026-06-11 — Public data-API reference + estimative-language lexicon
+
+### Added
+- **`/api-docs/` (api-docs.html) + `docs/api.md`** — first public documentation
+  of the `/api/data?type=` endpoint: response envelope, KV→static fallback
+  semantics, daily freshness contract (14:30 UTC), all ~40 dataset types
+  grouped (core PIE, predictions/accountability, lenses, intel/reference),
+  RSS feeds, fair-use terms. The worker allowlist in `workers/forge-data.js`
+  remains the source of truth — keep both docs in sync when adding a dataset.
+- **`/lexicon/` (lexicon.html)** — published estimative-language reference
+  (ICD 203-modeled): the four flag evidence tiers (PRIMARY SOURCE ≥90 /
+  STRONG INFERENCE 80–89 / ANALYTICAL 60–79 / SIGNAL <60), the seven-band
+  likelihood scale for predictions, judgment-confidence levels, source-type
+  taxonomy, and the likelihood-vs-confidence rule. Both pages canonical on
+  uas-patterns.com; registered in PAGES/SEO/slugs/sitemap.
+
+### Changed
+- **patterns.html** — flag-detail evidence-tier block now links to
+  `/lexicon/`; flags transparency footer buckets aligned to the published
+  four tiers (was 3 buckets with <0.8 lumped together) and footer links the
+  lexicon. (Companion change: Ai-Project `brief_generator.py` now enforces
+  the same lexicon in the daily brief prompt.)
+
 ## [Session] - 2026-06-10 — Forge Hub stat fixes (display + caching)
 
 ### Fixed
