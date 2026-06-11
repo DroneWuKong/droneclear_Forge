@@ -49,7 +49,7 @@ class ArduPilotDiscourseMiner(BaseMiner):
             source_name="ardupilot_discourse",
             base_url="https://discuss.ardupilot.org",
             min_request_interval_sec=1.5,
-            user_agent="ForgeMinerBot/0.1 (+https://forgeprole.netlify.app; research@droneclear.ai)",
+            user_agent="ForgeMinerBot/0.1 (+https://uas-forge.com; research@droneclear.ai)",
             respect_robots=True,
         )
 

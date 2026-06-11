@@ -31,7 +31,7 @@ CACHE = Path("tools/mining/output/.cache")
 CACHE.mkdir(parents=True, exist_ok=True)
 
 HEADERS = {
-    "User-Agent": "ForgeMinerBot/0.1 (+https://forgeprole.netlify.app; research@droneclear.ai)",
+    "User-Agent": "ForgeMinerBot/0.1 (+https://uas-forge.com; research@droneclear.ai)",
     "Accept": "text/html,application/xhtml+xml,*/*",
     "Accept-Language": "en-US,en;q=0.9",
 }

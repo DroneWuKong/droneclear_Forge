@@ -112,7 +112,7 @@ class DiyfpvCatalogMiner(BaseMiner):
             source_name="diyfpv_catalog",
             base_url="https://www.diyfpv.com",
             min_request_interval_sec=3.0,
-            user_agent="ForgeMinerBot/0.1 (+https://forgeprole.netlify.app; research@droneclear.ai)",
+            user_agent="ForgeMinerBot/0.1 (+https://uas-forge.com; research@droneclear.ai)",
             respect_robots=True,
             robots_block_behavior="skip",
         )

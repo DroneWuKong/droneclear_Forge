@@ -527,7 +527,7 @@ _UNIFIED_NAV = r"""<!-- ── Unified UAS- Nav (5-domain accordion drawer) ─�
   </a>
 
   <div id="dc-drawer-foot">
-    <span>Midwest Nice Advisory LLC</span>
+    <span>Midwest Nice UAS LLC</span>
     <span style="color:#3e3e34">uasdash.com</span>
   </div>
 </div>

@@ -120,7 +120,7 @@ class RotorBuildsMiner(BaseMiner):
             base_url="https://rotorbuilds.com",
             # Be polite — 3s between requests.
             min_request_interval_sec=3.0,
-            user_agent="ForgeMinerBot/0.1 (+https://forgeprole.netlify.app; research@droneclear.ai)",
+            user_agent="ForgeMinerBot/0.1 (+https://uas-forge.com; research@droneclear.ai)",
             respect_robots=True,
             robots_block_behavior="skip",
         )

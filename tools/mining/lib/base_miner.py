@@ -56,7 +56,7 @@ class MinerConfig:
     # Seconds between requests. Real-world bar for "polite" scraping.
     min_request_interval_sec: float = 2.5
     # Default user-agent. Honest — identifies us as a bot with a contact.
-    user_agent: str = "ForgeMinerBot/0.1 (+https://forgeprole.netlify.app/about) research"
+    user_agent: str = "ForgeMinerBot/0.1 (+https://uas-forge.com/about) research"
     # Cache raw responses to disk to avoid re-hitting remote on dev reruns.
     cache_dir: Path = field(default_factory=lambda: Path("tools/mining/output/.cache"))
     # Output raw records before normalization.

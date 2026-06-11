@@ -93,7 +93,7 @@ class PilotInstituteMiner(BaseMiner):
             source_name="pilotinstitute",
             base_url="https://pilotinstitute.com",
             min_request_interval_sec=3.0,   # polite; their server is not huge
-            user_agent="ForgeMinerBot/0.1 (+https://forgeprole.netlify.app; research@droneclear.ai)",
+            user_agent="ForgeMinerBot/0.1 (+https://uas-forge.com; research@droneclear.ai)",
             respect_robots=True,
             robots_block_behavior="skip",
             max_retries=2,
