@@ -40,9 +40,9 @@ doc and `api-docs.html` in sync when adding a dataset there.**
 ## Freshness
 
 The PIE pipeline (`DroneWuKong/Ai-Project`, `.github/workflows/pie-daily.yml`)
-regenerates and syncs the PIE datasets daily at **14:30 UTC**, with a repair
-pass at 15:10 UTC. Parts/intel masters sync from the upstream forge pipeline
-(10:00 UTC). Data changes at most once per day — cache accordingly; polling
+regenerates and syncs the PIE datasets daily at **11:30 UTC**, with a repair
+pass at 12:10 UTC. Parts/intel masters sync from the upstream forge pipeline
+(09:00 UTC). Data changes at most once per day — cache accordingly; polling
 more than hourly buys nothing.
 
 ## Datasets
