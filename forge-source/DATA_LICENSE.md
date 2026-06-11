@@ -1,7 +1,7 @@
 Proprietary Data License — DroneClear Forge
 =============================================
 
-Copyright (c) 2024-2026 DroneClear / Midwest Nice Advisory LLC.
+Copyright (c) 2024-2026 DroneClear / Midwest Nice UAS LLC.
 All rights reserved.
 
 The following data files in this repository are PROPRIETARY and represent
