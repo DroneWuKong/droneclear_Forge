@@ -1,5 +1,15 @@
 # Changelog
 
+## [Session] - 2026-06-11 — Move point-of-reliance disclaimer to page bottom
+
+### Changed
+- **`build_static.py` (`inject_disclaimer`)** — the global "point of reliance"
+  disclaimer banner (general + "analytic signal — not an allegation" variant)
+  now injects just before `</body>` instead of immediately after the unified
+  nav. The big red box was crowding the actual data above the fold on Patterns/
+  PIE surfaces; the framing now sits at the foot of the page. No change to which
+  pages carry it (`_DISCLAIMER_PAGES`) or to the copy — placement only.
+
 ## [Session] - 2026-06-11 — Public data-API reference + estimative-language lexicon
 
 ### Added
