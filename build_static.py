@@ -643,7 +643,7 @@ _UNIFIED_NAV = r"""<!-- ── Unified UAS- Nav (5-domain accordion drawer) ─�
 # reliance. Styles are self-contained (no dependence on per-page CSS vars) so
 # the banner renders identically regardless of which template it lands in.
 _DISCLAIMER_CSS = """<style id="forge-disclaimer-styles">
-.forge-disclaimer{max-width:1100px;margin:14px auto 18px;padding:13px 16px;background:rgba(239,68,68,.07);border:1px solid rgba(239,68,68,.28);border-left:3px solid #ef4444;border-radius:6px;font-family:'DM Sans',system-ui,-apple-system,sans-serif;color:#b8b0a0;line-height:1.6;box-sizing:border-box}
+.forge-disclaimer{max-width:1100px;margin:32px auto 24px;padding:13px 16px;background:rgba(239,68,68,.07);border:1px solid rgba(239,68,68,.28);border-left:3px solid #ef4444;border-radius:6px;font-family:'DM Sans',system-ui,-apple-system,sans-serif;color:#b8b0a0;line-height:1.6;box-sizing:border-box}
 @media(max-width:1140px){.forge-disclaimer{margin-left:16px;margin-right:16px}}
 .forge-disclaimer__tag{display:block;font:700 10px 'JetBrains Mono',ui-monospace,monospace;letter-spacing:.12em;text-transform:uppercase;color:#f87171;margin-bottom:6px}
 .forge-disclaimer p{margin:0 0 6px;font-size:12px}
@@ -729,11 +729,13 @@ def _disclaimer_block(variant):
 
 
 def inject_disclaimer(html, src_name):
-    """Inject the visible point-of-reliance disclaimer at the top of content.
+    """Inject the visible point-of-reliance disclaimer at the bottom of content.
 
-    Inserted right after the unified nav (so it's the first scrollable element)
-    or, on nav-less pages (clock/analytics), right after <body>. Idempotent and
-    a no-op for pages not in _DISCLAIMER_PAGES.
+    Originally inserted right after the unified nav, but a full-width red
+    banner as the first scrollable element pushed the real content below the
+    fold on every intel surface — it now lands at the end of the page (right
+    before </body>), where it reads as the footer-adjacent advisory it is.
+    Idempotent and a no-op for pages not in _DISCLAIMER_PAGES.
     """
     variant = _DISCLAIMER_PAGES.get(src_name)
     if not variant:
@@ -743,19 +745,12 @@ def inject_disclaimer(html, src_name):
 
     block = "\n" + _disclaimer_block(variant) + "\n"
 
-    # Prefer immediately after the injected unified nav end-marker.
-    m = re.search(r'<!-- ── /Unified[^\n]*?-->', html)
-    if m:
-        idx = m.end()
+    # End of the document body, after all page content.
+    idx = html.rfind('</body>')
+    if idx != -1:
         return html[:idx] + block + html[idx:]
 
-    # Fallback: right after the opening <body> tag.
-    m = re.search(r'<body[^>]*>', html)
-    if m:
-        idx = m.end()
-        return html[:idx] + block + html[idx:]
-
-    return block + html
+    return html + block
 
 
 def inject_nav(html, src_name):
@@ -2054,7 +2049,7 @@ def build():
         # (computed summary + optional analyst narrative; see dash-brief.js). Bump
         # ?v= when dash-brief.js changes — /static/* is immutable-cached.
         if src_name in {'tracker.html', 'patterns.html', 'patterns-home.html', 'clock.html'}:
-            html = html.replace('</body>', '  <script defer src="/static/dash-brief.js?v=3"></script>\n</body>', 1)
+            html = html.replace('</body>', '  <script defer src="/static/dash-brief.js?v=4"></script>\n</body>', 1)
         html = fix_nav_links(html, depth)
         html = rewrite_legacy_domains(html)
         

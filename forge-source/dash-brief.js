@@ -244,7 +244,9 @@
   }
 
   function findMount() {
-    var sels = ['main', '.wrap', '.container', '.content', '#app', '#main', 'body'];
+    // '.page' covers the hub-style landings (patterns-home) whose only
+    // content wrapper is <div class="page">.
+    var sels = ['main', '.wrap', '.container', '.content', '.page', '#app', '#main', 'body'];
     for (var i = 0; i < sels.length; i++) { var el = document.querySelector(sels[i]); if (el) return el; }
     return document.body;
   }
@@ -277,8 +279,14 @@
       changed + narr;
 
     var host = findMount();
-    var h1 = host.querySelector('h1');
-    if (h1 && h1.parentNode) h1.parentNode.insertBefore(card, h1.nextSibling);
+    // Anchor below the page heading: <h1> or, on hub-style landings, the
+    // .brand block. Never prepend to <body> — the unified nav is injected
+    // as its first children and the card would render ABOVE the sticky
+    // header (the patterns-home regression). On an unrecognized page the
+    // card appends to the end instead, which is at worst invisible.
+    var anchor = host.querySelector('h1') || host.querySelector('.brand');
+    if (anchor && anchor.parentNode) anchor.parentNode.insertBefore(card, anchor.nextSibling);
+    else if (host === document.body) host.appendChild(card);
     else host.insertBefore(card, host.firstChild);
   }
 
