@@ -1620,14 +1620,17 @@ async function loadData() {
     const footer = document.createElement('div');
     footer.className = 'flags-transparency-footer';
     footer.style.cssText = 'margin-top:16px;padding:10px 12px;background:var(--surface);border-radius:8px;font:400 10px var(--mono);color:var(--text-d);line-height:1.6;border:1px solid var(--border)';
+    // Buckets match the published evidence-tier lexicon (/lexicon/) — keep in sync
     const primary = FLAGS.filter(f => (f.confidence||0) >= 0.9).length;
     const strong  = FLAGS.filter(f => (f.confidence||0) >= 0.8 && (f.confidence||0) < 0.9).length;
-    const analytical = FLAGS.filter(f => (f.confidence||0) < 0.8).length;
+    const analytical = FLAGS.filter(f => (f.confidence||0) >= 0.6 && (f.confidence||0) < 0.8).length;
+    const signal = FLAGS.filter(f => (f.confidence||0) < 0.6).length;
     footer.innerHTML = `<span style="color:var(--text-s);font-weight:600">Data basis:</span> `
       + `${FLAGS.length} flags from parts-db + grayzone + procurement analysis `
-      + `(${primary} primary source · ${strong} strong inference · ${analytical} analytical). `
+      + `(${primary} primary source · ${strong} strong inference · ${analytical} analytical · ${signal} signal). `
       + `LLM predictions are in the 🔮 Predictions tab. `
-      + `<span style="color:var(--amber)">Confidence scores reflect evidence quality, not statistical probability.</span>`;
+      + `<span style="color:var(--amber)">Confidence scores reflect evidence quality, not statistical probability</span> `
+      + `— <a href="/lexicon/" target="_blank" rel="noopener" style="color:var(--text-s);text-decoration:underline">estimative-language reference</a>.`;
     flagList.appendChild(footer);
   }
 
@@ -2518,6 +2521,7 @@ function renderFlagDetail() {
     <div style="display:flex;align-items:center;gap:6px;margin-bottom:2px">
       <span style="font:700 10px var(--mono);color:${evidenceTier.color}">${evidenceTier.label}</span>
       <span style="font:700 11px var(--mono);color:${evidenceTier.color}">${conf}%</span>
+      <a href="/lexicon/" target="_blank" rel="noopener" style="font:500 9px var(--mono);color:var(--text-xd);margin-left:auto;text-decoration:underline;text-decoration-color:var(--border-hi)">what tiers mean ↗</a>
     </div>
     <div style="font:400 10px var(--font);color:var(--text-d);line-height:1.4">${evidenceTier.desc}</div>
   </div>`;
