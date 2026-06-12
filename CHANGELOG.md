@@ -1,5 +1,17 @@
 # Changelog
 
+## [Session] - 2026-06-11 — De-duplicate the Patterns brief (drop the stacked "At a glance" card)
+
+### Changed
+- **`build_static.py` + `patterns.html`** — the Patterns/Flags board was showing
+  two brief cards back-to-back: the injected generic "At a glance" card
+  (`dash-brief.js`) and the page's own native brief panel (`renderBriefPanel` →
+  `#brief-inner`). Both rendered the same Critical/Warning/Total counts, so the
+  page read as redundant. Stopped injecting `dash-brief.js` on `patterns.html`
+  (it stays on `tracker`/`patterns-home`/`clock`, which have no native panel) and
+  folded the one piece the card carried that the native panel lacked — the
+  analyst-summary narrative — into `renderBriefPanel`. One brief now, not two.
+
 ## [Session] - 2026-06-11 — Move point-of-reliance disclaimer to page bottom
 
 ### Changed

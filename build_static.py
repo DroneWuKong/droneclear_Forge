@@ -2062,7 +2062,10 @@ def build():
         # Generated "At a glance" brief on the dash.uas-forge.com intel surfaces
         # (computed summary + optional analyst narrative; see dash-brief.js). Bump
         # ?v= when dash-brief.js changes — /static/* is immutable-cached.
-        if src_name in {'tracker.html', 'patterns.html', 'patterns-home.html', 'clock.html'}:
+        # NOTE: patterns.html is intentionally excluded — its native brief panel
+        # (renderBriefPanel → #brief-inner) already shows the same counts + analyst
+        # summary, so injecting the card there just stacked a redundant duplicate.
+        if src_name in {'tracker.html', 'patterns-home.html', 'clock.html'}:
             html = html.replace('</body>', '  <script defer src="/static/dash-brief.js?v=3"></script>\n</body>', 1)
         html = fix_nav_links(html, depth)
         html = rewrite_legacy_domains(html)
