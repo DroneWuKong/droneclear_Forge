@@ -1958,6 +1958,17 @@ function renderBriefPanel(b){
     <div class="signal-stat"><span class="num">${sig.total_flags||0}</span><span class="lbl">Total</span></div>
   </div>`;
 
+  // ── Analyst summary ──
+  // Folded in from the former injected "At a glance" card (dash-brief.js), which
+  // duplicated the counts above. The narrative is the one piece that card carried
+  // that this panel didn't, so we surface it here and drop the duplicate card.
+  const _narr = b.llm_summary || b.analyst_note || b.narrative || b.headline
+                || (lead && (lead.summary || lead.headline)) || '';
+  if (_narr) {
+    html += `<div style="font-size:11.5px;line-height:1.5;color:var(--text-s,#b8b8a8);border-top:1px solid var(--border);margin:10px 0 12px;padding-top:8px">
+      <span style="font:700 9px var(--mono);letter-spacing:.07em;text-transform:uppercase;color:var(--text-d);margin-right:5px">Analyst summary</span>${String(_narr).replace(/</g,'&lt;')}</div>`;
+  }
+
   // ── Breaking callout: freshest flag newer than the brief snapshot ──
   // When pie_flags has entries newer than the brief's generated_at (meaning new
   // flags have landed since the last daily pipeline run), surface the newest
