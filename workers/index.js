@@ -16,6 +16,7 @@ import analyticsIngest from './analytics-ingest.js';
 import complianceReport from './compliance-report.js';
 import doctrineSubmit from './doctrine-submit.js';
 import doctrineQueue  from './doctrine-queue.js';
+import contributionSubmit from './contribution-submit.js';
 import faaLookup     from './faa-lookup.js';
 import digest        from './digest.js';
 
@@ -60,6 +61,9 @@ export default {
     if (path === '/api/doctrine-submit')
       return doctrineSubmit.fetch(req, env, ctx);
 
+    if (path === '/api/contribution-submit')
+      return contributionSubmit.fetch(req, env, ctx);
+
     if (path === '/api/doctrine-queue' || path.startsWith('/api/doctrine-queue?'))
       return doctrineQueue.fetch(req, env, ctx);
 
@@ -83,6 +87,7 @@ export default {
         'analytics-ingest':  '/api/analytics/ingest',
         'compliance-report': '/api/compliance/report',
         'doctrine-submit':   '/api/doctrine-submit',
+        'contribution-submit': '/api/contribution-submit',
         'doctrine-queue':    '/api/doctrine-queue',
         'faa-lookup':        '/api/faa-lookup',
       };

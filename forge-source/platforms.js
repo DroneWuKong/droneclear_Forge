@@ -125,9 +125,9 @@
 
     async function init() {
         try {
-            // Try relative path first (forgeprole), fallback to absolute
+            // Try relative path first, fallback to absolute canonical domain
             async function tryFetch(path) {
-                const urls = [path, 'https://forgeprole.netlify.app' + path];
+                const urls = [path, 'https://uas-forge.com' + path];
                 for (const url of urls) {
                     try { const r = await fetch(url); if (r.ok) return r; } catch(e) {}
                 }
