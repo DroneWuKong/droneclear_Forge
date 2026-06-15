@@ -1,0 +1,363 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Tools — Forge</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <script src="https://unpkg.com/@phosphor-icons/web"></script>
+  <style>
+    :root{
+      --bg:#0c0c0a;--surface:#141410;--card:#1c1c17;--card-hi:#242420;
+      --border:#2e2e26;--border-hi:#3e3e34;
+      --red:#dc2626;--red-d:#dc262620;
+      --mustard:#c9a227;--mustard-d:#c9a22720;
+      --green:#40916c;--green-d:#40916c20;
+      --text:#f5f0e8;--text-s:#b8b0a0;--text-d:#8a8070;--text-xd:#6b6358;
+      --font:'Inter',system-ui,sans-serif;
+      --mono:'JetBrains Mono',monospace;
+    }
+    *{box-sizing:border-box;margin:0;padding:0}
+    body{background:var(--bg);color:var(--text);font-family:var(--font);line-height:1.5;-webkit-font-smoothing:antialiased;min-height:100vh;overflow-x:hidden}
+    a{text-decoration:none;color:inherit}
+
+    .topbar{display:flex;align-items:center;justify-content:space-between;padding:10px 16px;border-bottom:1px solid var(--border);background:var(--bg);position:sticky;top:0;z-index:100}
+    .topbar-left{display:flex;align-items:center;gap:8px;min-width:0;flex:1;overflow:hidden}
+    .topbar-logo{font:700 14px var(--mono);color:#22c55e;letter-spacing:-0.02em;text-decoration:none;white-space:nowrap}
+    .topbar-logo.red{color:#dc2626}
+    .topbar-sep{color:var(--text-xd);font-size:12px;flex-shrink:0}
+    .topbar-current{font:600 13px var(--font);color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    .topbar-links{display:flex;gap:4px;flex-shrink:0}
+    .topbar-pill{font:500 11px var(--font);color:var(--text-d);padding:4px 10px;border:1px solid var(--border);border-radius:20px;transition:all .15s;text-decoration:none;white-space:nowrap}
+    .topbar-pill:hover{border-color:var(--border-hi);color:var(--text-s)}
+    .topbar-pill:hover{border-color:var(--border-hi);color:var(--text-s)}
+
+    .page{max-width:680px;margin:0 auto;padding:36px 20px 60px}
+
+    .brand{margin-bottom:28px}
+    .eyebrow{font:600 10px var(--mono);text-transform:uppercase;letter-spacing:.12em;color:var(--text-xd);margin-bottom:8px}
+    .brand-name{font:700 28px var(--mono);color:var(--red);letter-spacing:-0.03em;margin-bottom:10px}
+    .tagline{font-size:13px;color:var(--text-s);line-height:1.6}
+
+    .grp{margin-bottom:24px}
+    .grp-lbl{font:600 10px var(--mono);text-transform:uppercase;letter-spacing:.1em;color:var(--text-xd);margin-bottom:10px;display:flex;align-items:center;gap:8px}
+    .grp-lbl::after{content:'';flex:1;height:1px;background:var(--border)}
+    .grp-list{display:flex;flex-direction:column;gap:3px}
+
+    .mod{display:flex;align-items:center;gap:12px;padding:10px 12px;border-radius:8px;border:1px solid transparent;transition:all .12s}
+    .mod:hover{background:var(--card);border-color:var(--border)}
+    .mod-ico{width:34px;height:34px;border-radius:7px;display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0;background:var(--red-d)}
+    .mod-ico i{color:var(--red)}
+    .mod-body{flex:1;min-width:0}
+    .mod-title{font:600 12px var(--font);color:var(--text);display:flex;align-items:center;gap:6px}
+    .mod-desc{font-size:11px;color:var(--text-d);margin-top:1px}
+    .mod-arr{color:var(--text-xd);font-size:14px;flex-shrink:0;transition:all .12s}
+    .mod:hover .mod-title{color:var(--red)}
+    .mod:hover .mod-arr{transform:translateX(3px);color:var(--text-s)}
+    .new-pill{font:600 10px var(--mono);padding:1px 5px;border-radius:8px;background:var(--red-d);color:var(--red);text-transform:uppercase}
+  </style>
+<style id="global-mobile-fix">
+@media(max-width:640px){
+  *{max-width:100%;box-sizing:border-box}
+  img,video,iframe{max-width:100%!important}
+  [style*="grid-template-columns:1fr 1fr"],[style*="grid-template-columns: 1fr 1fr"]{grid-template-columns:1fr!important}
+  [style*="grid-template-columns:repeat(3"],[style*="grid-template-columns: repeat(3"]{grid-template-columns:1fr 1fr!important}
+  [style*="grid-template-columns:repeat(4"],[style*="grid-template-columns: repeat(4"]{grid-template-columns:1fr 1fr!important}
+  .an-stats,.stat-grid,.stats-grid,.score-grid{grid-template-columns:repeat(2,1fr)!important}
+  .content{padding:12px!important}
+  .modal,.pred-modal,.flag-detail,[class*="-modal"]{width:calc(100vw - 24px)!important;max-width:calc(100vw - 24px)!important}
+  .an-grid-2,.an-grid-3{grid-template-columns:1fr!important}
+}
+</style>
+</head>
+<body>
+<!-- ── Unified UAS-Nav ───────────────────────────────────────── -->
+<style id="dc-unified-nav-styles">
+#dc-nav{display:flex;align-items:center;justify-content:space-between;padding:0 16px;height:44px;background:#0c0c0a;border-bottom:1px solid #1e1e18;position:sticky;top:0;z-index:500;font-family:'Inter',system-ui,sans-serif}
+#dc-nav-left{display:flex;align-items:center;gap:10px;min-width:0}
+#dc-nav-brand{font:700 13px 'JetBrains Mono',monospace;color:#f59e0b;text-decoration:none;letter-spacing:-.02em;flex-shrink:0}
+#dc-nav-sep{color:#2e2e26;font-size:12px;flex-shrink:0}
+#dc-nav-page{font:600 11px 'Inter',system-ui;color:#b8b0a0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:160px}
+
+#dc-hamburger{display:flex;align-items:center;justify-content:center;width:32px;height:32px;border-radius:6px;border:1px solid #2a2a22;background:none;color:#6b6358;cursor:pointer;transition:all .15s;flex-shrink:0;margin-left:auto}
+#dc-hamburger:hover{border-color:#3e3e34;color:#b8b0a0}
+#dc-hamburger.open{border-color:#f59e0b;color:#f59e0b;background:rgba(245,158,11,.08)}
+#dc-overlay{position:fixed;inset:0;z-index:498;background:rgba(0,0,0,.6);backdrop-filter:blur(4px);opacity:0;pointer-events:none;transition:opacity .25s}
+#dc-overlay.open{opacity:1;pointer-events:auto}
+#dc-drawer{position:fixed;top:0;right:0;bottom:0;z-index:499;width:260px;max-width:85vw;background:#111110;border-left:1px solid #2a2a22;transform:translateX(100%);transition:transform .3s cubic-bezier(.4,0,.2,1);display:flex;flex-direction:column;overflow:hidden}
+#dc-drawer.open{transform:translateX(0)}
+#dc-drawer-head{padding:16px;border-bottom:1px solid #1e1e18;display:flex;align-items:center;justify-content:space-between}
+#dc-drawer-brand{font:700 14px 'JetBrains Mono',monospace;color:#f59e0b;letter-spacing:-.02em}
+#dc-drawer-close{width:28px;height:28px;border-radius:6px;border:1px solid #2a2a22;background:none;color:#6b6358;cursor:pointer;font-size:16px;display:flex;align-items:center;justify-content:center;transition:all .15s}
+#dc-drawer-close:hover{color:#d62828;border-color:rgba(214,40,40,.3)}
+.dc-drawer-section{padding:12px 16px 4px;font:700 9px 'JetBrains Mono',monospace;color:#3e3e34;text-transform:uppercase;letter-spacing:.1em}
+.dc-drawer-item{display:flex;align-items:center;gap:10px;padding:9px 16px;color:#6b6358;text-decoration:none;font:400 12px 'Inter',system-ui;transition:all .15s;border-left:2px solid transparent}
+.dc-drawer-item:hover{color:#b8b0a0;background:rgba(255,255,255,.02);border-left-color:#2e2e26}
+.dc-drawer-item.dc-active{color:#22c55e;border-left-color:#22c55e;background:rgba(34,197,94,.04)}
+.dc-drawer-item.dc-ext{color:#3e3e34}
+.dc-drawer-item.dc-ext:hover{color:#6b6358}
+.dc-drawer-divider{height:1px;background:#1e1e18;margin:8px 16px}
+#dc-drawer-foot{padding:16px;border-top:1px solid #1e1e18;font:400 10px 'JetBrains Mono',monospace;color:#3e3e34;flex-shrink:0}#dc-drawer-body{flex:1;overflow-y:auto;overflow-x:hidden}
+</style>
+
+<nav id="dc-nav">
+  <div id="dc-nav-left">
+    <a id="dc-nav-brand" href="/" onclick="return dcNavBrandClick(event)">—</a>
+    <span id="dc-nav-sep" style="color:#2e2e26;font-size:11px;margin:0 4px">/</span>
+    <span id="dc-nav-page">—</span>
+  </div>
+  <button id="dc-hamburger" onclick="dcNavToggle()" aria-label="Menu">
+    <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round">
+      <line x1="1" y1="3" x2="13" y2="3"/><line x1="1" y1="7" x2="13" y2="7"/><line x1="1" y1="11" x2="13" y2="11"/>
+    </svg>
+  </button>
+</nav>
+
+<div id="dc-overlay" onclick="dcNavClose()"></div>
+<div id="dc-drawer">
+  <div id="dc-drawer-head">
+    <span id="dc-drawer-brand">—</span>
+    <button id="dc-drawer-close" onclick="dcNavClose()">✕</button>
+  </div>
+
+  <div id="dc-drawer-body">
+  <div class="dc-drawer-section">Forge — Due Diligence</div>
+  <a class="dc-drawer-item" href="https://uas-forge.com/browse/" data-page="browse">Browse Components</a>
+  <a class="dc-drawer-item" href="https://uas-forge.com/compare/" data-page="compare">Compare</a>
+  <a class="dc-drawer-item" href="https://uas-forge.com/compliance/" data-page="compliance">Compliance</a>
+  <a class="dc-drawer-item" href="https://uas-forge.com/dossier/" data-page="dossier">Dossier</a>
+  <a class="dc-drawer-item" href="https://uas-forge.com/platforms/" data-page="platforms">Platforms</a>
+  <a class="dc-drawer-item" href="https://uas-forge.com/regs/" data-page="regs">Regs</a>
+
+  <div class="dc-drawer-section">Forge — Tools</div>
+  <a class="dc-drawer-item" href="https://uas-forge.com/wingman/" data-page="wingman">Wingman AI</a>
+  <a class="dc-drawer-item" href="https://uas-forge.com/stack-builder/" data-page="stack-builder">Stack Builder</a>
+  <a class="dc-drawer-item" href="https://uas-forge.com/report/" data-page="report">Compliance Report</a>
+  <a class="dc-drawer-item" href="https://uas-forge.com/tools-home/" data-page="tools-home">All Tools</a>
+
+  <div class="dc-drawer-section">Forge — Intel</div>
+  <a class="dc-drawer-item" href="https://uas-forge.com/intel/" data-page="intel">Intel Hub</a>
+  <a class="dc-drawer-item" href="https://uas-forge.com/industry/" data-page="industry">Industry</a>
+  <a class="dc-drawer-item" href="https://uas-forge.com/tracker/" data-page="tracker">Contract Tracker</a>
+
+  <div class="dc-drawer-divider"></div>
+
+  <div class="dc-drawer-section">PIE — Pattern Intelligence</div>
+  <a class="dc-drawer-item" href="https://uas-patterns.com/patterns-home/" data-page="patterns-home">P.I.E Hub</a>
+  <a class="dc-drawer-item" href="https://uas-patterns.com/brief/" data-page="brief">Brief</a>
+  <a class="dc-drawer-item" href="https://uas-patterns.com/patterns/" data-page="patterns">Flags</a>
+  <a class="dc-drawer-item" href="https://uas-patterns.com/clock/" data-page="clock">UAS Clock</a>
+  <a class="dc-drawer-item" aria-disabled="true" data-page="ddg">DDG Tracker</a>
+
+  </div><!-- /dc-drawer-body -->
+</div>
+
+<script>
+(function(){
+  var path = location.pathname.replace(/\/$/, '').split('/').pop() || 'home';
+  var isPro = (function(){
+    try {
+      var tok = localStorage.getItem('forge_token') || localStorage.getItem('wingman_sub_token') || '';
+      if(!tok || tok.length < 20) return false;
+      var p = JSON.parse(atob(tok.split('.')[1] || tok));
+      var payload = p.payload || p;
+      return !!(payload.tier && payload.tier !== 'free' && (!payload.exp || payload.exp > Date.now()));
+    } catch(e){ return false; }
+  })();
+  var host = location.hostname;
+  var isForge = host.includes('builditmyself') || host.includes('forgeprole') || host === 'localhost' || host === '127.0.0.1';
+  var isPIE   = host.includes('findoutmyself') || host.includes('nvmillfindout') || host.includes('uas-intel');
+
+  // Set page label
+  var labels = {
+    'browse':'Browse','wingman':'Wingman','intel':'Intel Hub','compare':'Compare',
+    'compliance':'Compliance','dossier':'Dossier','platforms':'Platforms','regs':'Regs',
+    'stack-builder':'Stack Builder','report':'Compliance Report','tools-home':'Tools',
+    'industry':'Industry','tracker':'Contract Tracker','patterns-home':'P.I.E Hub',
+    'brief':'Brief','patterns':'Flags','clock':'UAS Clock','ddg':'DDG Tracker',
+    'pro':'Pro','start':'Getting Started','grants':'Grants','waiver':'Doc Builder',
+    'verify':'Verify','vault':'Vault','troubleshoot':'Troubleshoot'
+  };
+  var pageEl = document.getElementById('dc-nav-page');
+  if(pageEl) pageEl.textContent = labels[path] || document.title.split('—')[0].trim().split('·')[0].trim() || path;
+
+  // Brand link — goes to home of current domain
+  // Set brand name: Forge / Patterns / Patterns Pro
+  var brandName = isForge ? 'Forge' : isPIE ? 'Patterns' : 'UAS-';
+  var brandEl = document.getElementById('dc-nav-brand');
+  var drawerBrandEl = document.getElementById('dc-drawer-brand');
+  if(brandEl) brandEl.textContent = brandName;
+  if(drawerBrandEl) drawerBrandEl.textContent = brandName;
+
+  window.dcNavBrandClick = function(e){
+    e.preventDefault();
+    location.href = isForge ? 'https://uas-forge.com/' : isPIE ? 'https://uas-patterns.com/patterns-home/' : '/';
+  };
+
+
+
+  // Mark active drawer items
+  document.querySelectorAll('.dc-drawer-item').forEach(function(a){
+    if(a.dataset.page === path) a.classList.add('dc-active');
+  });
+
+  // Hamburger toggle
+  window.dcNavToggle = function(){
+    var open = document.getElementById('dc-drawer').classList.toggle('open');
+    document.getElementById('dc-overlay').classList.toggle('open', open);
+    document.getElementById('dc-hamburger').classList.toggle('open', open);
+  };
+  window.dcNavClose = function(){
+    document.getElementById('dc-drawer').classList.remove('open');
+    document.getElementById('dc-overlay').classList.remove('open');
+    document.getElementById('dc-hamburger').classList.remove('open');
+  };
+  // Esc to close
+  document.addEventListener('keydown', function(e){ if(e.key==='Escape') dcNavClose(); });
+})();
+</script>
+<!-- ── /Unified UAS-Nav ─────────────────────────────────────── -->
+
+<div class="page">
+  <div class="brand">
+    <div class="eyebrow">Forge</div>
+    <div class="brand-name">Tools</div>
+    <div class="tagline">Tools, calculators, and resources for FPV and drone systems — RF planning, video, firmware, and more.</div>
+  </div>
+
+  <div class="grp">
+    <div class="grp-lbl">RF Planning</div>
+    <div class="grp-list">
+      <a href="/tools/#rf-terrain" class="mod">
+        <div class="mod-ico"><i class="ph ph-mountains"></i></div>
+        <div class="mod-body"><div class="mod-title">RF Terrain Map <span class="new-pill">New</span></div><div class="mod-desc">Real-terrain link analysis, elevation profile, Fresnel zone, knife-edge diffraction</div></div>
+        <i class="ph ph-arrow-right mod-arr"></i>
+      </a>
+      <a href="/tools/#mesh-planner" class="mod">
+        <div class="mod-ico"><i class="ph ph-graph"></i></div>
+        <div class="mod-body"><div class="mod-title">Mesh / Swarm Planner <span class="new-pill">New</span></div><div class="mod-desc">MANET mesh planning, node connectivity, SPOF detection, RF coverage heatmap</div></div>
+        <i class="ph ph-arrow-right mod-arr"></i>
+      </a>
+      <a href="/tools/#range" class="mod">
+        <div class="mod-ico"><i class="ph ph-broadcast"></i></div>
+        <div class="mod-body"><div class="mod-title">Range Estimator</div><div class="mod-desc">Free-space path loss, link budget, theoretical range from TX power and sensitivity</div></div>
+        <i class="ph ph-arrow-right mod-arr"></i>
+      </a>
+      <a href="/tools/#fresnel" class="mod">
+        <div class="mod-ico"><i class="ph ph-wave-sine"></i></div>
+        <div class="mod-body"><div class="mod-title">Fresnel Zone Calculator</div><div class="mod-desc">Clearance radius at any point along a link — obstacles and terrain</div></div>
+        <i class="ph ph-arrow-right mod-arr"></i>
+      </a>
+      <a href="/tools/#harmonics" class="mod">
+        <div class="mod-ico"><i class="ph ph-chart-line"></i></div>
+        <div class="mod-body"><div class="mod-title">Harmonics Calculator</div><div class="mod-desc">Identify interference from VTX harmonics overlapping with RC or GPS bands</div></div>
+        <i class="ph ph-arrow-right mod-arr"></i>
+      </a>
+      <a href="/tools/#dipole" class="mod">
+        <div class="mod-ico"><i class="ph ph-arrows-out-line-horizontal"></i></div>
+        <div class="mod-body"><div class="mod-title">Dipole Length Calculator</div><div class="mod-desc">Optimal dipole antenna length for any frequency</div></div>
+        <i class="ph ph-arrow-right mod-arr"></i>
+      </a>
+    </div>
+  </div>
+
+  <div class="grp">
+    <div class="grp-lbl">FPV / Video</div>
+    <div class="grp-list">
+      <a href="/tools/#channel-planner" class="mod">
+        <div class="mod-ico"><i class="ph ph-circles-three"></i></div>
+        <div class="mod-body"><div class="mod-title">Channel Planner</div><div class="mod-desc">Multi-pilot channel conflict analysis — find clean frequency slots for race day</div></div>
+        <i class="ph ph-arrow-right mod-arr"></i>
+      </a>
+      <a href="/tools/#vtx-config" class="mod">
+        <div class="mod-ico"><i class="ph ph-sliders"></i></div>
+        <div class="mod-body"><div class="mod-title">VTX Configurator</div><div class="mod-desc">Generate Betaflight CLI commands for VTX band, channel, and power settings</div></div>
+        <i class="ph ph-arrow-right mod-arr"></i>
+      </a>
+      <a href="/tools/#unlock-vtx" class="mod">
+        <div class="mod-ico"><i class="ph ph-lock-open"></i></div>
+        <div class="mod-body"><div class="mod-title">VTX Unlocker</div><div class="mod-desc">Region unlock CLI commands for supported video transmitters</div></div>
+        <i class="ph ph-arrow-right mod-arr"></i>
+      </a>
+    </div>
+  </div>
+
+  <div class="grp">
+    <div class="grp-lbl">Tuning &amp; Diagnostics</div>
+    <div class="grp-list">
+      <a href="/circuit-forge/" class="mod">
+        <div class="mod-ico"><i class="ph ph-lightning"></i></div>
+        <div class="mod-body"><div class="mod-title">Circuit Forge (AI)</div><div class="mod-desc">Describe a hardware or drone build — get a wiring diagram, BOM with catalog parts, firmware, and an electrical-rule check</div></div>
+        <i class="ph ph-arrow-right mod-arr"></i>
+      </a>
+      <a href="/pid-tuning/" class="mod">
+        <div class="mod-ico"><i class="ph ph-sliders-horizontal"></i></div>
+        <div class="mod-body"><div class="mod-title">PID Tuning Tool</div><div class="mod-desc">Interactive PID calculator and tuning guide for Betaflight, ArduPilot, and iNav</div></div>
+        <i class="ph ph-arrow-right mod-arr"></i>
+      </a>
+      <a href="/audit/" class="mod">
+        <div class="mod-ico"><i class="ph ph-clipboard-text"></i></div>
+        <div class="mod-body"><div class="mod-title">Build Audit</div><div class="mod-desc">NDAA, Blue UAS, and ITAR compliance audit for your drone build — component by component</div></div>
+        <i class="ph ph-arrow-right mod-arr"></i>
+      </a>
+      <a href="/troubleshoot/" class="mod">
+        <div class="mod-ico"><i class="ph ph-wrench"></i></div>
+        <div class="mod-body"><div class="mod-title">Troubleshooter</div><div class="mod-desc">Guided diagnostic for common FPV and UAS issues — video, RC link, GPS, power</div></div>
+        <i class="ph ph-arrow-right mod-arr"></i>
+      </a>
+      <a href="/academy/" class="mod">
+        <div class="mod-ico"><i class="ph ph-graduation-cap"></i></div>
+        <div class="mod-body"><div class="mod-title">FPV Academy</div><div class="mod-desc">Step-by-step guides for new builders — soldering, FC setup, maiden flight checklist</div></div>
+        <i class="ph ph-arrow-right mod-arr"></i>
+      </a>
+      <a href="/guides/" class="mod">
+        <div class="mod-ico"><i class="ph ph-books"></i></div>
+        <div class="mod-body"><div class="mod-title">Implementation Guides</div><div class="mod-desc">Deep-dive integration guides — ELRS, mesh radio, TAK, SLAM, OpenHD, swarm</div></div>
+        <i class="ph ph-arrow-right mod-arr"></i>
+      </a>
+    </div>
+  </div>
+
+  <div class="grp">
+    <div class="grp-lbl">Betaflight</div>
+    <div class="grp-list">
+      <a href="/tools/#fc-matcher" class="mod">
+        <div class="mod-ico"><i class="ph ph-magnifying-glass"></i></div>
+        <div class="mod-body"><div class="mod-title">FC Target Matcher</div><div class="mod-desc">Find the correct Betaflight build target for your flight controller</div></div>
+        <i class="ph ph-arrow-right mod-arr"></i>
+      </a>
+    </div>
+  </div>
+
+  <div class="grp">
+    <div class="grp-lbl">Firmware</div>
+    <div class="grp-list">
+      <a href="/tools/#elrs-info" class="mod">
+        <div class="mod-ico"><i class="ph ph-cpu"></i></div>
+        <div class="mod-body"><div class="mod-title">ELRS Info</div><div class="mod-desc">ExpressLRS device lookup, firmware versions, binding phrase generator</div></div>
+        <i class="ph ph-arrow-right mod-arr"></i>
+      </a>
+      <a href="/tools/#mafialrs" class="mod">
+        <div class="mod-ico"><i class="ph ph-wifi-high"></i></div>
+        <div class="mod-body"><div class="mod-title">MafiaLRS Configurator</div><div class="mod-desc">Configuration generator for MafiaLRS long-range RC link systems</div></div>
+        <i class="ph ph-arrow-right mod-arr"></i>
+      </a>
+    </div>
+  </div>
+
+  <div class="grp">
+    <div class="grp-lbl">Software</div>
+    <div class="grp-list">
+      <a href="/software-library/" class="mod">
+        <div class="mod-ico"><i class="ph ph-package"></i></div>
+        <div class="mod-body"><div class="mod-title">Software Library <span class="new-pill">New</span></div><div class="mod-desc">Every configurator, GCS, simulator, and firmware tool for FPV, commercial UAS, and defense platforms — with download links</div></div>
+        <i class="ph ph-arrow-right mod-arr"></i>
+      </a>
+    </div>
+  </div>
+</div>
+
+<!-- Analytics injected by build_static.py (unified _ANALYTICS_SNIPPET + _UNIFIED_NAV) -->
+</body>
+</html>

@@ -22,7 +22,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from collections import defaultdict, Counter
 
-PREDS_PATH = Path(__file__).parent.parent / "DroneClear Components Visualizer" / "pie_predictions.json"
+PREDS_PATH = Path(__file__).parent.parent / "forge-source" / "pie_predictions.json"
 CALIBRATION_LOG_PATH = Path(__file__).parent.parent / "data" / "pie_calibration_log.json"
 
 

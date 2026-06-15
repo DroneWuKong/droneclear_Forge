@@ -1,0 +1,733 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Compliance Report — UAS-</title>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600;700&family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet"/>
+<style>
+  :root {
+    --bg: #0c0c0a; --card: #1a1a14; --border: #2e2e26;
+    --cyan: #22c55e; --amber: #c9a227; --red: #d62828;
+    --white: #f5f0e8; --g1: #b8b0a0; --g2: #6b6358; --g3: #3d3830;
+    --mono: 'JetBrains Mono', monospace; --sans: 'Inter', system-ui, sans-serif;
+  }
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { background: var(--bg); color: var(--g1); font-family: var(--sans); font-size: 13px; }
+
+  nav { display: flex; align-items: center; justify-content: space-between; padding: 10px 20px; border-bottom: 1px solid var(--border); }
+  .nav-logo { font: 700 15px var(--mono); color: var(--cyan); text-decoration: none; }
+  .nav-pill { font: 500 10px var(--sans); color: var(--g2); padding: 3px 9px; border: 1px solid var(--border); border-radius: 20px; text-decoration: none; transition: all .12s; }
+  .nav-pill:hover { color: var(--g1); border-color: var(--g3); }
+
+  /* Generator UI */
+  #generator { max-width: 600px; margin: 40px auto; padding: 0 20px; }
+  .gen-title { font: 700 11px var(--mono); color: var(--g2); text-transform: uppercase; letter-spacing: .1em; margin-bottom: 20px; }
+  .gen-card { background: var(--card); border: 1px solid var(--border); border-radius: 10px; padding: 24px; }
+  .gen-card h2 { font: 700 16px var(--sans); color: var(--white); margin-bottom: 6px; }
+  .gen-card p { font-size: 12px; color: var(--g2); margin-bottom: 20px; line-height: 1.5; }
+  label { font: 600 10px var(--mono); text-transform: uppercase; letter-spacing: .08em; color: var(--g2); display: block; margin-bottom: 5px; }
+  input, select { width: 100%; padding: 8px 12px; background: var(--bg); border: 1px solid var(--border); border-radius: 5px; color: var(--white); font: 13px var(--sans); outline: none; margin-bottom: 14px; transition: border-color .15s; }
+  input:focus, select:focus { border-color: var(--cyan); }
+  input::placeholder { color: var(--g3); }
+  .gen-btn { width: 100%; padding: 10px; background: var(--cyan); border: none; border-radius: 6px; color: #0c0c0a; font: 600 13px var(--sans); cursor: pointer; transition: opacity .15s; }
+  .gen-btn:hover { opacity: .88; }
+  .gen-btn:disabled { opacity: .4; cursor: default; }
+  .gate-msg { background: rgba(201,162,39,.08); border: 1px solid rgba(201,162,39,.3); border-radius: 8px; padding: 14px 16px; text-align: center; font-size: 12px; color: var(--amber); margin-top: 16px; }
+  .gate-msg a { color: var(--cyan); }
+
+  /* Report preview */
+  #report-preview { display: none; max-width: 860px; margin: 0 auto 40px; padding: 0 20px; }
+  #report-preview.show { display: block; }
+  .preview-actions { display: flex; gap: 8px; margin-bottom: 16px; align-items: center; }
+  .action-btn { padding: 7px 16px; border-radius: 5px; font: 600 11px var(--sans); cursor: pointer; border: 1px solid var(--border); background: none; color: var(--g1); transition: all .15s; }
+  .action-btn.primary { background: var(--cyan); border-color: var(--cyan); color: #0c0c0a; }
+  .action-btn:hover { border-color: var(--g1); }
+  .action-btn.primary:hover { opacity: .88; }
+
+  /* ═══ PRINT STYLES — the actual PDF layout ═══ */
+  #report-doc {
+    background: #fff; color: #1a1a1a;
+    font-family: 'Inter', system-ui, sans-serif;
+    font-size: 11px; line-height: 1.5;
+    border: 1px solid var(--border); border-radius: 8px;
+    overflow: hidden;
+  }
+
+  .r-header { background: #0c0c0a; color: #f5f0e8; padding: 28px 36px; }
+  .r-logo { font: 700 18px 'JetBrains Mono', monospace; color: #22c55e; margin-bottom: 4px; }
+  .r-title { font: 700 20px 'Inter', sans-serif; color: #f5f0e8; margin-bottom: 4px; }
+  .r-subtitle { font-size: 13px; color: #b8b0a0; margin-bottom: 16px; }
+  .r-meta { display: flex; gap: 24px; flex-wrap: wrap; }
+  .r-meta-item { font-size: 10px; }
+  .r-meta-label { color: #6b6358; text-transform: uppercase; letter-spacing: .08em; }
+  .r-meta-value { color: #f5f0e8; font-weight: 600; }
+
+  .r-body { padding: 28px 36px; }
+  .r-section { margin-bottom: 28px; }
+  .r-section-title { font: 700 10px 'JetBrains Mono', monospace; text-transform: uppercase; letter-spacing: .1em; color: #6b6358; border-bottom: 1px solid #e5e5e5; padding-bottom: 6px; margin-bottom: 14px; }
+  .r-exec { background: #f8f8f6; border-left: 3px solid #22c55e; padding: 14px 16px; border-radius: 0 6px 6px 0; margin-bottom: 16px; }
+  .r-exec p { font-size: 12px; color: #2a2a2a; line-height: 1.6; margin-bottom: 8px; }
+  .r-exec p:last-child { margin-bottom: 0; }
+  .r-stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-bottom: 16px; }
+  .r-stat { background: #f8f8f6; padding: 10px 12px; border-radius: 6px; text-align: center; }
+  .r-stat-num { font: 700 22px 'JetBrains Mono', monospace; color: #1a1a1a; }
+  .r-stat-num.red { color: #d62828; }
+  .r-stat-num.amber { color: #c9a227; }
+  .r-stat-num.green { color: #16a34a; }
+  .r-stat-lbl { font-size: 10px; color: #6b6358; text-transform: uppercase; letter-spacing: .08em; margin-top: 2px; }
+  .r-risk-badge { display: inline-block; padding: 3px 10px; border-radius: 4px; font: 700 10px monospace; text-transform: uppercase; letter-spacing: .06em; }
+  .r-risk-badge.HIGH { background: #fef2f2; color: #d62828; border: 1px solid #fca5a5; }
+  .r-risk-badge.MEDIUM { background: #fffbeb; color: #c9a227; border: 1px solid #fde68a; }
+  .r-risk-badge.LOW { background: #f0fdf4; color: #16a34a; border: 1px solid #86efac; }
+  .r-risk-badge.CRITICAL { background: #d62828; color: #fff; }
+
+  .r-table { width: 100%; border-collapse: collapse; font-size: 11px; }
+  .r-table th { background: #f1f0ec; text-align: left; padding: 7px 10px; font: 600 9px monospace; text-transform: uppercase; letter-spacing: .07em; color: #6b6358; border-bottom: 1px solid #e5e5e5; }
+  .r-table td { padding: 8px 10px; border-bottom: 1px solid #f0f0ee; vertical-align: top; }
+  .r-table tr:last-child td { border-bottom: none; }
+  .r-table tr:nth-child(even) td { background: #fafaf8; }
+
+  .r-flag-row td:first-child { font-weight: 600; color: #2a2a2a; max-width: 260px; }
+  .sev-dot { display: inline-block; width: 7px; height: 7px; border-radius: 50%; margin-right: 5px; vertical-align: middle; }
+  .sev-dot.critical { background: #d62828; }
+  .sev-dot.warning  { background: #c9a227; }
+  .sev-dot.info     { background: #6b6358; }
+
+  .r-pred-row td:first-child { max-width: 280px; }
+  .prob-bar { display: flex; align-items: center; gap: 6px; }
+  .prob-fill { height: 6px; border-radius: 3px; background: #22c55e; }
+  .prob-fill.high { background: #d62828; }
+  .prob-fill.med  { background: #c9a227; }
+  .cv-badge { font: 600 8px monospace; padding: 1px 5px; background: #f0fdf4; color: #16a34a; border: 1px solid #86efac; border-radius: 3px; }
+
+  .r-methodology { background: #f8f8f6; border-radius: 6px; padding: 14px 16px; font-size: 10px; color: #6b6358; line-height: 1.7; }
+  .r-methodology strong { color: #2a2a2a; }
+
+  .r-footer { background: #f1f0ec; padding: 14px 36px; font-size: 10px; color: #9a9286; display: flex; justify-content: space-between; align-items: center; border-top: 1px solid #e5e5e5; }
+
+  @media print {
+    nav, #generator, .preview-actions { display: none !important; }
+    #report-preview { display: block !important; margin: 0; padding: 0; }
+    #report-doc { border: none; border-radius: 0; }
+    body { background: #fff; }
+    .r-header { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+    .r-exec { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  }
+
+  /* ── Generator v2 ── */
+  #generator { max-width: 900px; margin: 0 auto; }
+  .stat-chip { font: 600 9px var(--mono); padding: 4px 10px; background: var(--card); border: 1px solid var(--border); border-radius: 20px; color: var(--g1); }
+  .stat-chip.cyan { color: var(--cyan); border-color: rgba(34,197,94,.3); }
+  .field-label { font: 700 9px var(--mono); text-transform: uppercase; letter-spacing: .1em; color: var(--g2); margin-bottom: 7px; display: block; }
+  .subject-chip { font: 600 11px var(--sans); padding: 6px 13px; background: var(--card); border: 1px solid var(--border); border-radius: 20px; color: var(--g2); cursor: pointer; transition: all .15s; }
+  .subject-chip:hover { color: var(--g1); border-color: var(--g2); }
+  .subject-chip.active { color: var(--cyan); border-color: var(--cyan); background: rgba(34,197,94,.08); }
+  .type-card { background: var(--card); border: 1px solid var(--border); border-radius: 8px; padding: 11px 13px; cursor: pointer; transition: all .15s; }
+  .type-card:hover { border-color: var(--g2); }
+  .type-card.active { border-color: var(--cyan); background: rgba(34,197,94,.06); }
+  .type-name { font: 600 12px var(--sans); color: var(--white); margin-bottom: 3px; }
+  .type-desc { font-size: 10px; color: var(--g2); line-height: 1.4; }
+
+  /* Preview panel */
+  .preview-entity { display: flex; gap: 8px; align-items: center; margin-bottom: 8px; }
+  .preview-entity:last-child { margin-bottom: 0; }
+  .pe-score { font: 700 12px var(--mono); min-width: 34px; }
+  .pe-score.red   { color: var(--red); }
+  .pe-score.amber { color: var(--amber); }
+  .pe-name  { font: 600 11px var(--sans); color: var(--white); margin-bottom: 1px; }
+  .pe-flags { font-size: 10px; color: var(--g2); line-height: 1.3; }
+  .preview-pred { display: flex; align-items: baseline; gap: 6px; margin-bottom: 5px; }
+  .preview-pred:last-child { margin-bottom: 0; }
+  .pp-pct   { font: 700 11px var(--mono); min-width: 32px; }
+  .pp-pct.amber { color: var(--amber); }
+  .pp-pct.red   { color: var(--red); }
+  .pp-event { font-size: 10px; color: var(--g1); flex: 1; line-height: 1.3; }
+  .pp-tf    { font: 500 9px var(--mono); color: var(--g2); white-space: nowrap; }
+  .include-item { font-size: 10px; color: var(--g1); padding: 3px 0; line-height: 1.4; }
+
+  @media (max-width: 700px) {
+    #generator > div:last-child { grid-template-columns: 1fr !important; }
+  }
+</style>
+<style id="global-mobile-fix">
+@media(max-width:640px){
+  *{max-width:100%;box-sizing:border-box}
+  img,video,iframe{max-width:100%!important}
+  [style*="grid-template-columns:1fr 1fr"],[style*="grid-template-columns: 1fr 1fr"]{grid-template-columns:1fr!important}
+  [style*="grid-template-columns:repeat(3"],[style*="grid-template-columns: repeat(3"]{grid-template-columns:1fr 1fr!important}
+  [style*="grid-template-columns:repeat(4"],[style*="grid-template-columns: repeat(4"]{grid-template-columns:1fr 1fr!important}
+  .an-stats,.stat-grid,.stats-grid,.score-grid{grid-template-columns:repeat(2,1fr)!important}
+  .content{padding:12px!important}
+  .modal,.pred-modal,.flag-detail,[class*="-modal"]{width:calc(100vw - 24px)!important;max-width:calc(100vw - 24px)!important}
+  .an-grid-2,.an-grid-3{grid-template-columns:1fr!important}
+}
+</style>
+</head>
+<body>
+<!-- ── Unified UAS-Nav ───────────────────────────────────────── -->
+<style id="dc-unified-nav-styles">
+#dc-nav{display:flex;align-items:center;justify-content:space-between;padding:0 16px;height:44px;background:#0c0c0a;border-bottom:1px solid #1e1e18;position:sticky;top:0;z-index:500;font-family:'Inter',system-ui,sans-serif}
+#dc-nav-left{display:flex;align-items:center;gap:10px;min-width:0}
+#dc-nav-brand{font:700 13px 'JetBrains Mono',monospace;color:#f59e0b;text-decoration:none;letter-spacing:-.02em;flex-shrink:0}
+#dc-nav-sep{color:#2e2e26;font-size:12px;flex-shrink:0}
+#dc-nav-page{font:600 11px 'Inter',system-ui;color:#b8b0a0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:160px}
+
+#dc-hamburger{display:flex;align-items:center;justify-content:center;width:32px;height:32px;border-radius:6px;border:1px solid #2a2a22;background:none;color:#6b6358;cursor:pointer;transition:all .15s;flex-shrink:0;margin-left:auto}
+#dc-hamburger:hover{border-color:#3e3e34;color:#b8b0a0}
+#dc-hamburger.open{border-color:#f59e0b;color:#f59e0b;background:rgba(245,158,11,.08)}
+#dc-overlay{position:fixed;inset:0;z-index:498;background:rgba(0,0,0,.6);backdrop-filter:blur(4px);opacity:0;pointer-events:none;transition:opacity .25s}
+#dc-overlay.open{opacity:1;pointer-events:auto}
+#dc-drawer{position:fixed;top:0;right:0;bottom:0;z-index:499;width:260px;max-width:85vw;background:#111110;border-left:1px solid #2a2a22;transform:translateX(100%);transition:transform .3s cubic-bezier(.4,0,.2,1);display:flex;flex-direction:column;overflow:hidden}
+#dc-drawer.open{transform:translateX(0)}
+#dc-drawer-head{padding:16px;border-bottom:1px solid #1e1e18;display:flex;align-items:center;justify-content:space-between}
+#dc-drawer-brand{font:700 14px 'JetBrains Mono',monospace;color:#f59e0b;letter-spacing:-.02em}
+#dc-drawer-close{width:28px;height:28px;border-radius:6px;border:1px solid #2a2a22;background:none;color:#6b6358;cursor:pointer;font-size:16px;display:flex;align-items:center;justify-content:center;transition:all .15s}
+#dc-drawer-close:hover{color:#d62828;border-color:rgba(214,40,40,.3)}
+.dc-drawer-section{padding:12px 16px 4px;font:700 9px 'JetBrains Mono',monospace;color:#3e3e34;text-transform:uppercase;letter-spacing:.1em}
+.dc-drawer-item{display:flex;align-items:center;gap:10px;padding:9px 16px;color:#6b6358;text-decoration:none;font:400 12px 'Inter',system-ui;transition:all .15s;border-left:2px solid transparent}
+.dc-drawer-item:hover{color:#b8b0a0;background:rgba(255,255,255,.02);border-left-color:#2e2e26}
+.dc-drawer-item.dc-active{color:#22c55e;border-left-color:#22c55e;background:rgba(34,197,94,.04)}
+.dc-drawer-item.dc-ext{color:#3e3e34}
+.dc-drawer-item.dc-ext:hover{color:#6b6358}
+.dc-drawer-divider{height:1px;background:#1e1e18;margin:8px 16px}
+#dc-drawer-foot{padding:16px;border-top:1px solid #1e1e18;font:400 10px 'JetBrains Mono',monospace;color:#3e3e34;flex-shrink:0}#dc-drawer-body{flex:1;overflow-y:auto;overflow-x:hidden}
+</style>
+
+<nav id="dc-nav">
+  <div id="dc-nav-left">
+    <a id="dc-nav-brand" href="/" onclick="return dcNavBrandClick(event)">—</a>
+    <span id="dc-nav-sep" style="color:#2e2e26;font-size:11px;margin:0 4px">/</span>
+    <span id="dc-nav-page">—</span>
+  </div>
+  <button id="dc-hamburger" onclick="dcNavToggle()" aria-label="Menu">
+    <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round">
+      <line x1="1" y1="3" x2="13" y2="3"/><line x1="1" y1="7" x2="13" y2="7"/><line x1="1" y1="11" x2="13" y2="11"/>
+    </svg>
+  </button>
+</nav>
+
+<div id="dc-overlay" onclick="dcNavClose()"></div>
+<div id="dc-drawer">
+  <div id="dc-drawer-head">
+    <span id="dc-drawer-brand">—</span>
+    <button id="dc-drawer-close" onclick="dcNavClose()">✕</button>
+  </div>
+
+  <div id="dc-drawer-body">
+  <div class="dc-drawer-section">Forge — Due Diligence</div>
+  <a class="dc-drawer-item" href="https://uas-forge.com/browse/" data-page="browse">Browse Components</a>
+  <a class="dc-drawer-item" href="https://uas-forge.com/compare/" data-page="compare">Compare</a>
+  <a class="dc-drawer-item" href="https://uas-forge.com/compliance/" data-page="compliance">Compliance</a>
+  <a class="dc-drawer-item" href="https://uas-forge.com/dossier/" data-page="dossier">Dossier</a>
+  <a class="dc-drawer-item" href="https://uas-forge.com/platforms/" data-page="platforms">Platforms</a>
+  <a class="dc-drawer-item" href="https://uas-forge.com/regs/" data-page="regs">Regs</a>
+
+  <div class="dc-drawer-section">Forge — Tools</div>
+  <a class="dc-drawer-item" href="https://uas-forge.com/wingman/" data-page="wingman">Wingman AI</a>
+  <a class="dc-drawer-item" href="https://uas-forge.com/stack-builder/" data-page="stack-builder">Stack Builder</a>
+  <a class="dc-drawer-item" href="https://uas-forge.com/report/" data-page="report">Compliance Report</a>
+  <a class="dc-drawer-item" href="https://uas-forge.com/tools-home/" data-page="tools-home">All Tools</a>
+
+  <div class="dc-drawer-section">Forge — Intel</div>
+  <a class="dc-drawer-item" href="https://uas-forge.com/intel/" data-page="intel">Intel Hub</a>
+  <a class="dc-drawer-item" href="https://uas-forge.com/industry/" data-page="industry">Industry</a>
+  <a class="dc-drawer-item" href="https://uas-forge.com/tracker/" data-page="tracker">Contract Tracker</a>
+
+  <div class="dc-drawer-divider"></div>
+
+  <div class="dc-drawer-section">PIE — Pattern Intelligence</div>
+  <a class="dc-drawer-item" href="https://uas-patterns.com/patterns-home/" data-page="patterns-home">P.I.E Hub</a>
+  <a class="dc-drawer-item" href="https://uas-patterns.com/brief/" data-page="brief">Brief</a>
+  <a class="dc-drawer-item" href="https://uas-patterns.com/patterns/" data-page="patterns">Flags</a>
+  <a class="dc-drawer-item" href="https://uas-patterns.com/clock/" data-page="clock">UAS Clock</a>
+  <a class="dc-drawer-item" aria-disabled="true" data-page="ddg">DDG Tracker</a>
+
+  </div><!-- /dc-drawer-body -->
+</div>
+
+<script>
+(function(){
+  var path = location.pathname.replace(/\/$/, '').split('/').pop() || 'home';
+  var isPro = (function(){
+    try {
+      var tok = localStorage.getItem('forge_token') || localStorage.getItem('wingman_sub_token') || '';
+      if(!tok || tok.length < 20) return false;
+      var p = JSON.parse(atob(tok.split('.')[1] || tok));
+      var payload = p.payload || p;
+      return !!(payload.tier && payload.tier !== 'free' && (!payload.exp || payload.exp > Date.now()));
+    } catch(e){ return false; }
+  })();
+  var host = location.hostname;
+  var isForge = host.includes('builditmyself') || host.includes('forgeprole') || host === 'localhost' || host === '127.0.0.1';
+  var isPIE   = host.includes('findoutmyself') || host.includes('nvmillfindout') || host.includes('uas-intel');
+
+  // Set page label
+  var labels = {
+    'browse':'Browse','wingman':'Wingman','intel':'Intel Hub','compare':'Compare',
+    'compliance':'Compliance','dossier':'Dossier','platforms':'Platforms','regs':'Regs',
+    'stack-builder':'Stack Builder','report':'Compliance Report','tools-home':'Tools',
+    'industry':'Industry','tracker':'Contract Tracker','patterns-home':'P.I.E Hub',
+    'brief':'Brief','patterns':'Flags','clock':'UAS Clock','ddg':'DDG Tracker',
+    'pro':'Pro','start':'Getting Started','grants':'Grants','waiver':'Doc Builder',
+    'verify':'Verify','vault':'Vault','troubleshoot':'Troubleshoot'
+  };
+  var pageEl = document.getElementById('dc-nav-page');
+  if(pageEl) pageEl.textContent = labels[path] || document.title.split('—')[0].trim().split('·')[0].trim() || path;
+
+  // Brand link — goes to home of current domain
+  // Set brand name: Forge / Patterns / Patterns Pro
+  var brandName = isForge ? 'Forge' : isPIE ? 'Patterns' : 'UAS-';
+  var brandEl = document.getElementById('dc-nav-brand');
+  var drawerBrandEl = document.getElementById('dc-drawer-brand');
+  if(brandEl) brandEl.textContent = brandName;
+  if(drawerBrandEl) drawerBrandEl.textContent = brandName;
+
+  window.dcNavBrandClick = function(e){
+    e.preventDefault();
+    location.href = isForge ? 'https://uas-forge.com/' : isPIE ? 'https://uas-patterns.com/patterns-home/' : '/';
+  };
+
+
+
+  // Mark active drawer items
+  document.querySelectorAll('.dc-drawer-item').forEach(function(a){
+    if(a.dataset.page === path) a.classList.add('dc-active');
+  });
+
+  // Hamburger toggle
+  window.dcNavToggle = function(){
+    var open = document.getElementById('dc-drawer').classList.toggle('open');
+    document.getElementById('dc-overlay').classList.toggle('open', open);
+    document.getElementById('dc-hamburger').classList.toggle('open', open);
+  };
+  window.dcNavClose = function(){
+    document.getElementById('dc-drawer').classList.remove('open');
+    document.getElementById('dc-overlay').classList.remove('open');
+    document.getElementById('dc-hamburger').classList.remove('open');
+  };
+  // Esc to close
+  document.addEventListener('keydown', function(e){ if(e.key==='Escape') dcNavClose(); });
+})();
+</script>
+<!-- ── /Unified UAS-Nav ─────────────────────────────────────── -->
+
+
+<nav>
+  <a href="/" class="nav-logo">Wingman</a>
+  <div style="display:flex;gap:6px;">
+    <a href="/wingman/" class="nav-pill">Wingman AI</a>
+    <a href="/patterns/" class="nav-pill">PIE</a>
+    <a href="/pro/" class="nav-pill" style="color:#22c55e;border-color:rgba(34,197,94,.3)">Subscribe ↗</a>
+    <a href="/start/" class="nav-pill">Docs</a>
+  </div>
+</nav>
+
+<!-- Generator UI -->
+<div id="generator">
+
+  <!-- Header bar -->
+  <div style="max-width:900px;margin:0 auto;padding:20px 20px 0;display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;">
+    <div>
+      <div style="font:700 10px var(--mono);color:var(--cyan);letter-spacing:.12em;text-transform:uppercase;margin-bottom:4px">// Compliance Report Generator</div>
+      <div style="font:700 18px var(--sans);color:var(--white)">PIE Intelligence Reports</div>
+    </div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;" id="db-stats">
+      <div class="stat-chip"><span id="sc-flags">251</span> flags</div>
+      <div class="stat-chip"><span id="sc-preds">10</span> predictions</div>
+      <div class="stat-chip"><span id="sc-entities">4</span> gray zone entities</div>
+      <div class="stat-chip cyan">AI synthesized · Claude Sonnet</div>
+    </div>
+  </div>
+
+  <!-- Two column layout -->
+  <div style="max-width:900px;margin:16px auto 0;padding:0 20px 40px;display:grid;grid-template-columns:1fr 320px;gap:16px;align-items:start;">
+
+    <!-- LEFT: form -->
+    <div>
+      <!-- Subject quick-select -->
+      <div style="margin-bottom:14px;">
+        <div class="field-label">Quick subject select</div>
+        <div style="display:flex;gap:6px;flex-wrap:wrap;">
+          <button class="subject-chip active" onclick="setSubject('')" id="chip-all">Full Brief</button>
+          <button class="subject-chip" onclick="setSubject('SkyRover')">SkyRover / Knowact</button>
+          <button class="subject-chip" onclick="setSubject('Cogito')">Cogito / SPECTA</button>
+          <button class="subject-chip" onclick="setSubject('Autel')">Autel Robotics</button>
+          <button class="subject-chip" onclick="setSubject('FLIR Boson')">FLIR Boson 640</button>
+          <button class="subject-chip" onclick="setSubject('Jetson Orin')">Jetson Orin NX</button>
+          <button class="subject-chip" onclick="setSubject('STM32')">STM32H7</button>
+        </div>
+      </div>
+
+      <!-- Custom subject input -->
+      <div style="margin-bottom:14px;">
+        <div class="field-label">Or enter custom subject</div>
+        <input id="subject-input" placeholder="e.g. Blue UAS thermal cameras, Silvus SC3822…" autocomplete="off"
+          oninput="clearChips()" style="width:100%"/>
+      </div>
+
+      <!-- Report type -->
+      <div style="margin-bottom:20px;">
+        <div class="field-label">Report type</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
+          <div class="type-card active" onclick="setType('full',this)">
+            <div class="type-name">Full Intelligence Report</div>
+            <div class="type-desc">Gray zone + supply chain + predictions + NDAA</div>
+          </div>
+          <div class="type-card" onclick="setType('grayzone',this)">
+            <div class="type-name">Gray Zone Focus</div>
+            <div class="type-desc">Adversary connections, entity scores, sourced evidence</div>
+          </div>
+          <div class="type-card" onclick="setType('supply_chain',this)">
+            <div class="type-name">Supply Chain Focus</div>
+            <div class="type-desc">Allocation risk, lead times, component concentration</div>
+          </div>
+          <div class="type-card" onclick="setType('procurement',this)">
+            <div class="type-name">Procurement Signals</div>
+            <div class="type-desc">Contract awards, program signals, demand spikes</div>
+          </div>
+        </div>
+        <input type="hidden" id="report-type" value="full"/>
+      </div>
+
+      <button class="gen-btn" id="gen-btn" onclick="generateReport()">
+        Generate Report →
+      </button>
+
+      <div id="gate-msg" style="display:none" class="gate-msg">
+        Subscription required.
+        <a href="/pro/" style="color:var(--cyan)">Upgrade →</a>
+        <br><br>
+        <input type="password" id="owner-secret" placeholder="Owner secret" style="margin-bottom:0;margin-top:8px;"/>
+      </div>
+    </div>
+
+    <!-- RIGHT: live preview of what's in the DB -->
+    <div>
+      <div style="background:var(--card);border:1px solid var(--border);border-radius:8px;overflow:hidden;">
+        <div style="padding:12px 14px;border-bottom:1px solid var(--border);font:700 10px var(--mono);color:var(--cyan);letter-spacing:.1em;text-transform:uppercase;">// What this report covers</div>
+
+        <!-- Gray zone entities -->
+        <div style="padding:12px 14px;border-bottom:1px solid var(--border);">
+          <div style="font:600 10px var(--sans);color:var(--white);margin-bottom:8px;">Gray Zone Entities</div>
+          <div id="preview-entities">
+            <div class="preview-entity">
+              <div class="pe-score red">0.68</div>
+              <div class="pe-body"><div class="pe-name">SkyRover / Knowact</div><div class="pe-flags">11 flags · 6 critical · Direct DJI cloud connection</div></div>
+            </div>
+            <div class="preview-entity">
+              <div class="pe-score red">0.64</div>
+              <div class="pe-body"><div class="pe-name">Anzu Robotics</div><div class="pe-flags">12 flags · 4 critical · TX AG lawsuit active</div></div>
+            </div>
+            <div class="preview-entity">
+              <div class="pe-score amber">0.40</div>
+              <div class="pe-body"><div class="pe-name">Cogito / SPECTA</div><div class="pe-flags">6 flags · 4 critical · Identical DJI Air 3 PCBs</div></div>
+            </div>
+            <div class="preview-entity">
+              <div class="pe-score amber">0.32</div>
+              <div class="pe-body"><div class="pe-name">Autel Robotics</div><div class="pe-flags">5 flags · 3 critical · FY2025 §1709 named</div></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Top predictions -->
+        <div style="padding:12px 14px;border-bottom:1px solid var(--border);">
+          <div style="font:600 10px var(--sans);color:var(--white);margin-bottom:8px;">Top PIE Predictions</div>
+          <div class="preview-pred"><span class="pp-pct amber">84%</span><span class="pp-event">FLIR Boson 640 allocation tightens</span><span class="pp-tf">H2 2026</span></div>
+          <div class="preview-pred"><span class="pp-pct red">82%</span><span class="pp-event">Jetson Orin NX allocation-only for defense</span><span class="pp-tf">Q3 2026</span></div>
+          <div class="preview-pred"><span class="pp-pct amber">81%</span><span class="pp-event">Mesh radio bottleneck — 5 of 29 NDAA-clean</span><span class="pp-tf">Q3–Q4</span></div>
+          <div class="preview-pred"><span class="pp-pct red">79%</span><span class="pp-event">FCC firmware cliff — 3 deadlines converge</span><span class="pp-tf">Jan 2027</span></div>
+          <div class="preview-pred"><span class="pp-pct red">77%</span><span class="pp-event">Federal enforcement against gray zone buyers</span><span class="pp-tf">H2 2026</span></div>
+        </div>
+
+        <!-- What's in the report -->
+        <div style="padding:12px 14px;">
+          <div style="font:600 10px var(--sans);color:var(--white);margin-bottom:8px;">Report includes</div>
+          <div class="include-item">✓ AI-written executive assessment (Claude)</div>
+          <div class="include-item">✓ Gray zone risk scores with sourced evidence</div>
+          <div class="include-item">✓ Critical and warning flag table (up to 12)</div>
+          <div class="include-item">✓ PIE predictions with model breakdown</div>
+          <div class="include-item">✓ NDAA + FCC compliance status per entity</div>
+          <div class="include-item">✓ Methodology and data source citations</div>
+          <div class="include-item">✓ PDF-ready for procurement submission</div>
+        </div>
+      </div>
+    </div>
+
+  </div><!-- /grid -->
+</div>
+
+<!-- Report Preview -->
+<div id="report-preview">
+  <div class="preview-actions">
+    <button class="action-btn primary" onclick="window.print()">⬇ Save as PDF</button>
+    <button class="action-btn" onclick="generateReport()">↻ Regenerate</button>
+    <button class="action-btn" onclick="document.getElementById('report-preview').classList.remove('show'); document.getElementById('generator').style.display='block'">← New Report</button>
+    <span style="font-size:11px;color:var(--g2);margin-left:auto" id="report-id-display"></span>
+  </div>
+  <div id="report-doc"></div>
+</div>
+
+<script>
+var currentType = 'full';
+
+function setSubject(val) {
+  document.getElementById('subject-input').value = val;
+  document.querySelectorAll('.subject-chip').forEach(c => c.classList.remove('active'));
+  // Find matching chip
+  document.querySelectorAll('.subject-chip').forEach(c => {
+    if (c.textContent.trim().toLowerCase().includes(val.toLowerCase()) || (val === '' && c.id === 'chip-all')) {
+      c.classList.add('active');
+    }
+  });
+}
+
+function clearChips() {
+  document.querySelectorAll('.subject-chip').forEach(c => c.classList.remove('active'));
+}
+
+function setType(val, el) {
+  currentType = val;
+  document.getElementById('report-type').value = val;
+  document.querySelectorAll('.type-card').forEach(c => c.classList.remove('active'));
+  if (el) el.classList.add('active');
+}
+
+var SUB_TOKEN_KEY = 'wingman_sub_token';
+var PROXY_SECRET_KEY = 'wingman_proxy_secret';
+
+function getAuth() {
+  return {
+    subToken:    localStorage.getItem(SUB_TOKEN_KEY) || '',
+    proxySecret: document.getElementById('owner-secret')?.value || localStorage.getItem(PROXY_SECRET_KEY) || '',
+  };
+}
+
+async function checkAccess() {
+  const { subToken, proxySecret } = getAuth();
+  if (proxySecret) return { ok: true, via: 'owner' };
+  if (subToken) {
+    // Quick token format check
+    try { JSON.parse(atob(subToken)); return { ok: true, via: 'sub' }; } catch {}
+  }
+  return { ok: false };
+}
+
+async function generateReport() {
+  // Persist typed proxy secret to localStorage so getAuth() finds it on retry
+  const typedSecret = document.getElementById('owner-secret')?.value?.trim();
+  if (typedSecret) localStorage.setItem(PROXY_SECRET_KEY, typedSecret);
+
+  const access = await checkAccess();
+  if (!access.ok) {
+    document.getElementById('gate-msg').style.display = 'block';
+    return;
+  }
+  document.getElementById('gate-msg').style.display = 'none';
+
+  const btn = document.getElementById('gen-btn');
+  btn.disabled = true;
+  btn.textContent = 'Generating…';
+  // Show status so user knows it's working (Claude synthesis can take 8-12s)
+  const statusEl = document.getElementById('gen-status');
+  if (statusEl) { statusEl.textContent = 'Contacting PIE intelligence engine…'; statusEl.style.display = 'block'; }
+
+  const { subToken, proxySecret } = getAuth();
+  const subject    = document.getElementById('subject-input').value.trim();
+  const reportType = document.getElementById('report-type').value;
+
+  try {
+    const headers = { 'Content-Type': 'application/json' };
+    if (proxySecret) headers['x-proxy-secret'] = proxySecret;
+
+    const res = await fetch('/api/compliance/report', {
+      method: 'POST',
+      headers,
+      body: JSON.stringify({ token: subToken, subject, report_type: reportType, proxy_secret: proxySecret }),
+    });
+
+    if (res.status === 401) {
+      document.getElementById('gate-msg').style.display = 'block';
+      btn.disabled = false; btn.textContent = 'Generate Report →';
+      return;
+    }
+
+    const data = await res.json();
+
+    if (!data.meta) {
+      // Function returned an error object instead of report data
+      const msg = data.error || data.message || ('Server error ' + res.status);
+      alert('Report generation failed: ' + msg);
+      btn.disabled = false; btn.textContent = 'Generate Report →';
+      return;
+    }
+
+    if (statusEl) statusEl.style.display = 'none';
+    renderReport(data);
+
+    document.getElementById('generator').style.display = 'none';
+    document.getElementById('report-preview').classList.add('show');
+    document.getElementById('report-id-display').textContent = data.meta?.report_id || '';
+
+  } catch(e) {
+    alert('Error generating report: ' + e.message);
+    console.error('Report error:', e);
+  }
+
+  btn.disabled = false;
+  btn.textContent = 'Generate Report →';
+  if (statusEl) statusEl.style.display = 'none';
+}
+
+function renderReport(d) {
+  const m  = d.meta;
+  const ex = d.executive_summary;
+  const gz = d.gray_zone_entities || [];
+  const cf = d.critical_flags || [];
+  const sf = d.supply_chain_flags || [];
+  const pr = d.predictions || [];
+  const pf = d.procurement_flags || [];
+  const meth = d.methodology;
+
+  const riskColor = ex.risk_level === 'HIGH' ? 'red' : ex.risk_level === 'MEDIUM' ? 'amber' : 'green';
+
+  let html = `
+  <div class="r-header">
+    <div class="r-logo">UAS-</div>
+    <div class="r-title">${esc(m.title)}</div>
+    <div class="r-subtitle">${esc(m.subtitle)}</div>
+    <div class="r-meta">
+      <div class="r-meta-item"><div class="r-meta-label">Report ID</div><div class="r-meta-value">${esc(m.report_id)}</div></div>
+      <div class="r-meta-item"><div class="r-meta-label">Generated</div><div class="r-meta-value">${esc(m.generated)}</div></div>
+      <div class="r-meta-item"><div class="r-meta-label">Pipeline</div><div class="r-meta-value">${esc(m.generated_by)}</div></div>
+      <div class="r-meta-item"><div class="r-meta-label">Classification</div><div class="r-meta-value">${esc(m.classification)}</div></div>
+    </div>
+  </div>
+  <div class="r-body">
+
+  <div class="r-section">
+    <div class="r-section-title">Executive Summary</div>
+    <div class="r-stats">
+      <div class="r-stat"><div class="r-stat-num ${riskColor}">${ex.total_flags}</div><div class="r-stat-lbl">Total Flags</div></div>
+      <div class="r-stat"><div class="r-stat-num red">${ex.critical_flags}</div><div class="r-stat-lbl">Critical</div></div>
+      <div class="r-stat"><div class="r-stat-num amber">${ex.gray_zone_entities}</div><div class="r-stat-lbl">Gray Zone Entities</div></div>
+      <div class="r-stat"><div class="r-stat-num">${ex.supply_flags}</div><div class="r-stat-lbl">Supply Flags</div></div>
+    </div>
+    <div class="r-exec">
+      <p><strong>Risk Level:</strong> <span class="r-risk-badge ${ex.risk_level}">${ex.risk_level}</span>${ex.ai_synthesized ? '<span style="font:600 10px monospace;margin-left:8px;padding:1px 6px;background:#f0fdf4;color:#16a34a;border:1px solid #86efac;border-radius:3px;">AI SYNTHESIZED</span>' : ''}</p>
+      ${ex.key_finding.split('\n\n').map(para => '<p>' + esc(para) + '</p>').join('')}
+    </div>
+  </div>`;
+
+  // Gray zone entities
+  if (gz.length > 0) {
+    html += `<div class="r-section"><div class="r-section-title">Gray Zone Entity Analysis</div>
+    <table class="r-table">
+      <tr><th>Entity</th><th>Score</th><th>Risk Tier</th><th>Country</th><th>NDAA Status</th><th>Key Signal</th></tr>
+      ${gz.map(e => `<tr class="r-flag-row">
+        <td>${esc(e.name)}</td>
+        <td><b>${(e.score*100).toFixed(0)}%</b></td>
+        <td><span class="r-risk-badge ${e.risk}">${e.risk}</span></td>
+        <td>${esc(e.country)}</td>
+        <td>${e.ndaa_status || 'Non-compliant'}</td>
+        <td style="color:#6b6358;font-size:10px">${esc((e.key_flag||'').slice(0,120))}</td>
+      </tr>`).join('')}
+    </table></div>`;
+  }
+
+  // Critical flags
+  if (cf.length > 0) {
+    html += `<div class="r-section"><div class="r-section-title">Critical Severity Flags</div>
+    <table class="r-table">
+      <tr><th>Flag</th><th>Detail</th><th>Confidence</th></tr>
+      ${cf.map(f => `<tr class="r-flag-row">
+        <td><span class="sev-dot critical"></span>${esc(f.title)}</td>
+        <td style="color:#6b6358;font-size:10px">${esc((f.detail||'').slice(0,200))}</td>
+        <td>${f.confidence ? Math.round(f.confidence*100)+'%' : '—'}</td>
+      </tr>`).join('')}
+    </table></div>`;
+  }
+
+  // Supply chain flags
+  if (sf.length > 0) {
+    html += `<div class="r-section"><div class="r-section-title">Supply Chain Risk Flags</div>
+    <table class="r-table">
+      <tr><th>Signal</th><th>Detail</th><th>Confidence</th></tr>
+      ${sf.map(f => `<tr>
+        <td><span class="sev-dot warning"></span>${esc(f.title)}</td>
+        <td style="color:#6b6358;font-size:10px">${esc((f.detail||'').slice(0,200))}</td>
+        <td>${f.confidence ? Math.round(f.confidence*100)+'%' : '—'}</td>
+      </tr>`).join('')}
+    </table></div>`;
+  }
+
+  // Predictions
+  if (pr.length > 0) {
+    html += `<div class="r-section"><div class="r-section-title">Intelligence Predictions — PIE Engine (≥60% probability, 3-model cross-validation)</div>
+    <table class="r-table">
+      <tr><th>Event</th><th>Timeframe</th><th>Probability</th><th>Confidence</th><th>Impact</th><th>CV</th></tr>
+      ${pr.map(p => {
+        const pct  = Math.round(p.probability * 100);
+        const conf = p.confidence ? Math.round(p.confidence * 100) : null;
+        const cls  = pct >= 80 ? 'high' : pct >= 65 ? 'med' : '';
+        const driverHtml = (p.drivers||[]).slice(0,3).map(d => `<div style="font-size:10px;color:#6b6358;margin-top:2px">→ ${esc(d)}</div>`).join('');
+        const modelsHtml = (p.model_outputs||[]).map(m => {
+          const mp = Math.round((m.probability||0)*100);
+          return `<span style="font:600 10px monospace;padding:1px 4px;background:#f1f0ec;border-radius:2px;margin-right:3px">${esc(m.model||'')} ${mp}%</span>`;
+        }).join('');
+        return `<tr class="r-pred-row">
+          <td>${esc(p.event)}${driverHtml}</td>
+          <td>${esc(p.timeframe)}</td>
+          <td>
+            <div class="prob-bar">
+              <div class="prob-fill ${cls}" style="width:${pct}px;max-width:60px"></div>
+              <span>${pct}%</span>
+            </div>
+          </td>
+          <td style="font-size:10px;color:#6b6358">${conf !== null ? conf+'%' : '—'}</td>
+          <td><span class="r-risk-badge ${p.impact?.toUpperCase()}">${(p.impact||'').toUpperCase()}</span></td>
+          <td>${p.cross_validated ? '<span class="cv-badge">✓ CV</span>' : '—'}${modelsHtml ? '<br/><span style="display:block;margin-top:3px">' + modelsHtml + '</span>' : ''}</td>
+        </tr>`;
+      }).join('')}
+    </table></div>`;
+  }
+
+  // Procurement flags
+  if (pf.length > 0) {
+    html += `<div class="r-section"><div class="r-section-title">Procurement Signal Flags</div>
+    <table class="r-table">
+      <tr><th>Signal</th><th>Detail</th><th>Confidence</th></tr>
+      ${pf.map(f => `<tr>
+        <td>${esc(f.title)}</td>
+        <td style="color:#6b6358;font-size:10px">${esc((f.detail||'').slice(0,200))}</td>
+        <td>${f.confidence ? Math.round(f.confidence*100)+'%' : '—'}</td>
+      </tr>`).join('')}
+    </table></div>`;
+  }
+
+  // Methodology
+  html += `<div class="r-section"><div class="r-section-title">Methodology & Data Sources</div>
+  <div class="r-methodology">
+    <strong>Data Sources:</strong> ${meth.data_sources.join(' · ')}<br><br>
+    <strong>Gray Zone Scoring Dimensions:</strong><br>
+    ${meth.gray_zone_dimensions.map(d => '• ' + d).join('<br>')}<br><br>
+    <em>${esc(meth.disclaimer)}</em>
+  </div></div>
+
+  </div><!-- r-body -->
+  <div class="r-footer">
+    <span>UAS-Intelligence · uas-forge.com · Jeremiah@midwestniceuas.com</span>
+    <span>${esc(m.report_id)} · ${esc(m.generated)}</span>
+  </div>`;
+
+  document.getElementById('report-doc').innerHTML = html;
+}
+
+function esc(s) {
+  if (!s) return '';
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+</script>
+<!-- Analytics injected by build_static.py (unified _ANALYTICS_SNIPPET + _UNIFIED_NAV) -->
+</body>
+</html>

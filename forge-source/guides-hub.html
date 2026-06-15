@@ -1,0 +1,380 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Implementation Guides — Forge</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&family=Source+Serif+4:opsz,wght@8..60,400;8..60,600;8..60,700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="{% static 'base.css' %}?v=2">
+    <link rel="stylesheet" href="{% static 'layout.css' %}?v=4">
+    <link rel="stylesheet" href="{% static 'utilities.css' %}?v=2">
+    <script src="https://unpkg.com/@phosphor-icons/web"></script>
+    <script>(function(){const s=localStorage.getItem('dc-theme');document.documentElement.setAttribute('data-theme',s||'dark')})();</script>
+    <style>
+        .hub-container { max-width: 960px; margin: 0 auto; padding: 32px 24px 80px; }
+        /* Override global layout — this page is a simple document, not the sidebar app */
+        body { overflow-y: auto !important; }
+        .app-container { height: auto !important; min-height: 100vh; overflow: visible !important; }
+        .hub-hero { text-align: center; margin-bottom: 48px; }
+        .hub-hero h1 { font-size: 28px; font-weight: 700; background: linear-gradient(135deg, var(--accent-green) 0%, var(--accent-cyan) 100%); -webkit-background-clip:text; -webkit-text-fill-color:transparent; background-clip:text; margin: 0 0 10px; }
+        .hub-hero p { color: var(--text-muted); font-size: 14px; max-width: 600px; margin: 0 auto; line-height: 1.7; }
+        .hub-flow { display: flex; align-items: center; justify-content: center; gap: 6px; margin-top: 16px; flex-wrap: wrap; }
+        .hub-flow-step { font-size: 11px; padding: 4px 10px; border-radius: 20px; background: var(--bg-panel); border: 1px solid var(--border-color); color: var(--text-muted); }
+        .hub-flow-arrow { color: var(--text-faint); font-size: 14px; }
+
+        .hub-grid { display: grid; gap: 16px; margin-bottom: 40px; }
+        .hub-card { background: var(--bg-panel); border: 1px solid var(--border-color); border-radius: var(--radius-md); padding: 24px; text-decoration: none; color: inherit; display: grid; grid-template-columns: auto 1fr auto; gap: 16px; align-items: center; transition: border-color 0.2s, box-shadow 0.2s; }
+        .hub-card:hover { border-color: var(--border-hover); box-shadow: var(--card-shadow-hover); }
+        .hub-card-icon { width: 48px; height: 48px; border-radius: var(--radius-sm); display: flex; align-items: center; justify-content: center; font-size: 22px; }
+        .hub-card-icon.green { background: rgba(74,222,128,0.1); color: var(--accent-green); }
+        .hub-card-icon.cyan { background: rgba(34,211,238,0.1); color: var(--accent-cyan); }
+        .hub-card-icon.amber { background: rgba(251,191,36,0.1); color: #fbbf24; }
+        .hub-card-icon.purple { background: rgba(167,139,250,0.1); color: var(--accent-purple); }
+        .hub-card-icon.red { background: rgba(248,113,113,0.1); color: var(--negative-red); }
+        .hub-card-body h3 { font-size: 16px; font-weight: 700; color: var(--text-main); margin: 0 0 4px; }
+        .hub-card-body p { font-size: 13px; color: var(--text-muted); margin: 0; line-height: 1.5; }
+        .hub-card-status { font-size: 10px; padding: 4px 10px; border-radius: 20px; font-weight: 600; letter-spacing: 0.05em; white-space: nowrap; }
+        .hub-status-live { background: rgba(74,222,128,0.12); color: var(--accent-green); border: 1px solid rgba(74,222,128,0.25); }
+        .hub-status-soon { background: rgba(251,191,36,0.08); color: #fbbf24; border: 1px solid rgba(251,191,36,0.2); }
+        .hub-status-planned { background: var(--bg-dark); color: var(--text-faint); border: 1px solid var(--border-color); }
+
+        .hub-card.disabled { opacity: 0.5; cursor: default; }
+        .hub-card.disabled:hover { border-color: var(--border-color); box-shadow: none; }
+
+        .hub-section { margin-bottom: 32px; }
+        .hub-section-title { font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.12em; color: var(--text-faint); margin-bottom: 12px; display: flex; align-items: center; gap: 8px; }
+        .hub-section-title i { color: var(--accent-cyan); }
+
+        .hub-tools { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px; }
+        .hub-tool { background: var(--bg-panel); border: 1px solid var(--border-color); border-radius: var(--radius-sm); padding: 16px; text-decoration: none; color: inherit; transition: border-color 0.2s; }
+        .hub-tool:hover { border-color: var(--accent-cyan); }
+        .hub-tool h4 { font-size: 13px; font-weight: 600; color: var(--accent-cyan); margin: 0 0 4px; display: flex; align-items: center; gap: 6px; }
+        .hub-tool p { font-size: 12px; color: var(--text-muted); margin: 0; line-height: 1.4; }
+    </style>
+<style>html,body{background:#0c0c0a!important;color:#f5f0e8;overflow-x:hidden}</style>
+<style id="global-mobile-fix">
+@media(max-width:640px){
+  *{max-width:100%;box-sizing:border-box}
+  img,video,iframe{max-width:100%!important}
+  [style*="grid-template-columns:1fr 1fr"],[style*="grid-template-columns: 1fr 1fr"]{grid-template-columns:1fr!important}
+  [style*="grid-template-columns:repeat(3"],[style*="grid-template-columns: repeat(3"]{grid-template-columns:1fr 1fr!important}
+  [style*="grid-template-columns:repeat(4"],[style*="grid-template-columns: repeat(4"]{grid-template-columns:1fr 1fr!important}
+  .an-stats,.stat-grid,.stats-grid,.score-grid{grid-template-columns:repeat(2,1fr)!important}
+  .content{padding:12px!important}
+  .modal,.pred-modal,.flag-detail,[class*="-modal"]{width:calc(100vw - 24px)!important;max-width:calc(100vw - 24px)!important}
+  .an-grid-2,.an-grid-3{grid-template-columns:1fr!important}
+}
+</style>
+</head>
+<body>
+<!-- ── Unified UAS-Nav ───────────────────────────────────────── -->
+<style id="dc-unified-nav-styles">
+#dc-nav{display:flex;align-items:center;justify-content:space-between;padding:0 16px;height:44px;background:#0c0c0a;border-bottom:1px solid #1e1e18;position:sticky;top:0;z-index:500;font-family:'Inter',system-ui,sans-serif}
+#dc-nav-left{display:flex;align-items:center;gap:10px;min-width:0}
+#dc-nav-brand{font:700 13px 'JetBrains Mono',monospace;color:#f59e0b;text-decoration:none;letter-spacing:-.02em;flex-shrink:0}
+#dc-nav-sep{color:#2e2e26;font-size:12px;flex-shrink:0}
+#dc-nav-page{font:600 11px 'Inter',system-ui;color:#b8b0a0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:160px}
+
+#dc-hamburger{display:flex;align-items:center;justify-content:center;width:32px;height:32px;border-radius:6px;border:1px solid #2a2a22;background:none;color:#6b6358;cursor:pointer;transition:all .15s;flex-shrink:0;margin-left:auto}
+#dc-hamburger:hover{border-color:#3e3e34;color:#b8b0a0}
+#dc-hamburger.open{border-color:#f59e0b;color:#f59e0b;background:rgba(245,158,11,.08)}
+#dc-overlay{position:fixed;inset:0;z-index:498;background:rgba(0,0,0,.6);backdrop-filter:blur(4px);opacity:0;pointer-events:none;transition:opacity .25s}
+#dc-overlay.open{opacity:1;pointer-events:auto}
+#dc-drawer{position:fixed;top:0;right:0;bottom:0;z-index:499;width:260px;max-width:85vw;background:#111110;border-left:1px solid #2a2a22;transform:translateX(100%);transition:transform .3s cubic-bezier(.4,0,.2,1);display:flex;flex-direction:column;overflow:hidden}
+#dc-drawer.open{transform:translateX(0)}
+#dc-drawer-head{padding:16px;border-bottom:1px solid #1e1e18;display:flex;align-items:center;justify-content:space-between}
+#dc-drawer-brand{font:700 14px 'JetBrains Mono',monospace;color:#f59e0b;letter-spacing:-.02em}
+#dc-drawer-close{width:28px;height:28px;border-radius:6px;border:1px solid #2a2a22;background:none;color:#6b6358;cursor:pointer;font-size:16px;display:flex;align-items:center;justify-content:center;transition:all .15s}
+#dc-drawer-close:hover{color:#d62828;border-color:rgba(214,40,40,.3)}
+.dc-drawer-section{padding:12px 16px 4px;font:700 9px 'JetBrains Mono',monospace;color:#3e3e34;text-transform:uppercase;letter-spacing:.1em}
+.dc-drawer-item{display:flex;align-items:center;gap:10px;padding:9px 16px;color:#6b6358;text-decoration:none;font:400 12px 'Inter',system-ui;transition:all .15s;border-left:2px solid transparent}
+.dc-drawer-item:hover{color:#b8b0a0;background:rgba(255,255,255,.02);border-left-color:#2e2e26}
+.dc-drawer-item.dc-active{color:#22c55e;border-left-color:#22c55e;background:rgba(34,197,94,.04)}
+.dc-drawer-item.dc-ext{color:#3e3e34}
+.dc-drawer-item.dc-ext:hover{color:#6b6358}
+.dc-drawer-divider{height:1px;background:#1e1e18;margin:8px 16px}
+#dc-drawer-foot{padding:16px;border-top:1px solid #1e1e18;font:400 10px 'JetBrains Mono',monospace;color:#3e3e34;flex-shrink:0}#dc-drawer-body{flex:1;overflow-y:auto;overflow-x:hidden}
+</style>
+
+<nav id="dc-nav">
+  <div id="dc-nav-left">
+    <a id="dc-nav-brand" href="/" onclick="return dcNavBrandClick(event)">—</a>
+    <span id="dc-nav-sep" style="color:#2e2e26;font-size:11px;margin:0 4px">/</span>
+    <span id="dc-nav-page">—</span>
+  </div>
+  <button id="dc-hamburger" onclick="dcNavToggle()" aria-label="Menu">
+    <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round">
+      <line x1="1" y1="3" x2="13" y2="3"/><line x1="1" y1="7" x2="13" y2="7"/><line x1="1" y1="11" x2="13" y2="11"/>
+    </svg>
+  </button>
+</nav>
+
+<div id="dc-overlay" onclick="dcNavClose()"></div>
+<div id="dc-drawer">
+  <div id="dc-drawer-head">
+    <span id="dc-drawer-brand">—</span>
+    <button id="dc-drawer-close" onclick="dcNavClose()">✕</button>
+  </div>
+
+  <div id="dc-drawer-body">
+  <div class="dc-drawer-section">Forge — Due Diligence</div>
+  <a class="dc-drawer-item" href="https://uas-forge.com/browse/" data-page="browse">Browse Components</a>
+  <a class="dc-drawer-item" href="https://uas-forge.com/compare/" data-page="compare">Compare</a>
+  <a class="dc-drawer-item" href="https://uas-forge.com/compliance/" data-page="compliance">Compliance</a>
+  <a class="dc-drawer-item" href="https://uas-forge.com/dossier/" data-page="dossier">Dossier</a>
+  <a class="dc-drawer-item" href="https://uas-forge.com/platforms/" data-page="platforms">Platforms</a>
+  <a class="dc-drawer-item" href="https://uas-forge.com/regs/" data-page="regs">Regs</a>
+
+  <div class="dc-drawer-section">Forge — Tools</div>
+  <a class="dc-drawer-item" href="https://uas-forge.com/wingman/" data-page="wingman">Wingman AI</a>
+  <a class="dc-drawer-item" href="https://uas-forge.com/stack-builder/" data-page="stack-builder">Stack Builder</a>
+  <a class="dc-drawer-item" href="https://uas-forge.com/report/" data-page="report">Compliance Report</a>
+  <a class="dc-drawer-item" href="https://uas-forge.com/tools-home/" data-page="tools-home">All Tools</a>
+
+  <div class="dc-drawer-section">Forge — Intel</div>
+  <a class="dc-drawer-item" href="https://uas-forge.com/intel/" data-page="intel">Intel Hub</a>
+  <a class="dc-drawer-item" href="https://uas-forge.com/industry/" data-page="industry">Industry</a>
+  <a class="dc-drawer-item" href="https://uas-forge.com/tracker/" data-page="tracker">Contract Tracker</a>
+
+  <div class="dc-drawer-divider"></div>
+
+  <div class="dc-drawer-section">PIE — Pattern Intelligence</div>
+  <a class="dc-drawer-item" href="https://uas-patterns.com/patterns-home/" data-page="patterns-home">P.I.E Hub</a>
+  <a class="dc-drawer-item" href="https://uas-patterns.com/brief/" data-page="brief">Brief</a>
+  <a class="dc-drawer-item" href="https://uas-patterns.com/patterns/" data-page="patterns">Flags</a>
+  <a class="dc-drawer-item" href="https://uas-patterns.com/clock/" data-page="clock">UAS Clock</a>
+  <a class="dc-drawer-item" aria-disabled="true" data-page="ddg">DDG Tracker</a>
+
+  </div><!-- /dc-drawer-body -->
+</div>
+
+<script>
+(function(){
+  var path = location.pathname.replace(/\/$/, '').split('/').pop() || 'home';
+  var isPro = (function(){
+    try {
+      var tok = localStorage.getItem('forge_token') || localStorage.getItem('wingman_sub_token') || '';
+      if(!tok || tok.length < 20) return false;
+      var p = JSON.parse(atob(tok.split('.')[1] || tok));
+      var payload = p.payload || p;
+      return !!(payload.tier && payload.tier !== 'free' && (!payload.exp || payload.exp > Date.now()));
+    } catch(e){ return false; }
+  })();
+  var host = location.hostname;
+  var isForge = host.includes('builditmyself') || host.includes('forgeprole') || host === 'localhost' || host === '127.0.0.1';
+  var isPIE   = host.includes('findoutmyself') || host.includes('nvmillfindout') || host.includes('uas-intel');
+
+  // Set page label
+  var labels = {
+    'browse':'Browse','wingman':'Wingman','intel':'Intel Hub','compare':'Compare',
+    'compliance':'Compliance','dossier':'Dossier','platforms':'Platforms','regs':'Regs',
+    'stack-builder':'Stack Builder','report':'Compliance Report','tools-home':'Tools',
+    'industry':'Industry','tracker':'Contract Tracker','patterns-home':'P.I.E Hub',
+    'brief':'Brief','patterns':'Flags','clock':'UAS Clock','ddg':'DDG Tracker',
+    'pro':'Pro','start':'Getting Started','grants':'Grants','waiver':'Doc Builder',
+    'verify':'Verify','vault':'Vault','troubleshoot':'Troubleshoot'
+  };
+  var pageEl = document.getElementById('dc-nav-page');
+  if(pageEl) pageEl.textContent = labels[path] || document.title.split('—')[0].trim().split('·')[0].trim() || path;
+
+  // Brand link — goes to home of current domain
+  // Set brand name: Forge / Patterns / Patterns Pro
+  var brandName = isForge ? 'Forge' : isPIE ? 'Patterns' : 'UAS-';
+  var brandEl = document.getElementById('dc-nav-brand');
+  var drawerBrandEl = document.getElementById('dc-drawer-brand');
+  if(brandEl) brandEl.textContent = brandName;
+  if(drawerBrandEl) drawerBrandEl.textContent = brandName;
+
+  window.dcNavBrandClick = function(e){
+    e.preventDefault();
+    location.href = isForge ? 'https://uas-forge.com/' : isPIE ? 'https://uas-patterns.com/patterns-home/' : '/';
+  };
+
+
+
+  // Mark active drawer items
+  document.querySelectorAll('.dc-drawer-item').forEach(function(a){
+    if(a.dataset.page === path) a.classList.add('dc-active');
+  });
+
+  // Hamburger toggle
+  window.dcNavToggle = function(){
+    var open = document.getElementById('dc-drawer').classList.toggle('open');
+    document.getElementById('dc-overlay').classList.toggle('open', open);
+    document.getElementById('dc-hamburger').classList.toggle('open', open);
+  };
+  window.dcNavClose = function(){
+    document.getElementById('dc-drawer').classList.remove('open');
+    document.getElementById('dc-overlay').classList.remove('open');
+    document.getElementById('dc-hamburger').classList.remove('open');
+  };
+  // Esc to close
+  document.addEventListener('keydown', function(e){ if(e.key==='Escape') dcNavClose(); });
+})();
+</script>
+<!-- ── /Unified UAS-Nav ─────────────────────────────────────── -->
+
+<div class="app-container" style="flex-direction: column;">
+        <div class="hub-container">
+            <div class="hub-hero">
+                <h1><i class="ph ph-rocket-launch"></i> Implementation Guides</h1>
+                <p>Your hardware is assembled. These guides take you from powered-on to mission-ready — one software layer at a time.</p>
+                <div class="hub-flow">
+                    <span class="hub-flow-step">Flash Firmware</span>
+                    <span class="hub-flow-arrow">→</span>
+                    <span class="hub-flow-step">Configure FC</span>
+                    <span class="hub-flow-arrow">→</span>
+                    <span class="hub-flow-step">Install OS</span>
+                    <span class="hub-flow-arrow">→</span>
+                    <span class="hub-flow-step">Add Autonomy</span>
+                    <span class="hub-flow-arrow">→</span>
+                    <span class="hub-flow-step">Connect Network</span>
+                    <span class="hub-flow-arrow">→</span>
+                    <span class="hub-flow-step">Fly</span>
+                </div>
+            </div>
+
+            <!-- ═══ GUIDES ═══ -->
+            <div class="hub-section">
+                <div class="hub-section-title"><i class="ph ph-book-open"></i> Guides</div>
+                <div class="hub-grid">
+
+                    <!-- FC Firmware -->
+                    <a href="/fc-firmware-guide/" class="hub-card">
+                        <div class="hub-card-icon amber"><i class="ph ph-microchip"></i></div>
+                        <div class="hub-card-body">
+                            <h3>FC Firmware Flashing</h3>
+                            <p>Install ArduPilot, PX4, Betaflight, or iNav on your flight controller. Covers STM32 DFU mode, bootloaders, STM32CubeProgrammer, and board-specific steps for Orqa H7, Pixhawk, Matek, and more.</p>
+                        </div>
+                        <span class="hub-card-status hub-status-live">LIVE</span>
+                    </a>
+
+                    <!-- LiDAR SLAM -->
+                    <a href="/slam-guide/" class="hub-card">
+                        <div class="hub-card-icon green"><i class="ph ph-compass-tool"></i></div>
+                        <div class="hub-card-body">
+                            <h3>LiDAR SLAM — Parts to Autonomous Hover</h3>
+                            <p>Flash companion OS, install ROS, LiDAR drivers, FAST-LIO2, MAVROS FC bridge, first hover. Includes SLAM stack selector. Adapts to your hardware (Jetson/APB/RPi + any LiDAR).</p>
+                        </div>
+                        <span class="hub-card-status hub-status-live">LIVE</span>
+                    </a>
+
+                    <!-- Autonomy Datasets & Benchmarks -->
+                    <a href="/autonomy/" class="hub-card">
+                        <div class="hub-card-icon purple"><i class="ph ph-database"></i></div>
+                        <div class="hub-card-body">
+                            <h3>Autonomy Datasets &amp; Benchmarks</h3>
+                            <p>Filterable catalog of drone autonomy datasets — VIO/SLAM, CV detection, RF — each tagged with license class and a usability verdict. Pairs with the Handbook's Part 6 — Autonomy.</p>
+                        </div>
+                        <span class="hub-card-status hub-status-live">LIVE</span>
+                    </a>
+
+                    <!-- Mesh Networking -->
+                    <a href="/mesh-guide/" class="hub-card">
+                        <div class="hub-card-icon cyan"><i class="ph ph-graph"></i></div>
+                        <div class="hub-card-body">
+                            <h3>Mesh Radio Networking</h3>
+                            <p>Set up Doodle Labs, Silvus, or Microhard mesh radios for multi-vehicle MANET. IP config, bandwidth allocation, video/telemetry QoS, multi-hop relay, and GCS integration.</p>
+                        </div>
+                        <span class="hub-card-status hub-status-live">LIVE</span>
+                    </a>
+
+                    <!-- TAK Integration -->
+                    <a href="/tak-guide/" class="hub-card">
+                        <div class="hub-card-icon cyan"><i class="ph ph-crosshair-simple"></i></div>
+                        <div class="hub-card-body">
+                            <h3>TAK / ATAK Integration</h3>
+                            <p>Connect your drone to TAK ecosystem. ATAK plugin setup, CoT message format, MAVROS→TAK bridge, video streaming to TAK server, multi-drone COP display.</p>
+                        </div>
+                        <span class="hub-card-status hub-status-live">LIVE</span>
+                    </a>
+
+                    <!-- OpenHD -->
+                    <a href="/openhd-guide/" class="hub-card">
+                        <div class="hub-card-icon" style="background:rgba(74,222,128,0.1);">
+                            <i class="ph ph-wifi-high" style="color:var(--accent-green);"></i>
+                        </div>
+                        <div class="hub-card-body">
+                            <h3>OpenHD — Digital Video Link</h3>
+                            <p>Open-source wifibroadcast HD video + MAVLink. RTL8812AU on RPi Zero 2 or CM4. Range depends on antennas — stock 1–3km, high-gain + tracker 10–20km+.</p>
+                        </div>
+                        <span class="hub-card-status hub-status-live">LIVE</span>
+                    </a>
+
+
+                    <a href="/ai-guide/" class="hub-card">
+                        <div class="hub-card-icon purple"><i class="ph ph-brain"></i></div>
+                        <div class="hub-card-body">
+                            <h3>AI / Computer Vision Payloads</h3>
+                            <p>Run YOLO, object tracking, and detection models on Jetson/VOXL2/APB. Camera→inference→FC targeting pipeline, OpenCV + ROS, NPU acceleration, edge deployment.</p>
+                        </div>
+                        <span class="hub-card-status hub-status-live">LIVE</span>
+                    </a>
+
+                    <!-- Drone Show / Swarm -->
+                    <a href="/swarm-guide/" class="hub-card">
+                        <div class="hub-card-icon purple"><i class="ph ph-users-three"></i></div>
+                        <div class="hub-card-body">
+                            <h3>Drone Show & Swarm Coordination</h3>
+                            <p>Choreographed light shows, formation flying, and multi-drone swarm operations. MDS (MAVSDK Drone Show), leader-follower, SkyBrush, SITL simulation, time sync, and safety.</p>
+                        </div>
+                        <span class="hub-card-status hub-status-live">LIVE</span>
+                    </a>
+
+                    <!-- Counter-UAS -->
+                    <a href="/cuas-guide/" class="hub-card">
+                        <div class="hub-card-icon red"><i class="ph ph-shield-warning"></i></div>
+                        <div class="hub-card-body">
+                            <h3>Counter-UAS Integration</h3>
+                            <p>RF detection, radar tracking, and defeat system integration. DroneShield, Dedrone, and DIY approaches. Sensor fusion for autonomous C-UAS response.</p>
+                        </div>
+                        <span class="hub-card-status hub-status-live">LIVE</span>
+                    </a>
+
+                </div>
+            </div>
+
+            <!-- ═══ TOOLS ═══ -->
+            <div class="hub-section">
+                <div class="hub-section-title"><i class="ph ph-toolbox"></i> Tools</div>
+                <div class="hub-tools">
+                    <a href="/slam/" class="hub-tool">
+                        <h4><i class="ph ph-compass-tool"></i> SLAM Stack Selector</h4>
+                        <p>Pick LiDAR + computer + firmware → get ranked SLAM stack recommendations with config files.</p>
+                    </a>
+                    <a href="/swarm/" class="hub-tool">
+                        <h4><i class="ph ph-users-three"></i> Swarm Stack Selector</h4>
+                        <p>Pick mission type + FC + fleet size → get ranked swarm software recommendations with key params.</p>
+                    </a>
+                    <a href="/builder/" class="hub-tool">
+                        <h4><i class="ph ph-magic-wand"></i> Model Builder</h4>
+                        <p>Assemble builds from 3,000+ parts with compatibility checking.</p>
+                    </a>
+                    <a href="/platforms/" class="hub-tool">
+                        <h4><i class="ph ph-shield-check"></i> Platform Database</h4>
+                        <p>200+ platforms with specs, compliance, funding, and production data.</p>
+                    </a>
+                    <a href="/compliance/" class="hub-tool">
+                        <h4><i class="ph ph-traffic-signal"></i> Compliance Dashboard</h4>
+                        <p>Blue UAS, NDAA §848 (FY2020) + ASDA / FAR 52.240-1, ITAR, and country-of-origin for all 219 platforms.</p>
+                    </a>
+                    <a href="/spec-sheets/" class="hub-tool">
+                        <h4><i class="ph ph-file-pdf"></i> §848 Spec Sheet Viewer</h4>
+                        <p>Cross-vendor index of manufacturer compliance PDFs. Freefly, Hylio, ORQA, ModalAI and more. The first free aggregator.</p>
+                    </a>
+                    <a href="/compliance-matrix/" class="hub-tool">
+                        <h4><i class="ph ph-grid-four"></i> Compliance Matrix</h4>
+                        <p>§848 · §889 · §817 · ASDA · Blue UAS · Framework · TAA · FCC Covered List — side-by-side explainer.</p>
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+    <script>
+    document.getElementById('dark-mode-toggle')?.addEventListener('click',()=>{const c=document.documentElement.getAttribute('data-theme');const n=c==='dark'?'light':'dark';document.documentElement.setAttribute('data-theme',n);try{localStorage.setItem('dc-theme',n)}catch(e){}const i=document.getElementById('dark-mode-icon');if(i)i.className=n==='dark'?'ph ph-moon':'ph ph-sun';});
+    </script>
+<!-- Analytics injected by build_static.py (unified _ANALYTICS_SNIPPET + _UNIFIED_NAV) -->
+</body>
+</html>

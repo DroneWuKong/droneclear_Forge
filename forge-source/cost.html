@@ -1,0 +1,512 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Build Cost Estimator — Forge</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&family=Source+Serif+4:opsz,wght@8..60,400;8..60,600;8..60,700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="">
+    <link rel="stylesheet" href="{% static 'base.css' %}">
+    <link rel="stylesheet" href="{% static 'layout.css' %}?v=4">
+    <link rel="stylesheet" href="{% static 'components.css' %}">
+    <link rel="stylesheet" href="{% static 'utilities.css' %}">
+    <link rel="stylesheet" href="">
+    <link rel="stylesheet" href="">
+    <script src="https://unpkg.com/@phosphor-icons/web"></script>
+    <script>
+        (function(){ document.documentElement.setAttribute('data-theme', localStorage.getItem('dc-theme') || 'dark'); })();
+    </script>
+    <style>
+        .cost-page { max-width: 1200px; margin: 0 auto; padding: 32px 24px; }
+
+        /* ── Build Selector ── */
+        .build-selector { display: flex; gap: 12px; flex-wrap: wrap; margin-bottom: 28px; }
+        .build-chip {
+            padding: 8px 16px; font-size: 13px; border-radius: var(--radius-sm);
+            border: 1px solid var(--border-color); background: var(--bg-panel);
+            color: var(--text-muted); cursor: pointer; transition: all 0.2s;
+            font-family: 'JetBrains Mono', monospace;
+        }
+        .build-chip:hover { border-color: var(--text-main); color: var(--text-main); }
+        .build-chip.active { border-color: var(--accent-red); color: var(--accent-red); background: rgba(34,211,238,0.08); font-weight: 600; }
+
+        /* ── Summary Gauges ── */
+        .cost-gauges {
+            display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+            gap: 16px; margin-bottom: 28px;
+        }
+        .gauge-card {
+            background: var(--bg-panel); border: 1px solid var(--border-color);
+            border-radius: var(--radius-md); padding: 20px; text-align: center;
+        }
+        .gauge-value {
+            font-size: 32px; font-weight: 700; font-family: 'JetBrains Mono', monospace;
+            color: var(--accent-red); line-height: 1;
+        }
+        .gauge-value.green { color: #22c55e; }
+        .gauge-value.amber { color: #eab308; }
+        .gauge-value.red { color: #ef4444; }
+        .gauge-label { font-size: 12px; color: var(--text-muted); margin-top: 6px; text-transform: uppercase; letter-spacing: 0.5px; }
+        .gauge-sub { font-size: 11px; color: var(--text-muted); margin-top: 2px; opacity: 0.6; }
+
+        /* ── BOM Table ── */
+        .bom-table-wrap {
+            background: var(--bg-panel); border: 1px solid var(--border-color);
+            border-radius: var(--radius-md); overflow: hidden; margin-bottom: 24px;
+        }
+        .bom-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+        .bom-table thead th {
+            padding: 10px 14px; text-align: left; font-size: 11px;
+            text-transform: uppercase; letter-spacing: 0.5px; color: var(--text-muted);
+            background: var(--bg-dark); border-bottom: 2px solid var(--border-color);
+        }
+        .bom-table tbody tr { border-bottom: 1px solid rgba(255,255,255,0.04); }
+        .bom-table tbody tr:hover { background: rgba(255,255,255,0.03); }
+        .bom-table td { padding: 10px 14px; }
+        .bom-table .part-name { font-weight: 500; color: var(--text-main); }
+        .bom-table .part-pid { font-size: 11px; color: var(--text-muted); font-family: 'JetBrains Mono', monospace; }
+        .bom-table .part-slot { font-size: 11px; color: var(--accent-red); text-transform: uppercase; letter-spacing: 0.3px; }
+        .bom-table .num { font-family: 'JetBrains Mono', monospace; text-align: right; }
+        .bom-table .subtotal { font-weight: 600; color: var(--text-main); }
+        .bom-table tfoot td {
+            padding: 12px 14px; font-weight: 700; border-top: 2px solid var(--border-color);
+            background: var(--bg-dark);
+        }
+        .missing-badge {
+            display: inline-flex; align-items: center; gap: 3px; padding: 2px 8px;
+            border-radius: 10px; font-size: 10px; background: rgba(239,68,68,0.15);
+            color: #ef4444; font-weight: 600;
+        }
+
+        /* ── Weight Bar ── */
+        .weight-bar-wrap { margin-bottom: 28px; }
+        .weight-bar-label { font-size: 12px; color: var(--text-muted); margin-bottom: 6px; display: flex; justify-content: space-between; }
+        .weight-bar-bg {
+            height: 24px; background: var(--bg-dark); border-radius: 12px;
+            overflow: hidden; border: 1px solid var(--border-color); position: relative;
+        }
+        .weight-bar-seg {
+            height: 100%; display: inline-block; transition: width 0.4s ease;
+        }
+        .weight-bar-tooltip {
+            position: absolute; top: -28px; font-size: 10px; color: var(--text-muted);
+            font-family: 'JetBrains Mono', monospace; white-space: nowrap;
+            transform: translateX(-50%);
+        }
+
+        .empty-bom { text-align: center; padding: 48px; color: var(--text-muted); }
+        .empty-bom i { font-size: 48px; display: block; margin-bottom: 12px; opacity: 0.4; }
+
+        @media (max-width: 768px) {
+            .cost-page { padding: 16px 12px; }
+            .build-selector { gap: 6px; margin-bottom: 16px; }
+            .build-chip { padding: 5px 10px; font-size: 11px; }
+            .cost-gauges { grid-template-columns: repeat(2, 1fr); gap: 8px; margin-bottom: 16px; }
+            .gauge-card { padding: 10px 8px; border-radius: var(--radius-sm); }
+            .gauge-value { font-size: 20px; }
+            .gauge-label { font-size: 10px; margin-top: 4px; letter-spacing: 0.3px; }
+            .gauge-sub { font-size: 10px; margin-top: 2px; }
+            .bom-table td { padding: 8px 10px; }
+        }
+    </style>
+<style>html,body{background:#0c0c0a!important;color:#f5f0e8;overflow-x:hidden}</style>
+<style id="global-mobile-fix">
+@media(max-width:640px){
+  *{max-width:100%;box-sizing:border-box}
+  img,video,iframe{max-width:100%!important}
+  [style*="grid-template-columns:1fr 1fr"],[style*="grid-template-columns: 1fr 1fr"]{grid-template-columns:1fr!important}
+  [style*="grid-template-columns:repeat(3"],[style*="grid-template-columns: repeat(3"]{grid-template-columns:1fr 1fr!important}
+  [style*="grid-template-columns:repeat(4"],[style*="grid-template-columns: repeat(4"]{grid-template-columns:1fr 1fr!important}
+  .an-stats,.stat-grid,.stats-grid,.score-grid{grid-template-columns:repeat(2,1fr)!important}
+  .content{padding:12px!important}
+  .modal,.pred-modal,.flag-detail,[class*="-modal"]{width:calc(100vw - 24px)!important;max-width:calc(100vw - 24px)!important}
+  .an-grid-2,.an-grid-3{grid-template-columns:1fr!important}
+}
+</style>
+</head>
+<body>
+<!-- ── Unified UAS-Nav ───────────────────────────────────────── -->
+<style id="dc-unified-nav-styles">
+#dc-nav{display:flex;align-items:center;justify-content:space-between;padding:0 16px;height:44px;background:#0c0c0a;border-bottom:1px solid #1e1e18;position:sticky;top:0;z-index:500;font-family:'Inter',system-ui,sans-serif}
+#dc-nav-left{display:flex;align-items:center;gap:10px;min-width:0}
+#dc-nav-brand{font:700 13px 'JetBrains Mono',monospace;color:#f59e0b;text-decoration:none;letter-spacing:-.02em;flex-shrink:0}
+#dc-nav-sep{color:#2e2e26;font-size:12px;flex-shrink:0}
+#dc-nav-page{font:600 11px 'Inter',system-ui;color:#b8b0a0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:160px}
+
+#dc-hamburger{display:flex;align-items:center;justify-content:center;width:32px;height:32px;border-radius:6px;border:1px solid #2a2a22;background:none;color:#6b6358;cursor:pointer;transition:all .15s;flex-shrink:0;margin-left:auto}
+#dc-hamburger:hover{border-color:#3e3e34;color:#b8b0a0}
+#dc-hamburger.open{border-color:#f59e0b;color:#f59e0b;background:rgba(245,158,11,.08)}
+#dc-overlay{position:fixed;inset:0;z-index:498;background:rgba(0,0,0,.6);backdrop-filter:blur(4px);opacity:0;pointer-events:none;transition:opacity .25s}
+#dc-overlay.open{opacity:1;pointer-events:auto}
+#dc-drawer{position:fixed;top:0;right:0;bottom:0;z-index:499;width:260px;max-width:85vw;background:#111110;border-left:1px solid #2a2a22;transform:translateX(100%);transition:transform .3s cubic-bezier(.4,0,.2,1);display:flex;flex-direction:column;overflow:hidden}
+#dc-drawer.open{transform:translateX(0)}
+#dc-drawer-head{padding:16px;border-bottom:1px solid #1e1e18;display:flex;align-items:center;justify-content:space-between}
+#dc-drawer-brand{font:700 14px 'JetBrains Mono',monospace;color:#f59e0b;letter-spacing:-.02em}
+#dc-drawer-close{width:28px;height:28px;border-radius:6px;border:1px solid #2a2a22;background:none;color:#6b6358;cursor:pointer;font-size:16px;display:flex;align-items:center;justify-content:center;transition:all .15s}
+#dc-drawer-close:hover{color:#d62828;border-color:rgba(214,40,40,.3)}
+.dc-drawer-section{padding:12px 16px 4px;font:700 9px 'JetBrains Mono',monospace;color:#3e3e34;text-transform:uppercase;letter-spacing:.1em}
+.dc-drawer-item{display:flex;align-items:center;gap:10px;padding:9px 16px;color:#6b6358;text-decoration:none;font:400 12px 'Inter',system-ui;transition:all .15s;border-left:2px solid transparent}
+.dc-drawer-item:hover{color:#b8b0a0;background:rgba(255,255,255,.02);border-left-color:#2e2e26}
+.dc-drawer-item.dc-active{color:#22c55e;border-left-color:#22c55e;background:rgba(34,197,94,.04)}
+.dc-drawer-item.dc-ext{color:#3e3e34}
+.dc-drawer-item.dc-ext:hover{color:#6b6358}
+.dc-drawer-divider{height:1px;background:#1e1e18;margin:8px 16px}
+#dc-drawer-foot{padding:16px;border-top:1px solid #1e1e18;font:400 10px 'JetBrains Mono',monospace;color:#3e3e34;flex-shrink:0}#dc-drawer-body{flex:1;overflow-y:auto;overflow-x:hidden}
+</style>
+
+<nav id="dc-nav">
+  <div id="dc-nav-left">
+    <a id="dc-nav-brand" href="/" onclick="return dcNavBrandClick(event)">—</a>
+    <span id="dc-nav-sep" style="color:#2e2e26;font-size:11px;margin:0 4px">/</span>
+    <span id="dc-nav-page">—</span>
+  </div>
+  <button id="dc-hamburger" onclick="dcNavToggle()" aria-label="Menu">
+    <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round">
+      <line x1="1" y1="3" x2="13" y2="3"/><line x1="1" y1="7" x2="13" y2="7"/><line x1="1" y1="11" x2="13" y2="11"/>
+    </svg>
+  </button>
+</nav>
+
+<div id="dc-overlay" onclick="dcNavClose()"></div>
+<div id="dc-drawer">
+  <div id="dc-drawer-head">
+    <span id="dc-drawer-brand">—</span>
+    <button id="dc-drawer-close" onclick="dcNavClose()">✕</button>
+  </div>
+
+  <div id="dc-drawer-body">
+  <div class="dc-drawer-section">Forge — Due Diligence</div>
+  <a class="dc-drawer-item" href="https://uas-forge.com/browse/" data-page="browse">Browse Components</a>
+  <a class="dc-drawer-item" href="https://uas-forge.com/compare/" data-page="compare">Compare</a>
+  <a class="dc-drawer-item" href="https://uas-forge.com/compliance/" data-page="compliance">Compliance</a>
+  <a class="dc-drawer-item" href="https://uas-forge.com/dossier/" data-page="dossier">Dossier</a>
+  <a class="dc-drawer-item" href="https://uas-forge.com/platforms/" data-page="platforms">Platforms</a>
+  <a class="dc-drawer-item" href="https://uas-forge.com/regs/" data-page="regs">Regs</a>
+
+  <div class="dc-drawer-section">Forge — Tools</div>
+  <a class="dc-drawer-item" href="https://uas-forge.com/wingman/" data-page="wingman">Wingman AI</a>
+  <a class="dc-drawer-item" href="https://uas-forge.com/stack-builder/" data-page="stack-builder">Stack Builder</a>
+  <a class="dc-drawer-item" href="https://uas-forge.com/report/" data-page="report">Compliance Report</a>
+  <a class="dc-drawer-item" href="https://uas-forge.com/tools-home/" data-page="tools-home">All Tools</a>
+
+  <div class="dc-drawer-section">Forge — Intel</div>
+  <a class="dc-drawer-item" href="https://uas-forge.com/intel/" data-page="intel">Intel Hub</a>
+  <a class="dc-drawer-item" href="https://uas-forge.com/industry/" data-page="industry">Industry</a>
+  <a class="dc-drawer-item" href="https://uas-forge.com/tracker/" data-page="tracker">Contract Tracker</a>
+
+  <div class="dc-drawer-divider"></div>
+
+  <div class="dc-drawer-section">PIE — Pattern Intelligence</div>
+  <a class="dc-drawer-item" href="https://uas-patterns.com/patterns-home/" data-page="patterns-home">P.I.E Hub</a>
+  <a class="dc-drawer-item" href="https://uas-patterns.com/brief/" data-page="brief">Brief</a>
+  <a class="dc-drawer-item" href="https://uas-patterns.com/patterns/" data-page="patterns">Flags</a>
+  <a class="dc-drawer-item" href="https://uas-patterns.com/clock/" data-page="clock">UAS Clock</a>
+  <a class="dc-drawer-item" aria-disabled="true" data-page="ddg">DDG Tracker</a>
+
+  </div><!-- /dc-drawer-body -->
+</div>
+
+<script>
+(function(){
+  var path = location.pathname.replace(/\/$/, '').split('/').pop() || 'home';
+  var isPro = (function(){
+    try {
+      var tok = localStorage.getItem('forge_token') || localStorage.getItem('wingman_sub_token') || '';
+      if(!tok || tok.length < 20) return false;
+      var p = JSON.parse(atob(tok.split('.')[1] || tok));
+      var payload = p.payload || p;
+      return !!(payload.tier && payload.tier !== 'free' && (!payload.exp || payload.exp > Date.now()));
+    } catch(e){ return false; }
+  })();
+  var host = location.hostname;
+  var isForge = host.includes('builditmyself') || host.includes('forgeprole') || host === 'localhost' || host === '127.0.0.1';
+  var isPIE   = host.includes('findoutmyself') || host.includes('nvmillfindout') || host.includes('uas-intel');
+
+  // Set page label
+  var labels = {
+    'browse':'Browse','wingman':'Wingman','intel':'Intel Hub','compare':'Compare',
+    'compliance':'Compliance','dossier':'Dossier','platforms':'Platforms','regs':'Regs',
+    'stack-builder':'Stack Builder','report':'Compliance Report','tools-home':'Tools',
+    'industry':'Industry','tracker':'Contract Tracker','patterns-home':'P.I.E Hub',
+    'brief':'Brief','patterns':'Flags','clock':'UAS Clock','ddg':'DDG Tracker',
+    'pro':'Pro','start':'Getting Started','grants':'Grants','waiver':'Doc Builder',
+    'verify':'Verify','vault':'Vault','troubleshoot':'Troubleshoot'
+  };
+  var pageEl = document.getElementById('dc-nav-page');
+  if(pageEl) pageEl.textContent = labels[path] || document.title.split('—')[0].trim().split('·')[0].trim() || path;
+
+  // Brand link — goes to home of current domain
+  // Set brand name: Forge / Patterns / Patterns Pro
+  var brandName = isForge ? 'Forge' : isPIE ? 'Patterns' : 'UAS-';
+  var brandEl = document.getElementById('dc-nav-brand');
+  var drawerBrandEl = document.getElementById('dc-drawer-brand');
+  if(brandEl) brandEl.textContent = brandName;
+  if(drawerBrandEl) drawerBrandEl.textContent = brandName;
+
+  window.dcNavBrandClick = function(e){
+    e.preventDefault();
+    location.href = isForge ? 'https://uas-forge.com/' : isPIE ? 'https://uas-patterns.com/patterns-home/' : '/';
+  };
+
+
+
+  // Mark active drawer items
+  document.querySelectorAll('.dc-drawer-item').forEach(function(a){
+    if(a.dataset.page === path) a.classList.add('dc-active');
+  });
+
+  // Hamburger toggle
+  window.dcNavToggle = function(){
+    var open = document.getElementById('dc-drawer').classList.toggle('open');
+    document.getElementById('dc-overlay').classList.toggle('open', open);
+    document.getElementById('dc-hamburger').classList.toggle('open', open);
+  };
+  window.dcNavClose = function(){
+    document.getElementById('dc-drawer').classList.remove('open');
+    document.getElementById('dc-overlay').classList.remove('open');
+    document.getElementById('dc-hamburger').classList.remove('open');
+  };
+  // Esc to close
+  document.addEventListener('keydown', function(e){ if(e.key==='Escape') dcNavClose(); });
+})();
+</script>
+<!-- ── /Unified UAS-Nav ─────────────────────────────────────── -->
+
+<div class="app-container" style="display: flex; flex-direction: column; min-height: 100vh;">
+        <main class="cost-page">
+            <div style="margin-bottom: 24px;">
+                <h1 style="font-size: 24px; font-weight: 700; margin-bottom: 4px;">Build Cost Estimator</h1>
+                <p style="font-size: 14px; color: var(--text-muted);">Select a build to see the full BOM with cost, weight breakdown, and per-slot pricing.</p>
+            </div>
+
+            <div class="build-selector" id="build-selector"></div>
+            <div class="cost-gauges" id="cost-gauges"></div>
+            <div class="weight-bar-wrap" id="weight-bar-wrap"></div>
+            <div id="bom-output"></div>
+        </main>
+    </div>
+
+    <script>
+    (function() {
+        'use strict';
+
+        let db = null;
+        let allParts = {};
+        let builds = [];
+        let selectedBuild = null;
+
+        const ESC = s => {
+            if (s == null) return '';
+            const d = document.createElement('div');
+            d.textContent = String(s);
+            return d.innerHTML;
+        };
+
+        const SLOT_COLORS = {
+            frames: '#ef4444', motors: '#f97316', escs: '#eab308', flight_controllers: '#22c55e',
+            stacks: '#14b8a6', batteries: '#3b82f6', fpv_cameras: '#8b5cf6', video_transmitters: '#a855f7',
+            receivers: '#ec4899', antennas: '#f43f5e', propellers: '#6366f1', gps_modules: '#06b6d4',
+        };
+
+        const SLOT_LABELS = {
+            frames: 'Frame', motors: 'Motors', escs: 'ESC', flight_controllers: 'FC',
+            stacks: 'Stack', batteries: 'Battery', fpv_cameras: 'Camera', video_transmitters: 'VTX',
+            receivers: 'Receiver', antennas: 'Antenna', propellers: 'Props', gps_modules: 'GPS',
+        };
+
+        function renderBuildSelector() {
+            document.getElementById('build-selector').innerHTML = builds.map(b =>
+                `<button class="build-chip ${selectedBuild?.pid === b.pid ? 'active' : ''}" data-pid="${ESC(b.pid)}">${ESC(b.name)}</button>`
+            ).join('');
+
+            document.querySelectorAll('.build-chip').forEach(chip => {
+                chip.addEventListener('click', () => {
+                    selectedBuild = builds.find(b => b.pid === chip.dataset.pid);
+                    renderBuildSelector();
+                    renderBOM();
+                });
+            });
+        }
+
+        function resolveBOM(model) {
+            const items = [];
+            for (const [slot, refs] of Object.entries(model.relations || {})) {
+                if (!refs) continue;
+                for (const ref of refs) {
+                    const pid = typeof ref === 'string' ? ref : ref.pid;
+                    const qty = typeof ref === 'object' ? (ref.quantity || 1) : 1;
+                    const part = allParts[pid];
+                    items.push({
+                        slot,
+                        pid,
+                        qty,
+                        name: part?.name || `Unknown (${pid})`,
+                        price: part?.approx_price || 0,
+                        weight: part?.schema_data?.weight_g || 0,
+                        found: !!part,
+                    });
+                }
+            }
+            return items;
+        }
+
+        function renderBOM() {
+            if (!selectedBuild) {
+                document.getElementById('cost-gauges').innerHTML = '';
+                document.getElementById('weight-bar-wrap').innerHTML = '';
+                document.getElementById('bom-output').innerHTML = `<div class="empty-bom">
+                    <i class="ph ph-receipt"></i>Select a build above to see its BOM.
+                </div>`;
+                return;
+            }
+
+            const items = resolveBOM(selectedBuild);
+            const totalCost = items.reduce((s, i) => s + i.price * i.qty, 0);
+            const totalWeight = items.reduce((s, i) => s + i.weight * i.qty, 0);
+            const partCount = items.reduce((s, i) => s + i.qty, 0);
+            const missingCount = items.filter(i => !i.found).length;
+
+            // Gauges
+            const costClass = totalCost < 350 ? 'green' : totalCost < 500 ? 'amber' : 'red';
+            const fp = typeof formatPrice === 'function' ? formatPrice : (v) => '$' + v.toFixed(0);
+            document.getElementById('cost-gauges').innerHTML = `
+                <div class="gauge-card">
+                    <div class="gauge-value ${costClass}">${fp(totalCost)}</div>
+                    <div class="gauge-label">Total BOM Cost</div>
+                    <div class="gauge-sub">Retail pricing, no shipping</div>
+                </div>
+                <div class="gauge-card">
+                    <div class="gauge-value">${totalWeight.toLocaleString()}g</div>
+                    <div class="gauge-label">Total Weight</div>
+                    <div class="gauge-sub">${(totalWeight / 1000).toFixed(2)} kg dry</div>
+                </div>
+                <div class="gauge-card">
+                    <div class="gauge-value">${partCount}</div>
+                    <div class="gauge-label">Components</div>
+                    <div class="gauge-sub">${items.length} unique, ${partCount} total</div>
+                </div>
+                <div class="gauge-card">
+                    <div class="gauge-value" style="color: ${missingCount ? '#ef4444' : '#22c55e'}">${missingCount ? missingCount + ' missing' : 'Complete'}</div>
+                    <div class="gauge-label">BOM Status</div>
+                    <div class="gauge-sub">${missingCount ? 'Some parts not in DB' : 'All parts resolved'}</div>
+                </div>
+            `;
+
+            // Weight breakdown bar
+            const slotWeights = {};
+            items.forEach(i => {
+                slotWeights[i.slot] = (slotWeights[i.slot] || 0) + i.weight * i.qty;
+            });
+            const barSegs = Object.entries(slotWeights)
+                .filter(([, w]) => w > 0)
+                .sort((a, b) => b[1] - a[1]);
+            
+            document.getElementById('weight-bar-wrap').innerHTML = `
+                <div class="weight-bar-label">
+                    <span>Weight Breakdown</span>
+                    <span>${totalWeight}g total</span>
+                </div>
+                <div class="weight-bar-bg">
+                    ${barSegs.map(([slot, w]) => {
+                        const pct = (w / totalWeight * 100).toFixed(1);
+                        const color = SLOT_COLORS[slot] || '#666';
+                        const label = SLOT_LABELS[slot] || slot;
+                        return `<div class="weight-bar-seg" style="width:${pct}%; background:${color};" title="${label}: ${w}g (${pct}%)"></div>`;
+                    }).join('')}
+                </div>
+                <div style="display:flex; gap:12px; flex-wrap:wrap; margin-top:8px;">
+                    ${barSegs.map(([slot, w]) => {
+                        const color = SLOT_COLORS[slot] || '#666';
+                        const label = SLOT_LABELS[slot] || slot;
+                        return `<span style="font-size:11px; display:flex; align-items:center; gap:4px; color:var(--text-muted);">
+                            <span style="width:8px; height:8px; border-radius:2px; background:${color}; display:inline-block;"></span>
+                            ${label} ${w}g
+                        </span>`;
+                    }).join('')}
+                </div>
+            `;
+
+            // BOM Table
+            const rows = items.map(i => `
+                <tr>
+                    <td><span class="part-slot">${ESC(SLOT_LABELS[i.slot] || i.slot)}</span></td>
+                    <td>
+                        <div class="part-name">${ESC(i.name)} ${!i.found ? '<span class="missing-badge">Missing</span>' : ''}</div>
+                        <div class="part-pid">${ESC(i.pid)}</div>
+                    </td>
+                    <td class="num">${i.qty}</td>
+                    <td class="num">${i.price ? '' + (typeof formatPrice === 'function' ? formatPrice(i.price) : '$' + i.price.toFixed(2)) : '—'}</td>
+                    <td class="num">${i.weight ? i.weight + 'g' : '—'}</td>
+                    <td class="num subtotal">${i.price ? '' + (typeof formatPrice === 'function' ? formatPrice(i.price * i.qty) : '$' + (i.price * i.qty).toFixed(2)) : '—'}</td>
+                    <td class="num">${i.weight ? (i.weight * i.qty) + 'g' : '—'}</td>
+                </tr>
+            `).join('');
+
+            document.getElementById('bom-output').innerHTML = `
+                <div class="bom-table-wrap">
+                    <table class="bom-table">
+                        <thead><tr>
+                            <th>Slot</th><th>Component</th><th>Qty</th>
+                            <th style="text-align:right;">Unit $</th><th style="text-align:right;">Unit g</th>
+                            <th style="text-align:right;">Subtotal $</th><th style="text-align:right;">Subtotal g</th>
+                        </tr></thead>
+                        <tbody>${rows}</tbody>
+                        <tfoot><tr>
+                            <td colspan="3">Total</td>
+                            <td></td><td></td>
+                            <td class="num">${typeof formatPrice === 'function' ? formatPrice(totalCost) : '$' + totalCost.toFixed(2)}</td>
+                            <td class="num">${totalWeight.toLocaleString()}g</td>
+                        </tr></tfoot>
+                    </table>
+                </div>
+            `;
+        }
+
+        async function init() {
+            try {
+                const res = await fetch('forge_database.json');
+                if (!res.ok) throw new Error('Failed to load');
+                db = await res.json();
+
+                // Index all parts by PID
+                for (const [cat, parts] of Object.entries(db.components || {})) {
+                    if (!Array.isArray(parts)) continue;
+                    for (const p of parts) {
+                        if (p.pid) allParts[p.pid] = p;
+                    }
+                }
+
+                // Find models with BOM relations
+                builds = (db.drone_models || []).filter(m => {
+                    const rels = m.relations || {};
+                    return Object.values(rels).some(v => v && v.length > 0);
+                });
+
+                renderBuildSelector();
+                if (builds.length) {
+                    selectedBuild = builds[0];
+                    renderBuildSelector();
+                }
+                renderBOM();
+            } catch (err) {
+                console.error(err);
+                document.getElementById('bom-output').innerHTML = '<div class="empty-bom">Failed to load database.</div>';
+            }
+        }
+
+        document.getElementById('dark-mode-toggle')?.addEventListener('click', () => {
+            const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+            document.documentElement.setAttribute('data-theme', isDark ? 'light' : 'dark');
+            localStorage.setItem('dc-theme', isDark ? 'light' : 'dark');
+            const icon = document.getElementById('dark-mode-icon');
+            if (icon) icon.className = isDark ? 'ph ph-moon' : 'ph ph-sun';
+        });
+
+        init();
+    })();
+    </script>
+<!-- Analytics injected by build_static.py (unified _ANALYTICS_SNIPPET + _UNIFIED_NAV) -->
+</body>
+</html>

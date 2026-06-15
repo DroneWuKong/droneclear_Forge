@@ -1,0 +1,332 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mesh Networking Guide — Forge</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&family=Source+Serif+4:opsz,wght@8..60,400;8..60,600;8..60,700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="{% static 'base.css' %}?v=2">
+    <link rel="stylesheet" href="{% static 'layout.css' %}?v=4">
+    <link rel="stylesheet" href="{% static 'utilities.css' %}?v=2">
+    <script src="https://unpkg.com/@phosphor-icons/web"></script>
+    <script>(function(){const s=localStorage.getItem('dc-theme');document.documentElement.setAttribute('data-theme',s||'dark')})();</script>
+    <style>
+        .mg-container{max-width:900px;margin:0 auto;padding:32px 24px 80px}.mg-hero{text-align:center;margin-bottom:40px}.mg-hero h1{font-size:26px;font-weight:700;background:linear-gradient(135deg,var(--accent-cyan) 0%,var(--accent-blue) 100%);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;margin:0 0 8px}.mg-hero p{color:var(--text-muted);font-size:14px;max-width:640px;margin:0 auto;line-height:1.6}
+        .mg-back{font-size:12px;color:var(--text-muted);text-decoration:none;display:inline-flex;align-items:center;gap:4px;margin-bottom:24px}.mg-back:hover{color:var(--accent-cyan)}
+        .mg-section{margin-bottom:32px}.mg-section-title{font-size:18px;font-weight:700;color:var(--text-main);margin:0 0 8px;display:flex;align-items:center;gap:8px}.mg-section-title i{color:var(--accent-cyan)}.mg-section-desc{font-size:13px;color:var(--text-muted);line-height:1.7;margin-bottom:16px}
+        .mg-code{background:#0d0d0d;border:1px solid var(--border-color);border-radius:var(--radius-sm);padding:16px;font-family:var(--font-family);font-size:12px;line-height:1.7;color:#a3e635;overflow-x:auto;margin-bottom:16px;white-space:pre;position:relative}.mg-code .c{color:#525252}.mg-code-label{position:absolute;top:8px;right:12px;font-size:10px;text-transform:uppercase;letter-spacing:0.1em;color:var(--text-faint);background:#0d0d0d;padding:2px 6px}
+        .mg-info{padding:14px 16px;border-radius:var(--radius-sm);font-size:13px;line-height:1.6;margin-bottom:16px;display:flex;gap:10px}.mg-info i{font-size:18px;flex-shrink:0;margin-top:1px}.mg-info-blue{background:rgba(34,211,238,0.06);border:1px solid rgba(34,211,238,0.15);color:var(--accent-cyan)}.mg-info-yellow{background:rgba(251,191,36,0.06);border:1px solid rgba(251,191,36,0.15);color:#fbbf24}.mg-info-green{background:rgba(74,222,128,0.06);border:1px solid rgba(74,222,128,0.15);color:var(--accent-green)}.mg-info-red{background:rgba(248,113,113,0.06);border:1px solid rgba(248,113,113,0.15);color:var(--negative-red)}
+        .mg-glossary{display:grid;grid-template-columns:repeat(auto-fit,minmax(250px,1fr));gap:12px;margin-bottom:20px}.mg-gloss-card{background:var(--bg-panel);border:1px solid var(--border-color);border-radius:var(--radius-sm);padding:14px}.mg-gloss-card h4{font-size:13px;font-weight:700;color:var(--accent-cyan);margin:0 0 4px}.mg-gloss-card p{font-size:12px;color:var(--text-muted);margin:0;line-height:1.5}
+        .mg-table{width:100%;border-collapse:collapse;margin-bottom:16px;font-size:12px}.mg-table th{text-align:left;padding:8px 12px;background:var(--bg-dark);color:var(--text-muted);border:1px solid var(--border-color);font-weight:600;text-transform:uppercase;letter-spacing:0.05em;font-size:10px}.mg-table td{padding:8px 12px;border:1px solid var(--border-color);color:var(--text-main)}
+            /* Scroll fix — standalone guide page, not sidebar app layout */
+        body { overflow-y: auto !important; }
+        .app-container { height: auto !important; min-height: 100vh; overflow: visible !important; }
+    </style>
+<style>html,body{background:#0c0c0a!important;color:#f5f0e8;overflow-x:hidden}</style>
+<style id="global-mobile-fix">
+@media(max-width:640px){
+  *{max-width:100%;box-sizing:border-box}
+  img,video,iframe{max-width:100%!important}
+  [style*="grid-template-columns:1fr 1fr"],[style*="grid-template-columns: 1fr 1fr"]{grid-template-columns:1fr!important}
+  [style*="grid-template-columns:repeat(3"],[style*="grid-template-columns: repeat(3"]{grid-template-columns:1fr 1fr!important}
+  [style*="grid-template-columns:repeat(4"],[style*="grid-template-columns: repeat(4"]{grid-template-columns:1fr 1fr!important}
+  .an-stats,.stat-grid,.stats-grid,.score-grid{grid-template-columns:repeat(2,1fr)!important}
+  .content{padding:12px!important}
+  .modal,.pred-modal,.flag-detail,[class*="-modal"]{width:calc(100vw - 24px)!important;max-width:calc(100vw - 24px)!important}
+  .an-grid-2,.an-grid-3{grid-template-columns:1fr!important}
+}
+</style>
+</head>
+<body>
+<!-- ── Unified UAS-Nav ───────────────────────────────────────── -->
+<style id="dc-unified-nav-styles">
+#dc-nav{display:flex;align-items:center;justify-content:space-between;padding:0 16px;height:44px;background:#0c0c0a;border-bottom:1px solid #1e1e18;position:sticky;top:0;z-index:500;font-family:'Inter',system-ui,sans-serif}
+#dc-nav-left{display:flex;align-items:center;gap:10px;min-width:0}
+#dc-nav-brand{font:700 13px 'JetBrains Mono',monospace;color:#f59e0b;text-decoration:none;letter-spacing:-.02em;flex-shrink:0}
+#dc-nav-sep{color:#2e2e26;font-size:12px;flex-shrink:0}
+#dc-nav-page{font:600 11px 'Inter',system-ui;color:#b8b0a0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:160px}
+
+#dc-hamburger{display:flex;align-items:center;justify-content:center;width:32px;height:32px;border-radius:6px;border:1px solid #2a2a22;background:none;color:#6b6358;cursor:pointer;transition:all .15s;flex-shrink:0;margin-left:auto}
+#dc-hamburger:hover{border-color:#3e3e34;color:#b8b0a0}
+#dc-hamburger.open{border-color:#f59e0b;color:#f59e0b;background:rgba(245,158,11,.08)}
+#dc-overlay{position:fixed;inset:0;z-index:498;background:rgba(0,0,0,.6);backdrop-filter:blur(4px);opacity:0;pointer-events:none;transition:opacity .25s}
+#dc-overlay.open{opacity:1;pointer-events:auto}
+#dc-drawer{position:fixed;top:0;right:0;bottom:0;z-index:499;width:260px;max-width:85vw;background:#111110;border-left:1px solid #2a2a22;transform:translateX(100%);transition:transform .3s cubic-bezier(.4,0,.2,1);display:flex;flex-direction:column;overflow:hidden}
+#dc-drawer.open{transform:translateX(0)}
+#dc-drawer-head{padding:16px;border-bottom:1px solid #1e1e18;display:flex;align-items:center;justify-content:space-between}
+#dc-drawer-brand{font:700 14px 'JetBrains Mono',monospace;color:#f59e0b;letter-spacing:-.02em}
+#dc-drawer-close{width:28px;height:28px;border-radius:6px;border:1px solid #2a2a22;background:none;color:#6b6358;cursor:pointer;font-size:16px;display:flex;align-items:center;justify-content:center;transition:all .15s}
+#dc-drawer-close:hover{color:#d62828;border-color:rgba(214,40,40,.3)}
+.dc-drawer-section{padding:12px 16px 4px;font:700 9px 'JetBrains Mono',monospace;color:#3e3e34;text-transform:uppercase;letter-spacing:.1em}
+.dc-drawer-item{display:flex;align-items:center;gap:10px;padding:9px 16px;color:#6b6358;text-decoration:none;font:400 12px 'Inter',system-ui;transition:all .15s;border-left:2px solid transparent}
+.dc-drawer-item:hover{color:#b8b0a0;background:rgba(255,255,255,.02);border-left-color:#2e2e26}
+.dc-drawer-item.dc-active{color:#22c55e;border-left-color:#22c55e;background:rgba(34,197,94,.04)}
+.dc-drawer-item.dc-ext{color:#3e3e34}
+.dc-drawer-item.dc-ext:hover{color:#6b6358}
+.dc-drawer-divider{height:1px;background:#1e1e18;margin:8px 16px}
+#dc-drawer-foot{padding:16px;border-top:1px solid #1e1e18;font:400 10px 'JetBrains Mono',monospace;color:#3e3e34;flex-shrink:0}#dc-drawer-body{flex:1;overflow-y:auto;overflow-x:hidden}
+</style>
+
+<nav id="dc-nav">
+  <div id="dc-nav-left">
+    <a id="dc-nav-brand" href="/" onclick="return dcNavBrandClick(event)">—</a>
+    <span id="dc-nav-sep" style="color:#2e2e26;font-size:11px;margin:0 4px">/</span>
+    <span id="dc-nav-page">—</span>
+  </div>
+  <button id="dc-hamburger" onclick="dcNavToggle()" aria-label="Menu">
+    <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round">
+      <line x1="1" y1="3" x2="13" y2="3"/><line x1="1" y1="7" x2="13" y2="7"/><line x1="1" y1="11" x2="13" y2="11"/>
+    </svg>
+  </button>
+</nav>
+
+<div id="dc-overlay" onclick="dcNavClose()"></div>
+<div id="dc-drawer">
+  <div id="dc-drawer-head">
+    <span id="dc-drawer-brand">—</span>
+    <button id="dc-drawer-close" onclick="dcNavClose()">✕</button>
+  </div>
+
+  <div id="dc-drawer-body">
+  <div class="dc-drawer-section">Forge — Due Diligence</div>
+  <a class="dc-drawer-item" href="https://uas-forge.com/browse/" data-page="browse">Browse Components</a>
+  <a class="dc-drawer-item" href="https://uas-forge.com/compare/" data-page="compare">Compare</a>
+  <a class="dc-drawer-item" href="https://uas-forge.com/compliance/" data-page="compliance">Compliance</a>
+  <a class="dc-drawer-item" href="https://uas-forge.com/dossier/" data-page="dossier">Dossier</a>
+  <a class="dc-drawer-item" href="https://uas-forge.com/platforms/" data-page="platforms">Platforms</a>
+  <a class="dc-drawer-item" href="https://uas-forge.com/regs/" data-page="regs">Regs</a>
+
+  <div class="dc-drawer-section">Forge — Tools</div>
+  <a class="dc-drawer-item" href="https://uas-forge.com/wingman/" data-page="wingman">Wingman AI</a>
+  <a class="dc-drawer-item" href="https://uas-forge.com/stack-builder/" data-page="stack-builder">Stack Builder</a>
+  <a class="dc-drawer-item" href="https://uas-forge.com/report/" data-page="report">Compliance Report</a>
+  <a class="dc-drawer-item" href="https://uas-forge.com/tools-home/" data-page="tools-home">All Tools</a>
+
+  <div class="dc-drawer-section">Forge — Intel</div>
+  <a class="dc-drawer-item" href="https://uas-forge.com/intel/" data-page="intel">Intel Hub</a>
+  <a class="dc-drawer-item" href="https://uas-forge.com/industry/" data-page="industry">Industry</a>
+  <a class="dc-drawer-item" href="https://uas-forge.com/tracker/" data-page="tracker">Contract Tracker</a>
+
+  <div class="dc-drawer-divider"></div>
+
+  <div class="dc-drawer-section">PIE — Pattern Intelligence</div>
+  <a class="dc-drawer-item" href="https://uas-patterns.com/patterns-home/" data-page="patterns-home">P.I.E Hub</a>
+  <a class="dc-drawer-item" href="https://uas-patterns.com/brief/" data-page="brief">Brief</a>
+  <a class="dc-drawer-item" href="https://uas-patterns.com/patterns/" data-page="patterns">Flags</a>
+  <a class="dc-drawer-item" href="https://uas-patterns.com/clock/" data-page="clock">UAS Clock</a>
+  <a class="dc-drawer-item" aria-disabled="true" data-page="ddg">DDG Tracker</a>
+
+  </div><!-- /dc-drawer-body -->
+</div>
+
+<script>
+(function(){
+  var path = location.pathname.replace(/\/$/, '').split('/').pop() || 'home';
+  var isPro = (function(){
+    try {
+      var tok = localStorage.getItem('forge_token') || localStorage.getItem('wingman_sub_token') || '';
+      if(!tok || tok.length < 20) return false;
+      var p = JSON.parse(atob(tok.split('.')[1] || tok));
+      var payload = p.payload || p;
+      return !!(payload.tier && payload.tier !== 'free' && (!payload.exp || payload.exp > Date.now()));
+    } catch(e){ return false; }
+  })();
+  var host = location.hostname;
+  var isForge = host.includes('builditmyself') || host.includes('forgeprole') || host === 'localhost' || host === '127.0.0.1';
+  var isPIE   = host.includes('findoutmyself') || host.includes('nvmillfindout') || host.includes('uas-intel');
+
+  // Set page label
+  var labels = {
+    'browse':'Browse','wingman':'Wingman','intel':'Intel Hub','compare':'Compare',
+    'compliance':'Compliance','dossier':'Dossier','platforms':'Platforms','regs':'Regs',
+    'stack-builder':'Stack Builder','report':'Compliance Report','tools-home':'Tools',
+    'industry':'Industry','tracker':'Contract Tracker','patterns-home':'P.I.E Hub',
+    'brief':'Brief','patterns':'Flags','clock':'UAS Clock','ddg':'DDG Tracker',
+    'pro':'Pro','start':'Getting Started','grants':'Grants','waiver':'Doc Builder',
+    'verify':'Verify','vault':'Vault','troubleshoot':'Troubleshoot'
+  };
+  var pageEl = document.getElementById('dc-nav-page');
+  if(pageEl) pageEl.textContent = labels[path] || document.title.split('—')[0].trim().split('·')[0].trim() || path;
+
+  // Brand link — goes to home of current domain
+  // Set brand name: Forge / Patterns / Patterns Pro
+  var brandName = isForge ? 'Forge' : isPIE ? 'Patterns' : 'UAS-';
+  var brandEl = document.getElementById('dc-nav-brand');
+  var drawerBrandEl = document.getElementById('dc-drawer-brand');
+  if(brandEl) brandEl.textContent = brandName;
+  if(drawerBrandEl) drawerBrandEl.textContent = brandName;
+
+  window.dcNavBrandClick = function(e){
+    e.preventDefault();
+    location.href = isForge ? 'https://uas-forge.com/' : isPIE ? 'https://uas-patterns.com/patterns-home/' : '/';
+  };
+
+
+
+  // Mark active drawer items
+  document.querySelectorAll('.dc-drawer-item').forEach(function(a){
+    if(a.dataset.page === path) a.classList.add('dc-active');
+  });
+
+  // Hamburger toggle
+  window.dcNavToggle = function(){
+    var open = document.getElementById('dc-drawer').classList.toggle('open');
+    document.getElementById('dc-overlay').classList.toggle('open', open);
+    document.getElementById('dc-hamburger').classList.toggle('open', open);
+  };
+  window.dcNavClose = function(){
+    document.getElementById('dc-drawer').classList.remove('open');
+    document.getElementById('dc-overlay').classList.remove('open');
+    document.getElementById('dc-hamburger').classList.remove('open');
+  };
+  // Esc to close
+  document.addEventListener('keydown', function(e){ if(e.key==='Escape') dcNavClose(); });
+})();
+</script>
+<!-- ── /Unified UAS-Nav ─────────────────────────────────────── -->
+
+<div class="app-container" style="flex-direction:column;">
+    <div class="mg-container">
+        <a href="/guides/" class="mg-back"><i class="ph ph-caret-left"></i> Implementation Guides</a>
+
+        <div class="mg-hero">
+            <h1><i class="ph ph-graph"></i> Mesh Radio Networking</h1>
+            <p>Set up multi-vehicle mesh networks with Doodle Labs, Silvus, or Microhard radios. From IP config to video streaming across a 5-drone swarm.</p>
+        </div>
+
+        <!-- JARGON -->
+        <div class="mg-section">
+            <div class="mg-section-title"><i class="ph ph-translate"></i> Jargon Buster</div>
+            <div class="mg-glossary">
+                <div class="mg-gloss-card"><h4>MANET</h4><p>Mobile Ad-hoc Network. A network where nodes (drones, GCS, soldiers) find each other and route traffic without infrastructure. Every mesh radio creates a MANET.</p></div>
+                <div class="mg-gloss-card"><h4>batman-adv</h4><p>Better Approach To Mobile Ad-hoc Networking. A Linux kernel module that handles mesh routing at Layer 2 (Ethernet frames). It's what Doodle Labs runs under the hood. Open source, well-documented.</p></div>
+                <div class="mg-gloss-card"><h4>TDMA</h4><p>Time-Division Multiple Access. Silvus radios use this — each node gets a time slot to transmit. Prevents collisions, gives deterministic latency. Unlike WiFi which is "yell and hope nobody else is yelling."</p></div>
+                <div class="mg-gloss-card"><h4>MIMO</h4><p>Multiple-Input Multiple-Output. Multiple antennas transmitting/receiving simultaneously. Silvus SC4200 uses 4x4 MIMO for higher throughput than single-antenna radios.</p></div>
+                <div class="mg-gloss-card"><h4>QoS</h4><p>Quality of Service. Prioritizing traffic types — video gets priority over telemetry which gets priority over bulk data. Critical when mesh bandwidth is shared across vehicles.</p></div>
+                <div class="mg-gloss-card"><h4>GCS Bridge</h4><p>The connection from your mesh network back to the Ground Control Station. Usually the GCS has its own mesh radio node, or connects via WiFi to a mesh gateway.</p></div>
+            </div>
+        </div>
+
+        <!-- VENDOR COMPARISON -->
+        <div class="mg-section">
+            <div class="mg-section-title"><i class="ph ph-scales"></i> Choose Your Radio</div>
+            <table class="mg-table">
+                <tr><th>Feature</th><th>Doodle Labs</th><th>Silvus</th><th>Microhard</th><th>Persistent Systems</th></tr>
+                <tr><td>OS</td><td>OpenWRT (Linux)</td><td>Custom Linux</td><td>Custom</td><td>Custom Linux</td></tr>
+                <tr><td>Mesh Protocol</td><td>batman-adv (L2)</td><td>Custom TDMA MAC</td><td>OFDM P2P/Mesh</td><td>Wave Relay</td></tr>
+                <tr><td>SSH Access</td><td>Yes (root)</td><td>Limited</td><td>No</td><td>No</td></tr>
+                <tr><td>Frequency</td><td>900MHz–6GHz</td><td>1.2–6GHz</td><td>900MHz/2.4GHz</td><td>1.2–6GHz</td></tr>
+                <tr><td>Drone Size</td><td>Mini fits 5"</td><td>SC4200 fits 10"+</td><td>pMDDL fits 7"</td><td>MPU5 fits 10"+</td></tr>
+                <tr><td>Approx Price</td><td>$1.5K–$5K</td><td>$5K–$15K</td><td>$1K–$3K</td><td>$8K–$20K</td></tr>
+                <tr><td>Best For</td><td>Customizable, R&D</td><td>Defense, high-throughput</td><td>Budget, P2P links</td><td>Large-scale military</td></tr>
+            </table>
+        </div>
+
+        <!-- SETUP: DOODLE LABS -->
+        <div class="mg-section">
+            <div class="mg-section-title"><i class="ph ph-plugs-connected"></i> Doodle Labs Setup</div>
+            <div class="mg-section-desc">Doodle Labs radios run OpenWRT. You SSH in and configure them like a Linux router.</div>
+
+            <div class="mg-code"><span class="c"># ═══ DOODLE LABS MESH RIDER — INITIAL CONFIG ═══</span>
+
+<span class="c"># 1. Connect radio to PC via Ethernet</span>
+<span class="c"># Default IP: 10.223.x.x (varies by model)</span>
+<span class="c"># Web UI: http://10.223.x.1</span>
+
+<span class="c"># 2. SSH in (the real power move)</span>
+ssh root@10.223.x.1
+<span class="c"># Default password: on label or 'doodlelabs'</span>
+
+<span class="c"># 3. Set unique mesh IP for this node</span>
+uci set network.mesh.ipaddr='192.168.168.11'   <span class="c"># Drone 1</span>
+<span class="c"># Drone 2 = .12, Drone 3 = .13, GCS = .1</span>
+uci commit network
+/etc/init.d/network restart
+
+<span class="c"># 4. Set mesh channel + bandwidth</span>
+uci set wireless.radio0.channel='36'            <span class="c"># All nodes MUST match</span>
+uci set wireless.radio0.bandwidth='20'          <span class="c"># 20MHz = reliable, 40MHz = faster</span>
+uci commit wireless
+wifi reload
+
+<span class="c"># 5. Verify mesh peers</span>
+batctl o                                        <span class="c"># Show batman-adv originator table</span>
+batctl n                                        <span class="c"># Show direct neighbors</span>
+ping 192.168.168.1                              <span class="c"># Ping GCS</span><span class="mg-code-label">Doodle Labs</span></div>
+
+            <div class="mg-info mg-info-blue"><i class="ph ph-info"></i><div><strong>Multi-vehicle tip:</strong> Give every node the same channel, bandwidth, and mesh SSID. Give each a unique mesh IP. batman-adv handles the rest — it discovers peers automatically and routes around failures. If drone 2 can't reach GCS directly, traffic routes through drone 1.</div></div>
+        </div>
+
+        <!-- VIDEO + TELEMETRY QoS -->
+        <div class="mg-section">
+            <div class="mg-section-title"><i class="ph ph-video-camera"></i> Video & Telemetry Streaming</div>
+            <div class="mg-code"><span class="c"># ═══ GStreamer VIDEO STREAM (on drone companion computer) ═══</span>
+
+<span class="c"># Stream camera over mesh network to GCS</span>
+gst-launch-1.0 v4l2src device=/dev/video0 ! \
+  video/x-raw,width=1280,height=720,framerate=30/1 ! \
+  x264enc tune=zerolatency bitrate=2000 ! \
+  rtph264pay ! \
+  udpsink host=192.168.168.1 port=5600
+
+<span class="c"># On GCS — receive with QGC or:</span>
+gst-launch-1.0 udpsrc port=5600 ! \
+  application/x-rtp ! rtph264depay ! avdec_h264 ! \
+  autovideosink
+
+<span class="c"># ═══ MAVLink TELEMETRY ROUTING ═══</span>
+
+<span class="c"># mavlink-router forwards FC telemetry over mesh</span>
+<span class="c"># Install: apt install mavlink-router (or build from source)</span>
+mavlink-routerd -e 192.168.168.1:14550 /dev/ttyUSB0:921600
+
+<span class="c"># This forwards MAVLink from FC (USB serial) to GCS over mesh</span>
+<span class="c"># GCS (QGC/Mission Planner) connects to UDP 14550</span><span class="mg-code-label">Streaming</span></div>
+
+            <div class="mg-code"><span class="c"># ═══ QoS PRIORITY (Doodle Labs) ═══</span>
+
+<span class="c"># SSH into radio, set DSCP-based QoS</span>
+<span class="c"># Video (high priority):</span>
+iptables -t mangle -A POSTROUTING -p udp --dport 5600 -j DSCP --set-dscp-class AF41
+
+<span class="c"># MAVLink telemetry (highest priority):</span>
+iptables -t mangle -A POSTROUTING -p udp --dport 14550 -j DSCP --set-dscp-class EF
+
+<span class="c"># Bulk data (low priority):</span>
+iptables -t mangle -A POSTROUTING -p tcp --dport 22 -j DSCP --set-dscp-class BE<span class="mg-code-label">QoS</span></div>
+        </div>
+
+        <!-- MULTI-DRONE -->
+        <div class="mg-section">
+            <div class="mg-section-title"><i class="ph ph-drone"></i> Multi-Drone Swarm Network</div>
+            <div class="mg-info mg-info-green"><i class="ph ph-check-circle"></i><div><strong>The full picture:</strong> Each drone has a mesh radio + companion computer + FC. The companion runs MAVROS (for FC telemetry) + GStreamer (for video) + your autonomy stack. All traffic flows over the mesh. The GCS sees every drone as if they're on a local network — because they are.</div></div>
+            <div class="mg-code"><span class="c"># ═══ EXAMPLE: 3-DRONE SWARM IP PLAN ═══</span>
+
+<span class="c"># GCS:     192.168.168.1   (mesh radio + laptop)</span>
+<span class="c"># Drone 1: 192.168.168.11  (mesh radio on companion)</span>
+<span class="c"># Drone 2: 192.168.168.12</span>
+<span class="c"># Drone 3: 192.168.168.13</span>
+
+<span class="c"># Each drone runs mavlink-router forwarding to GCS:</span>
+<span class="c"># Drone 1: mavlink-routerd -e 192.168.168.1:14551 /dev/ttyUSB0:921600</span>
+<span class="c"># Drone 2: mavlink-routerd -e 192.168.168.1:14552 /dev/ttyUSB0:921600</span>
+<span class="c"># Drone 3: mavlink-routerd -e 192.168.168.1:14553 /dev/ttyUSB0:921600</span>
+
+<span class="c"># QGC: Add 3 comm links → UDP 14551, 14552, 14553</span>
+<span class="c"># Each drone appears as a separate vehicle in QGC</span>
+
+<span class="c"># Video: each drone streams to different port</span>
+<span class="c"># Drone 1 → :5601, Drone 2 → :5602, Drone 3 → :5603</span><span class="mg-code-label">Swarm</span></div>
+        </div>
+
+        <div class="mg-info mg-info-yellow"><i class="ph ph-warning"></i><div><strong>Bandwidth reality check:</strong> A Doodle Labs Mini at 20MHz bandwidth gives ~12 Mbps usable throughput. H.264 720p30 at 2 Mbps eats 17% of that per drone. Three drones streaming = 50% of your mesh bandwidth on video alone. Plan accordingly — lower bitrate, use H.265, or stream only from the active ISR drone.</div></div>
+
+        <a href="/guides/" style="display:inline-flex;align-items:center;gap:6px;margin-top:24px;padding:10px 20px;background:var(--bg-panel);border:1px solid var(--border-color);border-radius:var(--radius-sm);color:var(--text-muted);text-decoration:none;font-size:13px;"><i class="ph ph-caret-left"></i> Back to Implementation Guides</a>
+    </div>
+</div>
+<script>document.getElementById('dark-mode-toggle')?.addEventListener('click',()=>{const c=document.documentElement.getAttribute('data-theme');const n=c==='dark'?'light':'dark';document.documentElement.setAttribute('data-theme',n);try{localStorage.setItem('dc-theme',n)}catch(e){}const i=document.getElementById('dark-mode-icon');if(i)i.className=n==='dark'?'ph ph-moon':'ph ph-sun';});</script>
+<!-- Analytics injected by build_static.py (unified _ANALYTICS_SNIPPET + _UNIFIED_NAV) -->
+</body>
+</html>

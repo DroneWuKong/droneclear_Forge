@@ -1,5 +1,92 @@
 # Changelog
 
+## [Session] - 2026-06-11 — De-duplicate the Patterns brief (drop the stacked "At a glance" card)
+
+### Changed
+- **`build_static.py` + `patterns.html`** — the Patterns/Flags board was showing
+  two brief cards back-to-back: the injected generic "At a glance" card
+  (`dash-brief.js`) and the page's own native brief panel (`renderBriefPanel` →
+  `#brief-inner`). Both rendered the same Critical/Warning/Total counts, so the
+  page read as redundant. Stopped injecting `dash-brief.js` on `patterns.html`
+  (it stays on `tracker`/`patterns-home`/`clock`, which have no native panel) and
+  folded the one piece the card carried that the native panel lacked — the
+  analyst-summary narrative — into `renderBriefPanel`. One brief now, not two.
+
+## [Session] - 2026-06-11 — Move point-of-reliance disclaimer to page bottom
+
+### Changed
+- **`build_static.py` (`inject_disclaimer`)** — the global "point of reliance"
+  disclaimer banner (general + "analytic signal — not an allegation" variant)
+  now injects just before `</body>` instead of immediately after the unified
+  nav. The big red box was crowding the actual data above the fold on Patterns/
+  PIE surfaces; the framing now sits at the foot of the page. No change to which
+  pages carry it (`_DISCLAIMER_PAGES`) or to the copy — placement only.
+
+## [Session] - 2026-06-11 — Public data-API reference + estimative-language lexicon
+
+### Added
+- **`/api-docs/` (api-docs.html) + `docs/api.md`** — first public documentation
+  of the `/api/data?type=` endpoint: response envelope, KV→static fallback
+  semantics, daily freshness contract (14:30 UTC), all ~40 dataset types
+  grouped (core PIE, predictions/accountability, lenses, intel/reference),
+  RSS feeds, fair-use terms. The worker allowlist in `workers/forge-data.js`
+  remains the source of truth — keep both docs in sync when adding a dataset.
+- **`/lexicon/` (lexicon.html)** — published estimative-language reference
+  (ICD 203-modeled): the four flag evidence tiers (PRIMARY SOURCE ≥90 /
+  STRONG INFERENCE 80–89 / ANALYTICAL 60–79 / SIGNAL <60), the seven-band
+  likelihood scale for predictions, judgment-confidence levels, source-type
+  taxonomy, and the likelihood-vs-confidence rule. Both pages canonical on
+  uas-patterns.com; registered in PAGES/SEO/slugs/sitemap.
+
+### Changed
+- **patterns.html** — flag-detail evidence-tier block now links to
+  `/lexicon/`; flags transparency footer buckets aligned to the published
+  four tiers (was 3 buckets with <0.8 lumped together) and footer links the
+  lexicon. (Companion change: Ai-Project `brief_generator.py` now enforces
+  the same lexicon in the daily brief prompt.)
+
+## [Session] - 2026-06-10 — Forge Hub stat fixes (display + caching)
+
+### Fixed
+- **forge-home.html (#91)** — Platform Browser module pill was hardcoded to the
+  stale `272`; corrected to `335` to match the hero stat row and the canonical
+  `forge-data` count (`platforms.json` / `manifest.json` = 335). The prior
+  build (#84) refreshed the hero (3,500→4,210 parts, 272→335 platforms,
+  34→43 categories) and the Parts Database card but missed this pill.
+- **build_static.py (#92)** — cache-bust `forge_database.json`. `_headers`
+  serves `/static/*` as `immutable, max-age=1yr` assuming a `?v=` buster, but
+  the DB was fetched as a bare `/static/forge_database.json` — so refreshed
+  parts/platform/category counts were pinned to a stale immutable-cached copy
+  (the hub flashed the correct hardcoded numbers, then snapped to stale
+  3,500/272/34). Now appends a content-hash buster `?v=<sha1[:10]>` to every
+  `forge_database.json` reference at build time — in HTML via `fix_paths`
+  (all pages/depths, after the relative-fetch rewrites, so it also catches the
+  absolute `/static/` literals in forge-home/index/mission-control/…) and in
+  the copied `.js` files (components.js, forge-static-adapter.js). A data
+  refresh now yields a new URL (cache miss → fresh) including for
+  already-cached clients; unchanged data keeps hitting cache.
+  `forge_database.schema.json` is untouched; the pass is idempotent.
+
+## [Session] - 2026-06-08 — Visible point-of-reliance disclaimers
+
+### Added
+- **build_static.py** — `inject_disclaimer()` injects a visible, non-dismissible
+  disclaimer banner at the top of the content on every risk-bearing surface
+  (compliance, procurement/regulatory, Patterns/PIE, threat/sanctions/gray-zone
+  intel, and the UAS Ecosystem Clock). Two variants:
+  - **General** (compliance/audit/regs/waiver/grants/verify/spec-sheets): "AI-assisted
+    public-source analysis. Not legal, procurement, export-control, airworthiness, or
+    operational advice. Compliance labels and risk scores are informational and may be
+    incomplete or stale. Verify against official sources, vendor attestations, and
+    qualified counsel before relying on them."
+  - **Patterns/threat** (patterns/pie-trends/brief/ttps/evasion/actors/adversary-bom/
+    mirroring/entity-graph/tracker/dossier/intel*/clock): the general line plus "Risk
+    labels are analytic signals, not allegations of unlawful conduct. They reflect
+    public-source indicators, confidence levels, and available data at the time generated."
+  - Self-contained styles (no per-page CSS-var dependence); reaches `uas-patterns.com`
+    via the shared Forge build. `market-lens` / `forecast-accountability` are skipped
+    (they already carry a prominent above-the-fold `.caveat-strong`).
+
 ## [Session] - 2026-04-13 — Full audit + enrichment + routing fixes
 
 ### Fixed

@@ -2,7 +2,7 @@
 
 Bidirectional component pricing endpoint for authorized partners.
 
-**Base URL:** `https://uas-forge.com/.netlify/functions/prices-api`
+**Base URL:** `https://uas-forge.com/api/prices` (same-origin Cloudflare Worker, routed via `functions/api/[[path]].js` → `workers/prices-api.js`)
 
 ---
 
@@ -117,7 +117,7 @@ Authorization: Bearer <your-api-key>
 
 ## Pipeline integration
 
-Submissions accumulate in `community_prices` (Netlify Blobs). The PIE pipeline reads this on each run to:
+Submissions accumulate under the `community_prices` key in the `PARTS_DB` Cloudflare KV namespace (see `wrangler.jsonc`). The PIE pipeline reads this on each run to:
 
 1. Update `price_usd` on matched components
 2. Feed community availability data into supply constraint flags

@@ -6,7 +6,7 @@ Reads:
   tools/mining/output/raw/rotorbuilds-*.jsonl       (hobbyist alias names)
 
 Writes:
-  DroneClear Components Visualizer/forge_parts_canonical.json
+  forge-source/forge_parts_canonical.json
 
 Output schema:
 {
@@ -55,7 +55,7 @@ from typing import Iterable
 
 
 RAW_DIR  = Path("tools/mining/output/raw")
-OUT_FILE = Path("DroneClear Components Visualizer/forge_parts_canonical.json")
+OUT_FILE = Path("forge-source/forge_parts_canonical.json")
 
 MIN_OVERLAP_SCORE = 0.55  # fraction of model tokens that must match
 

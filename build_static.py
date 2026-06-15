@@ -7,7 +7,7 @@ Builds static HTML pages for Netlify deployment from source files.
 - Assembles forge_database.json from handbook JSON files + local industry data
 - Strips {% load static %} and {% static 'file' %} template tags
 - Injects forge-static-adapter.js before any app scripts
-- Copies all assets to a build/ directory ready for Netlify
+- Copies all assets to a build/ directory ready for Cloudflare Pages
 """
 
 import os
@@ -16,9 +16,42 @@ import shutil
 import json
 import subprocess
 import sys
+import hashlib
 
-SRC_DIR = 'DroneClear Components Visualizer'
+SRC_DIR = 'forge-source'
 BUILD_DIR = 'build'
+
+# ── forge_database.json cache-buster ─────────────────────────────────────────
+# `/static/*` is served `immutable, max-age=1yr` (see _headers) on the
+# assumption that every asset URL carries a `?v=` buster. forge_database.json
+# was fetched WITHOUT one, so refreshed parts/platform/category counts stayed
+# pinned to a stale cached copy for up to a year — the page would flash the
+# correct hardcoded numbers, then snap to the cached-stale data. We append a
+# content-hash buster to every forge_database.json reference (HTML + JS) so a
+# data refresh produces a new URL (cache miss → fresh fetch) while unchanged
+# data keeps hitting cache. Computed lazily AFTER sync_handbook_data() has
+# written the merged DB, so the hash reflects the actually-deployed bytes.
+_DB_VERSION_CACHE = None
+# Match `forge_database.json` not already followed by `?` (idempotent) and not
+# part of a longer name (e.g. forge_database.schema.json is unaffected).
+_DB_BUSTER_RE = re.compile(r'forge_database\.json(?!\?)')
+
+
+def _db_version():
+    """Short content hash of the deployed forge_database.json (cached)."""
+    global _DB_VERSION_CACHE
+    if _DB_VERSION_CACHE is None:
+        try:
+            with open(os.path.join(SRC_DIR, 'forge_database.json'), 'rb') as f:
+                _DB_VERSION_CACHE = hashlib.sha1(f.read()).hexdigest()[:10]
+        except Exception:
+            _DB_VERSION_CACHE = '0'
+    return _DB_VERSION_CACHE
+
+
+def add_db_cache_buster(text):
+    """Append `?v=<hash>` to bare forge_database.json references."""
+    return _DB_BUSTER_RE.sub(lambda m: f'{m.group(0)}?v={_db_version()}', text)
 
 # Pages to process  [rebuild 2026-04-10]
 PAGES = {
@@ -26,6 +59,7 @@ PAGES = {
     'mission-control.html': 'index.html',      # / (home — The Bench)
     'academy.html': 'academy/index.html',
     'support.html': 'support/index.html',
+    'donate.html': 'donate/index.html',
     'audit.html': 'audit/index.html',
     'editor.html': 'library/index.html',
     'guide.html': 'guide/index.html',
@@ -43,6 +77,7 @@ PAGES = {
     'swarm-guide.html': 'swarm-guide/index.html',
     'swarm-selector.html': 'swarm/index.html',
     'guides-hub.html': 'guides/index.html',
+    'autonomy.html': 'autonomy/index.html',
     'fc-firmware-guide.html': 'fc-firmware-guide/index.html',
     'compliance.html': 'compliance/index.html',
     'spec-sheets.html': 'spec-sheets/index.html',
@@ -53,19 +88,19 @@ PAGES = {
     'cost.html': 'cost/index.html',
     'intel-home.html': 'intel/index.html',
     'intel.html': 'intel/feed/index.html',
-    'ddg.html': 'ddg/index.html',
+    # 'ddg.html': 'ddg/index.html',  # DDG (Defense Drone Gauntlet) temporarily disabled — re-enable by uncommenting
     'vault.html': 'vault/index.html',
     'troubleshoot.html': 'troubleshoot/index.html',  # Unlisted — no nav links
     'industry.html': 'industry/index.html',
-    'intel-defense.html': 'intel-defense/index.html',
     'intel-dfr.html': 'intel-dfr/index.html',
-    'intel-financial.html': 'intel-financial/index.html',
     'intel-commercial.html': 'intel-commercial/index.html',
     'payload-compare.html': 'payload-compare/index.html',
     'stack-builder.html': 'stack-builder/index.html',
+    'circuit-forge.html': 'circuit-forge/index.html',
     'tools.html': 'tools/index.html',
     'wingman.html': 'wingman/index.html',
     'start.html': 'start/index.html',
+    'forge-home.html': 'forge/index.html',
     'report.html': 'report/index.html',
     'waiver.html': 'waiver/index.html',
     'terms.html': 'terms/index.html',
@@ -91,9 +126,23 @@ PAGES = {
     'actors.html': 'actors/index.html',
     'ttps.html': 'ttps/index.html',
     'evasion.html': 'evasion/index.html',
+    'market-lens.html': 'market-lens/index.html',
+    'forecast-accountability.html': 'forecast-accountability/index.html',
+    'pie-trends.html': 'pie-trends/index.html',
+    'lexicon.html': 'lexicon/index.html',         # estimative-language reference
+    'api-docs.html': 'api-docs/index.html',       # /api/data reference (NOT /api/* — that's worker-routed)
     # Doctrine submission + audit (Cloudflare/Netlify-Function backed)
     'contribute-doctrine.html': 'contribute-doctrine/index.html',
     'audit-doctrine.html': 'audit-doctrine/index.html',
+    # ── PRIVATE gated area (Cloudflare Access on /private/*; see docs/PRIVATE_GATE.md) ──
+    # DDG is served ONLY here (the public /ddg/ route above stays disabled).
+    'private/index.html': 'private/index.html',
+    'private/dossiers.html': 'private/dossiers/index.html',
+    'private/supply-web.html': 'private/supply-web/index.html',
+    'private/data.html': 'private/data/index.html',
+    'private/components-bom.html': 'private/components-bom/index.html',
+    'private/drone-config.html': 'private/drone-config/index.html',
+    'ddg.html': 'private/ddg/index.html',
 }
 
 # Static assets to copy (JS, CSS, JSON, images)
@@ -173,14 +222,18 @@ _PAGE_SLUGS = {
     'patterns.html': 'patterns', 'patterns-home.html': 'patterns-home',
     'adversary-bom.html': 'adversary-bom', 'mirroring.html': 'mirroring',
     'actors.html': 'actors', 'ttps.html': 'ttps', 'evasion.html': 'evasion',
+    'market-lens.html': 'market-lens',
+    'forecast-accountability.html': 'forecast-accountability',
+    'pie-trends.html': 'pie-trends',
+    'lexicon.html': 'lexicon', 'api-docs.html': 'api-docs',
     'contribute-doctrine.html': 'contribute-doctrine', 'audit-doctrine.html': 'audit-doctrine',
-    'intel.html': 'intel-feed', 'intel-home.html': 'intel-home',
-    'intel-defense.html': 'intel-defense', 'intel-commercial.html': 'intel-commercial',
-    'intel-dfr.html': 'intel-dfr', 'intel-financial.html': 'intel-financial',
+    'intel.html': 'intel-feed', 'intel-home.html': 'intel-home', 'forge-home.html': 'forge',
+    'intel-commercial.html': 'intel-commercial',
+    'intel-dfr.html': 'intel-dfr',
     'wingman.html': 'wingman', 'browse.html': 'browse',
     'platforms.html': 'platforms', 'compare.html': 'compare',
     'cost.html': 'cost', 'payload-compare.html': 'payload-compare',
-    'stack-builder.html': 'stack-builder', 'industry.html': 'industry',
+    'stack-builder.html': 'stack-builder', 'circuit-forge.html': 'circuit-forge', 'industry.html': 'industry',
     'tools.html': 'tools', 'tools-home.html': 'tools-home',
     'software-library.html': 'software-library',
     'brief.html': 'brief', 'report.html': 'report',
@@ -292,6 +345,10 @@ _UNIFIED_NAV = r"""<!-- ── Unified UAS- Nav (5-domain accordion drawer) ─�
     <span id="dc-nav-page">—</span>
   </div>
   <div id="dc-nav-right">
+    <a class="dc-nav-top-btn" href="https://uas-forge.com/donate/" data-page="donate" title="Support the project">
+      <span class="dc-nav-top-ico">❤️</span>
+      <span class="dc-nav-top-label">Donate</span>
+    </a>
     <a class="dc-nav-top-btn" href="https://uas-forge.com/wingman/" data-page="wingman" title="Wingman AI">
       <span class="dc-nav-top-ico">🤖</span>
       <span class="dc-nav-top-label">Wingman</span>
@@ -306,7 +363,7 @@ _UNIFIED_NAV = r"""<!-- ── Unified UAS- Nav (5-domain accordion drawer) ─�
     <button id="dc-drawer-close" onclick="dcNavClose()">✕</button>
   </div>
 
-  <details class="dc-dom-group" data-host="uas-forge.com">
+  <details class="dc-dom-group" data-host="uas-forge.com" data-hub-href="https://uas-forge.com/forge/">
     <summary>
       <span class="dc-dom-ico">🔨</span>
       <div class="dc-dom-info">
@@ -316,17 +373,42 @@ _UNIFIED_NAV = r"""<!-- ── Unified UAS- Nav (5-domain accordion drawer) ─�
       <span class="dc-dom-chev">▶</span>
     </summary>
     <div class="dc-dom-sublinks">
+      <a class="dc-dom-sublink" href="https://uas-forge.com/forge/" data-page="forge">Forge Hub</a>
       <a class="dc-dom-sublink" href="https://uas-forge.com/browse/" data-page="browse">Parts Database</a>
       <a class="dc-dom-sublink" href="https://uas-forge.com/builder/" data-page="builder">Model Builder</a>
       <a class="dc-dom-sublink" href="https://uas-forge.com/platforms/" data-page="platforms">Platforms</a>
       <a class="dc-dom-sublink" href="https://uas-forge.com/compare/" data-page="compare">Compare</a>
       <a class="dc-dom-sublink" href="https://uas-forge.com/compliance/" data-page="compliance">Compliance Dashboard</a>
       <a class="dc-dom-sublink" href="https://uas-forge.com/stack-builder/" data-page="stack-builder">Stack Builder</a>
+      <a class="dc-dom-sublink" href="https://uas-forge.com/circuit-forge/" data-page="circuit-forge">Circuit Forge (AI)</a>
       <a class="dc-dom-sublink" href="https://uas-forge.com/cost/" data-page="cost">Cost Estimator</a>
+      <a class="dc-dom-sublink" href="https://uas-forge.com/waiver/" data-page="waiver">Document Builder</a>
       <a class="dc-dom-sublink" href="https://uas-forge.com/wingman/" data-page="wingman">Wingman AI</a>
       <a class="dc-dom-sublink" href="https://uas-forge.com/gallery/" data-page="gallery">Featured Builds</a>
       <a class="dc-dom-sublink" href="https://uas-forge.com/entity-graph/" data-page="entity-graph">Entity Graph</a>
       <a class="dc-dom-sublink" href="https://uas-forge.com/tools-home/" data-page="tools-home">All Tools</a>
+    </div>
+  </details>
+
+  <details class="dc-dom-group" data-host="uas-forge.com" data-hub-href="https://uas-forge.com/guides/">
+    <summary>
+      <span class="dc-dom-ico">📐</span>
+      <div class="dc-dom-info">
+        <div class="dc-dom-name">Guides</div>
+        <div class="dc-dom-url">uas-forge.com</div>
+      </div>
+      <span class="dc-dom-chev">▶</span>
+    </summary>
+    <div class="dc-dom-sublinks">
+      <a class="dc-dom-sublink" href="https://uas-forge.com/guides/" data-page="guides-hub">All Guides</a>
+      <a class="dc-dom-sublink" href="https://uas-forge.com/fc-firmware-guide/" data-page="fc-firmware-guide">FC Firmware</a>
+      <a class="dc-dom-sublink" href="https://uas-forge.com/mesh-guide/" data-page="mesh-guide">Mesh Radio</a>
+      <a class="dc-dom-sublink" href="https://uas-forge.com/tak-guide/" data-page="tak-guide">TAK / CoT</a>
+      <a class="dc-dom-sublink" href="https://uas-forge.com/slam-guide/" data-page="slam-guide">SLAM / VIO</a>
+      <a class="dc-dom-sublink" href="https://uas-forge.com/openhd-guide/" data-page="openhd-guide">OpenHD / FPV</a>
+      <a class="dc-dom-sublink" href="https://uas-forge.com/swarm-guide/" data-page="swarm-guide">Swarm</a>
+      <a class="dc-dom-sublink" href="https://uas-forge.com/cuas-guide/" data-page="cuas-guide">Counter-UAS</a>
+      <a class="dc-dom-sublink" href="https://uas-forge.com/ai-guide/" data-page="ai-guide">AI / Autonomy</a>
     </div>
   </details>
 
@@ -340,23 +422,37 @@ _UNIFIED_NAV = r"""<!-- ── Unified UAS- Nav (5-domain accordion drawer) ─�
       <span class="dc-dom-chev">▶</span>
     </summary>
     <div class="dc-dom-sublinks">
+      <a class="dc-dom-sublink" href="https://uas-patterns.com/patterns-home/" data-page="patterns-home">P.I.E Hub</a>
+      <a class="dc-dom-sublink" href="https://uas-patterns.com/brief/" data-page="brief">Daily Brief</a>
       <a class="dc-dom-sublink" href="https://uas-patterns.com/patterns/" data-page="patterns">Flags Dashboard</a>
+      <a class="dc-dom-sublink" href="https://uas-patterns.com/adversary-bom/" data-page="adversary-bom">Adversary BOM</a>
+      <a class="dc-dom-sublink" href="https://uas-patterns.com/mirroring/" data-page="mirroring">Component Mirroring</a>
+      <a class="dc-dom-sublink" href="https://uas-patterns.com/actors/" data-page="actors">Threat Actors</a>
+      <a class="dc-dom-sublink" href="https://uas-patterns.com/ttps/" data-page="ttps">TTP Defense Gap</a>
+      <a class="dc-dom-sublink" href="https://uas-patterns.com/evasion/" data-page="evasion">Sanctions-Evasion</a>
+      <a class="dc-dom-sublink" href="https://uas-patterns.com/market-lens/" data-page="market-lens">Market Lens</a>
+      <a class="dc-dom-sublink" href="https://uas-patterns.com/forecast-accountability/" data-page="forecast-accountability">Forecast Accountability</a>
+      <a class="dc-dom-sublink" href="https://uas-patterns.com/pie-trends/" data-page="pie-trends">PIE Trends</a>
     </div>
   </details>
 
-  <details class="dc-dom-group" data-host="uas-intel.com" data-hub-href="https://uas-intel.com/intel/">
+  <details class="dc-dom-group" data-host="uas-patterns.com" data-hub-href="https://uas-patterns.com/intel/">
     <summary>
       <span class="dc-dom-ico">📡</span>
       <div class="dc-dom-info">
         <div class="dc-dom-name">Intel</div>
-        <div class="dc-dom-url">uas-intel.com</div>
+        <div class="dc-dom-url">uas-patterns.com</div>
       </div>
       <span class="dc-dom-chev">▶</span>
     </summary>
     <div class="dc-dom-sublinks">
-      <a class="dc-dom-sublink" href="https://uas-intel.com/intel/feed/" data-page="intel-feed">Intel Feed</a>
-      <a class="dc-dom-sublink" href="https://uas-intel.com/industry/" data-page="industry">Industry Tracker</a>
-      <a class="dc-dom-sublink" href="https://uas-intel.com/tracker/" data-page="tracker">Contract Tracker</a>
+      <a class="dc-dom-sublink" href="https://uas-patterns.com/intel/feed/" data-page="intel-feed">Intel Feed</a>
+      <a class="dc-dom-sublink" href="https://uas-patterns.com/intel-commercial/" data-page="intel-commercial">Commercial Desk</a>
+      <a class="dc-dom-sublink" href="https://uas-patterns.com/intel-dfr/" data-page="intel-dfr">DFR Desk</a>
+      <a class="dc-dom-sublink" href="https://uas-patterns.com/industry/" data-page="industry">Industry Tracker</a>
+      <a class="dc-dom-sublink" href="https://uas-patterns.com/tracker/" data-page="tracker">Contract Tracker</a>
+      <a class="dc-dom-sublink" href="https://uas-patterns.com/grants/" data-page="grants">Grants</a>
+      <a class="dc-dom-sublink" href="https://uas-patterns.com/timeline/" data-page="timeline">Regulatory Timeline</a>
     </div>
   </details>
 
@@ -377,6 +473,25 @@ _UNIFIED_NAV = r"""<!-- ── Unified UAS- Nav (5-domain accordion drawer) ─�
     </div>
   </details>
 
+  <!-- Intel (gated) — links live in the public menu but require Cloudflare Access -->
+  <details class="dc-dom-group" data-host="uas-forge.com" data-hub-href="https://uas-forge.com/private/">
+    <summary>
+      <span class="dc-dom-ico">🔒</span>
+      <div class="dc-dom-info">
+        <div class="dc-dom-name">Intel (Private)</div>
+        <div class="dc-dom-url">uas-forge.com/private · gated</div>
+      </div>
+      <span class="dc-dom-chev">▶</span>
+    </summary>
+    <div class="dc-dom-sublinks">
+      <a class="dc-dom-sublink" href="https://uas-forge.com/private/ddg/" data-page="ddg">DDG Tracker</a>
+      <a class="dc-dom-sublink" href="https://uas-forge.com/private/dossiers/" data-page="dossiers">Intel Dossiers</a>
+      <a class="dc-dom-sublink" href="https://uas-forge.com/private/supply-web/" data-page="supply-web">Supply Web</a>
+      <a class="dc-dom-sublink" href="https://uas-forge.com/private/components-bom/" data-page="components-bom">Component BOMs</a>
+      <a class="dc-dom-sublink" href="https://uas-forge.com/private/drone-config/" data-page="drone-config">Build Configurator</a>
+    </div>
+  </details>
+
   <!-- Standalone quick links — not grouped under any domain -->
   <a class="dc-dom-standalone" href="https://uas-forge.com/wingman/" data-page="wingman">
     <span class="dc-dom-ico">🤖</span>
@@ -392,7 +507,7 @@ _UNIFIED_NAV = r"""<!-- ── Unified UAS- Nav (5-domain accordion drawer) ─�
       <div class="dc-dom-url">uas-patterns.com/clock/</div>
     </div>
   </a>
-  <a class="dc-dom-standalone" href="https://uas-patterns.com/ddg/" data-page="ddg">
+  <a class="dc-dom-standalone" aria-disabled="true" data-page="ddg">
     <span class="dc-dom-ico">🎯</span>
     <div class="dc-dom-info">
       <div class="dc-dom-name">DDG Tracker</div>
@@ -404,6 +519,13 @@ _UNIFIED_NAV = r"""<!-- ── Unified UAS- Nav (5-domain accordion drawer) ─�
     <div class="dc-dom-info">
       <div class="dc-dom-name">UAS- Hub</div>
       <div class="dc-dom-url">all 5 domains</div>
+    </div>
+  </a>
+  <a class="dc-dom-standalone" href="https://uas-forge.com/donate/" data-page="donate">
+    <span class="dc-dom-ico">❤️</span>
+    <div class="dc-dom-info">
+      <div class="dc-dom-name">Support / Donate</div>
+      <div class="dc-dom-url">keep the tools free</div>
     </div>
   </a>
 
@@ -436,14 +558,15 @@ _UNIFIED_NAV = r"""<!-- ── Unified UAS- Nav (5-domain accordion drawer) ─�
   var labels = {
     'browse':'Browse','wingman':'Wingman','intel':'Intel Hub','compare':'Compare',
     'compliance':'Compliance','dossier':'Dossier','platforms':'Platforms','regs':'Regs',
-    'stack-builder':'Stack Builder','report':'Compliance Report','tools-home':'Tools',
+    'stack-builder':'Stack Builder','circuit-forge':'Circuit Forge','report':'Compliance Report','tools-home':'Tools',
     'software-library':'Software Library','industry':'Industry','tracker':'Contract Tracker',
     'patterns-home':'P.I.E Hub','brief':'Brief','patterns':'Flags','clock':'UAS Clock','ddg':'DDG Tracker',
     'adversary-bom':'Adversary BOM','mirroring':'Component Mirroring','actors':'Threat Actors',
-    'ttps':'TTP Defense Gap','evasion':'Sanctions-Evasion',
+    'ttps':'TTP Defense Gap','evasion':'Sanctions-Evasion','market-lens':'Market Lens',
+    'forecast-accountability':'Forecast Accountability','pie-trends':'PIE Trends',
     'contribute-doctrine':'Contribute Doctrine','audit-doctrine':'Doctrine Audit',
-    'start':'Getting Started','grants':'Grants','waiver':'Doc Builder',
-    'verify':'Verify','vault':'Vault','troubleshoot':'Troubleshoot','support':'Support','hub':'Hub','gallery':'Featured Builds','entity-graph':'Entity Graph',
+    'start':'Getting Started','grants':'Grants','waiver':'Doc Builder','forge':'Forge Hub',
+    'verify':'Verify','vault':'Vault','troubleshoot':'Troubleshoot','support':'Support','donate':'Support','hub':'Hub','gallery':'Featured Builds','entity-graph':'Entity Graph',
     'builder':'Builder','cost':'Cost','analytics':'Analytics'
   };
   var pageEl = document.getElementById('dc-nav-page');
@@ -463,9 +586,9 @@ _UNIFIED_NAV = r"""<!-- ── Unified UAS- Nav (5-domain accordion drawer) ─�
   // Brand-click home target per domain
   window.dcNavBrandClick = function(e){
     e.preventDefault();
-    if(isForge)         location.href = 'https://uas-forge.com/';
+    if(isForge)         location.href = 'https://uas-forge.com/forge/';
     else if(isPatCom)   location.href = 'https://uas-patterns.com/patterns-home/';
-    else if(isIntel)    location.href = 'https://uas-intel.com/';
+    else if(isIntel)    location.href = 'https://uas-patterns.com/';
     else if(isHandbook) location.href = 'https://uas-handbook.com/';
     else                location.href = 'https://uas-forge.com/hub/';
   };
@@ -473,7 +596,7 @@ _UNIFIED_NAV = r"""<!-- ── Unified UAS- Nav (5-domain accordion drawer) ─�
   // Auto-expand the drawer group matching current host
   var currentHost = isForge    ? 'uas-forge.com'
                   : isPatCom   ? 'uas-patterns.com'
-                  : isIntel    ? 'uas-intel.com'
+                  : isIntel    ? 'uas-patterns.com'
                   : isHandbook ? 'uas-handbook.com'
                   : 'uas-forge.com';
   document.querySelectorAll('.dc-dom-group').forEach(function(g){
@@ -510,6 +633,126 @@ _UNIFIED_NAV = r"""<!-- ── Unified UAS- Nav (5-domain accordion drawer) ─�
 })();
 </script>
 <!-- ── /Unified UAS- Nav ─────────────────────────────────────────── -->"""
+
+
+# ── Global "point of reliance" disclaimer ────────────────────────────────
+# Forge/Patterns/Clock carry compliance labels, risk scores, threat/sanctions
+# signals and procurement intel that are AI-assisted, public-source analysis —
+# NOT legal/compliance findings or accusations. The protective language used to
+# live only in internal notes (compliance/README, research/*.md) and a couple of
+# page-specific caveats (market-lens, forecast-accountability). This injects a
+# visible, non-dismissible banner at the bottom of the content on every
+# risk-bearing surface so a reasonable reader sees the framing without the
+# big red box crowding out the actual data above the fold. Styles are
+# self-contained (no dependence on per-page CSS vars) so the banner renders
+# identically regardless of which template it lands in.
+_DISCLAIMER_CSS = """<style id="forge-disclaimer-styles">
+.forge-disclaimer{max-width:1100px;margin:14px auto 18px;padding:13px 16px;background:rgba(239,68,68,.07);border:1px solid rgba(239,68,68,.28);border-left:3px solid #ef4444;border-radius:6px;font-family:'DM Sans',system-ui,-apple-system,sans-serif;color:#b8b0a0;line-height:1.6;box-sizing:border-box}
+@media(max-width:1140px){.forge-disclaimer{margin-left:16px;margin-right:16px}}
+.forge-disclaimer__tag{display:block;font:700 10px 'JetBrains Mono',ui-monospace,monospace;letter-spacing:.12em;text-transform:uppercase;color:#f87171;margin-bottom:6px}
+.forge-disclaimer p{margin:0 0 6px;font-size:12px}
+.forge-disclaimer p:last-child{margin-bottom:0}
+.forge-disclaimer strong{color:#e8e2d6}
+.forge-disclaimer a{color:#f59e0b;text-decoration:underline;text-decoration-color:rgba(245,158,11,.4)}
+</style>"""
+
+# The general line — used on every risk-bearing surface.
+_DISCLAIMER_GENERAL = (
+    "<strong>AI-assisted public-source analysis.</strong> Not legal, procurement, "
+    "export-control, airworthiness, or operational advice. Compliance labels and "
+    "risk scores are informational and may be incomplete or stale. Verify against "
+    "official sources, vendor attestations, and qualified counsel before relying "
+    "on them."
+)
+
+# The Patterns/threat line — adds the "signals, not allegations" framing on
+# pages that score, flag, or rank companies / platforms / actors.
+_DISCLAIMER_SIGNALS = (
+    "<strong>Risk labels are analytic signals, not allegations of unlawful "
+    "conduct.</strong> They reflect public-source indicators, confidence levels, "
+    "and available data at the time generated."
+)
+
+_DISCLAIMER_TAGS = {
+    "compliance": "Informational — Not Legal or Compliance Advice",
+    "patterns": "Analytic Signal — Not an Allegation",
+}
+
+# Map source page → disclaimer variant.
+#   "compliance" → general line only (legal / procurement / export / airworthiness)
+#   "patterns"   → general line + "signals, not allegations" (scoring / threat / intel)
+# Pages that already carry a prominent above-the-fold `.caveat-strong` of their
+# own (market-lens, forecast-accountability) are intentionally omitted so we
+# don't stack two red banners.
+_DISCLAIMER_PAGES = {
+    # Compliance / procurement / regulatory
+    "compliance.html": "compliance",
+    "compliance-matrix.html": "compliance",
+    "audit.html": "compliance",
+    "audit-doctrine.html": "compliance",
+    "regs.html": "compliance",
+    "waiver.html": "compliance",
+    "grants.html": "compliance",
+    "verify.html": "compliance",
+    "spec-sheets.html": "compliance",
+    # Patterns / PIE / threat / sanctions / gray-zone / intel + the Clock
+    "patterns.html": "patterns",
+    "patterns-home.html": "patterns",
+    "pie-trends.html": "patterns",
+    "brief.html": "patterns",
+    "ttps.html": "patterns",
+    "evasion.html": "patterns",
+    "actors.html": "patterns",
+    "adversary-bom.html": "patterns",
+    "mirroring.html": "patterns",
+    "entity-graph.html": "patterns",
+    "tracker.html": "patterns",
+    "dossier.html": "patterns",
+    "intel.html": "patterns",
+    "intel-home.html": "patterns",
+    "intel-dfr.html": "patterns",
+    "intel-commercial.html": "patterns",
+    "clock.html": "patterns",
+}
+
+
+def _disclaimer_block(variant):
+    """Build the self-contained <style> + <aside> banner for a variant."""
+    tag = _DISCLAIMER_TAGS["patterns" if variant == "patterns" else "compliance"]
+    paras = "<p>" + _DISCLAIMER_GENERAL + "</p>"
+    if variant == "patterns":
+        paras += "\n  <p>" + _DISCLAIMER_SIGNALS + "</p>"
+    aside = (
+        '<aside class="forge-disclaimer" role="note" '
+        'data-test-id="forge-global-disclaimer">\n'
+        f'  <span class="forge-disclaimer__tag">{tag}</span>\n'
+        f'  {paras}\n'
+        '</aside>'
+    )
+    return _DISCLAIMER_CSS + "\n" + aside
+
+
+def inject_disclaimer(html, src_name):
+    """Inject the visible point-of-reliance disclaimer at the bottom of content.
+
+    Inserted just before </body> so the framing sits at the foot of the page
+    instead of pushing the actual data below a big red box above the fold.
+    Idempotent and a no-op for pages not in _DISCLAIMER_PAGES.
+    """
+    variant = _DISCLAIMER_PAGES.get(src_name)
+    if not variant:
+        return html
+    if 'data-test-id="forge-global-disclaimer"' in html:
+        return html
+
+    block = "\n" + _disclaimer_block(variant) + "\n"
+
+    # Prefer immediately before the closing </body> tag.
+    if '</body>' in html:
+        return html.replace('</body>', block + '</body>', 1)
+
+    # Fallback: append at the very end of the document.
+    return html + block
 
 
 def inject_nav(html, src_name):
@@ -612,7 +855,13 @@ def fix_paths(html, depth=0):
     
     # Fix nav links to use clean URLs
     html = html.replace('href="/"', 'href="/"')
-    
+
+    # Cache-bust forge_database.json (immutable /static/* otherwise pins stale
+    # parts/platform counts). Runs for ALL depths, after the relative-fetch
+    # rewrites above, so it also catches the absolute `/static/forge_database.json`
+    # literals used by forge-home.html, index.html, mission-control.html, etc.
+    html = add_db_cache_buster(html)
+
     return html
 
 
@@ -727,6 +976,11 @@ SEO_META = {
         'Wingman AI — Drone Troubleshooter & Wiring Analyzer',
         'AI-powered FPV drone troubleshooter. Upload photos for wiring analysis, get PID tuning help, firmware guidance, and real-time web search. Powered by Gemini.',
         'drone troubleshooter AI, FPV wiring analyzer, Betaflight help, drone repair assistant, PID tuning AI',
+    ),
+    'circuit-forge.html': (
+        'Circuit Forge — AI Hardware Design & Wiring Diagram Generator',
+        'Describe a hardware project in plain English and get a wired schematic, bill of materials, Arduino firmware, and an automated electrical-rule check. Grounded with canonical Arduino/ESP32/sensor pinouts.',
+        'AI circuit designer, wiring diagram generator, Arduino schematic AI, ESP32 wiring, bill of materials generator, electrical rule check',
     ),
     'pid-tuning.html': (
         'PID Tuning Tool — Blackbox FFT Spectral Analysis & Calculator',
@@ -923,6 +1177,16 @@ SEO_META = {
         'Live tracker for the Defense Drone Gauntlet (DDG) program. Competitor scoring, NDAA compliance posture, production readiness, funding depth, and G-II phase predictions for all 8 awardees.',
         'Defense Drone Gauntlet, DDG program, drone procurement, NDAA compliant drones, DoD drone competition, G-I G-II tracker',
     ),
+    'private/components-bom.html': (
+        'Component BOMs — DDG Platform Bill-of-Materials (Private)',
+        'Gated, best-effort per-platform bill-of-materials reconstruction for Drone Dominance / Gauntlet participant platforms, inverted from confidence-tagged OSINT supply-chain links.',
+        'DDG component BOM, drone bill of materials, supply chain intelligence, platform teardown',
+    ),
+    'private/drone-config.html': (
+        'Build Configurator — Constraint-Driven Auto-Builder (Private)',
+        'Gated parts auto-builder: set prop class, battery, payload and a flight-time target to get a compatibility-valid component build with estimated thrust-to-weight and endurance.',
+        'drone build configurator, auto-builder, FPV component selector, thrust to weight, flight time estimator',
+    ),
     'waiver.html': (
         'Drone Document Builder — Part 107, COI, Ops Manuals & More',
         'Generate drone operations documents: Part 107 Ops Manual, Certificate of Insurance summary, Drone Services Agreement, Property Access, Incident Report, Client NDA, and DFR-specific templates.',
@@ -968,15 +1232,15 @@ SEO_META = {
         'Track active SBIR and STTR grants for drone and UAS technology development. Filter by agency, phase, topic area, and award amount.',
         'SBIR drone grants, STTR UAS funding, drone R&D grants, DoD drone SBIR, UAS technology funding',
     ),
+    'forge-home.html': (
+        'Forge — Drone Build Hub, Parts Database & Compliance Toolkit',
+        'The Forge hub: 3,500+ vetted drone components, 272 platforms, a build planner with a 12-check compatibility engine, NDAA compliance tools, and integration guides for FPV, commercial, and defense UAS.',
+        'drone parts database, UAS build planner, NDAA compliance, drone component browser, FPV parts, Blue UAS platforms',
+    ),
     'vault.html': (
         'Forge Vault — Combat & Gray-Area UAS Components',
         'Restricted access database of 580+ combat, tactical, and gray-area drone components including MAFIA FPV, Ukrainian wartime hardware, and loitering munition subsystems.',
         'combat drone parts, FPV wartime components, MAFIA drone, Ukrainian FPV, loitering munition components',
-    ),
-    'intel-defense.html': (
-        'Defense Intel Feed — DoD UAS Contracts & Programs',
-        'Defense-focused drone intelligence: DoD contract awards, program updates, NDAA procurement signals, Blue UAS adoption, and military UAS developments.',
-        'DoD drone contracts, military UAS intelligence, drone defense procurement, NDAA programs, Blue UAS contracts',
     ),
     'intel-commercial.html': (
         'Commercial Intel Feed — UAS Industry News & Signals',
@@ -987,11 +1251,6 @@ SEO_META = {
         'DFR Intel Feed — Drone as First Responder Programs',
         'Intelligence feed for Drone as First Responder programs: public safety procurement, DFR platform deployments, regulatory approvals, and agency adoption.',
         'drone first responder, DFR program, public safety drone, police drone procurement, DFR platform',
-    ),
-    'intel-financial.html': (
-        'Financial Intel Feed — Drone Industry Funding & M&A',
-        'Drone industry financial intelligence: funding rounds, valuations, M&A deals, SPAC activity, earnings signals, and investor activity across the UAS sector.',
-        'drone funding rounds, UAS investment, drone M&A, FPV industry finance, drone startup funding',
     ),
     'contribute.html': (
         'Contribute to Forge — Submit Parts & Intelligence',
@@ -1007,6 +1266,16 @@ SEO_META = {
         'Software Library — Drone & UAS Tools — Forge',
         'Every configurator, GCS, simulator, and firmware tool for FPV, commercial UAS, and defense platforms. Betaflight, QGroundControl, Mission Planner, ELRS, and 40+ more with direct download links.',
         'drone software, FPV configurator, ground control station, Betaflight configurator, ELRS configurator, Mission Planner, QGroundControl, drone tools download',
+    ),
+    'lexicon.html': (
+        'Estimative Language — How PIE Expresses Confidence & Likelihood',
+        'The fixed lexicon behind every PIE flag, prediction, and brief judgment: evidence tiers, ICD 203-style likelihood bands, confidence levels, and source types.',
+        'estimative language, intelligence confidence levels, ICD 203, PIE methodology, analytic standards, likelihood scale',
+    ),
+    'api-docs.html': (
+        'Data API — Machine-Readable PIE Intelligence & Forge Datasets',
+        'Free JSON API for PIE flags, the daily brief, predictions, trends, entity graph, and the Forge parts database. One endpoint, no key, refreshed daily.',
+        'drone intelligence API, PIE flags JSON, UAS supply chain data API, drone parts database API, open intelligence data',
     ),
     'privacy.html': (
         'Privacy Policy — Forge Drone Intelligence Platform',
@@ -1047,10 +1316,10 @@ def inject_seo(html, src_name, dst_path):
         description = description.replace(_PART_COUNT_PLACEHOLDER, count_str)
 
     clean_path = dst_path.replace('index.html', '')
-    # Patterns pages live on uas-patterns.com (Pro merged — no separate .pro site).
-    # Intel pages live on uas-intel.com (Phase 2B split — dedicated Netlify site).
-    # Main Forge tooling lives on uas-forge.com. Legacy nvmill* domains
-    # 301 → new ones during the transition window (see netlify.toml).
+    # Patterns + Intel pages both live on uas-patterns.com (intel merged into
+    # patterns — no separate uas-intel.com site, no separate .pro site).
+    # Main Forge tooling lives on uas-forge.com. Legacy nvmill*/uas-intel.com
+    # domains 301 → new ones across (see _redirects).
     CANONICAL_OVERRIDES = {
         # UAS- hub — cross-domain landing page, canonical on uas-forge.com
         'hub/':            'https://uas-forge.com/hub/',
@@ -1062,17 +1331,18 @@ def inject_seo(html, src_name, dst_path):
         'ddg/':            'https://uas-patterns.com/ddg/',
         'brief/':          'https://uas-patterns.com/brief/',
         'analytics/':      'https://uas-patterns.com/analytics/',
-        # Intel — uas-intel.com (Phase 2B split, dedicated Netlify site)
-        'intel/':              'https://uas-intel.com/intel/',
-        'intel/feed/':         'https://uas-intel.com/intel/feed/',
-        'intel-defense/':      'https://uas-intel.com/intel-defense/',
-        'intel-commercial/':   'https://uas-intel.com/intel-commercial/',
-        'intel-dfr/':          'https://uas-intel.com/intel-dfr/',
-        'intel-financial/':    'https://uas-intel.com/intel-financial/',
-        'industry/':           'https://uas-intel.com/industry/',
-        'tracker/':            'https://uas-intel.com/tracker/',
-        'timeline/':           'https://uas-intel.com/timeline/',
+        'lexicon/':        'https://uas-patterns.com/lexicon/',
+        'api-docs/':       'https://uas-patterns.com/api-docs/',
+        # Intel — merged into uas-patterns.com
+        'intel/':              'https://uas-patterns.com/intel/',
+        'intel/feed/':         'https://uas-patterns.com/intel/feed/',
+        'intel-commercial/':   'https://uas-patterns.com/intel-commercial/',
+        'intel-dfr/':          'https://uas-patterns.com/intel-dfr/',
+        'industry/':           'https://uas-patterns.com/industry/',
+        'tracker/':            'https://uas-patterns.com/tracker/',
+        'timeline/':           'https://uas-patterns.com/timeline/',
         # Main Forge — uas-forge.com
+        'forge/':              'https://uas-forge.com/forge/',
         'browse/':             'https://uas-forge.com/browse/',
         'builder/':            'https://uas-forge.com/builder/',
         'compare/':            'https://uas-forge.com/compare/',
@@ -1082,6 +1352,7 @@ def inject_seo(html, src_name, dst_path):
         'payload-compare/':    'https://uas-forge.com/payload-compare/',
         'platforms/':          'https://uas-forge.com/platforms/',
         'stack-builder/':      'https://uas-forge.com/stack-builder/',
+        'circuit-forge/':      'https://uas-forge.com/circuit-forge/',
         'spec-sheets/':        'https://uas-forge.com/spec-sheets/',
         'dossier/':            'https://uas-forge.com/dossier/',
         'grants/':             'https://uas-forge.com/grants/',
@@ -1163,6 +1434,7 @@ def generate_sitemap(pages):
     priority_map = {
         'mission-control.html': '1.0',
         'index.html': '0.9', 'platforms.html': '0.9', 'wingman.html': '0.9',
+        'circuit-forge.html': '0.8',
         'pid-tuning.html': '0.8', 'tools.html': '0.8', 'compliance.html': '0.8',
         'intel.html': '0.8', 'industry.html': '0.8',
         'compare.html': '0.7', 'browse.html': '0.7',
@@ -1295,30 +1567,69 @@ def sync_handbook_data():
             print("  Refusing to merge into a structurally broken database — aborting sync")
             return False
 
-    # Replace components from handbook
-    # Component categories to sync from handbook
-    COMPONENT_CATEGORIES = [
-        'antennas', 'batteries', 'escs', 'flight_controllers', 'fpv_cameras',
-        'frames', 'gps_modules', 'motors', 'propellers', 'receivers',
-        'stacks', 'video_transmitters', 'mesh_radios',
-        'companion_computers', 'integrated_stacks', 'counter_uas',
-        'esad', 'lidar', 'sensors', 'thermal_cameras',
-        'c2_datalinks', 'ew_systems', 'navigation_pnt',
-        'ai_accelerators', 'ground_control_stations',
-    ]
+    # Sync EVERY component category present in parts-db — never a hardcoded
+    # allowlist. The previous static COMPONENT_CATEGORIES list (25 categories)
+    # silently froze the site's coverage while parts-db — and the canonical
+    # forge-data mirror built from it by Ai-Project/scripts/merge-forge-data.py —
+    # carried far more. That under-reported the catalog (the site showed
+    # 4,093 parts / 34 categories against the canonical 4,210 / 43) and let the
+    # two surfaces drift apart. Discover categories dynamically so the site and
+    # forge-data can never diverge on category coverage again.
+    #
+    # Files in parts-db that are NOT component categories and must be skipped:
+    #   drone_models / build_guides  — surfaced separately (platforms, guides)
+    #   platform_images              — a platform→image asset lookup (a dict)
+    #   drone_parts_schema_v3        — the schema, not data
+    # Any other non-list file is treated as an asset and skipped too.
+    NON_COMPONENT_FILES = {
+        'drone_models', 'build_guides', 'platform_images', 'drone_parts_schema_v3',
+    }
+    discovered = []
+    for fname in sorted(os.listdir(parts_dir)):
+        if not fname.endswith('.json'):
+            continue
+        stem = fname[:-5]
+        if stem in NON_COMPONENT_FILES:
+            continue
+        with open(os.path.join(parts_dir, fname), 'r', encoding='utf-8') as f:
+            data = json.load(f)
+        if not isinstance(data, list):
+            continue  # asset / lookup file, not a component category
+        # MERGE: handbook data wins for existing entries, but keep local-only entries
+        handbook_names = {e.get('name', '').lower() for e in data}
+        local_only = [e for e in forge_db['components'].get(stem, [])
+                      if e.get('name', '').lower() not in handbook_names]
+        forge_db['components'][stem] = data + local_only
+        discovered.append(stem)
+        print(f"  {stem}: {len(data)} from handbook + {len(local_only)} local-only = {len(forge_db['components'][stem])}")
+    print(f"  → {len(discovered)} component categories discovered from parts-db (no allowlist)")
 
-    for cat in COMPONENT_CATEGORIES:
-        json_path = os.path.join(parts_dir, f'{cat}.json')
-        if os.path.exists(json_path):
-            with open(json_path, 'r', encoding='utf-8') as f:
-                data = json.load(f)
-            if isinstance(data, list):
-                # MERGE: handbook data wins for existing entries, but keep local-only entries
-                handbook_names = {e.get('name', '').lower() for e in data}
-                local_only = [e for e in forge_db['components'].get(cat, [])
-                              if e.get('name', '').lower() not in handbook_names]
-                forge_db['components'][cat] = data + local_only
-                print(f"  {cat}: {len(data)} from handbook + {len(local_only)} local-only = {len(forge_db['components'][cat])}")
+    # Anti-drift gate: the merged catalog must carry AT LEAST every parts-db
+    # component record (>= because curated local-only entries are additive).
+    # If it carries fewer, a category was dropped or a merge bug ate records —
+    # fail the sync rather than silently ship a short catalog and let the site
+    # under-report itself against the canonical forge-data mirror again.
+    parts_db_component_total = 0
+    parts_db_component_cats = 0
+    for fname in os.listdir(parts_dir):
+        if not fname.endswith('.json') or fname[:-5] in NON_COMPONENT_FILES:
+            continue
+        with open(os.path.join(parts_dir, fname), 'r', encoding='utf-8') as f:
+            _d = json.load(f)
+        if isinstance(_d, list):
+            parts_db_component_total += len(_d)
+            parts_db_component_cats += 1
+    merged_component_total = sum(len(v) for v in forge_db['components'].values())
+    if (len(forge_db['components']) < parts_db_component_cats
+            or merged_component_total < parts_db_component_total):
+        print(f"  ERROR: catalog parity drift — merged "
+              f"{merged_component_total} parts / {len(forge_db['components'])} categories "
+              f"< parts-db {parts_db_component_total} / {parts_db_component_cats}. "
+              f"Refusing to ship a short catalog.")
+        shutil.rmtree(DATA_CLONE_DIR, ignore_errors=True)
+        return False
+    print(f"  parity OK: {merged_component_total} parts / {len(forge_db['components'])} "
+          f"categories ≥ parts-db {parts_db_component_total} / {parts_db_component_cats}")
 
     # MERGE drone_models from handbook (don't overwrite local-only entries)
     models_path = os.path.join(parts_dir, 'drone_models.json')
@@ -1461,6 +1772,161 @@ def sync_handbook_data():
     return True
 
 
+def sync_private_dossiers():
+    """Pull the OSINT dossiers from the PRIVATE Ai-Project repo into
+    build/private/dossiers/ at build time. The markdown is NEVER committed to
+    this (forge) repo — it only exists in the gated build output, served behind
+    Cloudflare Access (/private/*). Source resolution:
+      1. sibling checkout ../Ai-Project/research (local/dev), else
+      2. shallow clone via GITHUB_PAT (CI).
+    If neither is available, the dossier viewer degrades to its 404 message.
+    """
+    import glob, tempfile
+    print("  Syncing private dossiers from Ai-Project...")
+    research = None
+    sibling = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'Ai-Project', 'research')
+    tmp_clone = None
+    if os.path.isdir(sibling):
+        research = sibling
+        print("    using sibling ../Ai-Project/research")
+    else:
+        pat = os.environ.get('GITHUB_PAT', '')
+        if not pat:
+            print("    SKIP: no sibling checkout and no GITHUB_PAT — dossiers omitted from build")
+            return False
+        tmp_clone = tempfile.mkdtemp(prefix='aiproj_')
+        url = DATA_REPO.replace('https://', f'https://x-access-token:{pat}@')
+        # On a Pages preview build, prefer the matching Ai-Project branch (e.g.
+        # the dossiers live on a feature branch before PR merge). CF sets
+        # CF_PAGES_BRANCH; AI_PROJECT_REF is a manual override. Fall back to the
+        # repo default branch (production / merged state).
+        refs = []
+        for r in (os.environ.get('AI_PROJECT_REF'), os.environ.get('CF_PAGES_BRANCH')):
+            r = (r or '').strip()
+            if r and r not in refs:
+                refs.append(r)
+        refs.append(None)  # repo default branch, tried last (production state)
+        print(f"    dossier clone refs (in order): {[r or 'default' for r in refs]}")
+        cloned = False
+        for ref in refs:
+            cmd = ['git', 'clone', '--depth', '1', '--filter=blob:none']
+            if ref:
+                cmd += ['--branch', ref]
+            try:
+                subprocess.run(cmd + [url, tmp_clone],
+                               check=True, capture_output=True, text=True, timeout=180)
+                research = os.path.join(tmp_clone, 'research')
+                print(f"    cloned Ai-Project ref={ref or 'default'}")
+                cloned = True
+                break
+            except Exception as e:
+                msg = (getattr(e, 'stderr', '') or str(e)).strip().splitlines()[-1:] or ['']
+                print(f"    ref={ref or 'default'} not usable ({msg[0]})")
+                shutil.rmtree(tmp_clone, ignore_errors=True)
+                tmp_clone = tempfile.mkdtemp(prefix='aiproj_')
+        if not cloned:
+            print("    SKIP: clone failed for all refs — dossiers omitted")
+            shutil.rmtree(tmp_clone, ignore_errors=True)
+            return False
+
+    out_dir = os.path.join(BUILD_DIR, 'private', 'dossiers')
+    os.makedirs(out_dir, exist_ok=True)
+    SKIP = {'_TEMPLATE.md', 'README.md'}
+
+    def title_of(path):
+        try:
+            for line in open(path, encoding='utf-8'):
+                if line.startswith('# '):
+                    return line[2:].split('—')[0].strip()
+        except Exception:
+            pass
+        return os.path.basename(path)[:-3]
+
+    # (source glob, output slug-prefix, group label)
+    specs = [
+        (os.path.join(research, 'profiles', '*.md'), '', 'Company dossiers'),
+        (os.path.join(research, 'ddg_supply_chain_intel.md'), '', 'Cross-cutting'),
+        (os.path.join(research, 'ddg_deep_dig.md'), '', 'Cross-cutting'),
+    ]
+    index, n = [], 0
+    seen = set()
+    for pattern, _pref, group in specs:
+        for src in sorted(glob.glob(pattern)):
+            fn = os.path.basename(src)
+            if fn in SKIP or fn in seen:
+                continue
+            seen.add(fn)
+            slug = fn[:-3]
+            shutil.copy2(src, os.path.join(out_dir, fn))
+            g = 'Cross-cutting' if fn in ('ddg2-roster.md',) else group
+            index.append({'slug': slug, 'title': title_of(src), 'group': g})
+            n += 1
+    # sort: Company dossiers first (alpha), Cross-cutting last
+    index.sort(key=lambda d: (d['group'] != 'Company dossiers', d['title'].lower()))
+    with open(os.path.join(out_dir, 'index.json'), 'w', encoding='utf-8') as f:
+        json.dump(index, f, separators=(',', ':'))
+
+    # Also pull the structured supplier->platform web that drives the gated
+    # /private/supply-web/ visual. Same gate, same never-committed rule.
+    repo_root = os.path.dirname(research.rstrip('/'))
+    supply_src = os.path.join(repo_root, 'data', 'ddg_supply_links.json')
+    if os.path.isfile(supply_src):
+        priv_dir = os.path.join(BUILD_DIR, 'private')
+        os.makedirs(priv_dir, exist_ok=True)
+        shutil.copy2(supply_src, os.path.join(priv_dir, 'supply_links.json'))
+        print("    Copied ddg_supply_links.json to build/private/supply_links.json")
+    else:
+        print("    NOTE: data/ddg_supply_links.json not found — supply-web page will show empty state")
+
+    # Pull the genuinely-private Ai-Project datasets (never on public /api/data)
+    # into build/private/data/ for the gated Intel Data browser. Each entry:
+    #   (source path under the repo, output filename, label, one-line description)
+    PRIVATE_DATASETS = [
+        ('data/gur_teardowns.json', 'gur_teardowns.json', 'GUR Teardowns (raw)',
+         'Raw adversary teardown BOMs — the source the public Adversary BOM lens is derived from.'),
+        ('data/ownership_graph.json', 'ownership_graph.json', 'Ownership Graph',
+         'Who-owns-who semiconductor acquisition chains behind drone silicon.'),
+        ('data/component_platform_map.json', 'component_platform_map.json', 'Component → Platform Map',
+         'Which components sit inside which platforms (feeds the mirroring index).'),
+        ('data/grayzone/entities.json', 'grayzone_entities.json', 'Gray-Zone Entities',
+         'Gray-zone actor tracking — entities under watch.'),
+        ('data/grayzone/risk_scores.json', 'grayzone_risk_scores.json', 'Gray-Zone Risk Scores',
+         'Risk scoring for tracked gray-zone entities.'),
+        ('data/grayzone/indicators.json', 'grayzone_indicators.json', 'Gray-Zone Indicators',
+         'Indicators feeding the gray-zone risk model.'),
+        ('data/intel-db/vendor_pricing_flir_czi.json', 'vendor_pricing_flir_czi.json', 'Vendor Pricing — FLIR / CZI',
+         'Collected vendor pricing intel (Teledyne FLIR / CZI).'),
+        ('data/intel-db/vendor_pricing_skydio.json', 'vendor_pricing_skydio.json', 'Vendor Pricing — Skydio',
+         'Collected vendor pricing intel (Skydio).'),
+    ]
+    data_out = os.path.join(BUILD_DIR, 'private', 'data')
+    os.makedirs(data_out, exist_ok=True)
+    data_index = []
+    for rel, outname, label, desc in PRIVATE_DATASETS:
+        src = os.path.join(repo_root, rel)
+        if os.path.isfile(src):
+            shutil.copy2(src, os.path.join(data_out, outname))
+            data_index.append({'file': outname, 'label': label, 'desc': desc,
+                               'bytes': os.path.getsize(src)})
+    with open(os.path.join(data_out, 'index.json'), 'w', encoding='utf-8') as f:
+        json.dump(data_index, f, separators=(',', ':'))
+    print(f"    Copied {len(data_index)}/{len(PRIVATE_DATASETS)} private datasets to build/private/data/")
+    # Manufacturer-published / first-party per-platform BOM rows (same
+    # supplier->feeds schema). Kept separate from ddg_supply_links.json so the
+    # Supply Web graph stays third-party-only; the Component BOMs page merges both.
+    pbom_src = os.path.join(repo_root, 'data', 'platform_boms.json')
+    if os.path.isfile(pbom_src):
+        priv_dir = os.path.join(BUILD_DIR, 'private')
+        os.makedirs(priv_dir, exist_ok=True)
+        shutil.copy2(pbom_src, os.path.join(priv_dir, 'platform_boms.json'))
+        print("    Copied platform_boms.json to build/private/platform_boms.json")
+    else:
+        print("    NOTE: data/platform_boms.json not found — Component BOMs page falls back to supply_links only")
+    if tmp_clone:
+        shutil.rmtree(tmp_clone, ignore_errors=True)
+    print(f"    Copied {n} dossiers + index.json to build/private/dossiers/")
+    return True
+
 
 def build():
     # Step 0: Sync data from handbook repo
@@ -1500,7 +1966,17 @@ def build():
             continue
         src = os.path.join(SRC_DIR, fname)
         dst = os.path.join(BUILD_DIR, 'static', fname)
-        shutil.copy2(src, dst)
+        # JS files (components.js, forge-static-adapter.js, …) fetch
+        # forge_database.json by absolute path — bust it the same as the HTML
+        # so they don't read a stale immutable-cached copy. Other assets copy
+        # verbatim.
+        if ext == '.js':
+            with open(src, 'r', encoding='utf-8') as _f:
+                _js = _f.read()
+            with open(dst, 'w', encoding='utf-8') as _f:
+                _f.write(add_db_cache_buster(_js))
+        else:
+            shutil.copy2(src, dst)
         copied += 1
 
     print(f"  Copied {copied} static assets, skipped {skipped} gated files")
@@ -1515,6 +1991,8 @@ def build():
                         'adversary_bom.json', 'component_mirroring_index.json',
                         'sanctions_evasion_graph.json', 'actor_fingerprints.json',
                         'ttp_counter_gap.json', 'threat_scores.json',
+                        'market_lens.json',
+                        'prediction_outcomes.json', 'calibration_scores.json',
                         # Health + health history
                         'miner_health.json', 'miner_registry.json']
     for fname in ROOT_INTEL_FILES:
@@ -1564,8 +2042,31 @@ def build():
         html = strip_baked_analytics(html)
         html = fix_paths(html, depth)
         html = inject_seo(html, src_name, dst_path)
-        html = inject_adapter(html, depth)
+        # forge-static-adapter intercepts /api/* and returns [] for /api/data
+        # Skip injection for PIE/intel pages that exclusively use /api/data
+        _NO_ADAPTER = {
+            'patterns.html','brief.html','patterns-home.html',
+            'intel.html','intel-home.html',
+            'intel-dfr.html','intel-commercial.html',
+            'clock.html','entity-graph.html','analytics.html',
+            'adversary-bom.html','mirroring.html','actors.html',
+            'ttps.html','evasion.html',
+            # Circuit Forge talks only to the live /api/wingman CF Worker; the
+            # static adapter would intercept /api/* and return [] for it.
+            'circuit-forge.html',
+        }
+        if src_name not in _NO_ADAPTER:
+            html = inject_adapter(html, depth)
         html = inject_analytics(html, src_name)
+        html = inject_disclaimer(html, src_name)
+        # Generated "At a glance" brief on the dash.uas-forge.com intel surfaces
+        # (computed summary + optional analyst narrative; see dash-brief.js). Bump
+        # ?v= when dash-brief.js changes — /static/* is immutable-cached.
+        # NOTE: patterns.html is intentionally excluded — its native brief panel
+        # (renderBriefPanel → #brief-inner) already shows the same counts + analyst
+        # summary, so injecting the card there just stacked a redundant duplicate.
+        if src_name in {'tracker.html', 'patterns-home.html', 'clock.html'}:
+            html = html.replace('</body>', '  <script defer src="/static/dash-brief.js?v=3"></script>\n</body>', 1)
         html = fix_nav_links(html, depth)
         html = rewrite_legacy_domains(html)
         
@@ -1591,8 +2092,8 @@ def build():
         shutil.copy2(sw_src, os.path.join(BUILD_DIR, 'sw.js'))
         print(f"  Copied sw.js to build root")
     
-    # netlify.toml lives in the repo root — do not overwrite it from the build script.
-    # All redirect rules are maintained in the root netlify.toml.
+    # Redirect + header rules live in the repo root _redirects / _headers
+    # (Cloudflare Pages format). Netlify config has been retired.
     
     # Summary
     total_files = sum(1 for _, _, files in os.walk(BUILD_DIR) for _ in files)
@@ -1602,7 +2103,7 @@ def build():
     print(f"\n{'Ã¢ÂÂ' * 50}")
     print(f"  Forge static build complete")
     print(f"  {total_files} files, {total_size / 1024 / 1024:.1f} MB")
-    print(f"  Ready for: netlify deploy --dir=build")
+    print(f"  Ready for: Cloudflare Pages (publish dir: build/)")
     print(f"{'Ã¢ÂÂ' * 50}")
 
     # Ã¢ÂÂÃ¢ÂÂ Post-build count validation Ã¢ÂÂÃ¢ÂÂ
@@ -1642,6 +2143,12 @@ def build():
         if os.path.exists(src_cf):
             shutil.copy2(src_cf, dst_cf)
             print(f"  ✓ Copied {cf_file} to build/")
+
+    # ── PRIVATE gated dossiers (pulled from Ai-Project; served behind Access) ──
+    try:
+        sync_private_dossiers()
+    except Exception as e:
+        print(f"  NOTE: private dossier sync skipped ({e})")
 
 
 if __name__ == '__main__':

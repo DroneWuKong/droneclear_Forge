@@ -1,0 +1,321 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>Troubleshoot — Forge</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="">
+<link rel="stylesheet" href="{% static 'base.css' %}">
+    <link rel="stylesheet" href="{% static 'layout.css' %}?v=4">
+    <link rel="stylesheet" href="{% static 'components.css' %}">
+<link rel="stylesheet" href="">
+<script src="https://unpkg.com/@phosphor-icons/web"></script>
+<script>(function(){document.documentElement.setAttribute('data-theme',localStorage.getItem('dc-theme')||'dark');})()</script>
+<style>
+.ts-page{max-width:960px;margin:0 auto;padding:24px}
+.ts-hdr{margin-bottom:20px}
+.ts-hdr h1{font-size:22px;font-weight:700;display:flex;align-items:center;gap:8px}
+.ts-hdr h1 i{color:var(--accent-red)}
+.ts-hdr p{font-size:13px;color:var(--text-muted);margin-top:4px}
+.ts-bar{display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap}
+.ts-search{flex:1;min-width:200px;padding:8px 12px;background:var(--bg-dark);border:1px solid var(--border-color);border-radius:var(--radius-sm);color:var(--text-main);font-size:13px;font-family:var(--font-family)}
+.ts-search:focus{outline:none;border-color:var(--accent-red)}
+.ts-sel{padding:8px;background:var(--bg-dark);border:1px solid var(--border-color);border-radius:var(--radius-sm);color:var(--text-muted);font-size:12px;font-family:var(--font-family)}
+.ts-chips{display:flex;gap:4px;margin-bottom:16px;flex-wrap:wrap}
+.ts-chip{padding:3px 10px;border-radius:12px;font-size:11px;border:1px solid var(--border-color);cursor:pointer;color:var(--text-muted);background:var(--bg-panel);font-family:var(--font-family);transition:all .15s}
+.ts-chip:hover{border-color:var(--accent-red);color:var(--text-main)}
+.ts-chip.on{background:rgba(34,211,238,.08);border-color:var(--accent-red);color:var(--accent-red)}
+.ts-count{font-size:12px;color:var(--text-faint);margin-bottom:12px}
+.ts-list{display:flex;flex-direction:column;gap:8px}
+.ts-card{background:var(--bg-panel);border:1px solid var(--border-color);border-radius:var(--radius-sm);overflow:hidden;transition:border-color .15s}
+.ts-card:hover{border-color:rgba(34,211,238,.3)}
+.ts-card.open{border-color:var(--accent-red)}
+.ts-card-hdr{padding:12px 16px;display:flex;align-items:center;gap:10px;cursor:pointer}
+.ts-sev{width:4px;height:32px;border-radius:2px;flex-shrink:0}
+.sev-critical{background:#ef4444}.sev-blocking{background:#f97316}.sev-high{background:#eab308}.sev-medium{background:#22d3ee}.sev-low{background:#6b7280}.sev-info{background:#8b5cf6}
+.ts-card-title{flex:1;font-size:14px;font-weight:600;color:var(--text-main)}
+.ts-card-meta{display:flex;gap:6px;align-items:center;flex-shrink:0}
+.ts-badge{padding:2px 8px;border-radius:8px;font-size:10px;font-weight:600;font-family:var(--font-family)}
+.badge-cat{background:rgba(34,211,238,.08);color:var(--accent-red);border:1px solid rgba(34,211,238,.15)}
+.badge-diff-beginner{background:rgba(34,197,94,.08);color:#22c55e;border:1px solid rgba(34,197,94,.15)}
+.badge-diff-intermediate{background:rgba(234,179,8,.08);color:#eab308;border:1px solid rgba(234,179,8,.15)}
+.badge-diff-advanced{background:rgba(239,68,68,.08);color:#ef4444;border:1px solid rgba(239,68,68,.15)}
+.ts-chevron{color:var(--text-faint);font-size:16px;transition:transform .2s}
+.ts-card.open .ts-chevron{transform:rotate(90deg)}
+.ts-body{display:none;padding:0 16px 16px;font-size:13px;line-height:1.7;color:var(--text-muted);overflow-x:hidden}
+.ts-card.open .ts-body{display:block}
+.ts-section{margin-top:12px}
+.ts-section-title{font-size:11px;text-transform:uppercase;letter-spacing:.5px;color:var(--text-faint);margin-bottom:6px;font-weight:600}
+.ts-section ul{margin:0;padding-left:18px}
+.ts-section li{margin-bottom:4px}
+.ts-section li::marker{color:var(--accent-red)}
+.ts-tags{display:flex;gap:4px;flex-wrap:wrap;margin-top:10px}
+.ts-tag{padding:1px 6px;border-radius:4px;font-size:10px;background:var(--bg-dark);color:var(--text-faint);border:1px solid var(--border-color)}
+@media(max-width:768px){
+    .ts-bar{flex-direction:column}
+    .ts-card-meta{display:none}
+    .topbar-nav-links{display:none!important}
+}
+</style>
+<style>html,body{background:#0c0c0a!important;color:#f5f0e8}</style>
+<style id="global-mobile-fix">
+@media(max-width:640px){
+  *{max-width:100%;box-sizing:border-box}
+  img,video,iframe{max-width:100%!important}
+  [style*="grid-template-columns:1fr 1fr"],[style*="grid-template-columns: 1fr 1fr"]{grid-template-columns:1fr!important}
+  [style*="grid-template-columns:repeat(3"],[style*="grid-template-columns: repeat(3"]{grid-template-columns:1fr 1fr!important}
+  [style*="grid-template-columns:repeat(4"],[style*="grid-template-columns: repeat(4"]{grid-template-columns:1fr 1fr!important}
+  .an-stats,.stat-grid,.stats-grid,.score-grid{grid-template-columns:repeat(2,1fr)!important}
+  .content{padding:12px!important}
+  .modal,.pred-modal,.flag-detail,[class*="-modal"]{width:calc(100vw - 24px)!important;max-width:calc(100vw - 24px)!important}
+  .an-grid-2,.an-grid-3{grid-template-columns:1fr!important}
+}
+</style>
+</head>
+<body>
+<!-- ── Unified UAS-Nav ───────────────────────────────────────── -->
+<style id="dc-unified-nav-styles">
+#dc-nav{display:flex;align-items:center;justify-content:space-between;padding:0 16px;height:44px;background:#0c0c0a;border-bottom:1px solid #1e1e18;position:sticky;top:0;z-index:500;font-family:'Inter',system-ui,sans-serif}
+#dc-nav-left{display:flex;align-items:center;gap:10px;min-width:0}
+#dc-nav-brand{font:700 13px 'JetBrains Mono',monospace;color:#f59e0b;text-decoration:none;letter-spacing:-.02em;flex-shrink:0}
+#dc-nav-sep{color:#2e2e26;font-size:12px;flex-shrink:0}
+#dc-nav-page{font:600 11px 'Inter',system-ui;color:#b8b0a0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:160px}
+
+#dc-hamburger{display:flex;align-items:center;justify-content:center;width:32px;height:32px;border-radius:6px;border:1px solid #2a2a22;background:none;color:#6b6358;cursor:pointer;transition:all .15s;flex-shrink:0;margin-left:auto}
+#dc-hamburger:hover{border-color:#3e3e34;color:#b8b0a0}
+#dc-hamburger.open{border-color:#f59e0b;color:#f59e0b;background:rgba(245,158,11,.08)}
+#dc-overlay{position:fixed;inset:0;z-index:498;background:rgba(0,0,0,.6);backdrop-filter:blur(4px);opacity:0;pointer-events:none;transition:opacity .25s}
+#dc-overlay.open{opacity:1;pointer-events:auto}
+#dc-drawer{position:fixed;top:0;right:0;bottom:0;z-index:499;width:260px;max-width:85vw;background:#111110;border-left:1px solid #2a2a22;transform:translateX(100%);transition:transform .3s cubic-bezier(.4,0,.2,1);display:flex;flex-direction:column;overflow:hidden}
+#dc-drawer.open{transform:translateX(0)}
+#dc-drawer-head{padding:16px;border-bottom:1px solid #1e1e18;display:flex;align-items:center;justify-content:space-between}
+#dc-drawer-brand{font:700 14px 'JetBrains Mono',monospace;color:#f59e0b;letter-spacing:-.02em}
+#dc-drawer-close{width:28px;height:28px;border-radius:6px;border:1px solid #2a2a22;background:none;color:#6b6358;cursor:pointer;font-size:16px;display:flex;align-items:center;justify-content:center;transition:all .15s}
+#dc-drawer-close:hover{color:#d62828;border-color:rgba(214,40,40,.3)}
+.dc-drawer-section{padding:12px 16px 4px;font:700 9px 'JetBrains Mono',monospace;color:#3e3e34;text-transform:uppercase;letter-spacing:.1em}
+.dc-drawer-item{display:flex;align-items:center;gap:10px;padding:9px 16px;color:#6b6358;text-decoration:none;font:400 12px 'Inter',system-ui;transition:all .15s;border-left:2px solid transparent}
+.dc-drawer-item:hover{color:#b8b0a0;background:rgba(255,255,255,.02);border-left-color:#2e2e26}
+.dc-drawer-item.dc-active{color:#22c55e;border-left-color:#22c55e;background:rgba(34,197,94,.04)}
+.dc-drawer-item.dc-ext{color:#3e3e34}
+.dc-drawer-item.dc-ext:hover{color:#6b6358}
+.dc-drawer-divider{height:1px;background:#1e1e18;margin:8px 16px}
+#dc-drawer-foot{padding:16px;border-top:1px solid #1e1e18;font:400 10px 'JetBrains Mono',monospace;color:#3e3e34;flex-shrink:0}#dc-drawer-body{flex:1;overflow-y:auto;overflow-x:hidden}
+</style>
+
+<nav id="dc-nav">
+  <div id="dc-nav-left">
+    <a id="dc-nav-brand" href="/" onclick="return dcNavBrandClick(event)">—</a>
+    <span id="dc-nav-sep" style="color:#2e2e26;font-size:11px;margin:0 4px">/</span>
+    <span id="dc-nav-page">—</span>
+  </div>
+  <button id="dc-hamburger" onclick="dcNavToggle()" aria-label="Menu">
+    <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round">
+      <line x1="1" y1="3" x2="13" y2="3"/><line x1="1" y1="7" x2="13" y2="7"/><line x1="1" y1="11" x2="13" y2="11"/>
+    </svg>
+  </button>
+</nav>
+
+<div id="dc-overlay" onclick="dcNavClose()"></div>
+<div id="dc-drawer">
+  <div id="dc-drawer-head">
+    <span id="dc-drawer-brand">—</span>
+    <button id="dc-drawer-close" onclick="dcNavClose()">✕</button>
+  </div>
+
+  <div id="dc-drawer-body">
+  <div class="dc-drawer-section">Forge — Due Diligence</div>
+  <a class="dc-drawer-item" href="https://uas-forge.com/browse/" data-page="browse">Browse Components</a>
+  <a class="dc-drawer-item" href="https://uas-forge.com/compare/" data-page="compare">Compare</a>
+  <a class="dc-drawer-item" href="https://uas-forge.com/compliance/" data-page="compliance">Compliance</a>
+  <a class="dc-drawer-item" href="https://uas-forge.com/dossier/" data-page="dossier">Dossier</a>
+  <a class="dc-drawer-item" href="https://uas-forge.com/platforms/" data-page="platforms">Platforms</a>
+  <a class="dc-drawer-item" href="https://uas-forge.com/regs/" data-page="regs">Regs</a>
+
+  <div class="dc-drawer-section">Forge — Tools</div>
+  <a class="dc-drawer-item" href="https://uas-forge.com/wingman/" data-page="wingman">Wingman AI</a>
+  <a class="dc-drawer-item" href="https://uas-forge.com/stack-builder/" data-page="stack-builder">Stack Builder</a>
+  <a class="dc-drawer-item" href="https://uas-forge.com/report/" data-page="report">Compliance Report</a>
+  <a class="dc-drawer-item" href="https://uas-forge.com/tools-home/" data-page="tools-home">All Tools</a>
+
+  <div class="dc-drawer-section">Forge — Intel</div>
+  <a class="dc-drawer-item" href="https://uas-forge.com/intel/" data-page="intel">Intel Hub</a>
+  <a class="dc-drawer-item" href="https://uas-forge.com/industry/" data-page="industry">Industry</a>
+  <a class="dc-drawer-item" href="https://uas-forge.com/tracker/" data-page="tracker">Contract Tracker</a>
+
+  <div class="dc-drawer-divider"></div>
+
+  <div class="dc-drawer-section">PIE — Pattern Intelligence</div>
+  <a class="dc-drawer-item" href="https://uas-patterns.com/patterns-home/" data-page="patterns-home">P.I.E Hub</a>
+  <a class="dc-drawer-item" href="https://uas-patterns.com/brief/" data-page="brief">Brief</a>
+  <a class="dc-drawer-item" href="https://uas-patterns.com/patterns/" data-page="patterns">Flags</a>
+  <a class="dc-drawer-item" href="https://uas-patterns.com/clock/" data-page="clock">UAS Clock</a>
+  <a class="dc-drawer-item" aria-disabled="true" data-page="ddg">DDG Tracker</a>
+
+  </div><!-- /dc-drawer-body -->
+</div>
+
+<script>
+(function(){
+  var path = location.pathname.replace(/\/$/, '').split('/').pop() || 'home';
+  var isPro = (function(){
+    try {
+      var tok = localStorage.getItem('forge_token') || localStorage.getItem('wingman_sub_token') || '';
+      if(!tok || tok.length < 20) return false;
+      var p = JSON.parse(atob(tok.split('.')[1] || tok));
+      var payload = p.payload || p;
+      return !!(payload.tier && payload.tier !== 'free' && (!payload.exp || payload.exp > Date.now()));
+    } catch(e){ return false; }
+  })();
+  var host = location.hostname;
+  var isForge = host.includes('builditmyself') || host.includes('forgeprole') || host === 'localhost' || host === '127.0.0.1';
+  var isPIE   = host.includes('findoutmyself') || host.includes('nvmillfindout') || host.includes('uas-intel');
+
+  // Set page label
+  var labels = {
+    'browse':'Browse','wingman':'Wingman','intel':'Intel Hub','compare':'Compare',
+    'compliance':'Compliance','dossier':'Dossier','platforms':'Platforms','regs':'Regs',
+    'stack-builder':'Stack Builder','report':'Compliance Report','tools-home':'Tools',
+    'industry':'Industry','tracker':'Contract Tracker','patterns-home':'P.I.E Hub',
+    'brief':'Brief','patterns':'Flags','clock':'UAS Clock','ddg':'DDG Tracker',
+    'pro':'Pro','start':'Getting Started','grants':'Grants','waiver':'Doc Builder',
+    'verify':'Verify','vault':'Vault','troubleshoot':'Troubleshoot'
+  };
+  var pageEl = document.getElementById('dc-nav-page');
+  if(pageEl) pageEl.textContent = labels[path] || document.title.split('—')[0].trim().split('·')[0].trim() || path;
+
+  // Brand link — goes to home of current domain
+  // Set brand name: Forge / Patterns / Patterns Pro
+  var brandName = isForge ? 'Forge' : isPIE ? 'Patterns' : 'UAS-';
+  var brandEl = document.getElementById('dc-nav-brand');
+  var drawerBrandEl = document.getElementById('dc-drawer-brand');
+  if(brandEl) brandEl.textContent = brandName;
+  if(drawerBrandEl) drawerBrandEl.textContent = brandName;
+
+  window.dcNavBrandClick = function(e){
+    e.preventDefault();
+    location.href = isForge ? 'https://uas-forge.com/' : isPIE ? 'https://uas-patterns.com/patterns-home/' : '/';
+  };
+
+
+
+  // Mark active drawer items
+  document.querySelectorAll('.dc-drawer-item').forEach(function(a){
+    if(a.dataset.page === path) a.classList.add('dc-active');
+  });
+
+  // Hamburger toggle
+  window.dcNavToggle = function(){
+    var open = document.getElementById('dc-drawer').classList.toggle('open');
+    document.getElementById('dc-overlay').classList.toggle('open', open);
+    document.getElementById('dc-hamburger').classList.toggle('open', open);
+  };
+  window.dcNavClose = function(){
+    document.getElementById('dc-drawer').classList.remove('open');
+    document.getElementById('dc-overlay').classList.remove('open');
+    document.getElementById('dc-hamburger').classList.remove('open');
+  };
+  // Esc to close
+  document.addEventListener('keydown', function(e){ if(e.key==='Escape') dcNavClose(); });
+})();
+</script>
+<!-- ── /Unified UAS-Nav ─────────────────────────────────────── -->
+
+<div class="app-container" style="display:flex;flex-direction:column;min-height:100vh;">
+    <main style="flex:1;overflow-y:auto;">
+        <div class="ts-page">
+            <div class="ts-hdr">
+                <h1><i class="ph ph-wrench"></i> Troubleshoot</h1>
+                <p>Symptom → Diagnosis → Fix. <span id="ts-total">0</span> entries across Betaflight, ArduPilot, iNav, PX4.</p>
+            </div>
+            <div class="ts-bar">
+                <label for="ts-q" class="sr-only">Search</label>
+                <input type="text" class="ts-search" id="ts-q" placeholder="Describe your problem: motor won't spin, no video, flips on takeoff...">
+                <label for="ts-sev" class="sr-only">Severity</label>
+                <select class="ts-sel" id="ts-sev"><option value="">All severities</option><option value="critical">Critical</option><option value="blocking">Blocking</option><option value="high">High</option><option value="medium">Medium</option><option value="low">Low</option></select>
+                <label for="ts-diff" class="sr-only">Difficulty</label>
+                <select class="ts-sel" id="ts-diff"><option value="">All difficulties</option><option value="beginner">Beginner</option><option value="intermediate">Intermediate</option><option value="advanced">Advanced</option></select>
+            </div>
+            <div class="ts-chips" id="ts-cats"></div>
+            <div class="ts-count" id="ts-count"></div>
+            <div class="ts-list" id="ts-list"></div>
+        </div>
+    </main>
+</div>
+<script>
+(function(){
+'use strict';
+const E=s=>{const d=document.createElement('div');d.textContent=String(s??'');return d.innerHTML};
+const $=id=>document.getElementById(id);
+let entries=[],activeCat='',q='',sev='',diff='';
+
+fetch('forge_troubleshooting.json').then(r=>r.json()).then(d=>{
+    entries=d.entries||[];
+    $('ts-total').textContent=entries.length;
+    buildCats();render();
+});
+
+function buildCats(){
+    const cats={};
+    entries.forEach(e=>{cats[e.category]=(cats[e.category]||0)+1});
+    $('ts-cats').innerHTML=Object.entries(cats).sort((a,b)=>b[1]-a[1]).map(([c,n])=>
+        `<span class="ts-chip" data-cat="${c}">${c.replace(/_/g,' ')} (${n})</span>`
+    ).join('');
+    $('ts-cats').querySelectorAll('.ts-chip').forEach(ch=>{
+        ch.addEventListener('click',()=>{
+            if(activeCat===ch.dataset.cat){activeCat='';ch.classList.remove('on')}
+            else{$('ts-cats').querySelectorAll('.ts-chip').forEach(x=>x.classList.remove('on'));activeCat=ch.dataset.cat;ch.classList.add('on')}
+            render();
+        });
+    });
+}
+
+$('ts-q').addEventListener('input',e=>{q=e.target.value.toLowerCase();render()});
+$('ts-sev').addEventListener('change',e=>{sev=e.target.value;render()});
+$('ts-diff').addEventListener('change',e=>{diff=e.target.value;render()});
+
+function matches(e){
+    if(activeCat&&e.category!==activeCat)return false;
+    if(sev&&e.severity!==sev)return false;
+    if(diff&&e.difficulty!==diff)return false;
+    if(q){
+        const blob=[e.title,e.category,...(e.symptoms||[]),...(e.causes||[]),...(e.fixes||[]),...(e.tags||[])].join(' ').toLowerCase();
+        if(!q.split(/\s+/).every(w=>blob.includes(w)))return false;
+    }
+    return true;
+}
+
+function render(){
+    const f=entries.filter(matches);
+    const so={critical:0,blocking:1,high:2,medium:3,low:4,info:5};
+    f.sort((a,b)=>(so[a.severity]||3)-(so[b.severity]||3));
+    $('ts-count').textContent=`${f.length} of ${entries.length} entries`;
+    $('ts-list').innerHTML=f.map(e=>`<div class="ts-card" data-id="${e.id}">
+        <div class="ts-card-hdr">
+            <div class="ts-sev sev-${e.severity}"></div>
+            <div class="ts-card-title">${E(e.title)}</div>
+            <div class="ts-card-meta">
+                <span class="ts-badge badge-cat">${e.category.replace(/_/g,' ')}</span>
+                <span class="ts-badge badge-diff-${e.difficulty||'intermediate'}">${e.difficulty||''}</span>
+            </div>
+            <i class="ph ph-caret-right ts-chevron"></i>
+        </div>
+        <div class="ts-body">
+            ${sec('Symptoms',e.symptoms)}${sec('Likely causes',e.causes)}${sec('How to diagnose',e.diagnostics)}${sec('Fixes',e.fixes)}
+            ${e.tags?`<div class="ts-tags">${e.tags.map(t=>`<span class="ts-tag">${E(t)}</span>`).join('')}</div>`:''}
+        </div>
+    </div>`).join('');
+    $('ts-list').querySelectorAll('.ts-card-hdr').forEach(h=>{
+        h.addEventListener('click',()=>h.parentElement.classList.toggle('open'));
+    });
+}
+function sec(t,items){if(!items||!items.length)return'';return`<div class="ts-section"><div class="ts-section-title">${t}</div><ul>${items.map(i=>`<li>${E(i)}</li>`).join('')}</ul></div>`;}
+
+// Dark mode toggle
+const dt=$('dark-mode-toggle'),di=$('dark-mode-icon');
+if(dt)dt.addEventListener('click',()=>{const t=document.documentElement.getAttribute('data-theme')==='dark'?'light':'dark';document.documentElement.setAttribute('data-theme',t);localStorage.setItem('dc-theme',t);di.className=t==='dark'?'ph ph-moon':'ph ph-sun';});
+})();
+</script>
+<!-- Analytics injected by build_static.py (unified _ANALYTICS_SNIPPET + _UNIFIED_NAV) -->
+</body>
+</html>

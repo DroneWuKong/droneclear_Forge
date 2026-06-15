@@ -1,10 +1,10 @@
 """
 Normalizer: forge_database.json platforms → forge_platform_cooccurrence.json
 
-Reads: DroneClear Components Visualizer/forge_database.json
+Reads: forge-source/forge_database.json
        (drone_models[].relations → PID references → component names)
 
-Writes: DroneClear Components Visualizer/forge_platform_cooccurrence.json
+Writes: forge-source/forge_platform_cooccurrence.json
 
 Unlike RotorBuilds co-occurrence (hobby builds), this extracts co-occurrence
 from the curated platforms database — defense, commercial, and professional
@@ -46,8 +46,8 @@ from datetime import datetime
 from pathlib import Path
 
 
-DB_FILE  = Path("DroneClear Components Visualizer/forge_database.json")
-OUT_FILE = Path("DroneClear Components Visualizer/forge_platform_cooccurrence.json")
+DB_FILE  = Path("forge-source/forge_database.json")
+OUT_FILE = Path("forge-source/forge_platform_cooccurrence.json")
 
 # Categories in relations that represent real components
 COMPONENT_CATEGORIES = {

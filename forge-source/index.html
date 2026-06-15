@@ -1,0 +1,1885 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Forge — Parts Browser</title>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://unpkg.com/@phosphor-icons/web"></script>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+:root{
+  --bg:#0c0c0a;--surface:#141410;--card:#1c1c17;--card-hi:#242420;
+  --border:#2e2e26;--border-hi:#3e3e34;
+  --red:#ff3b5c;--cyan:#00d4ff;--amber:#f59e0b;--green:#22c55e;
+  --text:#f5f0e8;--text-s:#b8b0a0;--text-d:#8a8070;--text-x:#3d3830;
+  --mono:'JetBrains Mono',monospace;--sans:'Inter',system-ui,sans-serif;
+  --r:8px;
+}
+html,body{height:100%;background:var(--bg);color:var(--text);font-family:var(--sans);-webkit-font-smoothing:antialiased}
+/* ── Layout ── */
+#app{display:flex;flex-direction:column;height:calc(100vh - 44px);overflow:hidden}
+#topbar{display:flex;align-items:center;gap:10px;padding:0 14px;height:48px;background:var(--card);border-bottom:1px solid var(--border);flex-shrink:0;z-index:50}
+#topbar .logo{font:800 17px var(--mono);color:var(--red);letter-spacing:-0.04em;text-decoration:none;flex-shrink:0}
+#search-wrap{flex:1;max-width:320px;position:relative}
+#search-wrap i{position:absolute;left:9px;top:50%;transform:translateY(-50%);color:var(--text-d);font-size:14px;pointer-events:none}
+#search{width:100%;padding:6px 10px 6px 30px;background:var(--surface);border:1px solid var(--border);border-radius:var(--r);color:var(--text);font:400 12px var(--sans);outline:none;transition:.15s}
+#search:focus{border-color:var(--border-hi)}
+#search::placeholder{color:var(--text-d)}
+.pill{font:500 10px var(--sans);color:var(--text-d);padding:3px 9px;border:1px solid var(--border);border-radius:20px;text-decoration:none;white-space:nowrap;transition:.15s;flex-shrink:0}
+.pill:hover{border-color:var(--border-hi);color:var(--text-s)}
+#pills{display:flex;gap:5px;margin-left:auto}
+/* ── Body ── */
+#body{display:flex;flex:1;overflow:hidden}
+/* ── Sidebar ── */
+#sidebar{width:180px;flex-shrink:0;background:var(--card);border-right:1px solid var(--border);display:flex;flex-direction:column;overflow:hidden}
+#cat-header{padding:10px 12px 6px;font:600 10px var(--mono);color:var(--text-x);letter-spacing:.1em;text-transform:uppercase;flex-shrink:0}
+#cat-list{flex:1;overflow-y:auto;padding:0 6px 6px}
+#cat-list::-webkit-scrollbar{width:3px}
+#cat-list::-webkit-scrollbar-track{background:transparent}
+#cat-list::-webkit-scrollbar-thumb{background:var(--border);border-radius:2px}
+.cat-item{display:flex;align-items:center;justify-content:space-between;padding:5px 8px;border-radius:6px;cursor:pointer;font:500 11px var(--sans);color:var(--text-d);transition:.1s;white-space:nowrap;overflow:hidden}
+.cat-item:hover{background:var(--surface);color:var(--text-s)}
+.cat-item.active{background:rgba(255,59,92,.1);color:var(--red)}
+.cat-item .cnt{font:500 10px var(--mono);color:var(--text-x);margin-left:4px;flex-shrink:0}
+.cat-item.active .cnt{color:rgba(255,59,92,.5)}
+/* ── Main ── */
+#main{flex:1;display:flex;flex-direction:column;overflow:hidden}
+#toolbar{padding:6px 12px;border-bottom:1px solid var(--border);background:var(--surface);display:flex;align-items:center;gap:8px;flex-shrink:0;flex-wrap:wrap}
+#mob-cat-btn{display:none;background:none;border:none;color:var(--text-d);cursor:pointer;font-size:18px;padding:3px;flex-shrink:0}
+#mob-cat-btn:hover{color:var(--text-s)}
+#search-wrap{position:relative;flex:1;max-width:280px;min-width:100px}
+#search-wrap i{position:absolute;left:8px;top:50%;transform:translateY(-50%);color:var(--text-d);font-size:13px;pointer-events:none}
+#search{width:100%;padding:5px 10px 5px 28px;background:var(--card);border:1px solid var(--border);border-radius:var(--r);color:var(--text);font:400 11px var(--sans);outline:none;transition:.15s}
+#search:focus{border-color:var(--border-hi)}
+#search::placeholder{color:var(--text-d)}
+/* ── ArduPilot profile picker ── */
+#param-picker{display:none;position:absolute;bottom:calc(100% + 6px);right:0;background:var(--card);border:1px solid var(--border-hi);border-radius:10px;padding:8px;width:260px;box-shadow:0 8px 32px rgba(0,0,0,.5);z-index:400;max-height:70vh;overflow-y:auto}
+#param-picker.open{display:block}
+.pp-fw-label{font:700 9px 'JetBrains Mono',monospace;color:#4a4540;text-transform:uppercase;letter-spacing:.08em;padding:4px 4px 2px}
+.pp-title{font:600 9px var(--mono);color:var(--text-x);text-transform:uppercase;letter-spacing:.1em;padding:4px 8px 8px;border-bottom:1px solid var(--border);margin-bottom:6px}
+.pp-btn{display:flex;align-items:flex-start;gap:10px;width:100%;padding:8px 10px;border-radius:7px;border:none;background:none;cursor:pointer;text-align:left;transition:.1s}
+.pp-btn:hover{background:var(--card-hi)}
+.pp-icon{font-size:16px;flex-shrink:0;margin-top:1px}
+.pp-name{font:600 12px var(--sans);color:var(--text);display:block;margin-bottom:2px}
+.pp-desc{font:400 10px var(--sans);color:var(--text-d);display:block;line-height:1.3}
+/* ── Filter bar ── */
+#filter-bar{display:none;align-items:center;gap:8px;padding:6px 12px;background:var(--bg);border-bottom:1px solid var(--border);flex-shrink:0;overflow-x:auto;white-space:nowrap}
+#filter-bar::-webkit-scrollbar{height:3px}
+#filter-bar::-webkit-scrollbar-thumb{background:var(--border);border-radius:2px}
+.filter-group{display:inline-flex;flex-direction:column;gap:2px;flex-shrink:0}
+.filter-label{font:600 9px var(--mono);color:var(--text-x);text-transform:uppercase;letter-spacing:.07em}
+.filter-sel{background:var(--card);border:1px solid var(--border);color:var(--text-s);font:400 11px var(--sans);padding:4px 24px 4px 8px;border-radius:6px;outline:none;cursor:pointer;appearance:none;-webkit-appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%238a8070'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 7px center;transition:.1s;max-width:130px}
+.filter-sel:hover{border-color:var(--border-hi)}
+.filter-sel.active{border-color:var(--amber);color:var(--amber)}
+#filter-clear{background:none;border:none;font:500 10px var(--sans);color:var(--text-x);cursor:pointer;padding:4px 8px;border-radius:5px;margin-left:4px;display:none;flex-shrink:0}
+#filter-clear.visible{display:block;color:var(--red)}
+#filter-clear:hover{color:var(--red)}
+/* ── Spec tags on cards ── */
+.spec-tags{display:flex;flex-wrap:wrap;gap:3px;margin-top:5px}
+.spec-tag{font:500 9px var(--mono);color:var(--text-d);background:var(--surface);border:1px solid var(--border);border-radius:4px;padding:1px 5px;white-space:nowrap}
+/* ── Compatibility ── */
+.part-card.compat-yes{border-color:rgba(34,197,94,.45);box-shadow:0 0 0 1px rgba(34,197,94,.25)}
+.part-card.compat-no{opacity:.32}
+.part-card.compat-no:hover{opacity:.55}
+.compat-why{font:400 9px var(--mono);color:var(--amber);margin-top:4px;line-height:1.3}
+.compat-toggle{display:flex;align-items:center;gap:6px;flex-shrink:0;margin-left:auto;padding-left:10px;border-left:1px solid var(--border)}
+.compat-toggle label{display:flex;align-items:center;gap:5px;cursor:pointer;font:400 11px var(--sans);color:var(--text-d);white-space:nowrap}
+.compat-toggle input[type=checkbox]{accent-color:var(--green);cursor:pointer}
+#cat-title{font:700 13px var(--mono);color:var(--text);flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+#part-count{font:400 10px var(--mono);color:var(--text-d)}
+.tb-select{background:var(--card);border:1px solid var(--border);color:var(--text-s);font:400 10px var(--sans);padding:4px 8px;border-radius:6px;outline:none;cursor:pointer}
+#grid-wrap{flex:1;overflow-y:auto;padding:12px}
+#grid-wrap::-webkit-scrollbar{width:4px}
+#grid-wrap::-webkit-scrollbar-thumb{background:var(--border);border-radius:2px}
+#grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:8px}
+/* ── Cards ── */
+.part-card{background:var(--card);border:1px solid var(--border);border-radius:var(--r);padding:12px;cursor:pointer;transition:.15s;position:relative;overflow:hidden}
+.part-card:hover{border-color:var(--border-hi);background:var(--card-hi);transform:translateY(-1px)}
+.part-card .img{width:100%;height:80px;object-fit:cover;border-radius:5px;margin-bottom:8px;background:var(--surface);display:block}
+.part-card .img-placeholder{width:100%;height:80px;background:var(--surface);border-radius:5px;margin-bottom:8px;display:flex;align-items:center;justify-content:center}
+.part-card .img-placeholder i{font-size:28px;color:var(--text-x)}
+.part-card .name{font:600 12px var(--sans);color:var(--text);line-height:1.3;margin-bottom:3px;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.part-card .mfr{font:400 10px var(--sans);color:var(--text-d)}
+.part-card .pid{font:400 10px var(--mono);color:var(--text-x);margin-top:4px}
+.part-card .add-btn{position:absolute;bottom:8px;right:8px;width:26px;height:26px;border-radius:50%;background:var(--red);border:none;color:#fff;cursor:pointer;display:flex;align-items:center;justify-content:center;opacity:0;transition:.15s;font-size:14px}
+.part-card:hover .add-btn{opacity:1}
+.part-card.in-build{border-color:rgba(255,59,92,.4)}
+.part-card.in-build::after{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:var(--red)}
+/* ── States ── */
+#loader{display:flex;flex-direction:column;align-items:center;justify-content:center;flex:1;gap:12px}
+.spinner{width:32px;height:32px;border:2px solid var(--border);border-top-color:var(--red);border-radius:50%;animation:spin .8s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+#loader p{font:400 12px var(--mono);color:var(--text-d)}
+#empty{display:none;flex-direction:column;align-items:center;justify-content:center;flex:1;gap:8px;color:var(--text-d);font:400 12px var(--sans)}
+#empty i{font-size:36px;color:var(--text-x)}
+/* ── Build FAB ── */
+#build-fab{position:fixed;bottom:20px;right:20px;background:var(--red);color:#fff;border:none;border-radius:24px;padding:10px 16px;font:700 12px var(--sans);cursor:pointer;display:flex;align-items:center;gap:8px;box-shadow:0 4px 20px rgba(255,59,92,.4);transition:.15s;z-index:100}
+#build-fab:hover{background:#ff1a3d;transform:translateY(-1px)}
+#build-count{background:rgba(0,0,0,.3);border-radius:12px;padding:2px 7px;font:700 10px var(--mono)}
+/* ── Build Drawer ── */
+#build-overlay{position:fixed;inset:0;background:rgba(0,0,0,.6);backdrop-filter:blur(4px);z-index:200;display:none}
+#build-overlay.open{display:block}
+#build-drawer{position:fixed;right:0;top:0;bottom:0;width:320px;max-width:90vw;background:var(--card);border-left:1px solid var(--border);z-index:201;display:flex;flex-direction:column;transform:translateX(100%);transition:transform .25s cubic-bezier(.4,0,.2,1)}
+#build-drawer.open{transform:translateX(0)}
+#drawer-header{padding:14px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;flex-shrink:0}
+#drawer-header h2{font:700 14px var(--mono);color:var(--text)}
+#drawer-close{background:none;border:none;color:var(--text-d);cursor:pointer;font-size:18px;padding:2px}
+#drawer-close:hover{color:var(--text)}
+#drawer-body{flex:1;overflow-y:auto;padding:12px}
+#build-empty{display:flex;flex-direction:column;align-items:center;justify-content:center;height:120px;color:var(--text-d);font:400 12px var(--sans);gap:6px}
+#build-empty i{font-size:28px;color:var(--text-x)}
+#bom-summary{padding:10px 0 4px;border-top:1px solid var(--border);margin-top:8px;display:none}
+.bom-gauges{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:8px}
+.bom-gauge{background:var(--bg);border:1px solid var(--border);border-radius:6px;padding:7px 10px}
+.bom-gauge-val{font:700 15px var(--mono);color:var(--text)}
+.bom-gauge-val.green{color:#22c55e}.bom-gauge-val.amber{color:#f59e0b}.bom-gauge-val.red{color:#ef4444}
+.bom-gauge-lbl{font:400 9px var(--mono);color:var(--text-d);text-transform:uppercase;letter-spacing:.06em;margin-top:1px}
+.bom-bar-wrap{margin-bottom:6px}
+.bom-bar-bg{height:5px;border-radius:3px;background:var(--border);display:flex;overflow:hidden}
+.bom-bar-seg{height:100%;transition:width .3s}
+.bom-rows{display:flex;flex-direction:column;gap:1px}
+.bom-row{display:flex;justify-content:space-between;font:400 10px var(--mono);color:var(--text-d);padding:2px 0}
+.bom-row .bom-name{color:var(--text-s);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:160px}
+.bom-row .bom-price{color:var(--text);flex-shrink:0;margin-left:6px}
+.build-slot{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:10px 12px;margin-bottom:6px;display:flex;align-items:center;gap:10px}
+.build-slot .slot-cat{font:500 10px var(--mono);color:var(--text-x);text-transform:uppercase;letter-spacing:.06em;min-width:70px}
+.build-slot .slot-name{font:500 11px var(--sans);color:var(--text-s);flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.build-slot .slot-remove{background:none;border:none;color:var(--text-x);cursor:pointer;font-size:14px;flex-shrink:0;padding:2px}
+.build-slot .slot-remove:hover{color:var(--red)}
+#drawer-footer{padding:12px 16px;border-top:1px solid var(--border);flex-shrink:0}
+#build-total{font:400 11px var(--sans);color:var(--text-d);margin-bottom:10px}
+#build-total span{color:var(--text);font-weight:600}
+.btn{display:inline-flex;align-items:center;gap:6px;padding:7px 14px;border-radius:var(--r);font:600 11px var(--sans);cursor:pointer;border:1px solid var(--border);transition:.15s;white-space:nowrap}
+.btn-primary{background:var(--red);border-color:var(--red);color:#fff}
+.btn-primary:hover{background:#ff1a3d}
+.btn-outline{background:none;color:var(--text-d)}
+.btn-outline:hover{border-color:var(--border-hi);color:var(--text-s)}
+.btn-row{display:flex;gap:6px;flex-wrap:wrap}
+/* ── Modal ── */
+#modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.75);backdrop-filter:blur(6px);z-index:300;display:none;align-items:center;justify-content:center;padding:16px}
+#modal-overlay.open{display:flex}
+#modal{background:var(--card);border:1px solid var(--border);border-radius:12px;width:100%;max-width:560px;max-height:85vh;display:flex;flex-direction:column;overflow:hidden}
+#modal-top{padding:16px;border-bottom:1px solid var(--border);display:flex;gap:14px;flex-shrink:0}
+#modal-img{width:80px;height:80px;border-radius:var(--r);background:var(--surface);object-fit:cover;flex-shrink:0}
+#modal-img-ph{width:80px;height:80px;border-radius:var(--r);background:var(--surface);display:flex;align-items:center;justify-content:center;flex-shrink:0}
+#modal-img-ph i{font-size:28px;color:var(--text-x)}
+#modal-info{flex:1;min-width:0}
+#modal-name{font:700 14px var(--sans);color:var(--text);margin-bottom:4px;line-height:1.3}
+#modal-mfr{font:400 11px var(--sans);color:var(--text-d);margin-bottom:6px}
+#modal-pid{font:400 10px var(--mono);color:var(--text-x)}
+#modal-desc-wrap{padding:14px 16px;border-bottom:1px solid var(--border);font:400 12px var(--sans);color:var(--text-s);line-height:1.6;max-height:100px;overflow-y:auto;flex-shrink:0}
+#modal-specs-wrap{flex:1;overflow-y:auto;padding:14px 16px}
+#modal-specs-title{font:600 10px var(--mono);color:var(--text-x);text-transform:uppercase;letter-spacing:.08em;margin-bottom:10px}
+#modal-specs{display:grid;grid-template-columns:1fr 1fr;gap:6px 16px}
+.spec-row{font-size:11px}
+.spec-label{color:var(--text-d);font:400 10px var(--mono)}
+.spec-value{color:var(--text-s);font:500 11px var(--sans)}
+#modal-foot{padding:12px 16px;border-top:1px solid var(--border);display:flex;gap:8px;align-items:center;flex-shrink:0}
+#modal-close-x{position:absolute;top:8px;right:8px;background:none;border:none;color:var(--text-d);cursor:pointer;font-size:18px;padding:4px}
+#modal-close-x:hover{color:var(--text)}
+#modal-link-btn{font:500 11px var(--sans);color:var(--cyan);text-decoration:none}
+#modal-link-btn:hover{text-decoration:underline}
+/* ── Mobile ── */
+@media(max-width:600px){
+  #sidebar{width:0;overflow:hidden;transition:.25s}
+  #sidebar.mob-open{width:200px}
+  #mob-cat-btn{display:flex!important}
+  #grid{grid-template-columns:repeat(auto-fill,minmax(150px,1fr))}
+  #search-wrap{max-width:none}
+}
+</style>
+<style id="global-mobile-fix">
+@media(max-width:640px){
+  *{max-width:100%;box-sizing:border-box}
+  img,video,iframe{max-width:100%!important}
+  [style*="grid-template-columns:1fr 1fr"],[style*="grid-template-columns: 1fr 1fr"]{grid-template-columns:1fr!important}
+  [style*="grid-template-columns:repeat(3"],[style*="grid-template-columns: repeat(3"]{grid-template-columns:1fr 1fr!important}
+  [style*="grid-template-columns:repeat(4"],[style*="grid-template-columns: repeat(4"]{grid-template-columns:1fr 1fr!important}
+  .an-stats,.stat-grid,.stats-grid,.score-grid{grid-template-columns:repeat(2,1fr)!important}
+  .content{padding:12px!important}
+  .modal,.pred-modal,.flag-detail,[class*="-modal"]{width:calc(100vw - 24px)!important;max-width:calc(100vw - 24px)!important}
+  .an-grid-2,.an-grid-3{grid-template-columns:1fr!important}
+}
+</style>
+</head>
+<body>
+<!-- ── Unified UAS-Nav ───────────────────────────────────────── -->
+<style id="dc-unified-nav-styles">
+#dc-nav{display:flex;align-items:center;justify-content:space-between;padding:0 16px;height:44px;background:#0c0c0a;border-bottom:1px solid #1e1e18;position:sticky;top:0;z-index:500;font-family:'Inter',system-ui,sans-serif}
+#dc-nav-left{display:flex;align-items:center;gap:10px;min-width:0}
+#dc-nav-brand{font:700 13px 'JetBrains Mono',monospace;color:#f59e0b;text-decoration:none;letter-spacing:-.02em;flex-shrink:0}
+#dc-nav-sep{color:#2e2e26;font-size:12px;flex-shrink:0}
+#dc-nav-page{font:600 11px 'Inter',system-ui;color:#b8b0a0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:160px}
+
+#dc-hamburger{display:flex;align-items:center;justify-content:center;width:32px;height:32px;border-radius:6px;border:1px solid #2a2a22;background:none;color:#6b6358;cursor:pointer;transition:all .15s;flex-shrink:0;margin-left:auto}
+#dc-hamburger:hover{border-color:#3e3e34;color:#b8b0a0}
+#dc-hamburger.open{border-color:#f59e0b;color:#f59e0b;background:rgba(245,158,11,.08)}
+#dc-overlay{position:fixed;inset:0;z-index:498;background:rgba(0,0,0,.6);backdrop-filter:blur(4px);opacity:0;pointer-events:none;transition:opacity .25s}
+#dc-overlay.open{opacity:1;pointer-events:auto}
+#dc-drawer{position:fixed;top:0;right:0;bottom:0;z-index:499;width:260px;max-width:85vw;background:#111110;border-left:1px solid #2a2a22;transform:translateX(100%);transition:transform .3s cubic-bezier(.4,0,.2,1);display:flex;flex-direction:column;overflow:hidden}
+#dc-drawer.open{transform:translateX(0)}
+#dc-drawer-head{padding:16px;border-bottom:1px solid #1e1e18;display:flex;align-items:center;justify-content:space-between}
+#dc-drawer-brand{font:700 14px 'JetBrains Mono',monospace;color:#f59e0b;letter-spacing:-.02em}
+#dc-drawer-close{width:28px;height:28px;border-radius:6px;border:1px solid #2a2a22;background:none;color:#6b6358;cursor:pointer;font-size:16px;display:flex;align-items:center;justify-content:center;transition:all .15s}
+#dc-drawer-close:hover{color:#d62828;border-color:rgba(214,40,40,.3)}
+.dc-drawer-section{padding:12px 16px 4px;font:700 9px 'JetBrains Mono',monospace;color:#3e3e34;text-transform:uppercase;letter-spacing:.1em}
+.dc-drawer-item{display:flex;align-items:center;gap:10px;padding:9px 16px;color:#6b6358;text-decoration:none;font:400 12px 'Inter',system-ui;transition:all .15s;border-left:2px solid transparent}
+.dc-drawer-item:hover{color:#b8b0a0;background:rgba(255,255,255,.02);border-left-color:#2e2e26}
+.dc-drawer-item.dc-active{color:#22c55e;border-left-color:#22c55e;background:rgba(34,197,94,.04)}
+.dc-drawer-item.dc-ext{color:#3e3e34}
+.dc-drawer-item.dc-ext:hover{color:#6b6358}
+.dc-drawer-divider{height:1px;background:#1e1e18;margin:8px 16px}
+#dc-drawer-foot{padding:16px;border-top:1px solid #1e1e18;font:400 10px 'JetBrains Mono',monospace;color:#3e3e34;flex-shrink:0}#dc-drawer-body{flex:1;overflow-y:auto;overflow-x:hidden}
+</style>
+
+<nav id="dc-nav">
+  <div id="dc-nav-left">
+    <a id="dc-nav-brand" href="/" onclick="return dcNavBrandClick(event)">—</a>
+    <span id="dc-nav-sep" style="color:#2e2e26;font-size:11px;margin:0 4px">/</span>
+    <span id="dc-nav-page">—</span>
+  </div>
+  <button id="dc-hamburger" onclick="dcNavToggle()" aria-label="Menu">
+    <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round">
+      <line x1="1" y1="3" x2="13" y2="3"/><line x1="1" y1="7" x2="13" y2="7"/><line x1="1" y1="11" x2="13" y2="11"/>
+    </svg>
+  </button>
+</nav>
+
+<div id="dc-overlay" onclick="dcNavClose()"></div>
+<div id="dc-drawer">
+  <div id="dc-drawer-head">
+    <span id="dc-drawer-brand">—</span>
+    <button id="dc-drawer-close" onclick="dcNavClose()">✕</button>
+  </div>
+
+  <div id="dc-drawer-body">
+  <div class="dc-drawer-section">Forge — Due Diligence</div>
+  <a class="dc-drawer-item" href="https://uas-forge.com/browse/" data-page="browse">Browse Components</a>
+  <a class="dc-drawer-item" href="https://uas-forge.com/compare/" data-page="compare">Compare</a>
+  <a class="dc-drawer-item" href="https://uas-forge.com/compliance/" data-page="compliance">Compliance</a>
+  <a class="dc-drawer-item" href="https://uas-forge.com/dossier/" data-page="dossier">Dossier</a>
+  <a class="dc-drawer-item" href="https://uas-forge.com/platforms/" data-page="platforms">Platforms</a>
+  <a class="dc-drawer-item" href="https://uas-forge.com/regs/" data-page="regs">Regs</a>
+
+  <div class="dc-drawer-section">Forge — Tools</div>
+  <a class="dc-drawer-item" href="https://uas-forge.com/wingman/" data-page="wingman">Wingman AI</a>
+  <a class="dc-drawer-item" href="https://uas-forge.com/stack-builder/" data-page="stack-builder">Stack Builder</a>
+  <a class="dc-drawer-item" href="https://uas-forge.com/report/" data-page="report">Compliance Report</a>
+  <a class="dc-drawer-item" href="https://uas-forge.com/tools-home/" data-page="tools-home">All Tools</a>
+
+  <div class="dc-drawer-section">Forge — Intel</div>
+  <a class="dc-drawer-item" href="https://uas-forge.com/intel/" data-page="intel">Intel Hub</a>
+  <a class="dc-drawer-item" href="https://uas-forge.com/industry/" data-page="industry">Industry</a>
+  <a class="dc-drawer-item" href="https://uas-forge.com/tracker/" data-page="tracker">Contract Tracker</a>
+
+  <div class="dc-drawer-divider"></div>
+
+  <div class="dc-drawer-section">PIE — Pattern Intelligence</div>
+  <a class="dc-drawer-item" href="https://uas-patterns.com/patterns-home/" data-page="patterns-home">P.I.E Hub</a>
+  <a class="dc-drawer-item" href="https://uas-patterns.com/brief/" data-page="brief">Brief</a>
+  <a class="dc-drawer-item" href="https://uas-patterns.com/patterns/" data-page="patterns">Flags</a>
+  <a class="dc-drawer-item" href="https://uas-patterns.com/clock/" data-page="clock">UAS Clock</a>
+  <a class="dc-drawer-item" aria-disabled="true" data-page="ddg">DDG Tracker</a>
+
+  </div><!-- /dc-drawer-body -->
+</div>
+
+<script>
+(function(){
+  var path = location.pathname.replace(/\/$/, '').split('/').pop() || 'home';
+  var isPro = (function(){
+    try {
+      var tok = localStorage.getItem('forge_token') || localStorage.getItem('wingman_sub_token') || '';
+      if(!tok || tok.length < 20) return false;
+      var p = JSON.parse(atob(tok.split('.')[1] || tok));
+      var payload = p.payload || p;
+      return !!(payload.tier && payload.tier !== 'free' && (!payload.exp || payload.exp > Date.now()));
+    } catch(e){ return false; }
+  })();
+  var host = location.hostname;
+  var isForge = host.includes('builditmyself') || host.includes('forgeprole') || host === 'localhost' || host === '127.0.0.1';
+  var isPIE   = host.includes('findoutmyself') || host.includes('nvmillfindout') || host.includes('uas-intel');
+
+  // Set page label
+  var labels = {
+    'browse':'Browse','wingman':'Wingman','intel':'Intel Hub','compare':'Compare',
+    'compliance':'Compliance','dossier':'Dossier','platforms':'Platforms','regs':'Regs',
+    'stack-builder':'Stack Builder','report':'Compliance Report','tools-home':'Tools',
+    'industry':'Industry','tracker':'Contract Tracker','patterns-home':'P.I.E Hub',
+    'brief':'Brief','patterns':'Flags','clock':'UAS Clock','ddg':'DDG Tracker',
+    'pro':'Pro','start':'Getting Started','grants':'Grants','waiver':'Doc Builder',
+    'verify':'Verify','vault':'Vault','troubleshoot':'Troubleshoot'
+  };
+  var pageEl = document.getElementById('dc-nav-page');
+  if(pageEl) pageEl.textContent = labels[path] || document.title.split('—')[0].trim().split('·')[0].trim() || path;
+
+  // Brand link — goes to home of current domain
+  // Set brand name: Forge / Patterns / Patterns Pro
+  var brandName = isForge ? 'Forge' : isPIE ? 'Patterns' : 'UAS-';
+  var brandEl = document.getElementById('dc-nav-brand');
+  var drawerBrandEl = document.getElementById('dc-drawer-brand');
+  if(brandEl) brandEl.textContent = brandName;
+  if(drawerBrandEl) drawerBrandEl.textContent = brandName;
+
+  window.dcNavBrandClick = function(e){
+    e.preventDefault();
+    location.href = isForge ? 'https://uas-forge.com/' : isPIE ? 'https://uas-patterns.com/patterns-home/' : '/';
+  };
+
+
+
+  // Mark active drawer items
+  document.querySelectorAll('.dc-drawer-item').forEach(function(a){
+    if(a.dataset.page === path) a.classList.add('dc-active');
+  });
+
+  // Hamburger toggle
+  window.dcNavToggle = function(){
+    var open = document.getElementById('dc-drawer').classList.toggle('open');
+    document.getElementById('dc-overlay').classList.toggle('open', open);
+    document.getElementById('dc-hamburger').classList.toggle('open', open);
+  };
+  window.dcNavClose = function(){
+    document.getElementById('dc-drawer').classList.remove('open');
+    document.getElementById('dc-overlay').classList.remove('open');
+    document.getElementById('dc-hamburger').classList.remove('open');
+  };
+  // Esc to close
+  document.addEventListener('keydown', function(e){ if(e.key==='Escape') dcNavClose(); });
+})();
+</script>
+<!-- ── /Unified UAS-Nav ─────────────────────────────────────── -->
+
+<div id="app">
+
+  <!-- Topbar -->
+  <!-- Body -->
+  <div id="body">
+
+    <!-- Sidebar -->
+    <aside id="sidebar">
+      <div id="cat-header">Categories</div>
+      <div id="cat-list"></div>
+    </aside>
+
+    <!-- Main -->
+    <div id="main">
+      <div id="toolbar">
+        <button id="mob-cat-btn" aria-label="Categories"><i class="ph ph-list"></i></button>
+        <span id="cat-title">Loading...</span>
+        <span id="part-count"></span>
+        <div id="search-wrap">
+          <i class="ph ph-magnifying-glass"></i>
+          <input id="search" type="text" placeholder="Search parts…" autocomplete="off">
+        </div>
+        <select id="sort-sel" class="tb-select">
+          <option value="">Sort: Default</option>
+          <option value="name-asc">Name A→Z</option>
+          <option value="name-desc">Name Z→A</option>
+          <option value="mfr">Manufacturer</option>
+        </select>
+      </div>
+      <div id="filter-bar"></div>
+
+      <div id="grid-wrap">
+        <div id="loader">
+          <div class="spinner"></div>
+          <p>Loading database...</p>
+        </div>
+        <div id="grid" style="display:none"></div>
+        <div id="empty"><i class="ph ph-magnifying-glass"></i><span>No parts match</span></div>
+      </div>
+    </div>
+
+  </div><!-- /body -->
+</div><!-- /app -->
+
+<!-- Build FAB -->
+<button id="build-fab">
+  <i class="ph ph-wrench"></i>
+  <span>Build</span>
+  <span id="build-count">0</span>
+</button>
+
+<!-- Build Drawer -->
+<div id="build-overlay"></div>
+<div id="build-drawer">
+  <div id="drawer-header">
+    <h2><i class="ph ph-wrench"></i> Current Build</h2>
+    <button id="drawer-close"><i class="ph ph-x"></i></button>
+  </div>
+  <div id="drawer-body">
+    <div id="build-empty"><i class="ph ph-stack"></i><span>No parts added yet</span></div>
+    <div id="build-slots"></div>
+    <div id="bom-summary">
+      <div class="bom-gauges">
+        <div class="bom-gauge"><div class="bom-gauge-val" id="bom-cost">$0</div><div class="bom-gauge-lbl">Est. Cost</div></div>
+        <div class="bom-gauge"><div class="bom-gauge-val" id="bom-weight">0g</div><div class="bom-gauge-lbl">Total Weight</div></div>
+      </div>
+      <div class="bom-bar-wrap"><div class="bom-bar-bg" id="bom-bar"></div></div>
+      <div class="bom-rows" id="bom-rows"></div>
+    </div>
+  </div>
+  <div id="drawer-footer">
+    <div id="build-total">Parts: <span id="build-n">0</span></div>
+    <div class="btn-row">
+      <button class="btn btn-outline" id="btn-share"><i class="ph ph-share-network"></i> Share</button>
+      <button class="btn btn-outline" id="btn-export"><i class="ph ph-export"></i> Export</button>
+      <a class="btn btn-outline" href="/circuit-forge/" title="Design the wiring for this build with AI" style="color:#3b82f6;border-color:rgba(59,130,246,.3);text-decoration:none"><i class="ph ph-lightning"></i> Wiring (AI)</a>
+      <div id="param-wrap" style="position:relative">
+        <button class="btn btn-outline" id="btn-ardupilot" style="color:#22c55e;border-color:rgba(34,197,94,.3)"><i class="ph ph-sliders"></i> Firmware Config</button>
+        <div id="param-picker">
+          <div class="pp-title">Firmware &amp; profile</div>
+
+          <div class="pp-fw-label">ArduPilot</div>
+          <button class="pp-btn" data-fw="ardupilot" data-profile="racing">
+            <span class="pp-icon">⚡</span><span class="pp-name">Racing</span>
+            <span class="pp-desc">Aggressive PIDs · tight filters · snappy response</span>
+          </button>
+          <button class="pp-btn" data-fw="ardupilot" data-profile="freestyle">
+            <span class="pp-icon">🎯</span><span class="pp-name">Freestyle</span>
+            <span class="pp-desc">Balanced tune · moderate filtering · good default</span>
+          </button>
+          <button class="pp-btn" data-fw="ardupilot" data-profile="cinematic">
+            <span class="pp-icon">🎬</span><span class="pp-name">Cinematic</span>
+            <span class="pp-desc">Smooth response · heavy filtering · slow accel</span>
+          </button>
+          <button class="pp-btn" data-fw="ardupilot" data-profile="longrange">
+            <span class="pp-icon">📡</span><span class="pp-name">Long-range</span>
+            <span class="pp-desc">Conservative PIDs · efficient hover · RTL focused</span>
+          </button>
+
+          <div class="pp-fw-label" style="margin-top:8px">Betaflight</div>
+          <button class="pp-btn" data-fw="betaflight" data-profile="racing">
+            <span class="pp-icon">⚡</span><span class="pp-name">Racing</span>
+            <span class="pp-desc">High PIDs · tight RPM filter · minimal expo</span>
+          </button>
+          <button class="pp-btn" data-fw="betaflight" data-profile="freestyle">
+            <span class="pp-icon">🎯</span><span class="pp-name">Freestyle</span>
+            <span class="pp-desc">Balanced tune · iterm relax · good default</span>
+          </button>
+          <button class="pp-btn" data-fw="betaflight" data-profile="cinematic">
+            <span class="pp-icon">🎬</span><span class="pp-name">Cinematic</span>
+            <span class="pp-desc">Low P · heavy filtering · smooth feel</span>
+          </button>
+
+          <div class="pp-fw-label" style="margin-top:8px">iNav</div>
+          <button class="pp-btn" data-fw="inav" data-profile="freestyle">
+            <span class="pp-icon">🎯</span><span class="pp-name">FPV / Acro</span>
+            <span class="pp-desc">Manual + Angle + Nav modes · balanced tune</span>
+          </button>
+          <button class="pp-btn" data-fw="inav" data-profile="longrange">
+            <span class="pp-icon">📡</span><span class="pp-name">Long-range Nav</span>
+            <span class="pp-desc">RTH · Cruise · Waypoint optimised</span>
+          </button>
+
+          <div class="pp-fw-label" style="margin-top:8px">PX4</div>
+          <button class="pp-btn" data-fw="px4" data-profile="multirotor">
+            <span class="pp-icon">🔷</span><span class="pp-name">Multirotor</span>
+            <span class="pp-desc">MC rate controller · position hold · auto modes</span>
+          </button>
+          <button class="pp-btn" data-fw="px4" data-profile="racing">
+            <span class="pp-icon">⚡</span><span class="pp-name">Racing / Acro</span>
+            <span class="pp-desc">High rates · manual control · minimal GPS</span>
+          </button>
+        </div>
+      </div>
+      <button class="btn btn-outline" id="btn-clear" style="color:#ef4444;border-color:rgba(239,68,68,.3)"><i class="ph ph-trash"></i> Clear</button>
+    </div>
+  </div>
+</div>
+
+<!-- Part Modal -->
+<div id="modal-overlay">
+  <div id="modal" style="position:relative">
+    <button id="modal-close-x"><i class="ph ph-x"></i></button>
+    <div id="modal-top">
+      <div id="modal-img-ph"><i class="ph ph-image"></i></div>
+      <div id="modal-info">
+        <div id="modal-name"></div>
+        <div id="modal-mfr"></div>
+        <div id="modal-pid"></div>
+      </div>
+    </div>
+    <div id="modal-desc-wrap"></div>
+    <div id="modal-specs-wrap">
+      <div id="modal-specs-title">Specifications</div>
+      <div id="modal-specs"></div>
+    </div>
+    <div id="modal-foot">
+      <button class="btn btn-primary" id="modal-add-btn"><i class="ph ph-plus"></i> Add to Build</button>
+      <a id="modal-link-btn" href="#" target="_blank" rel="noopener" style="display:none"><i class="ph ph-arrow-square-out"></i> View Part</a>
+      <span style="flex:1"></span>
+      <button class="btn btn-outline" id="modal-close-btn">Close</button>
+    </div>
+  </div>
+</div>
+
+<script>
+(function() {
+'use strict';
+
+// ── State ──
+let DB = null;
+let allParts = [];
+let currentCat = null;
+let currentParts = [];
+let build = JSON.parse(localStorage.getItem('forge-build') || '[]');
+let modalPart = null;
+let activeFilters = {};
+
+// ── Filter config per category ──
+// type:'select' — enumerate unique values from data (exact match)
+// type:'buckets' — predefined ranges; buckets:[{l:label, t:testFn(val)}]
+// type:'derived' — compute a simplified key via derive(part), then exact match
+const FILTER_CFG = {
+  motors: [
+    { key:'kv_rating', label:'KV', type:'buckets', buckets:[
+      {l:'< 1000',  t:v=>v<1000},
+      {l:'1000–2000',t:v=>v>=1000&&v<2000},
+      {l:'2000–3000',t:v=>v>=2000&&v<3000},
+      {l:'3000+',   t:v=>v>=3000},
+    ]},
+    { key:'_stator', label:'Size', type:'derived',
+      derive: p => p.stator_size ? String(p.stator_size).slice(0,2)+'xx' : null },
+    { key:'cell_count_min', label:'Cells', type:'select', fmt:v=>`${v}S` },
+    { key:'prop_size_max_in', label:'Prop', type:'select', fmt:v=>`${v}"` },
+  ],
+  escs: [
+    { key:'motor_output_count', label:'Type', type:'select',
+      fmt:v=>v===1||v==='1'?'Single':'4-in-1' },
+    { key:'esc_firmware', label:'Firmware', type:'select' },
+    { key:'continuous_current_per_motor_a', label:'Current', type:'buckets', buckets:[
+      {l:'≤ 30A', t:v=>v<=30},
+      {l:'30–50A', t:v=>v>30&&v<=50},
+      {l:'50–70A', t:v=>v>50&&v<=70},
+      {l:'70A+',  t:v=>v>70},
+    ]},
+    { key:'cell_count_max', label:'Max Cells', type:'select', fmt:v=>`${v}S` },
+  ],
+  flight_controllers: [
+    { key:'mcu_family', label:'MCU', type:'select' },
+    { key:'mounting_pattern_mm', label:'Mount', type:'select', fmt:v=>`${v}mm` },
+    { key:'_imu', label:'IMU', type:'derived',
+      derive: p => {
+        const s = (p.imu||'').toLowerCase();
+        if (s.includes('icm42688')||s.includes('icm-42688')) return 'ICM42688';
+        if (s.includes('bmi270')) return 'BMI270';
+        if (s.includes('mpu6000')) return 'MPU6000';
+        if (s.includes('icm20689')) return 'ICM20689';
+        if (s.includes('tactical')) return 'Tactical-grade';
+        return p.imu||null;
+      }},
+    { key:'cell_count_max', label:'Max Cells', type:'select', fmt:v=>`${v}S` },
+  ],
+  stacks: [
+    { key:'mcu_family', label:'MCU', type:'select' },
+    { key:'cell_count_max', label:'Max Cells', type:'select', fmt:v=>`${v}S` },
+    { key:'esc_current_a', label:'ESC Current', type:'buckets', buckets:[
+      {l:'≤ 30A', t:v=>v<=30},
+      {l:'30–50A', t:v=>v>30&&v<=50},
+      {l:'50–70A', t:v=>v>50&&v<=70},
+      {l:'70A+',  t:v=>v>70},
+    ]},
+    { key:'is_aio', label:'Form', type:'select',
+      fmt:v=>(v===true||v==='true')?'AIO':'Standalone' },
+  ],
+  frames: [
+    { key:'prop_size_max_in', label:'Prop Size', type:'select', fmt:v=>`${v}"` },
+    { key:'fc_mounting_patterns_mm', label:'FC Mount', type:'derived',
+      derive: p => {
+        const arr = p.fc_mounting_patterns_mm;
+        if (!arr) return null;
+        const vals = Array.isArray(arr) ? arr : [arr];
+        return vals.map(v=>`${v}mm`).join('/');
+      }},
+  ],
+  batteries: [
+    { key:'cell_count', label:'Cells', type:'select', fmt:v=>`${v}S` },
+    { key:'capacity_mah', label:'Capacity', type:'buckets', buckets:[
+      {l:'< 1000mAh',  t:v=>v<1000},
+      {l:'1000–2000',  t:v=>v>=1000&&v<2000},
+      {l:'2000–4000',  t:v=>v>=2000&&v<4000},
+      {l:'4000mAh+',   t:v=>v>=4000},
+    ]},
+    { key:'_chem', label:'Chemistry', type:'derived',
+      derive: p => {
+        const c = (p.chemistry||'').toLowerCase();
+        if (c.includes('lihv')) return 'LiHV';
+        if (c.includes('lipo')) return 'LiPo';
+        if (c.includes('sulfur')) return 'Li-S';
+        if (c.includes('semi')) return 'Semi-solid';
+        if (c.includes('ion')) return 'Li-Ion';
+        return p.chemistry||null;
+      }},
+  ],
+  propellers: [
+    { key:'_size', label:'Size', type:'derived',
+      derive: p => {
+        const d = p.diameter_in;
+        if (d==null) return null;
+        if (d<=3) return '≤ 3"';
+        if (d<=5) return '3–5"';
+        if (d<=7) return '5–7"';
+        return '7"+';
+      }},
+    { key:'blade_count', label:'Blades', type:'select', fmt:v=>`${v}B` },
+    { key:'pitch_in', label:'Pitch', type:'select', fmt:v=>`${v}p` },
+  ],
+  receivers: [
+    { key:'protocol', label:'Protocol', type:'select' },
+  ],
+  video_transmitters: [
+    { key:'video_system', label:'System', type:'select' },
+  ],
+  fpv_cameras: [
+    { key:'video_system', label:'System', type:'select' },
+  ],
+  gps_modules: [
+    { key:'size_class', label:'Size', type:'select' },
+  ],
+  antennas: [
+    { key:'frequency_ghz', label:'Frequency', type:'select', fmt:v=>`${v}GHz` },
+    { key:'polarization', label:'Polarization', type:'select' },
+  ],
+};
+
+// ── Key spec badges shown on cards ──
+const CARD_SPECS = {
+  motors:            p => [p.stator_size, p.kv_rating && `${p.kv_rating}KV`],
+  escs:              p => [p.motor_output_count===4||p.motor_output_count==='4'?'4-in-1':'Single',
+                           p.continuous_current_per_motor_a && `${p.continuous_current_per_motor_a}A`],
+  flight_controllers:p => [p.mcu_family, p.mounting_pattern_mm && `${p.mounting_pattern_mm}mm`],
+  stacks:            p => [p.mcu_family, p.esc_current_a && `${p.esc_current_a}A`,
+                           (p.is_aio===true||p.is_aio==='true')?'AIO':null],
+  frames:            p => [p.prop_size_max_in && `${p.prop_size_max_in}"`,
+                           p.wheelbase_mm && `${p.wheelbase_mm}mm`],
+  batteries:         p => [p.cell_count && `${p.cell_count}S`, p.capacity_mah && `${p.capacity_mah}mAh`],
+  propellers:        p => [p.diameter_in && `${p.diameter_in}"`,
+                           p.pitch_in && `${p.pitch_in}p`, p.blade_count && `${p.blade_count}B`],
+  receivers:         p => [p.protocol, p.frequency_ghz && `${p.frequency_ghz}GHz`],
+  video_transmitters:p => [p.video_system],
+  fpv_cameras:       p => [p.video_system],
+  gps_modules:       p => [p.constellations],
+  antennas:          p => [p.frequency_ghz && `${p.frequency_ghz}GHz`, p.polarization],
+};
+
+// ── Compatibility state ──
+let showIncompat = true; // false = hide incompatible cards
+
+// ── Compatibility rules ──
+// Each rule: (candidatePart, buildIndex) → {r:'yes'|'no', why?} | null
+// null = rule cannot apply (missing data on either side)
+// First 'no' result wins; 'yes' only if at least one rule applied and none said 'no'
+const COMPAT_RULES = {
+  motors: [
+    (p, bi) => {
+      const b = bi.batteries;
+      if (!b?.cell_count || !p.cell_count_min) return null;
+      const ok = b.cell_count >= p.cell_count_min && (!p.cell_count_max || b.cell_count <= p.cell_count_max);
+      return ok ? {r:'yes'} : {r:'no', why:`Needs ≥${p.cell_count_min}S`};
+    },
+    (p, bi) => {
+      const f = bi.frames;
+      if (!f?.prop_size_max_in || !p.prop_size_min_in || !p.prop_size_max_in) return null;
+      const ok = f.prop_size_max_in >= p.prop_size_min_in && f.prop_size_max_in <= p.prop_size_max_in;
+      return ok ? {r:'yes'} : {r:'no', why:`Props ${p.prop_size_min_in}–${p.prop_size_max_in}"`};
+    },
+    (p, bi) => {
+      const f = bi.frames;
+      if (!f?.motor_mount_hole_spacing_mm || !p.motor_mount_hole_spacing_mm) return null;
+      const ok = f.motor_mount_hole_spacing_mm === p.motor_mount_hole_spacing_mm;
+      return ok ? {r:'yes'} : {r:'no', why:`Mount ${p.motor_mount_hole_spacing_mm}mm`};
+    },
+  ],
+  escs: [
+    (p, bi) => {
+      const b = bi.batteries;
+      if (!b?.cell_count || !p.cell_count_min || !p.cell_count_max) return null;
+      const ok = b.cell_count >= p.cell_count_min && b.cell_count <= p.cell_count_max;
+      return ok ? {r:'yes'} : {r:'no', why:`Needs ${p.cell_count_min}–${p.cell_count_max}S`};
+    },
+  ],
+  flight_controllers: [
+    (p, bi) => {
+      const b = bi.batteries;
+      if (!b?.cell_count || !p.cell_count_min || !p.cell_count_max) return null;
+      const ok = b.cell_count >= p.cell_count_min && b.cell_count <= p.cell_count_max;
+      return ok ? {r:'yes'} : {r:'no', why:`Needs ${p.cell_count_min}–${p.cell_count_max}S`};
+    },
+    (p, bi) => {
+      const f = bi.frames;
+      if (!f?.fc_mounting_patterns_mm || !p.mounting_pattern_mm) return null;
+      const pats = Array.isArray(f.fc_mounting_patterns_mm) ? f.fc_mounting_patterns_mm : [f.fc_mounting_patterns_mm];
+      const ok = pats.includes(p.mounting_pattern_mm);
+      return ok ? {r:'yes'} : {r:'no', why:`Frame: ${pats.map(x=>x+'mm').join('/')}`};
+    },
+  ],
+  stacks: [
+    (p, bi) => {
+      const b = bi.batteries;
+      if (!b?.cell_count || !p.cell_count_min || !p.cell_count_max) return null;
+      const ok = b.cell_count >= p.cell_count_min && b.cell_count <= p.cell_count_max;
+      return ok ? {r:'yes'} : {r:'no', why:`Needs ${p.cell_count_min}–${p.cell_count_max}S`};
+    },
+    (p, bi) => {
+      const f = bi.frames;
+      if (!f?.fc_mounting_patterns_mm || !p.mounting_pattern_mm) return null;
+      const pats = Array.isArray(f.fc_mounting_patterns_mm) ? f.fc_mounting_patterns_mm : [f.fc_mounting_patterns_mm];
+      const ok = pats.includes(p.mounting_pattern_mm);
+      return ok ? {r:'yes'} : {r:'no', why:`Frame: ${pats.map(x=>x+'mm').join('/')}`};
+    },
+  ],
+  propellers: [
+    (p, bi) => {
+      const f = bi.frames;
+      if (!f?.prop_size_max_in || !p.diameter_in) return null;
+      const ok = Math.abs(p.diameter_in - f.prop_size_max_in) <= 0.5;
+      return ok ? {r:'yes'} : {r:'no', why:`Frame: ${f.prop_size_max_in}"`};
+    },
+    (p, bi) => {
+      const m = bi.motors;
+      if (!m?.prop_size_min_in || !m?.prop_size_max_in || !p.diameter_in) return null;
+      const ok = p.diameter_in >= m.prop_size_min_in && p.diameter_in <= m.prop_size_max_in;
+      return ok ? {r:'yes'} : {r:'no', why:`Motor: ${m.prop_size_min_in}–${m.prop_size_max_in}"`};
+    },
+  ],
+  batteries: [
+    (p, bi) => {
+      const fc = bi.flight_controllers || bi.stacks;
+      if (!fc?.cell_count_min || !fc?.cell_count_max || !p.cell_count) return null;
+      const ok = p.cell_count >= fc.cell_count_min && p.cell_count <= fc.cell_count_max;
+      return ok ? {r:'yes'} : {r:'no', why:`FC: ${fc.cell_count_min}–${fc.cell_count_max}S`};
+    },
+    (p, bi) => {
+      const e = bi.escs;
+      if (!e?.cell_count_min || !e?.cell_count_max || !p.cell_count) return null;
+      const ok = p.cell_count >= e.cell_count_min && p.cell_count <= e.cell_count_max;
+      return ok ? {r:'yes'} : {r:'no', why:`ESC: ${e.cell_count_min}–${e.cell_count_max}S`};
+    },
+    (p, bi) => {
+      const m = bi.motors;
+      if (!m?.cell_count_min || !p.cell_count) return null;
+      const ok = p.cell_count >= m.cell_count_min;
+      return ok ? {r:'yes'} : {r:'no', why:`Motor: min ${m.cell_count_min}S`};
+    },
+  ],
+  fpv_cameras: [
+    (p, bi) => {
+      const v = bi.video_transmitters;
+      if (!v?.video_system || !p.video_system) return null;
+      const vs = s => s.toLowerCase().replace(/\s+/g,'');
+      const ok = vs(v.video_system) === vs(p.video_system) || vs(v.video_system).includes(vs(p.video_system)) || vs(p.video_system).includes(vs(v.video_system));
+      return ok ? {r:'yes'} : {r:'no', why:`VTX: ${v.video_system}`};
+    },
+  ],
+  video_transmitters: [
+    (p, bi) => {
+      const c = bi.fpv_cameras;
+      if (!c?.video_system || !p.video_system) return null;
+      const vs = s => s.toLowerCase().replace(/\s+/g,'');
+      const ok = vs(p.video_system) === vs(c.video_system) || vs(p.video_system).includes(vs(c.video_system)) || vs(c.video_system).includes(vs(p.video_system));
+      return ok ? {r:'yes'} : {r:'no', why:`Camera: ${c.video_system}`};
+    },
+  ],
+};
+
+function getBuildIndex() {
+  const idx = {};
+  build.forEach(b => {
+    const p = allParts.find(x => x.pid === b.pid);
+    if (p) idx[b.cat] = p;
+  });
+  return idx;
+}
+
+function getCompat(part, buildIdx) {
+  const rules = COMPAT_RULES[currentCat];
+  if (!rules) return {r: null};
+  let anyApplied = false;
+  for (const rule of rules) {
+    const res = rule(part, buildIdx);
+    if (res === null) continue;
+    anyApplied = true;
+    if (res.r === 'no') return res;
+  }
+  return anyApplied ? {r:'yes'} : {r: null};
+}
+
+// ── Filter helpers ──
+function derivedVal(cfg, part) {
+  if (cfg.type === 'derived') return cfg.derive(part);
+  return part[cfg.key];
+}
+
+function renderFilterBar() {
+  const bar = $('filter-bar');
+  const cfgs = FILTER_CFG[currentCat];
+  if (!cfgs || !cfgs.length) { bar.style.display = 'none'; return; }
+  const parts = DB.components[currentCat] || [];
+  const anyActive = Object.keys(activeFilters).length > 0;
+
+  const groups = cfgs.map(cfg => {
+    const active = activeFilters[cfg.key];
+    let options = '';
+    if (cfg.type === 'buckets') {
+      options = cfg.buckets.map(b =>
+        `<option value="${esc(b.l)}"${active===b.l?' selected':''}>${esc(b.l)}</option>`
+      ).join('');
+    } else {
+      const vals = new Map();
+      parts.forEach(p => {
+        const v = derivedVal(cfg, p);
+        if (v == null || v === '') return;
+        const key = String(v);
+        const disp = cfg.fmt ? cfg.fmt(v) : key;
+        vals.set(key, disp);
+      });
+      const sorted = [...vals.entries()].sort((a,b)=>a[0].localeCompare(b[0],undefined,{numeric:true}));
+      options = sorted.map(([k,d]) =>
+        `<option value="${esc(k)}"${active===k?' selected':''}>${esc(d)}</option>`
+      ).join('');
+    }
+    return `<div class="filter-group">
+      <span class="filter-label">${esc(cfg.label)}</span>
+      <select class="filter-sel${active?' active':''}" data-fk="${esc(cfg.key)}">
+        <option value="">All</option>${options}
+      </select>
+    </div>`;
+  }).join('');
+
+  const hasCompatForCat = !!(COMPAT_RULES[currentCat] && build.length > 0);
+  const compatToggle = hasCompatForCat
+    ? `<div class="compat-toggle">
+        <span class="filter-label">Compat</span>
+        <label><input type="checkbox" id="compat-hide-cb"${!showIncompat?' checked':''}>Hide incompatible</label>
+       </div>`
+    : '';
+
+  const hasContent = cfgs.length > 0 || hasCompatForCat;
+  if (!hasContent) { bar.style.display = 'none'; return; }
+
+  bar.innerHTML = groups +
+    `<button id="filter-clear" class="${anyActive?'visible':''}">✕ Clear</button>` +
+    compatToggle;
+  bar.style.display = 'flex';
+
+  bar.querySelectorAll('.filter-sel').forEach(sel => {
+    sel.addEventListener('change', () => {
+      if (sel.value) activeFilters[sel.dataset.fk] = sel.value;
+      else delete activeFilters[sel.dataset.fk];
+      renderFilterBar();
+      renderGrid();
+    });
+  });
+  const clr = $('filter-clear');
+  if (clr) clr.addEventListener('click', () => {
+    activeFilters = {};
+    renderFilterBar();
+    renderGrid();
+  });
+  const hideCb = $('compat-hide-cb');
+  if (hideCb) hideCb.addEventListener('change', () => {
+    showIncompat = !hideCb.checked;
+    renderGrid();
+  });
+}
+
+function applySpecFilters(parts) {
+  const cfgs = FILTER_CFG[currentCat];
+  if (!cfgs || !Object.keys(activeFilters).length) return parts;
+  return parts.filter(p => {
+    for (const cfg of cfgs) {
+      const val = activeFilters[cfg.key];
+      if (!val) continue;
+      if (cfg.type === 'buckets') {
+        const bucket = cfg.buckets.find(b => b.l === val);
+        if (!bucket) continue;
+        const pv = p[cfg.key];
+        if (pv == null || !bucket.t(Number(pv))) return false;
+      } else {
+        const pv = String(derivedVal(cfg, p) ?? '');
+        if (pv !== val) return false;
+      }
+    }
+    return true;
+  });
+}
+
+// ── Helpers ──
+const $ = id => document.getElementById(id);
+const esc = s => String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+const fmtCat = s => s.replace(/_/g,' ').replace(/\b\w/g,c=>c.toUpperCase());
+
+// ── Load DB ──
+// Try every plausible path (absolute, relative for depth-1 and depth-2 routes,
+// same-dir). Capture the last error so the UI can show *why* it failed instead
+// of an unhelpful generic "nothing loaded" state.
+let _dbLoadError = null;
+async function loadDB() {
+  // Fast path: if the static adapter already loaded the DB, reuse it (avoids double-fetch)
+  try {
+    if (window.__forgeAdapterReady) {
+      await Promise.race([window.__forgeAdapterReady, new Promise((_,rej) => setTimeout(rej, 10000))]);
+      const r = await fetch('/api/schema/');
+      if (r.ok) { const d = await r.json(); if (d && d.components) return d; }
+    }
+  } catch(e) { /* adapter not ready or timed out — fetch directly */ }
+
+  const cb = '?v=' + Date.now();
+  const paths = [
+    '/static/forge_database.json',
+    '../static/forge_database.json',
+    'forge_database.json',
+  ];
+  let lastErr = null;
+  for (const p of paths) {
+    try {
+      const ctrl = new AbortController();
+      const tid = setTimeout(() => ctrl.abort(), 15000);
+      const r = await fetch(p + cb, { cache: 'no-store', signal: ctrl.signal });
+      clearTimeout(tid);
+      if (r.ok) return await r.json();
+      lastErr = `HTTP ${r.status} at ${p}`;
+    } catch(e) {
+      lastErr = `${e.name || 'Error'}: ${e.message || e} at ${p}`;
+    }
+  }
+  _dbLoadError = lastErr;
+  return null;
+}
+
+async function init() {
+  DB = await loadDB();
+  if (!DB || !DB.components) {
+    const detail = _dbLoadError ? `<p style="color:#6b6358;font-size:11px;margin-top:6px;font-family:monospace;max-width:420px;word-break:break-word">${(_dbLoadError).replace(/</g,'&lt;')}</p>` : '';
+    $('loader').innerHTML = '<i class="ph ph-warning-circle" style="font-size:32px;color:#ef4444"></i><p style="color:#ef4444">Failed to load database</p>' + detail + '<button class="btn btn-outline" onclick="location.reload()" style="margin-top:8px"><i class="ph ph-arrow-clockwise"></i> Retry</button>';
+    return;
+  }
+
+  // Build flat parts list
+  allParts = [];
+  for (const [cat, parts] of Object.entries(DB.components)) {
+    for (const p of parts) allParts.push({...p, _cat: cat});
+  }
+
+  // Hydrate build from ?b= shareable URL param (overrides localStorage)
+  const bParam = new URLSearchParams(location.search).get('b');
+  if (bParam) {
+    const pids = decodeBuildParam(bParam);
+    if (pids && Array.isArray(pids) && pids.length) {
+      build = pids
+        .map(pid => allParts.find(p => p.pid === pid))
+        .filter(Boolean)
+        .map(p => ({pid: p.pid, name: p.name, cat: p._cat || p.category}));
+      saveBuild();
+    }
+  }
+
+  renderSidebar();
+  $('loader').style.display = 'none';
+  $('grid').style.display = 'grid';
+  updateBuildUI();
+
+  // Select first category
+  const firstCat = Object.keys(DB.components)[0];
+  selectCat(firstCat);
+}
+
+// ── Sidebar ──
+function renderSidebar() {
+  const list = $('cat-list');
+  list.innerHTML = '';
+  for (const [cat, parts] of Object.entries(DB.components)) {
+    const el = document.createElement('div');
+    el.className = 'cat-item';
+    el.dataset.cat = cat;
+    el.innerHTML = `<span>${esc(fmtCat(cat))}</span><span class="cnt">${parts.length}</span>`;
+    el.addEventListener('click', () => selectCat(cat));
+    list.appendChild(el);
+  }
+}
+
+function selectCat(cat) {
+  currentCat = cat;
+  activeFilters = {};
+  document.querySelectorAll('.cat-item').forEach(el => {
+    el.classList.toggle('active', el.dataset.cat === cat);
+  });
+  $('cat-title').textContent = fmtCat(cat);
+  $('sidebar').classList.remove('mob-open');
+  renderFilterBar();
+  renderGrid();
+}
+
+// ── Grid ──
+function renderGrid() {
+  const search = $('search').value.trim().toLowerCase();
+  const sort = $('sort-sel').value;
+
+  let parts;
+  if (search) {
+    parts = allParts.filter(p => {
+      const haystack = [p.name,p.manufacturer,p.pid,...(p.tags||[])].join(' ').toLowerCase();
+      return haystack.includes(search);
+    });
+  } else {
+    parts = applySpecFilters(DB.components[currentCat] || []);
+  }
+
+  // Compute compat for current parts
+  const buildIdx = getBuildIndex();
+  const compatActive = !search && !!(COMPAT_RULES[currentCat] && build.length > 0);
+  const compatMap = new Map();
+  if (compatActive) {
+    parts.forEach(p => compatMap.set(p.pid, getCompat(p, buildIdx)));
+  }
+
+  // Optionally hide incompatible
+  if (compatActive && !showIncompat) {
+    parts = parts.filter(p => compatMap.get(p.pid)?.r !== 'no');
+  }
+
+  // Sort compatible to top when compat is active and no explicit sort chosen
+  if (compatActive && !sort) {
+    parts = [...parts].sort((a, b) => {
+      const ra = compatMap.get(a.pid)?.r, rb = compatMap.get(b.pid)?.r;
+      if (ra === 'yes' && rb !== 'yes') return -1;
+      if (rb === 'yes' && ra !== 'yes') return 1;
+      return 0;
+    });
+  } else if (sort === 'name-asc') parts = [...parts].sort((a,b) => (a.name||'').localeCompare(b.name||''));
+  else if (sort === 'name-desc') parts = [...parts].sort((a,b) => (b.name||'').localeCompare(a.name||''));
+  else if (sort === 'mfr') parts = [...parts].sort((a,b) => (a.manufacturer||'').localeCompare(b.manufacturer||''));
+
+  currentParts = parts;
+  const total = (DB.components[currentCat]||[]).length;
+  if (compatActive) {
+    const nYes = [...compatMap.values()].filter(c=>c.r==='yes').length;
+    $('part-count').textContent = `${nYes} compatible · ${total} total`;
+  } else {
+    $('part-count').textContent = parts.length === total ? `${total} parts` : `${parts.length} / ${total}`;
+  }
+
+  const grid = $('grid');
+  const empty = $('empty');
+
+  if (!parts.length) {
+    grid.style.display = 'none';
+    empty.style.display = 'flex';
+    return;
+  }
+  grid.style.display = 'grid';
+  empty.style.display = 'none';
+
+  const inBuild = new Set(build.map(b => b.pid));
+  const specFn = CARD_SPECS[currentCat];
+
+  grid.innerHTML = parts.map(p => {
+    const imgHtml = p.image_file
+      ? `<img class="img" src="${esc(p.image_file)}" alt="" loading="lazy" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'">`+
+        `<div class="img-placeholder" style="display:none"><i class="ph ph-image"></i></div>`
+      : `<div class="img-placeholder"><i class="ph ph-image"></i></div>`;
+    const tags = specFn ? specFn(p).filter(Boolean).map(s=>`<span class="spec-tag">${esc(String(s))}</span>`).join('') : '';
+    const compat = compatMap.get(p.pid);
+    const compatClass = compat?.r ? ` compat-${compat.r}` : '';
+    const compatWhy = compat?.r === 'no' && compat.why
+      ? `<div class="compat-why">⚠ ${esc(compat.why)}</div>` : '';
+    return `<div class="part-card${inBuild.has(p.pid)?' in-build':''}${compatClass}" data-pid="${esc(p.pid)}">
+      ${imgHtml}
+      <div class="name">${esc(p.name)}</div>
+      <div class="mfr">${esc(p.manufacturer||'')}</div>
+      ${tags ? `<div class="spec-tags">${tags}</div>` : ''}
+      ${compatWhy}
+      <div class="pid">${esc(p.pid)}</div>
+      <button class="add-btn" data-pid="${esc(p.pid)}" title="Add to build"><i class="ph ph-plus"></i></button>
+    </div>`;
+  }).join('');
+
+  // Card click → modal, add btn → add to build
+  grid.querySelectorAll('.part-card').forEach(card => {
+    card.addEventListener('click', e => {
+      if (e.target.closest('.add-btn')) {
+        addToBuild(card.dataset.pid);
+      } else {
+        openModal(card.dataset.pid);
+      }
+    });
+  });
+}
+
+// ── Modal ──
+function openModal(pid) {
+  const p = allParts.find(x => x.pid === pid);
+  if (!p) return;
+  modalPart = p;
+
+  $('modal-name').textContent = p.name || '';
+  $('modal-mfr').textContent = p.manufacturer || '';
+  $('modal-pid').textContent = p.pid || '';
+  $('modal-desc-wrap').textContent = p.description || 'No description available.';
+
+  // Image
+  const imgPh = $('modal-img-ph');
+  imgPh.innerHTML = '';
+  if (p.image_file) {
+    const img = document.createElement('img');
+    img.id = 'modal-img';
+    img.src = p.image_file;
+    img.style.cssText = 'width:80px;height:80px;border-radius:8px;object-fit:cover;flex-shrink:0';
+    img.onerror = () => { imgPh.innerHTML = '<i class="ph ph-image" style="font-size:28px;color:var(--text-x)"></i>'; };
+    imgPh.appendChild(img);
+  } else {
+    imgPh.innerHTML = '<i class="ph ph-image" style="font-size:28px;color:var(--text-x)"></i>';
+  }
+
+  // Specs
+  const skip = new Set(['pid','category','name','manufacturer','description','link','image_file','tags','_cat','schema_data']);
+  const specs = Object.entries(p).filter(([k]) => !skip.has(k) && p[k] !== null && p[k] !== '' && p[k] !== undefined);
+  $('modal-specs').innerHTML = specs.map(([k,v]) =>
+    `<div class="spec-row"><div class="spec-label">${esc(k.replace(/_/g,' '))}</div><div class="spec-value">${esc(Array.isArray(v)?v.join(', '):String(v))}</div></div>`
+  ).join('');
+
+  // Link
+  const linkBtn = $('modal-link-btn');
+  if (p.link) { linkBtn.href = p.link; linkBtn.style.display = 'inline-flex'; }
+  else { linkBtn.style.display = 'none'; }
+
+  // Add btn state
+  const inBuild = build.some(b => b.pid === pid);
+  const addBtn = $('modal-add-btn');
+  addBtn.innerHTML = inBuild
+    ? '<i class="ph ph-check"></i> In Build'
+    : '<i class="ph ph-plus"></i> Add to Build';
+  addBtn.style.opacity = inBuild ? '.6' : '1';
+
+  $('modal-overlay').classList.add('open');
+}
+
+function closeModal() { $('modal-overlay').classList.remove('open'); }
+
+// ── Build ──
+function addToBuild(pid) {
+  const p = allParts.find(x => x.pid === pid);
+  if (!p || build.some(b => b.pid === pid)) return;
+  build.push({pid: p.pid, name: p.name, cat: p._cat || p.category});
+  saveBuild();
+  updateBuildUI();
+  renderFilterBar();
+  renderGrid();
+  if (modalPart && modalPart.pid === pid) {
+    $('modal-add-btn').innerHTML = '<i class="ph ph-check"></i> In Build';
+    $('modal-add-btn').style.opacity = '.6';
+  }
+}
+
+function removeFromBuild(pid) {
+  build = build.filter(b => b.pid !== pid);
+  saveBuild();
+  updateBuildUI();
+  renderFilterBar();
+  renderGrid();
+}
+
+function clearBuild() {
+  build = [];
+  saveBuild();
+  updateBuildUI();
+  renderFilterBar();
+  renderGrid();
+}
+
+function saveBuild() {
+  try { localStorage.setItem('forge-build', JSON.stringify(build)); } catch(e) {}
+}
+
+// ── Share ──
+function encodeBuildParam() {
+  const pids = build.map(b => b.pid);
+  return btoa(JSON.stringify(pids)).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,'');
+}
+function decodeBuildParam(s) {
+  try {
+    const b64 = s.replace(/-/g,'+').replace(/_/g,'/');
+    const padded = b64 + '='.repeat((4 - b64.length % 4) % 4);
+    const parsed = JSON.parse(atob(padded));
+    return Array.isArray(parsed) ? parsed : null;
+  } catch(e) { return null; }
+}
+function shareBuild() {
+  if (!build.length) { alert('Build is empty — add parts before sharing.'); return; }
+  const url = location.origin + location.pathname + '?b=' + encodeBuildParam();
+  const btn = $('btn-share');
+  const restore = btn.innerHTML;
+  const flash = () => { btn.innerHTML = '<i class="ph ph-check"></i> Copied'; setTimeout(() => btn.innerHTML = restore, 1500); };
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(url).then(flash, () => prompt('Copy this URL:', url));
+  } else {
+    prompt('Copy this URL:', url);
+  }
+}
+
+function updateBuildUI() {
+  $('build-count').textContent = build.length;
+  $('build-n').textContent = build.length;
+
+  const slots = $('build-slots');
+  const empty = $('build-empty');
+  const bom   = $('bom-summary');
+
+  if (!build.length) {
+    empty.style.display = 'flex';
+    slots.innerHTML = '';
+    bom.style.display = 'none';
+    return;
+  }
+  empty.style.display = 'none';
+  slots.innerHTML = build.map(b => `
+    <div class="build-slot">
+      <span class="slot-cat">${esc(fmtCat(b.cat||''))}</span>
+      <span class="slot-name" title="${esc(b.name)}">${esc(b.name)}</span>
+      <button class="slot-remove" data-pid="${esc(b.pid)}" title="Remove"><i class="ph ph-x"></i></button>
+    </div>
+  `).join('');
+  slots.querySelectorAll('.slot-remove').forEach(btn => {
+    btn.addEventListener('click', () => removeFromBuild(btn.dataset.pid));
+  });
+
+  // ── Live BOM panel ──
+  const CAT_COLORS = {
+    frames:'#f59e0b',motors:'#ef4444',escs:'#8b5cf6',flight_controllers:'#3b82f6',
+    stacks:'#06b6d4',batteries:'#22c55e',fpv_cameras:'#ec4899',video_transmitters:'#f97316',
+    receivers:'#a78bfa',gps_modules:'#0ea5e9',propellers:'#6366f1',antennas:'#f43f5e',
+  };
+  let totalCost = 0, totalWeight = 0;
+  const catCost = {}, catWeight = {};
+  const rows = [];
+
+  build.forEach(b => {
+    const part = allParts.find(p => p.pid === b.pid);
+    const price  = part?.approx_price || 0;
+    const weight = part?.schema_data?.weight_g || part?.weight_g || 0;
+    totalCost   += price;
+    totalWeight += weight;
+    catCost[b.cat]   = (catCost[b.cat]   || 0) + price;
+    catWeight[b.cat] = (catWeight[b.cat] || 0) + weight;
+    rows.push({name: b.name, cat: b.cat, price, weight});
+  });
+
+  const costCls = totalCost < 350 ? 'green' : totalCost < 700 ? 'amber' : 'red';
+  $('bom-cost').textContent   = totalCost  ? '$' + totalCost.toFixed(0)  : '—';
+  $('bom-cost').className     = 'bom-gauge-val ' + (totalCost ? costCls : '');
+  $('bom-weight').textContent = totalWeight ? totalWeight.toFixed(0) + 'g' : '—';
+
+  // Weight bar
+  const barSegs = Object.entries(catWeight).filter(([,w]) => w > 0).sort((a,b) => b[1]-a[1]);
+  $('bom-bar').innerHTML = totalWeight ? barSegs.map(([cat, w]) =>
+    `<div class="bom-bar-seg" style="width:${(w/totalWeight*100).toFixed(1)}%;background:${CAT_COLORS[cat]||'#6b6358'}" title="${fmtCat(cat)}: ${w.toFixed(0)}g"></div>`
+  ).join('') : '';
+
+  // Per-part cost rows (only if price data exists)
+  const priceRows = rows.filter(r => r.price > 0);
+  $('bom-rows').innerHTML = priceRows.length ? priceRows.map(r =>
+    `<div class="bom-row"><span class="bom-name">${esc(r.name)}</span><span class="bom-price">$${r.price.toFixed(0)}</span></div>`
+  ).join('') : '<div class="bom-row"><span style="color:var(--text-d);font-size:9px">Price data not available for all parts</span></div>';
+
+  bom.style.display = 'block';
+}
+
+function exportBuild() {
+  const rows = build.map(b => {
+    const part = allParts.find(p => p.pid === b.pid);
+    const price  = part?.approx_price || '';
+    const weight = part?.schema_data?.weight_g || part?.weight_g || '';
+    return `${b.pid},"${b.name}",${b.cat},${price},${weight}`;
+  });
+  const totalCost   = build.reduce((s,b) => s + (allParts.find(p=>p.pid===b.pid)?.approx_price||0), 0);
+  const totalWeight = build.reduce((s,b) => s + (allParts.find(p=>p.pid===b.pid)?.schema_data?.weight_g||0), 0);
+  const lines = [
+    'PID,Name,Category,Price_USD,Weight_g',
+    ...rows,
+    `,,TOTAL,$${totalCost.toFixed(2)},${totalWeight.toFixed(1)}g`,
+  ];
+  const blob = new Blob([lines.join('\n')], {type:'text/csv'});
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'forge-build-bom.csv';
+  a.click();
+}
+
+// ── ArduPilot .param generator ──
+
+// Build profiles — multipliers and overrides applied on top of hardware-derived base
+const AP_PROFILES = {
+  racing:    { label:'Racing',     pidMult:1.15, accelMult:1.25, inputTC:0.10, dFiltHz:60, wpSpeed:1000, angP:4.5 },
+  freestyle: { label:'Freestyle',  pidMult:1.00, accelMult:1.00, inputTC:0.15, dFiltHz:40, wpSpeed:800,  angP:4.5 },
+  cinematic: { label:'Cinematic',  pidMult:0.80, accelMult:0.60, inputTC:0.28, dFiltHz:20, wpSpeed:500,  angP:3.5 },
+  longrange: { label:'Long-range', pidMult:0.75, accelMult:0.50, inputTC:0.22, dFiltHz:20, wpSpeed:1200, angP:4.0 },
+};
+
+// Base acceleration limits by prop size (freestyle baseline)
+const AP_ACCEL = {
+  3:  {r:180000, p:180000, y:36000},
+  5:  {r:110000, p:110000, y:27000},
+  6:  {r:90000,  p:90000,  y:22000},
+  7:  {r:70000,  p:70000,  y:18000},
+  10: {r:50000,  p:50000,  y:14000},
+  13: {r:35000,  p:35000,  y:10000},
+};
+
+function generateArduPilotParams(profile) {
+  if (!build.length) { alert('Add components to your build first.'); return; }
+  const prof = AP_PROFILES[profile] || AP_PROFILES.freestyle;
+
+  const comp = pid => allParts.find(p => p.pid === pid) || null;
+  const cats = {};
+  build.forEach(b => { const c = comp(b.pid); if (c) cats[b.cat] = c; });
+  const fc      = cats.flight_controllers || cats.stacks || null;
+  const esc     = cats.escs    || null;
+  const motor   = cats.motors  || null;
+  const battery = cats.batteries || null;
+  const gps     = cats.gps_modules || null;
+  const frame   = cats.frames  || null;
+  const P = {};
+  const set = (n,v,c) => { P[n] = {v,c}; };
+
+  // Frame
+  const FC_MAP = {quad:1,hexa:2,octa:3,tri:7,y6:5};
+  const FT_MAP = {'x':1,'plus':0,'h':3,'v-tail':15,'true-x':1,'dead-cat':12};
+  if (frame) {
+    const vt = (frame.vehicle_type||'quad').toLowerCase();
+    const ac = (frame.arm_configuration||'x').toLowerCase();
+    set('FRAME_CLASS', FC_MAP[vt]||1, (frame.name||'')+' — '+vt);
+    set('FRAME_TYPE',  FT_MAP[ac]||1, 'arm: '+ac);
+  } else {
+    set('FRAME_CLASS',1,'Quad (default)');
+    set('FRAME_TYPE', 1,'X');
+  }
+
+  // Battery
+  if (battery) {
+    const cells = battery.cell_count||4;
+    const cap   = battery.capacity_mah||1500;
+    const chem  = (battery.chemistry||'lipo').toLowerCase();
+    const isIon = chem.includes('ion');
+    const crit  = isIon ? 2.8 : 3.3;
+    const low   = isIon ? 3.2 : 3.5;
+    const nom   = isIon ? 3.6 : 3.7;
+    set('BATT_MONITOR',    4,                          'Analog V+I');
+    set('BATT_CAPACITY',   cap,                        cap+'mAh '+cells+'S');
+    set('BATT_ARM_VOLT',   +(nom*cells*0.95).toFixed(1),'Min arm voltage');
+    set('BATT_CRT_VOLT',   +(crit*cells).toFixed(1),  crit+'V/cell x'+cells+'S');
+    set('BATT_LOW_VOLT',   +(low*cells).toFixed(1),   low+'V/cell x'+cells+'S');
+    set('BATT_FS_CRT_ACT', 1,                         'Land on critical');
+    set('BATT_FS_LOW_ACT', 2,                         'RTL on low');
+    set('BATT_FS_LOW_MAH', Math.round(cap*0.2),       '20% remaining');
+  }
+
+  // ESC + harmonic notch
+  const TELEM_FW  = new Set(['blheli_32','am32','fettec','kiss','apm']);
+  const DSHOT_MAP = {blheli_32:6,blheli_s:5,am32:6,fettec:6,kiss:6,bluejay:5};
+  if (esc) {
+    const fw      = (esc.esc_firmware||'').toLowerCase().replace(/\s+/g,'_');
+    const iface   = (esc.interface||'').toLowerCase();
+    const pwmType = DSHOT_MAP[fw] || (iface.includes('dshot') ? 6 : 5);
+    set('MOT_PWM_TYPE', pwmType, (pwmType>=6?'DShot600':'DShot300')+' — '+fw);
+    if (TELEM_FW.has(fw)) {
+      const kv = motor ? (motor.kv_rating||2000) : 2000;
+      set('INS_HNTCH_ENABLE', 1,   'Harmonic notch ON');
+      set('INS_HNTCH_MODE',   4,   'RPM telemetry');
+      set('INS_HNTCH_OPTS',   2,   'Double notch');
+      set('INS_HNTCH_REF',    1,   '');
+      set('INS_HNTCH_FREQ',   Math.max(80,Math.min(250,Math.round(kv*0.06))), 'From '+kv+'KV');
+    } else {
+      set('INS_HNTCH_ENABLE', 1,    'Harmonic notch ON');
+      set('INS_HNTCH_MODE',   1,    'Throttle-based');
+      set('INS_HNTCH_FREQ',   120,  'Verify with FFT');
+      set('INS_HNTCH_REF',    0.35, 'Hover ref');
+    }
+  }
+
+  // Motor + PID tune
+  if (motor) {
+    const kv   = motor.kv_rating||2000;
+    const pMin = motor.prop_size_min_in||5;
+    const pMax = motor.prop_size_max_in||pMin;
+    const ps   = Math.round((pMin+pMax)/2);
+
+    // Motor constants
+    const sm = ps<=3?0.12:ps<=5?0.15:ps<=7?0.12:0.10;
+    const sx = ps<=5?0.95:ps<=7?0.90:0.85;
+    set('MOT_SPIN_MIN',   sm,               kv+'KV on '+ps+'" props');
+    set('MOT_SPIN_MAX',   sx,               '');
+    set('MOT_SPIN_ARM',   0.05,             '');
+    set('MOT_THST_EXPO',  kv>3000?0.55:kv>2000?0.60:0.65, 'Thrust curve for '+kv+'KV');
+    set('MOT_HOVER_LEARN',2,               'Learn+save');
+    const hov = ps>=10?0.30:ps>=7?0.35:kv<2500?0.45:0.50;
+    set('MOT_THST_HOVER', hov,              'Starting estimate');
+
+    // Rate PID base values (from prop size + KV scaling)
+    const PID_BASE = {3:[.09,.09,.003],5:[.135,.135,.004],6:[.10,.10,.005],7:[.08,.08,.005],10:[.05,.05,.006],13:[.035,.035,.008]};
+    const [bp,bi,bd] = PID_BASE[ps]||PID_BASE[5];
+    const kvScale  = Math.max(0.7, Math.min(1.3, 2000/Math.max(kv,1)));
+    const pm       = kvScale * prof.pidMult;
+    const rp = +(bp*pm).toFixed(4);
+    const ri = +(bi*pm).toFixed(4);
+    const rd = +(bd*pm).toFixed(5);
+
+    set('ATC_RAT_RLL_P',    rp, ps+'"/'+kv+'KV — '+prof.label);
+    set('ATC_RAT_RLL_I',    ri, '');
+    set('ATC_RAT_RLL_D',    rd, '');
+    set('ATC_RAT_RLL_FF',   0,  'Set after autotune');
+    set('ATC_RAT_RLL_FILT', prof.dFiltHz, 'D-term filter Hz');
+
+    set('ATC_RAT_PIT_P',    rp, 'Sym w/ roll');
+    set('ATC_RAT_PIT_I',    ri, '');
+    set('ATC_RAT_PIT_D',    rd, '');
+    set('ATC_RAT_PIT_FF',   0,  '');
+    set('ATC_RAT_PIT_FILT', prof.dFiltHz, '');
+
+    set('ATC_RAT_YAW_P',    +(rp*0.6).toFixed(4), '60% of roll P');
+    set('ATC_RAT_YAW_I',    +(ri*0.3).toFixed(4), '');
+    set('ATC_RAT_YAW_D',    0,  '');
+    set('ATC_RAT_YAW_FF',   0,  '');
+    set('ATC_RAT_YAW_FILT', 20, 'Yaw D filter');
+
+    // Angle PIDs
+    const aP = prof.angP;
+    set('ATC_ANG_RLL_P', aP, 'Angle P — '+prof.label);
+    set('ATC_ANG_PIT_P', aP, '');
+    set('ATC_ANG_YAW_P', aP, '');
+
+    // Input time constant (controls "feel" — lower=snappier)
+    set('ATC_INPUT_TC', prof.inputTC, prof.label+' feel');
+
+    // Acceleration limits (deg/s² — controls max rotation rate)
+    const baseAccel = AP_ACCEL[ps] || AP_ACCEL[5];
+    const am = prof.accelMult;
+    set('ATC_ACCEL_R_MAX', Math.round(baseAccel.r*am/1000)*1000, 'Roll accel limit');
+    set('ATC_ACCEL_P_MAX', Math.round(baseAccel.p*am/1000)*1000, 'Pitch accel limit');
+    set('ATC_ACCEL_Y_MAX', Math.round(baseAccel.y*am/1000)*1000, 'Yaw accel limit');
+  }
+
+  // GPS
+  if (gps) {
+    const gn = (gps.name||'').toLowerCase();
+    set('GPS_TYPE',        gn.includes('dronecan')||gn.includes('uavcan')?9:1, gps.name||'GPS');
+    set('GPS_AUTO_CONFIG', 1,  '');
+    set('GPS_GNSS_MODE',   67, 'GPS+GLONASS+Galileo');
+    set('SERIAL3_PROTOCOL',5,  'GPS');
+    set('SERIAL3_BAUD',    230,'230400');
+  }
+
+  // FC / IMU
+  if (fc) {
+    const imu = ((fc.imu||'')+'').toUpperCase();
+    if (imu.includes('ICM42688'))      set('INS_GYRO_RATE',1,'ICM42688 4kHz');
+    else if (imu.includes('BMI270'))   set('INS_GYRO_RATE',0,'BMI270 1.6kHz');
+    set('LOG_BITMASK',    176126,'Default+IMU+PID+RCOUT');
+    set('LOG_BACKEND_TYPE',1,   'DataFlash');
+  }
+  set('SERIAL0_PROTOCOL',2,'MAVLink2 USB');  set('SERIAL0_BAUD',115,'115200');
+  set('SERIAL1_PROTOCOL',2,'MAVLink2 TELEM1'); set('SERIAL1_BAUD',57,'57600');
+
+  // Safety + nav
+  set('ARMING_CHECK',   1,   'All checks');
+  set('FS_THR_ENABLE',  1,   'RC failsafe: RTL'); set('FS_THR_VALUE',975,'');
+  set('FS_GCS_ENABLE',  1,   'GCS failsafe');
+  set('FS_CRASH_CHECK', 1,   '');
+  set('FLTMODE1', 0,'Stabilize'); set('FLTMODE4',2,'AltHold'); set('FLTMODE6',6,'RTL');
+  set('RTL_ALT',  3000, '30m');
+  set('WPNAV_SPEED',  prof.wpSpeed, (prof.wpSpeed/100).toFixed(1)+' m/s — '+prof.label);
+  set('WPNAV_ACCEL',  prof.accelMult >= 1 ? 250 : 150, 'Horizontal acceleration cm/s²');
+  set('WPNAV_ACCEL_Z',100,'Vertical acceleration cm/s²');
+
+  // Build .param text
+  const ts    = new Date().toISOString().replace(/\.\d+/,'');
+  const parts = build.map(b=>b.name).join(', ');
+  let out = `# ArduPilot Base Parameters — Generated by DroneClear Forge\n`;
+  out += `# ${ts}\n`;
+  out += `# Profile: ${prof.label}\n`;
+  out += `# Build: ${parts}\n#\n`;
+  out += `# STARTING POINT — Calibrate ESCs, run AutoTune before flying.\n#\n`;
+  let prev = '';
+  Object.keys(P).sort().forEach(k => {
+    const pfx = k.split('_')[0];
+    if (pfx !== prev) { out += '\n'; prev = pfx; }
+    const {v,c} = P[k];
+    const vs = Number.isInteger(v) ? String(v) : String(+v.toFixed(6));
+    out += c ? `${k},${vs}`.padEnd(40)+`# ${c}\n` : `${k},${vs}\n`;
+  });
+  const blob = new Blob([out], {type:'text/plain'});
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = `ardupilot-${profile}-${new Date().toISOString().slice(0,10)}.param`;
+  a.click();
+}
+
+// ── Betaflight CLI diff generator ──
+
+const BF_PROFILES = {
+  racing:    { pidMult:1.20, dFiltHz:120, gyroLpf:120, iterm:'RP',  masterMult:1.10, tpaRate:80, tpaBreak:1650 },
+  freestyle: { pidMult:1.00, dFiltHz:100, gyroLpf:100, iterm:'RPY', masterMult:1.00, tpaRate:65, tpaBreak:1700 },
+  cinematic: { pidMult:0.70, dFiltHz:60,  gyroLpf:80,  iterm:'RPY', masterMult:0.80, tpaRate:40, tpaBreak:1800 },
+};
+
+function generateBetaflightDiff(profile) {
+  if (!build.length) { alert('Add components to your build first.'); return; }
+  const prof = BF_PROFILES[profile] || BF_PROFILES.freestyle;
+  const comp = pid => allParts.find(p => p.pid === pid) || null;
+  const cats = {};
+  build.forEach(b => { const c = comp(b.pid); if (c) cats[b.cat] = c; });
+  const fc     = cats.flight_controllers || cats.stacks || null;
+  const esc    = cats.escs || null;
+  const motor  = cats.motors || null;
+  const batt   = cats.batteries || null;
+
+  const lines = [];
+  const ts = new Date().toISOString().replace(/\.\d+/,'');
+  lines.push(`# Betaflight CLI diff — Generated by DroneClear Forge`);
+  lines.push(`# ${ts}  Profile: ${profile}`);
+  lines.push(`# Build: ${build.map(b=>b.name).join(', ')}`);
+  lines.push(`# PASTE INTO CLI TAB. Run 'save' after.`);
+  lines.push('');
+
+  // ESC protocol
+  const fw = esc ? (esc.esc_firmware||'').toLowerCase().replace(/\s+/g,'_') : '';
+  const DSHOT_MAP = { blheli_32:'DSHOT600', am32:'DSHOT600', blheli_s:'DSHOT300', bluejay:'DSHOT300', kiss:'DSHOT300' };
+  const dshotProto = DSHOT_MAP[fw] || 'DSHOT600';
+  const hasRpmFilter = ['blheli_32','am32','fettec','kiss'].includes(fw);
+  lines.push(`set motor_pwm_protocol = ${dshotProto}`);
+
+  // Gyro + dterm filters
+  lines.push(`set gyro_lpf1_hz = ${prof.gyroLpf}`);
+  lines.push(`set gyro_lpf2_hz = ${Math.round(prof.gyroLpf * 1.25)}`);
+  lines.push(`set dterm_lpf1_hz = ${prof.dFiltHz}`);
+  lines.push(`set dterm_lpf2_hz = ${Math.round(prof.dFiltHz * 1.3)}`);
+
+  // RPM filter
+  if (hasRpmFilter) {
+    lines.push(`set rpm_filter_harmonics = 3`);
+    lines.push(`set rpm_filter_min_hz = 100`);
+  } else {
+    lines.push(`# RPM filter disabled — firmware: ${fw||'unknown'}`);
+  }
+
+  // PID values from motor
+  const kv   = motor ? (motor.kv_rating||2000) : 2000;
+  const pMin = motor ? (motor.prop_size_min_in||5) : 5;
+  const pMax = motor ? (motor.prop_size_max_in||pMin) : pMin;
+  const ps   = Math.round((pMin + pMax) / 2);
+  const PID_BASE = { 3:[42,45,30], 5:[47,55,26], 6:[40,44,22], 7:[35,38,18], 10:[28,30,14] };
+  const [bp,bi,bd] = PID_BASE[ps] || PID_BASE[5];
+  const kvScale = Math.max(0.7, Math.min(1.3, 2000/Math.max(kv,1)));
+  const pm = kvScale * prof.pidMult;
+  const rp = Math.round(bp*pm), ri = Math.round(bi*pm), rd = Math.round(bd*pm);
+  const yp = Math.round(rp*0.6), yi = Math.round(ri*0.6);
+
+  lines.push('');
+  lines.push(`set p_roll  = ${rp}`);
+  lines.push(`set i_roll  = ${ri}`);
+  lines.push(`set d_roll  = ${rd}`);
+  lines.push(`set f_roll  = ${profile === 'racing' ? 180 : profile === 'cinematic' ? 80 : 135}`);
+  lines.push(`set p_pitch = ${Math.round(rp*1.05)}`);
+  lines.push(`set i_pitch = ${Math.round(ri*1.05)}`);
+  lines.push(`set d_pitch = ${Math.round(rd*1.10)}`);
+  lines.push(`set f_pitch = ${profile === 'racing' ? 190 : profile === 'cinematic' ? 85 : 145}`);
+  lines.push(`set p_yaw   = ${yp}`);
+  lines.push(`set i_yaw   = ${yi}`);
+  lines.push(`set d_yaw   = 0`);
+  lines.push(`set f_yaw   = 100`);
+
+  // TPA
+  lines.push('');
+  lines.push(`set tpa_rate = ${prof.tpaRate}`);
+  lines.push(`set tpa_breakpoint = ${prof.tpaBreak}`);
+
+  // iterm relax
+  lines.push(`set iterm_relax = ${prof.iterm}`);
+  lines.push(`set iterm_relax_type = SETPOINT`);
+  lines.push(`set iterm_relax_cutoff = ${profile === 'racing' ? 15 : 20}`);
+
+  // IMU rate
+  if (fc) {
+    const imu = ((fc.imu||fc.name||'')+'').toUpperCase();
+    if (imu.includes('ICM42688') || imu.includes('ICM-42688')) {
+      lines.push(''); lines.push('set gyro_decimation_hz = 4000');
+      lines.push('set pid_process_denom = 1');
+    } else if (imu.includes('MPU6000')) {
+      lines.push(''); lines.push('# MPU6000: 8kHz gyro, pid_process_denom = 2 recommended');
+    }
+  }
+
+  // Battery
+  if (batt) {
+    const cells = batt.cell_count||4;
+    const chem  = (batt.chemistry||'lipo').toLowerCase();
+    const isIon = chem.includes('ion');
+    lines.push('');
+    lines.push(`set vbat_min_cell_voltage = ${isIon ? 280 : 330}`);
+    lines.push(`set vbat_warning_cell_voltage = ${isIon ? 310 : 350}`);
+    lines.push(`set vbat_max_cell_voltage = ${isIon ? 420 : 420}`);
+    lines.push(`set ibata_scale = 179`);
+  }
+
+  lines.push(''); lines.push('save');
+
+  const blob = new Blob([lines.join('\n')], {type:'text/plain'});
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = `betaflight-${profile}-${new Date().toISOString().slice(0,10)}.txt`;
+  a.click();
+}
+
+// ── iNav CLI diff generator ──
+
+const INAV_PROFILES = {
+  freestyle: { pidMult:1.00, maxAngle:45, navSpeed:500,  altHold:50, wpSpeed:300 },
+  longrange: { pidMult:0.85, maxAngle:35, navSpeed:1000, altHold:80, wpSpeed:700 },
+};
+
+function generateINavDiff(profile) {
+  if (!build.length) { alert('Add components to your build first.'); return; }
+  const prof = INAV_PROFILES[profile] || INAV_PROFILES.freestyle;
+  const comp = pid => allParts.find(p => p.pid === pid) || null;
+  const cats = {};
+  build.forEach(b => { const c = comp(b.pid); if (c) cats[b.cat] = c; });
+  const esc    = cats.escs || null;
+  const motor  = cats.motors || null;
+  const batt   = cats.batteries || null;
+  const gps    = cats.gps_modules || null;
+
+  const lines = [];
+  const ts = new Date().toISOString().replace(/\.\d+/,'');
+  lines.push(`# iNav CLI diff — Generated by DroneClear Forge`);
+  lines.push(`# ${ts}  Profile: ${profile}`);
+  lines.push(`# Build: ${build.map(b=>b.name).join(', ')}`);
+  lines.push(`# PASTE INTO CLI TAB. Run 'save' after.`);
+  lines.push('');
+
+  // ESC
+  const fw = esc ? (esc.esc_firmware||'').toLowerCase().replace(/\s+/g,'_') : '';
+  const DSHOT_MAP = { blheli_32:'DSHOT600', am32:'DSHOT600', blheli_s:'DSHOT300', bluejay:'DSHOT300' };
+  lines.push(`set motor_pwm_protocol = ${DSHOT_MAP[fw] || 'DSHOT600'}`);
+
+  // PID
+  const kv = motor ? (motor.kv_rating||2000) : 2000;
+  const pMin = motor ? (motor.prop_size_min_in||5) : 5;
+  const pMax = motor ? (motor.prop_size_max_in||pMin) : pMin;
+  const ps   = Math.round((pMin + pMax) / 2);
+  const PID_BASE = { 3:[25,30,10], 5:[35,40,15], 6:[30,35,12], 7:[25,30,10], 10:[20,25,8] };
+  const [bp,bi,bd] = PID_BASE[ps] || PID_BASE[5];
+  const pm = prof.pidMult * Math.max(0.7, Math.min(1.3, 2000/Math.max(kv,1)));
+  lines.push('');
+  lines.push(`set p_roll  = ${Math.round(bp*pm)}`);
+  lines.push(`set i_roll  = ${Math.round(bi*pm)}`);
+  lines.push(`set d_roll  = ${Math.round(bd*pm)}`);
+  lines.push(`set p_pitch = ${Math.round(bp*pm*1.05)}`);
+  lines.push(`set i_pitch = ${Math.round(bi*pm*1.05)}`);
+  lines.push(`set d_pitch = ${Math.round(bd*pm*1.10)}`);
+  lines.push(`set p_yaw   = ${Math.round(bp*pm*0.55)}`);
+  lines.push(`set i_yaw   = ${Math.round(bi*pm*0.45)}`);
+  lines.push(`set d_yaw   = 0`);
+
+  // Nav
+  lines.push('');
+  lines.push(`set nav_mc_auto_disarm_delay = 2000`);
+  lines.push(`set nav_wp_max_speed = ${prof.wpSpeed}`);
+  lines.push(`set nav_mc_vel_z_max = ${prof.altHold}`);
+  lines.push(`set nav_mc_max_bank_angle = ${prof.maxAngle}`);
+  lines.push(`set nav_speed_max = ${prof.navSpeed}`);
+  lines.push(`set nav_auto_speed = ${Math.round(prof.navSpeed * 0.7)}`);
+  lines.push(`set nav_rth_climb_first = ON`);
+  lines.push(`set nav_rth_altitude = 2000`);
+
+  // GPS
+  if (gps) {
+    const gn = (gps.name||'').toLowerCase();
+    const proto = gn.includes('ublox') || gn.includes('m8') || gn.includes('m9') || gn.includes('f9') ? 'UBLOX' : 'NMEA';
+    lines.push('');
+    lines.push(`set gps_provider = ${proto}`);
+    lines.push(`set gps_sbas_mode = AUTO`);
+    lines.push(`set gps_ublox_use_galileo = ON`);
+  }
+
+  // Battery
+  if (batt) {
+    const cells = batt.cell_count||4;
+    const chem  = (batt.chemistry||'lipo').toLowerCase();
+    const isIon = chem.includes('ion');
+    lines.push('');
+    lines.push(`set vbat_min_cell_voltage = ${isIon ? 280 : 330}`);
+    lines.push(`set vbat_warning_cell_voltage = ${isIon ? 310 : 350}`);
+    lines.push(`set bat_cells = ${cells}`);
+  }
+
+  // Failsafe
+  lines.push('');
+  lines.push(`set failsafe_procedure = RTH`);
+  lines.push(`set failsafe_throttle_low_delay = 100`);
+
+  lines.push(''); lines.push('save');
+
+  const blob = new Blob([lines.join('\n')], {type:'text/plain'});
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = `inav-${profile}-${new Date().toISOString().slice(0,10)}.txt`;
+  a.click();
+}
+
+// ── PX4 .params generator ──
+
+const PX4_PROFILES = {
+  multirotor: { pidMult:1.00, maxTilt:35, cruiseSpeed:5.0, manualMode:'Stabilized', label:'Multirotor' },
+  racing:     { pidMult:1.20, maxTilt:50, cruiseSpeed:8.0, manualMode:'Acro',       label:'Racing / Acro' },
+};
+
+function generatePX4Params(profile) {
+  if (!build.length) { alert('Add components to your build first.'); return; }
+  const prof = PX4_PROFILES[profile] || PX4_PROFILES.multirotor;
+  const comp = pid => allParts.find(p => p.pid === pid) || null;
+  const cats = {};
+  build.forEach(b => { const c = comp(b.pid); if (c) cats[b.cat] = c; });
+  const motor  = cats.motors || null;
+  const batt   = cats.batteries || null;
+  const gps    = cats.gps_modules || null;
+  const esc    = cats.escs || null;
+
+  const P = {};
+  const set = (n,v,c) => { P[n] = {v,c}; };
+
+  // Motor
+  const kv = motor ? (motor.kv_rating||2000) : 2000;
+  const pMin = motor ? (motor.prop_size_min_in||5) : 5;
+  const pMax = motor ? (motor.prop_size_max_in||pMin) : pMin;
+  const ps   = Math.round((pMin + pMax) / 2);
+
+  const PID_BASE = { 3:[.08,.04,.004], 5:[.12,.06,.005], 6:[.10,.05,.005], 7:[.08,.04,.004], 10:[.06,.03,.003] };
+  const [bp,bi,bd] = PID_BASE[ps] || PID_BASE[5];
+  const kvScale = Math.max(0.7, Math.min(1.3, 2000/Math.max(kv,1)));
+  const pm = kvScale * prof.pidMult;
+
+  set('MC_ROLLRATE_P',  +(bp*pm).toFixed(4), ps+'"/'+kv+'KV');
+  set('MC_ROLLRATE_I',  +(bi*pm).toFixed(4), '');
+  set('MC_ROLLRATE_D',  +(bd*pm).toFixed(5), '');
+  set('MC_PITCHRATE_P', +(bp*pm*1.05).toFixed(4), '');
+  set('MC_PITCHRATE_I', +(bi*pm*1.05).toFixed(4), '');
+  set('MC_PITCHRATE_D', +(bd*pm*1.10).toFixed(5), '');
+  set('MC_YAWRATE_P',   +(bp*pm*0.5).toFixed(4),  '');
+  set('MC_YAWRATE_I',   +(bi*pm*0.3).toFixed(4),  '');
+  set('MC_YAWRATE_D',   0, '');
+
+  // Angle limits
+  set('MPC_MAN_TILT_MAX', prof.maxTilt, 'Max manual tilt deg');
+  set('MC_MAN_YAW_MAX',   200, 'Yaw rate deg/s');
+
+  // Velocity
+  set('MPC_XY_CRUISE',    prof.cruiseSpeed, 'm/s cruise');
+  set('MPC_XY_VEL_MAX',   prof.cruiseSpeed * 1.5, 'm/s max');
+  set('MPC_Z_VEL_MAX_UP', 3.0, 'Climb m/s');
+  set('MPC_Z_VEL_MAX_DN', 2.0, 'Descent m/s');
+  set('MPC_LAND_SPEED',   0.7, 'Land m/s');
+  set('MPC_TKO_SPEED',    1.5, 'Takeoff m/s');
+
+  // Battery
+  if (batt) {
+    const cells = batt.cell_count||4;
+    const chem  = (batt.chemistry||'lipo').toLowerCase();
+    const isIon = chem.includes('ion');
+    set('BAT1_N_CELLS',     cells,             cells+'S');
+    set('BAT1_V_EMPTY',     +(isIon?2.8:3.3),  'V/cell empty');
+    set('BAT1_V_CHARGED',   +(isIon?4.1:4.2),  'V/cell full');
+    set('BAT1_LOW_THR',     0.15,              '15% low warning');
+    set('BAT1_CRIT_THR',    0.07,              '7% critical');
+    set('BAT1_EMERGEN_THR', 0.05,              '5% emergency');
+  }
+
+  // ESC / motor
+  const fw = esc ? (esc.esc_firmware||'').toLowerCase() : '';
+  const useDshot = ['blheli_32','am32','fettec','kiss'].some(f=>fw.includes(f));
+  set('DSHOT_CONFIG',  useDshot?600:0, useDshot?'DShot600':'PWM');
+  set('MOT_SPIN_MIN',  0.15, '');
+  set('MOT_SPIN_MAX',  0.95, '');
+
+  // GPS
+  if (gps) {
+    set('GPS_1_CONFIG', 201, 'GPS port');
+    set('EKF2_GPS_CTRL', 7, 'GPS+GLONASS+Galileo');
+  }
+
+  // Failsafe
+  set('COM_RC_LOSS_T',  1.0, 'RC loss timeout');
+  set('NAV_RCL_ACT',    3,   'RC loss: RTL');
+  set('COM_LOW_BAT_ACT',3,   'Low bat: RTL');
+  set('RTL_RETURN_ALT', 30,  'RTL alt m');
+
+  // Build .params text
+  const ts = new Date().toISOString().replace(/\.\d+/,'');
+  const parts = build.map(b=>b.name).join(', ');
+  let out = `# PX4 Parameters — Generated by DroneClear Forge\n`;
+  out += `# ${ts}\n# Profile: ${prof.label}\n# Build: ${parts}\n`;
+  out += `# Load via QGroundControl: Vehicle Setup → Parameters → Tools → Load from file\n#\n`;
+  Object.keys(P).sort().forEach(k => {
+    const {v,c} = P[k];
+    const vs = Number.isInteger(v) ? String(v) : String(+v.toFixed(6));
+    out += c ? `${k},${vs}`.padEnd(40)+`# ${c}\n` : `${k},${vs}\n`;
+  });
+
+  const blob = new Blob([out], {type:'text/plain'});
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = `px4-${profile}-${new Date().toISOString().slice(0,10)}.params`;
+  a.click();
+}
+
+
+$('search').addEventListener('input', () => renderGrid());
+$('sort-sel').addEventListener('change', () => renderGrid());
+$('build-fab').addEventListener('click', () => {
+  $('build-drawer').classList.add('open');
+  $('build-overlay').classList.add('open');
+});
+$('drawer-close').addEventListener('click', () => {
+  $('build-drawer').classList.remove('open');
+  $('build-overlay').classList.remove('open');
+});
+$('build-overlay').addEventListener('click', () => {
+  $('build-drawer').classList.remove('open');
+  $('build-overlay').classList.remove('open');
+});
+$('btn-clear').addEventListener('click', () => { if(confirm('Clear build?')) clearBuild(); });
+$('btn-export').addEventListener('click', exportBuild);
+$('btn-ardupilot').addEventListener('click', e => {
+  e.stopPropagation();
+  $('param-picker').classList.toggle('open');
+});
+document.addEventListener('click', e => {
+  if (!$('param-wrap').contains(e.target)) $('param-picker').classList.remove('open');
+});
+$('param-picker').querySelectorAll('.pp-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    $('param-picker').classList.remove('open');
+    const fw      = btn.dataset.fw || 'ardupilot';
+    const profile = btn.dataset.profile || 'freestyle';
+    if      (fw === 'betaflight') generateBetaflightDiff(profile);
+    else if (fw === 'inav')       generateINavDiff(profile);
+    else if (fw === 'px4')        generatePX4Params(profile);
+    else                          generateArduPilotParams(profile);
+  });
+});
+$('btn-share').addEventListener('click', shareBuild);
+$('modal-close-x').addEventListener('click', closeModal);
+$('modal-close-btn').addEventListener('click', closeModal);
+$('modal-overlay').addEventListener('click', e => { if(e.target === $('modal-overlay')) closeModal(); });
+$('modal-add-btn').addEventListener('click', () => { if(modalPart) { addToBuild(modalPart.pid); } });
+$('mob-cat-btn').addEventListener('click', () => $('sidebar').classList.toggle('mob-open'));
+document.addEventListener('keydown', e => { if(e.key==='Escape') closeModal(); });
+
+// ── Go ──
+init();
+})();
+</script>
+<!-- Analytics injected by build_static.py (unified _ANALYTICS_SNIPPET + _UNIFIED_NAV) -->
+</body>
+</html>

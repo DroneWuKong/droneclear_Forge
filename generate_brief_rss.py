@@ -4,7 +4,7 @@ generate_brief_rss.py
 Generates an RSS 2.0 feed from pie_brief.json + pie_brief_history.json.
 Each brief generation becomes one RSS item — a full intel digest.
 
-Output: DroneClear Components Visualizer/static/brief.xml
+Output: forge-source/static/brief.xml
 """
 
 import json
@@ -13,7 +13,7 @@ from pathlib import Path
 from xml.etree.ElementTree import Element, SubElement, ElementTree, indent
 
 BASE_DIR = Path(__file__).parent
-STATIC_DIR = BASE_DIR / "DroneClear Components Visualizer" / "static"
+STATIC_DIR = BASE_DIR / "forge-source" / "static"
 
 BRIEF_PATH   = STATIC_DIR / "pie_brief.json"
 HISTORY_PATH = STATIC_DIR / "pie_brief_history.json"

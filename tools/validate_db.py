@@ -18,7 +18,7 @@ import sys
 from collections import defaultdict
 from pathlib import Path
 
-DEFAULT_DB_PATH = Path("DroneClear Components Visualizer/forge_database.json")
+DEFAULT_DB_PATH = Path("forge-source/forge_database.json")
 
 # Heuristic: 2-6 uppercase letters + dash + 4-digit number (matches PID format,
 # excludes protocol names like AES-256, RS-232, RS-422, STANAG-4738)
