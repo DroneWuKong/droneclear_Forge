@@ -1,0 +1,65 @@
+name: Miner Health Check
+
+on:
+  push:
+    paths:
+      - 'tools/mining/**'
+      - '.github/workflows/miner_health_check.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  miner-health:
+    name: Check ${{ matrix.miner }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        miner:
+          - rotorbuilds
+          - ardupilot_discourse
+          - blue_uas
+          - sam_gov
+          - pilotinstitute
+          - diyfpv_catalog
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install mining dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r tools/mining/requirements.txt
+
+      - name: Run miner dry check
+        env:
+          SAM_GOV_API_KEY: ${{ secrets.SAM_GOV_API_KEY }}
+          FORGE_MINE_UA: ${{ secrets.FORGE_MINE_UA }}
+          MINER: ${{ matrix.miner }}
+        run: |
+          set -euo pipefail
+          mkdir -p miner-health-logs
+          LOG="miner-health-logs/${MINER}.log"
+
+          echo "== Checking miner: ${MINER} ==" | tee "$LOG"
+          python3 tools/mining/run_all.py --miner "$MINER" --max 5 --dry 2>&1 | tee -a "$LOG"
+
+          if grep -q "FAILED:" "$LOG"; then
+            echo "Miner ${MINER} reported FAILED" >&2
+            exit 1
+          fi
+
+      - name: Upload miner log
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: miner-health-${{ matrix.miner }}
+          path: miner-health-logs/
+          if-no-files-found: ignore
