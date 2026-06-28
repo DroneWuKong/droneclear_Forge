@@ -63,7 +63,7 @@
     'groq-proxy':        '/api/wingman/groq',
     'gemini-proxy':      '/api/wingman/gemini',
     'prices-api':        '/api/prices',
-    'analytics-ingest':  '/api/analytics/ingest/ingest',
+    'analytics-ingest':  '/api/analytics/ingest',
     'analytics':         '/api/analytics/ingest',
     'compliance-report': '/api/compliance/report',
   };

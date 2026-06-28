@@ -13,6 +13,7 @@
     let _db = null;
     let _schema = null;
     let _ready = null; // Promise that resolves when data is loaded
+    const COMPONENT_PATCH_KEY = 'forge-component-patch-v1';
 
     // ── Load static data on page load ──
     async function _loadDB() {
@@ -45,7 +46,150 @@
     });
 
     // ── Build synthetic category list from the database keys ──
+    function readComponentPatch() {
+        try {
+            const raw = localStorage.getItem(COMPONENT_PATCH_KEY);
+            const parsed = raw ? JSON.parse(raw) : null;
+            if (parsed && parsed.items && parsed.deleted) return parsed;
+        } catch (e) {}
+        return { items: {}, deleted: {} };
+    }
+
+    function writeComponentPatch(patch) {
+        localStorage.setItem(COMPONENT_PATCH_KEY, JSON.stringify(patch));
+    }
+
+    function normalizeComponentRecord(record) {
+        const schema = record.schema_data || record;
+        return {
+            pid: record.pid,
+            name: record.name || '',
+            category: record.category || '',
+            manufacturer: record.manufacturer || '',
+            description: record.description || '',
+            link: record.link || '',
+            image_file: record.image_file || '',
+            manual_link: record.manual_link || '',
+            approx_price: record.approx_price || null,
+            schema_data: schema,
+        };
+    }
+
+    function exportComponentRecord(record) {
+        return {
+            ...record.schema_data,
+            pid: record.pid,
+            name: record.name,
+            manufacturer: record.manufacturer,
+            description: record.description,
+            link: record.link,
+            image_file: record.image_file,
+            manual_link: record.manual_link,
+            approx_price: record.approx_price,
+            category: record.category,
+        };
+    }
+
+    function getMergedComponentsByCategory() {
+        const patch = readComponentPatch();
+        const categories = {};
+
+        Object.keys(_db.components).forEach(cat => {
+            categories[cat] = (_db.components[cat] || []).map(part => normalizeComponentRecord({
+                pid: part.pid,
+                name: part.name,
+                category: cat,
+                manufacturer: part.manufacturer || '',
+                description: part.description || '',
+                link: part.link || '',
+                image_file: part.image_file || '',
+                manual_link: part.manual_link || '',
+                approx_price: part.approx_price || null,
+                schema_data: part,
+            }));
+        });
+
+        Object.entries(patch.items).forEach(([pid, item]) => {
+            if (patch.deleted[pid]) return;
+            const cat = item.category;
+            if (!categories[cat]) categories[cat] = [];
+            const idx = categories[cat].findIndex(entry => entry.pid === pid);
+            if (idx >= 0) categories[cat][idx] = normalizeComponentRecord(item);
+            else categories[cat].push(normalizeComponentRecord(item));
+        });
+
+        Object.keys(patch.deleted).forEach(pid => {
+            Object.keys(categories).forEach(cat => {
+                categories[cat] = categories[cat].filter(item => item.pid !== pid);
+            });
+        });
+
+        return categories;
+    }
+
+    function getAllComponents() {
+        return Object.values(getMergedComponentsByCategory()).flat();
+    }
+
+    function getComponentByPid(pid) {
+        return getAllComponents().find(item => item.pid === pid) || null;
+    }
+
+    function saveComponent(record) {
+        const patch = readComponentPatch();
+        const normalized = normalizeComponentRecord(record);
+        patch.items[normalized.pid] = normalized;
+        delete patch.deleted[normalized.pid];
+        writeComponentPatch(patch);
+        return normalized;
+    }
+
+    function removeComponent(pid) {
+        const patch = readComponentPatch();
+        delete patch.items[pid];
+        patch.deleted[pid] = true;
+        writeComponentPatch(patch);
+    }
+
+    function importComponents(records) {
+        const patch = readComponentPatch();
+        let created = 0;
+        let updated = 0;
+        const errors = [];
+
+        records.forEach((raw, index) => {
+            const pid = (raw.pid || '').toString().trim();
+            const category = (raw.category || '').toString().trim();
+            const name = (raw.name || '').toString().trim();
+            if (!pid || !category || !name) {
+                errors.push({ index, pid, error: 'missing pid/category/name' });
+                return;
+            }
+
+            const existing = getComponentByPid(pid);
+            patch.items[pid] = normalizeComponentRecord({
+                pid,
+                category,
+                name,
+                manufacturer: raw.manufacturer || '',
+                description: raw.description || '',
+                link: raw.link || '',
+                image_file: raw.image_file || '',
+                manual_link: raw.manual_link || '',
+                approx_price: raw.approx_price || raw.price_usd || null,
+                schema_data: raw.schema_data || raw,
+            });
+            delete patch.deleted[pid];
+            if (existing) updated += 1;
+            else created += 1;
+        });
+
+        writeComponentPatch(patch);
+        return { created, updated, errors };
+    }
+
     function getCategories() {
+        const merged = getMergedComponentsByCategory();
         const catNames = {
             antennas: 'Antennas',
             batteries: 'Batteries',
@@ -65,29 +209,19 @@
             video_scramblers: 'Video Scramblers',
             control_link_tx: 'Control Link TX',
         };
-        return Object.keys(_db.components).map((slug, i) => ({
+        return Object.keys(merged).map((slug, i) => ({
             id: i + 1,
             name: catNames[slug] || slug.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase()),
             slug: slug,
-            component_count: _db.components[slug].length,
-            count: _db.components[slug].length,
+            component_count: merged[slug].length,
+            count: merged[slug].length,
         }));
     }
 
     // ── Build synthetic component list matching DRF serializer shape ──
     function getComponents(category) {
-        const parts = _db.components[category] || [];
-        return parts.map(p => ({
-            pid: p.pid,
-            name: p.name,
-            category: category,
-            manufacturer: p.manufacturer || '',
-            description: p.description || '',
-            link: p.link || '',
-            image_file: p.image_file || '',
-            approx_price: p.approx_price || null,
-            schema_data: p, // The full part object IS the schema data
-        }));
+        const merged = getMergedComponentsByCategory();
+        return (merged[category] || []).map(normalizeComponentRecord);
     }
 
     // ── Drone models — save/load from localStorage ──
@@ -176,11 +310,30 @@
                 return jsonResponse(results);
             }
             // All components
-            const all = [];
-            for (const cat of Object.keys(_db.components)) {
-                all.push(...getComponents(cat));
+            return jsonResponse(getAllComponents());
+        }
+
+        if (path === '/api/components' && method === 'POST') {
+            const body = JSON.parse(options.body);
+            return jsonResponse(saveComponent(body), 201);
+        }
+
+        const componentMatch = path.match(/^\/api\/components\/(.+)$/);
+        if (componentMatch) {
+            const pid = componentMatch[1];
+            if (method === 'GET') {
+                const component = getComponentByPid(pid);
+                return component ? jsonResponse(component) : jsonResponse({ detail: 'Not found' }, 404);
             }
-            return jsonResponse(all);
+            if (method === 'PUT') {
+                const body = JSON.parse(options.body);
+                body.pid = pid;
+                return jsonResponse(saveComponent(body));
+            }
+            if (method === 'DELETE') {
+                removeComponent(pid);
+                return new Response(null, { status: 204 });
+            }
         }
 
         // GET /api/schema/
@@ -224,6 +377,18 @@
             return jsonResponse(_db.build_guides || []);
         }
 
+        if (path === '/api/export/parts' && method === 'GET') {
+            const cat = params.get('category');
+            const items = cat ? getComponents(cat) : getAllComponents();
+            return jsonResponse(items.map(exportComponentRecord));
+        }
+
+        if (path === '/api/import/parts' && method === 'POST') {
+            const body = JSON.parse(options.body);
+            if (!Array.isArray(body)) return jsonResponse({ error: 'Expected an array of parts' }, 400);
+            return jsonResponse(importComponents(body));
+        }
+
         // GET /api/build-sessions/ — return empty (no server-side sessions in static mode)
         if (path === '/api/build-sessions' && method === 'GET') {
             return jsonResponse([]);
@@ -253,7 +418,7 @@
 
         // Fallback: return empty for any unhandled API call
         console.warn(`[Forge] Unhandled API call: ${method} ${url}`);
-        return jsonResponse([], 200);
+        return jsonResponse({ detail: `Unhandled API call: ${method} ${path}` }, 501);
     }
 
 })();

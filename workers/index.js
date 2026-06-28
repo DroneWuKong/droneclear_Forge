@@ -86,6 +86,7 @@ export default {
         'prices-api':        '/api/prices',
         'analytics-ingest':  '/api/analytics/ingest',
         'compliance-report': '/api/compliance/report',
+        'contribution-submit': '/api/contribution-submit',
         'doctrine-submit':   '/api/doctrine-submit',
         'contribution-submit': '/api/contribution-submit',
         'doctrine-queue':    '/api/doctrine-queue',

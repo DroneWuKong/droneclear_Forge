@@ -603,10 +603,17 @@ async function submitContribution() {
 
         const data = await res.json();
 
-        if (res.ok && data.issue_url) {
+        if (res.ok && (data.issue_url || data.submission_id || data.ok)) {
             document.getElementById('formContainer').style.display = 'none';
             document.getElementById('successMsg').style.display = 'block';
-            document.getElementById('issueLink').href = data.issue_url;
+            const issueLink = document.getElementById('issueLink');
+            if (data.issue_url) {
+                issueLink.href = data.issue_url;
+                issueLink.textContent = 'View Issue on GitHub →';
+            } else {
+                issueLink.href = '/contribute-doctrine/';
+                issueLink.textContent = 'Submit doctrine documents →';
+            }
         } else {
             throw new Error(data.error || 'Submission failed');
         }

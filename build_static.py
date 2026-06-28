@@ -21,6 +21,11 @@ import hashlib
 SRC_DIR = 'forge-source'
 BUILD_DIR = 'build'
 
+if hasattr(sys.stdout, 'reconfigure'):
+    sys.stdout.reconfigure(errors='replace')
+if hasattr(sys.stderr, 'reconfigure'):
+    sys.stderr.reconfigure(errors='replace')
+
 # ── forge_database.json cache-buster ─────────────────────────────────────────
 # `/static/*` is served `immutable, max-age=1yr` (see _headers) on the
 # assumption that every asset URL carries a `?v=` buster. forge_database.json
@@ -1739,7 +1744,7 @@ def sync_handbook_data():
     for fname in ['articles.json', 'companies.json', 'platforms.json', 'programs.json']:
         src = os.path.join(SRC_DIR, 'intel_' + fname)
         if os.path.exists(src):
-            with open(src) as f:
+            with open(src, 'r', encoding='utf-8') as f:
                 data = json.load(f)
             count = len(data) if isinstance(data, list) else '?'
             print(f"  intel_{fname}: {count} entries")
@@ -1749,7 +1754,7 @@ def sync_handbook_data():
     # pie_trends.json — synced by pie-pipeline workflow via sync-forge-data
     trends_src = os.path.join(SRC_DIR, 'pie_trends.json')
     if os.path.exists(trends_src):
-        with open(trends_src) as f:
+        with open(trends_src, 'r', encoding='utf-8') as f:
             trends_data = json.load(f)
         n_trends = len(trends_data.get('trends', []))
         n_proj   = len(trends_data.get('projections', []))
@@ -1760,7 +1765,7 @@ def sync_handbook_data():
     for pf in ['pie_predictions.json', 'llm_predictions.json']:
         src = os.path.join(SRC_DIR, pf)
         if os.path.exists(src):
-            with open(src) as f:
+            with open(src, 'r', encoding='utf-8') as f:
                 data = json.load(f)
             print(f"  {pf}: {len(data)} predictions")
         else:
@@ -2111,9 +2116,9 @@ def build():
     src_db_path = os.path.join(SRC_DIR, 'forge_database.json')
     build_db_path = os.path.join(BUILD_DIR, 'static', 'forge_database.json')
     if os.path.exists(src_db_path) and os.path.exists(build_db_path):
-        with open(src_db_path) as f:
+        with open(src_db_path, 'r', encoding='utf-8') as f:
             src_db = json.load(f)
-        with open(build_db_path) as f:
+        with open(build_db_path, 'r', encoding='utf-8') as f:
             build_db = json.load(f)
         src_parts = sum(len(v) for v in src_db.get('components', {}).values())
         build_parts = sum(len(v) for v in build_db.get('components', {}).values())
