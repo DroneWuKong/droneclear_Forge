@@ -151,7 +151,7 @@ PAGES = {
 }
 
 # Static assets to copy (JS, CSS, JSON, images)
-STATIC_EXTENSIONS = {'.js', '.css', '.json', '.xml', '.png', '.jpg', '.svg', '.ico', '.gif', '.webp'}
+STATIC_EXTENSIONS = {'.js', '.css', '.json', '.xml', '.txt', '.png', '.jpg', '.svg', '.ico', '.gif', '.webp'}
 
 # Files that must NOT appear in the public build/ static/ directory.
 # These are served by forge-data.mjs with tier-based auth.
@@ -478,22 +478,22 @@ _UNIFIED_NAV = r"""<!-- ── Unified UAS- Nav (5-domain accordion drawer) ─�
     </div>
   </details>
 
-  <!-- Intel (gated) — links live in the public menu but require Cloudflare Access -->
-  <details class="dc-dom-group" data-host="uas-forge.com" data-hub-href="https://uas-forge.com/private/">
+  <!-- Intel (gated) — listed for authorized users; private links are nofollow/noindex. -->
+  <details class="dc-dom-group" data-host="uas-forge.com">
     <summary>
       <span class="dc-dom-ico">🔒</span>
       <div class="dc-dom-info">
         <div class="dc-dom-name">Intel (Private)</div>
-        <div class="dc-dom-url">uas-forge.com/private · gated</div>
+        <div class="dc-dom-url">gated workspace</div>
       </div>
       <span class="dc-dom-chev">▶</span>
     </summary>
     <div class="dc-dom-sublinks">
-      <a class="dc-dom-sublink" href="https://uas-forge.com/private/ddg/" data-page="ddg">DDG Tracker</a>
-      <a class="dc-dom-sublink" href="https://uas-forge.com/private/dossiers/" data-page="dossiers">Intel Dossiers</a>
-      <a class="dc-dom-sublink" href="https://uas-forge.com/private/supply-web/" data-page="supply-web">Supply Web</a>
-      <a class="dc-dom-sublink" href="https://uas-forge.com/private/components-bom/" data-page="components-bom">Component BOMs</a>
-      <a class="dc-dom-sublink" href="https://uas-forge.com/private/drone-config/" data-page="drone-config">Build Configurator</a>
+      <a class="dc-dom-sublink" href="https://uas-forge.com/private/ddg/" rel="nofollow" data-noindex="true" data-page="ddg">DDG Tracker</a>
+      <a class="dc-dom-sublink" href="https://uas-forge.com/private/dossiers/" rel="nofollow" data-noindex="true" data-page="dossiers">Intel Dossiers</a>
+      <a class="dc-dom-sublink" href="https://uas-forge.com/private/supply-web/" rel="nofollow" data-noindex="true" data-page="supply-web">Supply Web</a>
+      <a class="dc-dom-sublink" href="https://uas-forge.com/private/components-bom/" rel="nofollow" data-noindex="true" data-page="components-bom">Component BOMs</a>
+      <a class="dc-dom-sublink" href="https://uas-forge.com/private/drone-config/" rel="nofollow" data-noindex="true" data-page="drone-config">Build Configurator</a>
     </div>
   </details>
 
