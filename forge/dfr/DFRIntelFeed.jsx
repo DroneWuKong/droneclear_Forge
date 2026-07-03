@@ -507,7 +507,7 @@ export default function DFRIntelFeed() {
             </div>
           </div>
           <div className="feed-header-right">
-            <span>geprole.netlify.app</span>
+            <span>uas-forge.com</span>
             <div className="live-pill">
               <div className="live-dot" />
               LIVE

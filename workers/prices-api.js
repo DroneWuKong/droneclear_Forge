@@ -6,6 +6,8 @@
  * POST — community price submission (PRICES_API_KEY auth), stored in PARTS_DB KV
  */
 
+import { timingSafeEqual } from './_auth.js';
+
 const CORS = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
@@ -28,7 +30,7 @@ export default {
     if (req.method === 'POST') {
       const apiKey = env.PRICES_API_KEY;
       const provided = (req.headers.get('authorization') || '').replace(/^Bearer\s+/i, '');
-      if (!apiKey || provided !== apiKey) return resp({ error: 'Unauthorized' }, 401);
+      if (!apiKey || !(await timingSafeEqual(provided, apiKey))) return resp({ error: 'Unauthorized' }, 401);
 
       try {
         const body = await req.json();

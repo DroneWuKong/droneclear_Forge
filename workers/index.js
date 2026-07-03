@@ -88,7 +88,6 @@ export default {
         'compliance-report': '/api/compliance/report',
         'contribution-submit': '/api/contribution-submit',
         'doctrine-submit':   '/api/doctrine-submit',
-        'contribution-submit': '/api/contribution-submit',
         'doctrine-queue':    '/api/doctrine-queue',
         'faa-lookup':        '/api/faa-lookup',
       };
