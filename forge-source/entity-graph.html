@@ -89,6 +89,7 @@ body{background:#0c0c0a;color:#b8b0a0;font-family:'DM Sans',system-ui,sans-serif
 
 <script>
 (function() {
+  function esc(s){ return String(s==null?'':s).replace(/[&<>"']/g, function(c){ return ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'})[c]; }); }
   var RAW = null;
   var allNodes = [], allLinks = [], visNodes = [], visLinks = [];
   var activeFilter = 'all';
@@ -314,8 +315,8 @@ body{background:#0c0c0a;color:#b8b0a0;font-family:'DM Sans',system-ui,sans-serif
       return (s===d.id||t===d.id) ? '#3e3e34' : '#1e1e18';
     });
 
-    tooltip.innerHTML = '<b>' + d.name + '</b>' +
-      (d.cid ? '<br><span style="font:400 9px JetBrains Mono,monospace;color:#3e3e34">' + d.cid + '</span>' : '') +
+    tooltip.innerHTML = '<b>' + esc(d.name) + '</b>' +
+      (d.cid ? '<br><span style="font:400 9px JetBrains Mono,monospace;color:#3e3e34">' + esc(d.cid) + '</span>' : '') +
       '<br>Parts: ' + d.nParts + ' · Articles: ' + d.nArticles +
       '<br>Programs: ' + d.nPrograms + ' · Contracts: ' + d.nContracts +
       (d.nFlags ? '<br><span style="color:#dc2626">⚑ ' + d.nFlags + ' flag' + (d.nFlags>1?'s':'') + '</span>' : '') +
@@ -354,36 +355,36 @@ body{background:#0c0c0a;color:#b8b0a0;font-family:'DM Sans',system-ui,sans-serif
       html += '<div class="panel-section"><h3>Tags</h3><div class="tag-row">' +
         d.tags.map(function(t) {
           var cls = t==='ndaa'?'ndaa':t==='china'?'china':t==='flagged'?'flag':'';
-          return '<span class="etag '+cls+'">'+t+'</span>';
+          return '<span class="etag '+cls+'">'+esc(t)+'</span>';
         }).join('') + '</div></div>';
     }
 
     if (d.programs.length) {
       html += '<div class="panel-section"><h3>Programs</h3>' +
-        d.programs.map(function(p) { return '<div class="link-row">📋 '+p+'</div>'; }).join('') + '</div>';
+        d.programs.map(function(p) { return '<div class="link-row">📋 '+esc(p)+'</div>'; }).join('') + '</div>';
     }
 
     if (d.flags.length) {
       html += '<div class="panel-section"><h3>Flags</h3>' +
         d.flags.slice(0,5).map(function(f) {
           return '<div class="link-row"><span style="color:#dc2626">⚑</span> <b>' +
-            (f.label||f.flag_id||'Flag') + '</b>' +
-            (f.severity ? ' · ' + f.severity : '') + '</div>';
+            esc(f.label||f.flag_id||'Flag') + '</b>' +
+            (f.severity ? ' · ' + esc(f.severity) : '') + '</div>';
         }).join('') + (d.flags.length > 5 ? '<div class="link-row" style="color:#4a4540">+' + (d.flags.length-5) + ' more</div>' : '') + '</div>';
     }
 
     if (d.contracts.length) {
       html += '<div class="panel-section"><h3>Contracts</h3>' +
         d.contracts.slice(0,4).map(function(c) {
-          return '<div class="link-row"><b>' + (c.value||'') + '</b> ' + (c.program||'').slice(0,40) +
-            '<br><span style="font-size:9px;color:#3e3e34">' + (c.date||'') + ' · ' + (c.type||'') + '</span></div>';
+          return '<div class="link-row"><b>' + esc(c.value||'') + '</b> ' + esc((c.program||'').slice(0,40)) +
+            '<br><span style="font-size:9px;color:#3e3e34">' + esc(c.date||'') + ' · ' + esc(c.type||'') + '</span></div>';
         }).join('') + (d.contracts.length > 4 ? '<div class="link-row" style="color:#4a4540">+' + (d.contracts.length-4) + ' more</div>' : '') + '</div>';
     }
 
     if (d.parts.length) {
       html += '<div class="panel-section"><h3>Parts (' + d.parts.length + ')</h3>' +
         d.parts.slice(0,5).map(function(p) {
-          return '<div class="link-row"><b>' + p.pid + '</b> ' + (p.name||'').slice(0,36) + '</div>';
+          return '<div class="link-row"><b>' + esc(p.pid) + '</b> ' + esc((p.name||'').slice(0,36)) + '</div>';
         }).join('') + (d.parts.length > 5 ? '<div class="link-row" style="color:#4a4540">+' + (d.parts.length-5) + ' more</div>' : '') + '</div>';
     }
 

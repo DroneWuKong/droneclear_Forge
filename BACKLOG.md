@@ -36,6 +36,8 @@
 
 | ID | Issue | Location | Description | Added |
 |----|-------|----------|-------------|-------|
+| BUG-011 | `/api/prices` returns empty dataset | `workers/prices-api.js`, PARTS_DB KV | GET reads the `prices` key from PARTS_DB KV, but nothing ever populates it — no script in this repo or the miners writes it (price data only lands in `forge_database.json` via `diyfpv_to_prices.py` in Ai-Project). Live endpoint returns `{"components":[],"total":0}`. Fix: add a pipeline step (Ai-Project or a Forge workflow) that extracts `price_min_usd`/retailer fields from forge_database.json and `wrangler kv put`s them under `prices`, or retire the GET path and document POST-only community submissions. | 2026-07-03 |
+| DEBT-014 | www subdomains dead (522) | Cloudflare dashboard (not repo) | `www.uas-forge.com` and `www.uas-patterns.com` have proxied DNS records but no Pages custom-domain binding or redirect rule — visitors get a Cloudflare 522. Fix in dashboard: add www as custom domains on the `forge` Pages project, or add a Redirect Rule www→apex on each zone. | 2026-07-03 |
 | ~~DEBT-013~~ | ~~Zero test coverage for seed.py~~ | ~~`components/seed.py`~~ | **Resolved / N-A** — the Django backend (incl. `components/seed.py`) was removed Feb 2026. Forge is now a fully static site with no backend; this debt no longer applies. | 2026-03-08 |
 | | *(All other DEBT items completed — see Completed section)* | | | |
 

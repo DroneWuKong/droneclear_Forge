@@ -328,6 +328,7 @@ a.action-link:hover{text-decoration:underline}
 
 <script>
 const STORE_KEY = 'dc_tracker_v1';
+function esc(s){ return String(s==null?'':s).replace(/[&<>"']/g, function(c){ return ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'})[c]; }); }
 let currentType = null;
 let editIndex = null;
 
@@ -491,7 +492,7 @@ function renderCOWCard(item, i) {
     const expDate = item.expires || (() => { const d = new Date(item.issued); d.setFullYear(d.getFullYear()+4); return d.toISOString().slice(0,10); })();
     const expDays = daysUntil(expDate);
     const expColor = expDays < 90 ? 'var(--red)' : expDays < 365 ? 'var(--amber)' : 'var(--green)';
-    expiryHtml = `<div class="card-meta" style="margin-top:6px">Approved: <strong>${item.issued}</strong> · Expires: <strong style="color:${expColor}">${expDate}</strong> (<strong>${expDays}d</strong>)</div>`;
+    expiryHtml = `<div class="card-meta" style="margin-top:6px">Approved: <strong>${esc(item.issued)}</strong> · Expires: <strong style="color:${expColor}">${esc(expDate)}</strong> (<strong>${expDays}d</strong>)</div>`;
     if (expDays < 180) {
       expiryHtml += `<div style="margin-top:6px"><a href="/waiver/" class="action-link"><i class="ph ph-arrow-circle-right"></i> Start renewal application →</a></div>`;
     }
@@ -500,11 +501,11 @@ function renderCOWCard(item, i) {
   return `<div class="card ${cardClass}" style="margin-bottom:8px">
     <div class="card-header">
       <div style="flex:1;min-width:0">
-        <div class="card-title">${item.name}</div>
-        ${item.area ? `<div class="card-meta" style="margin-top:2px">${item.area}</div>` : ''}
+        <div class="card-title">${esc(item.name)}</div>
+        ${item.area ? `<div class="card-meta" style="margin-top:2px">${esc(item.area)}</div>` : ''}
       </div>
       <div style="display:flex;flex-direction:column;align-items:flex-end;gap:4px;flex-shrink:0">
-        <span class="card-badge badge-${cardClass}" style="background:${sc}18;color:${sc}">${status}</span>
+        <span class="card-badge badge-${cardClass}" style="background:${sc}18;color:${sc}">${esc(status)}</span>
         <div style="display:flex;gap:6px">
           <a href="#" class="action-link" style="font-size:10px" onclick="editItem('waiver',${i});return false">Edit</a>
           <a href="#" class="action-link" style="font-size:10px;color:var(--text-d)" onclick="deleteItem('waiver',${i});return false">Remove</a>
@@ -512,10 +513,10 @@ function renderCOWCard(item, i) {
       </div>
     </div>
     ${timelineHtml}
-    ${item.ref_num ? `<div class="card-meta">Docket: <strong>${item.ref_num}</strong>${item.submitted ? ' · Submitted: <strong>'+item.submitted+'</strong>' : ''}</div>` : item.submitted ? `<div class="card-meta">Submitted: <strong>${item.submitted}</strong></div>` : ''}
+    ${item.ref_num ? `<div class="card-meta">Docket: <strong>${esc(item.ref_num)}</strong>${item.submitted ? ' · Submitted: <strong>'+esc(item.submitted)+'</strong>' : ''}</div>` : item.submitted ? `<div class="card-meta">Submitted: <strong>${esc(item.submitted)}</strong></div>` : ''}
     ${estimateHtml}
     ${expiryHtml}
-    ${item.notes ? `<div class="card-meta" style="margin-top:6px;padding:6px 8px;background:var(--surface);border-radius:5px">${item.notes}</div>` : ''}
+    ${item.notes ? `<div class="card-meta" style="margin-top:6px;padding:6px 8px;background:var(--surface);border-radius:5px">${esc(item.notes)}</div>` : ''}
     ${status === 'Additional Info Requested' ? `<div style="margin-top:8px"><a href="https://faadronezone.faa.gov" target="_blank" class="action-link"><i class="ph ph-warning"></i> Respond via FAA DroneZone →</a></div>` : ''}
     ${status === 'Drafting' ? `<div style="margin-top:8px"><a href="/waiver/" class="action-link"><i class="ph ph-file-text"></i> Build COW application in Doc Builder →</a></div>` : ''}
   </div>`;
@@ -543,8 +544,8 @@ function renderAll() {
       return `<div class="card ${status}" style="margin-bottom:8px">
         <div class="card-header">
           <div>
-            <div class="card-title">${item.name}</div>
-            <div class="card-meta" style="margin-top:2px">Part 107 · 24-month recurrency${item.cert_num ? ' · Cert #'+item.cert_num : ''}</div>
+            <div class="card-title">${esc(item.name)}</div>
+            <div class="card-meta" style="margin-top:2px">Part 107 · 24-month recurrency${item.cert_num ? ' · Cert #'+esc(item.cert_num) : ''}</div>
           </div>
           <div style="display:flex;flex-direction:column;align-items:flex-end;gap:4px">
             <span class="card-badge badge-${status}">${badgeLabel(days)}</span>
@@ -554,8 +555,8 @@ function renderAll() {
             </div>
           </div>
         </div>
-        ${expDate ? `<div class="card-meta">Due: <strong>${expDate}</strong>${item.issued ? ' · Last completed: '+item.issued : ''}</div>` : ''}
-        ${item.notes ? `<div class="card-meta" style="margin-top:4px">${item.notes}</div>` : ''}
+        ${expDate ? `<div class="card-meta">Due: <strong>${esc(expDate)}</strong>${item.issued ? ' · Last completed: '+esc(item.issued) : ''}</div>` : ''}
+        ${item.notes ? `<div class="card-meta" style="margin-top:4px">${esc(item.notes)}</div>` : ''}
         ${pct !== null ? `<div class="progress-bar"><div class="progress-fill" style="width:${pct}%;background:${status==='ok'?'var(--green)':status==='warn'?'var(--amber)':'var(--red)'}"></div></div>` : ''}
         ${status !== 'ok' ? `<div style="margin-top:8px"><a href="https://www.faasafety.gov/login/secure/login.aspx" target="_blank" class="action-link"><i class="ph ph-arrow-square-out"></i> Complete recurrency training →</a></div>` : ''}
       </div>`;
@@ -579,8 +580,8 @@ function renderAll() {
       return `<div class="card ${status}" style="margin-bottom:8px">
         <div class="card-header">
           <div>
-            <div class="card-title">${item.name}</div>
-            <div class="card-meta" style="margin-top:2px">FAA Registration · 3yr${item.reg_num?' · #'+item.reg_num:''}${item.serial?' · S/N '+item.serial:''}</div>
+            <div class="card-title">${esc(item.name)}</div>
+            <div class="card-meta" style="margin-top:2px">FAA Registration · 3yr${item.reg_num?' · #'+esc(item.reg_num):''}${item.serial?' · S/N '+esc(item.serial):''}</div>
           </div>
           <div style="display:flex;flex-direction:column;align-items:flex-end;gap:4px">
             <span class="card-badge badge-${status}">${badgeLabel(days)}</span>
@@ -590,7 +591,7 @@ function renderAll() {
             </div>
           </div>
         </div>
-        ${expDate ? `<div class="card-meta">Expires: <strong>${expDate}</strong>${item.issued?' · Issued: '+item.issued:''}</div>` : ''}
+        ${expDate ? `<div class="card-meta">Expires: <strong>${esc(expDate)}</strong>${item.issued?' · Issued: '+esc(item.issued):''}</div>` : ''}
         ${pct !== null ? `<div class="progress-bar"><div class="progress-fill" style="width:${pct}%;background:${status==='ok'?'var(--green)':status==='warn'?'var(--amber)':'var(--red)'}"></div></div>` : ''}
         ${status !== 'ok' ? `<div style="margin-top:8px"><a href="https://faadronezone.faa.gov" target="_blank" class="action-link"><i class="ph ph-arrow-square-out"></i> Renew at FAA DroneZone →</a></div>` : ''}
       </div>`;
@@ -629,8 +630,8 @@ function renderAll() {
       return `<div class="card ${status}" style="margin-bottom:8px">
         <div class="card-header">
           <div>
-            <div class="card-title">${item.name}</div>
-            <div class="card-meta" style="margin-top:2px">Insurance${item.policy_num?' · #'+item.policy_num:''}${item.coverage?' · '+item.coverage:''}</div>
+            <div class="card-title">${esc(item.name)}</div>
+            <div class="card-meta" style="margin-top:2px">Insurance${item.policy_num?' · #'+esc(item.policy_num):''}${item.coverage?' · '+esc(item.coverage):''}</div>
           </div>
           <div style="display:flex;flex-direction:column;align-items:flex-end;gap:4px">
             <span class="card-badge badge-${status}">${badgeLabel(days)}</span>
@@ -640,7 +641,7 @@ function renderAll() {
             </div>
           </div>
         </div>
-        ${item.expires ? `<div class="card-meta">Expires: <strong>${item.expires}</strong>${item.issued?' · Since: '+item.issued:''}</div>` : ''}
+        ${item.expires ? `<div class="card-meta">Expires: <strong>${esc(item.expires)}</strong>${item.issued?' · Since: '+esc(item.issued):''}</div>` : ''}
         ${status !== 'ok' ? `<div style="margin-top:8px"><a href="https://www.skywatch.ai" target="_blank" class="action-link"><i class="ph ph-arrow-square-out"></i> Get a quote →</a></div>` : ''}
       </div>`;
     }).join('');
@@ -668,8 +669,8 @@ function openModal(type, idx) {
   document.getElementById('modal-fields').innerHTML = cfg.fields.map(f => {
     const val = existing ? (existing[f.id]||'') : '';
     if (f.type === 'select') return `<div class="field"><label>${f.label}</label><select id="mf_${f.id}">${f.options.map(o=>`<option${val===o?' selected':''}>${o}</option>`).join('')}</select></div>`;
-    if (f.type === 'textarea') return `<div class="field"><label>${f.label}</label><textarea id="mf_${f.id}" placeholder="${f.placeholder||''}">${val}</textarea></div>`;
-    return `<div class="field"><label>${f.label}</label><input type="${f.type}" id="mf_${f.id}" value="${val}" placeholder="${f.placeholder||''}"></div>`;
+    if (f.type === 'textarea') return `<div class="field"><label>${f.label}</label><textarea id="mf_${f.id}" placeholder="${f.placeholder||''}">${esc(val)}</textarea></div>`;
+    return `<div class="field"><label>${f.label}</label><input type="${f.type}" id="mf_${f.id}" value="${esc(val)}" placeholder="${f.placeholder||''}"></div>`;
   }).join('');
   document.getElementById('modal').classList.add('show');
 }

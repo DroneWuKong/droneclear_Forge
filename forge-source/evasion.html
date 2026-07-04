@@ -153,6 +153,8 @@ window.dcNavClose=function(){document.getElementById('dc-drawer').classList.remo
 window.dcNavBrandClick=function(e){e.preventDefault();location.href='/patterns-home/';};
 (function(){var path=location.pathname.replace(/\/$/,'').split('/').pop()||'home';document.querySelectorAll('.dc-drawer-item').forEach(function(a){if(a.dataset.page===path)a.classList.add('dc-active');});})();
 
+function esc(s){ return String(s==null?'':s).replace(/[&<>"']/g, function(c){ return ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'})[c]; }); }
+
 fetch('/api/data?type=sanctions_evasion_graph').then(function(r){ return r.ok?r.json():Promise.reject(r.status); }).then(function(e){ var d=e.data||e;
   var meta = d.meta || {};
   var byHops = (meta.summary && meta.summary.by_hops) || {};
@@ -183,17 +185,17 @@ fetch('/api/data?type=sanctions_evasion_graph').then(function(r){ return r.ok?r.
     var path = r.path||[];
     var pathHtml = path.map(function(n,i){
       var cls = (i===0?'start':(i===path.length-1?'end':''));
-      return '<span class="node '+cls+'">'+n+'</span>'+(i<path.length-1?'<span class="arrow">→</span>':'');
+      return '<span class="node '+cls+'">'+esc(n)+'</span>'+(i<path.length-1?'<span class="arrow">→</span>':'');
     }).join('');
     var edgeHtml = (r.edge_chain||[]).map(function(e){
-      return '<div class="edge '+e.type+'"><span class="etype">'+e.type+'</span><span class="elabel">'+(e.label||'').slice(0,80)+'</span></div>';
+      return '<div class="edge '+esc(e.type)+'"><span class="etype">'+esc(e.type)+'</span><span class="elabel">'+esc((e.label||'').slice(0,80))+'</span></div>';
     }).join('');
     return '<div class="row">'+
       '<div class="top">'+
         '<div class="score">'+(r.soft_sanctions_risk||0).toFixed(3)+'</div>'+
-        '<div class="who">'+r.company+'</div>'+
-        '<div class="type'+(r.company_type==='both'?' both':'')+'">'+(r.company_type||'').replace(/_/g,' ')+'</div>'+
-        '<div class="hops">'+r.hops+'h</div>'+
+        '<div class="who">'+esc(r.company)+'</div>'+
+        '<div class="type'+(r.company_type==='both'?' both':'')+'">'+esc((r.company_type||'').replace(/_/g,' '))+'</div>'+
+        '<div class="hops">'+esc(r.hops)+'h</div>'+
       '</div>'+
       '<div class="path">'+pathHtml+'</div>'+
       '<div class="edges">'+edgeHtml+'</div>'+

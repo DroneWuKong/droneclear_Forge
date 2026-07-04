@@ -861,6 +861,8 @@ a.brief-source-chip:hover{color:var(--text-s);border-color:var(--border-hi)}
 </div>
 
 <script>
+function esc(s){ return String(s==null?'':s).replace(/[&<>"']/g, function(c){ return ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'})[c]; }); }
+function safeUrl(u){ u=String(u==null?'':u); return /^https?:\/\//i.test(u)?u:'#'; }
 // ── Paywall removed — all data is free. These helpers are kept as
 // no-ops so any remaining callers continue to work. ───────────────────
 function isSubscriber() { return true; }
@@ -878,17 +880,17 @@ function buildPredModalBody(p) {
   body += '<span style="font:600 11px var(--mono);color:var(--text-d)">PROBABILITY</span>';
   body += '<span style="font:700 18px var(--mono);color:'+(pct>70?'var(--amber)':'var(--text-s)')+'">'+pct+'%</span></div>';
   body += '<div style="height:6px;background:var(--border);border-radius:3px;margin-bottom:6px"><div style="width:'+pct+'%;height:100%;background:var(--amber);border-radius:3px"></div></div>';
-  if (p.model) body += '<div style="font:400 10px var(--font);color:var(--text-d);margin-top:2px">'+p.model+'</div>';
+  if (p.model) body += '<div style="font:400 10px var(--font);color:var(--text-d);margin-top:2px">'+esc(p.model)+'</div>';
   body += '</div>';
   body += '<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px">';
-  if (p.timeframe) body += '<span class="badge badge-purple">◎ '+p.timeframe+'</span>';
-  if (p.impact) body += '<span class="badge" style="background:'+ic+'18;color:'+ic+'">'+p.impact+' impact</span>';
+  if (p.timeframe) body += '<span class="badge badge-purple">◎ '+esc(p.timeframe)+'</span>';
+  if (p.impact) body += '<span class="badge" style="background:'+ic+'18;color:'+ic+'">'+esc(p.impact)+' impact</span>';
   if (conf) body += '<span class="badge" style="background:var(--surface);color:var(--text-d)">'+conf+'% confidence</span>';
   body += '</div>';
   if (p.hedge) {
     body += '<div style="background:var(--purple-d,rgba(139,92,246,.1));border:1px solid rgba(139,92,246,.2);border-radius:7px;padding:10px 12px;margin-bottom:12px">';
     body += '<div style="font:600 10px var(--mono);color:var(--purple);text-transform:uppercase;letter-spacing:.06em;margin-bottom:4px">◎ Hedge</div>';
-    body += '<div style="font:400 11px var(--font);color:var(--text-s);line-height:1.5">'+p.hedge+'</div></div>';
+    body += '<div style="font:400 11px var(--font);color:var(--text-s);line-height:1.5">'+esc(p.hedge)+'</div></div>';
   }
   if (p.model_outputs && p.model_outputs.length) {
     body += '<div style="font:600 10px var(--mono);color:var(--text-d);text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px">Model Breakdown</div>';
@@ -896,16 +898,16 @@ function buildPredModalBody(p) {
       var mp = Math.round((m.probability||0)*100);
       body += '<div style="background:var(--surface);border-radius:8px;padding:10px;margin-bottom:6px;border-left:3px solid var(--purple)">';
       body += '<div style="display:flex;justify-content:space-between;margin-bottom:3px">';
-      body += '<span style="font:600 10px var(--mono);color:var(--purple)">'+m.model+'</span>';
+      body += '<span style="font:600 10px var(--mono);color:var(--purple)">'+esc(m.model)+'</span>';
       body += '<span style="font:700 13px var(--mono);color:var(--amber)">'+mp+'%</span></div>';
       body += '<div style="height:4px;background:var(--border);border-radius:2px;margin-bottom:5px"><div style="width:'+mp+'%;height:100%;background:var(--purple);border-radius:2px"></div></div>';
-      (m.drivers||[]).forEach(function(d){ body += '<div style="font:400 10px var(--font);color:var(--text-s);margin-top:2px">→ '+d+'</div>'; });
+      (m.drivers||[]).forEach(function(d){ body += '<div style="font:400 10px var(--font);color:var(--text-s);margin-top:2px">→ '+esc(d)+'</div>'; });
       body += '</div>';
     });
   }
   if (p.drivers && p.drivers.length) {
     body += '<div style="font:600 10px var(--mono);color:var(--text-d);text-transform:uppercase;letter-spacing:.08em;margin:12px 0 6px">All Drivers</div>';
-    p.drivers.forEach(function(d){ body += '<div style="font:400 11px var(--font);color:var(--text-s);padding:3px 0;border-bottom:1px solid var(--border)">→ '+d+'</div>'; });
+    p.drivers.forEach(function(d){ body += '<div style="font:400 11px var(--font);color:var(--text-s);padding:3px 0;border-bottom:1px solid var(--border)">→ '+esc(d)+'</div>'; });
   }
   if (p.lead_time_signal) {
     var lts = p.lead_time_signal;
@@ -913,9 +915,9 @@ function buildPredModalBody(p) {
     body += '<div style="background:var(--surface);border-radius:7px;padding:10px 12px;margin-top:12px;border-left:3px solid var(--blue)">';
     body += '<div style="font:600 10px var(--mono);color:var(--blue);text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px">⏱ Lead Time Signal</div>';
     body += '<div style="display:flex;justify-content:space-between;align-items:center">';
-    body += '<span style="font:500 11px var(--font);color:var(--text-s)">'+(lts.component||'').replace(/_/g,' ')+'</span>';
-    body += '<span style="font:700 13px var(--mono);color:var(--blue)">~'+lts.estimated_weeks+'w</span></div>';
-    body += '<div style="font:400 10px var(--mono);color:'+confColor+';margin-top:3px">'+((lts.confidence||'').toUpperCase())+' confidence</div>';
+    body += '<span style="font:500 11px var(--font);color:var(--text-s)">'+esc((lts.component||'').replace(/_/g,' '))+'</span>';
+    body += '<span style="font:700 13px var(--mono);color:var(--blue)">~'+esc(lts.estimated_weeks)+'w</span></div>';
+    body += '<div style="font:400 10px var(--mono);color:'+confColor+';margin-top:3px">'+esc((lts.confidence||'').toUpperCase())+' confidence</div>';
     body += '</div>';
   }
   if (p.co_occurrence_signal) {
@@ -923,11 +925,11 @@ function buildPredModalBody(p) {
     body += '<div style="background:var(--surface);border-radius:7px;padding:10px 12px;margin-top:8px;border-left:3px solid var(--purple)">';
     body += '<div style="font:600 10px var(--mono);color:var(--purple);text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px">◈ Signal Co-occurrence</div>';
     body += '<div style="display:flex;gap:6px;margin-bottom:6px">';
-    body += '<span style="background:rgba(139,92,246,.12);color:var(--purple);padding:2px 7px;font:600 10px var(--mono)">'+(cos.tag_a||'')+'</span>';
+    body += '<span style="background:rgba(139,92,246,.12);color:var(--purple);padding:2px 7px;font:600 10px var(--mono)">'+esc(cos.tag_a||'')+'</span>';
     body += '<span style="color:var(--text-d);font:400 10px var(--mono)">×</span>';
-    body += '<span style="background:rgba(139,92,246,.12);color:var(--purple);padding:2px 7px;font:600 10px var(--mono)">'+(cos.tag_b||'')+'</span>';
+    body += '<span style="background:rgba(139,92,246,.12);color:var(--purple);padding:2px 7px;font:600 10px var(--mono)">'+esc(cos.tag_b||'')+'</span>';
     body += '</div>';
-    body += '<div style="font:400 11px var(--font);color:var(--text-s);line-height:1.5">'+(cos.pattern||'')+'</div>';
+    body += '<div style="font:400 11px var(--font);color:var(--text-s);line-height:1.5">'+esc(cos.pattern||'')+'</div>';
     body += '</div>';
   }
   // Evidence basis — the most important honesty field
@@ -936,18 +938,18 @@ function buildPredModalBody(p) {
     var etLabel = p.evidence_type === 'validation' ? '✓ VALIDATES EXISTING FLAG' : '◎ NEW PATTERN DISCOVERED';
     body += '<div style="background:var(--surface);border-radius:7px;padding:10px 12px;margin-top:8px;border-left:3px solid '+etColor+'">';
     body += '<div style="font:600 10px var(--mono);color:'+etColor+';text-transform:uppercase;letter-spacing:.06em;margin-bottom:4px">'+etLabel+'</div>';
-    if (p.evidence_basis) body += '<div style="font:400 11px var(--font);color:var(--text-s);line-height:1.5">'+p.evidence_basis+'</div>';
+    if (p.evidence_basis) body += '<div style="font:400 11px var(--font);color:var(--text-s);line-height:1.5">'+esc(p.evidence_basis)+'</div>';
     body += '</div>';
   }
   // Probability basis — why this number
   if (p.probability_basis) {
     body += '<div style="background:var(--surface);border-radius:7px;padding:8px 12px;margin-top:6px">';
     body += '<div style="font:600 10px var(--mono);color:var(--text-d);text-transform:uppercase;letter-spacing:.06em;margin-bottom:3px">Why this probability</div>';
-    body += '<div style="font:400 11px var(--font);color:var(--text-s);line-height:1.5">'+p.probability_basis+'</div>';
+    body += '<div style="font:400 11px var(--font);color:var(--text-s);line-height:1.5">'+esc(p.probability_basis)+'</div>';
     body += '</div>';
   }
   if (p.model) {
-    body += '<div style="margin-top:10px;font:400 10px var(--mono);color:var(--text-d)">Source: '+p.model+'</div>';
+    body += '<div style="margin-top:10px;font:400 10px var(--mono);color:var(--text-d)">Source: '+esc(p.model)+'</div>';
   }
 
   // ── Article drill-through via entity graph ──
@@ -979,12 +981,12 @@ function buildPredModalBody(p) {
 
     if (dedupedArticles.length) {
       body += '<div style="margin-top:12px;border-top:1px solid var(--border);padding-top:10px">';
-      body += '<div style="font:600 10px var(--mono);color:var(--cyan);text-transform:uppercase;letter-spacing:.08em;margin-bottom:6px">⟐ Source Articles ('+ dedupedArticles.length +(matchedEntities.length ? ' · '+matchedEntities.slice(0,3).join(', ')+(matchedEntities.length>3?' +more':'') : '')+')</div>';
+      body += '<div style="font:600 10px var(--mono);color:var(--cyan);text-transform:uppercase;letter-spacing:.08em;margin-bottom:6px">⟐ Source Articles ('+ dedupedArticles.length +(matchedEntities.length ? ' · '+esc(matchedEntities.slice(0,3).join(', '))+(matchedEntities.length>3?' +more':'') : '')+')</div>';
       body += '<div style="display:flex;flex-direction:column;gap:3px">';
       dedupedArticles.forEach(function(a){
-        body += '<a href="'+(a.url||'#')+'" target="_blank" rel="noopener" style="font:400 11px var(--font);color:var(--text-s);text-decoration:none;padding:5px 7px;background:var(--surface);border-radius:5px;display:block;border:1px solid var(--border)">';
-        body += '<span style="color:var(--text);font-weight:500">'+(a.title||'').substring(0,76)+((a.title||'').length>76?'…':'')+'</span>';
-        body += ' <span style="font:10px var(--mono);color:var(--text-d)">'+(a.site||'')+' · '+(a.pub_date||'').slice(0,10)+'</span></a>';
+        body += '<a href="'+esc(safeUrl(a.url))+'" target="_blank" rel="noopener" style="font:400 11px var(--font);color:var(--text-s);text-decoration:none;padding:5px 7px;background:var(--surface);border-radius:5px;display:block;border:1px solid var(--border)">';
+        body += '<span style="color:var(--text);font-weight:500">'+esc((a.title||'').substring(0,76))+((a.title||'').length>76?'…':'')+'</span>';
+        body += ' <span style="font:10px var(--mono);color:var(--text-d)">'+esc(a.site||'')+' · '+esc((a.pub_date||'').slice(0,10))+'</span></a>';
       });
       body += '</div></div>';
     }
@@ -1082,9 +1084,9 @@ function wireAllCards(container, briefData) {
   if (hl && b.headline) {
     hl.addEventListener('click', function() {
       _eggTap('headline');
-      var body = '<div style="font:400 13px var(--font);color:var(--text-s);line-height:1.7;padding:4px 0">' + b.headline + '</div>';
+      var body = '<div style="font:400 13px var(--font);color:var(--text-s);line-height:1.7;padding:4px 0">' + esc(b.headline) + '</div>';
       if (b.lead_story && b.lead_story.body) {
-        body += '<div style="margin-top:12px;font:400 11px var(--font);color:var(--text-s);line-height:1.6">' + b.lead_story.body + '</div>';
+        body += '<div style="margin-top:12px;font:400 11px var(--font);color:var(--text-s);line-height:1.6">' + esc(b.lead_story.body) + '</div>';
       }
       openDetailModal('Headline', 'Top Signal Today', body);
     });
@@ -1096,7 +1098,7 @@ function wireAllCards(container, briefData) {
     cb.addEventListener('click', function() {
       _eggTap('concern');
       var body = '<div style="font:400 12px var(--font);color:var(--text-s);line-height:1.7">'
-        + (cb.textContent||'').trim() + '</div>'
+        + esc((cb.textContent||'').trim()) + '</div>'
         + '<div style="margin-top:12px;font:400 10px var(--mono);color:var(--text-d)">Source: PIE signal aggregation pipeline</div>';
       openDetailModal('Top Concern', 'Live Signal', body);
     });
@@ -1109,9 +1111,9 @@ function wireAllCards(container, briefData) {
     card.addEventListener('click', function() {
       _eggTap('lead');
       var body = '';
-      body += '<div style="font:400 12px var(--font);color:var(--text-s);line-height:1.7;margin-bottom:12px">' + (lead.body||'No detail available.') + '</div>';
-      if (lead.action) body += '<div style="background:var(--surface);border-radius:7px;padding:10px 12px"><div style="font:600 10px var(--mono);color:var(--cyan);margin-bottom:4px">→ ACTION</div><div style="font:400 11px var(--font);color:var(--text-s)">' + lead.action + '</div></div>';
-      if ((lead.sources||[]).length) body += '<div style="margin-top:10px;font:400 10px var(--mono);color:var(--text-d)">Sources: ' + lead.sources.map(function(src){ var n=typeof src==='string'?src:(src.name||src.url||''); var u=typeof src==='object'?src.url:''; return u?'<a href="'+u+'" target="_blank" rel="noopener" style="color:var(--cyan);text-decoration:none">'+n+' ↗</a>':n; }).join(' · ') + '</div>';
+      body += '<div style="font:400 12px var(--font);color:var(--text-s);line-height:1.7;margin-bottom:12px">' + esc(lead.body||'No detail available.') + '</div>';
+      if (lead.action) body += '<div style="background:var(--surface);border-radius:7px;padding:10px 12px"><div style="font:600 10px var(--mono);color:var(--cyan);margin-bottom:4px">→ ACTION</div><div style="font:400 11px var(--font);color:var(--text-s)">' + esc(lead.action) + '</div></div>';
+      if ((lead.sources||[]).length) body += '<div style="margin-top:10px;font:400 10px var(--mono);color:var(--text-d)">Sources: ' + lead.sources.map(function(src){ var n=typeof src==='string'?src:(src.name||src.url||''); var u=typeof src==='object'?src.url:''; return u?'<a href="'+esc(safeUrl(u))+'" target="_blank" rel="noopener" style="color:var(--cyan);text-decoration:none">'+esc(n)+' ↗</a>':esc(n); }).join(' · ') + '</div>';
       openDetailModal(lead.title||'Lead Story', 'Critical · Lead Signal', body);
     });
   });
@@ -1124,11 +1126,11 @@ function wireAllCards(container, briefData) {
     card.addEventListener('click', function() {
       _eggTap('gray_zone');
       var body = '';
-      if (e.status) body += '<div style="font:500 10px var(--mono);color:var(--warning,#f59e0b);margin-bottom:8px">' + e.status + '</div>';
-      body += '<div style="font:400 12px var(--font);color:var(--text-s);line-height:1.7;margin-bottom:10px">' + (e.development||'') + '</div>';
-      if (e.buyer_exposure) body += '<div style="background:rgba(245,158,11,.07);border-radius:7px;padding:10px 12px;margin-bottom:8px"><div style="font:600 10px var(--mono);color:var(--warning,#f59e0b);margin-bottom:3px">BUYER EXPOSURE</div><div style="font:400 11px var(--font);color:var(--text-s)">' + e.buyer_exposure + '</div></div>';
-      if (e.action) body += '<div style="background:var(--surface);border-radius:7px;padding:10px 12px"><div style="font:600 10px var(--mono);color:var(--cyan);margin-bottom:4px">→ ACTION</div><div style="font:400 11px var(--font);color:var(--text-s)">' + e.action + '</div></div>';
-      if ((e.sources||[]).length) body += '<div style="margin-top:10px;font:400 10px var(--mono);color:var(--text-d)">Sources: ' + e.sources.map(function(src){ var n=typeof src==='string'?src:(src.name||src.url||''); var u=typeof src==='object'?src.url:''; return u?'<a href="'+u+'" target="_blank" rel="noopener" style="color:var(--cyan);text-decoration:none">'+n+' ↗</a>':n; }).join(' · ') + '</div>';
+      if (e.status) body += '<div style="font:500 10px var(--mono);color:var(--warning,#f59e0b);margin-bottom:8px">' + esc(e.status) + '</div>';
+      body += '<div style="font:400 12px var(--font);color:var(--text-s);line-height:1.7;margin-bottom:10px">' + esc(e.development||'') + '</div>';
+      if (e.buyer_exposure) body += '<div style="background:rgba(245,158,11,.07);border-radius:7px;padding:10px 12px;margin-bottom:8px"><div style="font:600 10px var(--mono);color:var(--warning,#f59e0b);margin-bottom:3px">BUYER EXPOSURE</div><div style="font:400 11px var(--font);color:var(--text-s)">' + esc(e.buyer_exposure) + '</div></div>';
+      if (e.action) body += '<div style="background:var(--surface);border-radius:7px;padding:10px 12px"><div style="font:600 10px var(--mono);color:var(--cyan);margin-bottom:4px">→ ACTION</div><div style="font:400 11px var(--font);color:var(--text-s)">' + esc(e.action) + '</div></div>';
+      if ((e.sources||[]).length) body += '<div style="margin-top:10px;font:400 10px var(--mono);color:var(--text-d)">Sources: ' + e.sources.map(function(src){ var n=typeof src==='string'?src:(src.name||src.url||''); var u=typeof src==='object'?src.url:''; return u?'<a href="'+esc(safeUrl(u))+'" target="_blank" rel="noopener" style="color:var(--cyan);text-decoration:none">'+esc(n)+' ↗</a>':esc(n); }).join(' · ') + '</div>';
       openDetailModal(e.entity||'Gray Zone Entity', 'Warning · Gray Zone', body);
     });
   });
@@ -1141,10 +1143,10 @@ function wireAllCards(container, briefData) {
     card.addEventListener('click', function() {
       _eggTap('supply');
       var body = '';
-      if (s.window) body += '<div style="font:600 10px var(--mono);color:var(--blue);margin-bottom:8px">⏱ Lead window: ' + s.window + '</div>';
-      body += '<div style="font:400 12px var(--font);color:var(--text-s);line-height:1.7;margin-bottom:10px">' + (s.signal||'') + '</div>';
-      if (s.action) body += '<div style="background:var(--surface);border-radius:7px;padding:10px 12px"><div style="font:600 10px var(--mono);color:var(--cyan);margin-bottom:4px">→ ACTION</div><div style="font:400 11px var(--font);color:var(--text-s)">' + s.action + '</div></div>';
-      if ((s.sources||[]).length) body += '<div style="margin-top:10px;font:400 10px var(--mono);color:var(--text-d)">Sources: ' + s.sources.map(function(src){ var n=typeof src==='string'?src:(src.name||src.url||''); var u=typeof src==='object'?src.url:''; return u?'<a href="'+u+'" target="_blank" rel="noopener" style="color:var(--cyan);text-decoration:none">'+n+' ↗</a>':n; }).join(' · ') + '</div>';
+      if (s.window) body += '<div style="font:600 10px var(--mono);color:var(--blue);margin-bottom:8px">⏱ Lead window: ' + esc(s.window) + '</div>';
+      body += '<div style="font:400 12px var(--font);color:var(--text-s);line-height:1.7;margin-bottom:10px">' + esc(s.signal||'') + '</div>';
+      if (s.action) body += '<div style="background:var(--surface);border-radius:7px;padding:10px 12px"><div style="font:600 10px var(--mono);color:var(--cyan);margin-bottom:4px">→ ACTION</div><div style="font:400 11px var(--font);color:var(--text-s)">' + esc(s.action) + '</div></div>';
+      if ((s.sources||[]).length) body += '<div style="margin-top:10px;font:400 10px var(--mono);color:var(--text-d)">Sources: ' + s.sources.map(function(src){ var n=typeof src==='string'?src:(src.name||src.url||''); var u=typeof src==='object'?src.url:''; return u?'<a href="'+esc(safeUrl(u))+'" target="_blank" rel="noopener" style="color:var(--cyan);text-decoration:none">'+esc(n)+' ↗</a>':esc(n); }).join(' · ') + '</div>';
       openDetailModal(s.component||'Supply Chain Signal', (s.window?'Lead window: '+s.window:'') + ' · Supply', body);
     });
   });
@@ -1157,8 +1159,8 @@ function wireAllCards(container, briefData) {
     card.addEventListener('click', function() {
       _eggTap('watch');
       var body = '';
-      if (w.why) body += '<div style="font:400 12px var(--font);color:var(--text-s);line-height:1.7;margin-bottom:10px">' + w.why + '</div>';
-      if (w.trigger) body += '<div style="background:var(--surface);border-radius:7px;padding:10px 12px"><div style="font:600 10px var(--mono);color:var(--amber);margin-bottom:4px">TRIGGER</div><div style="font:400 11px var(--font);color:var(--text-s)">' + w.trigger + '</div></div>';
+      if (w.why) body += '<div style="font:400 12px var(--font);color:var(--text-s);line-height:1.7;margin-bottom:10px">' + esc(w.why) + '</div>';
+      if (w.trigger) body += '<div style="background:var(--surface);border-radius:7px;padding:10px 12px"><div style="font:600 10px var(--mono);color:var(--amber);margin-bottom:4px">TRIGGER</div><div style="font:400 11px var(--font);color:var(--text-s)">' + esc(w.trigger) + '</div></div>';
       openDetailModal(w.item||'Watch Item', 'Watch List', body);
     });
   });
@@ -1172,12 +1174,12 @@ function wireAllCards(container, briefData) {
       if (e.target.tagName === 'A') return; // let links work
       _eggTap('intel_feed');
       var body = '';
-      if (n.summary) body += '<div style="font:400 12px var(--font);color:var(--text-s);line-height:1.7;margin-bottom:10px">' + n.summary + '</div>';
+      if (n.summary) body += '<div style="font:400 12px var(--font);color:var(--text-s);line-height:1.7;margin-bottom:10px">' + esc(n.summary) + '</div>';
       body += '<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">';
-      if (n.source) body += '<span style="font:500 10px var(--mono);color:var(--text-d)">' + n.source + '</span>';
-      if (n.pub_date) body += '<span style="font:400 10px var(--mono);color:var(--text-d)">' + n.pub_date + '</span>';
+      if (n.source) body += '<span style="font:500 10px var(--mono);color:var(--text-d)">' + esc(n.source) + '</span>';
+      if (n.pub_date) body += '<span style="font:400 10px var(--mono);color:var(--text-d)">' + esc(n.pub_date) + '</span>';
       body += '</div>';
-      if (n.url) body += '<div style="margin-top:10px"><a href="'+n.url+'" target="_blank" rel="noopener" style="font:500 11px var(--font);color:var(--cyan);text-decoration:none">Open source →</a></div>';
+      if (n.url) body += '<div style="margin-top:10px"><a href="'+esc(safeUrl(n.url))+'" target="_blank" rel="noopener" style="font:500 11px var(--font);color:var(--cyan);text-decoration:none">Open source →</a></div>';
       openDetailModal(n.title||'Intelligence', 'Intel Feed', body);
     });
   });
@@ -1250,7 +1252,7 @@ function openDetailModal(title, subtitle, body) {
   var ov = document.getElementById('flag-modal-overlay');
   if (!ov) return;
   var el = document.getElementById('flag-modal-meta');
-  if (el) el.innerHTML = subtitle ? '<span style="font:500 10px var(--mono);color:var(--text-d)">'+subtitle+'</span>' : '';
+  if (el) el.innerHTML = subtitle ? '<span style="font:500 10px var(--mono);color:var(--text-d)">'+esc(subtitle)+'</span>' : '';
   el = document.getElementById('flag-modal-title');
   if (el) el.textContent = title || '';
   el = document.getElementById('flag-modal-body');
@@ -1617,7 +1619,7 @@ async function loadData() {
     console.error("Pipeline data load failed:", e);
     FLAGS = []; PREDICTIONS = [];
     flagList.innerHTML = `<div style="color:var(--red);font-size:12px;padding:20px;text-align:center">
-      Failed to load pipeline data: ${e.message}<br>
+      Failed to load pipeline data: ${esc(e.message)}<br>
       <span style="color:var(--text-d)">Check browser console. Data served via /api/forge-data</span>
     </div>`;
     return;
@@ -1678,7 +1680,7 @@ function pctColorB(p){return p>=0.8?"var(--red)":p>=0.65?"var(--warning,#f59e0b)
 function deltaBadge(badge, days) {
   if (!badge) return '';
   const color = badge.includes('NEW') ? 'var(--green)' : badge.includes('ESCAL') ? 'var(--red)' : 'var(--text-d)';
-  return `<span style="font:700 10px var(--mono);padding:2px 5px;border-radius:3px;background:${color}18;color:${color};margin-left:6px;vertical-align:middle">${badge}</span>`;
+  return `<span style="font:700 10px var(--mono);padding:2px 5px;border-radius:3px;background:${color}18;color:${color};margin-left:6px;vertical-align:middle">${esc(badge)}</span>`;
 }
 
 // ── Tier-1 lifecycle UI ──────────────────────────────────────────────────
@@ -1806,8 +1808,8 @@ function toggleWatchFromEl(ev, el){
 function wlStar(f){
   const tg=flagWatchTargets(f)[0]; if(!tg) return '';
   const on=wlHas(tg.k);
-  const lbl=(''+tg.label).replace(/"/g,'&quot;');
-  return `<button type="button" class="wl-star" title="${on?'Following':'Follow'} ${lbl}" data-wl="${tg.k}" data-wllabel="${lbl}" onclick="toggleWatchFromEl(event,this)" style="background:none;border:none;cursor:pointer;font-size:13px;line-height:1;padding:0 4px 0 0;color:${on?'var(--amber,#f59e0b)':'var(--text-d)'}">${on?'★':'☆'}</button>`;
+  const lbl=esc(tg.label);
+  return `<button type="button" class="wl-star" title="${on?'Following':'Follow'} ${lbl}" data-wl="${esc(tg.k)}" data-wllabel="${lbl}" onclick="toggleWatchFromEl(event,this)" style="background:none;border:none;cursor:pointer;font-size:13px;line-height:1;padding:0 4px 0 0;color:${on?'var(--amber,#f59e0b)':'var(--text-d)'}">${on?'★':'☆'}</button>`;
 }
 function toggleWlFilter(){
   wlFilterOn=!wlFilterOn;
@@ -1821,8 +1823,7 @@ function flagFollowChips(f){
   const dim={component:'Component',platform:'Program',entity:'Entity',type:'Type'};
   const chips=tg.map(t=>{
     const on=wlHas(t.k); const d=dim[t.k.split(':')[0]]||'Topic';
-    const lbl=(''+t.label).replace(/'/g,"\\'");
-    return `<button type="button" onclick="wlToggle('${t.k.replace(/'/g,"\\'")}','${lbl}')" style="display:inline-flex;align-items:center;gap:5px;background:${on?'var(--amber,#f59e0b)22':'var(--surface)'};border:1px solid ${on?'var(--amber,#f59e0b)':'var(--border)'};border-radius:14px;padding:4px 10px;font:500 11px var(--mono);color:${on?'var(--amber,#f59e0b)':'var(--text)'};cursor:pointer">${on?'★':'☆'} ${d}: ${(''+t.label).slice(0,28).replace(/</g,'&lt;')}</button>`;
+    return `<button type="button" data-wlk="${esc(t.k)}" data-wllabel="${esc(t.label)}" onclick="wlToggle(this.dataset.wlk,this.dataset.wllabel)" style="display:inline-flex;align-items:center;gap:5px;background:${on?'var(--amber,#f59e0b)22':'var(--surface)'};border:1px solid ${on?'var(--amber,#f59e0b)':'var(--border)'};border-radius:14px;padding:4px 10px;font:500 11px var(--mono);color:${on?'var(--amber,#f59e0b)':'var(--text)'};cursor:pointer">${on?'★':'☆'} ${d}: ${esc((''+t.label).slice(0,28))}</button>`;
   }).join('');
   return `<div style="margin:10px 0;padding:8px 10px;background:var(--surface);border-radius:6px">
     <div style="font:700 9px var(--mono);color:var(--text-d);letter-spacing:.06em;margin-bottom:6px">FOLLOW THIS SIGNAL'S TOPICS</div>
@@ -1833,7 +1834,7 @@ function watchlistHTML(){
   const matched = Array.isArray(FLAGS)?FLAGS.filter(wlMatch):[];
   let newCnt=0;
   try{ const lv=(localStorage.getItem('pie_last_visit')||'').slice(0,10); if(lv) newCnt=matched.filter(f=>f.first_seen&&f.first_seen>lv).length; }catch(e){}
-  const chips = WATCHLIST.slice(0,8).map(w=>`<span style="display:inline-flex;align-items:center;gap:4px;background:var(--card);border:1px solid var(--border);border-radius:12px;padding:2px 8px;font:500 10px var(--mono);color:var(--text)">${(''+w.label).slice(0,22).replace(/</g,'&lt;')}<button type="button" title="Unfollow" onclick="wlToggle('${w.k.replace(/'/g,"\\'")}')" style="background:none;border:none;color:var(--text-d);cursor:pointer;font:11px var(--mono);padding:0">×</button></span>`).join('');
+  const chips = WATCHLIST.slice(0,8).map(w=>`<span style="display:inline-flex;align-items:center;gap:4px;background:var(--card);border:1px solid var(--border);border-radius:12px;padding:2px 8px;font:500 10px var(--mono);color:var(--text)">${esc((''+w.label).slice(0,22))}<button type="button" title="Unfollow" data-wlk="${esc(w.k)}" onclick="wlToggle(this.dataset.wlk)" style="background:none;border:none;color:var(--text-d);cursor:pointer;font:11px var(--mono);padding:0">×</button></span>`).join('');
   return `<div style="margin-bottom:12px;padding:10px 12px;background:var(--surface);border:1px solid var(--amber,#f59e0b)44;border-radius:8px">
     <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:6px">
       <span style="font:700 10px var(--mono);color:var(--amber,#f59e0b);letter-spacing:.06em">★ YOUR WATCHLIST</span>
@@ -1871,7 +1872,7 @@ function trackRecordHTML(){
       <span style="font:700 10px var(--mono);color:var(--cyan,#22d3ee);letter-spacing:.06em">◎ FORECAST TRACK RECORD</span>
       <a href="/forecast-accountability/" style="font:500 10px var(--mono);color:var(--text-d);text-decoration:none">full record →</a>
     </div>
-    <div style="font:600 13px var(--font);color:var(--text)">${CALIB.resolved} resolved · <span style="color:var(--green)">${acc}% hit rate</span> · Brier ${brier}${calLabel?` <span style="color:var(--text-d);font-weight:400">(${calLabel})</span>`:''}</div>
+    <div style="font:600 13px var(--font);color:var(--text)">${esc(CALIB.resolved)} resolved · <span style="color:var(--green)">${acc}% hit rate</span> · Brier ${brier}${calLabel?` <span style="color:var(--text-d);font-weight:400">(${calLabel})</span>`:''}</div>
     ${rows?`<div style="margin-top:6px">${rows}</div>`:''}
   </div>`;
 }
@@ -1970,10 +1971,10 @@ function renderBriefPanel(b){
 
   // ── Signal bar ──
   html+=`<div class="signal-bar">
-    <div class="signal-stat critical"><span class="num">${sig.critical||0}</span><span class="lbl">Critical</span></div>
-    <div class="signal-stat warning"><span class="num">${sig.warning||0}</span><span class="lbl">Warning</span></div>
-    <div class="signal-stat new"><span class="num">${sig.new_today||0}</span><span class="lbl">New</span></div>
-    <div class="signal-stat"><span class="num">${sig.total_flags||0}</span><span class="lbl">Total</span></div>
+    <div class="signal-stat critical"><span class="num">${esc(sig.critical||0)}</span><span class="lbl">Critical</span></div>
+    <div class="signal-stat warning"><span class="num">${esc(sig.warning||0)}</span><span class="lbl">Warning</span></div>
+    <div class="signal-stat new"><span class="num">${esc(sig.new_today||0)}</span><span class="lbl">New</span></div>
+    <div class="signal-stat"><span class="num">${esc(sig.total_flags||0)}</span><span class="lbl">Total</span></div>
   </div>`;
 
   // ── Analyst summary ──
@@ -2035,7 +2036,7 @@ function renderBriefPanel(b){
     html += `<div style="margin-bottom:12px;background:var(--surface);border-radius:8px;padding:10px 12px;border-left:3px solid ${fccColor}">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
         <span style="font:700 10px var(--mono);color:${fccColor};text-transform:uppercase;letter-spacing:.08em">FCC Blue UAS Exemption</span>
-        <span style="font:800 16px var(--mono);color:${fccColor}">${fcc.days_remaining}d</span>
+        <span style="font:800 16px var(--mono);color:${fccColor}">${esc(fcc.days_remaining)}d</span>
       </div>
       <div style="height:4px;background:var(--border);border-radius:2px;overflow:hidden;margin-bottom:6px">
         <div style="width:${fccPct}%;height:100%;background:${fccColor};border-radius:2px"></div>
@@ -2044,7 +2045,7 @@ function renderBriefPanel(b){
     </div>`;
   }
 
-  if(sig.top_concern) html+=`<div class="concern-bar"><div class="dot"></div>${sig.top_concern}</div>`;
+  if(sig.top_concern) html+=`<div class="concern-bar"><div class="dot"></div>${esc(sig.top_concern)}</div>`;
 
   // Full daily brief (headline, lead story, gray zone, supply chain, watch list,
   // intel feed, predictions) lives on the dedicated /brief/ page — removed here
@@ -2200,7 +2201,7 @@ function loadDataSources() {
         <div style="font:400 10px var(--font);color:var(--text-s);line-height:1.5">${ds.desc}</div>
         <div style="font:500 9px var(--mono);margin-top:8px;display:flex;justify-content:space-between">
           ${status}
-          <span style="color:var(--text-d)">${updated ? 'updated '+updated : ''}</span>
+          <span style="color:var(--text-d)">${updated ? 'updated '+esc(updated) : ''}</span>
         </div>
       </div>`;
     }).join('');
@@ -2507,18 +2508,18 @@ function renderFlags() {
       const topFlag = gFlags[0];
       const topTitle = topFlag.title.replace(/^\[GRAY ZONE\]\s*/, '').substring(0, 70);
       
-      return `<div class="flag-group" data-key="${key}" style="background:var(--card);border:1px solid var(--border);border-radius:10px;margin-bottom:6px;overflow:hidden;border-left:3px solid ${meta.sevColor}">
+      return `<div class="flag-group" data-key="${esc(key)}" style="background:var(--card);border:1px solid var(--border);border-radius:10px;margin-bottom:6px;overflow:hidden;border-left:3px solid ${meta.sevColor}">
         <div class="flag-group-header" data-toggle="group" style="padding:10px 14px;cursor:pointer;display:flex;align-items:center;gap:10px">
           <span style="font-size:16px">${meta.icon}</span>
           <div style="flex:1;min-width:0">
             <div style="display:flex;gap:5px;align-items:center;flex-wrap:wrap;margin-bottom:2px">
-              <span style="font:600 12px var(--font);color:var(--text)">${meta.name}</span>
+              <span style="font:600 12px var(--font);color:var(--text)">${esc(meta.name)}</span>
               <span style="font:10px var(--mono);color:var(--text-d);background:var(--surface);padding:1px 6px;border-radius:4px">${gFlags.length}</span>
               ${meta.sevCounts.critical ? `<span class="badge badge-red" style="font-size:10px">${meta.sevCounts.critical} critical</span>` : ''}
               ${meta.sevCounts.warning ? `<span class="badge badge-warning" style="font-size:10px">${meta.sevCounts.warning} warning</span>` : ''}
               ${meta.maxConf >= 0.9 ? `<span class="badge" style="background:rgba(34,197,94,.1);color:var(--green);font-size:10px">primary source</span>` : meta.maxConf >= 0.8 ? `<span class="badge" style="background:rgba(6,182,212,.1);color:var(--cyan);font-size:10px">strong inference</span>` : `<span class="badge" style="background:var(--surface);color:var(--text-d);font-size:10px">analytical</span>`}
             </div>
-            <div style="font-size:10px;color:var(--text-d);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${topTitle}${gFlags.length > 1 ? ` (+${gFlags.length-1} more)` : ''}</div>
+            <div style="font-size:10px;color:var(--text-d);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(topTitle)}${gFlags.length > 1 ? ` (+${gFlags.length-1} more)` : ''}</div>
           </div>
           <span class="g-chevron" style="color:var(--text-d);font-size:14px;transition:transform .2s">▸</span>
         </div>
@@ -2528,11 +2529,11 @@ function renderFlags() {
               const m = FLAG_META[f.flag_type] || {label:"Intel",badge:"badge-amber",sev:f.severity||"info",icon:"?"};
               const sev = f.severity || m.sev;
               const sc = sev === 'critical' ? 'var(--red)' : sev === 'high' ? 'var(--orange)' : sev === 'warning' ? 'var(--warning)' : 'var(--cyan)';
-              return `<div class="flag-card" data-id="${f.id}" style="border-left:2px solid ${sc}">
-                <span class="sev sev-${sev}"></span>
+              return `<div class="flag-card" data-id="${esc(f.id)}" style="border-left:2px solid ${sc}">
+                <span class="sev sev-${esc(sev)}"></span>
                 <div style="flex:1;min-width:0">
                   <div class="title">${wlStar(f)}${esc_(f.title)}${lcBadge(f)}</div>
-                  <div style="font-size:10px;color:var(--text-d);margin-top:1px">${sev} · ${Math.round((f.confidence||0)*100)}%</div>
+                  <div style="font-size:10px;color:var(--text-d);margin-top:1px">${esc(sev)} · ${Math.round((f.confidence||0)*100)}%</div>
                 </div>
               </div>`;
             }).join("")}
@@ -2578,7 +2579,7 @@ function renderFlags() {
     const date = (d && !isNaN(d)) ? d.toLocaleDateString() : '';
     const regions = extractRegions(f);
     const regionTags = regions.length ? regions.map(r => `<span class="badge badge-blue" style="font-size:10px;padding:1px 5px">${r}</span>`).join(" ") : "";
-    return `<div class="flag-card" data-id="${f.id}">
+    return `<div class="flag-card" data-id="${esc(f.id)}">
       <span class="sev sev-${m.sev}"></span>
       <div style="flex:1;min-width:0">
         <div class="meta">
@@ -2632,7 +2633,7 @@ function renderFlagDetail() {
     <div style="font:400 10px var(--font);color:var(--text-d);line-height:1.4">${evidenceTier.desc}</div>
   </div>`;
   html += `<div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-bottom:12px">
-    ${f.correlation_r ? `<span class="badge badge-cyan" style="font-size:10px">r=${f.correlation_r}${f.correlation_lag_weeks?" · "+f.correlation_lag_weeks+"wk lag":""}</span>` : ""}
+    ${f.correlation_r ? `<span class="badge badge-cyan" style="font-size:10px">r=${esc(f.correlation_r)}${f.correlation_lag_weeks?" · "+esc(f.correlation_lag_weeks)+"wk lag":""}</span>` : ""}
     ${(f.data_sources||[]).map(s=>`<span class="badge" style="background:var(--surface);color:var(--text-d);font-size:10px">${esc_(String(s).replace(/_/g," "))}</span>`).join("")}
   </div>`;
   if (f.prediction) {
@@ -2649,7 +2650,7 @@ function renderFlagDetail() {
       html += `<div style="background:var(--surface);border-radius:6px;padding:7px 9px;border-left:2px solid ${tc}">
         <div style="display:flex;align-items:center;gap:5px;flex-wrap:wrap;margin-bottom:2px">
           ${s.url ? `<a href="${safeUrl_(s.url)}" target="_blank" rel="noopener" style="font-size:11px;font-weight:600;color:var(--text)">${esc_(s.name)} ↗</a>` : `<span style="font-size:11px;font-weight:600;color:var(--text)">${esc_(s.name)}</span>`}
-          <span class="badge" style="background:${tc}18;color:${tc};font-size:10px">${s.type}</span>
+          <span class="badge" style="background:${tc}18;color:${tc};font-size:10px">${esc(s.type)}</span>
         </div>
         ${s.description ? `<div style="font-size:10px;color:var(--text-s);line-height:1.3">${esc_(s.description)}</div>` : ""}
       </div>`;
@@ -2740,7 +2741,7 @@ function renderRelatedIntel(flag) {
     html += `<div style="font:600 10px var(--font);color:var(--text-d);text-transform:uppercase;letter-spacing:.05em;margin-bottom:5px">Parts in Database</div>
     <div style="display:flex;gap:5px;flex-wrap:wrap">`;
     topCats.forEach(([cat,n]) => {
-      html += `<span style="font:400 10px var(--font);color:var(--text-d);background:var(--surface);border-radius:4px;padding:2px 7px;border:1px solid var(--border)">${cat.replace(/_/g,' ')} ×${n}</span>`;
+      html += `<span style="font:400 10px var(--font);color:var(--text-d);background:var(--surface);border-radius:4px;padding:2px 7px;border:1px solid var(--border)">${esc(cat.replace(/_/g,' '))} ×${n}</span>`;
     });
     if (Object.keys(cats).length > 4) html += `<span style="font:10px var(--font);color:var(--text-xd);padding:2px 7px">+${Object.keys(cats).length-4} more</span>`;
     html += '</div>';
@@ -2807,7 +2808,7 @@ function renderPlatforms() {
       body += '<div style="background:var(--surface);border-radius:6px;padding:8px 10px;margin-bottom:10px"><div style="font:500 10px var(--mono);color:var(--text-d);margin-bottom:2px">HQ</div><div style="font:400 11px var(--font);color:var(--text-s)">'+gz.hq+'</div></div>';
       body += '<div style="background:var(--surface);border-radius:6px;padding:8px 10px;margin-bottom:10px"><div style="font:500 10px var(--mono);color:var(--text-d);margin-bottom:2px">KEY FINDING</div><div style="font:400 11px var(--font);color:var(--text-s);line-height:1.5">'+gz.finding+'</div></div>';
       body += '<div style="background:'+tc+'12;border:1px solid '+tc+'30;border-radius:6px;padding:8px 10px;margin-bottom:10px;font:500 11px var(--font);color:'+tc+'">'+gz.status+'</div>';
-      if (relFlags.length) { body += '<div><div style="font:600 10px var(--mono);color:var(--text-d);margin-bottom:6px">Related PIE Flags ('+relFlags.length+')</div>'+relFlags.slice(0,5).map(function(f){return '<div style="background:var(--surface);border-radius:6px;padding:6px 9px;margin-bottom:4px;font:400 10px var(--font);color:var(--text-s)">'+f.title+'</div>';}).join("")+'</div>'; }
+      if (relFlags.length) { body += '<div><div style="font:600 10px var(--mono);color:var(--text-d);margin-bottom:6px">Related PIE Flags ('+relFlags.length+')</div>'+relFlags.slice(0,5).map(function(f){return '<div style="background:var(--surface);border-radius:6px;padding:6px 9px;margin-bottom:4px;font:400 10px var(--font);color:var(--text-s)">'+esc(f.title)+'</div>';}).join("")+'</div>'; }
       if ((gz.sources||[]).length) { body += '<div style="margin-top:10px"><div style="font:600 10px var(--mono);color:var(--text-d);margin-bottom:5px">SOURCES</div><div style="display:flex;flex-direction:column;gap:4px">'+gz.sources.map(function(s){return '<div style="background:var(--surface);border-radius:5px;padding:6px 9px">'+(s.url?'<a href="'+s.url+'" target="_blank" rel="noopener" style="font:500 11px var(--font);color:var(--cyan);text-decoration:none">'+s.name+' ↗</a>':'<span style="font:500 11px var(--font);color:var(--text-s)">'+s.name+'</span>')+'</div>';}).join('')+'</div></div>'; }
       openDetailModal(gz.name, gz.hq, body);
     });
@@ -2876,7 +2877,7 @@ function renderPlatforms() {
         body += '</div></div>';
       }
       if (p.contracts&&p.contracts.length){body+='<div style="margin-bottom:10px"><div style="font:600 10px var(--mono);color:var(--text-d);margin-bottom:5px">Contracts</div><div style="display:flex;gap:4px;flex-wrap:wrap">'+p.contracts.map(function(cn){return '<span class="badge badge-amber">'+cn+'</span>';}).join("")+'</div></div>';}
-      if (relFlags.length){body+='<div><div style="font:600 10px var(--mono);color:var(--text-d);margin-bottom:6px">Related Flags ('+relFlags.length+')</div>'+relFlags.slice(0,5).map(function(f){return '<div style="background:var(--surface);border-radius:6px;padding:6px 9px;margin-bottom:4px;font:400 10px var(--font);color:var(--text-s)">'+f.title+'</div>';}).join("")+'</div>';}
+      if (relFlags.length){body+='<div><div style="font:600 10px var(--mono);color:var(--text-d);margin-bottom:6px">Related Flags ('+relFlags.length+')</div>'+relFlags.slice(0,5).map(function(f){return '<div style="background:var(--surface);border-radius:6px;padding:6px 9px;margin-bottom:4px;font:400 10px var(--font);color:var(--text-s)">'+esc(f.title)+'</div>';}).join("")+'</div>';}
       // Dynamic reference links
       var refs = [];
       if (p.tier === 'blue') refs.push({name:'DIU Blue UAS List',url:'https://www.diu.mil/blue-uas-cleared-list'});
@@ -3058,22 +3059,22 @@ function renderCompRow(c, riskColors, riskLabels, statusColor) {
           h += '<span style="color:var(--text-d)">Commonly paired with:</span> ';
           h += coData.hobbyPairs.map(p =>
             '<span style="background:var(--purple-d);color:var(--purple);padding:1px 5px;border-radius:3px;font-size:10px">' +
-            p.name + ' <span style="opacity:.6">(' + p.count + ')</span></span>'
+            esc(p.name) + ' <span style="opacity:.6">(' + esc(p.count) + ')</span></span>'
           ).join(" ");
           h += '</div>';
         }
         if (coData.platformCount) {
           h += '<div style="font:400 11px var(--font);color:var(--text-s);margin-bottom:4px">';
-          h += '<span style="color:var(--text-d)">Platform usage:</span> appears in <span style="color:var(--cyan);font-weight:600">' + coData.platformCount + '</span> platform' + (coData.platformCount!==1?"s":"");
+          h += '<span style="color:var(--text-d)">Platform usage:</span> appears in <span style="color:var(--cyan);font-weight:600">' + esc(coData.platformCount) + '</span> platform' + (coData.platformCount!==1?"s":"");
           if (coData.platformNames.length) {
-            h += ' <span style="color:var(--text-xd);font-size:10px">(' + coData.platformNames.slice(0,3).join(", ") + (coData.platformNames.length>3 ? ", ..." : "") + ')</span>';
+            h += ' <span style="color:var(--text-xd);font-size:10px">(' + esc(coData.platformNames.slice(0,3).join(", ")) + (coData.platformNames.length>3 ? ", ..." : "") + ')</span>';
           }
           h += '</div>';
         }
         if (coData.marketPrice != null) {
           h += '<div style="font:400 11px var(--font);color:var(--text-s)">';
           h += '<span style="color:var(--text-d)">Market price:</span> <span style="color:var(--green);font:600 11px var(--mono)">$' + coData.marketPrice.toFixed(2) + '</span>';
-          h += ' <span style="color:var(--text-xd);font-size:10px">(' + coData.inStockCount + ' of ' + coData.totalStores + ' store' + (coData.totalStores!==1?"s":"") + ' in stock)</span>';
+          h += ' <span style="color:var(--text-xd);font-size:10px">(' + esc(coData.inStockCount) + ' of ' + esc(coData.totalStores) + ' store' + (coData.totalStores!==1?"s":"") + ' in stock)</span>';
           h += '</div>';
         }
         h += '</div>';
@@ -3147,7 +3148,7 @@ async function loadHistoryData() {
     _predArchive = [];
     // Show error in history panel
     const obsEl = document.getElementById('history-pipeline-obs');
-    if (obsEl) obsEl.innerHTML = '<div style="color:var(--red);font:400 11px var(--mono);padding:10px">History load error: '+e.message+'</div>';
+    if (obsEl) obsEl.innerHTML = '<div style="color:var(--red);font:400 11px var(--mono);padding:10px">History load error: '+esc(e.message)+'</div>';
   }
 }
 
@@ -3208,10 +3209,10 @@ function renderHistory() {
       const freshStr = diffHrs==null?'':diffHrs<2?'live':diffHrs<24?diffHrs+'h ago':Math.round(diffHrs/24)+'d ago';
       const freshColor = diffHrs==null?'var(--text-d)':diffHrs<24?'var(--green)':diffHrs<48?'var(--warning)':'var(--red)';
       obsEl2.innerHTML = '<div style="background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:10px 12px;border-left:3px solid '+freshColor+'">'
-        +'<span style="font:700 10px var(--mono);color:'+freshColor+'">RUN #'+(mh.run||'—')+'</span>'
+        +'<span style="font:700 10px var(--mono);color:'+freshColor+'">RUN #'+esc(mh.run||'—')+'</span>'
         +' <span style="font:400 10px var(--mono);color:var(--text-d)">'+(ts?ts.toISOString().slice(0,16).replace('T',' ')+' UTC':'')+' · '+freshStr+'</span>'
         +'<div style="margin-top:6px;font:400 10px var(--mono);color:var(--text-s)">'
-        +(mh.total||0).toLocaleString()+' articles · '+(mh.active||0)+' sources · '+(mh.flags&&mh.flags.total||0)+' flags · '+(mh.miners&&mh.miners.registered||0)+' miners'
+        +esc((mh.total||0).toLocaleString())+' articles · '+esc(mh.active||0)+' sources · '+esc(mh.flags&&mh.flags.total||0)+' flags · '+esc(mh.miners&&mh.miners.registered||0)+' miners'
         +'</div></div>';
     } else if (obsEl2 && !window._minerHealth) {
       obsEl2.innerHTML = '<div style="font:400 10px var(--font);color:var(--text-d);padding:10px">Loading pipeline data...</div>';
@@ -3314,19 +3315,19 @@ function renderHistory() {
       const proj  = (!isArchived && trends.projections) ? trends.projections.find(p => p.label === t.label) : null;
       return `<div style="background:var(--surface);border-radius:8px;padding:10px 12px${isArchived ? ';opacity:0.6' : ''}">
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
-          <div style="font:600 10px var(--mono);color:${isArchived ? 'var(--text-d)' : 'var(--text-s)'}">${t.label}${isArchived ? ' <span style="font:400 10px var(--mono);color:var(--text-d)">[product discontinued]</span>' : ''}</div>
+          <div style="font:600 10px var(--mono);color:${isArchived ? 'var(--text-d)' : 'var(--text-s)'}">${esc(t.label)}${isArchived ? ' <span style="font:400 10px var(--mono);color:var(--text-d)">[product discontinued]</span>' : ''}</div>
           <div style="display:flex;gap:6px;align-items:center">
-            <span style="font:600 10px var(--mono);color:${dc}">${dir} ${signalLabel}</span>
-            ${proj ? `<span style="font:400 10px var(--mono);color:var(--text-d)">90d: ${proj.p90}</span>` : ''}
+            <span style="font:600 10px var(--mono);color:${dc}">${dir} ${esc(signalLabel)}</span>
+            ${proj ? `<span style="font:400 10px var(--mono);color:var(--text-d)">90d: ${esc(proj.p90)}</span>` : ''}
           </div>
         </div>
         <svg width="100%" height="${H}" viewBox="0 0 ${W} ${H}" style="overflow:visible">
           <polyline points="${pts}" fill="none" stroke="${isArchived ? 'var(--text-d)' : 'var(--cyan)'}" stroke-width="1.5" stroke-linejoin="round" opacity="${isArchived ? '.4' : '.8'}"/>
         </svg>
         <div style="display:flex;justify-content:space-between;margin-top:2px">
-          <span style="font:400 10px var(--mono);color:var(--text-d)">${dates[0]||''}</span>
-          <span style="font:600 10px var(--mono);color:var(--text-s)">${t.current} ${t.unit||''}</span>
-          <span style="font:400 10px var(--mono);color:var(--text-d)">${dates[dates.length-1]||''}</span>
+          <span style="font:400 10px var(--mono);color:var(--text-d)">${esc(dates[0]||'')}</span>
+          <span style="font:600 10px var(--mono);color:var(--text-s)">${esc(t.current)} ${esc(t.unit||'')}</span>
+          <span style="font:400 10px var(--mono);color:var(--text-d)">${esc(dates[dates.length-1]||'')}</span>
         </div>
       </div>`;
     }).join('');
@@ -3351,7 +3352,7 @@ function renderHistory() {
 
       obsHtml += `<div style="background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:10px 12px;margin-bottom:8px;border-left:3px solid var(--green)">`;
       obsHtml += `<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">`;
-      obsHtml += `<div><span style="font:700 10px var(--mono);color:var(--green)">RUN #${mh.run||'—'}</span> <span style="font:400 10px var(--mono);color:var(--text-d)">${ts ? ts.toISOString().slice(0,16).replace('T',' ')+' UTC' : ''}</span></div>`;
+      obsHtml += `<div><span style="font:700 10px var(--mono);color:var(--green)">RUN #${esc(mh.run||'—')}</span> <span style="font:400 10px var(--mono);color:var(--text-d)">${ts ? ts.toISOString().slice(0,16).replace('T',' ')+' UTC' : ''}</span></div>`;
       obsHtml += `<span style="font:600 10px var(--mono);color:${freshColor}">${freshStr}</span>`;
       obsHtml += `</div>`;
       // Source grid
@@ -3361,19 +3362,19 @@ function renderHistory() {
       obsHtml += `<div style="display:flex;gap:4px;flex-wrap:wrap;margin-bottom:6px">`;
       sortedSrc.forEach(([src, cnt]) => {
         const barW = Math.max(Math.round((cnt/maxSrc)*60), 6);
-        obsHtml += `<div style="display:flex;align-items:center;gap:3px;background:var(--card);border-radius:5px;padding:3px 7px;border:1px solid var(--border)" title="${src}: ${cnt} articles">`;
+        obsHtml += `<div style="display:flex;align-items:center;gap:3px;background:var(--card);border-radius:5px;padding:3px 7px;border:1px solid var(--border)" title="${esc(src)}: ${esc(cnt)} articles">`;
         obsHtml += `<span style="font:600 10px var(--mono);color:var(--green)">●</span>`;
-        obsHtml += `<span style="font:500 10px var(--font);color:var(--text-s)">${src}</span>`;
-        obsHtml += `<span style="font:700 10px var(--mono);color:var(--text-d)">${cnt}</span>`;
+        obsHtml += `<span style="font:500 10px var(--font);color:var(--text-s)">${esc(src)}</span>`;
+        obsHtml += `<span style="font:700 10px var(--mono);color:var(--text-d)">${esc(cnt)}</span>`;
         obsHtml += `</div>`;
       });
       obsHtml += `</div>`;
       obsHtml += `<div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:6px;font:400 10px var(--mono);color:var(--text-s)">`;
-      obsHtml += `<span>${(mh.total||0).toLocaleString()} articles · ${mh.active||0} intel sources</span>`;
-      if(mh.parts?.total) obsHtml += `<span>· ${mh.parts.total.toLocaleString()} parts</span>`;
-      if(mh.flags?.total) obsHtml += `<span>· ${mh.flags.total} flags</span>`;
-      if(mh.procurement?.total) obsHtml += `<span>· ${mh.procurement.total} solicitations</span>`;
-      if(mh.miners?.registered) obsHtml += `<span>· ${mh.miners.registered} miners</span>`;
+      obsHtml += `<span>${esc((mh.total||0).toLocaleString())} articles · ${esc(mh.active||0)} intel sources</span>`;
+      if(mh.parts?.total) obsHtml += `<span>· ${esc(mh.parts.total.toLocaleString())} parts</span>`;
+      if(mh.flags?.total) obsHtml += `<span>· ${esc(mh.flags.total)} flags</span>`;
+      if(mh.procurement?.total) obsHtml += `<span>· ${esc(mh.procurement.total)} solicitations</span>`;
+      if(mh.miners?.registered) obsHtml += `<span>· ${esc(mh.miners.registered)} miners</span>`;
       obsHtml += `</div>`;
       obsHtml += `</div>`;
     }
@@ -3389,7 +3390,7 @@ function renderHistory() {
         const partsDelta = (next && h.parts_total != null && next.parts_total != null) ? Math.round(h.parts_total - next.parts_total) : null;
         const velMetric = h.intel_velocity != null ? h.intel_velocity : h.intel_velocity_7d;
         obsHtml += `<div style="background:var(--surface);border-radius:6px;padding:6px 10px;display:flex;align-items:center;gap:8px;border-left:2px solid var(--border)">`;
-        obsHtml += `<span style="font:700 10px var(--mono);color:var(--text-s);min-width:76px">${h.date}</span>`;
+        obsHtml += `<span style="font:700 10px var(--mono);color:var(--text-s);min-width:76px">${esc(h.date)}</span>`;
         obsHtml += `<div style="flex:1;display:flex;gap:8px;flex-wrap:wrap;align-items:center">`;
         if (h.total_flags != null) obsHtml += `<span style="font:500 10px var(--mono);color:var(--text-d)">🚩 ${Math.round(h.total_flags)}${flagDelta!=null?` <span style="color:${flagDeltaColor}">(${flagDelta>0?'+':''}${flagDelta})</span>`:''}</span>`;
         if (h.critical_flags != null) obsHtml += `<span style="font:500 10px var(--mono);color:var(--red)">⚠ ${Math.round(h.critical_flags)} crit</span>`;
@@ -3416,7 +3417,7 @@ function renderHistory() {
       ? h.total_flags - prev.total_flags : null;
     const dc = flagDelta > 0 ? 'var(--red)' : flagDelta < 0 ? 'var(--green)' : 'var(--text-d)';
     return `<div style="background:var(--surface);border-radius:7px;padding:8px 12px;display:flex;align-items:center;gap:10px">
-      <div style="font:700 10px var(--mono);color:var(--text-s);min-width:80px">${h.date}</div>
+      <div style="font:700 10px var(--mono);color:var(--text-s);min-width:80px">${esc(h.date)}</div>
       <div style="flex:1;display:flex;gap:8px;flex-wrap:wrap;align-items:center">
         ${h.total_flags != null ? `<span style="font:500 10px var(--mono);color:var(--text-d)">🚩 ${Math.round(h.total_flags)}${flagDelta!=null?` <span style="color:${dc}">(${flagDelta>0?'+':''}${flagDelta})</span>`:''}</span>` : ''}
         ${h.ndaa_ratio != null ? `<span style="font:500 10px var(--mono);color:var(--text-d)">NDAA ${h.ndaa_ratio.toFixed(1)}%</span>` : ''}
@@ -3445,11 +3446,11 @@ function renderHistory() {
     return `<div style="background:var(--surface);border-radius:7px;padding:8px 10px;border-left:2px solid ${ic}">
       <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px">
         <div style="flex:1">
-          <div style="font:600 11px var(--font);color:var(--text);line-height:1.4">${p.event||''}</div>
+          <div style="font:600 11px var(--font);color:var(--text);line-height:1.4">${esc(p.event||'')}</div>
           <div style="display:flex;gap:5px;margin-top:3px;flex-wrap:wrap">
-            <span style="font:500 10px var(--mono);color:var(--text-d)">${p.archived_date}</span>
-            ${p.region ? `<span style="font:500 10px var(--mono);color:var(--text-d)">• ${p.region}</span>` : ''}
-            ${p.timeframe ? `<span class="badge badge-purple" style="font-size:10px">${p.timeframe}</span>` : ''}
+            <span style="font:500 10px var(--mono);color:var(--text-d)">${esc(p.archived_date)}</span>
+            ${p.region ? `<span style="font:500 10px var(--mono);color:var(--text-d)">• ${esc(p.region)}</span>` : ''}
+            ${p.timeframe ? `<span class="badge badge-purple" style="font-size:10px">${esc(p.timeframe)}</span>` : ''}
             ${p.generation > 1 ? `<span style="font:500 10px var(--mono);color:var(--amber)">gen ${p.generation}</span>` : ''}
           </div>
         </div>
@@ -3645,18 +3646,18 @@ function renderPredictions() {
       : '<span class="badge" style="background:rgba(6,182,212,.12);color:var(--cyan);font-size:10px">◎ new signal</span>';
     var pctColor = pct > 85 ? "var(--green)" : pct > 60 ? "var(--amber)" : "var(--text-s)";
     var evidenceLine = p.evidence_basis
-      ? '<div style="font:400 10px var(--font);color:var(--text-d);margin-top:5px;line-height:1.4">Based on: '+p.evidence_basis+'</div>'
+      ? '<div style="font:400 10px var(--font);color:var(--text-d);margin-top:5px;line-height:1.4">Based on: '+esc(p.evidence_basis)+'</div>'
       : '';
     var probBasisLine = p.probability_basis
-      ? '<div style="font:400 10px var(--mono);color:var(--text-d);margin-top:3px">'+p.probability_basis+'</div>'
+      ? '<div style="font:400 10px var(--mono);color:var(--text-d);margin-top:3px">'+esc(p.probability_basis)+'</div>'
       : '';
     return '<div class="pred-card" data-pred-idx="'+i+'" style="border-left:3px solid var('+ic+')">'
       +'<div style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px;margin-bottom:8px">'
       +'<div style="flex:1"><div style="display:flex;gap:4px;align-items:center;flex-wrap:wrap;margin-bottom:6px">'
-      +(p.timeframe ? '<span class="badge badge-purple">◎ '+p.timeframe+'</span>' : '')
-      +'<span class="badge" style="background:var('+ic+')18;color:var('+ic+')">'+p.impact+'</span>'
+      +(p.timeframe ? '<span class="badge badge-purple">◎ '+esc(p.timeframe)+'</span>' : '')
+      +'<span class="badge" style="background:var('+ic+')18;color:var('+ic+')">'+esc(p.impact)+'</span>'
       +etBadge
-      +'</div><div style="font-size:13px;font-weight:600;line-height:1.4">'+p.event+'</div>'
+      +'</div><div style="font-size:13px;font-weight:600;line-height:1.4">'+esc(p.event)+'</div>'
       +evidenceLine
       +'</div>'
       +'<div style="text-align:center;min-width:52px">'
@@ -3666,9 +3667,9 @@ function renderPredictions() {
       +'</div></div>'
       +(p.hedge ? '<div style="background:var(--surface);border-radius:5px;padding:6px 8px;margin-bottom:8px">'
         +'<div style="font:600 10px var(--mono);color:var(--purple);margin-bottom:2px">◎ Hedge</div>'
-        +'<div style="font:400 10px var(--font);color:var(--text-s);line-height:1.5">'+p.hedge+'</div></div>' : '')
+        +'<div style="font:400 10px var(--font);color:var(--text-s);line-height:1.5">'+esc(p.hedge)+'</div></div>' : '')
       +'<div class="drivers"><span style="font-size:10px;color:var(--text-d)">Drivers:</span>'
-      +(p.drivers||[]).slice(0,3).map(function(d){return '<span class="driver">'+d+'</span>';}).join("")
+      +(p.drivers||[]).slice(0,3).map(function(d){return '<span class="driver">'+esc(d)+'</span>';}).join("")
       +'</div></div>';
   }).join("");
   el.querySelectorAll("[data-pred-idx]").forEach(function(card) {
@@ -3721,7 +3722,7 @@ function renderDashboard() {
     .sort((a,b) => b[1]-a[1])
     .map(([t,c]) => `
     <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">
-      <span style="font-size:10px;color:var(--text-s);width:70px;text-align:right">${typeLabels[t]||t}</span>
+      <span style="font-size:10px;color:var(--text-s);width:70px;text-align:right">${esc(typeLabels[t]||t)}</span>
       <div style="flex:1;background:var(--card);border-radius:4px;height:20px;overflow:hidden">
         <div style="width:${(c/maxType)*100}%;height:100%;background:${typeColors[t]||'var(--text-d)'}25;border-right:2px solid ${typeColors[t]||'var(--text-d)'};display:flex;align-items:center;padding-left:6px">
           <span style="font:600 10px var(--mono);color:var(--text-s)">${c}</span>
@@ -4208,13 +4209,13 @@ function selectRegion(slug) {
           ).filter(Boolean);
           const sourceHtml = sources.length ? sources.map(s => {
             const short = s.replace('https://','').replace('http://','').substring(0,50);
-            return `<a href="${s}" target="_blank" rel="noopener" style="color:var(--cyan);font-size:10px;word-break:break-all;text-decoration:none">${short}…</a>`;
+            return `<a href="${esc(safeUrl(s))}" target="_blank" rel="noopener" style="color:var(--cyan);font-size:10px;word-break:break-all;text-decoration:none">${esc(short)}…</a>`;
           }).join('<br>') : '';
-          return `<div class="region-flag-wrap" data-flag-id="${f.id}" style="background:var(--surface);border-radius:6px;border-left:2px solid ${sevColor};cursor:pointer">
+          return `<div class="region-flag-wrap" data-flag-id="${esc(f.id)}" style="background:var(--surface);border-radius:6px;border-left:2px solid ${sevColor};cursor:pointer">
             <div class="region-flag-header" style="padding:7px 9px;display:flex;align-items:center">
               <div style="flex:1;min-width:0">
-                <div style="font-size:11px;font-weight:600;color:var(--text);line-height:1.3">${f.title.substring(0,80)}${f.title.length>80?'…':''}</div>
-                <div style="font-size:10px;color:var(--text-d);margin-top:2px">${f.severity} · ${conf >= 90 ? '<span style=\'color:var(--green)\'>primary source</span>' : conf >= 80 ? '<span style=\'color:var(--cyan)\'>strong inference</span>' : conf >= 60 ? '<span style=\'color:var(--amber)\'>analytical</span>' : '<span style=\'color:var(--text-d)\'>signal</span>'} · ${conf}%</div>
+                <div style="font-size:11px;font-weight:600;color:var(--text);line-height:1.3">${esc(f.title.substring(0,80))}${f.title.length>80?'…':''}</div>
+                <div style="font-size:10px;color:var(--text-d);margin-top:2px">${esc(f.severity)} · ${conf >= 90 ? '<span style=\'color:var(--green)\'>primary source</span>' : conf >= 80 ? '<span style=\'color:var(--cyan)\'>strong inference</span>' : conf >= 60 ? '<span style=\'color:var(--amber)\'>analytical</span>' : '<span style=\'color:var(--text-d)\'>signal</span>'} · ${conf}%</div>
               </div>
               <span class="flag-chevron" style="color:var(--text-d);font-size:14px;margin-left:6px;transition:transform .2s">▸</span>
             </div>
@@ -5291,7 +5292,7 @@ function renderManufacturers() {
       if (m.dependency_note) body += '<div style="background:var(--surface);border-radius:6px;padding:8px 10px;margin-bottom:8px"><div style="font:500 10px var(--mono);color:var(--text-d);margin-bottom:2px">SUPPLY CHAIN</div><div style="font:400 11px var(--font);color:var(--text-s);line-height:1.5">'+m.dependency_note+'</div></div>';
       if (m.funding) body += '<div style="background:var(--surface);border-radius:6px;padding:8px 10px;margin-bottom:8px"><div style="font:500 10px var(--mono);color:var(--text-d);margin-bottom:2px">FUNDING</div><div style="font:600 11px var(--font);color:var(--text)">'+m.funding+'</div>'+(m.last_round&&m.last_round!='none'?'<div style="font:400 10px var(--font);color:var(--text-d);margin-top:2px">Last round: '+m.last_round+'</div>':'')+'</div>';
       var relFlags = FLAGS.filter(function(f){return (f.title||"").toLowerCase().indexOf((m.name||"").split(" ")[0].toLowerCase())>-1;});
-      if (relFlags.length) { body += '<div><div style="font:600 10px var(--mono);color:var(--text-d);margin-bottom:6px">Related Flags ('+relFlags.length+')</div>'+relFlags.slice(0,5).map(function(f){return '<div style="background:var(--surface);border-radius:6px;padding:6px 9px;margin-bottom:4px;font:400 10px var(--font);color:var(--text-s)">'+f.title+'</div>';}).join("")+'</div>'; }
+      if (relFlags.length) { body += '<div><div style="font:600 10px var(--mono);color:var(--text-d);margin-bottom:6px">Related Flags ('+relFlags.length+')</div>'+relFlags.slice(0,5).map(function(f){return '<div style="background:var(--surface);border-radius:6px;padding:6px 9px;margin-bottom:4px;font:400 10px var(--font);color:var(--text-s)">'+esc(f.title)+'</div>';}).join("")+'</div>'; }
 
       // ── Entity Graph cross-ref ──
       if (Object.keys(ENTITY_GRAPH).length) {
@@ -5327,9 +5328,9 @@ function renderManufacturers() {
               body += '<div style="font:600 10px var(--font);color:var(--text-d);text-transform:uppercase;letter-spacing:.05em;margin-bottom:5px">Recent Coverage</div>';
               body += '<div style="display:flex;flex-direction:column;gap:3px;margin-bottom:8px">';
               egNode.articles.slice(0,4).forEach(function(a){
-                body += '<a href="'+(a.url||'#')+'" target="_blank" rel="noopener" style="font:400 11px var(--font);color:var(--text-s);text-decoration:none;padding:5px 7px;background:var(--surface);border-radius:5px;display:block;border:1px solid var(--border)">';
-                body += '<span style="color:var(--text);font-weight:500">'+(a.title||'').substring(0,72)+((a.title||'').length>72?'…':'')+'</span>';
-                body += '<span style="font:10px var(--mono);color:var(--text-d);margin-left:4px">'+(a.site||'')+' · '+(a.pub_date||'').slice(0,10)+'</span></a>';
+                body += '<a href="'+esc(safeUrl(a.url))+'" target="_blank" rel="noopener" style="font:400 11px var(--font);color:var(--text-s);text-decoration:none;padding:5px 7px;background:var(--surface);border-radius:5px;display:block;border:1px solid var(--border)">';
+                body += '<span style="color:var(--text);font-weight:500">'+esc((a.title||'').substring(0,72))+((a.title||'').length>72?'…':'')+'</span>';
+                body += '<span style="font:10px var(--mono);color:var(--text-d);margin-left:4px">'+esc(a.site||'')+' · '+esc((a.pub_date||'').slice(0,10))+'</span></a>';
               });
               body += '</div>';
             }
@@ -5339,9 +5340,9 @@ function renderManufacturers() {
               body += '<div style="display:flex;flex-direction:column;gap:3px;margin-bottom:8px">';
               egNode.contracts.slice(0,3).forEach(function(c){
                 body += '<div style="font:400 11px var(--font);color:var(--text-s);padding:5px 7px;background:var(--surface);border-radius:5px;border-left:2px solid var(--green)">';
-                body += '<span style="color:var(--text);font-weight:500">'+(c.program||c.type||'')+'</span>';
-                if (c.value) body += '<span style="font:600 10px var(--mono);color:var(--green);margin-left:6px">'+c.value+'</span>';
-                if (c.date) body += '<span style="font:10px var(--mono);color:var(--text-d);margin-left:4px">'+c.date+'</span>';
+                body += '<span style="color:var(--text);font-weight:500">'+esc(c.program||c.type||'')+'</span>';
+                if (c.value) body += '<span style="font:600 10px var(--mono);color:var(--green);margin-left:6px">'+esc(c.value)+'</span>';
+                if (c.date) body += '<span style="font:10px var(--mono);color:var(--text-d);margin-left:4px">'+esc(c.date)+'</span>';
                 body += '</div>';
               });
               body += '</div>';
@@ -5354,7 +5355,7 @@ function renderManufacturers() {
               body += '<div style="font:600 10px var(--font);color:var(--text-d);text-transform:uppercase;letter-spacing:.05em;margin-bottom:5px">Parts in Database</div>';
               body += '<div style="display:flex;gap:4px;flex-wrap:wrap">';
               topCats.forEach(function(e){
-                body += '<span style="font:400 10px var(--font);color:var(--text-d);background:var(--surface);border-radius:4px;padding:2px 7px;border:1px solid var(--border)">'+e[0].replace(/_/g,' ')+' ×'+e[1]+'</span>';
+                body += '<span style="font:400 10px var(--font);color:var(--text-d);background:var(--surface);border-radius:4px;padding:2px 7px;border:1px solid var(--border)">'+esc(e[0].replace(/_/g,' '))+' ×'+e[1]+'</span>';
               });
               body += '</div>';
             }
@@ -5430,29 +5431,29 @@ function renderWeeklyPanel(w) {
 
   // Header
   html += `<div style="font:700 10px var(--mono);color:var(--amber);letter-spacing:.12em;text-transform:uppercase;margin-bottom:4px">// Week in Review</div>`;
-  html += `<div style="font-size:10px;color:var(--text-d);margin-bottom:14px">${w.week_start||''} → ${w.week_end||''}</div>`;
+  html += `<div style="font-size:10px;color:var(--text-d);margin-bottom:14px">${esc(w.week_start||'')} → ${esc(w.week_end||'')}</div>`;
 
   // Headline
-  if (w.headline) html += `<div class="brief-headline" style="border-left-color:var(--amber)">${w.headline}</div>`;
+  if (w.headline) html += `<div class="brief-headline" style="border-left-color:var(--amber)">${esc(w.headline)}</div>`;
 
   // Stats grid
   const critDelta = s.critical_delta || 0;
   const critColor = critDelta > 0 ? 'var(--red)' : critDelta < 0 ? 'var(--green)' : 'var(--text-s)';
   html += `<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(70px,1fr));gap:6px;margin-bottom:14px">
     <div style="background:var(--card);border:1px solid var(--border);border-radius:8px;padding:10px 8px;text-align:center">
-      <div style="font:800 18px var(--mono);color:var(--green)">${s.new_flags||0}</div>
+      <div style="font:800 18px var(--mono);color:var(--green)">${esc(s.new_flags||0)}</div>
       <div style="font:500 10px var(--font);color:var(--text-d);margin-top:2px">New flags</div>
     </div>
     <div style="background:var(--card);border:1px solid var(--border);border-radius:8px;padding:10px 8px;text-align:center">
-      <div style="font:800 18px var(--mono);color:var(--red)">${s.escalated_flags||0}</div>
+      <div style="font:800 18px var(--mono);color:var(--red)">${esc(s.escalated_flags||0)}</div>
       <div style="font:500 10px var(--font);color:var(--text-d);margin-top:2px">Escalated</div>
     </div>
     <div style="background:var(--card);border:1px solid var(--border);border-radius:8px;padding:10px 8px;text-align:center">
-      <div style="font:800 18px var(--mono);color:var(--cyan)">${s.resolved_flags||0}</div>
+      <div style="font:800 18px var(--mono);color:var(--cyan)">${esc(s.resolved_flags||0)}</div>
       <div style="font:500 10px var(--font);color:var(--text-d);margin-top:2px">Resolved</div>
     </div>
     <div style="background:var(--card);border:1px solid var(--border);border-radius:8px;padding:10px 8px;text-align:center">
-      <div style="font:800 18px var(--mono);color:${critColor}">${critDelta >= 0 ? '+' : ''}${critDelta}</div>
+      <div style="font:800 18px var(--mono);color:${critColor}">${critDelta >= 0 ? '+' : ''}${esc(critDelta)}</div>
       <div style="font:500 10px var(--font);color:var(--text-d);margin-top:2px">Critical Δ</div>
     </div>
   </div>`;
@@ -5467,11 +5468,11 @@ function renderWeeklyPanel(w) {
         ${trend.map(t => {
           const h = Math.max(4, Math.round((t.critical / max) * 32));
           const color = t.critical > (trend[0]?.critical||0) ? 'var(--red)' : 'var(--green)';
-          return `<div style="flex:1;height:${h}px;background:${color};border-radius:2px;opacity:.7" title="${t.date}: ${t.critical} critical"></div>`;
+          return `<div style="flex:1;height:${h}px;background:${color};border-radius:2px;opacity:.7" title="${esc(t.date)}: ${esc(t.critical)} critical"></div>`;
         }).join('')}
       </div>
       <div style="display:flex;justify-content:space-between;font:400 10px var(--mono);color:var(--text-d);margin-top:3px">
-        <span>${trend[0]?.date?.slice(5)||''}</span><span>${trend[trend.length-1]?.date?.slice(5)||''}</span>
+        <span>${esc(trend[0]?.date?.slice(5)||'')}</span><span>${esc(trend[trend.length-1]?.date?.slice(5)||'')}</span>
       </div>
     </div>`;
   }
@@ -5484,7 +5485,7 @@ function renderWeeklyPanel(w) {
       html += `<div style="background:var(--card);border:1px solid var(--border);border-left:3px solid ${sevColor};border-radius:8px;padding:10px 12px;margin-bottom:6px">
         <div style="font:700 11px var(--font);color:var(--text);margin-bottom:3px">${esc_(f.title)}</div>
         <div style="font-size:10px;color:var(--text-d)">${esc_(f.detail)}</div>
-        <div style="margin-top:4px"><span style="font:500 10px var(--mono);padding:2px 5px;border-radius:3px;background:${sevColor}18;color:${sevColor}">${f.type||''}</span></div>
+        <div style="margin-top:4px"><span style="font:500 10px var(--mono);padding:2px 5px;border-radius:3px;background:${sevColor}18;color:${sevColor}">${esc(f.type||'')}</span></div>
       </div>`;
     }
   }
@@ -5506,13 +5507,13 @@ function renderWeeklyPanel(w) {
     for (const p of w.predictions) {
       const pct = Math.round((p.probability||0)*100);
       const delta = p.delta_pct || 0;
-      const deltaStr = delta !== 0 ? `<span style="font:700 10px var(--mono);color:${delta > 0 ? 'var(--red)' : 'var(--green)'}"> ${delta > 0 ? '+' : ''}${delta}pp</span>` : '';
+      const deltaStr = delta !== 0 ? `<span style="font:700 10px var(--mono);color:${delta > 0 ? 'var(--red)' : 'var(--green)'}"> ${delta > 0 ? '+' : ''}${esc(delta)}pp</span>` : '';
       html += `<div class="brief-card pred">
         <div class="pred-prob"><span class="pct" style="color:${pctColorB(p.probability)}">${pct}%</span>${deltaStr}<span class="pct-lbl">prob</span></div>
         <div class="pred-body">
-          <div class="pred-event">${p.event||''}</div>
-          <div class="pred-timeframe"><span class="badge badge-purple">${p.timeframe||''}</span></div>
-          ${p.hedge ? `<div class="hedge-box"><div class="hedge-label">◎ Hedge</div><div class="hedge-text">${p.hedge}</div></div>` : ''}
+          <div class="pred-event">${esc(p.event||'')}</div>
+          <div class="pred-timeframe"><span class="badge badge-purple">${esc(p.timeframe||'')}</span></div>
+          ${p.hedge ? `<div class="hedge-box"><div class="hedge-label">◎ Hedge</div><div class="hedge-text">${esc(p.hedge)}</div></div>` : ''}
         </div>
       </div>`;
     }
@@ -5523,21 +5524,21 @@ function renderWeeklyPanel(w) {
   const catLabels = {grant: '💰 Grant Intelligence', regulatory: '⚖️ Regulatory', platform_intel: '🛡 Platform Intel', market_signal: '📊 Market Signals'};
   for (const [cat, items] of Object.entries(newsByCat)) {
     if (!items || !items.length) continue;
-    html += `<div class="brief-section-label">${catLabels[cat]||cat}</div>`;
+    html += `<div class="brief-section-label">${catLabels[cat]||esc(cat)}</div>`;
     for (const n of items) {
       html += `<div style="background:var(--card);border:1px solid var(--border);border-radius:8px;padding:10px 12px;margin-bottom:6px">
         <div style="display:flex;justify-content:space-between;gap:8px;margin-bottom:3px">
-          <a href="${n.url||'#'}" target="_blank" rel="noopener" style="font:600 11px var(--font);color:var(--text);text-decoration:none;flex:1;line-height:1.3">${n.title}</a>
-          <span style="font:500 10px var(--mono);color:var(--text-d);white-space:nowrap">${n.pub_date||''}</span>
+          <a href="${esc(safeUrl(n.url))}" target="_blank" rel="noopener" style="font:600 11px var(--font);color:var(--text);text-decoration:none;flex:1;line-height:1.3">${esc(n.title)}</a>
+          <span style="font:500 10px var(--mono);color:var(--text-d);white-space:nowrap">${esc(n.pub_date||'')}</span>
         </div>
-        ${n.summary ? `<div style="font-size:10px;color:var(--text-d);line-height:1.5">${n.summary}</div>` : ''}
-        <div style="margin-top:3px;font:500 10px var(--mono);color:var(--text-d)">${n.source||''}</div>
+        ${n.summary ? `<div style="font-size:10px;color:var(--text-d);line-height:1.5">${esc(n.summary)}</div>` : ''}
+        <div style="margin-top:3px;font:500 10px var(--mono);color:var(--text-d)">${esc(n.source||'')}</div>
       </div>`;
     }
   }
 
   const gen = w.generated_at ? new Date(w.generated_at).toLocaleString() : '';
-  html += `<div class="brief-footer">${w.pipeline_version||'PIE Weekly'} · ${gen}</div>`;
+  html += `<div class="brief-footer">${esc(w.pipeline_version||'PIE Weekly')} · ${gen}</div>`;
   el.innerHTML = html;
   wireAllCards(el, { predictions: w.predictions||[], watch_list: w.new_flags||[] });
 }
@@ -5804,7 +5805,7 @@ function renderPipelineHealth(h) {
     const diffHrs = Math.round((Date.now() - ts) / 3600000);
     const freshStr = diffHrs < 2 ? 'live' : diffHrs < 24 ? diffHrs+'h ago' : Math.round(diffHrs/24)+'d ago';
     const color = diffHrs < 24 ? 'var(--green)' : diffHrs < 48 ? 'var(--warning)' : 'var(--red)';
-    lastRun.innerHTML = `<span style="color:${color}">●</span> run #${h.run||'—'} · ${ts.toISOString().slice(0,16).replace('T',' ')} UTC · ${freshStr}`;
+    lastRun.innerHTML = `<span style="color:${color}">●</span> run #${esc(h.run||'—')} · ${ts.toISOString().slice(0,16).replace('T',' ')} UTC · ${freshStr}`;
   }
 
   // Stat tiles — show all pipeline outputs
@@ -5819,19 +5820,19 @@ function renderPipelineHealth(h) {
     ];
     tiles.innerHTML = statDefs.map(s => `
       <div style="background:var(--card);border:1px solid var(--border);border-radius:7px;padding:8px 10px;border-top:2px solid ${s.color}">
-        <div style="font:700 14px var(--mono);color:${s.color}">${s.value}</div>
+        <div style="font:700 14px var(--mono);color:${s.color}">${esc(s.value)}</div>
         <div style="font:600 10px var(--font);color:var(--text-s);margin-top:1px">${s.label}</div>
-        <div style="font:400 10px var(--mono);color:var(--text-d)">${s.sub}</div>
+        <div style="font:400 10px var(--mono);color:var(--text-d)">${esc(s.sub)}</div>
       </div>`).join('');
   }
 
   // Active intel sources chips
   const sorted = Object.entries(sources).sort((a,b)=>b[1]-a[1]);
   el.innerHTML = sorted.map(([src, count]) => {
-    return `<div title="${src}: ${count} articles" style="display:flex;align-items:center;gap:4px;background:var(--card);border-radius:6px;padding:4px 8px;border:1px solid var(--border)">
+    return `<div title="${esc(src)}: ${esc(count)} articles" style="display:flex;align-items:center;gap:4px;background:var(--card);border-radius:6px;padding:4px 8px;border:1px solid var(--border)">
       <span style="font:700 10px var(--mono);color:var(--green)">●</span>
-      <span style="font:500 10px var(--font);color:var(--text-s)">${src}</span>
-      <span style="font:700 10px var(--mono);color:var(--text-d)">${count}</span>
+      <span style="font:500 10px var(--font);color:var(--text-s)">${esc(src)}</span>
+      <span style="font:700 10px var(--mono);color:var(--text-d)">${esc(count)}</span>
     </div>`;
   }).join('');
 
@@ -5844,8 +5845,8 @@ function renderPipelineHealth(h) {
       pcEl.innerHTML = topParts.map(([cat,cnt]) => `
         <div style="margin-bottom:6px">
           <div style="display:flex;justify-content:space-between;margin-bottom:2px">
-            <span style="font:500 10px var(--font);color:var(--text-s)">${cat.replace(/_/g,' ')}</span>
-            <span style="font:700 10px var(--mono);color:var(--cyan)">${cnt}</span>
+            <span style="font:500 10px var(--font);color:var(--text-s)">${esc(cat.replace(/_/g,' '))}</span>
+            <span style="font:700 10px var(--mono);color:var(--cyan)">${esc(cnt)}</span>
           </div>
           <div style="background:var(--border);border-radius:2px;height:3px">
             <div style="width:${Math.round(cnt/max*100)}%;height:100%;background:var(--cyan);border-radius:2px"></div>
@@ -5960,8 +5961,8 @@ function renderSources() {
 
       // Article count badge
       const countHtml = live != null
-        ? `<span style="font:700 11px var(--mono);color:var(--green)">${live}</span><span style="font:500 10px var(--mono);color:var(--text-s)"> art</span>`
-        : `<span style="font:600 10px var(--mono);color:var(--text-xd);background:var(--surface);padding:1px 6px;border-radius:3px">${m.schedule}</span>`;
+        ? `<span style="font:700 11px var(--mono);color:var(--green)">${esc(live)}</span><span style="font:500 10px var(--mono);color:var(--text-s)"> art</span>`
+        : `<span style="font:600 10px var(--mono);color:var(--text-xd);background:var(--surface);padding:1px 6px;border-radius:3px">${esc(m.schedule)}</span>`;
 
       // Last-seen age label. Guard against unparseable / out-of-range dates so a
       // malformed last_seen can never render as "NaNd ago" or an absurd age —
@@ -5986,8 +5987,8 @@ function renderSources() {
       if (hl) {
         const truncated = hl.length > 72 ? hl.slice(0, 72) + '…' : hl;
         hlHtml = hlUrl
-          ? `<div style="margin-top:3px"><a href="${hlUrl}" target="_blank" rel="noopener" style="font:400 10px var(--font);color:var(--text-d);text-decoration:none;line-height:1.3;display:block" title="${hl.replace(/"/g,'&quot;')}">${truncated}</a></div>`
-          : `<div style="margin-top:3px;font:400 10px var(--font);color:var(--text-d);line-height:1.3">${truncated}</div>`;
+          ? `<div style="margin-top:3px"><a href="${esc(safeUrl(hlUrl))}" target="_blank" rel="noopener" style="font:400 10px var(--font);color:var(--text-d);text-decoration:none;line-height:1.3;display:block" title="${esc(hl)}">${esc(truncated)}</a></div>`
+          : `<div style="margin-top:3px;font:400 10px var(--font);color:var(--text-d);line-height:1.3">${esc(truncated)}</div>`;
       }
 
       const geoFlag = GEO_FLAGS[m.geo] || '🌐';
@@ -5996,12 +5997,12 @@ function renderSources() {
         <span style="font:700 10px var(--mono);color:${dot};flex-shrink:0;padding-top:2px">●</span>
         <div style="flex:1;min-width:0">
           <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-bottom:1px">
-            <span style="font:700 12px var(--font);color:var(--text)">${m.name}</span>
+            <span style="font:700 12px var(--font);color:var(--text)">${esc(m.name)}</span>
             <span style="font-size:11px">${geoFlag}</span>
-            ${m.url ? `<a href="${m.url}" target="_blank" rel="noopener" style="font:500 10px var(--mono);color:var(--cyan);text-decoration:none;opacity:.8">${urlDomain} ↗</a>` : ''}
+            ${m.url ? `<a href="${esc(safeUrl(m.url))}" target="_blank" rel="noopener" style="font:500 10px var(--mono);color:var(--cyan);text-decoration:none;opacity:.8">${esc(urlDomain)} ↗</a>` : ''}
             ${ageHtml}
           </div>
-          <div style="font:400 10px var(--font);color:var(--text-s);line-height:1.4">${m.description}</div>
+          <div style="font:400 10px var(--font);color:var(--text-s);line-height:1.4">${esc(m.description)}</div>
           ${hlHtml}
         </div>
         <div style="text-align:right;flex-shrink:0;padding-top:1px">${countHtml}</div>
@@ -6009,7 +6010,7 @@ function renderSources() {
     }).join('');
 
     return `<div style="background:var(--card);border:1px solid var(--border);border-radius:8px;padding:8px 12px;border-left:3px solid ${catColor}">
-      <div style="font:700 10px var(--mono);color:${catColor};text-transform:uppercase;letter-spacing:.08em;margin-bottom:4px">${catLabel} <span style="color:var(--text-s);font-weight:500">(${items.length})</span></div>
+      <div style="font:700 10px var(--mono);color:${catColor};text-transform:uppercase;letter-spacing:.08em;margin-bottom:4px">${esc(catLabel)} <span style="color:var(--text-s);font-weight:500">(${items.length})</span></div>
       ${rows}
     </div>`;
   }).join('');
@@ -6144,30 +6145,30 @@ function renderProcurement() {
       const ag = (a['Awarding Sub Agency']||a['Awarding Agency']||'').replace('Department of ','Dept. ').replace('National Aeronautics and Space Administration','NASA');
       const url = `https://www.usaspending.gov/award/${encodeURIComponent(a['generated_internal_id']||a['Award ID']||'')}`;
 
-      return `<tr class="aw-row" style="border-bottom:1px solid var(--border);cursor:pointer" onclick="awToggleDetail(this)" data-id="${a['Award ID']||''}" data-desc="${(a['Description']||'').replace(/"/g,'&quot;')}">
+      return `<tr class="aw-row" style="border-bottom:1px solid var(--border);cursor:pointer" onclick="awToggleDetail(this)" data-id="${esc(a['Award ID']||'')}" data-desc="${esc(a['Description']||'')}">
         <td style="padding:7px 8px;white-space:nowrap">${statusBadge}</td>
         <td style="padding:7px 8px"><span style="font:600 9px var(--mono);color:${typeColor}">${typeLabel}</span></td>
         <td style="padding:7px 8px;font-size:10px;color:var(--text);max-width:220px">
           ${gz?'<span style="font:600 9px var(--mono);color:var(--red);margin-right:4px">GZ</span>':''}
           ${bu?'<span style="font:600 9px var(--mono);color:var(--green);margin-right:4px">BU</span>':''}
-          <span title="${recip}">${recip.substring(0,36)}${recip.length>36?'…':''}</span>
+          <span title="${esc(recip)}">${esc(recip.substring(0,36))}${recip.length>36?'…':''}</span>
         </td>
-        <td style="padding:7px 8px;font-size:10px;color:var(--text-s);max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${ag}">${ag.substring(0,24)}${ag.length>24?'…':''}</td>
+        <td style="padding:7px 8px;font-size:10px;color:var(--text-s);max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${esc(ag)}">${esc(ag.substring(0,24))}${ag.length>24?'…':''}</td>
         <td style="padding:7px 8px;text-align:right">${amt}</td>
-        <td style="padding:7px 8px;font-size:10px;color:var(--text-d);white-space:nowrap">${(a['Start Date']||'').slice(0,7)}</td>
-        <td style="padding:7px 8px;font-size:10px;color:var(--text-d);white-space:nowrap">${(a['End Date']||'').slice(0,7)}</td>
+        <td style="padding:7px 8px;font-size:10px;color:var(--text-d);white-space:nowrap">${esc((a['Start Date']||'').slice(0,7))}</td>
+        <td style="padding:7px 8px;font-size:10px;color:var(--text-d);white-space:nowrap">${esc((a['End Date']||'').slice(0,7))}</td>
         <td style="padding:7px 8px"><a href="${url}" target="_blank" rel="noopener" onclick="event.stopPropagation()" style="font:500 10px var(--mono);color:var(--blue)">↗</a></td>
       </tr>
-      <tr class="aw-detail-row" id="aw-detail-${a['Award ID']||''}" style="display:none">
+      <tr class="aw-detail-row" id="aw-detail-${esc(a['Award ID']||'')}" style="display:none">
         <td colspan="8" style="padding:0 8px 12px 8px">
           <div style="background:var(--surface);border-radius:8px;padding:12px;border-left:3px solid var(--border-hi);font-size:11px;color:var(--text-s);line-height:1.6">
-            <div style="font:600 10px var(--mono);color:var(--text-d);margin-bottom:6px">AWARD ID: ${a['Award ID']||'—'}</div>
-            ${a['Description']?`<p style="margin-bottom:8px">${a['Description'].substring(0,600)}${a['Description'].length>600?'…':''}</p>`:'<p style="color:var(--text-d)">No description available.</p>'}
+            <div style="font:600 10px var(--mono);color:var(--text-d);margin-bottom:6px">AWARD ID: ${esc(a['Award ID']||'—')}</div>
+            ${a['Description']?`<p style="margin-bottom:8px">${esc(a['Description'].substring(0,600))}${a['Description'].length>600?'…':''}</p>`:'<p style="color:var(--text-d)">No description available.</p>'}
             <div style="display:flex;gap:16px;flex-wrap:wrap;margin-top:8px;font:500 10px var(--mono);color:var(--text-d)">
-              <span>Start: <span style="color:var(--text-s)">${a['Start Date']||'—'}</span></span>
-              <span>End: <span style="color:var(--text-s)">${a['End Date']||'—'}</span></span>
+              <span>Start: <span style="color:var(--text-s)">${esc(a['Start Date']||'—')}</span></span>
+              <span>End: <span style="color:var(--text-s)">${esc(a['End Date']||'—')}</span></span>
               <span>Outlays: <span style="color:var(--amber)">$${_fmtM(a['Total Outlays']||0)}</span></span>
-              ${a['Awarding Sub Agency']?`<span>Sub-Agency: <span style="color:var(--text-s)">${a['Awarding Sub Agency']}</span></span>`:''}
+              ${a['Awarding Sub Agency']?`<span>Sub-Agency: <span style="color:var(--text-s)">${esc(a['Awarding Sub Agency'])}</span></span>`:''}
             </div>
           </div>
         </td>
@@ -6278,7 +6279,7 @@ function renderProcurement() {
           const c = AG_COLOR[ag]||'var(--text-d)';
           const short = ag.replace('Department of the ','').replace('Department of ','').replace('National Aeronautics and Space Administration','NASA').replace('National Institute of Food and Agriculture','NIFA').replace('National Institutes of Health','NIH').replace('Federal Aviation Administration','FAA').replace('National Science Foundation','NSF').replace('Federal Highway Administration','FHWA');
           return `<div style="display:flex;align-items:center;gap:6px;margin-bottom:6px">
-            <span style="font-size:9px;color:var(--text-s);width:68px;text-align:right;flex-shrink:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${ag}">${short}</span>
+            <span style="font-size:9px;color:var(--text-s);width:68px;text-align:right;flex-shrink:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${esc(ag)}">${esc(short)}</span>
             <div style="flex:1;background:var(--card);border-radius:3px;height:18px;overflow:hidden">
               <div style="width:${(amt/maxAg)*100}%;height:100%;background:${c}20;border-right:3px solid ${c};display:flex;align-items:center;padding-left:5px;min-width:38px">
                 <span style="font:700 9px var(--mono);color:${c}">$${_fmtB(amt)}</span>
@@ -6290,7 +6291,7 @@ function renderProcurement() {
       <div style="background:var(--surface);border-radius:10px;padding:12px">
         <div style="font:600 9px var(--mono);color:var(--text-d);text-transform:uppercase;letter-spacing:.06em;margin-bottom:10px">Top Recipients</div>
         ${topRec.map(([r,amt])=>`<div style="display:flex;align-items:center;gap:6px;margin-bottom:6px">
-            <span style="font-size:9px;color:var(--text-s);width:90px;text-align:right;flex-shrink:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${r}">${r.substring(0,16)}${r.length>16?'…':''}</span>
+            <span style="font-size:9px;color:var(--text-s);width:90px;text-align:right;flex-shrink:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${esc(r)}">${esc(r.substring(0,16))}${r.length>16?'…':''}</span>
             <div style="flex:1;background:var(--card);border-radius:3px;height:18px;overflow:hidden">
               <div style="width:${(amt/maxRec)*100}%;height:100%;background:var(--amber)20;border-right:3px solid var(--amber);display:flex;align-items:center;padding-left:5px;min-width:38px">
                 <span style="font:700 9px var(--mono);color:var(--amber)">$${_fmtB(amt)}</span>
@@ -6367,10 +6368,10 @@ function renderProcurement() {
         ${(window._SAM_WATCHLIST||[]).map(n=>`
           <div style="display:flex;align-items:center;gap:8px;padding:7px 10px;background:var(--card);border-radius:6px;border:1px solid var(--amber)18">
             <span style="font:700 9px var(--mono);color:var(--amber);flex-shrink:0">📌</span>
-            <a href="https://sam.gov/workspace/contract/opp/${n.notice_id}/view" target="_blank" rel="noopener"
-               style="font-size:11px;color:var(--text);flex:1;line-height:1.4">${n.label||n.notice_id}</a>
-            <span style="font:500 9px var(--mono);color:var(--text-d);flex-shrink:0">${n.notice_id.slice(0,8)}…</span>
-            <a href="https://sam.gov/workspace/contract/opp/${n.notice_id}/view" target="_blank" rel="noopener"
+            <a href="https://sam.gov/workspace/contract/opp/${esc(encodeURIComponent(n.notice_id||''))}/view" target="_blank" rel="noopener"
+               style="font-size:11px;color:var(--text);flex:1;line-height:1.4">${esc(n.label||n.notice_id)}</a>
+            <span style="font:500 9px var(--mono);color:var(--text-d);flex-shrink:0">${esc(n.notice_id.slice(0,8))}…</span>
+            <a href="https://sam.gov/workspace/contract/opp/${esc(encodeURIComponent(n.notice_id||''))}/view" target="_blank" rel="noopener"
                style="font:500 9px var(--mono);color:var(--blue);flex-shrink:0">↗</a>
           </div>`).join('')}
       </div>
@@ -6385,8 +6386,8 @@ function renderProcurement() {
           <div style="display:flex;align-items:flex-start;gap:8px;padding:7px 8px;background:var(--card);border-radius:6px">
             ${s.gray_zone_flag?'<span style="font:600 9px var(--mono);color:var(--red);flex-shrink:0">GZ</span>':''}
             ${s.blue_uas_flag?'<span style="font:600 9px var(--mono);color:var(--green);flex-shrink:0">BU</span>':''}
-            <a href="${s.url||'#'}" target="_blank" rel="noopener" style="font-size:11px;color:var(--text);flex:1;line-height:1.4">${s.title||''}</a>
-            <span style="font-size:10px;color:var(--text-d);flex-shrink:0;white-space:nowrap">${(s.posted_date||'').slice(0,10)}</span>
+            <a href="${esc(safeUrl(s.url))}" target="_blank" rel="noopener" style="font-size:11px;color:var(--text);flex:1;line-height:1.4">${esc(s.title||'')}</a>
+            <span style="font-size:10px;color:var(--text-d);flex-shrink:0;white-space:nowrap">${esc((s.posted_date||'').slice(0,10))}</span>
           </div>`).join('')}
       </div>
     </div>` : ''}
@@ -6546,7 +6547,7 @@ async function explorerLoad() {
     explorerFilter();
   } catch(e) {
     console.error('Explorer load error:', e);
-    if (tbody) tbody.innerHTML = '<tr><td colspan="99" style="padding:16px;color:var(--red);font:400 11px var(--mono)">Load failed: '+e.message+'</td></tr>';
+    if (tbody) tbody.innerHTML = '<tr><td colspan="99" style="padding:16px;color:var(--red);font:400 11px var(--mono)">Load failed: '+esc(e.message)+'</td></tr>';
   }
 }
 
@@ -6555,9 +6556,9 @@ function explorerRenderToggles() {
   if (!el) return;
   el.innerHTML = _explorerCols.map(col => {
     const active = !_explorerHidden.has(col);
-    return `<button type="button" onclick="explorerToggleCol('${col}')"
+    return `<button type="button" data-col="${esc(col)}" onclick="explorerToggleCol(this.dataset.col)"
       style="font:500 10px var(--mono);padding:2px 8px;border-radius:4px;cursor:pointer;border:1px solid ${active?'var(--cyan)':'var(--border)'};background:${active?'rgba(8,145,178,.12)':'none'};color:${active?'var(--cyan)':'var(--text-d)'};white-space:nowrap"
-      >${col}</button>`;
+      >${esc(col)}</button>`;
   }).join('');
 }
 
@@ -6595,7 +6596,7 @@ function explorerRenderTable() {
   if (thead) {
     thead.innerHTML = '<tr style="border-bottom:1px solid var(--border)">' +
       visibleCols.map(c =>
-        `<th style="padding:5px 8px;font:600 10px var(--mono);color:var(--text-d);text-align:left;text-transform:uppercase;white-space:nowrap;cursor:pointer" onclick="explorerSort('${c}')">${c} <span style="color:var(--text-xd)">↕</span></th>`
+        `<th style="padding:5px 8px;font:600 10px var(--mono);color:var(--text-d);text-align:left;text-transform:uppercase;white-space:nowrap;cursor:pointer" data-col="${esc(c)}" onclick="explorerSort(this.dataset.col)">${esc(c)} <span style="color:var(--text-xd)">↕</span></th>`
       ).join('') + '</tr>';
   }
 
@@ -6619,9 +6620,12 @@ function explorerRenderTable() {
       visibleCols.map(col => {
         var raw = row[col];
         var val = fmts[col] ? fmts[col](raw) : (Array.isArray(raw) ? raw.join(', ') : (raw != null ? String(raw) : ''));
+        var titleAttr = esc(val || '');
         // Linkify urls
-        if (col === 'url' && val) val = `<a href="${val}" target="_blank" rel="noopener" style="color:var(--cyan);font-size:10px">↗</a>`;
-        return `<td style="${thStyle}" title="${(val||'').replace(/"/g,"'")}">${val}</td>`;
+        var cell = (col === 'url' && val)
+          ? `<a href="${esc(safeUrl(val))}" target="_blank" rel="noopener" style="color:var(--cyan);font-size:10px">↗</a>`
+          : esc(val);
+        return `<td style="${thStyle}" title="${titleAttr}">${cell}</td>`;
       }).join('') +
     '</tr>';
   }).join('');
@@ -6720,7 +6724,7 @@ function renderAll() {
       errEl.innerHTML = `<div style="color:#f87171;font-size:12px;padding:20px;font-family:monospace;white-space:pre-wrap;background:#1a0a0a;border-radius:8px;margin:8px 0">
 ⚠ ${name} error — screenshot this:
 
-${e.stack||e.message||e}</div>`;
+${esc(e.stack||e.message||e)}</div>`;
     }
   }};
   _safe("renderFilters",    renderFilters);
@@ -7645,7 +7649,7 @@ updateNavTokenStatus();
       var freshStr=diffHrs<2?'live':diffHrs<24?diffHrs+'h ago':Math.round(diffHrs/24)+'d ago';
       var color=diffHrs<24?'var(--green)':diffHrs<48?'var(--warning)':'var(--red)';
       var runNum=window.__pipelineRunNum||'—';
-      plr.innerHTML='<span style="color:'+color+'">●</span> run #'+runNum+' · '+ts.toISOString().slice(0,16).replace('T',' ')+' UTC · '+freshStr;
+      plr.innerHTML='<span style="color:'+color+'">●</span> run #'+(typeof esc==='function'?esc(runNum):String(runNum).replace(/[&<>"']/g,''))+' · '+ts.toISOString().slice(0,16).replace('T',' ')+' UTC · '+freshStr;
     }
     // 3. Any data-ts attributes
     document.querySelectorAll('[data-ts]').forEach(function(el){

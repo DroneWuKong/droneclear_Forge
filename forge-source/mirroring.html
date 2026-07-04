@@ -157,20 +157,22 @@ window.dcNavClose=function(){document.getElementById('dc-drawer').classList.remo
 window.dcNavBrandClick=function(e){e.preventDefault();location.href='/patterns-home/';};
 (function(){var path=location.pathname.replace(/\/$/,'').split('/').pop()||'home';document.querySelectorAll('.dc-drawer-item').forEach(function(a){if(a.dataset.page===path)a.classList.add('dc-active');});})();
 
+function esc(s){ return String(s==null?'':s).replace(/[&<>"']/g, function(c){ return ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'})[c]; }); }
+
 var DATA = null;
 function openModal(idx){
   var r = DATA && DATA.results && DATA.results[idx]; if(!r) return;
   document.getElementById('mod-title').textContent = r.company + ' ↔ ' + r.matched_weapon;
   var rows = (r.shared_components||[]).map(function(c){
-    return '<tr><td>'+c.name+' <span style="color:var(--text-d)">('+c.manufacturer+')</span></td><td>w='+c.rarity_weight.toFixed(3)+' · n='+c.used_by_n_western_entities+'</td></tr>';
+    return '<tr><td>'+esc(c.name)+' <span style="color:var(--text-d)">('+esc(c.manufacturer)+')</span></td><td>w='+c.rarity_weight.toFixed(3)+' · n='+esc(c.used_by_n_western_entities)+'</td></tr>';
   }).join('');
   document.getElementById('mod-body').innerHTML =
-    '<div style="margin-bottom:10px"><code>mirror_score = '+r.mirror_score+'</code> · '+
-    '<code>jaccard = '+r.jaccard+'</code> · <code>shared = '+r.shared_count+'</code></div>'+
-    '<div style="margin-bottom:6px;color:var(--text-d);font-size:11px">'+r.evidence_summary+'</div>'+
+    '<div style="margin-bottom:10px"><code>mirror_score = '+esc(r.mirror_score)+'</code> · '+
+    '<code>jaccard = '+esc(r.jaccard)+'</code> · <code>shared = '+esc(r.shared_count)+'</code></div>'+
+    '<div style="margin-bottom:6px;color:var(--text-d);font-size:11px">'+esc(r.evidence_summary)+'</div>'+
     '<div style="font:600 10px var(--mono);color:var(--text-d);text-transform:uppercase;letter-spacing:.07em;margin-top:14px;margin-bottom:4px">Shared Components</div>'+
     '<table>'+rows+'</table>'+
-    '<div style="margin-top:14px;font-size:11px;color:var(--text-xd)">'+r.funding_count+' funding round(s) · '+r.us_solicitation_count+' US solicitation(s)</div>';
+    '<div style="margin-top:14px;font-size:11px;color:var(--text-xd)">'+esc(r.funding_count)+' funding round(s) · '+esc(r.us_solicitation_count)+' US solicitation(s)</div>';
   document.getElementById('modal-overlay').classList.add('open');
 }
 function closeModal(){ document.getElementById('modal-overlay').classList.remove('open'); }
@@ -202,12 +204,12 @@ function render(d){
     return '<div class="row" onclick="openModal('+i+')">'+
       '<div class="score">'+(r.mirror_score||0).toFixed(3)+'</div>'+
       '<div class="body">'+
-        '<div class="who">'+r.company+'</div>'+
-        '<div class="what">↔ '+r.matched_weapon+' · '+r.shared_count+' shared component(s) · jaccard '+r.jaccard.toFixed(2)+'</div>'+
+        '<div class="who">'+esc(r.company)+'</div>'+
+        '<div class="what">↔ '+esc(r.matched_weapon)+' · '+esc(r.shared_count)+' shared component(s) · jaccard '+r.jaccard.toFixed(2)+'</div>'+
         '<div class="stats-mini">'+
-          '<span>type: '+r.company_type+'</span>'+
-          '<span>parts: '+r.company_part_count+'</span>'+
-          '<span>weapon parts: '+r.weapon_component_count+'</span>'+
+          '<span>type: '+esc(r.company_type)+'</span>'+
+          '<span>parts: '+esc(r.company_part_count)+'</span>'+
+          '<span>weapon parts: '+esc(r.weapon_component_count)+'</span>'+
         '</div>'+
       '</div>'+
     '</div>';

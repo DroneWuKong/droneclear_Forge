@@ -511,14 +511,16 @@ function rcallHtml(o){
     o.resolution_date ? 'resolved ' + o.resolution_date : null
   ].filter(Boolean).map(escapeHtml).join(' · ');
   var ev = '';
+  // Only link http(s) URLs — blocks javascript:/data: schemes from fetched JSON.
+  var url = /^https?:\/\//i.test(String(o.resolution_url || '')) ? o.resolution_url : null;
   if (o.resolution_evidence) {
     ev = '<div class="rcall-ev">' + escapeHtml(String(o.resolution_evidence).slice(0, 280));
-    if (o.resolution_url) {
-      ev += ' <a href="' + escapeHtml(o.resolution_url) + '" target="_blank" rel="noopener">source ↗</a>';
+    if (url) {
+      ev += ' <a href="' + escapeHtml(url) + '" target="_blank" rel="noopener">source ↗</a>';
     }
     ev += '</div>';
-  } else if (o.resolution_url) {
-    ev = '<div class="rcall-ev"><a href="' + escapeHtml(o.resolution_url) + '" target="_blank" rel="noopener">source ↗</a></div>';
+  } else if (url) {
+    ev = '<div class="rcall-ev"><a href="' + escapeHtml(url) + '" target="_blank" rel="noopener">source ↗</a></div>';
   }
   return '<div class="rcall ' + (ok ? 'ok' : 'miss') + '">'
     + '<div class="rcall-top">'

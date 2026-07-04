@@ -219,7 +219,8 @@ document.querySelectorAll('.tab').forEach(function(t){
 });
 
 /* Render */
-function fmtAlign(a){ return '<span class="tag '+a+'">'+a+'</span>'; }
+function esc(s){ return String(s==null?'':s).replace(/[&<>"']/g, function(c){ return ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'})[c]; }); }
+function fmtAlign(a){ return '<span class="tag '+esc(a)+'">'+esc(a)+'</span>'; }
 
 function renderLevers(levers){
   var box = document.getElementById('levers-list');
@@ -227,17 +228,17 @@ function renderLevers(levers){
   var max = levers[0].leverage_score || 1;
   box.innerHTML = levers.map(function(l, i){
     var pct = Math.max(4, Math.round((l.leverage_score / max) * 100));
-    var weapons = (l.weapons||[]).slice(0,3).map(function(w){ return '<span class="tag weapon">'+w.weapon+' ×'+w.count+'</span>'; }).join('');
+    var weapons = (l.weapons||[]).slice(0,3).map(function(w){ return '<span class="tag weapon">'+esc(w.weapon)+' ×'+esc(w.count)+'</span>'; }).join('');
     return '<div class="lev">'+
       '<div class="lev-rank">'+(i+1)+'</div>'+
       '<div class="lev-bar"><div class="lev-bar-track"><div class="lev-bar-fill" style="width:'+pct+'%"></div></div>'+
         '<span class="lev-bar-val">'+(l.leverage_score||0).toFixed(2)+'</span></div>'+
       '<div class="lev-body">'+
-        '<div class="lev-title">'+(l.component||'—')+' '+fmtAlign(l.alignment||'unknown')+'</div>'+
-        '<div class="lev-mfr">'+(l.manufacturer||'—')+(l.country?(' · '+l.country):'')+'</div>'+
+        '<div class="lev-title">'+esc(l.component||'—')+' '+fmtAlign(l.alignment||'unknown')+'</div>'+
+        '<div class="lev-mfr">'+esc(l.manufacturer||'—')+(l.country?(' · '+esc(l.country)):'')+'</div>'+
         '<div class="lev-tags">'+weapons+'</div>'+
       '</div>'+
-      '<div class="lev-x">×'+(l.appearances||0)+'</div>'+
+      '<div class="lev-x">×'+esc(l.appearances||0)+'</div>'+
     '</div>';
   }).join('');
 }
@@ -250,11 +251,11 @@ function renderWeapons(weapons){
     var total = (a.western||0)+(a.adversary||0)+(a.other||0)+(a.unknown||0);
     function pct(n){ return total ? (n*100/total).toFixed(0) : 0; }
     var deps = (w.top_western_dependencies||[]).slice(0,6).map(function(d){
-      return '<div class="dep"><span class="nm">'+d.name+'</span><span class="ct">×'+d.appearances+'</span></div>';
+      return '<div class="dep"><span class="nm">'+esc(d.name)+'</span><span class="ct">×'+esc(d.appearances)+'</span></div>';
     }).join('') || '<div class="dep" style="border:none;color:var(--text-xd)">—</div>';
     return '<div class="wcard">'+
-      '<div class="wcard-h">'+w.weapon+'</div>'+
-      '<div class="wcard-meta">'+w.component_rows+' rows · '+w.unique_components+' unique</div>'+
+      '<div class="wcard-h">'+esc(w.weapon)+'</div>'+
+      '<div class="wcard-meta">'+esc(w.component_rows)+' rows · '+esc(w.unique_components)+' unique</div>'+
       '<div class="bar-stack" title="alignment mix">'+
         '<span class="western"   style="width:'+pct(a.western||0)+'%"></span>'+
         '<span class="adversary" style="width:'+pct(a.adversary||0)+'%"></span>'+
@@ -262,10 +263,10 @@ function renderWeapons(weapons){
         '<span class="unknown"   style="width:'+pct(a.unknown||0)+'%"></span>'+
       '</div>'+
       '<div class="bar-key">'+
-        '<span><i style="background:#22c55e"></i>WST '+(a.western||0)+'</span>'+
-        '<span><i style="background:#ef4444"></i>ADV '+(a.adversary||0)+'</span>'+
-        '<span><i style="background:#3b82f6"></i>OTH '+(a.other||0)+'</span>'+
-        '<span><i style="background:var(--text-xd)"></i>UNK '+(a.unknown||0)+'</span>'+
+        '<span><i style="background:#22c55e"></i>WST '+esc(a.western||0)+'</span>'+
+        '<span><i style="background:#ef4444"></i>ADV '+esc(a.adversary||0)+'</span>'+
+        '<span><i style="background:#3b82f6"></i>OTH '+esc(a.other||0)+'</span>'+
+        '<span><i style="background:var(--text-xd)"></i>UNK '+esc(a.unknown||0)+'</span>'+
       '</div>'+
       '<div style="font:600 10px var(--mono);color:var(--text-d);text-transform:uppercase;letter-spacing:.07em;margin-bottom:4px">Top Western Dependencies</div>'+
       '<div class="dep-list">'+deps+'</div>'+

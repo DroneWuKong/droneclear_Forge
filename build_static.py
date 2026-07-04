@@ -211,8 +211,42 @@ def inject_adapter(html, depth=0):
     else:
         # Fallback: insert before </body>
         html = html.replace('</body>', adapter_tag + '</body>')
-    
+
     return html
+
+
+_ASSET_HASH_CACHE = {}
+
+
+def _asset_version(rel_path):
+    """8-char content hash of a built /static asset, or None if absent."""
+    if rel_path not in _ASSET_HASH_CACHE:
+        import hashlib
+        fpath = os.path.join(BUILD_DIR, *rel_path.split('/'))
+        v = None
+        if os.path.exists(fpath):
+            with open(fpath, 'rb') as f:
+                v = hashlib.md5(f.read()).hexdigest()[:8]
+        _ASSET_HASH_CACHE[rel_path] = v
+    return _ASSET_HASH_CACHE[rel_path]
+
+
+def add_asset_cache_busters(html):
+    """Append ?v=<content-hash> to unversioned static/*.js|css references.
+
+    /static/* is served with a 1-year immutable Cache-Control (_headers), so
+    an unversioned reference pins returning visitors to a stale copy until the
+    cache expires — deploys silently don't propagate. References that already
+    carry a ?v= (e.g. dash-brief.js?v=3) are left untouched. Must run after
+    static assets are copied into BUILD_DIR so the hash reflects the built file.
+    """
+    def _sub(m):
+        attr, prefix, rel = m.group(1), m.group(2) or '', m.group(3)
+        v = _asset_version(rel)
+        if not v:
+            return m.group(0)
+        return f'{attr}="{prefix}{rel}?v={v}"'
+    return re.sub(r'\b(src|href)="((?:\.\./)+|/)?(static/[^"?#]+\.(?:js|css))"', _sub, html)
 
 
 # Minified Forge analytics snippet — injected into every page at build time
@@ -940,6 +974,7 @@ def rewrite_legacy_domains(html):
 # Ã¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂ
 
 SITE_URL = 'https://uas-forge.com'
+PATTERNS_URL = 'https://uas-patterns.com'
 SITE_NAME = 'Forge — Drone Integration Handbook'
 
 # Part count for SEO copy. Computed once from forge_database.json on first
@@ -1306,6 +1341,78 @@ DEFAULT_SEO = (
 )
 
 
+# Patterns + Intel pages both live on uas-patterns.com (intel merged into
+# patterns — no separate uas-intel.com site, no separate .pro site).
+# Main Forge tooling lives on uas-forge.com. Legacy nvmill*/uas-intel.com
+# domains 301 → new ones across (see _redirects).
+# Module-level so both inject_seo() and generate_sitemap() share it.
+CANONICAL_OVERRIDES = {
+    # UAS- hub — cross-domain landing page, canonical on uas-forge.com
+    'hub/':            'https://uas-forge.com/hub/',
+    # Patterns flags dashboard — on uas-patterns.com (Pro merged)
+    'patterns/':       'https://uas-patterns.com/patterns/',
+    # Patterns free / public — uas-patterns.com
+    'patterns-home/':  'https://uas-patterns.com/patterns-home/',
+    'clock/':          'https://uas-patterns.com/clock/',
+    'ddg/':            'https://uas-patterns.com/ddg/',
+    'brief/':          'https://uas-patterns.com/brief/',
+    'analytics/':      'https://uas-patterns.com/analytics/',
+    'lexicon/':        'https://uas-patterns.com/lexicon/',
+    'api-docs/':       'https://uas-patterns.com/api-docs/',
+    # Intel — merged into uas-patterns.com
+    'intel/':              'https://uas-patterns.com/intel/',
+    'intel/feed/':         'https://uas-patterns.com/intel/feed/',
+    'intel-commercial/':   'https://uas-patterns.com/intel-commercial/',
+    'intel-dfr/':          'https://uas-patterns.com/intel-dfr/',
+    'industry/':           'https://uas-patterns.com/industry/',
+    'tracker/':            'https://uas-patterns.com/tracker/',
+    'timeline/':           'https://uas-patterns.com/timeline/',
+    # Main Forge — uas-forge.com
+    'forge/':              'https://uas-forge.com/forge/',
+    'browse/':             'https://uas-forge.com/browse/',
+    'builder/':            'https://uas-forge.com/builder/',
+    'compare/':            'https://uas-forge.com/compare/',
+    'compliance/':         'https://uas-forge.com/compliance/',
+    'compliance-matrix/':  'https://uas-forge.com/compliance-matrix/',
+    'cost/':               'https://uas-forge.com/cost/',
+    'payload-compare/':    'https://uas-forge.com/payload-compare/',
+    'platforms/':          'https://uas-forge.com/platforms/',
+    'stack-builder/':      'https://uas-forge.com/stack-builder/',
+    'circuit-forge/':      'https://uas-forge.com/circuit-forge/',
+    'spec-sheets/':        'https://uas-forge.com/spec-sheets/',
+    'dossier/':            'https://uas-forge.com/dossier/',
+    'grants/':             'https://uas-forge.com/grants/',
+    'regs/':               'https://uas-forge.com/regs/',
+    'verify/':             'https://uas-forge.com/verify/',
+    'audit/':              'https://uas-forge.com/audit/',
+    'report/':             'https://uas-forge.com/report/',
+    'waiver/':             'https://uas-forge.com/waiver/',
+    'wingman/':            'https://uas-forge.com/wingman/',
+    'tools/':              'https://uas-forge.com/tools/',
+    'tools-home/':         'https://uas-forge.com/tools-home/',
+    'software-library/':   'https://uas-forge.com/software-library/',
+    'pid-tuning/':         'https://uas-forge.com/pid-tuning/',
+    'guides/':             'https://uas-forge.com/guides/',
+    'guide/':              'https://uas-forge.com/guide/',
+    'swarm/':              'https://uas-forge.com/swarm/',
+    'swarm-guide/':        'https://uas-forge.com/swarm-guide/',
+    'slam/':               'https://uas-forge.com/slam/',
+    'slam-guide/':         'https://uas-forge.com/slam-guide/',
+    'mesh-guide/':         'https://uas-forge.com/mesh-guide/',
+    'tak-guide/':          'https://uas-forge.com/tak-guide/',
+    'openhd-guide/':       'https://uas-forge.com/openhd-guide/',
+    'ai-guide/':           'https://uas-forge.com/ai-guide/',
+    'cuas-guide/':         'https://uas-forge.com/cuas-guide/',
+    'fc-firmware-guide/':  'https://uas-forge.com/fc-firmware-guide/',
+    'academy/':            'https://uas-forge.com/academy/',
+    'support/':            'https://uas-forge.com/support/',
+    'start/':              'https://uas-forge.com/start/',
+    'library/':            'https://uas-forge.com/library/',
+    'vault/':              'https://uas-forge.com/vault/',
+    'contribute/':         'https://uas-forge.com/contribute/',
+}
+
+
 def inject_seo(html, src_name, dst_path):
     """Inject meta description, Open Graph, Twitter Card, and canonical URL."""
     title, description, keywords = SEO_META.get(src_name, DEFAULT_SEO)
@@ -1321,75 +1428,6 @@ def inject_seo(html, src_name, dst_path):
         description = description.replace(_PART_COUNT_PLACEHOLDER, count_str)
 
     clean_path = dst_path.replace('index.html', '')
-    # Patterns + Intel pages both live on uas-patterns.com (intel merged into
-    # patterns — no separate uas-intel.com site, no separate .pro site).
-    # Main Forge tooling lives on uas-forge.com. Legacy nvmill*/uas-intel.com
-    # domains 301 → new ones across (see _redirects).
-    CANONICAL_OVERRIDES = {
-        # UAS- hub — cross-domain landing page, canonical on uas-forge.com
-        'hub/':            'https://uas-forge.com/hub/',
-        # Patterns flags dashboard — on uas-patterns.com (Pro merged)
-        'patterns/':       'https://uas-patterns.com/patterns/',
-        # Patterns free / public — uas-patterns.com
-        'patterns-home/':  'https://uas-patterns.com/patterns-home/',
-        'clock/':          'https://uas-patterns.com/clock/',
-        'ddg/':            'https://uas-patterns.com/ddg/',
-        'brief/':          'https://uas-patterns.com/brief/',
-        'analytics/':      'https://uas-patterns.com/analytics/',
-        'lexicon/':        'https://uas-patterns.com/lexicon/',
-        'api-docs/':       'https://uas-patterns.com/api-docs/',
-        # Intel — merged into uas-patterns.com
-        'intel/':              'https://uas-patterns.com/intel/',
-        'intel/feed/':         'https://uas-patterns.com/intel/feed/',
-        'intel-commercial/':   'https://uas-patterns.com/intel-commercial/',
-        'intel-dfr/':          'https://uas-patterns.com/intel-dfr/',
-        'industry/':           'https://uas-patterns.com/industry/',
-        'tracker/':            'https://uas-patterns.com/tracker/',
-        'timeline/':           'https://uas-patterns.com/timeline/',
-        # Main Forge — uas-forge.com
-        'forge/':              'https://uas-forge.com/forge/',
-        'browse/':             'https://uas-forge.com/browse/',
-        'builder/':            'https://uas-forge.com/builder/',
-        'compare/':            'https://uas-forge.com/compare/',
-        'compliance/':         'https://uas-forge.com/compliance/',
-        'compliance-matrix/':  'https://uas-forge.com/compliance-matrix/',
-        'cost/':               'https://uas-forge.com/cost/',
-        'payload-compare/':    'https://uas-forge.com/payload-compare/',
-        'platforms/':          'https://uas-forge.com/platforms/',
-        'stack-builder/':      'https://uas-forge.com/stack-builder/',
-        'circuit-forge/':      'https://uas-forge.com/circuit-forge/',
-        'spec-sheets/':        'https://uas-forge.com/spec-sheets/',
-        'dossier/':            'https://uas-forge.com/dossier/',
-        'grants/':             'https://uas-forge.com/grants/',
-        'regs/':               'https://uas-forge.com/regs/',
-        'verify/':             'https://uas-forge.com/verify/',
-        'audit/':              'https://uas-forge.com/audit/',
-        'report/':             'https://uas-forge.com/report/',
-        'waiver/':             'https://uas-forge.com/waiver/',
-        'wingman/':            'https://uas-forge.com/wingman/',
-        'tools/':              'https://uas-forge.com/tools/',
-        'tools-home/':         'https://uas-forge.com/tools-home/',
-        'software-library/':   'https://uas-forge.com/software-library/',
-        'pid-tuning/':         'https://uas-forge.com/pid-tuning/',
-        'guides/':             'https://uas-forge.com/guides/',
-        'guide/':              'https://uas-forge.com/guide/',
-        'swarm/':              'https://uas-forge.com/swarm/',
-        'swarm-guide/':        'https://uas-forge.com/swarm-guide/',
-        'slam/':               'https://uas-forge.com/slam/',
-        'slam-guide/':         'https://uas-forge.com/slam-guide/',
-        'mesh-guide/':         'https://uas-forge.com/mesh-guide/',
-        'tak-guide/':          'https://uas-forge.com/tak-guide/',
-        'openhd-guide/':       'https://uas-forge.com/openhd-guide/',
-        'ai-guide/':           'https://uas-forge.com/ai-guide/',
-        'cuas-guide/':         'https://uas-forge.com/cuas-guide/',
-        'fc-firmware-guide/':  'https://uas-forge.com/fc-firmware-guide/',
-        'academy/':            'https://uas-forge.com/academy/',
-        'support/':            'https://uas-forge.com/support/',
-        'start/':              'https://uas-forge.com/start/',
-        'library/':            'https://uas-forge.com/library/',
-        'vault/':              'https://uas-forge.com/vault/',
-        'contribute/':         'https://uas-forge.com/contribute/',
-    }
     canonical = CANONICAL_OVERRIDES.get(clean_path, f'{SITE_URL}/{clean_path}')
 
     seo_tags = f'''
@@ -1431,8 +1469,18 @@ def inject_seo(html, src_name, dst_path):
     return html
 
 
-def generate_sitemap(pages):
-    """Generate sitemap.xml from the PAGES dict."""
+# Paths that must never appear in a sitemap: gated/noindex surfaces.
+# Keep in sync with the Disallow list in generate_robots_txt().
+SITEMAP_EXCLUDED_PREFIXES = ('private/', 'analytics/', 'vault/', 'contribute/', 'template/')
+
+
+def generate_sitemaps(pages):
+    """Generate per-domain sitemaps from the PAGES dict.
+
+    Returns (forge_xml, patterns_xml). Each page is listed once, under its
+    canonical domain (CANONICAL_OVERRIDES), so sitemap <loc> never conflicts
+    with the page's <link rel=canonical>. Gated/noindex paths are excluded.
+    """
     from datetime import datetime
     now = datetime.now().strftime('%Y-%m-%d')
 
@@ -1445,23 +1493,29 @@ def generate_sitemap(pages):
         'compare.html': '0.7', 'browse.html': '0.7',
     }
 
-    urls = []
+    forge_urls, patterns_urls = [], []
     for src_name, dst_path in pages.items():
         clean_path = dst_path.replace('index.html', '')
-        url = f'{SITE_URL}/{clean_path}'
+        if clean_path.startswith(SITEMAP_EXCLUDED_PREFIXES):
+            continue
+        url = CANONICAL_OVERRIDES.get(clean_path, f'{SITE_URL}/{clean_path}')
         priority = priority_map.get(src_name, '0.5')
         freq = 'weekly' if src_name in priority_map else 'monthly'
-        urls.append(f'''  <url>
+        entry = f'''  <url>
     <loc>{url}</loc>
     <lastmod>{now}</lastmod>
     <changefreq>{freq}</changefreq>
     <priority>{priority}</priority>
-  </url>''')
+  </url>'''
+        (patterns_urls if url.startswith(PATTERNS_URL) else forge_urls).append(entry)
 
-    return f'''<?xml version="1.0" encoding="UTF-8"?>
+    def wrap(urls):
+        return f'''<?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
 {chr(10).join(urls)}
 </urlset>'''
+
+    return wrap(forge_urls), wrap(patterns_urls)
 
 
 def generate_robots_txt():
@@ -1469,6 +1523,7 @@ def generate_robots_txt():
 Allow: /
 
 Sitemap: {SITE_URL}/sitemap.xml
+Sitemap: {PATTERNS_URL}/sitemap-patterns.xml
 
 Crawl-delay: 1
 
@@ -1476,6 +1531,43 @@ Disallow: /analytics/
 Disallow: /vault/
 Disallow: /contribute/
 Disallow: /template/
+Disallow: /private/
+'''
+
+
+def generate_404_page():
+    """Self-contained 404 page. Cloudflare Pages serves build/404.html with a
+    real 404 status; without it, Pages falls back to SPA mode and answers every
+    unknown URL with index.html + HTTP 200."""
+    return '''<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="robots" content="noindex">
+<title>404 — Page Not Found</title>
+<style>
+  body{margin:0;min-height:100vh;display:flex;align-items:center;justify-content:center;
+       background:#0b0e14;color:#e6e9ef;font-family:'DM Sans',system-ui,sans-serif;text-align:center}
+  .box{padding:40px}
+  h1{font-family:'JetBrains Mono',monospace;font-size:64px;margin:0 0 8px;color:#f59e0b}
+  p{color:#9aa3b2;margin:0 0 24px}
+  a{display:inline-block;margin:0 8px;padding:10px 18px;border:1px solid #2a3040;border-radius:8px;
+    color:#e6e9ef;text-decoration:none;font-size:14px}
+  a:hover{border-color:#f59e0b}
+</style>
+</head>
+<body>
+<div class="box">
+  <h1>404</h1>
+  <p>This page doesn't exist — it may have moved or been retired.</p>
+  <a href="/">The Bench</a>
+  <a href="/hub/">Hub</a>
+  <a href="/browse/">Browse Parts</a>
+  <a href="/patterns-home/">P.I.E.</a>
+</div>
+</body>
+</html>
 '''
 
 
@@ -2074,22 +2166,32 @@ def build():
             html = html.replace('</body>', '  <script defer src="/static/dash-brief.js?v=3"></script>\n</body>', 1)
         html = fix_nav_links(html, depth)
         html = rewrite_legacy_domains(html)
-        
+        html = add_asset_cache_busters(html)
+
         with open(dst_file, 'w', encoding='utf-8') as f:
             f.write(html)
         
         print(f"  {src_name} Ã¢ÂÂ {dst_path}")
     
-    # Generate sitemap.xml
-    sitemap = generate_sitemap(PAGES)
+    # Generate per-domain sitemaps (forge → sitemap.xml, patterns → sitemap-patterns.xml)
+    forge_sitemap, patterns_sitemap = generate_sitemaps(PAGES)
     with open(os.path.join(BUILD_DIR, 'sitemap.xml'), 'w') as f:
-        f.write(sitemap)
-    print(f"  Generated sitemap.xml ({len(PAGES)} URLs)")
-    
+        f.write(forge_sitemap)
+    with open(os.path.join(BUILD_DIR, 'sitemap-patterns.xml'), 'w') as f:
+        f.write(patterns_sitemap)
+    print(f"  Generated sitemap.xml + sitemap-patterns.xml")
+
     # Generate robots.txt
     with open(os.path.join(BUILD_DIR, 'robots.txt'), 'w') as f:
         f.write(generate_robots_txt())
     print(f"  Generated robots.txt")
+
+    # Generate 404.html — its presence disables Cloudflare Pages' SPA fallback,
+    # which otherwise serves index.html with HTTP 200 for every unknown URL
+    # (soft-404s that search engines index).
+    with open(os.path.join(BUILD_DIR, '404.html'), 'w', encoding='utf-8') as f:
+        f.write(generate_404_page())
+    print(f"  Generated 404.html")
     
     # Copy service worker to build root (must be at root for scope)
     sw_src = os.path.join(SRC_DIR, 'sw.js')

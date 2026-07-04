@@ -160,6 +160,8 @@ window.dcNavBrandClick=function(e){e.preventDefault();location.href='/patterns-h
 
 var FP_BY_NAME = {}, SCORES = [], SELECTED = null;
 
+function esc(s){ return String(s==null?'':s).replace(/[&<>"']/g, function(c){ return ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'})[c]; }); }
+
 function selectActor(name){
   SELECTED = name;
   document.querySelectorAll('.actor-row').forEach(function(r){
@@ -167,37 +169,37 @@ function selectActor(name){
   });
   var s = SCORES.find(function(x){ return x.actor === name; });
   var fp = FP_BY_NAME[name];
-  if(!s){ document.getElementById('detail').innerHTML = '<div class="empty">No score for '+name+'</div>'; return; }
-  var regions = (s.dominant_regions||[]).map(function(r){ return '<span class="pill region">'+r+'</span>'; }).join('');
-  var drones  = (s.top_drones||[]).map(function(d){ return '<span class="pill drone">'+d+'</span>'; }).join('');
+  if(!s){ document.getElementById('detail').innerHTML = '<div class="empty">No score for '+esc(name)+'</div>'; return; }
+  var regions = (s.dominant_regions||[]).map(function(r){ return '<span class="pill region">'+esc(r)+'</span>'; }).join('');
+  var drones  = (s.top_drones||[]).map(function(d){ return '<span class="pill drone">'+esc(d)+'</span>'; }).join('');
   var ttps = (s.ttps_exhibited||[]).map(function(t){
     var und = t.counter_gap_score >= 0.65;
     return '<div class="ttp-row '+(und?'undefended':'')+'">'+
-      '<div class="nm">'+t.ttp_id+'</div>'+
-      '<div class="ev">×'+t.evidence_count+'</div>'+
+      '<div class="nm">'+esc(t.ttp_id)+'</div>'+
+      '<div class="ev">×'+esc(t.evidence_count)+'</div>'+
       '<div class="gap">gap '+(t.counter_gap_score||0).toFixed(2)+'</div>'+
-      '<div class="verdict">'+(t.counter_verdict||'').split(' ')[0]+'</div>'+
+      '<div class="verdict">'+esc((t.counter_verdict||'').split(' ')[0])+'</div>'+
     '</div>';
   }).join('') || '<div class="empty" style="padding:20px">No TTPs detected in articles for this actor.</div>';
 
   var velocity = (fp && fp.monthly_velocity) || {};
   var velocityRows = Object.keys(velocity).sort().slice(-6).map(function(m){
-    return '<span style="display:inline-block;margin-right:8px;font:500 10px var(--mono);color:var(--text-d)">'+m+': <span style="color:var(--text-s)">'+velocity[m]+'</span></span>';
+    return '<span style="display:inline-block;margin-right:8px;font:500 10px var(--mono);color:var(--text-d)">'+esc(m)+': <span style="color:var(--text-s)">'+esc(velocity[m])+'</span></span>';
   }).join('');
 
   document.getElementById('detail').innerHTML =
-    '<div class="h"><h2>'+name+'</h2><div class="seen">first '+(s.first_seen||'?').slice(0,10)+' · last '+(s.last_seen||'?').slice(0,10)+'</div></div>'+
-    '<div class="ration">'+(s.rationale || '—')+'</div>'+
+    '<div class="h"><h2>'+esc(name)+'</h2><div class="seen">first '+esc((s.first_seen||'?').slice(0,10))+' · last '+esc((s.last_seen||'?').slice(0,10))+'</div></div>'+
+    '<div class="ration">'+esc(s.rationale || '—')+'</div>'+
     '<div class="pills">'+
       '<span class="pill" style="background:var(--green-d);color:#22c55e;border-color:rgba(34,197,94,.3)">threat '+s.threat_score.toFixed(3)+'</span>'+
-      '<span class="pill">'+s.incident_count+' incidents</span>'+
-      '<span class="pill">'+s.ttp_breadth+' TTPs</span>'+
+      '<span class="pill">'+esc(s.incident_count)+' incidents</span>'+
+      '<span class="pill">'+esc(s.ttp_breadth)+' TTPs</span>'+
       '<span class="pill" style="background:var(--amber-d);color:var(--amber);border-color:rgba(245,158,11,.3)">undefended '+(s.undefended_ttps||[]).length+'</span>'+
     '</div>'+
     (regions ? '<div class="section-h">Dominant regions</div><div class="pills">'+regions+'</div>' : '')+
     (drones  ? '<div class="section-h">Top drone systems referenced</div><div class="pills">'+drones+'</div>' : '')+
     (velocityRows ? '<div class="section-h">Monthly velocity (last 6)</div><div style="margin-bottom:10px">'+velocityRows+'</div>' : '')+
-    '<div class="section-h">TTP exposure '+(s.ttp_breadth?'('+s.ttp_breadth+')':'')+'</div>'+
+    '<div class="section-h">TTP exposure '+(s.ttp_breadth?'('+esc(s.ttp_breadth)+')':'')+'</div>'+
     ttps;
 }
 
@@ -205,10 +207,10 @@ function renderList(){
   var box = document.getElementById('actor-list');
   if(!SCORES.length){ box.innerHTML = '<div class="empty">No actors loaded</div>'; return; }
   box.innerHTML = '<div class="alist-h">Ranked by threat_score</div>' + SCORES.map(function(s){
-    return '<div class="actor-row" data-name="'+s.actor+'" onclick="selectActor(\''+s.actor.replace(/'/g,"\\'")+'\')">'+
+    return '<div class="actor-row" data-name="'+esc(s.actor)+'" onclick="selectActor(this.dataset.name)">'+
       '<div class="ts">'+s.threat_score.toFixed(2)+'</div>'+
-      '<div class="nm">'+s.actor+'</div>'+
-      '<div class="ic">'+s.incident_count+'</div>'+
+      '<div class="nm">'+esc(s.actor)+'</div>'+
+      '<div class="ic">'+esc(s.incident_count)+'</div>'+
     '</div>';
   }).join('');
 }
@@ -229,11 +231,11 @@ Promise.all([
   if(concEntries.length){
     document.getElementById('cross').style.display = '';
     document.getElementById('cross-list').innerHTML = concEntries.map(function(e){
-      return '<div class="cross-row"><div class="id">'+e[0]+'</div><div class="ct">'+e[1]+' actor(s)</div></div>';
+      return '<div class="cross-row"><div class="id">'+esc(e[0])+'</div><div class="ct">'+esc(e[1])+' actor(s)</div></div>';
     }).join('');
   }
 }).catch(function(err){
-  document.getElementById('detail').innerHTML = '<div class="empty">Failed to load fingerprints/scores ('+err+')</div>';
+  document.getElementById('detail').innerHTML = '<div class="empty">Failed to load fingerprints/scores ('+esc(err)+')</div>';
 });
 </script>
 </body>

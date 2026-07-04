@@ -767,6 +767,7 @@ body {
 <script>
 // ── DATA — loaded from live pipeline output ───────────────────────────────────
 // Falls back to hardcoded snapshot if fetch fails
+function esc(s){ return String(s==null?'':s).replace(/[&<>"']/g, function(c){ return ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'})[c]; }); }
 let DATA = null;
 
 async function loadData() {
@@ -994,12 +995,12 @@ function renderClock() {
   sg.innerHTML = `
     <div class="score-item crit">
       <span class="si-pill">Critical</span>
-      <div class="si-val">${DATA.flags.by_severity.critical}</div>
+      <div class="si-val">${esc(DATA.flags.by_severity.critical)}</div>
       <div class="si-label">flags</div>
     </div>
     <div class="score-item warn">
       <span class="si-pill">Warning</span>
-      <div class="si-val">${DATA.flags.by_severity.warning}</div>
+      <div class="si-val">${esc(DATA.flags.by_severity.warning)}</div>
       <div class="si-label">flags</div>
     </div>
     <div class="score-item gz">
@@ -1033,10 +1034,10 @@ function renderPredictions() {
   const el = document.getElementById('tab-predictions');
   el.innerHTML = DATA.predictions.slice(0, 6).map(p => `
     <div class="pred-card">
-      <span class="pred-impact ${p.impact}">${p.impact.toUpperCase()}</span>
+      <span class="pred-impact ${esc(p.impact)}">${esc(p.impact.toUpperCase())}</span>
       <div>
-        <div class="pred-text">${p.event}</div>
-        <div class="pred-meta">${p.timeframe} · ${p.drivers[0]}</div>
+        <div class="pred-text">${esc(p.event)}</div>
+        <div class="pred-meta">${esc(p.timeframe)} · ${esc(p.drivers[0])}</div>
       </div>
       <div class="pred-prob ${p.probability >= 0.75 ? 'hi' : ''}">${Math.round(p.probability * 100)}%</div>
     </div>
@@ -1047,8 +1048,8 @@ function renderFlags() {
   const el = document.getElementById('tab-flags');
   el.innerHTML = DATA.top_flags.map(f => `
     <div class="flag-row">
-      <span class="flag-sev ${f.severity}">${f.severity.toUpperCase()}</span>
-      <span>${f.title}</span>
+      <span class="flag-sev ${esc(f.severity)}">${esc(f.severity.toUpperCase())}</span>
+      <span>${esc(f.title)}</span>
     </div>
   `).join('');
 }
@@ -1059,7 +1060,7 @@ function renderGrayZone() {
     .sort((a, b) => b[1] - a[1])
     .map(([name, score]) => `
     <div class="gz-row">
-      <div class="gz-name">${name}</div>
+      <div class="gz-name">${esc(name)}</div>
       <div class="gz-bar-wrap"><div class="gz-bar" style="width:${score * 100}%"></div></div>
       <div class="gz-score">${(score * 100).toFixed(1)}%</div>
     </div>
@@ -1079,11 +1080,11 @@ function renderRolling() {
   const el = document.getElementById('rolling-track');
   // Duplicate for seamless appearance
   const cards = [...sorted, ...sorted].map(p => `
-    <div class="rolling-card ${p.impact}">
+    <div class="rolling-card ${esc(p.impact)}">
       <div class="rc-prob">${Math.round(p.probability * 100)}%</div>
-      <div class="rc-impact">${p.impact} · ${p.timeframe}</div>
-      <div class="rc-text">${p.event}</div>
-      <div class="rc-meta">${p.drivers[0]}</div>
+      <div class="rc-impact">${esc(p.impact)} · ${esc(p.timeframe)}</div>
+      <div class="rc-text">${esc(p.event)}</div>
+      <div class="rc-meta">${esc(p.drivers[0])}</div>
       <div class="rc-bar"><div class="rc-bar-fill" style="width:${p.probability * 100}%"></div></div>
     </div>
   `).join('');
@@ -1107,7 +1108,7 @@ function renderHistory() {
           ${warnH > 0 ? `<div class="hbar-seg warn" style="height:${warnH}px"></div>` : ''}
           ${infoH > 0 ? `<div class="hbar-seg info" style="height:${infoH}px"></div>` : ''}
         </div>
-        <div class="hbar-date">${h.date}</div>
+        <div class="hbar-date">${esc(h.date)}</div>
       </div>
     `;
   }).join('');
@@ -1126,7 +1127,7 @@ function renderTicker() {
   const doubled = [...signals, ...signals];
   const el = document.getElementById('ticker');
   el.innerHTML = doubled.map(s =>
-    `<span class="ticker-item"><span class="ticker-dot"></span>${s}</span>`
+    `<span class="ticker-item"><span class="ticker-dot"></span>${esc(s)}</span>`
   ).join('');
 }
 

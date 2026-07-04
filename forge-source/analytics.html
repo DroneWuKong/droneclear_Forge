@@ -469,17 +469,13 @@ document.querySelectorAll('#tabs .tab').forEach(function(tab){
   tab.addEventListener('click',function(){ activateTab(tab); });
 });
 
-// Auto-verify if ?key= param is present — sends to server, never stored client-side
+// NOTE: the ?key= URL-param auto-verify flow was removed deliberately — admin
+// keys in URLs leak via browser history, referrers, and request logs. Use the
+// key form (pgCheck) instead; a verified key persists for the session.
 (function(){
-  var urlKey = new URLSearchParams(location.search).get('key');
-  if(urlKey){
-    fetch('/api/analytics/ingest?verify=1', {
-      headers: { 'x-admin-key': urlKey }
-    }).then(function(r){
-      if(r.ok) sessionStorage.setItem(GATE_SESSION_KEY, urlKey);
-      // Scrub key from URL immediately
-      history.replaceState(null,'',location.pathname);
-    }).catch(function(){});
+  // Scrub any legacy ?key= param without using it.
+  if(new URLSearchParams(location.search).has('key')){
+    history.replaceState(null,'',location.pathname);
   }
 })();
 

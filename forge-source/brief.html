@@ -330,6 +330,9 @@ a:hover{text-decoration:underline}
 </div>
 
 <script>
+function esc(s){ return String(s==null?'':s).replace(/[&<>"']/g, function(c){ return ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'})[c]; }); }
+function safeHref(u){ u = String(u==null?'':u).trim(); return /^https?:\/\//i.test(u) ? esc(u) : ''; }
+
 function pctColor(p) {
   if (p >= 0.8) return 'var(--red)';
   if (p >= 0.65) return 'var(--amber)';
@@ -341,10 +344,11 @@ function renderSources(sources) {
   const chips = sources.map(s => {
     const cls = s.type === 'primary' ? 'primary' : s.type === 'reporting' ? 'reporting' : '';
     const icon = s.type === 'primary' ? '⬤' : s.type === 'reporting' ? '↗' : '◈';
-    if (s.url) {
-      return `<a href="${s.url}" target="_blank" rel="noopener" class="source-chip ${cls}">${icon} ${s.name}</a>`;
+    const href = s.url ? safeHref(s.url) : '';
+    if (href) {
+      return `<a href="${href}" target="_blank" rel="noopener" class="source-chip ${cls}">${icon} ${esc(s.name)}</a>`;
     }
-    return `<span class="source-chip ${cls}">${icon} ${s.name}</span>`;
+    return `<span class="source-chip ${cls}">${icon} ${esc(s.name)}</span>`;
   }).join('');
   return `<div class="sources"><span class="sources-label">Sources</span>${chips}</div>`;
 }
@@ -358,27 +362,27 @@ function renderBrief(b) {
 
   // ── Signal bar ──
   html += `<div class="signal-bar">
-    <div class="signal-stat critical"><span class="num">${sig.critical||0}</span><span class="lbl">Critical</span></div>
-    <div class="signal-stat warning"><span class="num">${sig.warning||0}</span><span class="lbl">Warning</span></div>
-    <div class="signal-stat new"><span class="num">${sig.new_today||0}</span><span class="lbl">New</span></div>
-    <div class="signal-stat"><span class="num">${sig.total_flags||0}</span><span class="lbl">Flags</span></div>
+    <div class="signal-stat critical"><span class="num">${esc(sig.critical||0)}</span><span class="lbl">Critical</span></div>
+    <div class="signal-stat warning"><span class="num">${esc(sig.warning||0)}</span><span class="lbl">Warning</span></div>
+    <div class="signal-stat new"><span class="num">${esc(sig.new_today||0)}</span><span class="lbl">New</span></div>
+    <div class="signal-stat"><span class="num">${esc(sig.total_flags||0)}</span><span class="lbl">Flags</span></div>
   </div>
-  <div class="concern-bar"><div class="dot"></div>${sig.top_concern||''}</div>`;
+  <div class="concern-bar"><div class="dot"></div>${esc(sig.top_concern||'')}</div>`;
 
   // ── Headline ──
-  html += `<div class="headline">${b.headline||''}</div>`;
+  html += `<div class="headline">${esc(b.headline||'')}</div>`;
 
   // ── Lead story ──
   html += `<div class="section-label">🔴 Lead Story</div>`;
   html += `<div class="brief-card lead">
     <div class="card-header">
       <span class="sev sev-critical"></span>
-      <span class="card-title">${lead.title||''}</span>
+      <span class="card-title">${esc(lead.title||'')}</span>
     </div>
-    <div class="card-body">${lead.body||''}</div>
+    <div class="card-body">${esc(lead.body||'')}</div>
     <div class="action-box">
       <div class="action-label">→ Action</div>
-      <div class="action-text">${lead.action||''}</div>
+      <div class="action-text">${esc(lead.action||'')}</div>
     </div>
     ${renderSources(lead.sources)}
   </div>`;
@@ -389,14 +393,14 @@ function renderBrief(b) {
     html += `<div class="brief-card entity">
       <div class="card-header">
         <span class="sev sev-warning"></span>
-        <span class="card-title">${e.entity||''}</span>
+        <span class="card-title">${esc(e.entity||'')}</span>
       </div>
-      <div class="entity-status">${e.status||''}</div>
-      <div class="card-body">${e.development||''}</div>
-      <div class="entity-exposure"><strong>Buyer exposure:</strong> ${e.buyer_exposure||''}</div>
+      <div class="entity-status">${esc(e.status||'')}</div>
+      <div class="card-body">${esc(e.development||'')}</div>
+      <div class="entity-exposure"><strong>Buyer exposure:</strong> ${esc(e.buyer_exposure||'')}</div>
       <div class="action-box">
         <div class="action-label">→ Action</div>
-        <div class="action-text">${e.action||''}</div>
+        <div class="action-text">${esc(e.action||'')}</div>
       </div>
       ${renderSources(e.sources)}
     </div>`;
@@ -408,13 +412,13 @@ function renderBrief(b) {
     html += `<div class="brief-card supply">
       <div class="card-header">
         <span class="sev sev-info"></span>
-        <span class="card-title">${s.component||''}</span>
-        <span class="supply-window">⏱ ${s.window||''}</span>
+        <span class="card-title">${esc(s.component||'')}</span>
+        <span class="supply-window">⏱ ${esc(s.window||'')}</span>
       </div>
-      <div class="supply-signal">${s.signal||''}</div>
+      <div class="supply-signal">${esc(s.signal||'')}</div>
       <div class="action-box">
         <div class="action-label">→ Action</div>
-        <div class="action-text">${s.action||''}</div>
+        <div class="action-text">${esc(s.action||'')}</div>
       </div>
       ${renderSources(s.sources)}
     </div>`;
@@ -427,9 +431,9 @@ function renderBrief(b) {
     html += `<div class="watch-item">
       <div class="watch-dot"></div>
       <div>
-        <div class="watch-label">${w.item||''}</div>
-        <div class="watch-why">${w.why||''}</div>
-        <div class="watch-trigger"><strong>Trigger:</strong> ${w.trigger||''}</div>
+        <div class="watch-label">${esc(w.item||'')}</div>
+        <div class="watch-why">${esc(w.why||'')}</div>
+        <div class="watch-trigger"><strong>Trigger:</strong> ${esc(w.trigger||'')}</div>
       </div>
     </div>`;
   }
@@ -445,11 +449,11 @@ function renderBrief(b) {
         <span class="pct-lbl">prob</span>
       </div>
       <div class="pred-body">
-        <div class="pred-event">${p.event||''}</div>
-        <div class="pred-timeframe"><span class="badge badge-purple">${p.timeframe||''}</span></div>
+        <div class="pred-event">${esc(p.event||'')}</div>
+        <div class="pred-timeframe"><span class="badge badge-purple">${esc(p.timeframe||'')}</span></div>
         <div class="hedge-box">
           <div class="hedge-label">◎ Hedge</div>
-          <div class="hedge-text">${p.hedge||''}</div>
+          <div class="hedge-text">${esc(p.hedge||'')}</div>
         </div>
       </div>
     </div>`;
@@ -457,7 +461,7 @@ function renderBrief(b) {
 
   // ── Footer ──
   const gen = b.generated_at ? new Date(b.generated_at).toLocaleString() : '';
-  html += `<div class="brief-footer">${b.pipeline_version||'PIE v1.0'} · Generated ${gen}</div>`;
+  html += `<div class="brief-footer">${esc(b.pipeline_version||'PIE v1.0')} · Generated ${gen}</div>`;
 
   document.getElementById('brief-content').innerHTML = html;
 }
@@ -530,6 +534,7 @@ fetch('/api/data?type=flags').then(r=>r.json()).then(flags=>{
       var freshStr=diffHrs<2?'live':diffHrs<24?diffHrs+'h ago':Math.round(diffHrs/24)+'d ago';
       var color=diffHrs<24?'var(--green)':diffHrs<48?'var(--warning)':'var(--red)';
       var runNum=window.__pipelineRunNum||'—';
+      if(typeof esc==='function') runNum=esc(runNum);
       plr.innerHTML='<span style="color:'+color+'">●</span> run #'+runNum+' · '+ts.toISOString().slice(0,16).replace('T',' ')+' UTC · '+freshStr;
     }
     // 3. Any data-ts attributes

@@ -10,6 +10,14 @@
 (function () {
     'use strict';
 
+    // Global HTML-escape helper — pipeline/scraped data must pass through this
+    // before being interpolated into innerHTML anywhere on the site.
+    window.escHTML = window.escHTML || function (s) {
+        return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) {
+            return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
+        });
+    };
+
     let _db = null;
     let _schema = null;
     let _ready = null; // Promise that resolves when data is loaded

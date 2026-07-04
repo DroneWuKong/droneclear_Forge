@@ -150,6 +150,8 @@ window.dcNavClose=function(){document.getElementById('dc-drawer').classList.remo
 window.dcNavBrandClick=function(e){e.preventDefault();location.href='/patterns-home/';};
 (function(){var path=location.pathname.replace(/\/$/,'').split('/').pop()||'home';document.querySelectorAll('.dc-drawer-item').forEach(function(a){if(a.dataset.page===path)a.classList.add('dc-active');});})();
 
+function esc(s){ return String(s==null?'':s).replace(/[&<>"']/g, function(c){ return ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'})[c]; }); }
+
 function bandClass(verdict){
   if(!verdict) return 'mod';
   if(verdict.startsWith('CRITICAL')) return 'crit';
@@ -167,23 +169,23 @@ fetch('/api/data?type=ttp_counter_gap').then(function(r){ return r.ok?r.json():P
   box.innerHTML = rs.map(function(r,i){
     var b = bandClass(r.verdict);
     var pct = Math.round((r.gap_score||0) * 100);
-    var actorPills = (r.attributed_actors||[]).map(function(a){ return '<span class="actor-pill">'+a+'</span>'; }).join('');
-    var kws = (r.counter_keywords||[]).map(function(k){ return '<span class="kw">'+k+'</span>'; }).join('');
+    var actorPills = (r.attributed_actors||[]).map(function(a){ return '<span class="actor-pill">'+esc(a)+'</span>'; }).join('');
+    var kws = (r.counter_keywords||[]).map(function(k){ return '<span class="kw">'+esc(k)+'</span>'; }).join('');
     var matches = (r.sample_matches||[]).slice(0,5).map(function(m){
-      return '<div class="match"><span class="src">'+m.source+'</span><span class="kw">'+m.keyword+'</span></div>';
+      return '<div class="match"><span class="src">'+esc(m.source)+'</span><span class="kw">'+esc(m.keyword)+'</span></div>';
     }).join('') || '<div style="font-size:11px;color:var(--text-xd)">No defensive procurement matches.</div>';
     return '<div class="barline" data-i="'+i+'">'+
       '<div class="barline-h" onclick="this.parentNode.classList.toggle(\'expanded\')">'+
-        '<div class="nm">'+r.ttp_id+'</div>'+
+        '<div class="nm">'+esc(r.ttp_id)+'</div>'+
         '<div class="gap" style="color:var(--'+(b==='crit'?'red':b==='large'?'amber':b==='mod'?'blue':'green')+')">'+r.gap_score.toFixed(2)+'</div>'+
-        '<div class="verdict '+b+'">'+(r.verdict||'').split(' ')[0]+'</div>'+
+        '<div class="verdict '+b+'">'+esc((r.verdict||'').split(' ')[0])+'</div>'+
       '</div>'+
       '<div class="bar-track"><div class="bar-fill '+b+'" style="width:'+pct+'%"></div></div>'+
       '<div class="detail">'+
-        '<div class="desc">'+r.description+'</div>'+
+        '<div class="desc">'+esc(r.description)+'</div>'+
         '<div class="actors">'+actorPills+'</div>'+
         '<h3>Counter keywords searched</h3><div>'+kws+'</div>'+
-        '<h3>Sample matches ('+r.counter_signal_count+' total)</h3>'+matches+
+        '<h3>Sample matches ('+esc(r.counter_signal_count)+' total)</h3>'+matches+
       '</div>'+
     '</div>';
   }).join('');
