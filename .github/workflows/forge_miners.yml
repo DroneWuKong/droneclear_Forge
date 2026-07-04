@@ -35,6 +35,13 @@ on:
 permissions:
   contents: read
 
+# Prevent a scheduled run and a manual dispatch (or two dispatches) from racing
+# each other's git push to master (audit F-M3). Queue, don't cancel — every run
+# should complete its commit.
+concurrency:
+  group: forge-miners-${{ github.ref }}
+  cancel-in-progress: false
+
 jobs:
   # ─── Validate: seeded JSON files parse and have expected shape ──────────
   validate-data:
@@ -193,6 +200,7 @@ jobs:
   api-miners:
     name: 'ArduPilot Discourse + DIYFPV catalog (daily)'
     runs-on: ubuntu-latest
+    timeout-minutes: 25
     needs: smoke-miners
     if: >
       github.event_name == 'schedule' ||
@@ -245,7 +253,7 @@ jobs:
           if git diff --staged --quiet; then
             echo "No changes from API miners — nothing to commit."
           else
-            git commit -m "data(mining): ardupilot+diyfpv normalizer run — $(date -u '+%Y-%m-%d') [skip ci]"
+            git commit -m "data(mining): ardupilot+diyfpv normalizer run — $(date -u '+%Y-%m-%d')"
             git push
           fi
 
@@ -262,6 +270,7 @@ jobs:
   dom-miners:
     name: 'RotorBuilds + SAM.gov (dispatch only)'
     runs-on: ubuntu-latest
+    timeout-minutes: 25
     needs: smoke-miners
     if: >
       github.event_name == 'workflow_dispatch' &&
@@ -302,7 +311,7 @@ jobs:
           if git diff --staged --quiet; then
             echo "No changes — nothing to commit."
           else
-            git commit -m "data(mining): dom-miners run — $(date -u '+%Y-%m-%d') [skip ci]"
+            git commit -m "data(mining): dom-miners run — $(date -u '+%Y-%m-%d')"
             git push
           fi
 
@@ -317,6 +326,7 @@ jobs:
   pilotinstitute-miner:
     name: 'Mine Pilot Institute DFR articles'
     runs-on: ubuntu-latest
+    timeout-minutes: 25
     # Run on schedule always; on dispatch only if miner == 'all' or 'pilotinstitute'
     if: >
       github.event_name == 'schedule' ||
@@ -381,7 +391,7 @@ jobs:
             echo "No new Pilot Institute records — nothing to commit."
           else
             COUNT=$(git diff --staged --stat | grep pilotinstitute | head -1)
-            git commit -m "data(dfr): mine_pilotinstitute — $COUNT [skip ci]"
+            git commit -m "data(dfr): mine_pilotinstitute — $COUNT"
             git push
           fi
 

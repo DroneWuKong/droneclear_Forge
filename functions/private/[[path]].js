@@ -69,6 +69,21 @@ function promptPage(pathname, { error = false, locked = false } = {}) {
   );
 }
 
+// Constant-time compare via SHA-256 digests (audit F-H5). Inlined because Pages
+// Functions cannot import from the workers/ deploy root.
+async function timingSafeEqual(a, b) {
+  if (typeof a !== 'string' || typeof b !== 'string' || a.length === 0 || b.length === 0) return false;
+  const enc = new TextEncoder();
+  const [ha, hb] = await Promise.all([
+    crypto.subtle.digest('SHA-256', enc.encode(a)),
+    crypto.subtle.digest('SHA-256', enc.encode(b)),
+  ]);
+  const va = new Uint8Array(ha), vb = new Uint8Array(hb);
+  let diff = 0;
+  for (let i = 0; i < va.length; i++) diff |= va[i] ^ vb[i];
+  return diff === 0;
+}
+
 export async function onRequest(context) {
   const { request, env, next } = context;
   const url = new URL(request.url);
@@ -83,7 +98,7 @@ export async function onRequest(context) {
   // Already authenticated via cookie?
   const cookie = request.headers.get('Cookie') || '';
   const m = cookie.match(/(?:^|;\s*)pg=([^;]+)/);
-  if (m && decodeURIComponent(m[1]) === secret) return next();
+  if (m && await timingSafeEqual(decodeURIComponent(m[1]), secret)) return next();
 
   // Password submitted via form POST (keeps it out of the URL).
   if (request.method === 'POST') {
@@ -92,12 +107,12 @@ export async function onRequest(context) {
       const form = await request.formData();
       submitted = (form.get('key') || '').toString();
     } catch (_) { /* not form data */ }
-    if (submitted === secret) return setCookieRedirect(secret, url.pathname);
+    if (await timingSafeEqual(submitted, secret)) return setCookieRedirect(secret, url.pathname);
     return promptPage(url.pathname, { error: true });
   }
 
   // Shareable ?key= link.
-  if (url.searchParams.get('key') === secret) return setCookieRedirect(secret, url.pathname);
+  if (await timingSafeEqual(url.searchParams.get('key'), secret)) return setCookieRedirect(secret, url.pathname);
 
   // Otherwise show the password prompt (fail-closed: no content served).
   return promptPage(url.pathname);

@@ -22,6 +22,8 @@
 
 const VALID_ACTIONS = new Set(['approve', 'reject', 'recategorise']);
 
+import { timingSafeEqual } from './_auth.js';
+
 const CORS = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
@@ -37,11 +39,11 @@ function json(status, body) {
 
 function unauthorized() { return json(401, { error: 'unauthorized' }); }
 
-function checkToken(req, env) {
+async function checkToken(req, env) {
   const expected = env.DOCTRINE_ADMIN_TOKEN;
   if (!expected) return false;
-  const got = req.headers.get('x-admin-token');
-  return got && got === expected;
+  const got = req.headers.get('x-admin-token') || '';
+  return timingSafeEqual(got, expected); // constant-time (audit F-H5)
 }
 
 export default {
@@ -50,7 +52,7 @@ export default {
     if (!env.DOCTRINE_META || !env.DOCTRINE_INBOX_R2) {
       return json(500, { error: 'doctrine storage bindings missing' });
     }
-    if (!checkToken(req, env)) return unauthorized();
+    if (!(await checkToken(req, env))) return unauthorized();
 
     const url = new URL(req.url);
 

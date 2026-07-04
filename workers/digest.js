@@ -33,6 +33,8 @@
  *   TEAMS_WEBHOOK_URL  — optional; incoming-webhook URL for Microsoft Teams pushes
  */
 
+import { timingSafeEqual } from './_auth.js';
+
 const CORS = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
@@ -261,7 +263,7 @@ async function send(req, env) {
   // Admin-gated broadcast — intended to be called by the daily pipeline.
   const provided = req.headers.get('X-Digest-Key') || '';
   if (!env.DIGEST_ADMIN_KEY) return json(503, { error: 'DIGEST_ADMIN_KEY not configured' });
-  if (provided !== env.DIGEST_ADMIN_KEY) return json(401, { error: 'unauthorized' });
+  if (!(await timingSafeEqual(provided, env.DIGEST_ADMIN_KEY))) return json(401, { error: 'unauthorized' });
   if (!env.DIGEST_SUBS) return json(503, { error: 'subscriber store not configured' });
 
   let cadence = 'daily';
@@ -315,7 +317,7 @@ async function postWebhook(url, payload) {
 async function notify(req, env) {
   const provided = req.headers.get('X-Digest-Key') || '';
   if (!env.DIGEST_ADMIN_KEY) return json(503, { error: 'DIGEST_ADMIN_KEY not configured' });
-  if (provided !== env.DIGEST_ADMIN_KEY) return json(401, { error: 'unauthorized' });
+  if (!(await timingSafeEqual(provided, env.DIGEST_ADMIN_KEY))) return json(401, { error: 'unauthorized' });
 
   const delta = await loadKV(env, 'pie_delta');
   const date = (delta && delta.date) || new Date().toISOString().slice(0, 10);

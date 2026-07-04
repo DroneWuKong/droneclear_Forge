@@ -4,6 +4,8 @@
  * Admin key protected. Returns daily/monthly aggregates from KV.
  */
 
+import { timingSafeEqual } from './_auth.js';
+
 const CORS = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Methods': 'GET, OPTIONS',
@@ -16,7 +18,8 @@ export default {
 
     const adminKey = env.ANALYTICS_ADMIN_KEY;
     const provided = (req.headers.get('authorization') || '').replace(/^Bearer\s+/i, '');
-    if (adminKey && provided !== adminKey) {
+    // Fail closed: unset key = no access (audit F-H6); constant-time compare (F-H5).
+    if (!adminKey || !(await timingSafeEqual(provided, adminKey))) {
       return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401, headers: CORS });
     }
 
