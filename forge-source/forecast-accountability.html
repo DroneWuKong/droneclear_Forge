@@ -87,6 +87,14 @@ thead th.l{text-align:left}
 tbody td{padding:7px 6px;border-bottom:1px dashed var(--border);text-align:right;font:500 11px var(--mono);color:var(--text-s);white-space:nowrap}
 tbody td.l{text-align:left;font:600 12px var(--font);color:var(--text)}
 
+/* Calibration breakout — per-facet slices of the graded set */
+.bo-h{font:600 10px var(--mono);text-transform:uppercase;letter-spacing:.08em;color:var(--text-d);margin:14px 0 2px}
+.bo-h:first-child{margin-top:2px}
+.bo-bar{display:inline-block;width:64px;height:6px;background:var(--surface);border:1px solid var(--border);border-radius:3px;vertical-align:1px;margin-left:7px;overflow:hidden}
+.bo-bar i{display:block;height:100%;border-radius:2px}
+.bo-badge{font:600 8px var(--mono);text-transform:uppercase;letter-spacing:.06em;background:var(--surface);border:1px solid var(--border);color:var(--text-xd);padding:1px 5px;border-radius:3px;margin-left:6px;vertical-align:1px;white-space:nowrap}
+tr.bo-low td{opacity:.55}
+
 .empty{padding:28px 14px;text-align:center;color:var(--text-d);font:500 12px var(--mono)}
 .err-code{color:var(--amber)}
 /* Live insight line under a chart — the finding, computed from the data, not
@@ -173,6 +181,21 @@ tbody td.l{text-align:left;font:600 12px var(--font);color:var(--text)}
         frequency. Points should sit on the dashed line. Bubble size = sample count.</div>
       <svg class="chart" id="reliability" viewBox="0 0 820 320" preserveAspectRatio="xMidYMid meet"></svg>
       <div class="insight" id="reliability-insight" hidden></div>
+    </div>
+
+    <div class="panel" id="breakout-panel" hidden>
+      <div class="panel-h">Where PIE is sharp — and where it isn&rsquo;t</div>
+      <div class="panel-sub">Calibration broken out by domain and impact tier: how often
+        each slice&rsquo;s calls land (<code>hit rate</code>), how honest the stated
+        probabilities are (<code>Brier</code>, lower&nbsp;=&nbsp;better), and whether the
+        engine over- or under-states its confidence in that slice.</div>
+      <div id="breakout"></div>
+      <div class="footnote" style="margin-top:10px">
+        Methodology: groups computed in-browser from the same <code>prediction_outcomes</code>
+        payload; per-domain Brier prefers the resolver&rsquo;s published
+        <code>calibration_scores</code> where available. Slices with fewer than 3 graded
+        calls are flagged <em>low sample</em> and make no confidence claim.
+      </div>
     </div>
 
     <div class="panel">
@@ -483,6 +506,92 @@ function renderConfHist(a){
   }
 }
 
+// ── calibration breakout (per-domain / per-impact-tier) ─────────────────────
+// Slices the graded set by a facet field and asks, per slice: how often do
+// calls land, how good is the Brier, and does stated confidence match realized
+// frequency? Slices with < BO_MIN_N graded calls get a low-sample badge and
+// muted styling — no confident claims off tiny samples.
+var BO_MIN_N = 3;
+
+function breakoutGroups(outcomes, field){
+  var m = {};
+  outcomes.forEach(function(o){
+    var k = o[field] || 'unknown';
+    var g = m[k] = m[k] || {name:k, total:0, resolved:0, hits:0, sumP:0, sumSq:0};
+    g.total++;
+    if(isGraded(o)){
+      var p = prob(o), y = o.was_correct ? 1 : 0;
+      g.resolved++;
+      if(o.was_correct === true) g.hits++;
+      g.sumP += p;
+      g.sumSq += (p-y)*(p-y);
+    }
+  });
+  return Object.keys(m).map(function(k){ return m[k]; })
+    .sort(function(a,b){ return (b.resolved - a.resolved) || (b.total - a.total); });
+}
+
+// Over/under-confidence hint: mean stated probability vs realized frequency.
+// Only spoken for slices at/above the minimum sample.
+function boHint(g){
+  if(!g.resolved || g.resolved < BO_MIN_N) return '—';
+  var meanP = g.sumP / g.resolved, freq = g.hits / g.resolved, d = meanP - freq;
+  var pair = pct(meanP) + ' stated vs ' + pct(freq) + ' realized';
+  if(d > 0.1)  return '<span style="color:var(--amber)">overconfident</span> · ' + pair;
+  if(d < -0.1) return '<span style="color:var(--blue)">underconfident</span> · ' + pair;
+  return '<span style="color:var(--green)">in line</span> · ' + pair;
+}
+
+function boRow(g, resolverBrier){
+  var low = g.resolved < BO_MIN_N;
+  var hitRate = g.resolved ? g.hits / g.resolved : null;
+  // Prefer the resolver's published per-group Brier; fall back to in-browser.
+  var brier = (typeof resolverBrier === 'number' && isFinite(resolverBrier)) ? resolverBrier
+            : (g.resolved ? g.sumSq / g.resolved : null);
+  var barCol = hitRate === null ? 'transparent'
+             : hitRate >= 0.7 ? C.graded : hitRate >= 0.4 ? C.partial : C.unresolvable;
+  var brierCol = brier === null ? 'var(--text-d)'
+               : brier <= 0.1 ? C.graded : brier <= 0.25 ? C.partial : C.unresolvable;
+  var w = hitRate === null ? 0 : Math.max(0, Math.min(100, hitRate * 100));
+  return '<tr' + (low ? ' class="bo-low"' : '') + '>'
+    + '<td class="l">' + escapeHtml(g.name)
+    +   (low ? '<span class="bo-badge">low sample</span>' : '') + '</td>'
+    + '<td>' + g.total + '</td>'
+    + '<td>' + g.resolved + '</td>'
+    + '<td>' + (hitRate === null ? '—' : pct(hitRate))
+    +   '<span class="bo-bar"><i style="width:' + w.toFixed(0) + '%;background:' + barCol + '"></i></span></td>'
+    + '<td style="color:' + brierCol + '">' + (brier === null ? '—' : brier.toFixed(3)) + '</td>'
+    + '<td style="text-align:left;font:500 10px var(--mono)">' + boHint(g) + '</td>'
+    + '</tr>';
+}
+
+function boTable(title, groups, resolverByName){
+  var head = '<thead><tr><th class="l">' + escapeHtml(title) + '</th><th>Predictions</th>'
+    + '<th>Graded</th><th>Hit rate</th><th>Brier</th><th class="l">Confidence check</th></tr></thead>';
+  var body = groups.map(function(g){
+    var rb = resolverByName && resolverByName[g.name] ? resolverByName[g.name].brier_score : null;
+    return boRow(g, rb);
+  }).join('');
+  return '<div class="bo-h">By ' + escapeHtml(title.toLowerCase()) + '</div>'
+    + '<table>' + head + '<tbody>' + body + '</tbody></table>';
+}
+
+function renderBreakout(outcomes, calib){
+  var panel = document.getElementById('breakout-panel');
+  var box = document.getElementById('breakout');
+  if(!panel || !box) return;
+  var byDomain = breakoutGroups(outcomes, 'domain');
+  var byImpact = breakoutGroups(outcomes, 'predicted_impact');
+  var anyGraded = byDomain.some(function(g){ return g.resolved > 0; });
+  // Nothing graded and no resolver scores → render nothing, no empty shell.
+  var resolverDomains = (calib && calib.by_domain && typeof calib.by_domain === 'object'
+                         && !Array.isArray(calib.by_domain)) ? calib.by_domain : null;
+  if(!anyGraded && !resolverDomains){ panel.hidden = true; return; }
+  box.innerHTML = boTable('Domain', byDomain, resolverDomains)
+                + boTable('Impact tier', byImpact, null);
+  panel.hidden = false;
+}
+
 // ── domain table ─────────────────────────────────────────────────────────────
 function renderDomains(a){
   var rows = Object.keys(a.dom).map(function(d){ return [d, a.dom[d]]; })
@@ -570,11 +679,28 @@ function render(outcomes){
     .sort(function(x, y){ return String(y.resolution_date||'').localeCompare(String(x.resolution_date||'')); });
   renderKpis(a); renderFunnel(a); renderResolved(); renderReasons(a); renderReliability(a);
   renderImpact(a); renderConfHist(a); renderDomains(a);
+  // Breakout waits on the (non-blocking) calibration_scores side-fetch so
+  // per-domain Brier can prefer the resolver's published numbers.
+  _calibFetch.then(function(calib){
+    try { renderBreakout(outcomes, calib); }
+    catch(e){ console.error('[forecast-accountability] breakout render failed', e); }
+  });
   document.getElementById('loading').hidden = true;
   document.getElementById('content').hidden = false;
 }
 
 // ── fetch (mirrors market-lens.html: CONFIG_404 vs PAYLOAD_THIN) ────────────
+// Side-fetch for the calibration breakout. Fully graceful: any failure (404,
+// bad JSON, wrong shape) resolves to null and the breakout falls back to
+// in-browser math — it never blocks or breaks the main render.
+var _calibFetch = fetch('/api/data?type=calibration_scores')
+  .then(function(r){ return r.ok ? r.json() : null; })
+  .then(function(payload){
+    var d = payload && payload.data ? payload.data : payload;
+    return (d && typeof d === 'object' && !Array.isArray(d)) ? d : null;
+  })
+  .catch(function(){ return null; });
+
 fetch('/api/data?type=prediction_outcomes')
   .then(function(r){
     if(r.status === 404) return Promise.reject('CONFIG_404');

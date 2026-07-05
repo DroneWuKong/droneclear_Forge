@@ -1,0 +1,633 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>PIE Brief Archive — Forge Module</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg:#0c0c0a;--surface:#141410;--card:#1c1c17;--card-hi:#242420;
+  --border:#2e2e26;--border-hi:#3e3e34;
+  --amber:#c9a227;--amber-d:#c9a22720;
+  --warning:#f97316;--warning-d:#f9731620;
+  --red:#d62828;--red-d:#d6282820;
+  --green:#40916c;--green-d:#40916c20;
+  --blue:#2563eb;--blue-d:#2563eb18;
+  --purple:#7c3aed;--purple-d:#7c3aed18;
+  --cyan:#0891b2;--cyan-d:#0891b218;
+  --orange:#ea580c;--orange-d:#ea580c18;
+  --text:#f5f0e8;--text-s:#b8b0a0;--text-d:#8a8070;--text-xd:#6b6358;
+  --font:'Inter',system-ui,sans-serif;
+  --mono:'JetBrains Mono',monospace;
+}
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:var(--bg);color:var(--text);font-family:var(--font);line-height:1.5;-webkit-font-smoothing:antialiased;overflow-x:hidden}
+a{color:var(--blue);text-decoration:none}
+a:hover{text-decoration:underline}
+
+/* Badges — matches PIE */
+.badge{padding:2px 8px;border-radius:5px;font:600 10px var(--mono);white-space:nowrap;letter-spacing:.03em;display:inline-block}
+.badge-blue{background:var(--blue-d);color:var(--blue)}
+.badge-green{background:var(--green-d);color:var(--green)}
+.badge-red{background:var(--red-d);color:var(--red)}
+.badge-amber{background:var(--amber-d);color:var(--amber)}
+.badge-purple{background:var(--purple-d);color:var(--purple)}
+.badge-cyan{background:var(--cyan-d);color:var(--cyan)}
+.badge-orange{background:var(--orange-d);color:var(--orange)}
+.badge-warning{background:var(--warning-d);color:var(--warning)}
+
+/* Severity dot — matches PIE */
+.sev{width:8px;height:8px;border-radius:50%;display:inline-block;flex-shrink:0}
+.sev-critical{background:var(--red);box-shadow:0 0 6px #ef444466}
+.sev-warning{background:var(--warning);box-shadow:0 0 6px #f9731666}
+.sev-info{background:var(--blue);box-shadow:0 0 6px #3b82f666}
+
+/* Signal bar — matches brief.html */
+.signal-bar{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:14px 18px;margin-bottom:14px;display:flex;gap:0;align-items:stretch}
+.signal-stat{flex:1;text-align:center;padding:0 12px;border-right:1px solid var(--border)}
+.signal-stat:last-child{border-right:none}
+.signal-stat .num{font:700 22px var(--mono);display:block;line-height:1}
+.signal-stat .lbl{font-size:10px;color:var(--text-d);text-transform:uppercase;letter-spacing:.08em;margin-top:4px;display:block}
+.signal-stat.critical .num{color:var(--red)}
+.signal-stat.warning .num{color:var(--warning)}
+.signal-stat.new .num{color:var(--green)}
+.concern-bar{background:var(--card);border:1px solid var(--border);border-top:none;border-radius:0 0 10px 10px;margin-top:-4px;margin-bottom:14px;padding:8px 18px;font-size:11px;color:var(--text-s);display:flex;align-items:center;gap:8px}
+.concern-bar .dot{width:6px;height:6px;border-radius:50%;background:var(--amber);flex-shrink:0}
+
+/* Headline */
+.headline{font-size:15px;font-weight:600;line-height:1.5;color:var(--text);margin-bottom:14px;padding:14px 16px;background:var(--card);border-radius:10px;border-left:3px solid var(--amber)}
+
+/* Section label — matches PIE style */
+.section-label{font:600 10px var(--mono);color:var(--text-d);text-transform:uppercase;letter-spacing:.1em;margin:20px 0 8px;display:flex;align-items:center;gap:8px}
+.section-label::after{content:'';flex:1;height:1px;background:var(--border)}
+
+/* Cards — matches PIE flag-card style */
+.brief-card{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:14px 16px;margin-bottom:8px;transition:border-color .15s}
+.brief-card:hover{border-color:var(--border-hi)}
+.brief-card.lead{border-left:3px solid var(--red)}
+.brief-card.entity{border-left:3px solid var(--orange)}
+.brief-card.supply{border-left:3px solid var(--cyan)}
+.brief-card.pred{display:flex;gap:14px;align-items:flex-start}
+.brief-card.delta-new{border-left:3px solid var(--green)}
+.brief-card.delta-resolved{border-left:3px solid var(--purple)}
+
+.card-header{display:flex;align-items:center;gap:8px;margin-bottom:8px;flex-wrap:wrap}
+.card-title{font:600 13px var(--font);color:var(--text)}
+.card-body{font-size:12px;color:var(--text-s);line-height:1.6;margin-bottom:10px}
+
+/* Action box */
+.action-box{background:var(--blue-d);border:1px solid #3b82f622;border-radius:6px;padding:8px 10px;margin-top:8px}
+.action-box .action-label{font:600 10px var(--font);color:var(--blue);text-transform:uppercase;letter-spacing:.08em;margin-bottom:3px}
+.action-box .action-text{font-size:11px;color:var(--text-s);line-height:1.5}
+
+/* Entity-specific */
+.entity-status{font:500 11px var(--font);color:var(--amber);margin-bottom:6px}
+.entity-exposure{font-size:11px;color:var(--text-d);margin-bottom:8px}
+.entity-exposure strong{color:var(--text-s)}
+
+/* Supply chain */
+.supply-signal{font-size:11px;color:var(--text-s);margin-bottom:4px}
+.supply-window{display:inline-flex;align-items:center;gap:4px;font:500 10px var(--mono);color:var(--cyan);background:var(--cyan-d);border-radius:4px;padding:2px 6px;margin-bottom:8px}
+
+/* Watch list */
+.watch-list{background:var(--card);border:1px solid var(--border);border-radius:10px;overflow:hidden;margin-bottom:8px}
+.watch-item{display:flex;gap:12px;padding:10px 14px;border-bottom:1px solid var(--border);align-items:flex-start}
+.watch-item:last-child{border-bottom:none}
+.watch-dot{width:7px;height:7px;border-radius:50%;background:var(--amber);box-shadow:0 0 5px #f59e0b55;margin-top:5px;flex-shrink:0}
+.watch-label{font:600 12px var(--font);color:var(--text);margin-bottom:2px}
+.watch-why{font-size:11px;color:var(--text-s);line-height:1.4;margin-bottom:3px}
+.watch-trigger{font-size:10px;color:var(--text-d)}
+.watch-trigger strong{color:var(--text-xd)}
+
+/* Predictions */
+.pred-prob{min-width:52px;text-align:center;padding-top:2px}
+.pred-prob .pct{font:700 22px var(--mono);display:block;line-height:1.1}
+.pred-prob .pct-lbl{font-size:10px;color:var(--text-d);text-transform:uppercase;letter-spacing:.06em}
+.pred-body{flex:1}
+.pred-event{font:600 12px var(--font);color:var(--text);margin-bottom:3px;line-height:1.4}
+.pred-timeframe{margin-bottom:8px}
+.hedge-box{background:var(--purple-d);border:1px solid #a78bfa22;border-radius:6px;padding:7px 10px}
+.hedge-box .hedge-label{font:600 10px var(--font);color:var(--purple);text-transform:uppercase;letter-spacing:.08em;margin-bottom:3px}
+.hedge-box .hedge-text{font-size:11px;color:var(--text-s);line-height:1.5}
+
+/* Sources — inline chips */
+.sources{display:flex;flex-wrap:wrap;gap:5px;margin-top:10px;padding-top:8px;border-top:1px solid var(--border)}
+.source-chip{display:inline-flex;align-items:center;gap:4px;padding:2px 8px;border-radius:5px;font:500 10px var(--mono);text-decoration:none;border:1px solid var(--border);color:var(--text-d);background:var(--surface);transition:all .15s;white-space:nowrap}
+.source-chip:hover{border-color:var(--blue-d);color:var(--text-s);text-decoration:none}
+.source-chip.primary{border-color:#22c55e22;color:var(--green)}
+.source-chip.primary:hover{background:var(--green-d)}
+.source-chip.reporting{border-color:#3b82f622;color:var(--blue)}
+.source-chip.reporting:hover{background:var(--blue-d)}
+.sources-label{font:500 10px var(--mono);color:var(--text-xd);text-transform:uppercase;letter-spacing:.06em;width:100%;margin-bottom:2px}
+
+/* Flag-id chips (archive snapshot view) */
+.flag-chips{display:flex;flex-wrap:wrap;gap:5px;margin-top:6px}
+.flag-chip{display:inline-block;padding:2px 7px;border-radius:5px;font:500 10px var(--mono);border:1px solid var(--border);color:var(--text-d);background:var(--surface);white-space:nowrap}
+.flag-chip.crit{border-color:#d6282833;color:var(--red)}
+.flag-chip.warn{border-color:#f9731633;color:var(--warning)}
+.flag-chip.more{color:var(--text-xd);border-style:dashed}
+
+/* Severity breakdown rows */
+.sev-rows{background:var(--card);border:1px solid var(--border);border-radius:10px;overflow:hidden;margin-bottom:8px}
+.sev-row{display:flex;align-items:center;gap:10px;padding:9px 14px;border-bottom:1px solid var(--border)}
+.sev-row:last-child{border-bottom:none}
+.sev-row .sev-name{font:600 11px var(--mono);text-transform:uppercase;letter-spacing:.06em;width:70px;flex-shrink:0}
+.sev-row .sev-track{flex:1;height:6px;background:var(--surface);border-radius:3px;overflow:hidden}
+.sev-row .sev-fill{height:100%;border-radius:3px}
+.sev-row .sev-count{font:600 11px var(--mono);color:var(--text-s);width:36px;text-align:right;flex-shrink:0}
+
+/* Loading / error */
+.loading{text-align:center;padding:60px 20px;color:var(--text-d);font-size:12px}
+.no-brief{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:32px;text-align:center}
+.no-brief strong{display:block;font-size:14px;color:var(--text-s);margin-bottom:8px}
+.no-brief p{font-size:12px;color:var(--text-d);line-height:1.6}
+
+/* Footer */
+.brief-footer{margin-top:24px;padding:12px 16px;text-align:center;font-size:10px;color:var(--text-d);font-family:var(--mono);border-top:1px solid var(--border)}
+
+/* ── Archive layout ─────────────────────────────────────────── */
+.archive-wrap{display:flex;gap:16px;max-width:980px;margin:0 auto;padding:16px 20px;align-items:flex-start}
+.archive-rail{width:230px;flex-shrink:0;position:sticky;top:56px}
+.archive-main{flex:1;min-width:0}
+
+.rail-search{width:100%;background:var(--surface);border:1px solid var(--border);border-radius:8px;color:var(--text);font:400 12px var(--font);padding:8px 10px;margin-bottom:10px;outline:none;transition:border-color .15s}
+.rail-search:focus{border-color:var(--border-hi)}
+.rail-search::placeholder{color:var(--text-xd)}
+
+.date-list{display:flex;flex-direction:column;gap:5px;max-height:calc(100vh - 160px);overflow-y:auto;padding-right:2px}
+.date-item{display:block;width:100%;text-align:left;background:var(--card);border:1px solid var(--border);border-radius:8px;padding:8px 11px;cursor:pointer;color:var(--text-s);font-family:var(--font);transition:all .15s}
+.date-item:hover{border-color:var(--border-hi);color:var(--text)}
+.date-item.active{border-color:var(--amber);background:var(--card-hi);color:var(--text)}
+.date-item .di-date{font:600 12px var(--font);display:flex;align-items:center;gap:6px}
+.date-item .di-sub{font:400 10px var(--mono);color:var(--text-d);margin-top:2px}
+.date-item.active .di-sub{color:var(--text-s)}
+.rail-empty{font-size:11px;color:var(--text-xd);padding:10px 4px;text-align:center}
+.rail-label{font:600 10px var(--mono);color:var(--text-xd);text-transform:uppercase;letter-spacing:.1em;margin:4px 0 6px}
+
+.back-strip{padding:5px 16px;font:500 10px var(--mono);color:var(--text-xd);border-bottom:1px solid var(--border);background:var(--bg);display:flex;align-items:center;gap:8px}
+.back-strip a{color:var(--text-d);font:500 10px var(--mono)}
+.back-strip a:hover{color:var(--text-s);text-decoration:none}
+
+.snapshot-note{background:var(--surface);border:1px dashed var(--border);border-radius:8px;padding:8px 12px;font-size:11px;color:var(--text-d);line-height:1.5;margin-bottom:14px}
+
+@media(max-width:760px){
+  .archive-wrap{flex-direction:column;padding:12px}
+  .archive-rail{width:100%;position:static}
+  .date-list{flex-direction:row;overflow-x:auto;overflow-y:hidden;max-height:none;padding-bottom:6px}
+  .date-item{flex-shrink:0;width:auto;min-width:130px}
+}
+</style>
+<style id="global-mobile-fix">
+@media(max-width:640px){
+  *{max-width:100%;box-sizing:border-box}
+  img,video,iframe{max-width:100%!important}
+  [style*="grid-template-columns:1fr 1fr"],[style*="grid-template-columns: 1fr 1fr"]{grid-template-columns:1fr!important}
+  [style*="grid-template-columns:repeat(3"],[style*="grid-template-columns: repeat(3"]{grid-template-columns:1fr 1fr!important}
+  [style*="grid-template-columns:repeat(4"],[style*="grid-template-columns: repeat(4"]{grid-template-columns:1fr 1fr!important}
+  .an-stats,.stat-grid,.stats-grid,.score-grid{grid-template-columns:repeat(2,1fr)!important}
+  .content{padding:12px!important}
+}
+</style>
+</head>
+<body>
+
+<div class="back-strip">
+  <a href="/brief/">&larr; back to today's brief</a>
+  <span style="color:var(--border-hi)">/</span>
+  <span>Brief Archive</span>
+  <span id="archive-range" style="margin-left:auto"></span>
+</div>
+
+<div class="archive-wrap">
+  <div class="archive-rail">
+    <input type="text" id="arch-search" class="rail-search" placeholder="Search briefs..." autocomplete="off">
+    <div class="rail-label">Available briefs</div>
+    <div id="date-list" class="date-list">
+      <div class="rail-empty">Loading&hellip;</div>
+    </div>
+  </div>
+  <div class="archive-main">
+    <div id="archive-panel">
+      <div class="loading">Loading brief archive&hellip;</div>
+    </div>
+  </div>
+</div>
+
+<script>
+// ── PIE Brief Archive — ES5, self-contained ────────────────────────────
+function esc(s){ return String(s==null?'':s).replace(/[&<>"']/g, function(c){ return ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'})[c]; }); }
+function safeHref(u){ u = String(u==null?'':u).trim(); return /^https?:\/\//i.test(u) ? esc(u) : ''; }
+
+var MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+function fmtDate(iso){
+  var m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(String(iso||''));
+  if(!m) return esc(iso);
+  return MONTHS[parseInt(m[2],10)-1] + ' ' + parseInt(m[3],10) + ', ' + m[1];
+}
+
+function pctColor(p){
+  if (p >= 0.8) return 'var(--red)';
+  if (p >= 0.65) return 'var(--amber)';
+  return 'var(--text-s)';
+}
+
+function renderSources(sources){
+  if(!sources || !sources.length) return '';
+  var chips = '';
+  for(var i=0;i<sources.length;i++){
+    var s = sources[i] || {};
+    var cls = s.type === 'primary' ? 'primary' : s.type === 'reporting' ? 'reporting' : '';
+    var icon = s.type === 'primary' ? '&#11044;' : s.type === 'reporting' ? '&#8599;' : '&#9672;';
+    var href = s.url ? safeHref(s.url) : '';
+    if(href){
+      chips += '<a href="'+href+'" target="_blank" rel="noopener" class="source-chip '+cls+'">'+icon+' '+esc(s.name)+'</a>';
+    } else {
+      chips += '<span class="source-chip '+cls+'">'+icon+' '+esc(s.name)+'</span>';
+    }
+  }
+  return '<div class="sources"><span class="sources-label">Sources</span>'+chips+'</div>';
+}
+
+// ── Full narrative brief renderer (adapted from brief.html) ────────────
+function renderFullBrief(b){
+  var sig = b.signal_summary || {};
+  var lead = b.lead_story || {};
+  var html = '';
+  var i;
+
+  html += '<div class="signal-bar">'
+    + '<div class="signal-stat critical"><span class="num">'+esc(sig.critical||0)+'</span><span class="lbl">Critical</span></div>'
+    + '<div class="signal-stat warning"><span class="num">'+esc(sig.warning||0)+'</span><span class="lbl">Warning</span></div>'
+    + '<div class="signal-stat new"><span class="num">'+esc(sig.new_today||0)+'</span><span class="lbl">New</span></div>'
+    + '<div class="signal-stat"><span class="num">'+esc(sig.total_flags||0)+'</span><span class="lbl">Flags</span></div>'
+    + '</div>'
+    + '<div class="concern-bar"><div class="dot"></div>'+esc(sig.top_concern||'')+'</div>';
+
+  html += '<div class="headline">'+esc(b.headline||'')+'</div>';
+
+  html += '<div class="section-label">&#128308; Lead Story</div>'
+    + '<div class="brief-card lead">'
+    + '<div class="card-header"><span class="sev sev-critical"></span><span class="card-title">'+esc(lead.title||'')+'</span></div>'
+    + '<div class="card-body">'+esc(lead.body||'')+'</div>'
+    + '<div class="action-box"><div class="action-label">&rarr; Action</div><div class="action-text">'+esc(lead.action||'')+'</div></div>'
+    + renderSources(lead.sources)
+    + '</div>';
+
+  var gz = b.gray_zone || [];
+  html += '<div class="section-label">&#9888; Gray Zone Entities</div>';
+  for(i=0;i<gz.length;i++){
+    var e = gz[i] || {};
+    html += '<div class="brief-card entity">'
+      + '<div class="card-header"><span class="sev sev-warning"></span><span class="card-title">'+esc(e.entity||'')+'</span></div>'
+      + '<div class="entity-status">'+esc(e.status||'')+'</div>'
+      + '<div class="card-body">'+esc(e.development||'')+'</div>'
+      + '<div class="entity-exposure"><strong>Buyer exposure:</strong> '+esc(e.buyer_exposure||'')+'</div>'
+      + '<div class="action-box"><div class="action-label">&rarr; Action</div><div class="action-text">'+esc(e.action||'')+'</div></div>'
+      + renderSources(e.sources)
+      + '</div>';
+  }
+
+  var sc = b.supply_chain || [];
+  html += '<div class="section-label">&#128297; Supply Chain Signals</div>';
+  for(i=0;i<sc.length;i++){
+    var s = sc[i] || {};
+    html += '<div class="brief-card supply">'
+      + '<div class="card-header"><span class="sev sev-info"></span><span class="card-title">'+esc(s.component||'')+'</span>'
+      + '<span class="supply-window">&#9201; '+esc(s.window||'')+'</span></div>'
+      + '<div class="supply-signal">'+esc(s.signal||'')+'</div>'
+      + '<div class="action-box"><div class="action-label">&rarr; Action</div><div class="action-text">'+esc(s.action||'')+'</div></div>'
+      + renderSources(s.sources)
+      + '</div>';
+  }
+
+  var wl = b.watch_list || [];
+  html += '<div class="section-label">&#128065; Watch List</div><div class="watch-list">';
+  for(i=0;i<wl.length;i++){
+    var w = wl[i] || {};
+    html += '<div class="watch-item"><div class="watch-dot"></div><div>'
+      + '<div class="watch-label">'+esc(w.item||'')+'</div>'
+      + '<div class="watch-why">'+esc(w.why||'')+'</div>'
+      + '<div class="watch-trigger"><strong>Trigger:</strong> '+esc(w.trigger||'')+'</div>'
+      + '</div></div>';
+  }
+  html += '</div>';
+
+  var preds = b.predictions || [];
+  html += '<div class="section-label">&#128302; Predictions &amp; Hedges</div>';
+  for(i=0;i<preds.length;i++){
+    var p = preds[i] || {};
+    var pct = Math.round((p.probability||0)*100);
+    html += '<div class="brief-card pred">'
+      + '<div class="pred-prob"><span class="pct" style="color:'+pctColor(p.probability||0)+'">'+pct+'%</span><span class="pct-lbl">prob</span></div>'
+      + '<div class="pred-body">'
+      + '<div class="pred-event">'+esc(p.event||'')+'</div>'
+      + '<div class="pred-timeframe"><span class="badge badge-purple">'+esc(p.timeframe||'')+'</span></div>'
+      + '<div class="hedge-box"><div class="hedge-label">&#9678; Hedge</div><div class="hedge-text">'+esc(p.hedge||'')+'</div></div>'
+      + '</div></div>';
+  }
+
+  var gen = '';
+  if(b.generated_at){ try { gen = new Date(b.generated_at).toLocaleString(); } catch(err){ gen = ''; } }
+  html += '<div class="brief-footer">'+esc(b.pipeline_version||'PIE v1.0')+' &middot; Generated '+esc(gen)+'</div>';
+  return html;
+}
+
+// ── Historical snapshot renderer (real history schema: date/critical/warning/total/flag_ids/flag_severities) ──
+var SEV_ORDER = ['critical','high','warning','info'];
+var SEV_COLORS = {critical:'var(--red)', high:'var(--orange)', warning:'var(--warning)', info:'var(--blue)', other:'var(--text-d)'};
+
+function countSeverities(sevMap){
+  var counts = {critical:0, high:0, warning:0, info:0, other:0};
+  if(sevMap){
+    for(var id in sevMap){
+      if(Object.prototype.hasOwnProperty.call(sevMap, id)){
+        var sv = String(sevMap[id]||'').toLowerCase();
+        if(counts.hasOwnProperty(sv) && sv !== 'other'){ counts[sv]++; } else { counts.other++; }
+      }
+    }
+  }
+  return counts;
+}
+
+function flagChips(ids, sevMap, cap){
+  if(!ids || !ids.length) return '<div class="card-body" style="margin-bottom:0">None</div>';
+  cap = cap || 24;
+  var html = '<div class="flag-chips">';
+  var n = Math.min(ids.length, cap);
+  for(var i=0;i<n;i++){
+    var sv = String((sevMap && sevMap[ids[i]]) || '').toLowerCase();
+    var cls = sv === 'critical' ? ' crit' : (sv === 'warning' || sv === 'high') ? ' warn' : '';
+    html += '<span class="flag-chip'+cls+'">'+esc(ids[i])+'</span>';
+  }
+  if(ids.length > cap) html += '<span class="flag-chip more">+'+(ids.length-cap)+' more</span>';
+  html += '</div>';
+  return html;
+}
+
+function renderSnapshot(entry){
+  var d = entry.day;
+  var counts = countSeverities(d.flag_severities);
+  var infoCount = counts.info + counts.other;
+  var html = '';
+
+  html += '<div class="signal-bar">'
+    + '<div class="signal-stat critical"><span class="num">'+esc(d.critical||0)+'</span><span class="lbl">Critical</span></div>'
+    + '<div class="signal-stat warning"><span class="num">'+esc(d.warning||0)+'</span><span class="lbl">Warning</span></div>'
+    + '<div class="signal-stat"><span class="num">'+esc(infoCount)+'</span><span class="lbl">Info</span></div>'
+    + '<div class="signal-stat"><span class="num">'+esc(d.total||0)+'</span><span class="lbl">Flags</span></div>'
+    + '</div>';
+
+  html += '<div class="headline">Flag-level snapshot for '+esc(fmtDate(d.date))+' &mdash; '
+    + esc(d.critical||0)+' critical and '+esc(d.warning||0)+' warning signals across '+esc(d.total||0)+' tracked flags.</div>';
+
+  html += '<div class="snapshot-note">Full narrative briefs are retained for the current day only. '
+    + 'Historical entries preserve the day\'s flag-level state: severity mix and flag churn vs the prior day. '
+    + 'See <a href="/brief/">today\'s brief</a> for the current narrative, or <a href="/patterns/">Flags</a> for live flag detail.</div>';
+
+  // Severity breakdown
+  html += '<div class="section-label">&#128202; Severity Breakdown</div><div class="sev-rows">';
+  var total = Math.max(1, d.total || 0);
+  for(var i=0;i<SEV_ORDER.length;i++){
+    var sv = SEV_ORDER[i];
+    var c = counts[sv];
+    var pct = Math.round((c/total)*100);
+    html += '<div class="sev-row">'
+      + '<span class="sev-name" style="color:'+SEV_COLORS[sv]+'">'+esc(sv)+'</span>'
+      + '<div class="sev-track"><div class="sev-fill" style="width:'+pct+'%;background:'+SEV_COLORS[sv]+'"></div></div>'
+      + '<span class="sev-count">'+c+'</span>'
+      + '</div>';
+  }
+  if(counts.other > 0){
+    var pctO = Math.round((counts.other/total)*100);
+    html += '<div class="sev-row">'
+      + '<span class="sev-name" style="color:'+SEV_COLORS.other+'">other</span>'
+      + '<div class="sev-track"><div class="sev-fill" style="width:'+pctO+'%;background:'+SEV_COLORS.other+'"></div></div>'
+      + '<span class="sev-count">'+counts.other+'</span>'
+      + '</div>';
+  }
+  html += '</div>';
+
+  // Day-over-day churn
+  html += '<div class="section-label">&#128260; Change vs Prior Day</div>';
+  if(entry.delta){
+    html += '<div class="brief-card delta-new">'
+      + '<div class="card-header"><span class="sev sev-info" style="background:var(--green);box-shadow:0 0 6px #22c55e55"></span>'
+      + '<span class="card-title">New flags</span><span class="badge badge-green">+'+entry.delta.added.length+'</span></div>'
+      + flagChips(entry.delta.added, d.flag_severities, 24)
+      + '</div>';
+    html += '<div class="brief-card delta-resolved">'
+      + '<div class="card-header"><span class="sev" style="background:var(--purple);box-shadow:0 0 6px #a78bfa55"></span>'
+      + '<span class="card-title">Dropped / resolved flags</span><span class="badge badge-purple">&minus;'+entry.delta.removed.length+'</span></div>'
+      + flagChips(entry.delta.removed, entry.delta.prevSeverities, 24)
+      + '</div>';
+  } else {
+    html += '<div class="brief-card"><div class="card-body" style="margin-bottom:0">Earliest day in the archive &mdash; no prior day to compare against.</div></div>';
+  }
+
+  html += '<div class="brief-footer">PIE archive snapshot &middot; '+esc(d.date)+'</div>';
+  return html;
+}
+
+// ── Data plumbing ───────────────────────────────────────────────────────
+function unwrap(e){ return (e && e.data !== undefined) ? e.data : e; }
+
+function fetchType(type, fallbackPath){
+  return fetch('/api/data?type='+encodeURIComponent(type))
+    .then(function(r){ if(!r.ok) throw new Error('HTTP '+r.status); return r.json(); })
+    .then(unwrap)
+    .then(function(d){ if(d==null) throw new Error('empty'); return d; })
+    .catch(function(){
+      if(!fallbackPath) return null;
+      return fetch(fallbackPath)
+        .then(function(r){ if(!r.ok) throw new Error('HTTP '+r.status); return r.json(); })
+        .then(unwrap)
+        .catch(function(){ return null; });
+    });
+}
+
+// Search blob builders
+function briefBlob(b){
+  var parts = [b.date||'', b.headline||''];
+  var lead = b.lead_story || {};
+  parts.push(lead.title||'', lead.body||'', lead.action||'');
+  var i, arr;
+  arr = b.gray_zone || [];
+  for(i=0;i<arr.length;i++){ parts.push(arr[i].entity||'', arr[i].status||'', arr[i].development||'', arr[i].buyer_exposure||''); }
+  arr = b.supply_chain || [];
+  for(i=0;i<arr.length;i++){ parts.push(arr[i].component||'', arr[i].signal||''); }
+  arr = b.watch_list || [];
+  for(i=0;i<arr.length;i++){ parts.push(arr[i].item||'', arr[i].why||'', arr[i].trigger||''); }
+  arr = b.predictions || [];
+  for(i=0;i<arr.length;i++){ parts.push(arr[i].event||'', arr[i].hedge||''); }
+  var sig = b.signal_summary || {};
+  parts.push(sig.top_concern||'');
+  return parts.join(' ').toLowerCase();
+}
+function dayBlob(d){
+  return (String(d.date||'') + ' ' + (d.flag_ids||[]).join(' ')).toLowerCase();
+}
+
+var ENTRIES = [];   // [{date, kind:'today'|'history', brief?, day?, delta?, blob, sub}]
+var SELECTED = null;
+
+function buildEntries(brief, history){
+  var entries = [];
+  var days = (history && history.days) ? history.days.slice() : [];
+  // sort ascending for delta computation
+  days.sort(function(a,b){ return String(a.date||'') < String(b.date||'') ? -1 : 1; });
+
+  var briefDate = brief && brief.date ? String(brief.date) : null;
+
+  var byDate = {};
+  var i;
+  for(i=0;i<days.length;i++){
+    var d = days[i];
+    if(!d || !d.date) continue;
+    var delta = null;
+    if(i > 0 && days[i-1] && days[i-1].flag_ids){
+      var prev = days[i-1];
+      var prevSet = {}, curSet = {}, j;
+      var pids = prev.flag_ids || [], cids = d.flag_ids || [];
+      for(j=0;j<pids.length;j++) prevSet[pids[j]] = 1;
+      for(j=0;j<cids.length;j++) curSet[cids[j]] = 1;
+      var added = [], removed = [];
+      for(j=0;j<cids.length;j++){ if(!prevSet[cids[j]] && curSet[cids[j]] !== 2){ added.push(cids[j]); curSet[cids[j]] = 2; } }
+      var seen = {};
+      for(j=0;j<pids.length;j++){ if(!curSet[pids[j]] && !seen[pids[j]]){ removed.push(pids[j]); seen[pids[j]] = 1; } }
+      delta = { added: added, removed: removed, prevSeverities: prev.flag_severities || {} };
+    }
+    byDate[String(d.date)] = {
+      date: String(d.date), kind: 'history', day: d, delta: delta,
+      blob: dayBlob(d),
+      sub: (d.critical||0)+' crit &middot; '+(d.warning||0)+' warn &middot; '+(d.total||0)+' flags'
+    };
+  }
+
+  // Today's brief entry (pinned first). If same date exists in history, the narrative wins.
+  if(briefDate){
+    var sig = brief.signal_summary || {};
+    entries.push({
+      date: briefDate, kind: 'today', brief: brief,
+      blob: briefBlob(brief),
+      sub: (sig.critical||0)+' crit &middot; '+(sig.warning||0)+' warn &middot; '+(sig.total_flags||0)+' flags'
+    });
+    delete byDate[briefDate];
+  }
+
+  // History entries, newest first
+  var histDates = [];
+  for(var k in byDate){ if(Object.prototype.hasOwnProperty.call(byDate,k)) histDates.push(k); }
+  histDates.sort();
+  histDates.reverse();
+  for(i=0;i<histDates.length;i++) entries.push(byDate[histDates[i]]);
+
+  return entries;
+}
+
+// ── Rail + panel rendering ──────────────────────────────────────────────
+function renderRail(filterQ){
+  var list = document.getElementById('date-list');
+  var q = String(filterQ||'').toLowerCase();
+  var html = '';
+  var shown = 0;
+  for(var i=0;i<ENTRIES.length;i++){
+    var en = ENTRIES[i];
+    if(q && en.blob.indexOf(q) === -1) continue;
+    shown++;
+    var badge = en.kind === 'today' ? ' <span class="badge badge-green">today</span>' : '';
+    html += '<button type="button" class="date-item'+(SELECTED === en.date ? ' active' : '')+'" data-date="'+esc(en.date)+'">'
+      + '<span class="di-date">'+esc(fmtDate(en.date))+badge+'</span>'
+      + '<span class="di-sub">'+en.sub+'</span>'
+      + '</button>';
+  }
+  if(!shown){
+    html = '<div class="rail-empty">'+(q ? 'No briefs match &ldquo;'+esc(filterQ)+'&rdquo;' : 'No briefs available yet')+'</div>';
+  }
+  list.innerHTML = html;
+}
+
+function selectDate(date, skipUrl){
+  var entry = null;
+  for(var i=0;i<ENTRIES.length;i++){ if(ENTRIES[i].date === date){ entry = ENTRIES[i]; break; } }
+  if(!entry) return false;
+  SELECTED = entry.date;
+  var panel = document.getElementById('archive-panel');
+  panel.innerHTML = entry.kind === 'today' ? renderFullBrief(entry.brief) : renderSnapshot(entry);
+  if(!skipUrl){
+    try { history.replaceState(null, '', location.pathname + '?d=' + encodeURIComponent(entry.date)); } catch(e){}
+  }
+  // refresh active highlight without re-filtering
+  var items = document.querySelectorAll('.date-item');
+  for(var j=0;j<items.length;j++){
+    if(items[j].getAttribute('data-date') === entry.date){ items[j].className = 'date-item active'; }
+    else { items[j].className = 'date-item'; }
+  }
+  return true;
+}
+
+function showEmptyState(){
+  document.getElementById('date-list').innerHTML = '<div class="rail-empty">No briefs available yet</div>';
+  document.getElementById('archive-panel').innerHTML = '<div class="no-brief">'
+    + '<strong>Archive is empty</strong>'
+    + '<p>The PIE pipeline generates a fresh brief daily at 14:30 UTC, and each day\'s flag snapshot '
+    + 'is appended to this archive as it runs.<br><br>'
+    + 'Check back tomorrow, or view <a href="/brief/">today\'s brief</a>.</p>'
+    + '</div>';
+}
+
+function init(){
+  Promise.all([
+    fetchType('pie_brief', '/pie_brief.json'),
+    fetchType('pie_brief_history', '/pie_brief_history.json')
+  ]).then(function(res){
+    var brief = res[0], history = res[1];
+    ENTRIES = buildEntries(brief, history);
+
+    if(!ENTRIES.length){ showEmptyState(); return; }
+
+    // Archive range in top strip
+    var newest = ENTRIES[0].date, oldest = ENTRIES[ENTRIES.length-1].date;
+    var rangeEl = document.getElementById('archive-range');
+    if(rangeEl) rangeEl.textContent = ENTRIES.length + ' briefs · ' + oldest + ' → ' + newest;
+
+    renderRail('');
+
+    // Deep-link ?d=YYYY-MM-DD
+    var want = null;
+    var m = /[?&]d=(\d{4}-\d{2}-\d{2})/.exec(location.search);
+    if(m) want = m[1];
+    if(!want || !selectDate(want, true)) selectDate(ENTRIES[0].date, true);
+
+    // Rail clicks (delegated)
+    document.getElementById('date-list').addEventListener('click', function(ev){
+      var t = ev.target;
+      while(t && t !== this && !(t.getAttribute && t.getAttribute('data-date'))) t = t.parentNode;
+      if(t && t.getAttribute && t.getAttribute('data-date')) selectDate(t.getAttribute('data-date'));
+    });
+
+    // Search
+    document.getElementById('arch-search').addEventListener('input', function(){
+      renderRail(this.value);
+    });
+  }).catch(function(err){
+    document.getElementById('archive-panel').innerHTML = '<div class="no-brief">'
+      + '<strong>Could not load the archive</strong>'
+      + '<p>The brief history feed is unavailable right now.<br>'
+      + 'Try <a href="/brief/">today\'s brief</a> instead.<br><br>'
+      + '<span style="font-family:var(--mono);font-size:10px;color:var(--text-xd)">'+esc(err && err.message)+'</span></p>'
+      + '</div>';
+    document.getElementById('date-list').innerHTML = '<div class="rail-empty">Unavailable</div>';
+  });
+}
+
+init();
+</script>
+
+<div style="padding:16px 16px 24px;font:400 10px 'JetBrains Mono',monospace;letter-spacing:.04em;border-top:1px solid #1a1a14;">
+  <a href="/patterns-home/" style="color:#6b6358;text-decoration:none;transition:color .15s" onmouseover="this.style.color='#b8b0a0'" onmouseout="this.style.color='#6b6358'">uas-patterns.com</a><span style="color:#3e3e34;margin:0 6px">/</span><a href="/brief/" style="color:#6b6358;text-decoration:none;transition:color .15s" onmouseover="this.style.color='#b8b0a0'" onmouseout="this.style.color='#6b6358'">Daily Brief</a><span style="color:#3e3e34;margin:0 6px">/</span><span style="color:#b8b0a0">Brief Archive</span>
+</div>
+<!-- Analytics + unified nav injected by build_static.py -->
+</body>
+</html>

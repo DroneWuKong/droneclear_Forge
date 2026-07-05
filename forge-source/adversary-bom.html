@@ -88,6 +88,26 @@ h1{font:700 24px var(--mono);color:#22c55e;letter-spacing:-0.02em;margin-bottom:
 .tag.weapon{background:var(--amber-d);color:var(--amber);border-color:rgba(245,158,11,.3)}
 .lev-x{font:700 12px var(--mono);color:var(--amber);flex-shrink:0}
 
+/* Substitute finder */
+.lev-wrap{display:flex;flex-direction:column}
+.alt-chip{font:600 9px var(--mono);text-transform:uppercase;letter-spacing:.05em;padding:2px 7px;border-radius:3px;background:var(--blue-d);color:var(--blue);border:1px solid rgba(59,130,246,.3);cursor:pointer;display:inline-flex;align-items:center;gap:4px;transition:border-color .15s}
+.alt-chip:hover{border-color:var(--blue)}
+.alt-chip.nw{background:var(--red-d);color:var(--red);border-color:rgba(239,68,68,.3)}
+.alt-chip.nw:hover{border-color:var(--red)}
+.alt-caret{font-style:normal;display:inline-block;transition:transform .15s}
+.alt-chip.open .alt-caret{transform:rotate(180deg)}
+.alt-panel{display:none;margin:4px 0 2px 36px;background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:10px 12px}
+.alt-panel.open{display:block}
+.alt-head{font:600 9px var(--mono);text-transform:uppercase;letter-spacing:.07em;color:var(--text-d);margin-bottom:4px}
+.alt-row{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:5px 0 5px 6px;border-top:1px dashed var(--border);flex-wrap:wrap;border-left:2px solid transparent}
+.alt-row.nw{border-left-color:var(--red);background:rgba(239,68,68,.05)}
+.alt-main{flex:1;min-width:0}
+.alt-name{font:600 12px var(--font);color:var(--text)}
+.alt-mfr{font:500 10px var(--font);color:var(--text-d);margin-left:6px}
+.alt-pills{display:flex;gap:4px;flex-wrap:wrap}
+.alt-summary{background:var(--card);border:1px solid var(--border);border-left:3px solid var(--red);border-radius:6px;padding:8px 12px;font:500 11px var(--font);color:var(--text-s);margin-bottom:2px}
+.alt-summary b{color:var(--red);font:700 11px var(--mono)}
+
 /* Per-weapon cards */
 .weapons{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:12px}
 .wcard{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:14px}
@@ -118,6 +138,7 @@ h1{font:700 24px var(--mono);color:#22c55e;letter-spacing:-0.02em;margin-bottom:
   h1{font-size:20px}
   .lev{padding:10px}
   .lev-bar{width:36px}
+  .alt-panel{margin-left:8px}
   .weapons{grid-template-columns:1fr}
 }
 </style>
@@ -222,25 +243,175 @@ document.querySelectorAll('.tab').forEach(function(t){
 function esc(s){ return String(s==null?'':s).replace(/[&<>"']/g, function(c){ return ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'})[c]; }); }
 function fmtAlign(a){ return '<span class="tag '+esc(a)+'">'+esc(a)+'</span>'; }
 
+/* ── Substitute finder ─────────────────────────────────────────────
+   "If we restrict it, what would they use instead?"
+   Joins the ranked levers against forge_alternatives.json. The join key is a
+   normalized contains-match: category keyword sets (below) are tested against
+   the lowercased lever `component + manufacturer` text. Heuristic, like the
+   rest of this page. If the alternatives file fails to load or nothing
+   matches, none of this renders. */
+var altIndex = null;   // {category: [option, ...]} from forge_alternatives.json
+var leversData = null; // last levers array, so alternatives can re-render late
+
+var ALT_CAT_RULES = {
+  gps_modules:              ['gnss','gps'],
+  companion_computers:      ['microcomputer','single-board computer','single board computer','companion computer','raspberry','jetson'],
+  flight_controllers_7inch: ['flight controller','autopilot'],
+  hd_vtx_air_units:         ['video transmitter','vtx','air unit'],
+  rc_long_range_link:       ['rc link','rc receiver','radio control receiver','remote control receiver','expresslrs','crossfire'],
+  esc_4in1_60a:             ['electronic speed controller'],
+  motors_7inch:             ['motor'],
+  datalinks_mesh_defense:   ['datalink','data link','mesh radio','mesh network'],
+  fpv_cameras_analog:       ['camera']
+};
+var ALT_CAT_LABELS = {
+  gps_modules:'GPS modules', companion_computers:'companion computers',
+  flight_controllers_7inch:'flight controllers', hd_vtx_air_units:'HD VTX air units',
+  rc_long_range_link:'RC links', esc_4in1_60a:'ESCs', motors_7inch:'motors',
+  datalinks_mesh_defense:'datalinks / mesh', fpv_cameras_analog:'FPV cameras'
+};
+/* forge_alternatives.json options carry no manufacturer/country fields —
+   derive both from the brand embedded in the option name. */
+var ALT_BRANDS = [
+  ['raspberry pi','Raspberry Pi Ltd','United Kingdom'],
+  ['radxa','Radxa','China'],
+  ['pine64','Pine64','China'],
+  ['nvidia','NVIDIA','United States'],
+  ['modalai','ModalAI','United States'],
+  ['dji','DJI','China'],
+  ['walksnail','Walksnail (Caddx)','China'],
+  ['hdzero','HDZero (Divimath)','China'],
+  ['orqa','ORQA','Croatia'],
+  ['ghost rc','ORQA / ImmersionRC','Croatia'],
+  ['t-motor','T-Motor','China'],
+  ['brotherhobby','BrotherHobby','China'],
+  ['iflight','iFlight','China'],
+  ['emax','EMAX','China'],
+  ['matek','Matek Systems','China'],
+  ['speedybee','SpeedyBee','China'],
+  ['holybro','Holybro','China'],
+  ['ark electronics','ARK Electronics','United States'],
+  ['cubepilot','CubePilot','Australia'],
+  ['expresslrs','ExpressLRS (open-source)','Vendor-dependent'],
+  ['tbs','Team BlackSheep','China'],
+  ['doodle labs','Doodle Labs','United States'],
+  ['silvus','Silvus Technologies','United States'],
+  ['microhard','Microhard','Canada'],
+  ['rajant','Rajant','United States'],
+  ['foxeer','Foxeer','China'],
+  ['runcam','RunCam','China'],
+  ['caddx','Caddx','China']
+];
+
+function altBrand(name){
+  var t = String(name||'').toLowerCase();
+  for(var i=0;i<ALT_BRANDS.length;i++){
+    if(t.indexOf(ALT_BRANDS[i][0]) !== -1) return { mfr: ALT_BRANDS[i][1], country: ALT_BRANDS[i][2] };
+  }
+  return { mfr:'', country:'' };
+}
+/* The analytically important case: a restriction is less effective when a
+   China/Russia-origin (or NDAA-noncompliant / FCC-covered) substitute exists. */
+function altIsNonWestern(o){
+  var c = altBrand(o.name).country;
+  return c === 'China' || c === 'Russia' || o.ndaa_compliant === false || o.fcc_covered === true;
+}
+
+function buildAltIndex(json){
+  var cats = json && json.categories;
+  if(!cats) return null;
+  var idx = {}, any = false;
+  for(var c in cats){ if(Object.prototype.hasOwnProperty.call(cats, c)){
+    var opts = (cats[c] && cats[c].options) || {}, list = [];
+    for(var k in opts){ if(Object.prototype.hasOwnProperty.call(opts, k)){
+      if(opts[k] && opts[k].name) list.push(opts[k]);
+    }}
+    if(list.length){ idx[c] = list; any = true; }
+  }}
+  return any ? idx : null;
+}
+
+function matchAlts(l){
+  var t = ((l.component||'')+' '+(l.manufacturer||'')).toLowerCase();
+  var options = [], labels = [];
+  for(var cat in ALT_CAT_RULES){ if(Object.prototype.hasOwnProperty.call(ALT_CAT_RULES, cat) && altIndex[cat]){
+    var kws = ALT_CAT_RULES[cat], hit = false;
+    for(var i=0;i<kws.length;i++){ if(t.indexOf(kws[i]) !== -1){ hit = true; break; } }
+    if(cat === 'motors_7inch' && hit && (t.indexOf('motor driver') !== -1 || t.indexOf('motor controller') !== -1 || t.indexOf('motorola') !== -1)) hit = false;
+    if(hit){ options = options.concat(altIndex[cat]); labels.push(ALT_CAT_LABELS[cat] || cat); }
+  }}
+  return { options: options, labels: labels };
+}
+
+function renderAltRow(o){
+  var b = altBrand(o.name);
+  var nw = altIsNonWestern(o);
+  var pills = '';
+  if(nw) pills += '<span class="tag adversary">non-Western substitute</span>';
+  if(o.ndaa_compliant === true) pills += '<span class="tag western">NDAA</span>';
+  else if(o.ndaa_compliant === false) pills += '<span class="tag adversary">non-NDAA</span>';
+  else if(typeof o.ndaa_compliant === 'string') pills += '<span class="tag weapon">NDAA: '+esc(o.ndaa_compliant)+'</span>';
+  if(o.fcc_covered === true) pills += '<span class="tag adversary">FCC covered</span>';
+  if(o.status && o.status !== 'active') pills += '<span class="tag">'+esc(o.status)+'</span>';
+  return '<div class="alt-row'+(nw?' nw':'')+'">'+
+    '<div class="alt-main"><span class="alt-name">'+esc(o.name)+'</span>'+
+      (b.mfr ? '<span class="alt-mfr">'+esc(b.mfr)+(b.country?(' · '+esc(b.country)):'')+'</span>' : '')+
+    '</div>'+
+    '<div class="alt-pills">'+pills+'</div>'+
+  '</div>';
+}
+
+window.altToggle = function(i, ev){
+  if(ev && ev.stopPropagation) ev.stopPropagation();
+  var p = document.getElementById('alt-panel-'+i);
+  var c = document.getElementById('alt-chip-'+i);
+  if(!p) return;
+  var open = p.className.indexOf('open') === -1;
+  p.className = open ? 'alt-panel open' : 'alt-panel';
+  if(c) c.className = c.className.replace(/ ?\bopen\b/,'') + (open ? ' open' : '');
+};
+
 function renderLevers(levers){
   var box = document.getElementById('levers-list');
   if(!levers || !levers.length){ box.innerHTML = '<div class="empty">No levers above the score threshold.</div>'; return; }
   var max = levers[0].leverage_score || 1;
-  box.innerHTML = levers.map(function(l, i){
+  var matchedCount = 0, nwCount = 0;
+  var rows = levers.map(function(l, i){
     var pct = Math.max(4, Math.round((l.leverage_score / max) * 100));
     var weapons = (l.weapons||[]).slice(0,3).map(function(w){ return '<span class="tag weapon">'+esc(w.weapon)+' ×'+esc(w.count)+'</span>'; }).join('');
-    return '<div class="lev">'+
+    var chip = '', panel = '';
+    if(altIndex){
+      var m = matchAlts(l);
+      if(m.options.length){
+        matchedCount++;
+        var nw = m.options.filter(altIsNonWestern);
+        if(nw.length) nwCount++;
+        chip = ' <span class="alt-chip'+(nw.length?' nw':'')+'" id="alt-chip-'+i+'" onclick="altToggle('+i+',event)">'+
+          esc(m.options.length)+' known alternative'+(m.options.length===1?'':'s')+
+          (nw.length?(' · '+esc(nw.length)+' non-Western'):'')+' <i class="alt-caret">▾</i></span>';
+        panel = '<div class="alt-panel" id="alt-panel-'+i+'">'+
+          '<div class="alt-head">If restricted, known substitutes — '+esc(m.labels.join(', '))+'</div>'+
+          m.options.map(renderAltRow).join('')+
+        '</div>';
+      }
+    }
+    return '<div class="lev-wrap"><div class="lev">'+
       '<div class="lev-rank">'+(i+1)+'</div>'+
       '<div class="lev-bar"><div class="lev-bar-track"><div class="lev-bar-fill" style="width:'+pct+'%"></div></div>'+
         '<span class="lev-bar-val">'+(l.leverage_score||0).toFixed(2)+'</span></div>'+
       '<div class="lev-body">'+
         '<div class="lev-title">'+esc(l.component||'—')+' '+fmtAlign(l.alignment||'unknown')+'</div>'+
         '<div class="lev-mfr">'+esc(l.manufacturer||'—')+(l.country?(' · '+esc(l.country)):'')+'</div>'+
-        '<div class="lev-tags">'+weapons+'</div>'+
+        '<div class="lev-tags">'+weapons+chip+'</div>'+
       '</div>'+
       '<div class="lev-x">×'+esc(l.appearances||0)+'</div>'+
-    '</div>';
+    '</div>'+panel+'</div>';
   }).join('');
+  var summary = '';
+  if(altIndex && matchedCount){
+    summary = '<div class="alt-summary"><b>'+esc(nwCount)+'</b> of <b>'+esc(levers.length)+'</b> ranked levers have known non-Western substitutes — restriction leverage is reduced for those components. Substitute data: <code style="font:500 10px var(--mono)">forge_alternatives.json</code> (heuristic category match).</div>';
+  }
+  box.innerHTML = summary + rows;
 }
 
 function renderWeapons(weapons){
@@ -281,13 +452,28 @@ fetch('/api/data?type=adversary_bom').then(function(r){ return r.ok ? r.json() :
   document.getElementById('s-western').textContent  = summary.western || 0;
   document.getElementById('s-adv').textContent      = summary.adversary || 0;
   document.getElementById('caveat').textContent     = (d.meta && d.meta.caveat) || '';
-  renderLevers(d.top_export_control_levers || []);
+  leversData = d.top_export_control_levers || [];
+  renderLevers(leversData);
   renderWeapons(d.per_weapon || []);
 }).catch(function(err){
   ['levers-list','weapons-list'].forEach(function(id){
     document.getElementById(id).innerHTML = '<div class="empty">Failed to load adversary_bom.json ('+err+'). Sync from the daily PIE pipeline must run first.</div>';
   });
 });
+
+/* Substitute finder data — non-blocking; page renders identically if this fails.
+   NOTE: build_static.py rewrites the fetch('forge_alternatives.json') literal
+   to the built /static/ path; the second fetch is a runtime fallback. */
+fetch('forge_alternatives.json')
+  .then(function(r){ return r.ok ? r.json() : Promise.reject(r.status); })
+  .catch(function(){
+    return fetch('/static/forge_alternatives.json').then(function(r){ return r.ok ? r.json() : Promise.reject(r.status); });
+  })
+  .then(function(json){
+    altIndex = buildAltIndex(json);
+    if(altIndex && leversData) renderLevers(leversData);
+  })
+  .catch(function(){ /* alternatives unavailable — feature stays invisible */ });
 </script>
 </body>
 </html>

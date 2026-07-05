@@ -1,0 +1,399 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PIE Search — uas-patterns</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://unpkg.com/@phosphor-icons/web"></script>
+<style>
+:root{
+  --bg:#0c0c0a;--surface:#141410;--card:#1c1c17;--card-hi:#242420;
+  --border:#2e2e26;--border-hi:#3e3e34;
+  --green:#22c55e;--green-d:rgba(34,197,94,.15);
+  --amber:#f59e0b;--amber-d:rgba(245,158,11,.15);
+  --red:#ef4444;--red-d:rgba(239,68,68,.15);
+  --blue:#3b82f6;--blue-d:rgba(59,130,246,.15);
+  --purple:#a78bfa;--purple-d:rgba(167,139,250,.15);
+  --text:#f5f0e8;--text-s:#b8b0a0;--text-d:#8a8070;--text-xd:#6b6358;
+  --font:'Inter',system-ui,sans-serif;--mono:'JetBrains Mono',monospace;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--bg);color:var(--text);font-family:var(--font);line-height:1.5;-webkit-font-smoothing:antialiased;min-height:100vh}
+a{text-decoration:none;color:inherit}
+
+.page{max-width:880px;margin:0 auto;padding:32px 24px 60px}
+.eyebrow{font:600 10px var(--mono);text-transform:uppercase;letter-spacing:.12em;color:var(--text-xd);margin-bottom:6px}
+h1{font:700 24px var(--mono);color:#22c55e;letter-spacing:-0.02em;margin-bottom:8px}
+.tagline{font-size:13px;color:var(--text-s);line-height:1.6;max-width:680px}
+.tagline code{font:500 11px var(--mono);background:var(--surface);padding:1px 5px;border-radius:3px;color:var(--text)}
+
+/* Search box */
+.searchbar{margin:22px 0 10px;position:relative}
+.searchbar i{position:absolute;left:14px;top:50%;transform:translateY(-50%);color:var(--text-d);font-size:16px;pointer-events:none}
+#q{width:100%;background:var(--card);border:1px solid var(--border);border-radius:10px;padding:13px 14px 13px 40px;font:500 14px var(--mono);color:var(--text);outline:none;transition:border-color .15s}
+#q::placeholder{color:var(--text-xd)}
+#q:focus{border-color:rgba(34,197,94,.5)}
+
+/* Filter chips */
+.chips{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:18px}
+.chip{font:600 10px var(--mono);text-transform:uppercase;letter-spacing:.06em;padding:5px 10px;border-radius:14px;background:var(--surface);color:var(--text-d);border:1px solid var(--border);cursor:pointer;transition:all .12s}
+.chip:hover{color:var(--text-s);border-color:var(--border-hi)}
+.chip.on{background:var(--green-d);color:var(--green);border-color:rgba(34,197,94,.4)}
+.chip .n{color:var(--text-xd);margin-left:4px}
+.chip.on .n{color:rgba(34,197,94,.7)}
+
+/* Index stats (pre-search empty state) */
+.stats{display:flex;gap:0;border:1px solid var(--border);border-radius:8px;overflow:hidden;margin:6px 0 20px}
+.st{flex:1;text-align:center;padding:12px 8px;border-right:1px solid var(--border)}
+.st:last-child{border-right:none}
+.st-n{font:700 18px var(--mono);color:var(--green);display:block;line-height:1}
+.st-l{font:500 9px var(--font);text-transform:uppercase;letter-spacing:.07em;color:var(--text-d);margin-top:4px;display:block}
+
+/* Result groups */
+.group-lbl{font:600 10px var(--mono);text-transform:uppercase;letter-spacing:.1em;color:var(--text-xd);margin:22px 0 8px;display:flex;align-items:center;gap:8px}
+.group-lbl::after{content:'';flex:1;height:1px;background:var(--border)}
+.count-badge{font:700 10px var(--mono);color:var(--green);background:var(--green-d);padding:1px 7px;border-radius:8px}
+
+.rrow{display:flex;align-items:baseline;gap:10px;padding:9px 12px;background:var(--card);border:1px solid var(--border);border-radius:8px;margin-bottom:5px;transition:all .12s}
+.rrow:hover{background:var(--card-hi);border-color:var(--border-hi)}
+.pill{font:600 9px var(--mono);text-transform:uppercase;letter-spacing:.05em;padding:2px 6px;border-radius:4px;flex-shrink:0;background:var(--surface);color:var(--text-d);border:1px solid var(--border)}
+.pill.flag{background:var(--amber-d);color:var(--amber);border-color:rgba(245,158,11,.3)}
+.pill.prediction{background:var(--purple-d);color:var(--purple);border-color:rgba(167,139,250,.3)}
+.pill.actor{background:var(--red-d);color:var(--red);border-color:rgba(239,68,68,.3)}
+.pill.entity{background:var(--blue-d);color:var(--blue);border-color:rgba(59,130,246,.3)}
+.pill.article{background:var(--green-d);color:var(--green);border-color:rgba(34,197,94,.3)}
+.rrow .body{flex:1;min-width:0}
+.rrow .lbl{font:600 12.5px var(--font);color:var(--text);display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.rrow:hover .lbl{color:#fff}
+.rrow .sub{font:500 10px var(--mono);color:var(--text-d);display:block;margin-top:1px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.rrow .sub .sev-critical{color:var(--red)}
+.rrow .sub .sev-high{color:var(--amber)}
+.rrow .sub .sev-warning{color:var(--amber)}
+.rrow .sub .sev-info{color:var(--blue)}
+.rrow .go{font:500 12px var(--mono);color:var(--text-xd);flex-shrink:0;align-self:center}
+.rrow:hover .go{color:var(--green)}
+
+.empty{padding:36px 14px;text-align:center;color:var(--text-d);font:500 12px var(--mono)}
+.empty .big{font-size:14px;color:var(--text-s);display:block;margin-bottom:4px}
+
+.footnote{margin-top:26px;font-size:11px;color:var(--text-xd);line-height:1.6}
+.footnote code{font:500 10px var(--mono);background:var(--surface);padding:1px 4px;border-radius:3px;color:var(--text-d)}
+.footnote .ok{color:var(--green)}
+.footnote .bad{color:var(--red)}
+
+@media(max-width:560px){
+  .stats{flex-wrap:wrap}
+  .st{flex-basis:33%;border-bottom:1px solid var(--border)}
+  .page{padding:20px 14px 40px}
+}
+</style>
+</head>
+<body>
+<main class="page">
+  <div class="eyebrow">uas-patterns · PIE intelligence</div>
+  <h1>PIE Search</h1>
+  <p class="tagline">
+    One box across everything the pipeline produces — <code>flags</code>, <code>predictions</code>,
+    <code>threat actors</code>, <code>entities</code>, and the <code>intel article</code> corpus.
+    Multi-term AND match, case-insensitive, indexed client-side on load.
+  </p>
+
+  <div class="searchbar">
+    <i class="ph ph-magnifying-glass"></i>
+    <input id="q" type="search" placeholder="Search flags, predictions, actors, entities, articles…" autofocus autocomplete="off" spellcheck="false">
+  </div>
+
+  <div class="chips" id="chips">
+    <button class="chip on" data-type="all">All</button>
+    <button class="chip" data-type="flag">Flags<span class="n" data-count="flag"></span></button>
+    <button class="chip" data-type="prediction">Predictions<span class="n" data-count="prediction"></span></button>
+    <button class="chip" data-type="actor">Actors<span class="n" data-count="actor"></span></button>
+    <button class="chip" data-type="entity">Entities<span class="n" data-count="entity"></span></button>
+    <button class="chip" data-type="article">Articles<span class="n" data-count="article"></span></button>
+  </div>
+
+  <div id="results"><div class="empty">Building index…</div></div>
+
+  <p class="footnote" id="foot">Source: <code>/api/data</code> — loading datasets…</p>
+</main>
+
+<script>
+function esc(s){ return String(s==null?'':s).replace(/[&<>"']/g, function(c){ return ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'})[c]; }); }
+
+// Only allow http/https URLs from data; anything else falls back.
+function safeUrl(u, fallback){
+  var s = String(u == null ? '' : u).trim();
+  if(/^https?:\/\//i.test(s)) return s;
+  return fallback;
+}
+
+var INDEX = [];                 // {type,label,sub,text,href,external}
+var LOADED = {};                // dataset name -> record count (or -1 = failed)
+var ACTIVE = 'all';
+var MAX_PER_TYPE = 50;
+
+var TYPE_META = {
+  flag:       {label:'Flags',       page:'/patterns/'},
+  prediction: {label:'Predictions', page:'/patterns/'},
+  actor:      {label:'Actors',      page:'/actors/'},
+  entity:     {label:'Entities',    page:'/entity-graph/'},
+  article:    {label:'Articles',    page:'/intel/'}
+};
+var TYPE_ORDER = ['flag','prediction','actor','entity','article'];
+
+// ── fetch helpers (same unwrap pattern as the other lens pages) ──────────────
+function getData(type){
+  return fetch('/api/data?type=' + type)
+    .then(function(r){ return r.ok ? r.json() : null; })
+    .then(function(e){ return e && e.data !== undefined ? e.data : e; })
+    .then(function(e){ return e && e.data !== undefined ? e.data : e; })
+    .catch(function(){ return null; });
+}
+// try primary type name; if empty, fall back to alternate
+function getEither(primary, alt){
+  return getData(primary).then(function(d){
+    if(d != null) return d;
+    return alt ? getData(alt) : null;
+  });
+}
+
+function day(s){ return String(s == null ? '' : s).slice(0, 10); }
+function pct(v){ return v == null || isNaN(v) ? '—' : Math.round(Number(v) * 100) + '%'; }
+
+// ── indexers: one per dataset, each returns number of records added ──────────
+function indexFlags(d){
+  var arr = Array.isArray(d) ? d : (d && Array.isArray(d.flags) ? d.flags : null);
+  if(!arr) return -1;
+  arr.forEach(function(f){
+    var sev = String(f.severity || '').toLowerCase();
+    var sub = '<span class="sev-' + esc(sev) + '">' + esc(sev || 'flag') + '</span>'
+      + (f.date ? ' · ' + esc(day(f.date)) : '')
+      + (f.entity ? ' · ' + esc(f.entity) : '')
+      + (f.category ? ' · ' + esc(f.category) : '');
+    INDEX.push({
+      type: 'flag',
+      label: f.title || f.id || 'Untitled flag',
+      sub: sub,
+      text: [f.title, f.id, f.entity, f.category, f.flag_type, f.severity, f.detail, f.prediction].join(' ').toLowerCase(),
+      href: '/patterns/'
+    });
+  });
+  return arr.length;
+}
+
+function indexPredictions(d){
+  var arr = Array.isArray(d) ? d : (d && Array.isArray(d.predictions) ? d.predictions : null);
+  if(!arr) return -1;
+  arr.forEach(function(p){
+    var sub = 'P=' + pct(p.probability)
+      + (p.impact ? ' · impact ' + esc(p.impact) : '')
+      + (p.timeframe ? ' · ' + esc(p.timeframe) : '')
+      + (p.target_date ? ' · target ' + esc(day(p.target_date)) : '');
+    INDEX.push({
+      type: 'prediction',
+      label: p.event || p.id || 'Untitled prediction',
+      sub: sub,
+      text: [p.event, p.id, p.domain, p.timeframe, p.impact, (p.drivers || []).join(' ')].join(' ').toLowerCase(),
+      href: '/patterns/'
+    });
+  });
+  return arr.length;
+}
+
+function indexActors(d){
+  var arr = d && Array.isArray(d.actors) ? d.actors : (Array.isArray(d) ? d : null);
+  if(!arr) return -1;
+  arr.forEach(function(a){
+    var sub = 'threat ' + (a.threat_score != null ? Number(a.threat_score).toFixed(2) : '—')
+      + ' · ' + esc(a.incident_count != null ? a.incident_count : '?') + ' incidents'
+      + (a.last_seen ? ' · last ' + esc(day(a.last_seen)) : '');
+    INDEX.push({
+      type: 'actor',
+      label: a.actor || 'Unknown actor',
+      sub: sub,
+      text: [a.actor, (a.dominant_regions || []).join(' '), (a.top_drones || []).join(' '),
+             (a.undefended_ttps || []).join(' '), a.rationale].join(' ').toLowerCase(),
+      href: '/actors/'
+    });
+  });
+  return arr.length;
+}
+
+function indexEntities(d){
+  var map = d && d.entities && typeof d.entities === 'object' ? d.entities : null;
+  if(!map) return -1;
+  var n = 0;
+  Object.keys(map).forEach(function(k){
+    var e = map[k];
+    if(!e) return;
+    n++;
+    var bits = [];
+    if((e.parts || []).length) bits.push((e.parts || []).length + ' parts');
+    if((e.flags || []).length) bits.push((e.flags || []).length + ' flags');
+    if((e.articles || []).length) bits.push((e.articles || []).length + ' articles');
+    if((e.contracts || []).length) bits.push((e.contracts || []).length + ' contracts');
+    var tags = (e.tags || []).slice(0, 4).join(', ');
+    INDEX.push({
+      type: 'entity',
+      label: e.name || e.key || k,
+      sub: esc(bits.join(' · ') || 'no links') + (tags ? ' · ' + esc(tags) : ''),
+      text: [e.name, e.key, k, (e.tags || []).join(' '), (e.programs || []).join(' ')].join(' ').toLowerCase(),
+      href: '/entity-graph/'
+    });
+  });
+  return n;
+}
+
+function indexArticles(d){
+  var arr = Array.isArray(d) ? d : (d && Array.isArray(d.articles) ? d.articles : null);
+  if(!arr) return -1;
+  arr.forEach(function(a){
+    var ents = a.entities || {};
+    var url = safeUrl(a.url, '/intel/');
+    INDEX.push({
+      type: 'article',
+      label: a.title || a.aid || 'Untitled article',
+      sub: esc(day(a.pub_date) || '?') + (a.site ? ' · ' + esc(a.site) : '') + (a.aid ? ' · ' + esc(a.aid) : ''),
+      text: [a.title, a.summary, a.site, a.aid,
+             (ents.companies || []).join(' '), (ents.programs || []).join(' '), (ents.tags || []).join(' ')].join(' ').toLowerCase(),
+      href: url,
+      external: url !== '/intel/'
+    });
+  });
+  return arr.length;
+}
+
+// ── search + render ──────────────────────────────────────────────────────────
+function countsByType(records){
+  var c = {};
+  records.forEach(function(r){ c[r.type] = (c[r.type] || 0) + 1; });
+  return c;
+}
+
+function renderRow(r){
+  var href = esc(r.href);
+  var target = r.external ? ' target="_blank" rel="noopener noreferrer"' : '';
+  return '<a class="rrow" href="' + href + '"' + target + '>'
+    + '<span class="pill ' + esc(r.type) + '">' + esc(r.type) + '</span>'
+    + '<span class="body">'
+    +   '<span class="lbl">' + esc(r.label) + '</span>'
+    +   '<span class="sub">' + r.sub + '</span>'   // sub is pre-escaped piecewise above
+    + '</span>'
+    + '<span class="go">' + (r.external ? '↗' : '→') + '</span>'
+    + '</a>';
+}
+
+function renderIdle(){
+  var c = countsByType(INDEX);
+  var html = '<div class="stats">';
+  TYPE_ORDER.forEach(function(t){
+    html += '<div class="st"><span class="st-n">' + (c[t] || 0).toLocaleString() + '</span>'
+          + '<span class="st-l">' + esc(TYPE_META[t].label) + '</span></div>';
+  });
+  html += '</div>';
+  html += '<div class="empty"><span class="big">' + INDEX.length.toLocaleString() + ' records indexed</span>'
+        + 'Start typing to search — terms are ANDed, matching is case-insensitive substring.</div>';
+  document.getElementById('results').innerHTML = html;
+}
+
+function runSearch(){
+  var q = document.getElementById('q').value.trim().toLowerCase();
+  if(!q){ renderIdle(); return; }
+  var terms = q.split(/\s+/).filter(function(t){ return t.length > 0; });
+  var byType = {};
+  var total = 0;
+  INDEX.forEach(function(r){
+    if(ACTIVE !== 'all' && r.type !== ACTIVE) return;
+    for(var i = 0; i < terms.length; i++){
+      if(r.text.indexOf(terms[i]) === -1) return;
+    }
+    if(!byType[r.type]) byType[r.type] = [];
+    byType[r.type].push(r);
+    total++;
+  });
+
+  if(!total){
+    document.getElementById('results').innerHTML =
+      '<div class="empty"><span class="big">No matches for &ldquo;' + esc(q) + '&rdquo;</span>'
+      + 'Try fewer or shorter terms' + (ACTIVE !== 'all' ? ', or switch the filter back to All' : '') + '.</div>';
+    return;
+  }
+
+  var html = '';
+  TYPE_ORDER.forEach(function(t){
+    var hits = byType[t];
+    if(!hits || !hits.length) return;
+    var shown = hits.slice(0, MAX_PER_TYPE);
+    html += '<div class="group-lbl">' + esc(TYPE_META[t].label)
+          + ' <span class="count-badge">' + hits.length.toLocaleString()
+          + (hits.length > MAX_PER_TYPE ? ' · showing ' + MAX_PER_TYPE : '') + '</span></div>';
+    html += shown.map(renderRow).join('');
+  });
+  document.getElementById('results').innerHTML = html;
+}
+
+// debounce 150ms
+var _deb = null;
+document.getElementById('q').addEventListener('input', function(){
+  if(_deb) clearTimeout(_deb);
+  _deb = setTimeout(runSearch, 150);
+});
+
+// filter chips
+document.getElementById('chips').addEventListener('click', function(ev){
+  var btn = ev.target.closest ? ev.target.closest('.chip') : null;
+  if(!btn) return;
+  ACTIVE = btn.getAttribute('data-type') || 'all';
+  var chips = document.querySelectorAll('.chip');
+  for(var i = 0; i < chips.length; i++){
+    chips[i].classList.toggle('on', chips[i] === btn);
+  }
+  runSearch();
+});
+
+// ── load all five datasets in parallel; failures just drop out of the index ──
+Promise.all([
+  getEither('flags', 'pie_flags'),
+  getEither('predictions', 'pie_predictions'),
+  getData('threat_scores'),
+  getData('entity_graph'),
+  getData('intel_articles')
+]).then(function(arr){
+  LOADED.flags         = indexFlags(arr[0]);
+  LOADED.predictions   = indexPredictions(arr[1]);
+  LOADED.threat_scores = indexActors(arr[2]);
+  LOADED.entity_graph  = indexEntities(arr[3]);
+  LOADED.intel_articles= indexArticles(arr[4]);
+
+  // chip count badges
+  var c = countsByType(INDEX);
+  var chipCounts = {flag:c.flag, prediction:c.prediction, actor:c.actor, entity:c.entity, article:c.article};
+  Object.keys(chipCounts).forEach(function(t){
+    var el = document.querySelector('[data-count="' + t + '"]');
+    if(el) el.textContent = chipCounts[t] ? ' ' + chipCounts[t].toLocaleString() : '';
+  });
+
+  // footer: which datasets made it in
+  var parts = Object.keys(LOADED).map(function(k){
+    return LOADED[k] >= 0
+      ? '<span class="ok">' + esc(k) + '</span> <code>' + LOADED[k].toLocaleString() + '</code>'
+      : '<span class="bad">' + esc(k) + ' unavailable</span>';
+  });
+  document.getElementById('foot').innerHTML =
+    'Indexed from <code>/api/data</code>: ' + parts.join(' · ')
+    + '. Failed datasets are simply omitted from the index.';
+
+  if(INDEX.length){
+    renderIdle();
+    runSearch(); // in case the user typed while loading
+  } else {
+    document.getElementById('results').innerHTML =
+      '<div class="empty"><span class="big">Nothing to index</span>'
+      + 'None of the PIE datasets loaded — check the <code>/api/data</code> worker allowlist.</div>';
+  }
+});
+</script>
+</body>
+</html>

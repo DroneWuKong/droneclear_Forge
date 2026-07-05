@@ -134,6 +134,9 @@ PAGES = {
     'market-lens.html': 'market-lens/index.html',
     'forecast-accountability.html': 'forecast-accountability/index.html',
     'pie-trends.html': 'pie-trends/index.html',
+    'pie-search.html': 'pie-search/index.html',   # global search over flags/predictions/actors/entities/articles
+    'brief-archive.html': 'brief-archive/index.html',  # historical daily-brief browser (pie_brief_history)
+    'miner-health.html': 'miner-health/index.html',    # pipeline health / data provenance board
     'lexicon.html': 'lexicon/index.html',         # estimative-language reference
     'api-docs.html': 'api-docs/index.html',       # /api/data reference (NOT /api/* — that's worker-routed)
     # Doctrine submission + audit (Cloudflare/Netlify-Function backed)
@@ -264,6 +267,8 @@ _PAGE_SLUGS = {
     'market-lens.html': 'market-lens',
     'forecast-accountability.html': 'forecast-accountability',
     'pie-trends.html': 'pie-trends',
+    'pie-search.html': 'pie-search', 'brief-archive.html': 'brief-archive',
+    'miner-health.html': 'miner-health',
     'lexicon.html': 'lexicon', 'api-docs.html': 'api-docs',
     'contribute-doctrine.html': 'contribute-doctrine', 'audit-doctrine.html': 'audit-doctrine',
     'intel.html': 'intel-feed', 'intel-home.html': 'intel-home', 'forge-home.html': 'forge',
@@ -472,6 +477,9 @@ _UNIFIED_NAV = r"""<!-- ── Unified UAS- Nav (5-domain accordion drawer) ─�
       <a class="dc-dom-sublink" href="https://uas-patterns.com/market-lens/" data-page="market-lens">Market Lens</a>
       <a class="dc-dom-sublink" href="https://uas-patterns.com/forecast-accountability/" data-page="forecast-accountability">Forecast Accountability</a>
       <a class="dc-dom-sublink" href="https://uas-patterns.com/pie-trends/" data-page="pie-trends">PIE Trends</a>
+      <a class="dc-dom-sublink" href="https://uas-patterns.com/pie-search/" data-page="pie-search">Search</a>
+      <a class="dc-dom-sublink" href="https://uas-patterns.com/brief-archive/" data-page="brief-archive">Brief Archive</a>
+      <a class="dc-dom-sublink" href="https://uas-patterns.com/miner-health/" data-page="miner-health">Pipeline Health</a>
     </div>
   </details>
 
@@ -603,6 +611,7 @@ _UNIFIED_NAV = r"""<!-- ── Unified UAS- Nav (5-domain accordion drawer) ─�
     'adversary-bom':'Adversary BOM','mirroring':'Component Mirroring','actors':'Threat Actors',
     'ttps':'TTP Defense Gap','evasion':'Sanctions-Evasion','market-lens':'Market Lens',
     'forecast-accountability':'Forecast Accountability','pie-trends':'PIE Trends',
+    'pie-search':'Search','brief-archive':'Brief Archive','miner-health':'Pipeline Health',
     'contribute-doctrine':'Contribute Doctrine','audit-doctrine':'Doctrine Audit',
     'start':'Getting Started','grants':'Grants','waiver':'Doc Builder','forge':'Forge Hub',
     'verify':'Verify','vault':'Vault','troubleshoot':'Troubleshoot','support':'Support','donate':'Support','hub':'Hub','gallery':'Featured Builds','entity-graph':'Entity Graph',
@@ -738,6 +747,9 @@ _DISCLAIMER_PAGES = {
     "patterns.html": "patterns",
     "patterns-home.html": "patterns",
     "pie-trends.html": "patterns",
+    "pie-search.html": "patterns",
+    "brief-archive.html": "patterns",
+    "miner-health.html": "patterns",
     "brief.html": "patterns",
     "ttps.html": "patterns",
     "evasion.html": "patterns",
@@ -1002,6 +1014,21 @@ def _get_part_count():
 # Round down to the nearest 100 + "+" so the public number doesn't churn
 # on every commit.
 SEO_META = {
+    'pie-search.html': (
+        'PIE Search — Flags, Predictions, Actors, Entities & Intel',
+        'Search the entire Pattern Intelligence Engine in one place: procurement risk flags, daily predictions, threat actors, supply-chain entities, and intel articles.',
+        'drone intelligence search, UAS threat search, procurement flags, drone supply chain intelligence',
+    ),
+    'brief-archive.html': (
+        'Brief Archive — Past PIE Daily Intelligence Briefs',
+        'Browse and search every past PIE daily intelligence brief: lead stories, gray-zone developments, supply-chain signals, watch lists, and predictions by date.',
+        'drone intelligence brief archive, UAS daily brief history, PIE intelligence archive',
+    ),
+    'miner-health.html': (
+        'Pipeline Health — PIE Data Sources & Provenance',
+        'Live status of the community data miners powering PIE: sources, schedules, last runs, and record counts. Full data provenance for the intelligence pipeline.',
+        'drone data pipeline, UAS intelligence sources, data provenance, miner status',
+    ),
     'mission-control.html': (
         'Forge — Drone Build Planner & Intelligence Platform',
         'Browse __PART_COUNT__+ vetted drone parts, validate build compatibility, assemble step-by-step guides, and access defense intelligence. The interactive companion to the Drone Integration Handbook.',
@@ -1359,6 +1386,9 @@ CANONICAL_OVERRIDES = {
     'analytics/':      'https://uas-patterns.com/analytics/',
     'lexicon/':        'https://uas-patterns.com/lexicon/',
     'api-docs/':       'https://uas-patterns.com/api-docs/',
+    'pie-search/':     'https://uas-patterns.com/pie-search/',
+    'brief-archive/':  'https://uas-patterns.com/brief-archive/',
+    'miner-health/':   'https://uas-patterns.com/miner-health/',
     # Intel — merged into uas-patterns.com
     'intel/':              'https://uas-patterns.com/intel/',
     'intel/feed/':         'https://uas-patterns.com/intel/feed/',
@@ -2081,7 +2111,7 @@ def build():
     # Explicitly copy full intel files to build root (served at /pie_flags.json etc.)
     # These are NOT in /static/ — they live at root so authed users get full data
     ROOT_INTEL_FILES = ['flags.xml', 'brief.xml', 'pie_flags.json', 'pie_predictions.json', 'predictions_best.json',
-                        'pie_brief.json', 'pie_trends.json', 'solicitations.json',
+                        'pie_brief.json', 'pie_brief_history.json', 'pie_trends.json', 'solicitations.json',
                         'intel_articles.json', 'intel_companies.json', 'intel_platforms.json',
                         'intel_programs.json', 'forge_intel.json', 'entity_graph.json',
                         # Patterns Hub lens artefacts — fetched as /adversary_bom.json etc.

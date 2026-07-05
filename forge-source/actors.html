@@ -86,6 +86,16 @@ h1{font:700 24px var(--mono);color:#22c55e;letter-spacing:-0.02em;margin-bottom:
 .cross-row .id{color:var(--text);font-family:var(--mono);font-size:11px}
 .cross-row .ct{color:var(--amber);font:700 11px var(--mono)}
 
+.evid-row{display:flex;align-items:baseline;gap:10px;padding:7px 10px;background:var(--surface);border-radius:6px;margin-bottom:4px;font-size:12px}
+.evid-row .dt{font:500 10px var(--mono);color:var(--text-d);flex-shrink:0}
+.evid-row .src{font:600 9px var(--mono);text-transform:uppercase;color:var(--text-xd);flex-shrink:0;max-width:110px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.evid-row .ttl{flex:1;min-width:0}
+.evid-row .ttl a{color:var(--blue)}
+.evid-row .ttl a:hover{text-decoration:underline}
+.evid-none{padding:12px 10px;color:var(--text-d);font-size:12px;background:var(--surface);border-radius:6px}
+.wing-link{display:inline-flex;align-items:center;gap:6px;margin-top:16px;padding:7px 12px;border:1px solid var(--border);border-radius:6px;background:var(--surface);color:var(--text-s);font:600 11px var(--font);transition:all .15s}
+.wing-link:hover{border-color:var(--border-hi);color:var(--text)}
+
 .empty{padding:40px 20px;text-align:center;color:var(--text-d);font-size:13px}
 .caveat{margin-top:24px;padding:12px 14px;background:var(--surface);border-left:3px solid var(--text-xd);border-radius:4px;font:400 11px var(--font);color:var(--text-s);line-height:1.6}
 
@@ -159,8 +169,59 @@ window.dcNavBrandClick=function(e){e.preventDefault();location.href='/patterns-h
 (function(){var path=location.pathname.replace(/\/$/,'').split('/').pop()||'home';document.querySelectorAll('.dc-drawer-item').forEach(function(a){if(a.dataset.page===path)a.classList.add('dc-active');});})();
 
 var FP_BY_NAME = {}, SCORES = [], SELECTED = null;
+var GAP_BY_TTP = {}, ARTICLES = [], ART_HAYS = [];
 
 function esc(s){ return String(s==null?'':s).replace(/[&<>"']/g, function(c){ return ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'})[c]; }); }
+
+function actorMatchTerms(name){
+  var parts = String(name==null?'':name).split(/[\/()]+/);
+  var terms = [];
+  for(var i=0;i<parts.length;i++){
+    var p = parts[i].replace(/^\s+|\s+$/g,'').toLowerCase();
+    if(p.length >= 3) terms.push(p);
+  }
+  if(!terms.length && name) terms.push(String(name).toLowerCase());
+  return terms;
+}
+
+function hayMentions(hay, terms){
+  for(var i=0;i<terms.length;i++){
+    var t = terms[i];
+    if(t.length >= 5){
+      if(hay.indexOf(t) !== -1) return true;
+    } else {
+      // short acronyms (PLA, GRU, SBU…): word-boundary match to avoid substring noise
+      var re = new RegExp('\\b'+t.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')+'\\b');
+      if(re.test(hay)) return true;
+    }
+  }
+  return false;
+}
+
+function artTime(a){
+  // pub_date is sometimes ISO ("2026-03-09"), sometimes scraped prose ("May 28, 2026 15:23 2 min read…")
+  var s = String((a&&a.pub_date)||'');
+  var m = s.match(/^\d{4}-\d{2}-\d{2}/) || s.match(/^[A-Za-z]{3,9}\.? \d{1,2},? \d{4}/);
+  var t = Date.parse(m ? m[0] : s);
+  return isNaN(t) ? 0 : t;
+}
+
+function artDateLabel(a){
+  var t = artTime(a);
+  if(t) return new Date(t).toISOString().slice(0,10);
+  return String((a&&a.pub_date)||'').slice(0,10) || '—';
+}
+
+function findEvidenceArticles(name){
+  var terms = actorMatchTerms(name);
+  if(!terms.length) return [];
+  var hits = [];
+  for(var i=0;i<ARTICLES.length;i++){
+    if(hayMentions(ART_HAYS[i]||'', terms)) hits.push(ARTICLES[i]);
+  }
+  hits.sort(function(a,b){ return artTime(b) - artTime(a); });
+  return hits.slice(0,8);
+}
 
 function selectActor(name){
   SELECTED = name;
@@ -174,13 +235,38 @@ function selectActor(name){
   var drones  = (s.top_drones||[]).map(function(d){ return '<span class="pill drone">'+esc(d)+'</span>'; }).join('');
   var ttps = (s.ttps_exhibited||[]).map(function(t){
     var und = t.counter_gap_score >= 0.65;
+    var g = GAP_BY_TTP[t.ttp_id];
+    var defSig = (g && g.counter_signal_count != null)
+      ? '<div class="ev" title="defensive procurement signals in corpus">def×'+esc(g.counter_signal_count)+'</div>'
+      : '';
     return '<div class="ttp-row '+(und?'undefended':'')+'">'+
       '<div class="nm">'+esc(t.ttp_id)+'</div>'+
       '<div class="ev">×'+esc(t.evidence_count)+'</div>'+
+      defSig+
       '<div class="gap">gap '+(t.counter_gap_score||0).toFixed(2)+'</div>'+
       '<div class="verdict">'+esc((t.counter_verdict||'').split(' ')[0])+'</div>'+
     '</div>';
   }).join('') || '<div class="empty" style="padding:20px">No TTPs detected in articles for this actor.</div>';
+
+  var evid = findEvidenceArticles(name);
+  var evidHtml;
+  if(evid.length){
+    evidHtml = evid.map(function(a){
+      a = a || {};
+      var url = String(a.url||'');
+      var titleHtml = esc(a.title || '(untitled)');
+      if(/^https?:\/\//i.test(url)){
+        titleHtml = '<a href="'+esc(url)+'" target="_blank" rel="noopener">'+titleHtml+'</a>';
+      }
+      return '<div class="evid-row">'+
+        '<span class="dt">'+esc(artDateLabel(a))+'</span>'+
+        '<span class="src">'+esc(a.source || a.site || '?')+'</span>'+
+        '<span class="ttl">'+titleHtml+'</span>'+
+      '</div>';
+    }).join('');
+  } else {
+    evidHtml = '<div class="evid-none">No direct article mentions indexed for this actor.</div>';
+  }
 
   var velocity = (fp && fp.monthly_velocity) || {};
   var velocityRows = Object.keys(velocity).sort().slice(-6).map(function(m){
@@ -200,7 +286,10 @@ function selectActor(name){
     (drones  ? '<div class="section-h">Top drone systems referenced</div><div class="pills">'+drones+'</div>' : '')+
     (velocityRows ? '<div class="section-h">Monthly velocity (last 6)</div><div style="margin-bottom:10px">'+velocityRows+'</div>' : '')+
     '<div class="section-h">TTP exposure '+(s.ttp_breadth?'('+esc(s.ttp_breadth)+')':'')+'</div>'+
-    ttps;
+    ttps+
+    '<div class="section-h">Evidence trail'+(evid.length?' ('+evid.length+')':'')+'</div>'+
+    evidHtml+
+    '<a class="wing-link" href="https://uas-forge.com/wingman/" target="_blank" rel="noopener">🤖 Ask Wingman about this actor</a>';
 }
 
 function renderList(){
@@ -217,11 +306,19 @@ function renderList(){
 
 Promise.all([
   fetch('/api/data?type=actor_fingerprints').then(function(r){ return r.ok?r.json():null; }).then(function(e){ return e&&e.data?e.data:e; }),
-  fetch('/api/data?type=threat_scores').then(function(r){ return r.ok?r.json():null; }).then(function(e){ return e&&e.data?e.data:e; })
+  fetch('/api/data?type=threat_scores').then(function(r){ return r.ok?r.json():null; }).then(function(e){ return e&&e.data?e.data:e; }),
+  fetch('/api/data?type=ttp_counter_gap').then(function(r){ return r.ok?r.json():null; }).then(function(e){ return e&&e.data?e.data:e; }).catch(function(){ return null; }),
+  fetch('/api/data?type=intel_articles').then(function(r){ return r.ok?r.json():null; }).then(function(e){ return e&&e.data?e.data:e; }).catch(function(){ return null; })
 ]).then(function(arr){
-  var fp = arr[0], ts = arr[1];
+  var fp = arr[0], ts = arr[1], gap = arr[2], arts = arr[3];
   if(!ts){ document.getElementById('detail').innerHTML = '<div class="empty">threat_scores.json not synced yet.</div>'; return; }
   if(fp){ (fp.fingerprints||[]).forEach(function(f){ FP_BY_NAME[f.actor] = f; }); }
+  if(gap && gap.results){ gap.results.forEach(function(g){ if(g && g.ttp_id) GAP_BY_TTP[g.ttp_id] = g; }); }
+  ARTICLES = Object.prototype.toString.call(arts)==='[object Array]' ? arts : ((arts && arts.articles) || []);
+  for(var ai=0; ai<ARTICLES.length; ai++){
+    var art = ARTICLES[ai] || {};
+    ART_HAYS[ai] = (String(art.title||'')+' '+String(art.summary||'')+' '+String(art.body_text||'')).toLowerCase();
+  }
   SCORES = ts.actors || [];
   renderList();
   if(SCORES.length) selectActor(SCORES[0].actor);

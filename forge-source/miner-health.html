@@ -1,0 +1,344 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Pipeline Health — uas-patterns</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#0c0c0a;--surface:#141410;--card:#1c1c17;--card-hi:#242420;
+  --border:#2e2e26;--border-hi:#3e3e34;
+  --green:#22c55e;--amber:#f59e0b;--red:#ef4444;--blue:#3b82f6;
+  --text:#f5f0e8;--text-s:#b8b0a0;--text-d:#8a8070;--text-xd:#6b6358;
+  --font:'Inter',system-ui,sans-serif;--mono:'JetBrains Mono',monospace;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--bg);color:var(--text);font-family:var(--font);line-height:1.5;-webkit-font-smoothing:antialiased;min-height:100vh}
+a{text-decoration:none;color:inherit}
+
+.page{max-width:1020px;margin:0 auto;padding:32px 24px 60px}
+.eyebrow{font:600 10px var(--mono);text-transform:uppercase;letter-spacing:.12em;color:var(--text-xd);margin-bottom:6px}
+h1{font:700 24px var(--mono);color:#22c55e;letter-spacing:-0.02em;margin-bottom:8px}
+.tagline{font-size:13px;color:var(--text-s);line-height:1.6;max-width:720px}
+.tagline code{font:500 11px var(--mono);background:var(--surface);padding:1px 5px;border-radius:3px;color:var(--text)}
+
+/* ── Hero strip ── */
+.banner{display:flex;align-items:center;gap:10px;padding:14px 16px;background:var(--card);border:1px solid var(--border);border-radius:8px;margin:20px 0 10px}
+.banner-dot{width:10px;height:10px;border-radius:50%;flex-shrink:0;background:var(--text-d)}
+.banner.ok .banner-dot{background:var(--green);box-shadow:0 0 8px rgba(34,197,94,.5)}
+.banner.degraded .banner-dot{background:var(--amber);box-shadow:0 0 8px rgba(245,158,11,.5)}
+.banner-text{font:600 13px var(--mono);color:var(--text)}
+.banner.ok .banner-text{color:var(--green)}
+.banner.degraded .banner-text{color:var(--amber)}
+.banner-sub{font:400 11px var(--font);color:var(--text-d);margin-left:auto;text-align:right}
+
+.stats{display:flex;gap:0;border:1px solid var(--border);border-radius:8px;overflow:hidden;margin:0 0 20px;flex-wrap:wrap}
+.st{flex:1;min-width:120px;text-align:center;padding:12px 8px;border-right:1px solid var(--border)}
+.st:last-child{border-right:none}
+.st-n{font:700 18px var(--mono);color:var(--green);display:block;line-height:1}
+.st-n.dim{color:var(--text-s)}
+.st-l{font:500 9px var(--font);text-transform:uppercase;letter-spacing:.07em;color:var(--text-d);margin-top:4px;display:block}
+
+.group-lbl{font:600 10px var(--mono);text-transform:uppercase;letter-spacing:.1em;color:var(--text-xd);margin:26px 0 10px;display:flex;align-items:center;gap:8px}
+.group-lbl::after{content:'';flex:1;height:1px;background:var(--border)}
+
+/* ── Miner card grid ── */
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:10px}
+.mcard{background:var(--card);border:1px solid var(--border);border-radius:8px;padding:12px;display:flex;flex-direction:column;gap:6px}
+.mcard.stale{border-color:rgba(245,158,11,.35)}
+.mcard-top{display:flex;justify-content:space-between;align-items:flex-start;gap:8px}
+.mcard-name{font:600 13px var(--font);color:var(--text);line-height:1.3}
+.mcard-name a{color:var(--text);border-bottom:1px dotted var(--border-hi)}
+.mcard-name a:hover{color:var(--green);border-bottom-color:var(--green)}
+.mcard-desc{font:400 11px var(--font);color:var(--text-s);line-height:1.5;flex:1}
+.mcard-foot{display:flex;flex-wrap:wrap;gap:6px;align-items:center;font:500 10px var(--mono);color:var(--text-d);margin-top:2px}
+.pill{font:600 9px var(--mono);text-transform:uppercase;letter-spacing:.06em;padding:1px 6px;border-radius:8px;background:var(--surface);border:1px solid var(--border);color:var(--text-d)}
+.lastrun{cursor:default}
+.recs{margin-left:auto;color:var(--text-s)}
+.badge{font:700 9px var(--mono);letter-spacing:.08em;text-transform:uppercase;padding:2px 7px;border-radius:9px;flex-shrink:0}
+.badge.healthy{background:rgba(34,197,94,.15);color:var(--green)}
+.badge.stale{background:rgba(245,158,11,.15);color:var(--amber)}
+.badge.unknown{background:rgba(136,128,112,.18);color:var(--text-d)}
+
+/* ── How it works / provenance ── */
+.how{background:var(--card);border:1px solid var(--border);border-radius:8px;padding:16px;font-size:12px;color:var(--text-s);line-height:1.7}
+.how strong{color:var(--text)}
+.how .credit{margin-top:12px;padding-top:12px;border-top:1px solid var(--border);font-size:11px;color:var(--text-d)}
+.how .credit-tag{font:700 10px var(--mono);letter-spacing:.12em;color:var(--text-d);text-transform:uppercase;display:block;margin-bottom:6px}
+
+.empty{padding:28px 14px;text-align:center;color:var(--text-d);font:500 12px var(--mono);background:var(--card);border:1px solid var(--border);border-radius:8px}
+.err-code{color:var(--amber)}
+.footnote{margin-top:20px;font-size:11px;color:var(--text-xd);line-height:1.6}
+.footnote code{font:500 10px var(--mono);background:var(--surface);padding:1px 5px;border-radius:3px;color:var(--text-s)}
+@media(max-width:560px){
+  .grid{grid-template-columns:1fr}
+  .banner{flex-wrap:wrap}
+  .banner-sub{margin-left:0;text-align:left;width:100%}
+}
+</style>
+</head>
+<body>
+<main class="page">
+  <div class="eyebrow">uas-patterns · PIE intelligence</div>
+  <h1>Pipeline Health</h1>
+  <p class="tagline">
+    Live observability for the mining pipeline behind this site — every registered source,
+    what it collects, when it last reported, and whether it is inside its expected schedule
+    window. Reads <code>miner_health</code> and <code>miner_registry</code> from the intel API.
+    This page doubles as the <strong>data provenance</strong> record for uas-patterns.
+  </p>
+
+  <div class="banner" id="banner">
+    <div class="banner-dot"></div>
+    <div class="banner-text" id="banner-text">Checking pipeline telemetry…</div>
+    <div class="banner-sub" id="banner-sub"></div>
+  </div>
+
+  <div class="stats" id="kpis">
+    <div class="st"><span class="st-n" id="k-sources">—</span><span class="st-l">Registered sources</span></div>
+    <div class="st"><span class="st-n" id="k-healthy">—</span><span class="st-l">Healthy</span></div>
+    <div class="st"><span class="st-n dim" id="k-stale">—</span><span class="st-l">Stale</span></div>
+    <div class="st"><span class="st-n dim" id="k-lastrun" title="">—</span><span class="st-l">Last pipeline run</span></div>
+    <div class="st"><span class="st-n dim" id="k-articles">—</span><span class="st-l">Articles indexed</span></div>
+    <div class="st"><span class="st-n dim" id="k-parts">—</span><span class="st-l">Parts tracked</span></div>
+  </div>
+
+  <div class="group-lbl">Mining sources · <span id="grid-count">—</span></div>
+  <div class="grid" id="miner-grid"></div>
+  <div id="grid-loading" class="empty">Loading miner registry…</div>
+
+  <div class="group-lbl">How the pipeline works</div>
+  <div class="how">
+    Every day the pipeline fans out across the registered sources below — frontline conflict
+    reporting, defense trade wires, federal procurement records, regulatory dockets, public-safety
+    DFR programs, and component vendor catalogs. Raw articles, contract awards, and part listings
+    are <strong>normalized into a common schema, deduplicated, and scored</strong>. That corpus is
+    what feeds the flags, briefs, gray-zone scores, trend lines, and predictions published on this
+    site — nothing here is hand-curated after the fact.
+    <div class="credit">
+      <span class="credit-tag">Data provenance &amp; credit</span>
+      Community and public sources mined by the pipeline include: Militarnyi, Ukrinform, Defense
+      Express, United24, Anadolu Agency and Daily Sabah (conflict reporting) · DefenseScoop,
+      Breaking Defense, Defense News, The War Zone, War on the Rocks, Naval News (defense wire) ·
+      USAspending.gov, NATO NSPA, DIU, SBIR/STTR (procurement) · FCC, ITAR/EAR, Drone Watch EU
+      (regulatory) · DRONELIFE, sUAS News, Unmanned Airspace, DJI Enterprise, Skydio, Auterion
+      (commercial UAS) · Police1, FAA BEYOND, DHS AEL, DroneResponders, Grants.gov (public-safety
+      DFR) · iFlight, Foxeer, Matek, RunCam, HGLRC, Holybro, T-Motor, Team BlackSheep, ARK
+      Electronics, mRo and other vendors (parts &amp; pricing). All mined content remains the
+      property of its original publishers; PIE stores derived signals and links back to the source.
+    </div>
+  </div>
+
+  <p class="footnote">
+    Source: <code>miner_health</code> + <code>miner_registry</code> via <code>/api/data</code>,
+    refreshed by the daily intelligence pipeline. Freshness is computed in your browser from the
+    reported timestamps — a source is marked <span class="err-code">stale</span> when its last run
+    falls outside twice its expected schedule window.
+  </p>
+</main>
+
+<script>
+// ── helpers ──────────────────────────────────────────────────────────────────
+function esc(s){
+  return String(s == null ? '' : s).replace(/[&<>"']/g, function(c){
+    return ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'})[c];
+  });
+}
+// Only allow http(s) hrefs from fetched data — anything else renders as plain text.
+function safeHref(u){
+  u = String(u == null ? '' : u).trim();
+  return /^https?:\/\//i.test(u) ? u : '';
+}
+function fmtNum(n){
+  return (n == null || isNaN(Number(n))) ? '—' : Number(n).toLocaleString();
+}
+function relTime(ms){
+  if(ms == null || isNaN(ms)) return '—';
+  if(ms < 0) ms = 0;
+  var m = ms / 60000;
+  if(m < 1) return 'just now';
+  if(m < 60) return Math.round(m) + 'm ago';
+  var h = m / 60;
+  if(h < 48) return Math.round(h) + 'h ago';
+  var d = h / 24;
+  if(d < 60) return Math.round(d) + 'd ago';
+  return Math.round(d / 30) + 'mo ago';
+}
+
+// Expected cadence in days; a miner is healthy if it reported within 2x this window.
+var SCHED_DAYS = { daily: 1, weekly: 7, monthly: 30 };
+// Registry ids that report under a different key in miner_health telemetry.
+var ALIAS = { defenseguide: 'defenceindeu', ark_electronics: 'ark' };
+
+// ── data loading (API first, static build artifact as fallback) ─────────────
+var HEALTH = null, REG = null, PENDING = 2;
+
+function loadHealth(cb){
+  fetch('/api/data?type=miner_health')
+    .then(function(r){ return r.ok ? r.json() : null; })
+    .then(function(e){ return e && e.data !== undefined ? e.data : e; })
+    .then(function(d){
+      if(d && (d.last_seen || d.timestamp)) cb(d); else loadHealthStatic(cb);
+    })
+    .catch(function(){ loadHealthStatic(cb); });
+}
+function loadHealthStatic(cb){
+  fetch('miner_health.json')
+    .then(function(r){ return r.ok ? r.json() : null; })
+    .then(function(d){ cb(d && (d.last_seen || d.timestamp) ? d : null); })
+    .catch(function(){ cb(null); });
+}
+function loadRegistry(cb){
+  fetch('/api/data?type=miner_registry')
+    .then(function(r){ return r.ok ? r.json() : null; })
+    .then(function(e){ return e && e.data !== undefined ? e.data : e; })
+    .then(function(d){
+      if(d && d.miners && d.miners.length) cb(d); else loadRegistryStatic(cb);
+    })
+    .catch(function(){ loadRegistryStatic(cb); });
+}
+function loadRegistryStatic(cb){
+  fetch('miner_registry.json')
+    .then(function(r){ return r.ok ? r.json() : null; })
+    .then(function(d){ cb(d && d.miners && d.miners.length ? d : null); })
+    .catch(function(){ cb(null); });
+}
+
+// ── status derivation (client-side, no hardcoded dates) ─────────────────────
+function minerStatus(m, now){
+  var key = ALIAS[m.id] || m.id;
+  var seen = HEALTH && HEALTH.last_seen ? HEALTH.last_seen[key] : null;
+  if(!seen) return { code: 'unknown', seen: null, t: null };
+  var s = String(seen);
+  var t = Date.parse(s.length <= 10 ? s + 'T00:00:00Z' : s);
+  if(isNaN(t)) return { code: 'unknown', seen: s, t: null };
+  var ageDays = (now - t) / 86400000;
+  if(ageDays < 0) ageDays = 0; // future-dated records (e.g. award close dates)
+  var win = (SCHED_DAYS[m.schedule] || 1) * 2;
+  return { code: ageDays <= win ? 'healthy' : 'stale', seen: s, t: t };
+}
+
+function recordCount(m){
+  var key = ALIAS[m.id] || m.id;
+  var n = HEALTH && HEALTH.sources ? HEALTH.sources[key] : null;
+  return (typeof n === 'number') ? n : null;
+}
+
+// ── render ───────────────────────────────────────────────────────────────────
+var STATUS_ORDER = { stale: 0, unknown: 1, healthy: 2 };
+var STATUS_LABEL = { healthy: 'Healthy', stale: 'Stale', unknown: 'Unknown' };
+
+function minerCard(m, st, now){
+  var name = esc(m.name || m.id);
+  var href = safeHref(m.url);
+  var nameHtml = href
+    ? '<a href="' + esc(href) + '" target="_blank" rel="noopener noreferrer">' + name + '</a>'
+    : name;
+  var lastRun = st.t != null
+    ? '<span class="lastrun" title="Last run: ' + esc(st.seen) + '">' + esc(relTime(now - st.t)) + '</span>'
+    : '<span class="lastrun" title="No run data reported">no data</span>';
+  var recs = recordCount(m);
+  var recsHtml = recs != null
+    ? '<span class="recs">' + esc(fmtNum(recs)) + ' records</span>'
+    : '';
+  return '<div class="mcard ' + esc(st.code) + '">'
+    + '<div class="mcard-top">'
+    +   '<div class="mcard-name">' + nameHtml + '</div>'
+    +   '<span class="badge ' + esc(st.code) + '">' + esc(STATUS_LABEL[st.code] || st.code) + '</span>'
+    + '</div>'
+    + '<div class="mcard-desc">' + esc(m.description || '') + '</div>'
+    + '<div class="mcard-foot">'
+    +   (m.schedule ? '<span class="pill">' + esc(m.schedule) + '</span>' : '')
+    +   (m.category ? '<span class="pill">' + esc(String(m.category).replace(/_/g, ' ')) + '</span>' : '')
+    +   lastRun
+    +   recsHtml
+    + '</div></div>';
+}
+
+function render(){
+  var now = Date.now();
+  var loading = document.getElementById('grid-loading');
+  var grid = document.getElementById('miner-grid');
+
+  // ── hero ──
+  var counts = { healthy: 0, stale: 0, unknown: 0 };
+  var rows = [];
+  if(REG && REG.miners){
+    REG.miners.forEach(function(m){
+      var st = minerStatus(m, now);
+      counts[st.code]++;
+      rows.push({ m: m, st: st });
+    });
+  }
+
+  var banner = document.getElementById('banner');
+  var bText = document.getElementById('banner-text');
+  var bSub = document.getElementById('banner-sub');
+  if(!HEALTH && !REG){
+    bText.textContent = 'Pipeline telemetry unavailable';
+    bSub.textContent = 'Neither miner_health nor miner_registry could be loaded.';
+  } else if(!HEALTH){
+    bText.textContent = 'Status unknown — registry loaded, telemetry unavailable';
+    bSub.textContent = String(REG.miners.length) + ' sources registered';
+  } else if(!REG){
+    bText.textContent = 'Telemetry loaded — miner registry unavailable';
+    bSub.textContent = 'Per-source detail cannot be shown.';
+  } else if(counts.stale === 0){
+    banner.className = 'banner ok';
+    bText.textContent = 'All ' + counts.healthy + ' reporting sources healthy'
+      + (counts.unknown ? ' · ' + counts.unknown + ' with no data' : '');
+    bSub.textContent = 'Freshness computed against each source’s expected schedule';
+  } else {
+    banner.className = 'banner degraded';
+    bText.textContent = counts.stale + ' of ' + rows.length + ' sources degraded';
+    bSub.textContent = counts.healthy + ' healthy'
+      + (counts.unknown ? ' · ' + counts.unknown + ' unknown' : '')
+      + ' · beyond 2× expected schedule window';
+  }
+
+  var totalSources = REG && REG.miners ? REG.miners.length
+    : (HEALTH && HEALTH.miners && HEALTH.miners.registered) || null;
+  document.getElementById('k-sources').textContent = fmtNum(totalSources);
+  document.getElementById('k-healthy').textContent = REG ? fmtNum(counts.healthy) : '—';
+  document.getElementById('k-stale').textContent = REG ? fmtNum(counts.stale) : '—';
+
+  var runEl = document.getElementById('k-lastrun');
+  if(HEALTH && HEALTH.timestamp){
+    var runT = Date.parse(HEALTH.timestamp);
+    runEl.textContent = isNaN(runT) ? '—' : relTime(now - runT);
+    runEl.title = 'Pipeline run at ' + String(HEALTH.timestamp)
+      + (HEALTH.run != null ? ' (run #' + String(HEALTH.run) + ')' : '');
+  }
+  document.getElementById('k-articles').textContent =
+    HEALTH ? fmtNum(HEALTH.total) : '—';
+  document.getElementById('k-parts').textContent =
+    HEALTH && HEALTH.parts ? fmtNum(HEALTH.parts.total) : '—';
+
+  // ── grid ──
+  if(!REG){
+    loading.innerHTML = 'Miner registry failed to load '
+      + '(<span class="err-code">REGISTRY_UNAVAILABLE</span>). '
+      + 'Per-source cards cannot be shown; overall pipeline stats above reflect '
+      + (HEALTH ? 'the latest telemetry.' : 'no data.');
+    return;
+  }
+  rows.sort(function(a, b){
+    var d = STATUS_ORDER[a.st.code] - STATUS_ORDER[b.st.code];
+    if(d) return d;
+    var an = String(a.m.name || a.m.id).toLowerCase();
+    var bn = String(b.m.name || b.m.id).toLowerCase();
+    return an < bn ? -1 : an > bn ? 1 : 0;
+  });
+  grid.innerHTML = rows.map(function(r){ return minerCard(r.m, r.st, now); }).join('');
+  document.getElementById('grid-count').textContent =
+    rows.length + ' sources' + (HEALTH ? '' : ' (freshness unknown — telemetry unavailable)');
+  loading.hidden = true;
+}
+
+loadHealth(function(d){ HEALTH = d; if(--PENDING === 0) render(); });
+loadRegistry(function(d){ REG = d; if(--PENDING === 0) render(); });
+</script>
+</body>
+</html>

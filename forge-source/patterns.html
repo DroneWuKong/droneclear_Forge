@@ -509,7 +509,8 @@ a.brief-source-chip:hover{color:var(--text-s);border-color:var(--border-hi)}
         <option value="flat">All flags</option>
       </select>
       <span id="flag-count" style="font:10px var(--mono);color:var(--text-d);margin-left:auto"></span>
-      <button type="button" onclick="exportFlagsCSV()" style="font:500 10px var(--font);padding:4px 10px;border-radius:6px;border:1px solid var(--border);background:none;color:var(--text-d);cursor:pointer;white-space:nowrap">⬇ Export CSV</button>
+      <button type="button" onclick="exportFlagsCSV()" style="font:500 10px var(--font);padding:4px 10px;border-radius:6px;border:1px solid var(--border);background:none;color:var(--text-d);cursor:pointer;white-space:nowrap">⬇ CSV</button>
+      <button type="button" onclick="exportFlagsJSON()" style="font:500 10px var(--font);padding:4px 10px;border-radius:6px;border:1px solid var(--border);background:none;color:var(--text-d);cursor:pointer;white-space:nowrap">⬇ JSON</button>
     </div>
     <div id="flag-detail-container" style="display:none"></div>
     <div class="flag-list" id="flag-list"></div>
@@ -6227,7 +6228,7 @@ function renderProcurement() {
     const h = 'award_id,recipient,agency,sub_agency,amount,total_outlays,type,start_date,end_date,description';
     const csv = [h,...rows.map(a=>[
       a['Award ID']||'',
-      '"'+(a['Recipient Name']||'').replace(/"/g,"''")+'\"',
+      '"'+(a['Recipient Name']||'').replace(/"/g,'""')+'\"',
       '"'+(a['Awarding Agency']||'')+'\"',
       '"'+(a['Awarding Sub Agency']||'')+'\"',
       a['Award Amount']||'',
@@ -6235,7 +6236,7 @@ function renderProcurement() {
       a['Award Type']||'Contract',
       a['Start Date']||'',
       a['End Date']||'',
-      '"'+(a['Description']||'').replace(/"/g,"''").replace(/\n/g,' ').substring(0,200)+'\"'
+      '"'+(a['Description']||'').replace(/"/g,'""').replace(/\n/g,' ').substring(0,200)+'\"'
     ].join(','))].join('\n');
     const blob = new Blob([csv],{type:'text/csv'});
     const a2 = document.createElement('a'); a2.href=URL.createObjectURL(blob);
@@ -6654,7 +6655,7 @@ function explorerExportCSV() {
   const def = EXPLORER_DATASETS[_explorerDataset] || {};
   const fmts = def.fmt || {};
   const visibleCols = _explorerCols.filter(c => !_explorerHidden.has(c));
-  const esc = v => '"' + (v||'').toString().replace(/"/g, "''") + '"';
+  const esc = v => '"' + (v||'').toString().replace(/"/g, '""') + '"';
 
   const header = visibleCols.join(',');
   const csv = [header, ..._explorerFiltered.map(row =>
@@ -6672,47 +6673,77 @@ function explorerExportCSV() {
   a.click();
 }
 
-function exportFlagsCSV() {
-  // Re-apply same filter logic as renderFlags() to export the current view
-  let flags = FLAGS;
-  if (hiddenSeverities.size > 0) flags = flags.filter(f => {
-    const sev = f.severity || (FLAG_META[f.flag_type]||{}).sev || '';
-    return !hiddenSeverities.has(sev);
-  });
-  if (hiddenTypes.size > 0) flags = flags.filter(f => !hiddenTypes.has(f.flag_type) && !hiddenTypes.has(f.category));
-  if (hiddenRegions.size > 0) flags = flags.filter(f => {
-    const regs = extractRegions(f);
-    return regs.length === 0 || regs.some(r => !hiddenRegions.has(r));
-  });
-  const searchQ = (document.getElementById('flag-search')?.value || '').toLowerCase().trim();
-  if (searchQ) flags = flags.filter(f =>
-    (f.title||'').toLowerCase().includes(searchQ) ||
-    (f.detail||'').toLowerCase().includes(searchQ) ||
-    (f.prediction||'').toLowerCase().includes(searchQ)
-  );
+function getExportFlags() {
+  // Re-apply same filter logic as renderFlags() to export the current view.
+  // Falls back to all flags if filter state is unavailable.
+  var flags = Array.isArray(FLAGS) ? FLAGS.slice() : [];
+  try {
+    if (hiddenSeverities.size > 0) flags = flags.filter(function(f) {
+      var sev = f.severity || (FLAG_META[f.flag_type]||{}).sev || '';
+      return !hiddenSeverities.has(sev);
+    });
+    if (hiddenTypes.size > 0) flags = flags.filter(function(f) { return !hiddenTypes.has(f.flag_type) && !hiddenTypes.has(f.category); });
+    if (hiddenRegions.size > 0) flags = flags.filter(function(f) {
+      var regs = extractRegions(f);
+      return regs.length === 0 || regs.some(function(r) { return !hiddenRegions.has(r); });
+    });
+    var searchEl = document.getElementById('flag-search');
+    var searchQ = ((searchEl && searchEl.value) || '').toLowerCase().trim();
+    if (searchQ) flags = flags.filter(function(f) {
+      return (f.title||'').toLowerCase().includes(searchQ) ||
+        (f.detail||'').toLowerCase().includes(searchQ) ||
+        (f.prediction||'').toLowerCase().includes(searchQ);
+    });
+    if (typeof wlFilterOn !== 'undefined' && wlFilterOn) flags = flags.filter(wlMatch);
+  } catch(e) {
+    flags = Array.isArray(FLAGS) ? FLAGS.slice() : [];
+  }
+  return flags;
+}
 
-  const esc = v => '"' + (v||'').toString().replace(/"/g, "''") + '"';
-  const header = 'id,timestamp,flag_type,severity,confidence,title,detail,prediction,platform_id,component_id,data_sources,sources';
-  const csv = [header, ...flags.map(f => [
-    esc(f.id),
-    esc((f.timestamp||'').slice(0,19).replace('T',' ')),
-    esc(f.flag_type),
-    esc(f.severity || (FLAG_META[f.flag_type]||{}).sev || ''),
-    Math.round((f.confidence||0)*100)+'%',
-    esc(f.title),
-    esc(f.detail),
-    esc(f.prediction),
-    esc(f.platform_id),
-    esc(f.component_id),
-    esc((f.data_sources||[]).join('; ')),
-    esc((f.sources||[]).map(s=>s.url||s.name||s).join('; '))
-  ].join(','))].join('\n');
-
-  const blob = new Blob([csv], {type:'text/csv'});
-  const a = document.createElement('a');
-  a.href = URL.createObjectURL(blob);
-  a.download = 'pie_flags_' + (searchQ ? searchQ.replace(/\s+/g,'_')+'_' : '') + new Date().toISOString().slice(0,10) + '.csv';
+function downloadBlob(blob, filename) {
+  var url = URL.createObjectURL(blob);
+  var a = document.createElement('a');
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
   a.click();
+  document.body.removeChild(a);
+  setTimeout(function() { URL.revokeObjectURL(url); }, 1000);
+}
+
+function exportFlagsCSV() {
+  var flags = getExportFlags();
+  // Proper CSV quoting: wrap in double quotes, double any embedded quotes
+  var q = function(v) { return '"' + (v==null?'':v).toString().replace(/"/g, '""') + '"'; };
+  var header = 'id,timestamp,flag_type,severity,confidence,title,entity,detail,prediction,platform_id,component_id,status,data_sources,sources';
+  var rows = flags.map(function(f) {
+    return [
+      q(f.id),
+      q((f.timestamp||'').slice(0,19).replace('T',' ')),
+      q(f.flag_type),
+      q(f.severity || (FLAG_META[f.flag_type]||{}).sev || ''),
+      q(Math.round((f.confidence||0)*100)+'%'),
+      q(f.title),
+      q(f.entity),
+      q(f.detail),
+      q(f.prediction),
+      q(f.platform_id),
+      q(f.component_id),
+      q(f.status),
+      q((f.data_sources||[]).join('; ')),
+      q((f.sources||[]).map(function(s) { return s && (s.url||s.name) || s; }).join('; '))
+    ].join(',');
+  });
+  var csv = [header].concat(rows).join('\r\n');
+  var blob = new Blob([csv], {type:'text/csv;charset=utf-8'});
+  downloadBlob(blob, 'pie-flags-' + new Date().toISOString().slice(0,10) + '.csv');
+}
+
+function exportFlagsJSON() {
+  var flags = getExportFlags();
+  var blob = new Blob([JSON.stringify(flags, null, 2)], {type:'application/json'});
+  downloadBlob(blob, 'pie-flags-' + new Date().toISOString().slice(0,10) + '.json');
 }
 
 function renderAll() {
