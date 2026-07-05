@@ -1,5 +1,54 @@
 # Changelog
 
+## [Session] - 2026-07-04 — Site-wide audit fixes + PIE feature wave
+
+### Security
+- **XSS pass over 17 intel/pattern pages (~210 sites)** — all scraped-pipeline
+  JSON (actor names, flag titles, article text, entity labels…) now passes
+  through per-page `esc()` helpers before `innerHTML`; data-sourced `href`s are
+  scheme-guarded (http/https only). Injection-tested live on `/actors/`.
+- **Analytics admin gate repaired** — `analytics-ingest` worker now answers
+  `GET ?verify=1` (constant-time key check vs `ANALYTICS_ADMIN_KEY`) and
+  `GET ?range=N` (daily KV aggregates); it previously 405'd every GET, so the
+  dashboard login could never succeed. The `?key=` URL-param flow was removed
+  (keys leaked into history/logs); CORS added to the 405 response.
+- **Security headers** — HSTS, `X-Frame-Options: SAMEORIGIN`, and a
+  Permissions-Policy (camera stays `self` for step-photo capture) in `_headers`.
+
+### Fixed
+- **Stale-deploy caching** — `build_static.py` now appends a content-hash `?v=`
+  to every unversioned `static/*.js|css` reference; `forge-static-adapter.js`
+  was being pinned for a year by the immutable cache rule.
+- **Soft-404s** — generated `build/404.html`; unknown URLs previously served
+  the homepage with HTTP 200 (Cloudflare Pages SPA fallback).
+- **Sitemap/robots** — per-domain sitemaps (`sitemap.xml` forge,
+  `sitemap-patterns.xml` patterns) using canonical URLs; `/private/` + gated
+  paths excluded and Disallowed. Previously one forge-only sitemap (with 401
+  private URLs) was served on both domains, conflicting with canonicals.
+- **CSV exports mangled quotes** — all three exporters in `patterns.html`
+  escaped `"` as `''`; now RFC-4180 `""`.
+
+### Added (PIE feature wave)
+- **`/pie-search/`** — global search over flags, predictions, actors, entities,
+  intel articles (~7,800 records indexed client-side, filter chips).
+- **`/brief-archive/`** — historical daily-brief browser (`?d=` deep links);
+  full narrative for today, flag-snapshot + churn view for history days.
+- **`/miner-health/`** — pipeline health & provenance board: 71 registry
+  miners, schedule-aware staleness, community-source attribution.
+- **Flags export** (`patterns.html`) — filtered CSV + JSON download buttons.
+- **Calibration breakout** (`forecast-accountability.html`) — hit rate/Brier
+  by domain and impact tier, low-sample guards, over/under-confidence hints.
+- **Evidence trail** (`actors.html`) — per-actor article mentions (6k-article
+  corpus, acronym-safe matching), per-TTP defensive-signal counts, Wingman link.
+- **Substitute finder** (`adversary-bom.html`) — per-lever known alternatives
+  with non-Western highlighting; "N of M levers have non-Western substitutes".
+- New "Research Tools" group on patterns-home; Archive link on the daily brief.
+
+### Ops / tracked
+- `BUG-011` — `/api/prices` returns empty (nothing populates the `prices` KV
+  key; pipeline gap in Ai-Project). `DEBT-014` — `www.` subdomains 522 on both
+  domains; needs Cloudflare dashboard custom-domain or redirect rule (not repo).
+
 ## [Session] - 2026-06-11 — De-duplicate the Patterns brief (drop the stacked "At a glance" card)
 
 ### Changed
