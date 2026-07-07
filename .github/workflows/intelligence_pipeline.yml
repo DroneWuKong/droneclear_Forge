@@ -122,7 +122,14 @@ jobs:
           else
             NFILES=$(git diff --staged --name-only | wc -l)
             git commit -m "chore(miners): intelligence pipeline update $(date -u +%Y-%m-%d) - ${NFILES} files [skip ci]"
-            git push
+            # Retry push up to 4 times with exponential backoff (2s/4s/8s/16s).
+            # GitHub occasionally returns "fatal error in commit_refs" transiently
+            # (seen Jul 7 2026); a bare push with set -e would fail the whole job.
+            for delay in 2 4 8 16; do
+              if git push; then break; fi
+              echo "[WARN] git push failed; retrying in ${delay}s…"
+              sleep "$delay"
+            done
             echo "CHANGES=$(git diff HEAD~1 --stat | tail -1)" >> "$GITHUB_ENV"
           fi
 
