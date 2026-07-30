@@ -1,0 +1,97 @@
+name: Sync Validated Lens Fallbacks
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/sync-lens-fallbacks.yml"
+      - "workers/forge-data.js"
+      - "forge-source/actors.html"
+      - "forge-source/ttps.html"
+  schedule:
+    - cron: "15 13 * * *"
+  workflow_dispatch:
+
+concurrency:
+  group: sync-lens-fallbacks
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+
+jobs:
+  sync:
+    name: Copy fresh Ai-Project lens artifacts
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/checkout@v4
+        with:
+          repository: DroneWuKong/Ai-Project
+          token: ${{ secrets.MINER_PAT }}
+          path: _aiproj
+          sparse-checkout: |
+            data/sanctions_evasion_graph.json
+            data/adversary_bom.json
+            data/component_mirroring_index.json
+            data/actor_fingerprints.json
+            data/ttp_counter_gap.json
+            data/threat_scores.json
+            data/intel-db/articles.json
+            scripts/validate_intel_lens_outputs.py
+          sparse-checkout-cone-mode: false
+          fetch-depth: 1
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Validate source artifacts
+        working-directory: _aiproj
+        run: |
+          python scripts/validate_intel_lens_outputs.py \
+            --max-age-hours 36 \
+            --max-source-age-days 14 \
+            --sentinel -
+
+      - name: Copy validated static fallbacks
+        run: |
+          set -euo pipefail
+          for name in \
+            sanctions_evasion_graph \
+            adversary_bom \
+            component_mirroring_index \
+            actor_fingerprints \
+            ttp_counter_gap \
+            threat_scores; do
+            cp "_aiproj/data/${name}.json" "forge-source/${name}.json"
+          done
+
+      - name: Validate worker JavaScript syntax
+        run: node --check workers/forge-data.js
+
+      - name: Commit refreshed fallbacks
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add \
+            forge-source/sanctions_evasion_graph.json \
+            forge-source/adversary_bom.json \
+            forge-source/component_mirroring_index.json \
+            forge-source/actor_fingerprints.json \
+            forge-source/ttp_counter_gap.json \
+            forge-source/threat_scores.json
+
+          if git diff --staged --quiet; then
+            echo "Static lens fallbacks already match Ai-Project"
+            exit 0
+          fi
+
+          git commit -m "data(lens): sync validated static fallbacks $(date -u +%Y-%m-%d) [skip ci]"
+          git pull --rebase origin main
+          git push origin HEAD:main
