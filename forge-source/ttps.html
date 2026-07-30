@@ -3,10 +3,9 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>TTP Defense Gap — uas-patterns</title>
+<title>TTP Defense-Gap Signals — uas-patterns</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
-<script src="https://unpkg.com/@phosphor-icons/web"></script>
 <style>
 :root{
   --bg:#0c0c0a;--surface:#141410;--card:#1c1c17;--card-hi:#242420;
@@ -18,180 +17,285 @@
   --text:#f5f0e8;--text-s:#b8b0a0;--text-d:#8a8070;--text-xd:#6b6358;
   --font:'Inter',system-ui,sans-serif;--mono:'JetBrains Mono',monospace;
 }
-*{box-sizing:border-box;margin:0;padding:0}
-body{background:var(--bg);color:var(--text);font-family:var(--font);line-height:1.5;-webkit-font-smoothing:antialiased;min-height:100vh}
-a{text-decoration:none;color:inherit}
-
-#dc-nav{display:flex;align-items:center;justify-content:space-between;padding:0 16px;height:44px;background:#0c0c0a;border-bottom:1px solid #1e1e18;position:sticky;top:0;z-index:500}
-#dc-nav-left{display:flex;align-items:center;gap:10px;min-width:0}
-#dc-nav-brand{font:700 13px var(--mono);color:#f59e0b;flex-shrink:0}
-#dc-nav-sep{color:#2e2e26;font-size:12px}
-#dc-nav-page{font:600 11px var(--font);color:#b8b0a0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:160px}
-#dc-hamburger{width:32px;height:32px;border-radius:6px;border:1px solid #2a2a22;background:none;color:#6b6358;cursor:pointer;flex-shrink:0;margin-left:auto;display:flex;align-items:center;justify-content:center;transition:all .15s}
-#dc-hamburger:hover{border-color:#3e3e34;color:#b8b0a0}
-#dc-overlay{position:fixed;inset:0;z-index:498;background:rgba(0,0,0,.6);backdrop-filter:blur(4px);opacity:0;pointer-events:none;transition:opacity .25s}
-#dc-overlay.open{opacity:1;pointer-events:auto}
-#dc-drawer{position:fixed;top:0;right:0;bottom:0;z-index:499;width:260px;max-width:85vw;background:#111110;border-left:1px solid #2a2a22;transform:translateX(100%);transition:transform .3s cubic-bezier(.4,0,.2,1);display:flex;flex-direction:column;overflow:hidden}
-#dc-drawer.open{transform:translateX(0)}
-#dc-drawer-head{padding:16px;border-bottom:1px solid #1e1e18;display:flex;align-items:center;justify-content:space-between}
-#dc-drawer-brand{font:700 14px var(--mono);color:#f59e0b}
-#dc-drawer-close{width:28px;height:28px;border-radius:6px;border:1px solid #2a2a22;background:none;color:#6b6358;cursor:pointer;font-size:16px}
-.dc-drawer-section{padding:12px 16px 4px;font:700 9px var(--mono);color:#3e3e34;text-transform:uppercase;letter-spacing:.1em}
-.dc-drawer-item{display:flex;gap:10px;padding:9px 16px;color:#6b6358;font:400 12px var(--font);border-left:2px solid transparent;transition:all .15s}
-.dc-drawer-item:hover{color:#b8b0a0;background:rgba(255,255,255,.02);border-left-color:#2e2e26}
-.dc-drawer-item.dc-active{color:#22c55e;border-left-color:#22c55e;background:rgba(34,197,94,.04)}
-.dc-drawer-divider{height:1px;background:#1e1e18;margin:8px 16px}
-#dc-drawer-body{flex:1;overflow-y:auto;overflow-x:hidden}
-
-.page{max-width:920px;margin:0 auto;padding:32px 24px 60px}
+*{box-sizing:border-box}
+html,body{margin:0;min-height:100%;background:var(--bg);color:var(--text);font-family:var(--font)}
+body{line-height:1.5;-webkit-font-smoothing:antialiased}
+button,input{font:inherit}
+.page{max-width:980px;margin:0 auto;padding:30px 22px 60px}
 .eyebrow{font:600 10px var(--mono);text-transform:uppercase;letter-spacing:.12em;color:var(--text-xd);margin-bottom:6px}
-h1{font:700 24px var(--mono);color:#22c55e;letter-spacing:-0.02em;margin-bottom:8px}
-.tagline{font-size:13px;color:var(--text-s);line-height:1.6;max-width:680px}
-.tagline code{font:500 11px var(--mono);background:var(--surface);padding:1px 5px;border-radius:3px;color:var(--text)}
-
-.legend{display:flex;gap:14px;font:500 10px var(--font);color:var(--text-d);margin:16px 0 20px;flex-wrap:wrap}
-.legend span{display:flex;align-items:center;gap:5px}
-.legend i{display:inline-block;width:8px;height:8px;border-radius:50%}
-.dot-c{background:#ef4444}.dot-l{background:#f59e0b}.dot-m{background:#3b82f6}.dot-o{background:#22c55e}
-
-.bar-list{display:flex;flex-direction:column;gap:6px;margin-bottom:30px}
-.barline{background:var(--card);border:1px solid var(--border);border-radius:8px;padding:12px 14px;cursor:pointer;transition:border-color .15s}
-.barline:hover{border-color:var(--border-hi)}
-.barline.expanded{background:var(--card-hi);border-color:var(--border-hi)}
-.barline-h{display:flex;align-items:center;gap:10px}
-.barline-h .nm{flex:1;font:600 13px var(--font);color:var(--text);min-width:0}
-.barline-h .gap{font:700 13px var(--mono);width:48px;text-align:right;flex-shrink:0}
-.barline-h .verdict{font:600 9px var(--mono);padding:2px 6px;border-radius:3px;flex-shrink:0}
-.verdict.crit{background:var(--red-d);color:var(--red);border:1px solid rgba(239,68,68,.3)}
-.verdict.large{background:var(--amber-d);color:var(--amber);border:1px solid rgba(245,158,11,.3)}
-.verdict.mod{background:var(--blue-d);color:var(--blue);border:1px solid rgba(59,130,246,.3)}
-.verdict.cov{background:var(--green-d);color:#22c55e;border:1px solid rgba(34,197,94,.3)}
-.bar-track{height:6px;background:var(--surface);border-radius:3px;overflow:hidden;margin-top:9px}
-.bar-fill{height:100%;border-radius:3px;transition:width .3s}
-.bar-fill.crit{background:#ef4444}.bar-fill.large{background:#f59e0b}.bar-fill.mod{background:#3b82f6}.bar-fill.cov{background:#22c55e}
-
-.detail{padding:14px 4px 4px;font-size:12px;color:var(--text-s);display:none;line-height:1.6}
-.barline.expanded .detail{display:block}
-.detail .desc{margin-bottom:10px}
-.detail .actors{display:flex;gap:5px;flex-wrap:wrap;margin-bottom:10px}
-.actor-pill{font:500 10px var(--mono);padding:2px 6px;background:var(--surface);border-radius:3px;color:var(--text-d);border:1px solid var(--border)}
-.detail h3{font:600 10px var(--mono);text-transform:uppercase;letter-spacing:.07em;color:var(--text-d);margin:10px 0 6px}
-.kw{display:inline-block;font:500 10px var(--mono);padding:1px 5px;margin:1px 2px 1px 0;background:var(--surface);border-radius:3px;color:var(--text-s);border:1px solid var(--border)}
-.match{padding:6px 8px;background:var(--surface);border-radius:5px;margin-bottom:4px;font-size:11px;color:var(--text-s)}
-.match .src{font:500 9px var(--mono);color:var(--text-d)}
-.match .kw{margin-left:6px;color:var(--amber)}
-
-.caveat{margin-top:24px;padding:12px 14px;background:var(--surface);border-left:3px solid var(--text-xd);border-radius:4px;font:400 11px var(--font);color:var(--text-s);line-height:1.6}
-
-@media(max-width:640px){
-  .page{padding:20px 14px 40px}
-  h1{font-size:20px}
+h1{font:700 25px var(--mono);color:var(--green);letter-spacing:-.025em;margin:0 0 8px}
+.tagline{max-width:800px;margin:0;color:var(--text-s);font-size:13px;line-height:1.65}
+.tagline code{font:500 11px var(--mono);background:var(--surface);padding:2px 5px;border-radius:3px;color:var(--text)}
+.status{display:flex;align-items:center;gap:9px;flex-wrap:wrap;margin:16px 0 12px;padding:10px 12px;border:1px solid var(--border);border-radius:7px;background:var(--surface);font:500 10px var(--mono);color:var(--text-d)}
+.status-dot{width:8px;height:8px;border-radius:50%;background:var(--text-xd)}
+.status.fresh{border-color:rgba(34,197,94,.35)}.status.fresh .status-dot{background:var(--green)}
+.status.delayed{border-color:rgba(245,158,11,.4)}.status.delayed .status-dot{background:var(--amber)}
+.status.stale,.status.error{border-color:rgba(239,68,68,.45)}.status.stale .status-dot,.status.error .status-dot{background:var(--red)}
+.status strong{color:var(--text)}
+.stats{display:grid;grid-template-columns:repeat(4,1fr);gap:7px;margin:10px 0 18px}
+.stat{background:var(--surface);border:1px solid var(--border);border-radius:7px;padding:10px}
+.stat-label{font:600 8px var(--mono);text-transform:uppercase;letter-spacing:.08em;color:var(--text-d)}
+.stat-value{font:700 20px var(--mono);margin-top:3px}
+.toolbar{display:flex;gap:8px;align-items:center;margin-bottom:9px}
+.search{flex:1;border:1px solid var(--border);border-radius:7px;background:var(--surface);color:var(--text);padding:10px 11px;outline:none}
+.search:focus{border-color:var(--green)}
+.sort{border:1px solid var(--border);border-radius:7px;background:var(--surface);color:var(--text-s);padding:10px}
+.list{display:grid;gap:7px}
+.row{border:1px solid var(--border);border-radius:9px;background:var(--card);overflow:hidden}
+.row[open]{background:var(--card-hi);border-color:var(--border-hi)}
+.row summary{list-style:none;cursor:pointer;padding:12px 14px}
+.row summary::-webkit-details-marker{display:none}
+.row-head{display:grid;grid-template-columns:minmax(0,1fr) 60px 110px;gap:10px;align-items:center}
+.ttp-name{font:600 12px var(--mono);overflow-wrap:anywhere}
+.gap{font:700 14px var(--mono);text-align:right}
+.band{font:600 9px var(--mono);text-align:center;padding:3px 6px;border-radius:4px;border:1px solid var(--border)}
+.band.critical{color:var(--red);background:var(--red-d);border-color:rgba(239,68,68,.3)}
+.band.large{color:var(--amber);background:var(--amber-d);border-color:rgba(245,158,11,.3)}
+.band.moderate{color:var(--blue);background:var(--blue-d);border-color:rgba(59,130,246,.3)}
+.band.covered{color:var(--green);background:var(--green-d);border-color:rgba(34,197,94,.3)}
+.track{height:5px;background:var(--surface);border-radius:3px;overflow:hidden;margin-top:9px}
+.fill{height:100%;background:var(--green)}
+.fill.critical{background:var(--red)}.fill.large{background:var(--amber)}.fill.moderate{background:var(--blue)}
+.detail{border-top:1px solid var(--border);padding:12px 14px 14px;color:var(--text-s);font-size:12px}
+.desc{line-height:1.65;margin-bottom:10px}
+.section-title{font:600 9px var(--mono);text-transform:uppercase;letter-spacing:.08em;color:var(--text-d);margin:11px 0 6px}
+.pills{display:flex;gap:5px;flex-wrap:wrap}
+.pill{font:500 9px var(--mono);padding:3px 6px;border-radius:4px;border:1px solid var(--border);background:var(--surface);color:var(--text-d)}
+.signal-summary{display:flex;gap:7px;flex-wrap:wrap;margin-bottom:8px}
+.signal{font:600 9px var(--mono);padding:4px 7px;border-radius:4px;background:var(--surface);border:1px solid var(--border);color:var(--text-s)}
+.matches{display:grid;gap:5px}
+.match{display:grid;grid-template-columns:120px 100px minmax(0,1fr);gap:8px;padding:7px 9px;border-radius:6px;background:var(--surface);font-size:10px}
+.match-source,.match-type{font:500 9px var(--mono);color:var(--text-d);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.match-keyword{color:var(--amber)}
+.empty{padding:34px;text-align:center;color:var(--text-d);font-size:13px}
+.caveat{margin-top:18px;padding:12px 14px;background:var(--surface);border-left:3px solid var(--text-xd);border-radius:5px;color:var(--text-s);font-size:11px;line-height:1.65}
+@media(max-width:700px){
+  .page{padding:20px 14px 42px}
+  .stats{grid-template-columns:repeat(2,1fr)}
+  .row-head{grid-template-columns:minmax(0,1fr) 54px}
+  .band{grid-column:1/-1;text-align:left;width:max-content}
+  .toolbar{display:block}.sort{width:100%;margin-top:7px}
+  .match{grid-template-columns:1fr}.match-type{display:none}
 }
 </style>
 </head>
 <body>
-
-<nav id="dc-nav">
-  <div id="dc-nav-left">
-    <a id="dc-nav-brand" href="/" onclick="return dcNavBrandClick(event)">Patterns</a>
-    <span id="dc-nav-sep">/</span>
-    <span id="dc-nav-page">TTP Defense Gap</span>
-  </div>
-  <button id="dc-hamburger" onclick="dcNavToggle()">
-    <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round">
-      <line x1="1" y1="3" x2="13" y2="3"/><line x1="1" y1="7" x2="13" y2="7"/><line x1="1" y1="11" x2="13" y2="11"/>
-    </svg>
-  </button>
-</nav>
-<div id="dc-overlay" onclick="dcNavClose()"></div>
-<div id="dc-drawer">
-  <div id="dc-drawer-head"><span id="dc-drawer-brand">Patterns</span><button id="dc-drawer-close" onclick="dcNavClose()">✕</button></div>
-  <div id="dc-drawer-body">
-    <div class="dc-drawer-section">PIE — Pattern Intelligence</div>
-    <a class="dc-drawer-item" href="https://uas-patterns.com/patterns-home/" data-page="patterns-home">P.I.E Hub</a>
-    <a class="dc-drawer-item" href="https://uas-patterns.com/brief/" data-page="brief">Brief</a>
-    <a class="dc-drawer-item" href="https://uas-patterns.com/patterns/" data-page="patterns">Flags</a>
-    <a class="dc-drawer-item" href="https://uas-patterns.com/clock/" data-page="clock">UAS Clock</a>
-    <a class="dc-drawer-item" aria-disabled="true" data-page="ddg">DDG Tracker</a>
-    <div class="dc-drawer-divider"></div>
-    <div class="dc-drawer-section">Lens — Adversary</div>
-    <a class="dc-drawer-item" href="/adversary-bom/" data-page="adversary-bom">Adversary BOM</a>
-    <a class="dc-drawer-item" href="/mirroring/" data-page="mirroring">Component Mirroring</a>
-    <div class="dc-drawer-section">Lens — Actor</div>
-    <a class="dc-drawer-item" href="/actors/" data-page="actors">Threat Actors</a>
-    <a class="dc-drawer-item" href="/ttps/" data-page="ttps">TTP Defense Gap</a>
-    <div class="dc-drawer-section">Lens — Risk</div>
-    <a class="dc-drawer-item" href="/evasion/" data-page="evasion">Sanctions-Evasion Graph</a>
-  </div>
-</div>
-
 <main class="page">
-  <div class="eyebrow">Actor Lens</div>
-  <h1>TTP Defense Gap</h1>
-  <p class="tagline">For each TTP we track in modern UAS conflict, scans <code>forge_intel</code> +
-  <code>parts-db</code> + procurement solicitations for *defensive* procurement signal. High <code>gap_score</code>
-  means little or no money flowing against this TTP — capability gap to address. Reads <code>ttp_counter_gap.json</code>.</p>
+  <div class="eyebrow">Actor Lens · Procurement-signal triage</div>
+  <h1>TTP Defense-Gap Signals</h1>
+  <p class="tagline">
+    Boundary-aware keyword evidence from <code>forge_intel</code>, procurement
+    solicitations, and the parts corpus. A high <code>gap_score</code> means the
+    repository has weak matching defensive-procurement evidence. It does not prove
+    that no program, spending, inventory, or operational defense exists.
+  </p>
 
-  <div class="legend">
-    <span><i class="dot-c"></i>CRITICAL gap</span>
-    <span><i class="dot-l"></i>LARGE gap</span>
-    <span><i class="dot-m"></i>MODERATE</span>
-    <span><i class="dot-o"></i>COVERED</span>
+  <div class="status" id="status" role="status" aria-live="polite">
+    <span class="status-dot"></span><span>Loading dataset status…</span>
   </div>
 
-  <div class="bar-list" id="bars"><div style="padding:30px;text-align:center;color:var(--text-d)">Loading…</div></div>
+  <div class="stats" id="stats">
+    <div class="stat"><div class="stat-label">TTPs evaluated</div><div class="stat-value">—</div></div>
+    <div class="stat"><div class="stat-label">Corpus records</div><div class="stat-value">—</div></div>
+    <div class="stat"><div class="stat-label">Critical triage gaps</div><div class="stat-value">—</div></div>
+    <div class="stat"><div class="stat-label">Covered in corpus</div><div class="stat-value">—</div></div>
+  </div>
 
-  <div class="caveat" id="caveat">—</div>
+  <div class="toolbar">
+    <input class="search" id="search" type="search" placeholder="Filter TTPs, descriptions, or actors…" aria-label="Filter TTPs">
+    <select class="sort" id="sort" aria-label="Sort TTPs">
+      <option value="gap">Largest gap first</option>
+      <option value="signal">Most indexed signal first</option>
+      <option value="name">Name</option>
+    </select>
+  </div>
+
+  <div class="list" id="list"><div class="empty">Loading TTP signals…</div></div>
+  <div class="caveat" id="caveat">Loading methodology note…</div>
 </main>
 
 <script>
-window.dcNavToggle=function(){document.getElementById('dc-drawer').classList.toggle('open');document.getElementById('dc-overlay').classList.toggle('open');document.getElementById('dc-hamburger').classList.toggle('open');};
-window.dcNavClose=function(){document.getElementById('dc-drawer').classList.remove('open');document.getElementById('dc-overlay').classList.remove('open');document.getElementById('dc-hamburger').classList.remove('open');};
-window.dcNavBrandClick=function(e){e.preventDefault();location.href='/patterns-home/';};
-(function(){var path=location.pathname.replace(/\/$/,'').split('/').pop()||'home';document.querySelectorAll('.dc-drawer-item').forEach(function(a){if(a.dataset.page===path)a.classList.add('dc-active');});})();
+(function(){
+  'use strict';
 
-function esc(s){ return String(s==null?'':s).replace(/[&<>"']/g, function(c){ return ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'})[c]; }); }
+  var state = {rows:[], query:'', sort:'gap', meta:{}, wrapper:{}};
 
-function bandClass(verdict){
-  if(!verdict) return 'mod';
-  if(verdict.startsWith('CRITICAL')) return 'crit';
-  if(verdict.startsWith('LARGE')) return 'large';
-  if(verdict.startsWith('MODERATE')) return 'mod';
-  if(verdict.startsWith('COVERED')) return 'cov';
-  return 'mod';
-}
+  function esc(value){
+    return String(value == null ? '' : value).replace(/[&<>"']/g, function(c){
+      return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];
+    });
+  }
 
-fetch('/api/data?type=ttp_counter_gap').then(function(r){ return r.ok?r.json():Promise.reject(r.status); }).then(function(e){ var d=e.data||e;
-  document.getElementById('caveat').textContent = (d.meta && d.meta.caveat) || '';
-  var box = document.getElementById('bars');
-  var rs = d.results || [];
-  if(!rs.length){ box.innerHTML = '<div style="padding:30px;text-align:center;color:var(--text-d)">No TTP entries found.</div>'; return; }
-  box.innerHTML = rs.map(function(r,i){
-    var b = bandClass(r.verdict);
-    var pct = Math.round((r.gap_score||0) * 100);
-    var actorPills = (r.attributed_actors||[]).map(function(a){ return '<span class="actor-pill">'+esc(a)+'</span>'; }).join('');
-    var kws = (r.counter_keywords||[]).map(function(k){ return '<span class="kw">'+esc(k)+'</span>'; }).join('');
-    var matches = (r.sample_matches||[]).slice(0,5).map(function(m){
-      return '<div class="match"><span class="src">'+esc(m.source)+'</span><span class="kw">'+esc(m.keyword)+'</span></div>';
-    }).join('') || '<div style="font-size:11px;color:var(--text-xd)">No defensive procurement matches.</div>';
-    return '<div class="barline" data-i="'+i+'">'+
-      '<div class="barline-h" onclick="this.parentNode.classList.toggle(\'expanded\')">'+
-        '<div class="nm">'+esc(r.ttp_id)+'</div>'+
-        '<div class="gap" style="color:var(--'+(b==='crit'?'red':b==='large'?'amber':b==='mod'?'blue':'green')+')">'+r.gap_score.toFixed(2)+'</div>'+
-        '<div class="verdict '+b+'">'+esc((r.verdict||'').split(' ')[0])+'</div>'+
-      '</div>'+
-      '<div class="bar-track"><div class="bar-fill '+b+'" style="width:'+pct+'%"></div></div>'+
-      '<div class="detail">'+
-        '<div class="desc">'+esc(r.description)+'</div>'+
-        '<div class="actors">'+actorPills+'</div>'+
-        '<h3>Counter keywords searched</h3><div>'+kws+'</div>'+
-        '<h3>Sample matches ('+esc(r.counter_signal_count)+' total)</h3>'+matches+
-      '</div>'+
-    '</div>';
-  }).join('');
-}).catch(function(err){
-  document.getElementById('bars').innerHTML = '<div style="padding:30px;text-align:center;color:var(--text-d)">Failed to load ttp_counter_gap.json ('+err+')</div>';
-});
+  function formatDate(value){
+    var date = new Date(value || '');
+    return Number.isFinite(date.getTime()) ? date.toISOString().replace('T',' ').slice(0,16)+' UTC' : 'unknown';
+  }
+
+  function bandOf(row){
+    var verdict = String(row.verdict || '').toUpperCase();
+    if(verdict.startsWith('CRITICAL')) return 'critical';
+    if(verdict.startsWith('LARGE')) return 'large';
+    if(verdict.startsWith('MODERATE')) return 'moderate';
+    return 'covered';
+  }
+
+  function freshness(meta, wrapper){
+    if(wrapper.freshness) return wrapper.freshness;
+    var stamp = Date.parse(meta.generated_at || '');
+    var age = Number.isFinite(stamp) ? Math.max(0, Math.floor((Date.now()-stamp)/1000)) : null;
+    return {
+      generated_at:Number.isFinite(stamp) ? new Date(stamp).toISOString() : null,
+      age_seconds:age,
+      status:age == null ? 'unknown' : age <= 36*3600 ? 'fresh' : age <= 72*3600 ? 'delayed' : 'stale',
+      source:wrapper.source || 'unknown'
+    };
+  }
+
+  function renderStatus(){
+    var box = document.getElementById('status');
+    var f = freshness(state.meta, state.wrapper);
+    var cls = f.status === 'unknown' ? 'error' : f.status;
+    box.className = 'status '+cls;
+    var age = f.age_seconds == null ? 'unknown age'
+      : f.age_seconds < 3600 ? Math.round(f.age_seconds/60)+' min old'
+      : (f.age_seconds/3600).toFixed(1)+' h old';
+    box.innerHTML =
+      '<span class="status-dot"></span>'+
+      '<strong>'+esc(String(f.status || 'unknown').toUpperCase())+'</strong>'+
+      '<span>generated '+esc(formatDate(f.generated_at))+' · '+esc(age)+'</span>'+
+      '<span>source '+esc(state.wrapper.source || f.source || 'unknown')+'</span>';
+  }
+
+  function renderStats(){
+    var critical = state.rows.filter(function(row){return bandOf(row)==='critical';}).length;
+    var covered = state.rows.filter(function(row){return bandOf(row)==='covered';}).length;
+    var values = [
+      state.meta.ttps_evaluated != null ? state.meta.ttps_evaluated : state.rows.length,
+      state.meta.corpus_records != null ? state.meta.corpus_records : '—',
+      critical,
+      covered
+    ];
+    document.querySelectorAll('#stats .stat-value').forEach(function(node,index){
+      node.textContent = values[index];
+    });
+  }
+
+  function rowSearchText(row){
+    return [
+      row.ttp_id,
+      row.description,
+      (row.attributed_actors || []).join(' '),
+      (row.counter_keywords || []).join(' ')
+    ].join(' ').toLowerCase();
+  }
+
+  function render(){
+    var query = state.query.trim().toLowerCase();
+    var rows = state.rows.filter(function(row){
+      return !query || rowSearchText(row).indexOf(query) !== -1;
+    }).slice();
+
+    if(state.sort === 'signal'){
+      rows.sort(function(a,b){return Number(b.counter_signal_count||0)-Number(a.counter_signal_count||0);});
+    } else if(state.sort === 'name'){
+      rows.sort(function(a,b){return String(a.ttp_id||'').localeCompare(String(b.ttp_id||''));});
+    } else {
+      rows.sort(function(a,b){return Number(b.gap_score||0)-Number(a.gap_score||0);});
+    }
+
+    var list = document.getElementById('list');
+    if(!rows.length){
+      list.innerHTML = '<div class="empty">No TTP signals match the current filter.</div>';
+      return;
+    }
+
+    list.innerHTML = rows.map(function(row,index){
+      var band = bandOf(row);
+      var pct = Math.max(0, Math.min(100, Number(row.gap_score || 0)*100));
+      var actors = (row.attributed_actors || []).map(function(actor){
+        return '<span class="pill">'+esc(actor)+'</span>';
+      }).join('');
+      var keywords = (row.counter_keywords || []).map(function(keyword){
+        return '<span class="pill">'+esc(keyword)+'</span>';
+      }).join('');
+      var signalTypes = Object.entries(row.counter_signal_by_source_type || {}).map(function(entry){
+        return '<span class="signal">'+esc(entry[0])+' '+esc(entry[1])+'</span>';
+      }).join('');
+      var matches = (row.sample_matches || []).map(function(match){
+        return '<div class="match">'+
+          '<span class="match-source">'+esc(match.source || 'unknown')+'</span>'+
+          '<span class="match-type">'+esc(match.source_type || '')+'</span>'+
+          '<span class="match-keyword">'+esc(match.keyword || '')+'</span>'+
+        '</div>';
+      }).join('') || '<div class="empty" style="padding:14px">No indexed countermeasure matches.</div>';
+
+      return '<details class="row" '+(index===0 ? 'open' : '')+'>'+
+        '<summary>'+
+          '<div class="row-head">'+
+            '<span class="ttp-name">'+esc(row.ttp_id)+'</span>'+
+            '<span class="gap">'+Number(row.gap_score || 0).toFixed(2)+'</span>'+
+            '<span class="band '+band+'">'+esc(band.toUpperCase())+'</span>'+
+          '</div>'+
+          '<div class="track"><div class="fill '+band+'" style="width:'+pct.toFixed(0)+'%"></div></div>'+
+        '</summary>'+
+        '<div class="detail">'+
+          '<div class="desc">'+esc(row.description || '')+'</div>'+
+          '<div class="signal-summary">'+
+            '<span class="signal">'+esc(row.counter_signal_count || 0)+' indexed records</span>'+
+            signalTypes+
+          '</div>'+
+          '<div class="section-title">Actors listed in the hand-seeded catalog</div>'+
+          '<div class="pills">'+actors+'</div>'+
+          '<div class="section-title">Countermeasure terms searched</div>'+
+          '<div class="pills">'+keywords+'</div>'+
+          '<div class="section-title">Retained match sample</div>'+
+          '<div class="matches">'+matches+'</div>'+
+          '<div class="section-title">Verdict</div>'+
+          '<div>'+esc(row.verdict || '')+'</div>'+
+        '</div>'+
+      '</details>';
+    }).join('');
+  }
+
+  fetch('/api/data?type=ttp_counter_gap', {cache:'no-store'}).then(async function(response){
+    var payload;
+    try { payload = await response.json(); }
+    catch(e){ payload = {error:'Invalid JSON response'}; }
+    if(!response.ok){
+      var error = new Error(payload.error || ('HTTP '+response.status));
+      error.payload = payload;
+      throw error;
+    }
+    state.wrapper = payload;
+    var data = payload.data || payload;
+    state.meta = data.meta || {};
+    state.rows = data.results || [];
+    renderStatus();
+    renderStats();
+    render();
+    document.getElementById('caveat').textContent = state.meta.caveat || '';
+  }).catch(function(error){
+    var payload = error.payload || {};
+    var f = payload.freshness || {};
+    document.getElementById('status').className = 'status error';
+    document.getElementById('status').innerHTML =
+      '<span class="status-dot"></span><strong>DATA WITHHELD</strong><span>'+esc(payload.error || error.message || error)+'</span>'+
+      (f.generated_at ? '<span>last generated '+esc(formatDate(f.generated_at))+'</span>' : '');
+    document.getElementById('list').innerHTML =
+      '<div class="empty">'+esc(payload.action || 'The publication gate requires a fresh validated TTP dataset.')+'</div>';
+    document.getElementById('caveat').textContent =
+      'A missing or stale dataset is shown as unavailable rather than being presented as current evidence.';
+  });
+
+  document.getElementById('search').addEventListener('input', function(event){
+    state.query = event.target.value || '';
+    render();
+  });
+  document.getElementById('sort').addEventListener('change', function(event){
+    state.sort = event.target.value || 'gap';
+    render();
+  });
+})();
 </script>
 </body>
 </html>
