@@ -115,6 +115,7 @@ PAGES = {
     'brief.html': 'brief/index.html',
     'patterns-home.html': 'patterns-home/index.html',
     'priorities.html': 'priorities/index.html',
+    'ask-pie.html': 'ask-pie/index.html',
     'tools-home.html': 'tools-home/index.html',
     'software-library.html': 'software-library/index.html',
     'tracker.html': 'tracker/index.html',
@@ -469,6 +470,7 @@ _UNIFIED_NAV = r"""<!-- ── Unified UAS- Nav (5-domain accordion drawer) ─�
     <div class="dc-dom-sublinks">
       <a class="dc-dom-sublink" href="https://uas-patterns.com/patterns-home/" data-page="patterns-home">P.I.E Hub</a>
       <a class="dc-dom-sublink" href="https://uas-patterns.com/priorities/" data-page="priorities">Priority View</a>
+      <a class="dc-dom-sublink" href="https://uas-patterns.com/ask-pie/" data-page="ask-pie">Ask PIE</a>
       <a class="dc-dom-sublink" href="https://uas-patterns.com/brief/" data-page="brief">Daily Brief</a>
       <a class="dc-dom-sublink" href="https://uas-patterns.com/patterns/" data-page="patterns">Flags Dashboard</a>
       <a class="dc-dom-sublink" href="https://uas-patterns.com/adversary-bom/" data-page="adversary-bom">Adversary BOM</a>
@@ -609,7 +611,7 @@ _UNIFIED_NAV = r"""<!-- ── Unified UAS- Nav (5-domain accordion drawer) ─�
     'compliance':'Compliance','dossier':'Dossier','platforms':'Platforms','regs':'Regs',
     'stack-builder':'Stack Builder','circuit-forge':'Circuit Forge','report':'Compliance Report','tools-home':'Tools',
     'software-library':'Software Library','industry':'Industry','tracker':'Contract Tracker',
-    'patterns-home':'P.I.E Hub','priorities':'Priority View','brief':'Brief','patterns':'Flags','clock':'UAS Clock','ddg':'DDG Tracker',
+    'patterns-home':'P.I.E Hub','priorities':'Priority View','ask-pie':'Ask PIE','brief':'Brief','patterns':'Flags','clock':'UAS Clock','ddg':'DDG Tracker',
     'adversary-bom':'Adversary BOM','mirroring':'Component Mirroring','actors':'Threat Actors',
     'ttps':'TTP Defense Gap','evasion':'Sanctions-Evasion','market-lens':'Market Lens',
     'forecast-accountability':'Forecast Accountability','pie-trends':'PIE Trends',
@@ -749,6 +751,7 @@ _DISCLAIMER_PAGES = {
     "patterns.html": "patterns",
     "patterns-home.html": "patterns",
     "priorities.html": "patterns",
+    "ask-pie.html": "patterns",
     "pie-trends.html": "patterns",
     "pie-search.html": "patterns",
     "brief-archive.html": "patterns",
@@ -1039,6 +1042,11 @@ SEO_META = {
         'Priority Intelligence View — Local PIR Ranking for UAS Patterns',
         'Choose a transparent local-only profile for FPV supply, NDAA and Blue UAS, procurement, adversary systems, counter-UAS, DFR, or autonomy. Declared terms rank current indexed records without hiding the full corpus.',
         'priority intelligence requirements, PIR, UAS intelligence profile, FPV supply chain, NDAA Blue UAS, counter-UAS intelligence',
+    ),
+    'ask-pie.html': (
+        'Ask PIE — Cited UAS Evidence Retrieval',
+        'Ask a UAS question and receive a deterministic evidence packet with source citations, dates, match reasons, collection coverage, and limitations. No generated conclusion.',
+        'cited UAS evidence, Ask PIE, drone intelligence sources, public source UAS research, evidence retrieval, drone supply chain citations',
     ),
     'pie-search.html': (
         'PIE Search — Flags, Predictions, Actors, Entities & Intel',
@@ -1407,6 +1415,7 @@ CANONICAL_OVERRIDES = {
     # Patterns free / public — uas-patterns.com
     'patterns-home/':  'https://uas-patterns.com/patterns-home/',
     'priorities/':      'https://uas-patterns.com/priorities/',
+    'ask-pie/':       'https://uas-patterns.com/ask-pie/',
     'clock/':          'https://uas-patterns.com/clock/',
     'ddg/':            'https://uas-patterns.com/ddg/',
     'brief/':          'https://uas-patterns.com/brief/',

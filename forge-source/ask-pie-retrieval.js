@@ -31,7 +31,7 @@
   function termPattern(term) {
     const value = normalize(term);
     if (!value) return null;
-    const body = value.split(' ').map(escapeRegex).join('\\s+');
+    const body = value.split(' ').map(escapeRegex).join('[^a-z0-9]+');
     return new RegExp(`(?:^|[^a-z0-9])${body}(?=$|[^a-z0-9])`, 'i');
   }
   function queryTerms(query) {
