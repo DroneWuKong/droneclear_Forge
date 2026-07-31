@@ -4,12 +4,15 @@ on:
   pull_request:
     paths:
       - "forge-source/**"
+      - "workers/**"
       - "tools/audit_public_site.py"
       - "tools/apply_record_dossier_patch.py"
       - "tests/test_public_site_audit.py"
       - "tests/test_dossier_signals.cjs"
       - "tests/test_record_dossiers.cjs"
       - "tests/test_patterns_decision_support.cjs"
+      - "tests/test_actor_event_evidence.cjs"
+      - "tests/test_forge_data_projections.mjs"
       - "build_static.py"
       - "_headers"
       - "README.md"
@@ -18,12 +21,15 @@ on:
     branches: [master]
     paths:
       - "forge-source/**"
+      - "workers/**"
       - "tools/audit_public_site.py"
       - "tools/apply_record_dossier_patch.py"
       - "tests/test_public_site_audit.py"
       - "tests/test_dossier_signals.cjs"
       - "tests/test_record_dossiers.cjs"
       - "tests/test_patterns_decision_support.cjs"
+      - "tests/test_actor_event_evidence.cjs"
+      - "tests/test_forge_data_projections.mjs"
       - "build_static.py"
       - "_headers"
       - "README.md"
@@ -61,12 +67,17 @@ jobs:
       - name: Run software-only public-site fixture tests
         run: python -m unittest -v tests/test_public_site_audit.py
 
-      - name: Run software-only dossier and decision-support tests
+      - name: Run software-only dossier, decision-support, and event-evidence tests
         run: |
-          node --test tests/test_dossier_signals.cjs tests/test_record_dossiers.cjs tests/test_patterns_decision_support.cjs
+          node --test tests/test_dossier_signals.cjs tests/test_record_dossiers.cjs tests/test_patterns_decision_support.cjs \
+            tests/test_actor_event_evidence.cjs \
+            tests/test_forge_data_projections.mjs
           node --check forge-source/dossier-signals.js
           node --check forge-source/record-dossiers.js
           node --check forge-source/patterns-decision-support.js
+          node --check forge-source/actor-event-evidence.js
+          node --check workers/forge-data-projections.mjs
+          node --input-type=module --check < workers/forge-data.js
           python tools/apply_record_dossier_patch.py --check
 
       - name: Audit critical source surfaces
@@ -80,15 +91,25 @@ jobs:
       - name: Audit built routes and copied metadata
         run: python tools/audit_public_site.py --site-dir build --built --strict --require-catalog --dry-run
 
+      - name: Verify built Actor event surface and immutable helper asset
+        run: |
+          test -f build/actors/index.html
+          test -f build/static/actor-event-evidence.js
+          grep -F "Duplicate-adjusted reporting and candidate events" build/actors/index.html
+          grep -F "Candidate-event clusters" build/actors/index.html
+          grep -F "not confirmed incidents, attribution, or proof" build/actors/index.html
+          grep -F "article_event_clusters" workers/forge-data.js
+
       - name: Summary
         if: always()
         run: |
           {
             echo "## Forge + Patterns public-site quality"
             echo "- Validation mode: software-only"
-            echo "- Source audit: critical public surfaces including manufacturer dossiers and Patterns flags"
+            echo "- Source audit: critical public surfaces including manufacturer, component, platform, actor, and Patterns flag views"
             echo "- Dossier join tests: direct/contextual matching, inactive-row exclusion, evidence summary, and review prompts"
             echo "- Flag decision-support tests: classification, source quality, affected-record links, uncertainty, and prohibited conclusion language"
-            echo "- Built audit: generated route indexes and copied data catalog"
+            echo "- Actor event tests: four-unit semantics, exact actor filtering, bounded pagination, rolling-URL guards, event artifact publication controls, and evidence URL safety"
+            echo "- Built audit: generated route indexes, actor event markers, immutable helper asset, and copied data catalog"
             echo "- Hardware required: none"
           } >> "$GITHUB_STEP_SUMMARY"
