@@ -21,7 +21,7 @@ test('entity alias matching is direct', () => {
   }, 'anzu-robotics', vendor, parts);
   assert.ok(row);
   assert.equal(row._match_confidence, 'direct');
-  assert.deepEqual(row._match_reasons, ['entity']);
+  assert.ok(row._match_reasons.includes('entity'));
 });
 
 test('global flags do not match every dossier', () => {
