@@ -7,12 +7,14 @@ on:
       - "workers/**"
       - "tools/audit_public_site.py"
       - "tools/apply_record_dossier_patch.py"
+      - "tools/apply_priority_view_patch.py"
       - "tests/test_public_site_audit.py"
       - "tests/test_dossier_signals.cjs"
       - "tests/test_record_dossiers.cjs"
       - "tests/test_patterns_decision_support.cjs"
       - "tests/test_actor_event_evidence.cjs"
       - "tests/test_forge_data_projections.mjs"
+      - "tests/test_pir_priority_view.cjs"
       - "build_static.py"
       - "_headers"
       - "README.md"
@@ -24,12 +26,14 @@ on:
       - "workers/**"
       - "tools/audit_public_site.py"
       - "tools/apply_record_dossier_patch.py"
+      - "tools/apply_priority_view_patch.py"
       - "tests/test_public_site_audit.py"
       - "tests/test_dossier_signals.cjs"
       - "tests/test_record_dossiers.cjs"
       - "tests/test_patterns_decision_support.cjs"
       - "tests/test_actor_event_evidence.cjs"
       - "tests/test_forge_data_projections.mjs"
+      - "tests/test_pir_priority_view.cjs"
       - "build_static.py"
       - "_headers"
       - "README.md"
@@ -62,23 +66,26 @@ jobs:
           node-version: "22"
 
       - name: Compile quality tooling
-        run: python -m py_compile tools/audit_public_site.py tests/test_public_site_audit.py
+        run: python -m py_compile tools/audit_public_site.py tests/test_public_site_audit.py tools/apply_priority_view_patch.py
 
       - name: Run software-only public-site fixture tests
         run: python -m unittest -v tests/test_public_site_audit.py
 
-      - name: Run software-only dossier, decision-support, and event-evidence tests
+      - name: Run software-only dossier, decision-support, event-evidence, and PIR tests
         run: |
           node --test tests/test_dossier_signals.cjs tests/test_record_dossiers.cjs tests/test_patterns_decision_support.cjs \
             tests/test_actor_event_evidence.cjs \
-            tests/test_forge_data_projections.mjs
+            tests/test_forge_data_projections.mjs \
+            tests/test_pir_priority_view.cjs
           node --check forge-source/dossier-signals.js
           node --check forge-source/record-dossiers.js
           node --check forge-source/patterns-decision-support.js
           node --check forge-source/actor-event-evidence.js
+          node --check forge-source/pir-priority-view.js
           node --check workers/forge-data-projections.mjs
           node --input-type=module --check < workers/forge-data.js
           python tools/apply_record_dossier_patch.py --check
+          python tools/apply_priority_view_patch.py --check
 
       - name: Audit critical source surfaces
         run: python tools/audit_public_site.py --strict --require-catalog --dry-run
@@ -100,16 +107,27 @@ jobs:
           grep -F "not confirmed incidents, attribution, or proof" build/actors/index.html
           grep -F "article_event_clusters" workers/forge-data.js
 
+      - name: Verify built Priority Intelligence Requirement surface
+        run: |
+          test -f build/priorities/index.html
+          test -f build/static/pir-priority-view.js
+          test -f build/static/pir_profiles.json
+          grep -F "Local-only Priority Intelligence Requirement view" build/priorities/index.html
+          grep -F "without hiding the rest" build/priorities/index.html
+          grep -F "No LLM participates in the ranking" build/priorities/index.html
+          grep -F "source_coverage_matrix" workers/forge-data.js
+
       - name: Summary
         if: always()
         run: |
           {
             echo "## Forge + Patterns public-site quality"
             echo "- Validation mode: software-only"
-            echo "- Source audit: critical public surfaces including manufacturer, component, platform, actor, and Patterns flag views"
+            echo "- Source audit: critical public surfaces including manufacturer, component, platform, actor, Patterns flag, and local Priority Intelligence views"
             echo "- Dossier join tests: direct/contextual matching, inactive-row exclusion, evidence summary, and review prompts"
             echo "- Flag decision-support tests: classification, source quality, affected-record links, uncertainty, and prohibited conclusion language"
             echo "- Actor event tests: four-unit semantics, exact actor filtering, bounded pagination, rolling-URL guards, event artifact publication controls, and evidence URL safety"
-            echo "- Built audit: generated route indexes, actor event markers, immutable helper asset, and copied data catalog"
+            echo "- PIR tests: declared-term ranking, token boundaries, source-order fallback, local-storage failure handling, event-summary joins, evidence URL safety, and coverage gaps"
+            echo "- Built audit: generated route indexes, actor and PIR markers, immutable helper assets, and copied data catalog"
             echo "- Hardware required: none"
           } >> "$GITHUB_STEP_SUMMARY"
