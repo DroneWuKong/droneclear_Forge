@@ -25,6 +25,9 @@ class Replacement:
     marker: str
     old: str
     new: str
+    expected_count: int = 1
+    expected_marker_count: int = 1
+    replace_all: bool = False
 
 
 LOADER = r'''
@@ -160,6 +163,9 @@ test('source statistics deduplicate evidence URLs and count primary references',
         """      - "tests/test_dossier_signals.cjs"
       - "tests/test_record_dossiers.cjs"
       - "tests/test_patterns_decision_support.cjs""",
+        expected_count=2,
+        expected_marker_count=2,
+        replace_all=True,
     ),
     Replacement(
         '.github/workflows/public-site-quality.yml',
@@ -169,6 +175,9 @@ test('source statistics deduplicate evidence URLs and count primary references',
         """      - "tools/audit_public_site.py"
       - "tools/apply_record_dossier_patch.py"
       - "tests/test_public_site_audit.py""",
+        expected_count=2,
+        expected_marker_count=2,
+        replace_all=True,
     ),
     Replacement(
         '.github/workflows/public-site-quality.yml',
@@ -190,19 +199,31 @@ def apply_one(root: Path, replacement: Replacement, apply: bool) -> str:
     if not path.exists():
         raise RuntimeError(f'missing file: {replacement.path}')
     text = path.read_text(encoding='utf-8')
-    if replacement.marker in text:
+    if text.count(replacement.marker) >= replacement.expected_marker_count:
         return 'present'
     if not apply:
-        raise RuntimeError(f'{replacement.path}: required marker missing: {replacement.marker!r}')
-    count = text.count(replacement.old)
-    if count != 1:
         raise RuntimeError(
-            f'{replacement.path}: expected one patch anchor for {replacement.marker!r}; found {count}'
+            f'{replacement.path}: required marker missing or incomplete: '
+            f'{replacement.marker!r} ({text.count(replacement.marker)}/'
+            f'{replacement.expected_marker_count})'
+        )
+    count = text.count(replacement.old)
+    if count != replacement.expected_count:
+        raise RuntimeError(
+            f'{replacement.path}: expected {replacement.expected_count} patch anchor(s) '
+            f'for {replacement.marker!r}; found {count}'
         )
     if replacement.path == 'forge-source/dossier-signals.js' and replacement.old == '\n':
         updated = text.rstrip() + replacement.new
+    elif replacement.replace_all:
+        updated = text.replace(replacement.old, replacement.new)
     else:
         updated = text.replace(replacement.old, replacement.new, 1)
+    if updated.count(replacement.marker) < replacement.expected_marker_count:
+        raise RuntimeError(
+            f'{replacement.path}: patch did not create expected marker count for '
+            f'{replacement.marker!r}'
+        )
     path.write_text(updated, encoding='utf-8')
     return 'applied'
 
