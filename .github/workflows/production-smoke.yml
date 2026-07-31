@@ -1,6 +1,11 @@
 name: Forge + Patterns Production Smoke
 
 on:
+  pull_request:
+    paths:
+      - "tools/smoke_public_deployment.py"
+      - "tests/test_public_deployment_smoke.py"
+      - ".github/workflows/production-smoke.yml"
   push:
     branches: [master]
     paths:
@@ -58,6 +63,7 @@ jobs:
         run: sleep 30
 
       - name: Verify deployed Forge and Patterns trust surfaces
+        if: github.event_name != 'pull_request'
         env:
           ATTEMPTS: ${{ inputs.attempts || '12' }}
           DELAY_SECONDS: ${{ inputs.delay_seconds || '30' }}
