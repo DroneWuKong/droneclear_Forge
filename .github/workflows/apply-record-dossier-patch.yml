@@ -1,0 +1,63 @@
+name: Apply Component and Platform Dossier Links
+
+on:
+  push:
+    branches:
+      - feat/component-platform-dossiers-20260731
+    paths:
+      - "forge-source/record-dossiers.js"
+      - "tests/test_record_dossiers.cjs"
+      - "tools/apply_record_dossier_patch.py"
+      - ".github/workflows/apply-record-dossier-patch.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: apply-record-dossier-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  apply:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: feat/component-platform-dossiers-20260731
+          fetch-depth: 0
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Apply idempotent cross-surface edits
+        run: python tools/apply_record_dossier_patch.py --apply
+
+      - name: Run software-only validation before commit
+        run: |
+          python -m py_compile tools/apply_record_dossier_patch.py
+          python tools/apply_record_dossier_patch.py --check
+          node --check forge-source/dossier-signals.js
+          node --check forge-source/record-dossiers.js
+          node --check forge-source/patterns-decision-support.js
+          node --test tests/test_dossier_signals.cjs tests/test_record_dossiers.cjs tests/test_patterns_decision_support.cjs
+
+      - name: Commit implementation and remove bootstrap workflow
+        run: |
+          set -euo pipefail
+          rm -f .github/workflows/apply-record-dossier-patch.yml
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add -A
+          if git diff --staged --quiet; then
+            echo "No record-dossier patch changes to commit"
+            exit 0
+          fi
+          git commit -m "feat(dossier): link components, platforms, and Patterns signals"
+          git push origin HEAD:feat/component-platform-dossiers-20260731
