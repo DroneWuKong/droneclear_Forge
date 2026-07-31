@@ -63,12 +63,16 @@ jobs:
           print('workflow YAML parse: PASS')
           PY
 
-      - name: Commit decoded bundle and remove bootstrap
+      - name: Commit decoded non-workflow files and remove bundle chunks
         run: |
           set -euo pipefail
-          rm -f tools/phase0_bundle.part* tools/phase0_clean.part* .github/workflows/apply-phase0-bundle.yml
+          rm -f tools/phase0_bundle.part* tools/phase0_clean.part*
+          # GitHub's workflow token cannot create or delete workflow files in this
+          # repository. Those two mutations are applied by the GitHub connector
+          # after this validated commit lands.
+          rm -f .github/workflows/public-site-quality.yml
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git add -A
-          git commit -m "feat(site): add data quality, trust metadata, and Phase 0 audits"
+          git commit -m "feat(site): add data quality, trust metadata, and Phase 0 audits [skip ci]"
           git push origin "HEAD:${TARGET_BRANCH}"
