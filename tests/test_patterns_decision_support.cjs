@@ -42,9 +42,21 @@ test('component and supply-chain signals link to catalog and comparison tools', 
     title: 'Component shortage and lead-time signal'
   });
   assert.ok(result.kinds.includes('supply_chain'));
+  assert.ok(result.affected_links.some(link => link.id === 'component_dossier'));
+  assert.ok(result.affected_links.some(link => link.id === 'component_dossier' && /component=CAM-001/.test(link.url)));
   assert.ok(result.affected_links.some(link => link.id === 'components'));
   assert.ok(result.affected_links.some(link => link.id === 'compare'));
   assert.ok(result.verify_next.some(text => /part numbers|lead times/.test(text)));
+});
+
+test('platform identifiers link to the exact platform dossier', () => {
+  const links = support.affectedLinks({
+    platform_id: 'PLAT-001',
+    title: 'Operational platform update'
+  });
+  assert.ok(links.some(link => link.id === 'platform_dossier'));
+  assert.ok(links.some(link => link.id === 'platform_dossier' && /platform=PLAT-001/.test(link.url)));
+  assert.ok(links.some(link => link.id === 'platforms'));
 });
 
 test('source statistics deduplicate evidence URLs and count primary references', () => {

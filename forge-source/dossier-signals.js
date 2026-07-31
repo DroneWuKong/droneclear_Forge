@@ -246,3 +246,16 @@
     reviewPrompts
   };
 });
+
+/* data-record-dossier-loader: query-scoped component/platform dossier UI. */
+(function () {
+  if (typeof document === 'undefined' || typeof location === 'undefined') return;
+  const params = new URLSearchParams(location.search);
+  if (!params.get('component') && !params.get('platform')) return;
+  if (document.querySelector('script[data-record-dossier-loader]')) return;
+  const script = document.createElement('script');
+  script.src = '/static/record-dossiers.js';
+  script.async = false;
+  script.dataset.recordDossierLoader = 'true';
+  document.head.appendChild(script);
+})();
