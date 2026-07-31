@@ -1,0 +1,83 @@
+name: Forge + Patterns Production Smoke
+
+on:
+  push:
+    branches: [master]
+    paths:
+      - "forge-source/**"
+      - "workers/**"
+      - "functions/**"
+      - "build_static.py"
+      - "_headers"
+      - "tools/smoke_public_deployment.py"
+      - "tests/test_public_deployment_smoke.py"
+      - ".github/workflows/production-smoke.yml"
+  schedule:
+    - cron: "17 */6 * * *"
+  workflow_dispatch:
+    inputs:
+      attempts:
+        description: "Production retry attempts"
+        required: false
+        default: "12"
+      delay_seconds:
+        description: "Delay between attempts"
+        required: false
+        default: "30"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: production-smoke-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  smoke:
+    name: Production trust-surface smoke
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Compile smoke tooling
+        run: python -m py_compile tools/smoke_public_deployment.py tests/test_public_deployment_smoke.py
+
+      - name: Run software-only fixture tests
+        run: python -m unittest -v tests/test_public_deployment_smoke.py
+
+      - name: Validate no-network simulation path
+        run: python tools/smoke_public_deployment.py --dry-run
+
+      - name: Allow Cloudflare production deployment to start
+        if: github.event_name == 'push'
+        run: sleep 30
+
+      - name: Verify deployed Forge and Patterns trust surfaces
+        env:
+          ATTEMPTS: ${{ inputs.attempts || '12' }}
+          DELAY_SECONDS: ${{ inputs.delay_seconds || '30' }}
+        run: |
+          python tools/smoke_public_deployment.py \
+            --attempts "$ATTEMPTS" \
+            --delay-seconds "$DELAY_SECONDS" \
+            --timeout-seconds 20 \
+            --max-catalog-age-hours 72
+
+      - name: Summary
+        if: always()
+        run: |
+          {
+            echo "## Forge + Patterns Production Smoke"
+            echo "- Patterns hub: https://uas-patterns.com/patterns-home/"
+            echo "- Data quality: https://uas-patterns.com/miner-health/"
+            echo "- Actor signals: https://uas-patterns.com/actors/"
+            echo "- TTP signals: https://uas-patterns.com/ttps/"
+            echo "- Forge: https://uas-forge.com/"
+            echo "- Validation: HTML markers, retired wording, response headers, and dataset-catalog freshness/required state"
+            echo "- Hardware: none; --dry-run provides the explicit no-network simulation path"
+          } >> "$GITHUB_STEP_SUMMARY"
