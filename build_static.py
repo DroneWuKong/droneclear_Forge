@@ -828,6 +828,24 @@ def inject_nav(html, src_name):
         flags=re.DOTALL,
     )
 
+    # Some early lens pages embedded a nav without the marker comments above.
+    # Remove that complete pre-main structural block before injecting the
+    # canonical nav. This keeps the build idempotent and prevents duplicate
+    # dc-nav/drawer IDs in generated HTML.
+    if re.search(r'<nav\s+id=["\']dc-nav["\']', html, flags=re.IGNORECASE):
+        html = re.sub(
+            r'\s*<nav\s+id=["\']dc-nav["\'].*?(?=<main\b)',
+            '\n',
+            html,
+            count=1,
+            flags=re.DOTALL | re.IGNORECASE,
+        )
+
+    # Fail safe: never inject a second nav if an unusual legacy structure did
+    # not match the known pre-main layout.
+    if re.search(r'id=["\']dc-nav["\']', html, flags=re.IGNORECASE):
+        return html
+
     # Inject the fresh nav after <body>
     nav_block = "\n" + _UNIFIED_NAV + "\n"
     if "<body>" in html:

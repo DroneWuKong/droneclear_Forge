@@ -195,6 +195,14 @@ def normalize_route(href: str) -> str | None:
     if parsed.netloc and parsed.hostname not in PUBLIC_HOSTS:
         return None
     path = parsed.path or "/"
+    # Built pages live at /<route>/index.html, so links rewritten by the static
+    # builder as ../ correctly resolve to the site root. Normalize any local
+    # relative route into the same leading-slash form as the PAGES route map.
+    if not parsed.netloc and not path.startswith("/"):
+        while path.startswith("../"):
+            path = path[3:]
+        path = path.lstrip("./")
+        path = "/" + path if path else "/"
     if path.startswith(IGNORED_PREFIXES):
         return None
     if path.endswith(".html") or "." in Path(path).name:

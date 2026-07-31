@@ -110,6 +110,10 @@ class PublicSiteAuditTests(unittest.TestCase):
         report = self.run_fixture(mutate)
         self.assertTrue(any(item.code == "retired-public-claim" for item in report.errors))
 
+    def test_relative_parent_link_resolves_to_root(self):
+        self.assertEqual(site_audit.normalize_route("../"), "/")
+        self.assertEqual(site_audit.normalize_route("../brief/"), "/brief/")
+
     def test_required_invalid_dataset_is_blocking(self):
         def mutate(root, source):
             row = catalog()["datasets"][0]
