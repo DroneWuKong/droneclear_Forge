@@ -11,17 +11,26 @@ on:
       - "tests/test_pir_priority_view.cjs"
       - "tools/apply_priority_view_patch.py"
       - ".github/workflows/apply-priority-view.yml"
+  pull_request:
+    paths:
+      - "forge-source/priorities.html"
+      - "forge-source/pir-priority-view.js"
+      - "forge-source/pir_profiles.json"
+      - "tests/test_pir_priority_view.cjs"
+      - "tools/apply_priority_view_patch.py"
+      - ".github/workflows/apply-priority-view.yml"
   workflow_dispatch:
 
 permissions:
   contents: write
 
 concurrency:
-  group: apply-priority-view-${{ github.ref }}
+  group: apply-priority-view-${{ github.event.pull_request.head.ref || github.ref }}
   cancel-in-progress: false
 
 jobs:
   apply:
+    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
