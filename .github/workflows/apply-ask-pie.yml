@@ -10,6 +10,7 @@ on:
       - "tests/test_ask_pie_retrieval.cjs"
       - "tools/apply_ask_pie_patch.py"
       - "tools/apply_ask_pie_patch_fixed.py"
+      - "tools/fix_ask_pie_term_pattern.py"
       - ".github/workflows/apply-ask-pie.yml"
   pull_request:
     paths:
@@ -18,6 +19,7 @@ on:
       - "tests/test_ask_pie_retrieval.cjs"
       - "tools/apply_ask_pie_patch.py"
       - "tools/apply_ask_pie_patch_fixed.py"
+      - "tools/fix_ask_pie_term_pattern.py"
       - ".github/workflows/apply-ask-pie.yml"
   workflow_dispatch:
 
@@ -48,12 +50,18 @@ jobs:
           node-version: "22"
 
       - name: Apply narrow cross-surface edits
-        run: python tools/apply_ask_pie_patch_fixed.py --apply
+        run: |
+          python tools/apply_ask_pie_patch_fixed.py --apply
+          python tools/fix_ask_pie_term_pattern.py --apply
 
       - name: Run software-only validation before commit
         run: |
-          python -m py_compile tools/apply_ask_pie_patch.py tools/apply_ask_pie_patch_fixed.py
+          python -m py_compile \
+            tools/apply_ask_pie_patch.py \
+            tools/apply_ask_pie_patch_fixed.py \
+            tools/fix_ask_pie_term_pattern.py
           python tools/apply_ask_pie_patch_fixed.py --check
+          python tools/fix_ask_pie_term_pattern.py --check
           node --check forge-source/ask-pie-retrieval.js
           node --test tests/test_ask_pie_retrieval.cjs
 
@@ -67,6 +75,7 @@ jobs:
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git add \
             build_static.py \
+            forge-source/ask-pie-retrieval.js \
             forge-source/patterns-home.html \
             forge-source/pie-search.html \
             tools/smoke_public_deployment.py
