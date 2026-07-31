@@ -1,14 +1,16 @@
 # Cloudflare Pages _headers
 
-# Site-wide security headers. Camera stays self — the guide/audit step-photo
-# capture uses getUserMedia. No includeSubDomains on HSTS: subdomain coverage
-# (www, dash) isn't uniform yet.
+# Site-wide baseline. Camera remains self because selected Forge workflows use
+# getUserMedia. No includeSubDomains on HSTS until all subdomains share policy.
 /*
   Strict-Transport-Security: max-age=31536000
   X-Frame-Options: SAMEORIGIN
+  X-Content-Type-Options: nosniff
+  Referrer-Policy: strict-origin-when-cross-origin
+  X-Permitted-Cross-Domain-Policies: none
   Permissions-Policy: camera=(self), microphone=(), geolocation=(), payment=()
 
-# HTML pages: always revalidate (fixes stale JS after deploys)
+# HTML and route indexes always revalidate after deployment.
 /*.html
   Cache-Control: no-cache, must-revalidate
 
@@ -18,11 +20,20 @@
 /
   Cache-Control: no-cache, must-revalidate
 
-# Static assets: cache 1 year (they have ?v= busters)
+# Versioned static assets can be immutable.
 /static/*
   Cache-Control: public, max-age=31536000, immutable
 
-# Private gated area — never cache, never index
+# Public status metadata changes independently of application assets.
+/static/dataset_catalog.json
+  Cache-Control: no-store, max-age=0
+  CDN-Cache-Control: no-store
+
+/dataset_catalog.json
+  Cache-Control: no-store, max-age=0
+  CDN-Cache-Control: no-store
+
+# Private gated area — never cache or index.
 /private/*
   Cache-Control: no-store
   X-Robots-Tag: noindex, nofollow
