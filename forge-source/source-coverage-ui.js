@@ -29,20 +29,29 @@
     catch(error){ return [error.message]; }
     var errors = [];
     var meta = data.meta && typeof data.meta === 'object' ? data.meta : {};
+    var query = data.query && typeof data.query === 'object' ? data.query : {};
+    var view = text(query.view);
     var sources = Array.isArray(data.sources) ? data.sources : null;
     if(text(meta.version) !== '1.0') errors.push('coverage artifact version is not 1.0');
     if(text(meta.generator) !== 'services/pipeline/source_coverage_matrix.py') errors.push('coverage artifact generator is not the validated coverage pipeline');
     if(meta.event_artifact_used !== true) errors.push('publication-safe candidate-event evidence was not used');
-    if(!sources || !sources.length) errors.push('coverage source matrix is empty or missing');
-    if(!data.coverage || typeof data.coverage !== 'object') errors.push('coverage detail object is missing');
-    if(!data.gaps || typeof data.gaps !== 'object') errors.push('coverage gaps object is missing');
+    if(view === 'summary' || !view){
+      if(!data.coverage || typeof data.coverage !== 'object') errors.push('coverage detail object is missing');
+      if(!data.gaps || typeof data.gaps !== 'object') errors.push('coverage gaps object is missing');
+    }
+    if(view === 'sources' || !view){
+      if(!sources) errors.push('coverage source matrix is missing');
+      if(!view && sources && !sources.length) errors.push('coverage source matrix is empty');
+    }
     var analyzed = number(meta.analyzed_article_records);
     if(analyzed < 1) errors.push('analyzed article count is not positive');
     if(sources){
-      var sum = sources.reduce(function(total, row){ return total + number(row && row.article_count); }, 0);
-      if(sum !== analyzed) errors.push('per-source article counts do not equal the analyzed article count');
       var ids = sources.map(function(row){ return text(row && row.source_key); }).filter(Boolean);
       if(new Set(ids).size !== ids.length) errors.push('source keys are not unique');
+      if(!view){
+        var sum = sources.reduce(function(total, row){ return total + number(row && row.article_count); }, 0);
+        if(sum !== analyzed) errors.push('per-source article counts do not equal the analyzed article count');
+      }
     }
     var concentration = meta.source_concentration && typeof meta.source_concentration === 'object' ? meta.source_concentration : {};
     if(number(concentration.top_source_share) > 1 || number(concentration.top_five_source_share) > 1){
