@@ -190,6 +190,15 @@
       });
     }
 
+    if (row.component_id) {
+      links.push({
+        id: 'component_dossier',
+        label: 'Forge component dossier',
+        url: `https://uas-forge.com/dossier/?component=${encodeURIComponent(String(row.component_id))}`,
+        reason: `Open the exact indexed component record (${String(row.component_id)}) with specifications, documented platform relationships, candidate alternatives, matched Patterns evidence, freshness, and limitations.`
+      });
+    }
+
     if (row.component_id || matchedKinds.includes('supply_chain')) {
       links.push({
         id: 'components',
@@ -204,6 +213,15 @@
         label: 'Forge comparison tool',
         url: 'https://uas-forge.com/compare/',
         reason: 'Compare candidate replacements without treating the signal as an automatic disqualification.'
+      });
+    }
+
+    if (row.platform_id) {
+      links.push({
+        id: 'platform_dossier',
+        label: 'Forge platform dossier',
+        url: `https://uas-forge.com/dossier/?platform=${encodeURIComponent(String(row.platform_id))}`,
+        reason: `Open the exact indexed platform record (${String(row.platform_id)}) with specifications, documented BOM relationships, peer platforms, matched Patterns evidence, freshness, and limitations.`
       });
     }
 

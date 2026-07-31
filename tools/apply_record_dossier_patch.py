@@ -207,18 +207,19 @@ def apply_one(root: Path, replacement: Replacement, apply: bool) -> str:
             f'{replacement.marker!r} ({text.count(replacement.marker)}/'
             f'{replacement.expected_marker_count})'
         )
-    count = text.count(replacement.old)
-    if count != replacement.expected_count:
-        raise RuntimeError(
-            f'{replacement.path}: expected {replacement.expected_count} patch anchor(s) '
-            f'for {replacement.marker!r}; found {count}'
-        )
     if replacement.path == 'forge-source/dossier-signals.js' and replacement.old == '\n':
         updated = text.rstrip() + replacement.new
-    elif replacement.replace_all:
-        updated = text.replace(replacement.old, replacement.new)
     else:
-        updated = text.replace(replacement.old, replacement.new, 1)
+        count = text.count(replacement.old)
+        if count != replacement.expected_count:
+            raise RuntimeError(
+                f'{replacement.path}: expected {replacement.expected_count} patch anchor(s) '
+                f'for {replacement.marker!r}; found {count}'
+            )
+        if replacement.replace_all:
+            updated = text.replace(replacement.old, replacement.new)
+        else:
+            updated = text.replace(replacement.old, replacement.new, 1)
     if updated.count(replacement.marker) < replacement.expected_marker_count:
         raise RuntimeError(
             f'{replacement.path}: patch did not create expected marker count for '
