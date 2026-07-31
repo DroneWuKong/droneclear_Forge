@@ -193,6 +193,15 @@ export function projectArticleEventClusters(data, params) {
 }
 
 export function projectDataset(data, type, params) {
+  const errors = validateDatasetForPublication(data, type);
+  if (errors.length) {
+    const error = new Error(
+      `Dataset ${type} failed publication controls: ${errors.join('; ')}`,
+    );
+    error.code = 'DATASET_PUBLICATION_CONTROL';
+    error.validationErrors = errors;
+    throw error;
+  }
   if (type === 'article_event_clusters') {
     return projectArticleEventClusters(data, params);
   }
