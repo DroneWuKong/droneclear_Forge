@@ -1,59 +1,96 @@
-# DroneClear Forge
+# DroneClear Forge + UAS Patterns
 
-> The public-facing drone component browser, build planner, and intelligence hub.
-> **Live at [uas-forge.com](https://uas-forge.com)**
-> PIE intelligence at [uas-patterns.com](https://uas-patterns.com)
+This repository builds the public delivery layer for two connected UAS products:
 
-## What This Is
+- **[UAS Forge](https://uas-forge.com/)** — component and platform discovery, comparison, integration guidance, build planning, and compliance-oriented due diligence.
+- **[UAS Patterns](https://uas-patterns.com/)** — public-source intelligence, evidence, actor and TTP signals, teardown analysis, historical trends, forecasts, and data-quality disclosure.
 
-Forge is the front door to the DroneClear ecosystem. It gives operators, builders, and integrators free access to:
+Forge answers **what can be built, bought, compared, integrated, and verified**. Patterns answers **what changed, what evidence supports it, how confident the assessment is, and what remains uncertain**.
 
-- **3,885+ drone components** across 38 categories — all fields enriched to 95-100% coverage
-- **271 drone platforms** with specs, compliance status, and manufacturer details (25 Blue UAS)
-- **PIE v0.9** — Pattern Intelligence Engine: 237 flags, 10 predictions, 4 gray zone entities tracked
-- **Build planning tools** — model builder, build audit, compatibility checks
-- **Integration guides** — FC firmware, mesh networking, TAK, SLAM, C-UAS, AI, swarm coordination
-- **Intel feeds** — defense procurement, solicitations, gray zone enforcement, grant windows
-- **FPV Academy** — learning resources for new operators
-- **Community contributions** — submit new components and platforms
+## Public data contract
 
-## Quick Start
+Do not maintain public record counts, coverage dates, or freshness claims by hand. The source of truth is:
+
+```text
+forge-source/dataset_catalog.json
+```
+
+The catalog is generated from the real `DroneWuKong/Ai-Project` corpus and records, for each major public dataset:
+
+- purpose and public surface;
+- current, historical, reference, evidence, forecast, or operations role;
+- dataset-specific record-count meaning;
+- generation and coverage dates;
+- freshness target and current status;
+- provenance and quality indicators;
+- caveats and known collection limits.
+
+Current analytic datasets may fail closed when stale or malformed. Historical and reference data remain available only with their actual coverage and limitations visible.
+
+## Build
 
 ```bash
-python3 build_static.py    # Build static site → build/
+python3 build_static.py
 ```
 
-The build pulls fresh data from the Ai-Project repo if `GITHUB_PAT` is set. Without it, falls back to local data.
+The static builder writes the deployable site to `build/`. It can synchronize upstream data when credentials are configured and otherwise uses committed local fallbacks.
 
-## Deploy
+## Software-only validation
 
-Cloudflare Pages auto-deploys from the `master` branch (project `forge`; config in `wrangler.jsonc`).
+The final site and data-quality gates require no physical hardware:
+
+```bash
+python -m unittest -v tests/test_public_site_audit.py
+python tools/audit_public_site.py --strict --require-catalog --dry-run
+python3 build_static.py
+python tools/audit_public_site.py --strict --require-catalog --site-dir build --built --dry-run
+```
+
+`--dry-run` is the explicit no-write/simulation path. Camera or other browser hardware features are not required for the audit.
+
+The audit checks the critical public surfaces for:
+
+- duplicate IDs and malformed document structure;
+- unsafe links and unisolated new-window links;
+- broken internal routes;
+- missing accessibility landmarks and names;
+- retired or contradictory public wording;
+- missing response-security headers;
+- invalid or duplicate data-catalog records;
+- inline JavaScript syntax errors when Node.js is available.
+
+## Repository layout
+
+```text
+forge-source/                     Source HTML, JavaScript, CSS, JSON, and assets
+workers/                          Cloudflare Worker routes
+functions/                        Serverless functions
+build_static.py                   Static-site builder
+build/                            Generated deployment output (not authoritative source)
+tools/audit_public_site.py        Read-only public-site quality gate
+tests/test_public_site_audit.py   Software-only audit fixtures
+_headers                          Cloudflare Pages response and cache headers
+docs/                             Architecture, operations, and product documentation
+```
+
+## Deployment
+
+Cloudflare Pages deploys from `master` using the project configuration in `wrangler.jsonc`.
 
 | Setting | Value |
-|---------|-------|
+|---|---|
 | Build command | `python3 build_static.py` |
 | Publish directory | `build` |
-| Required env var | `GITHUB_PAT` (repo read access to DroneWuKong/Ai-Project) |
+| Primary data source | `DroneWuKong/Ai-Project` |
+| Public data status | `/miner-health/` |
 
-## Project Structure
+## Interpretation rules
 
-```
-├── forge-source/                       # Source HTML/CSS/JS (76 pages)
-├── build_static.py                     # Static site generator
-├── wrangler.jsonc                      # Cloudflare Pages config + bindings
-├── archive/                            # Historical data (CSVs, old JSON)
-├── docs/
-│   ├── ARCHITECTURE.md                 # How the build pipeline works
-│   ├── FEATURES.md                     # UI feature reference
-│   └── fpv_domain_knowledge.md         # FPV expertise for AI/compatibility
-├── CHANGELOG.md                        # Session-by-session dev history
-├── BACKLOG.md                          # Tracked issues
-└── CLAUDE.md                           # AI assistant project instructions
-```
-
-## Data Source
-
-Component and platform data lives in [`DroneWuKong/Ai-Project`](https://github.com/DroneWuKong/Ai-Project) → `data/parts-db/*.json`. Forge is a read-only consumer that syncs at build time.
+- An article mention is not a confirmed incident or formal attribution.
+- A score is a triage and prioritization aid, not an operational probability.
+- Relationship proximity is not an allegation.
+- Weak indexed procurement evidence is not proof that no funding, program, or capability exists.
+- Compliance and procurement decisions must be checked against current authoritative records.
 
 ---
 
