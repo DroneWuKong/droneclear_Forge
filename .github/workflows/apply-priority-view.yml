@@ -59,15 +59,21 @@ jobs:
           node --test tests/test_pir_priority_view.cjs
           node --input-type=module --check < workers/forge-data.js
 
-      - name: Commit final implementation and remove bootstrap workflow
+      - name: Commit non-workflow integration edits
         run: |
           set -euo pipefail
-          rm -f .github/workflows/apply-priority-view.yml
+          # GITHUB_TOKEN cannot push changes to workflow files. Restore the
+          # quality workflow here; it is updated directly after this commit.
+          git checkout -- .github/workflows/public-site-quality.yml
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add -A
+          git add \
+            build_static.py \
+            forge-source/patterns-home.html \
+            workers/forge-data.js \
+            tools/smoke_public_deployment.py
           if git diff --staged --quiet; then
-            echo "No Priority View changes to commit"
+            echo "No non-workflow Priority View changes to commit"
             exit 0
           fi
           git commit -m "feat(pir): integrate local Priority Intelligence View"
