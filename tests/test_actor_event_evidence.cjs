@@ -2,6 +2,7 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
 const test = require('node:test');
+const vm = require('node:vm');
 
 const evidence = require('../forge-source/actor-event-evidence.js');
 
@@ -17,6 +18,13 @@ function meta(overrides = {}) {
     },
     ...overrides,
   };
+}
+
+function actorPageHtml() {
+  return fs.readFileSync(
+    path.join(__dirname, '..', 'forge-source', 'actors.html'),
+    'utf8',
+  );
 }
 
 test('actor summaries preserve the four distinct public units', () => {
@@ -102,10 +110,7 @@ test('unsafe evidence URLs are withheld', () => {
 });
 
 test('actor page states event semantics and loads projected evidence', () => {
-  const html = fs.readFileSync(
-    path.join(__dirname, '..', 'forge-source', 'actors.html'),
-    'utf8',
-  );
+  const html = actorPageHtml();
   for (const marker of [
     'Duplicate-adjusted reporting and candidate events',
     'Duplicate-adjusted reporting groups',
@@ -121,6 +126,19 @@ test('actor page states event semantics and loads projected evidence', () => {
   }
   assert.equal(html.includes('site labels are independent sources'), false);
   assert.equal(html.includes('candidate events are confirmed incidents'), false);
+});
+
+test('actor page inline scripts are syntactically valid JavaScript', () => {
+  const html = actorPageHtml();
+  const scripts = [...html.matchAll(/<script(?![^>]*\bsrc=)[^>]*>([\s\S]*?)<\/script>/gi)]
+    .map((match) => match[1].trim())
+    .filter(Boolean);
+  assert.ok(scripts.length >= 1);
+  for (const [index, source] of scripts.entries()) {
+    assert.doesNotThrow(
+      () => new vm.Script(source, { filename: `actors-inline-${index}.js` }),
+    );
+  }
 });
 
 test('worker allowlists, validates, and freshness-gates event evidence', () => {
