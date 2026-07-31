@@ -1,12 +1,15 @@
 #!/usr/bin/env python3
 """Compatibility wrapper for the Ask PIE integration patch.
 
-The original patcher expected the literal marker ``'article mentions'`` with
-quote characters, while the generated JavaScript contains ``article mentions``
-inside a concatenated string. This wrapper changes only that marker in memory
-and delegates every write/check to the original idempotent implementation.
+The original patcher used two pre-final markers:
 
-``--check`` remains the explicit no-write, software-only validation path.
+* a quoted ``'article mentions'`` token that is not present in the generated
+  JavaScript concatenation; and
+* the original patcher command rather than this corrected no-write wrapper.
+
+This module changes only those marker expectations in memory and delegates all
+writes/checks to the original idempotent implementation. ``--check`` remains the
+explicit no-write, software-only validation path.
 """
 from __future__ import annotations
 
@@ -23,13 +26,25 @@ base = importlib.util.module_from_spec(SPEC)
 sys.modules[SPEC.name] = base
 SPEC.loader.exec_module(base)
 
-base.REPLACEMENTS = tuple(
-    replace(item, marker="article mentions")
-    if item.path == "forge-source/pie-search.html"
-    and item.marker == "'article mentions'"
-    else item
-    for item in base.REPLACEMENTS
-)
+
+def adjusted(item):
+    if (
+        item.path == "forge-source/pie-search.html"
+        and item.marker == "'article mentions'"
+    ):
+        return replace(item, marker="article mentions")
+    if (
+        item.path == ".github/workflows/public-site-quality.yml"
+        and item.marker == "python tools/apply_ask_pie_patch.py --check"
+    ):
+        return replace(
+            item,
+            marker="python tools/apply_ask_pie_patch_fixed.py --check",
+        )
+    return item
+
+
+base.REPLACEMENTS = tuple(adjusted(item) for item in base.REPLACEMENTS)
 
 
 if __name__ == "__main__":
