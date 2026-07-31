@@ -1,0 +1,76 @@
+name: Forge + Patterns Public Site Quality
+
+on:
+  pull_request:
+    paths:
+      - "forge-source/**"
+      - "tools/audit_public_site.py"
+      - "tests/test_public_site_audit.py"
+      - "build_static.py"
+      - "_headers"
+      - "README.md"
+      - ".github/workflows/public-site-quality.yml"
+  push:
+    branches: [master]
+    paths:
+      - "forge-source/**"
+      - "tools/audit_public_site.py"
+      - "tests/test_public_site_audit.py"
+      - "build_static.py"
+      - "_headers"
+      - "README.md"
+      - ".github/workflows/public-site-quality.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: public-site-quality-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  audit:
+    name: Software-only source and built-site audit
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Compile quality tooling
+        run: python -m py_compile tools/audit_public_site.py tests/test_public_site_audit.py
+
+      - name: Run software-only fixture tests
+        run: python -m unittest -v tests/test_public_site_audit.py
+
+      - name: Audit critical source surfaces
+        run: python tools/audit_public_site.py --strict --require-catalog --dry-run
+
+      - name: Build the public site
+        env:
+          GITHUB_PAT: ${{ secrets.GITHUB_PAT }}
+        run: python3 build_static.py
+
+      - name: Audit built routes and copied metadata
+        run: python tools/audit_public_site.py --site-dir build --built --strict --require-catalog --dry-run
+
+      - name: Summary
+        if: always()
+        run: |
+          {
+            echo "## Forge + Patterns public-site quality"
+            echo "- Validation mode: software-only"
+            echo "- Source audit: critical public surfaces"
+            echo "- Built audit: generated route indexes and copied data catalog"
+            echo "- Hardware required: none"
+          } >> "$GITHUB_STEP_SUMMARY"
