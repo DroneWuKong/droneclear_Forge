@@ -1,5 +1,5 @@
 name: Forge + Patterns Public Site Quality
-# The PIR surface is validated entirely in software, including a no-write patch check.
+# Public trust surfaces are validated entirely in software, including no-write patch checks.
 
 on:
   pull_request:
@@ -9,6 +9,9 @@ on:
       - "tools/audit_public_site.py"
       - "tools/apply_record_dossier_patch.py"
       - "tools/apply_priority_view_patch.py"
+      - "tools/apply_ask_pie_patch.py"
+      - "tools/apply_ask_pie_patch_fixed.py"
+      - "tools/fix_ask_pie_term_pattern.py"
       - "tests/test_public_site_audit.py"
       - "tests/test_dossier_signals.cjs"
       - "tests/test_record_dossiers.cjs"
@@ -16,6 +19,7 @@ on:
       - "tests/test_actor_event_evidence.cjs"
       - "tests/test_forge_data_projections.mjs"
       - "tests/test_pir_priority_view.cjs"
+      - "tests/test_ask_pie_retrieval.cjs"
       - "build_static.py"
       - "_headers"
       - "README.md"
@@ -28,6 +32,9 @@ on:
       - "tools/audit_public_site.py"
       - "tools/apply_record_dossier_patch.py"
       - "tools/apply_priority_view_patch.py"
+      - "tools/apply_ask_pie_patch.py"
+      - "tools/apply_ask_pie_patch_fixed.py"
+      - "tools/fix_ask_pie_term_pattern.py"
       - "tests/test_public_site_audit.py"
       - "tests/test_dossier_signals.cjs"
       - "tests/test_record_dossiers.cjs"
@@ -35,6 +42,7 @@ on:
       - "tests/test_actor_event_evidence.cjs"
       - "tests/test_forge_data_projections.mjs"
       - "tests/test_pir_priority_view.cjs"
+      - "tests/test_ask_pie_retrieval.cjs"
       - "build_static.py"
       - "_headers"
       - "README.md"
@@ -67,26 +75,37 @@ jobs:
           node-version: "22"
 
       - name: Compile quality tooling
-        run: python -m py_compile tools/audit_public_site.py tests/test_public_site_audit.py tools/apply_priority_view_patch.py
+        run: |
+          python -m py_compile \
+            tools/audit_public_site.py \
+            tests/test_public_site_audit.py \
+            tools/apply_priority_view_patch.py \
+            tools/apply_ask_pie_patch.py \
+            tools/apply_ask_pie_patch_fixed.py \
+            tools/fix_ask_pie_term_pattern.py
 
       - name: Run software-only public-site fixture tests
         run: python -m unittest -v tests/test_public_site_audit.py
 
-      - name: Run software-only dossier, decision-support, event-evidence, and PIR tests
+      - name: Run software-only dossier, decision-support, event-evidence, PIR, and cited-retrieval tests
         run: |
           node --test tests/test_dossier_signals.cjs tests/test_record_dossiers.cjs tests/test_patterns_decision_support.cjs \
             tests/test_actor_event_evidence.cjs \
             tests/test_forge_data_projections.mjs \
-            tests/test_pir_priority_view.cjs
+            tests/test_pir_priority_view.cjs \
+            tests/test_ask_pie_retrieval.cjs
           node --check forge-source/dossier-signals.js
           node --check forge-source/record-dossiers.js
           node --check forge-source/patterns-decision-support.js
           node --check forge-source/actor-event-evidence.js
           node --check forge-source/pir-priority-view.js
+          node --check forge-source/ask-pie-retrieval.js
           node --check workers/forge-data-projections.mjs
           node --input-type=module --check < workers/forge-data.js
           python tools/apply_record_dossier_patch.py --check
           python tools/apply_priority_view_patch.py --check
+          python tools/apply_ask_pie_patch_fixed.py --check
+          python tools/fix_ask_pie_term_pattern.py --check
 
       - name: Audit critical source surfaces
         run: python tools/audit_public_site.py --strict --require-catalog --dry-run
@@ -118,17 +137,32 @@ jobs:
           grep -F "No LLM participates in the ranking" build/priorities/index.html
           grep -F "source_coverage_matrix" workers/forge-data.js
 
+      - name: Verify built cited Ask PIE surface
+        run: |
+          test -f build/ask-pie/index.html
+          test -f build/static/ask-pie-retrieval.js
+          grep -F "Cited retrieval · no generated conclusion" build/ask-pie/index.html
+          grep -F "Ask PIE for the evidence—not a confident-sounding answer." build/ask-pie/index.html
+          grep -F "No LLM writes the answer or changes the ranking." build/ask-pie/index.html
+          grep -F "Ask PIE" build/patterns-home/index.html
+          grep -F "article mentions" build/pie-search/index.html
+          if grep -F "incidents" build/pie-search/index.html; then
+            echo "ERROR: stale actor incident terminology remains in built raw search"
+            exit 1
+          fi
+
       - name: Summary
         if: always()
         run: |
           {
             echo "## Forge + Patterns public-site quality"
             echo "- Validation mode: software-only"
-            echo "- Source audit: critical public surfaces including manufacturer, component, platform, actor, Patterns flag, and local Priority Intelligence views"
+            echo "- Source audit: critical public surfaces including manufacturer, component, platform, actor, Patterns flag, local Priority Intelligence, and Ask PIE cited-retrieval views"
             echo "- Dossier join tests: direct/contextual matching, inactive-row exclusion, evidence summary, and review prompts"
             echo "- Flag decision-support tests: classification, source quality, affected-record links, uncertainty, and prohibited conclusion language"
             echo "- Actor event tests: four-unit semantics, exact actor filtering, bounded pagination, rolling-URL guards, event artifact publication controls, and evidence URL safety"
             echo "- PIR tests: declared-term ranking, token boundaries, source-order fallback, local-storage failure handling, event-summary joins, evidence URL safety, and coverage gaps"
-            echo "- Built audit: generated route indexes, actor and PIR markers, immutable helper assets, and copied data catalog"
+            echo "- Ask PIE tests: term parsing, punctuation-tolerant boundaries, citation safety/deduplication, exact actor joins, direct/context separation, source coverage, and no automatic conclusions"
+            echo "- Built audit: generated route indexes, actor/PIR/Ask PIE markers, immutable helper assets, and copied metadata"
             echo "- Hardware required: none"
           } >> "$GITHUB_STEP_SUMMARY"

@@ -103,6 +103,16 @@ def build_targets(patterns_base: str, forge_base: str) -> list[Target]:
             ("profile match is proof",),
         ),
         Target(
+            "ask-pie",
+            urljoin(patterns, "ask-pie/"),
+            (
+                "Cited retrieval · no generated conclusion",
+                "Ask PIE for the evidence—not a confident-sounding answer.",
+                "No LLM writes the answer or changes the ranking.",
+            ),
+            ("automatic conclusion", "incident count"),
+        ),
+        Target(
             "data-quality",
             urljoin(patterns, "miner-health/"),
             ("Data Quality &amp; Pipeline Health", "Public data control surface"),
