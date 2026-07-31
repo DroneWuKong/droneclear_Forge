@@ -7,6 +7,7 @@ on:
       - "tools/audit_public_site.py"
       - "tests/test_public_site_audit.py"
       - "tests/test_dossier_signals.cjs"
+      - "tests/test_patterns_decision_support.cjs"
       - "build_static.py"
       - "_headers"
       - "README.md"
@@ -18,6 +19,7 @@ on:
       - "tools/audit_public_site.py"
       - "tests/test_public_site_audit.py"
       - "tests/test_dossier_signals.cjs"
+      - "tests/test_patterns_decision_support.cjs"
       - "build_static.py"
       - "_headers"
       - "README.md"
@@ -55,10 +57,11 @@ jobs:
       - name: Run software-only public-site fixture tests
         run: python -m unittest -v tests/test_public_site_audit.py
 
-      - name: Run software-only dossier signal tests
+      - name: Run software-only dossier and decision-support tests
         run: |
-          node --test tests/test_dossier_signals.cjs
+          node --test tests/test_dossier_signals.cjs tests/test_patterns_decision_support.cjs
           node --check forge-source/dossier-signals.js
+          node --check forge-source/patterns-decision-support.js
 
       - name: Audit critical source surfaces
         run: python tools/audit_public_site.py --strict --require-catalog --dry-run
@@ -77,8 +80,9 @@ jobs:
           {
             echo "## Forge + Patterns public-site quality"
             echo "- Validation mode: software-only"
-            echo "- Source audit: critical public surfaces including manufacturer dossiers"
+            echo "- Source audit: critical public surfaces including manufacturer dossiers and Patterns flags"
             echo "- Dossier join tests: direct/contextual matching, inactive-row exclusion, evidence summary, and review prompts"
+            echo "- Flag decision-support tests: classification, source quality, affected-record links, uncertainty, and prohibited conclusion language"
             echo "- Built audit: generated route indexes and copied data catalog"
             echo "- Hardware required: none"
           } >> "$GITHUB_STEP_SUMMARY"
