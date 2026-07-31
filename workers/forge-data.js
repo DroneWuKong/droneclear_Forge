@@ -39,6 +39,7 @@ const FRESHNESS_LIMIT_MS = new Map([
   ['ttp_counter_gap', 72 * 60 * 60 * 1000],
   ['threat_scores', 72 * 60 * 60 * 1000],
   ['dataset_catalog', 72 * 60 * 60 * 1000],
+  ['source_coverage_matrix', 72 * 60 * 60 * 1000],
 ]);
 
 function resp(data, status = 200, extraHeaders = {}) {
@@ -157,6 +158,7 @@ const DATASETS = new Set([
   'miner_health',
   'miner_registry',
   'dataset_catalog',
+  'source_coverage_matrix',
   'intel_articles',
   'intel_companies',
   'intel_platforms',
@@ -226,6 +228,7 @@ const PIE_OUTPUTS_KEYS = new Set([
   'miner_health',
   'miner_registry',
   'dataset_catalog',
+  'source_coverage_matrix',
   'solicitations',
   'federal_awards',
   'sam_watchlist',

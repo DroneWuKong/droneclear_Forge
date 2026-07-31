@@ -31,6 +31,7 @@ REQUIRED_DATASET_IDS = {
     "threat_scores",
     "ttp_counter_gap",
     "miner_health",
+    "source_coverage_matrix",
 }
 EVENT_GENERATOR = "services/pipeline/article_event_clusters_quality.py"
 
@@ -90,6 +91,16 @@ def build_targets(patterns_base: str, forge_base: str) -> list[Target]:
             urljoin(patterns, "patterns-home/"),
             ("UAS intelligence with the evidence, coverage, and uncertainty attached.",),
             ("56-day series", "composite threat score", "no money flowing"),
+        ),
+        Target(
+            "priority-view",
+            urljoin(patterns, "priorities/"),
+            (
+                "Local-only Priority Intelligence Requirement view",
+                "Put the signals you care about first—without hiding the rest.",
+                "No LLM participates in the ranking.",
+            ),
+            ("profile match is proof",),
         ),
         Target(
             "data-quality",
