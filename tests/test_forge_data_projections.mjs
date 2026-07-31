@@ -3,6 +3,7 @@ import test from 'node:test';
 
 import {
   EVENT_PROJECTION_LIMITS,
+  articleEventPublicationErrors,
   projectArticleEventClusters,
   projectDataset,
 } from '../workers/forge-data-projections.mjs';
@@ -17,7 +18,18 @@ function fixture() {
   return {
     meta: {
       generated_at: '2026-07-31T12:00:00Z',
+      generator: 'services/pipeline/article_event_clusters_quality.py',
+      version: '1.1',
       candidate_event_cluster_count: 4,
+      quality_controls: {
+        shared_url_requires_title_and_time_agreement: true,
+        same_source_shared_url_different_title_merge_allowed: false,
+        same_single_source_candidate_pair_allowed: false,
+        largest_serialized_reporting_cluster_span_days: 5,
+        largest_serialized_candidate_event_span_days: 3,
+        largest_serialized_reporting_cluster_articles: 12,
+        largest_serialized_candidate_event_articles: 9,
+      },
     },
     actor_summary: [
       {
@@ -62,7 +74,11 @@ function fixture() {
 }
 
 test('summary view omits heavy event and duplicate arrays', () => {
-  const projected = projectArticleEventClusters(fixture(), params({ view: 'summary' }));
+  const projected = projectDataset(
+    fixture(),
+    'article_event_clusters',
+    params({ view: 'summary' }),
+  );
   assert.equal(projected.actor_summary.length, 2);
   assert.equal(projected.query.candidate_event_count, 4);
   assert.equal(projected.query.serialized_candidate_event_count, 4);
@@ -117,6 +133,30 @@ test('event limits are bounded against abusive response requests', () => {
     params({ actor: 'Actor A', limit: 999999 }),
   );
   assert.equal(projected.query.limit, EVENT_PROJECTION_LIMITS.maximum);
+});
+
+test('publication controls accept the hardened event artifact', () => {
+  assert.deepEqual(articleEventPublicationErrors(fixture()), []);
+});
+
+test('unsafe v1 event artifacts are withheld before projection', () => {
+  const value = fixture();
+  value.meta.version = '1.0';
+  value.meta.generator = 'services/pipeline/article_event_clusters.py';
+  value.meta.quality_controls.same_source_shared_url_different_title_merge_allowed = true;
+  assert.throws(
+    () => projectDataset(value, 'article_event_clusters', params({ view: 'summary' })),
+    /failed publication controls/,
+  );
+});
+
+test('oversized or overlong clusters fail publication controls', () => {
+  const value = fixture();
+  value.meta.quality_controls.largest_serialized_reporting_cluster_articles = 2399;
+  value.meta.quality_controls.largest_serialized_reporting_cluster_span_days = 118;
+  const errors = articleEventPublicationErrors(value);
+  assert.ok(errors.some((error) => error.includes('article-count ceiling')));
+  assert.ok(errors.some((error) => error.includes('five-day')));
 });
 
 test('non-event datasets are returned unchanged', () => {
