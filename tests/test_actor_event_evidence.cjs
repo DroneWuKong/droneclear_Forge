@@ -114,19 +114,28 @@ test('actor page states event semantics and loads projected evidence', () => {
     "loadDataset('article_event_clusters', {view:'summary'})",
     "loadDataset('article_event_clusters', {actor:actor",
     'not confirmed incidents, attribution, or proof',
+    'site diversity is only a proxy',
+    'one repeated source is not corroboration',
   ]) {
     assert.ok(html.includes(marker), `missing actor-page marker: ${marker}`);
   }
-  assert.equal(/\bconfirmed incidents\b(?![^<]{0,120}\bnot\b)/i.test(html), false);
+  assert.equal(html.includes('site labels are independent sources'), false);
+  assert.equal(html.includes('candidate events are confirmed incidents'), false);
 });
 
-test('worker allowlists and freshness-gates event evidence', () => {
+test('worker allowlists, validates, and freshness-gates event evidence', () => {
   const source = fs.readFileSync(
     path.join(__dirname, '..', 'workers', 'forge-data.js'),
+    'utf8',
+  );
+  const projection = fs.readFileSync(
+    path.join(__dirname, '..', 'workers', 'forge-data-projections.mjs'),
     'utf8',
   );
   assert.ok(source.includes("['article_event_clusters', 72 * 60 * 60 * 1000]"));
   assert.ok(source.includes("'article_event_clusters'"));
   assert.ok(source.includes('projectDataset(data, type, params)'));
   assert.ok(source.includes("'dataset_catalog'"));
+  assert.ok(projection.includes('articleEventPublicationErrors'));
+  assert.ok(projection.includes('DATASET_PUBLICATION_CONTROL'));
 });
