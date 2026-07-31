@@ -33,6 +33,7 @@ CRITICAL_ROUTES = (
     "mirroring",
     "evasion",
     "forecast-accountability",
+    "dossier",
 )
 REQUIRED_HEADERS = {
     "strict-transport-security",
