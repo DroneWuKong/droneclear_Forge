@@ -122,14 +122,29 @@ jobs:
           else
             NFILES=$(git diff --staged --name-only | wc -l)
             git commit -m "chore(miners): intelligence pipeline update $(date -u +%Y-%m-%d) - ${NFILES} files [skip ci]"
-            # Retry push up to 4 times with exponential backoff (2s/4s/8s/16s).
-            # GitHub occasionally returns "fatal error in commit_refs" transiently
-            # (seen Jul 7 2026); a bare push with set -e would fail the whole job.
+
+            pushed=0
             for delay in 2 4 8 16; do
-              if git push; then break; fi
-              echo "[WARN] git push failed; retrying in ${delay}s…"
+              if git push origin HEAD:master; then
+                pushed=1
+                break
+              fi
+
+              echo "[WARN] git push failed; refreshing master and retrying in ${delay}s"
+              git fetch origin master
+              if ! git rebase origin/master; then
+                git rebase --abort || true
+                echo "::error::Miner output conflicted with newer master; refusing to overwrite concurrent changes."
+                exit 1
+              fi
               sleep "$delay"
             done
+
+            if [ "$pushed" -ne 1 ]; then
+              echo "::error::git push failed after all retry attempts"
+              exit 1
+            fi
+
             echo "CHANGES=$(git diff HEAD~1 --stat | tail -1)" >> "$GITHUB_ENV"
           fi
 
