@@ -403,6 +403,10 @@ _UNIFIED_NAV = r"""<!-- ── Unified UAS- Nav (5-domain accordion drawer) ─�
       <span class="dc-nav-top-ico">🤖</span>
       <span class="dc-nav-top-label">Wingman</span>
     </a>
+    <button class="dc-nav-top-btn" type="button" data-text-size-control aria-label="Text size">
+      <span class="dc-nav-top-ico">Aᴬ</span>
+      <span class="dc-nav-top-label">Text</span>
+    </button>
   </div>
 </nav>
 
@@ -882,7 +886,8 @@ def inject_analytics(html, src_name, dst_path):
     analytics_tag = ''
     if not dst_path.startswith('private/'):
         analytics_tag = (
-            f'<script>var __FORGE_PAGE__="{slug}";</script>\n'
+            '<script src="/static/text-size-control.js"></script>\n'
+            + f'<script>var __FORGE_PAGE__="{slug}";</script>\n'
             + f'<script id="uas-first-party-analytics" type="text/plain">{_ANALYTICS_SNIPPET}</script>\n'
             + '<script src="static/analytics-consent.js"></script>\n'
         )
