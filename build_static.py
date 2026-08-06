@@ -254,20 +254,15 @@ def add_asset_cache_busters(html):
     return re.sub(r'\b(src|href)="((?:\.\./)+|/)?(static/[^"?#]+\.(?:js|css))"', _sub, html)
 
 
-# Google Analytics 4 — injected once per public page by the static build.
-_GOOGLE_ANALYTICS_TAG = """<script async src="https://www.googletagmanager.com/gtag/js?id=G-DXC5B1KWY5"></script>
-<script>
-  window.dataLayer = window.dataLayer || [];
-  function gtag(){dataLayer.push(arguments);}
-  gtag('js', new Date());
-  gtag('config', 'G-DXC5B1KWY5');
-</script>"""
+# Optional analytics is loaded by static/analytics-consent.js only after a visitor opts in.
+# Keeping the external Google tag out of the initial HTML avoids sending analytics
+# requests before the visitor has made that choice.
 
 # Minified Forge analytics snippet — injected into every page at build time
 # Tracks: page views, scroll depth, time on page, outbound clicks, tab switches,
 #         component views, searches, filters, Wingman queries, PIE flag views,
 #         intel article views. All anonymous, no cookies, no PII.
-_ANALYTICS_SNIPPET = r"""(function(){var E=(location.hostname==='localhost'||location.hostname==='127.0.0.1'?'http://localhost:8788':'')+'/api/analytics/ingest',S='sess_'+crypto.randomUUID().replace(/-/g,'').slice(0,16),T=Date.now(),q=[],t=null,PG=typeof __FORGE_PAGE__!=='undefined'?__FORGE_PAGE__:'unknown';function reg(){try{var z=Intl.DateTimeFormat().resolvedOptions().timeZone;if(z.includes('America'))return'Americas';if(z.includes('Europe'))return'Europe';if(z.includes('Asia')||z.includes('Australia')||z.includes('Pacific'))return'Asia-Pacific';if(z.includes('Africa'))return'Africa';}catch(e){}return'Unknown';}function ev(tp,ac,p){q.push({event_id:crypto.randomUUID(),timestamp:new Date().toISOString(),surface:'forge',page:PG,event_type:tp,event_action:ac,context:{session_id:S,geo_region:reg(),platform:/Android|iPhone|iPad/i.test(navigator.userAgent)?'mobile':'web',viewport:innerWidth+'x'+innerHeight,path:location.pathname},payload:p,data_policy:{collection_tier:'anonymous',retention_days:90,anonymized:true}});if(q.length>=20)fl();else if(!t)t=setTimeout(fl,5e3);}function fl(){if(t){clearTimeout(t);t=null;}if(!q.length)return;var b=q.splice(0);fetch(E,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({events:b}),keepalive:true}).catch(function(){});}ev('page_view','view',{path:location.pathname,title:document.title,page:PG,referrer:document.referrer?new URL(document.referrer).hostname:'direct'});var ds=[25,50,75,100],ht=new Set;addEventListener('scroll',function(){var pct=Math.round(scrollY/(Math.max(document.body.scrollHeight-innerHeight,1))*100),el=(Date.now()-T)/1e3;ds.forEach(function(d){if(pct>=d&&!ht.has(d)){ht.add(d);ev('engagement','scroll_depth',{path:location.pathname,depth_pct:d,time_sec:Math.round(el)});}});},{passive:true});document.addEventListener('click',function(e){var a=e.target.closest('a[href]');if(!a)return;try{var u=new URL(a.href);if(u.hostname!==location.hostname)ev('click','outbound_link',{from:location.pathname,to:u.hostname,text:a.textContent.trim().slice(0,80)});}catch(e){}});addEventListener('visibilitychange',function(){if(document.visibilityState==='hidden'){ev('engagement','time_on_page',{path:location.pathname,duration_sec:Math.round((Date.now()-T)/1e3),deep_read:(Date.now()-T)>12e4});fl();}});addEventListener('pagehide',fl);window.__fa=window.__forgeAnalytics={search:function(q,cat,n){ev('search','component_search',{query:(q||'').slice(0,200),category:cat,result_count:n,had_results:n>0});if(!n)ev('search','no_results',{query:(q||'').slice(0,200),category:cat});},filter:function(cat,filters,n){ev('filter','apply_filter',{category:cat,filter_names:Object.keys(filters||{}),result_count:n,zero_results:!n});if(!n)ev('search','no_results',{query:'',category:cat,filters:filters});},view:function(pid,cat,mfr,country,ndaa){ev('page_view','component_detail',{pid:pid,category:cat,manufacturer:mfr,country:country,ndaa_compliant:ndaa});},compare:function(a,b,cat){ev('compare','side_by_side',{pid_a:a,pid_b:b,category:cat});},tab:function(name){ev('navigation','tab_switch',{tab:name,page:PG});},query:function(q,cat,img){ev('ai','wingman_query',{query:(q||'').slice(0,200),category:cat,has_image:!!img});},flag:function(id,sev,type){ev('intel','flag_view',{flag_id:id,severity:sev,flag_type:type});},intel:function(src,art){ev('intel','article_view',{source:src,article_id:art});},flush:fl};})();"""
+_ANALYTICS_SNIPPET = r"""(function(){var E=(location.hostname==='localhost'||location.hostname==='127.0.0.1'?'http://localhost:8788':'')+'/api/analytics/ingest',S='sess_'+crypto.randomUUID().replace(/-/g,'').slice(0,16),T=Date.now(),q=[],t=null,PG=typeof __FORGE_PAGE__!=='undefined'?__FORGE_PAGE__:'unknown';function ev(tp,ac,p){q.push({event_id:crypto.randomUUID(),timestamp:new Date().toISOString(),surface:'forge',page:PG,event_type:tp,event_action:ac,context:{session_id:S,platform:/Android|iPhone|iPad/i.test(navigator.userAgent)?'mobile':'web',viewport:innerWidth+'x'+innerHeight,path:location.pathname},payload:p,data_policy:{collection_tier:'anonymous',retention_days:90,anonymized:true}});if(q.length>=20)fl();else if(!t)t=setTimeout(fl,5e3);}function fl(){if(t){clearTimeout(t);t=null;}if(!q.length)return;var b=q.splice(0);fetch(E,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({events:b}),keepalive:true}).catch(function(){});}ev('page_view','view',{path:location.pathname,title:document.title,page:PG,referrer:document.referrer?new URL(document.referrer).hostname:'direct'});var ds=[25,50,75,100],ht=new Set;addEventListener('scroll',function(){var pct=Math.round(scrollY/(Math.max(document.body.scrollHeight-innerHeight,1))*100),el=(Date.now()-T)/1e3;ds.forEach(function(d){if(pct>=d&&!ht.has(d)){ht.add(d);ev('engagement','scroll_depth',{path:location.pathname,depth_pct:d,time_sec:Math.round(el)});}});},{passive:true});document.addEventListener('click',function(e){var a=e.target.closest('a[href]');if(!a)return;try{var u=new URL(a.href);if(u.hostname!==location.hostname)ev('click','outbound_link',{from:location.pathname,to:u.hostname,text:a.textContent.trim().slice(0,80)});}catch(e){}});addEventListener('visibilitychange',function(){if(document.visibilityState==='hidden'){ev('engagement','time_on_page',{path:location.pathname,duration_sec:Math.round((Date.now()-T)/1e3),deep_read:(Date.now()-T)>12e4});fl();}});addEventListener('pagehide',fl);window.__fa=window.__forgeAnalytics={search:function(q,cat,n){var l=(q||'').trim().length;ev('search','component_search',{query_length:l,category:cat,result_count:n,had_results:n>0});if(!n)ev('search','no_results',{query_length:l,category:cat});},filter:function(cat,filters,n){ev('filter','apply_filter',{category:cat,filter_names:Object.keys(filters||{}),result_count:n,zero_results:!n});if(!n)ev('search','no_results',{query:'',category:cat,filters:filters});},view:function(pid,cat,mfr,country,ndaa){ev('page_view','component_detail',{pid:pid,category:cat,manufacturer:mfr,country:country,ndaa_compliant:ndaa});},compare:function(a,b,cat){ev('compare','side_by_side',{pid_a:a,pid_b:b,category:cat});},tab:function(name){ev('navigation','tab_switch',{tab:name,page:PG});},query:function(q,cat,img){var text=(q||'').trim();ev('ai','wingman_query',{query_length:text.length,word_count:text?text.split(/\s+/).length:0,category:cat,has_image:!!img});},flag:function(id,sev,type){ev('intel','flag_view',{flag_id:id,severity:sev,flag_type:type});},intel:function(src,art){ev('intel','article_view',{source:src,article_id:art});},flush:fl};})();"""
 
 # Page slug mapping — used to set __FORGE_PAGE__ per page
 _PAGE_SLUGS = {
@@ -881,16 +876,17 @@ def strip_baked_analytics(html):
     return pattern.sub('', html)
 
 def inject_analytics(html, src_name, dst_path):
-    """Inject public-page analytics plus global mobile CSS before </body>."""
+    """Inject the consent-gated analytics manager plus global mobile CSS."""
     slug = _PAGE_SLUGS.get(src_name, src_name.replace('.html', ''))
-    # Cloudflare Access protects /private/. Do not send restricted-page visits to GA.
-    google_analytics_tag = '' if dst_path.startswith('private/') else f'\n{_GOOGLE_ANALYTICS_TAG}\n'
-    tag = (
-        google_analytics_tag
-        + f'<script>var __FORGE_PAGE__="{slug}";</script>\n'
-        + f'<script>{_ANALYTICS_SNIPPET}</script>\n'
-        + f'{_MOBILE_CSS}\n'
-    )
+    # Cloudflare Access protects /private/. No optional analytics or consent UI there.
+    analytics_tag = ''
+    if not dst_path.startswith('private/'):
+        analytics_tag = (
+            f'<script>var __FORGE_PAGE__="{slug}";</script>\n'
+            + f'<script id="uas-first-party-analytics" type="text/plain">{_ANALYTICS_SNIPPET}</script>\n'
+            + '<script src="static/analytics-consent.js"></script>\n'
+        )
+    tag = analytics_tag + f'{_MOBILE_CSS}\n'
     html = inject_nav(html, src_name)
     if '</body>' in html:
         return html.replace('</body>', tag + '</body>', 1)
