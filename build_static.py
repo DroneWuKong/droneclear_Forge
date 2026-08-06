@@ -254,6 +254,15 @@ def add_asset_cache_busters(html):
     return re.sub(r'\b(src|href)="((?:\.\./)+|/)?(static/[^"?#]+\.(?:js|css))"', _sub, html)
 
 
+# Google Analytics 4 — injected once per public page by the static build.
+_GOOGLE_ANALYTICS_TAG = """<script async src="https://www.googletagmanager.com/gtag/js?id=G-DXC5B1KWY5"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+  gtag('config', 'G-DXC5B1KWY5');
+</script>"""
+
 # Minified Forge analytics snippet — injected into every page at build time
 # Tracks: page views, scroll depth, time on page, outbound clicks, tab switches,
 #         component views, searches, filters, Wingman queries, PIE flag views,
@@ -875,7 +884,8 @@ def inject_analytics(html, src_name):
     """Inject Forge analytics snippet and global mobile CSS before </body> on every page."""
     slug = _PAGE_SLUGS.get(src_name, src_name.replace('.html', ''))
     tag = (
-        f'\n<script>var __FORGE_PAGE__="{slug}";</script>\n'
+        f'\n{_GOOGLE_ANALYTICS_TAG}\n'
+        f'<script>var __FORGE_PAGE__="{slug}";</script>\n'
         f'<script>{_ANALYTICS_SNIPPET}</script>\n'
         f'{_MOBILE_CSS}\n'
     )
