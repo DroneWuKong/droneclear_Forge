@@ -880,11 +880,13 @@ def strip_baked_analytics(html):
     )
     return pattern.sub('', html)
 
-def inject_analytics(html, src_name):
-    """Inject Forge analytics snippet and global mobile CSS before </body> on every page."""
+def inject_analytics(html, src_name, dst_path):
+    """Inject public-page analytics plus global mobile CSS before </body>."""
     slug = _PAGE_SLUGS.get(src_name, src_name.replace('.html', ''))
+    # Cloudflare Access protects /private/. Do not send restricted-page visits to GA.
+    google_analytics_tag = '' if dst_path.startswith('private/') else f'\n{_GOOGLE_ANALYTICS_TAG}\n'
     tag = (
-        f'\n{_GOOGLE_ANALYTICS_TAG}\n'
+        google_analytics_tag
         f'<script>var __FORGE_PAGE__="{slug}";</script>\n'
         f'<script>{_ANALYTICS_SNIPPET}</script>\n'
         f'{_MOBILE_CSS}\n'
@@ -2230,7 +2232,7 @@ def build():
         }
         if src_name not in _NO_ADAPTER:
             html = inject_adapter(html, depth)
-        html = inject_analytics(html, src_name)
+        html = inject_analytics(html, src_name, dst_path)
         html = inject_disclaimer(html, src_name)
         # Generated "At a glance" brief on the dash.uas-forge.com intel surfaces
         # (computed summary + optional analyst narrative; see dash-brief.js). Bump
