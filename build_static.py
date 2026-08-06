@@ -887,9 +887,9 @@ def inject_analytics(html, src_name, dst_path):
     google_analytics_tag = '' if dst_path.startswith('private/') else f'\n{_GOOGLE_ANALYTICS_TAG}\n'
     tag = (
         google_analytics_tag
-        f'<script>var __FORGE_PAGE__="{slug}";</script>\n'
-        f'<script>{_ANALYTICS_SNIPPET}</script>\n'
-        f'{_MOBILE_CSS}\n'
+        + f'<script>var __FORGE_PAGE__="{slug}";</script>\n'
+        + f'<script>{_ANALYTICS_SNIPPET}</script>\n'
+        + f'{_MOBILE_CSS}\n'
     )
     html = inject_nav(html, src_name)
     if '</body>' in html:
