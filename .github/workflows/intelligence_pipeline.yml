@@ -36,6 +36,13 @@ on:
 permissions:
   contents: write
 
+# This workflow writes generated data directly to master.  Share one queue with
+# every other writer so a manual run cannot collide with a scheduled miner or
+# lens-sync commit.
+concurrency:
+  group: forge-master-writers
+  cancel-in-progress: false
+
 jobs:
   intelligence:
     name: Forge intelligence run
@@ -159,7 +166,9 @@ jobs:
           echo "**Changes:** ${CHANGES:-unknown}" >> "$GITHUB_STEP_SUMMARY"
 
       - name: Email notification
-        if: always()
+        # Keep the useful "changes landed" summary, but do not send an email
+        # for a successful no-op run.  Failures still always notify.
+        if: ${{ failure() || (env.CHANGES != '' && env.CHANGES != 'none') }}
         uses: dawidd6/action-send-mail@v3
         with:
           server_address: smtp.gmail.com

@@ -10,6 +10,15 @@ on:
       - 'generate_brief_rss.py'
   workflow_dispatch:
 
+permissions:
+  contents: write
+
+# RSS regeneration writes to master too; use the same queue as the miners and
+# lens sync so its commit cannot race a data update.
+concurrency:
+  group: forge-master-writers
+  cancel-in-progress: false
+
 jobs:
   rss:
     runs-on: ubuntu-latest

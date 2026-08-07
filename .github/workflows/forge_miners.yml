@@ -35,11 +35,10 @@ on:
 permissions:
   contents: read
 
-# Prevent a scheduled run and a manual dispatch (or two dispatches) from racing
-# each other's git push to master (audit F-M3). Queue, don't cancel — every run
-# should complete its commit.
+# All Forge workflows that write to master use this one queue.  Queue rather
+# than cancel so scheduled collection is not silently dropped.
 concurrency:
-  group: forge-miners-${{ github.ref }}
+  group: forge-master-writers
   cancel-in-progress: false
 
 jobs:
@@ -254,7 +253,21 @@ jobs:
             echo "No changes from API miners — nothing to commit."
           else
             git commit -m "data(mining): ardupilot+diyfpv normalizer run — $(date -u '+%Y-%m-%d')"
-            git push
+            pushed=0
+            for delay in 2 4 8 16; do
+              if git push origin HEAD:master; then
+                pushed=1
+                break
+              fi
+              git fetch origin master
+              if ! git rebase origin/master; then
+                git rebase --abort || true
+                echo "::error::API miner output conflicted with newer master."
+                exit 1
+              fi
+              sleep "$delay"
+            done
+            test "$pushed" = 1 || { echo "::error::Could not push API miner output."; exit 1; }
           fi
 
       - uses: actions/upload-artifact@v4
@@ -271,8 +284,12 @@ jobs:
     name: 'RotorBuilds + SAM.gov (dispatch only)'
     runs-on: ubuntu-latest
     timeout-minutes: 25
-    needs: smoke-miners
-    if: >
+    # Writer jobs run one at a time inside this workflow as well.  always()
+    # lets a selected job run when an earlier, unrelated job was skipped.
+    needs: [smoke-miners, api-miners]
+    if: >-
+      always() &&
+      needs.smoke-miners.result == 'success' &&
       github.event_name == 'workflow_dispatch' &&
       (inputs.miner == 'all' || inputs.miner == 'rotorbuilds' || inputs.miner == 'sam_gov')
     permissions:
@@ -312,7 +329,21 @@ jobs:
             echo "No changes — nothing to commit."
           else
             git commit -m "data(mining): dom-miners run — $(date -u '+%Y-%m-%d')"
-            git push
+            pushed=0
+            for delay in 2 4 8 16; do
+              if git push origin HEAD:master; then
+                pushed=1
+                break
+              fi
+              git fetch origin master
+              if ! git rebase origin/master; then
+                git rebase --abort || true
+                echo "::error::DOM miner output conflicted with newer master."
+                exit 1
+              fi
+              sleep "$delay"
+            done
+            test "$pushed" = 1 || { echo "::error::Could not push DOM miner output."; exit 1; }
           fi
 
       - uses: actions/upload-artifact@v4
@@ -327,11 +358,15 @@ jobs:
     name: 'Mine Pilot Institute DFR articles'
     runs-on: ubuntu-latest
     timeout-minutes: 25
-    # Run on schedule always; on dispatch only if miner == 'all' or 'pilotinstitute'
-    if: >
-      github.event_name == 'schedule' ||
+    # Run after the other possible writer.  `dom-miners` may be skipped for a
+    # scheduled run; `always()` keeps this selected job eligible in that case.
+    needs: [smoke-miners, dom-miners]
+    if: >-
+      always() &&
+      needs.smoke-miners.result == 'success' &&
+      (github.event_name == 'schedule' ||
       (github.event_name == 'workflow_dispatch' &&
-       (inputs.miner == 'all' || inputs.miner == 'pilotinstitute'))
+       (inputs.miner == 'all' || inputs.miner == 'pilotinstitute')))
     permissions:
       contents: write
     steps:
@@ -392,7 +427,21 @@ jobs:
           else
             COUNT=$(git diff --staged --stat | grep pilotinstitute | head -1)
             git commit -m "data(dfr): mine_pilotinstitute — $COUNT"
-            git push
+            pushed=0
+            for delay in 2 4 8 16; do
+              if git push origin HEAD:master; then
+                pushed=1
+                break
+              fi
+              git fetch origin master
+              if ! git rebase origin/master; then
+                git rebase --abort || true
+                echo "::error::Pilot Institute output conflicted with newer master."
+                exit 1
+              fi
+              sleep "$delay"
+            done
+            test "$pushed" = 1 || { echo "::error::Could not push Pilot Institute output."; exit 1; }
           fi
 
       - uses: actions/upload-artifact@v4
