@@ -19,6 +19,8 @@ import doctrineQueue  from './doctrine-queue.js';
 import contributionSubmit from './contribution-submit.js';
 import faaLookup     from './faa-lookup.js';
 import digest        from './digest.js';
+import publicApiV1   from './public-api-v1.js';
+import privateApiV1  from './private-api-v1.js';
 
 const CORS = {
   'Access-Control-Allow-Origin': '*',
@@ -30,6 +32,14 @@ export default {
   async fetch(req, env, ctx) {
     const url = new URL(req.url);
     const path = url.pathname;
+
+    // Versioned contracts get their own method and CORS policy. In particular,
+    // private preflights must never inherit the wildcard legacy API CORS.
+    if (path === '/api/private/v1' || path.startsWith('/api/private/v1/'))
+      return privateApiV1.fetch(req, env, ctx);
+
+    if (path === '/api/v1' || path.startsWith('/api/v1/'))
+      return publicApiV1.fetch(req, env, ctx);
 
     if (req.method === 'OPTIONS') return new Response(null, { status: 204, headers: CORS });
 

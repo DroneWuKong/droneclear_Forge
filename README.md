@@ -27,6 +27,22 @@ The catalog is generated from the real `DroneWuKong/Ai-Project` corpus and recor
 
 Current analytic datasets may fail closed when stale or malformed. Historical and reference data remain available only with their actual coverage and limitations visible.
 
+## API contracts
+
+Two versioned interfaces sit in front of the Cloudflare data bindings:
+
+| Contract | Base URL | Access |
+|---|---|---|
+| Public v1 | `https://uas-patterns.com/api/v1` | Anonymous, read-only, curated allowlist, open CORS |
+| Private v1 | `https://uas-patterns.com/api/private/v1` | Bearer-authenticated, exact-key read/write, restricted CORS, no static fallback |
+
+Public discovery and OpenAPI are available at `/api/v1` and
+`/api/v1/openapi.json`. The legacy `/api/data?type=` endpoint remains available
+for compatibility. Private routes require the `PRIVATE_API_KEY` Cloudflare
+secret; `PUT ...?dry_run=1` validates a private write without mutating KV.
+
+See [docs/api.md](docs/api.md) and [docs/private-api.md](docs/private-api.md).
+
 ## Build
 
 ```bash

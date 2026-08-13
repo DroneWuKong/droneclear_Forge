@@ -190,7 +190,7 @@ class SmokeTests(unittest.TestCase):
 
         def fake_fetch(url, timeout):
             calls.append(url)
-            if "api/data" in url:
+            if "api/v1/" in url or "api/data" in url:
                 raise smoke.SmokeFailure("api unavailable")
             return smoke.Snapshot(url, 200, {}, json.dumps(catalog_payload()))
 
@@ -198,8 +198,8 @@ class SmokeTests(unittest.TestCase):
             "https://p.example/", timeout=1, fetcher=fake_fetch
         )
         self.assertIn("/static/dataset_catalog.json", snapshot.url)
-        self.assertEqual(len(failures), 1)
-        self.assertEqual(len(calls), 2)
+        self.assertEqual(len(failures), 2)
+        self.assertEqual(len(calls), 3)
 
     def test_check_once_with_fake_network(self):
         targets = smoke.build_targets("https://p.example/", "https://f.example/")
@@ -219,15 +219,27 @@ class SmokeTests(unittest.TestCase):
             parsed = urlparse(url)
             query = parse_qs(parsed.query)
             data_type = (query.get("type") or [""])[0]
-            if data_type == "dataset_catalog":
+            if (
+                data_type == "dataset_catalog"
+                or parsed.path.endswith("/api/v1/datasets/dataset_catalog")
+            ):
                 return smoke.Snapshot(
                     url, 200, {}, json.dumps({"data": catalog_payload()})
                 )
-            if data_type == "article_event_clusters" and query.get("view") == ["summary"]:
+            is_event_v1 = parsed.path.endswith(
+                "/api/v1/datasets/article_event_clusters"
+            )
+            if (
+                (data_type == "article_event_clusters" or is_event_v1)
+                and query.get("view") == ["summary"]
+            ):
                 return smoke.Snapshot(
                     url, 200, {}, json.dumps({"data": event_summary_payload()})
                 )
-            if data_type == "article_event_clusters" and query.get("actor") == ["Actor A"]:
+            if (
+                (data_type == "article_event_clusters" or is_event_v1)
+                and query.get("actor") == ["Actor A"]
+            ):
                 return smoke.Snapshot(
                     url, 200, {}, json.dumps({"data": event_actor_payload()})
                 )

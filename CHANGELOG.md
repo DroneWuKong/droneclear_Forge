@@ -1,5 +1,25 @@
 # Changelog
 
+## [Session] - 2026-08-12 — Versioned public and private data APIs
+
+### Added
+- **Public API v1** at `/api/v1`: discovery, dataset allowlist, exact dataset
+  reads, HEAD/OPTIONS handling, open CORS, request IDs, and an OpenAPI 3.1
+  document. The legacy `/api/data?type=` route remains compatible.
+- **Private API v1** at `/api/private/v1`: independent bearer authentication,
+  six allowlisted KV namespaces, bounded/paginated key listing, exact-key reads,
+  JSON PUT, restricted browser origins, no public static fallback, and an
+  authenticated OpenAPI contract.
+- **Software-only private write simulation** through `?dry_run=1`, plus fixture
+  coverage for fail-closed auth, CORS isolation, namespace exclusions, reads,
+  writes, dry runs, public discovery, and legacy compatibility.
+
+### Security
+- Legacy `/api/data` admin writes now use the shared constant-time secret
+  comparison helper instead of direct string comparison.
+- Private API deliberately excludes subscriber/PII, analytics, doctrine, and
+  credential-related bindings and does not implement DELETE.
+
 ## [Session] - 2026-07-04 — Site-wide audit fixes + PIE feature wave
 
 ### Security

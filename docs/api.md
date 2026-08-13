@@ -1,16 +1,23 @@
 # Patterns / Forge Data API
 
-Public, read-only JSON access to every dataset behind uas-patterns.com and
-uas-forge.com. Rendered, user-facing version of this reference:
+Public, read-only JSON access to the curated datasets behind uas-patterns.com
+and uas-forge.com. Rendered, user-facing version of this reference:
 **https://uas-patterns.com/api-docs/** (source: `forge-source/api-docs.html`).
 
 ## Endpoint
 
 ```
-GET https://uas-patterns.com/api/data?type=<dataset>
+GET https://uas-patterns.com/api/v1/datasets/<dataset>
 ```
 
 No authentication. CORS open (`Access-Control-Allow-Origin: *`).
+
+- Discovery: `GET /api/v1`
+- Dataset allowlist: `GET /api/v1/datasets`
+- OpenAPI 3.1: `GET /api/v1/openapi.json`
+
+The original `GET /api/data?type=<dataset>` route remains supported as a
+compatibility alias.
 
 **Response envelope (200):**
 
@@ -23,15 +30,16 @@ No authentication. CORS open (`Access-Control-Allow-Origin: *`).
 }
 ```
 
-`source: "static"` appears only when the dataset was served from the static
+`source: "static:/…"` appears only when the dataset was served from the static
 fallback bundled with the Pages deployment instead of KV (i.e. it missed the
 last pipeline sync — content may be one cycle stale).
 
-**Errors:** `400` — missing `type` (response body lists every available
-dataset); `404` — unknown dataset, or dataset present in the allowlist but
-missing from both KV and static fallback.
+**Errors:** `404` — unknown dataset, or dataset present in the allowlist but
+missing from both KV and static fallback; `503` — a freshness/publication gate
+withheld a current analytical dataset.
 
-**Implementation:** `workers/forge-data.js` (route owned by
+**Implementation:** `workers/public-api-v1.js` delegates exact allowlisted
+dataset reads to `workers/forge-data.js` (route owned by
 `functions/api/[[path]].js` → `workers/index.js`). The dataset allowlist
 (`DATASETS`) and the KV-namespace mapping (`PIE_OUTPUTS_KEYS` → `PIE_OUTPUTS`,
 everything else → `PIE_DB`) in that file are the source of truth — **keep this
@@ -109,11 +117,13 @@ more than hourly buys nothing.
 ## Fair use
 
 Free for research, journalism, and internal tooling. Cache responses,
-attribute **uas-patterns.com** on republication. Schemas are stable but
-unversioned; breaking changes are announced in the daily brief.
+attribute **uas-patterns.com** on republication. The HTTP contract is versioned;
+individual dataset payload schemas remain documented but may evolve, with
+breaking changes announced in the daily brief.
 
-## Admin write path (internal)
+## Private write path
 
-`POST /api/data?type=<dataset>` with `Authorization: Bearer
-$FORGE_BLOBS_ADMIN_KEY` writes a dataset to KV. Used by the Ai-Project
-pipeline sync; not for public use.
+The separately authenticated private contract is documented in
+[`docs/private-api.md`](private-api.md). It never uses wildcard CORS or public
+static fallback. The legacy pipeline-only `POST /api/data?type=<dataset>` route
+remains temporarily available for Ai-Project synchronization.
