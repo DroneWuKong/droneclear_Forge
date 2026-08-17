@@ -379,6 +379,7 @@ def fetch_catalog(
 ) -> tuple[Snapshot, list[str]]:
     base = normalize_base(patterns_base)
     candidates = (
+        urljoin(base, "api/v1/datasets/dataset_catalog"),
         urljoin(base, "api/data?type=dataset_catalog"),
         urljoin(base, "static/dataset_catalog.json"),
         urljoin(base, "dataset_catalog.json"),
@@ -429,7 +430,7 @@ def check_once(
     try:
         summary_url = urljoin(
             patterns,
-            "api/data?type=article_event_clusters&view=summary",
+            "api/v1/datasets/article_event_clusters?view=summary",
         )
         summary_snapshot = fetcher(summary_url, timeout)
         summary_errors, actor = validate_event_summary(
@@ -441,7 +442,7 @@ def check_once(
         if actor and not summary_errors:
             actor_url = urljoin(
                 patterns,
-                "api/data?type=article_event_clusters&actor="
+                "api/v1/datasets/article_event_clusters?actor="
                 + quote(actor, safe="")
                 + "&offset=0&limit=1",
             )
@@ -482,8 +483,8 @@ def main(argv: Sequence[str] | None = None) -> int:
         print("Production smoke dry run: no network requests")
         for target in targets:
             print(f"  {target.name:16} {target.url}")
-        print("  dataset-catalog  API/static fallback chain configured")
-        print("  event-summary    projected API and exact-actor sample configured")
+        print("  dataset-catalog  v1/legacy/static fallback chain configured")
+        print("  event-summary    projected v1 API and exact-actor sample configured")
         return 0
 
     for attempt in range(1, args.attempts + 1):

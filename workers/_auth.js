@@ -19,6 +19,12 @@ export async function timingSafeEqual(a, b) {
   ]);
   const va = new Uint8Array(ha);
   const vb = new Uint8Array(hb);
+  if (typeof crypto.subtle.timingSafeEqual === 'function') {
+    return crypto.subtle.timingSafeEqual(va, vb);
+  }
+  // Node's Web Crypto implementation did not expose timingSafeEqual when the
+  // software-only fixture tests were introduced. Keep a fixed-length fallback
+  // so the same auth code remains testable outside the Workers runtime.
   let diff = 0;
   for (let i = 0; i < va.length; i++) diff |= va[i] ^ vb[i];
   return diff === 0;

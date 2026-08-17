@@ -1,4 +1,5 @@
 import { projectDataset } from './forge-data-projections.mjs';
+import { timingSafeEqual } from './_auth.js';
 
 /**
  * forge-data — Cloudflare Worker route for /api/data?type=<dataset>
@@ -148,7 +149,7 @@ function parseAndServe(raw, type, source, params) {
   }
 }
 
-const DATASETS = new Set([
+export const PUBLIC_DATASETS = Object.freeze([
   'forge_database',
   'drone_database',
   'topic_component_map',
@@ -208,6 +209,8 @@ const DATASETS = new Set([
   'comtrade_data',
 ]);
 
+const DATASETS = new Set(PUBLIC_DATASETS);
+
 const PIE_OUTPUTS_KEYS = new Set([
   'pie_flags',
   'pie_brief',
@@ -259,6 +262,20 @@ const PIE_OUTPUTS_KEYS = new Set([
   'comtrade_data',
 ]);
 
+export function describePublicDatasets() {
+  return PUBLIC_DATASETS.map((id) => ({
+    id,
+    storage: PIE_OUTPUTS_KEYS.has(id) ? 'PIE_OUTPUTS' : 'PIE_DB',
+    freshness_max_age_seconds: FRESHNESS_LIMIT_MS.has(id)
+      ? Math.floor(FRESHNESS_LIMIT_MS.get(id) / 1000)
+      : null,
+  }));
+}
+
+export function isPublicDataset(id) {
+  return DATASETS.has(id);
+}
+
 export default {
   async fetch(request, env) {
     if (request.method === 'OPTIONS') {
@@ -280,7 +297,7 @@ export default {
           503,
         );
       }
-      if (provided !== adminKey) {
+      if (!(await timingSafeEqual(provided, adminKey))) {
         return resp({ error: 'Invalid admin key' }, 401);
       }
       if (!type || !DATASETS.has(type)) {
