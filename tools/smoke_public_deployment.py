@@ -32,6 +32,7 @@ REQUIRED_DATASET_IDS = {
     "ttp_counter_gap",
     "miner_health",
     "source_coverage_matrix",
+    "data_quality_score",
 }
 EVENT_GENERATOR = "services/pipeline/article_event_clusters_quality.py"
 
@@ -115,7 +116,7 @@ def build_targets(patterns_base: str, forge_base: str) -> list[Target]:
         Target(
             "data-quality",
             urljoin(patterns, "miner-health/"),
-            ("Data Quality &amp; Pipeline Health", "Public data control surface"),
+            ("Data Quality &amp; Pipeline Health", "Public data control surface", "data_quality_score"),
             ("Live observability for the mining pipeline behind this site",),
         ),
         Target(

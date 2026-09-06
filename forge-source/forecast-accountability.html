@@ -124,7 +124,8 @@ tr.bo-low td{opacity:.55}
     This page measures the engine&rsquo;s <strong>self-grading coverage and calibration</strong>,
     not future events. A high grade-rate means more forecasts were checked against
     intel evidence; it is not a claim about what will happen. Calibration figures on a
-    small graded set are indicative, not conclusive.
+    small graded set are diagnostic only. PIE withholds a calibration rating until there are
+    <strong>at least 30 graded forecasts including an evidence-backed refutation</strong>.
   </div>
 
   <div class="stats" id="kpis">
@@ -333,7 +334,7 @@ function analyze(outcomes){
 }
 
 // ── KPIs ────────────────────────────────────────────────────────────────────
-function renderKpis(a){
+function renderKpis(a, calibration){
   document.getElementById('k-total').textContent = a.N;
   var rate = document.getElementById('k-rate');
   rate.textContent = a.gradeRate === null ? '—' : pct(a.gradeRate);
@@ -341,7 +342,11 @@ function renderKpis(a){
   var mass = document.getElementById('k-mass');
   mass.textContent = pct(a.massUnverified);
   mass.className = 'st-n ' + (a.massUnverified <= 0.3 ? 'good' : a.massUnverified <= 0.6 ? 'warn' : 'bad');
-  document.getElementById('k-brier').textContent = a.brier === null ? '—' : a.brier.toFixed(3);
+  var brier = document.getElementById('k-brier');
+  var ready = calibration && calibration.calibration_ready === true;
+  brier.textContent = ready && a.brier !== null ? a.brier.toFixed(3) : 'Not rated';
+  brier.className = 'st-n ' + (ready ? 'good' : 'warn');
+  brier.title = ready ? 'Calibration sample gate passed' : ((calibration && calibration.sample_gate && calibration.sample_gate.reasons) || ['30 graded forecasts and a refutation required']).join('; ');
 }
 
 // ── funnel (CSS bars) ─────────────────────────────────────────────────────
@@ -390,7 +395,7 @@ function renderReasons(a){
 }
 
 // ── reliability diagram ─────────────────────────────────────────────────────
-function renderReliability(a){
+function renderReliability(a, calibration){
   var W=820,H=320,PAD=52;
   var pw=W-2*PAD, ph=H-2*PAD;
   function X(p){ return PAD + p*pw; }
@@ -415,12 +420,11 @@ function renderReliability(a){
 
   // Insight: is the graded set large enough to call calibration at all?
   var nBuckets = Object.keys(a.buckets).length;
-  if(a.graded < 10){
+  if(!calibration || calibration.calibration_ready !== true){
+    var gate = calibration && calibration.sample_gate;
+    var reasons = gate && gate.reasons ? gate.reasons.join('; ') : '30 graded forecasts and at least one evidence-backed refutation are required';
     setInsight('reliability-insight', 'warn',
-      'Only <b>'+a.graded+'</b> graded forecasts across <b>'+nBuckets+'</b> probability bucket'
-      +(nBuckets===1?'':'s')+' — too few to establish calibration. The curve is <b>indicative, not conclusive</b>'
-      +(a.brier!==null?'; Brier '+a.brier.toFixed(3)+' on this thin set.':'.')
-      +' Grade rate is the metric to move first.');
+      '<b>Calibration not rated.</b> '+escapeHtml(reasons)+'. The displayed curve and raw Brier value are diagnostic only; grade rate is the metric to move first.');
   } else {
     setInsight('reliability-insight', a.brier!==null && a.brier<0.2 ? 'good' : 'warn',
       'Calibration over <b>'+a.graded+'</b> graded forecasts'
@@ -677,12 +681,12 @@ function render(outcomes){
   _resolved = (outcomes || [])
     .filter(function(o){ return typeof o.was_correct === 'boolean'; })
     .sort(function(x, y){ return String(y.resolution_date||'').localeCompare(String(x.resolution_date||'')); });
-  renderKpis(a); renderFunnel(a); renderResolved(); renderReasons(a); renderReliability(a);
+  renderKpis(a, null); renderFunnel(a); renderResolved(); renderReasons(a);
   renderImpact(a); renderConfHist(a); renderDomains(a);
   // Breakout waits on the (non-blocking) calibration_scores side-fetch so
   // per-domain Brier can prefer the resolver's published numbers.
   _calibFetch.then(function(calib){
-    try { renderBreakout(outcomes, calib); }
+    try { renderKpis(a, calib); renderReliability(a, calib); renderBreakout(outcomes, calib); }
     catch(e){ console.error('[forecast-accountability] breakout render failed', e); }
   });
   document.getElementById('loading').hidden = true;

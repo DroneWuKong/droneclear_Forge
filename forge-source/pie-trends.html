@@ -75,7 +75,7 @@ h1{font:700 24px var(--mono);color:#22c55e;letter-spacing:-0.02em;margin-bottom:
   <div class="eyebrow">uas-patterns · PIE intelligence</div>
   <h1>PIE Trends</h1>
   <p class="tagline">
-    Where the PIE pipeline's own metrics are heading. <strong>56 daily snapshots</strong>
+    Where the PIE pipeline's own metrics are heading. <strong><span id="tag-snaps">daily snapshots</span></strong>
     across flag volume, component prices, intel velocity, and per-entity gray-zone scores —
     with linear projections where the signal supports one. Reads <code>pie_trends</code>
     live from the intel API.
@@ -83,7 +83,7 @@ h1{font:700 24px var(--mono);color:#22c55e;letter-spacing:-0.02em;margin-bottom:
 
   <div class="caveat">
     <span class="caveat-tag">Descriptive trend reading — not a forecast of events</span>
-    Projections are <strong>linear extrapolations</strong> of the recent trajectory (p30/p60/p90
+    Projections are <strong>linear extrapolations of the latest 30 calendar days</strong> (p30/p60/p90
     = the 30/60/90-day point estimate), shown only where the fit is strong enough. They describe
     momentum in the pipeline's own measurements, not predictions about the world. A rising flag
     count can mean escalating risk <em>or</em> expanding coverage — read it as a level, with the
@@ -95,6 +95,11 @@ h1{font:700 24px var(--mono);color:#22c55e;letter-spacing:-0.02em;margin-bottom:
     <div class="st"><span class="st-n" id="k-metrics">—</span><span class="st-l">Metrics tracked</span></div>
     <div class="st"><span class="st-n" id="k-rising">—</span><span class="st-l">Rising</span></div>
     <div class="st"><span class="st-n" id="k-proj">—</span><span class="st-l">With projection</span></div>
+  </div>
+
+  <div class="caveat" id="method-note">
+    <span class="caveat-tag">Coverage and methodology</span>
+    Loading observed-day coverage and level-shift annotations…
   </div>
 
   <section id="content" hidden>
@@ -119,7 +124,7 @@ h1{font:700 24px var(--mono);color:#22c55e;letter-spacing:-0.02em;margin-bottom:
 
   <p class="footnote">
     Source: <code>pie_trends</code> via <code>/api/data</code>, produced by the daily PIE
-    trend engine (<a href="https://github.com/DroneWuKong/Ai-Project/blob/main/pipeline/pie_snapshot.py">pipeline/pie_snapshot.py</a>).
+    trend engine (<a href="https://github.com/DroneWuKong/Ai-Project/blob/main/services/pipeline/pie_snapshot.py">services/pipeline/pie_snapshot.py</a>).
     Window: <span id="foot-span">—</span>.
   </p>
 </main>
@@ -255,10 +260,21 @@ function render(d){
 
   // KPIs
   document.getElementById('k-snaps').textContent   = d.n_snapshots || (trends[0]?trends[0].values.length:'—');
+  document.getElementById('tag-snaps').textContent = (d.n_snapshots || '—') + ' observed snapshots';
   document.getElementById('k-metrics').textContent = trends.length;
   document.getElementById('k-rising').textContent  = trends.filter(function(t){return t.direction==='rising';}).length;
   document.getElementById('k-proj').textContent    = projs.length;
   document.getElementById('foot-span').textContent = d.history_span || '—';
+  var cov = d.coverage || {};
+  var shifts = d.methodology_changes || [];
+  var method = d.methodology || {};
+  document.getElementById('method-note').innerHTML = '<span class="caveat-tag">Coverage and methodology</span>'
+    + '<strong>' + escapeHtml(cov.observed_days == null ? 'Unknown' : cov.observed_days) + '</strong> observed days of '
+    + '<strong>' + escapeHtml(cov.span_days == null ? 'unknown' : cov.span_days) + '</strong> ('
+    + escapeHtml(cov.coverage_pct == null ? 'unknown' : cov.coverage_pct + '%') + ' coverage). '
+    + 'Trend direction and slopes use the <strong>' + escapeHtml(method.default_fit || 'latest fit window') + '</strong>; charts retain the full history. '
+    + (shifts.length ? 'Detected level shifts: ' + shifts.map(function(s){ return escapeHtml(s.date + ' (' + (s.delta > 0 ? '+' : '') + s.delta + ')'); }).join(', ')
+       + '. These may reflect coverage or methodology changes.' : 'No conspicuous level shift was detected in the flag-count series.');
 
   // Hero = total_flags
   var hero = byMetric.total_flags || trends[0];
@@ -266,7 +282,7 @@ function render(d){
     document.getElementById('hero-label').textContent = hero.label;
     var hp = projMap[hero.metric];
     document.getElementById('hero-sub').innerHTML = hp
-      ? escapeHtml(hp.interpretation || '') + ' &nbsp;·&nbsp; 90-day projection ' + fmtVal(hp.p90, hero.unit) + ' (conf ' + Math.round((hp.confidence||0)*100) + '%)'
+      ? escapeHtml(hp.interpretation || '') + ' &nbsp;·&nbsp; fit ' + escapeHtml((hp.fit_window||{}).start || '—') + ' to ' + escapeHtml((hp.fit_window||{}).end || '—') + ' &nbsp;·&nbsp; 90-day projection ' + fmtVal(hp.p90, hero.unit) + ' (conf ' + Math.round((hp.confidence||0)*100) + '%)'
       : escapeHtml((hero.signal||'') + ' / ' + (hero.direction||''));
     renderHero(hero, hp);
   }

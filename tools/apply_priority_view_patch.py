@@ -106,13 +106,13 @@ REPLACEMENTS = (
     ),
     Replacement(
         'workers/forge-data.js',
-        "  'dataset_catalog',\n  'source_coverage_matrix',\n  'intel_articles',",
+        "  'dataset_catalog',\n  'source_coverage_matrix',\n  'data_quality_score',\n  'intel_articles',",
         "  'dataset_catalog',\n  'intel_articles',",
         "  'dataset_catalog',\n  'source_coverage_matrix',\n  'intel_articles',",
     ),
     Replacement(
         'workers/forge-data.js',
-        "  'dataset_catalog',\n  'source_coverage_matrix',\n  'solicitations',",
+        "  'dataset_catalog',\n  'source_coverage_matrix',\n  'data_quality_score',\n  'solicitations',",
         "  'dataset_catalog',\n  'solicitations',",
         "  'dataset_catalog',\n  'source_coverage_matrix',\n  'solicitations',",
     ),
@@ -162,7 +162,7 @@ REPLACEMENTS = (
     ),
     Replacement(
         '.github/workflows/public-site-quality.yml',
-        'tests/test_forge_data_projections.mjs \\\n            tests/test_pir_priority_view.cjs',
+        'tests/test_forge_data_projections.mjs \\\n            tests/test_pie_quality_surfaces.cjs \\\n            tests/test_pir_priority_view.cjs',
         '''          node --test tests/test_dossier_signals.cjs tests/test_record_dossiers.cjs tests/test_patterns_decision_support.cjs \\
             tests/test_actor_event_evidence.cjs \\
             tests/test_forge_data_projections.mjs''',
