@@ -2168,7 +2168,7 @@ def build():
                         'sanctions_evasion_graph.json', 'actor_fingerprints.json',
                         'ttp_counter_gap.json', 'threat_scores.json',
                         'market_lens.json',
-                        'prediction_outcomes.json', 'calibration_scores.json',
+                        'prediction_outcomes.json', 'calibration_scores.json', 'data_quality_score.json',
                         # Health + health history
                         'miner_health.json', 'miner_registry.json']
     for fname in ROOT_INTEL_FILES:

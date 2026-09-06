@@ -32,6 +32,7 @@ def catalog_payload(status="fresh", generated="2026-07-31T11:00:00+00:00"):
         "ttp_counter_gap",
         "miner_health",
         "source_coverage_matrix",
+        "data_quality_score",
     ]
     ids += [f"extra_{i}" for i in range(14)]
     return {

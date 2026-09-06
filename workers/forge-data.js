@@ -40,6 +40,7 @@ const FRESHNESS_LIMIT_MS = new Map([
   ['threat_scores', 72 * 60 * 60 * 1000],
   ['dataset_catalog', 72 * 60 * 60 * 1000],
   ['source_coverage_matrix', 72 * 60 * 60 * 1000],
+  ['data_quality_score', 72 * 60 * 60 * 1000],
 ]);
 
 function resp(data, status = 200, extraHeaders = {}) {
@@ -55,7 +56,7 @@ function resp(data, status = 200, extraHeaders = {}) {
 }
 
 function generatedAtOf(data) {
-  const raw = data && data.meta && data.meta.generated_at;
+  const raw = data && ((data.meta && data.meta.generated_at) || data.generated_at || data.generated);
   if (typeof raw !== 'string' || !raw.trim()) return null;
   const timestamp = Date.parse(raw);
   return Number.isFinite(timestamp) ? timestamp : null;
@@ -159,6 +160,7 @@ const DATASETS = new Set([
   'miner_registry',
   'dataset_catalog',
   'source_coverage_matrix',
+  'data_quality_score',
   'intel_articles',
   'intel_companies',
   'intel_platforms',
@@ -229,6 +231,7 @@ const PIE_OUTPUTS_KEYS = new Set([
   'miner_registry',
   'dataset_catalog',
   'source_coverage_matrix',
+  'data_quality_score',
   'solicitations',
   'federal_awards',
   'sam_watchlist',
