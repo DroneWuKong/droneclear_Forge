@@ -121,3 +121,77 @@ test('budget reservations persist across minutes and reset daily with bounded co
   assert.equal(budgetDecision({...next.state,units:250000},100,61000).allowed,false);
   assert.equal(budgetDecision(next.state,100,86400000).state.dayCount,1);
 });
+
+// Exercise the real inline send() against the actual proxy handlers. Provider I/O is mocked.
+const wingmanSource = fs.readFileSync(new URL('../forge-source/wingman.html', import.meta.url), 'utf8');
+const sendSource = wingmanSource.slice(wingmanSource.indexOf('async function send() {'), wingmanSource.indexOf('// ─── RENDER'));
+function wingmanContext(provider, options = {}) {
+  const element = { value: 'Follow up', style: {} };
+  const context = vm.createContext({
+    provider, loading: false, stagedImgs: [], proxySecret: 'owner-test', apiKey: '', geminiKey: '', groqKey: '', subToken: '',
+    messages: [{ role: 'user', content: [{ type: 'text', text: 'Original question' }] }, { role: 'assistant', content: [], text: 'Previous answer' }],
+    document: { getElementById: () => element },
+    updateSendBtn() {}, hideEmpty() {}, renderStagedImages() {}, renderMessages() {}, showThinking() {}, hideThinking() {}, scrollBottom() {}, trackQuery() {},
+    buildPrompt: () => 'Use the supplied Forge reference material.',
+    ...options,
+  });
+  vm.runInContext(sendSource, context);
+  return context;
+}
+for (const [provider, worker] of [['gemini', gemini], ['groq', groq], ['anthropic', claude]]) {
+  test(`Wingman ${provider} text chat reaches authorized proxy with history`, async () => {
+    const upstream = []; let reservations = 0;
+    const old = globalThis.fetch;
+    globalThis.fetch = async (url, options) => {
+      upstream.push({ url, body: JSON.parse(options.body), headers: options.headers });
+      return Response.json({ candidates: [{content:{parts:[{text:'Answer'}]}}], choices:[{message:{content:'Answer'}}], content:[{type:'text',text:'Answer'}] });
+    };
+    const env = { WINGMAN_PROXY_SECRET: 'owner-test', GEMINI_API_KEY:'provider-test', GROQ_API_KEY:'provider-test', ANTHROPIC_API_KEY:'provider-test',
+      MODEL_BUDGET: {idFromName:x=>x, get:()=>({reserve:async()=>{ reservations++; return {allowed:true}; }})} };
+    let requests = 0;
+    const context = wingmanContext(provider, {fetch:async (url, options) => {
+      requests++;
+      assert.ok(url.startsWith('/api/wingman/'));
+      const response = await worker.fetch(new Request('https://local.invalid'+url, options), env);
+      assert.equal(response.status, 200, await response.clone().text());
+      return response;
+    }});
+    try {
+      await context.send();
+      assert.equal(requests, 1); assert.equal(reservations, 1); assert.equal(upstream.length, 1);
+      assert.equal(context.messages.at(-1).text, 'Answer');
+      assert.ok(JSON.stringify(upstream[0].body).includes('Previous answer'));
+      assert.ok(JSON.stringify(upstream[0].body).includes('Use the supplied Forge reference material.'));
+      assert.equal(upstream[0].body.tools, undefined);
+      assert.equal(new Headers(upstream[0].headers).get('x-proxy-secret'), null);
+      assert.equal(context.loading, false);
+    } finally { globalThis.fetch = old; }
+  });
+  test(`Wingman ${provider} requires credentials and never sends anonymous paid requests`, async () => {
+    let calls = 0;
+    const context = wingmanContext(provider, {proxySecret:'', subToken:'legacy-token', fetch:async()=>{calls++;}});
+    await context.send();
+    assert.equal(calls, 0); assert.match(context.messages.at(-1).text, /API key/);
+    assert.equal(context.loading, false);
+  });
+  test(`Wingman ${provider} BYOK never leaks owner proxy credential`, async () => {
+    const requests = [];
+    const key = provider === 'gemini' ? 'geminiKey' : provider === 'groq' ? 'groqKey' : 'apiKey';
+    const context = wingmanContext(provider, {[key]:'user-test', fetch:async(url, options)=>{ requests.push({url,options});return Response.json({}); }});
+    await context.send();
+    assert.equal(requests.length, 1); assert.ok(requests[0].url.startsWith('https://'));
+    assert.equal(new Headers(requests[0].options.headers).get('x-proxy-secret'), null);
+    assert.ok(!JSON.stringify(requests).includes('owner-test'));
+  });
+}
+test('Wingman shared chat does not silently drop image history', async () => {
+  let calls = 0;
+  const context = wingmanContext('gemini', {stagedImgs:[{mediaType:'image/png', b64:'test', preview:'test'}], fetch:async()=>{calls++;}});
+  await context.send();
+  assert.equal(calls, 0); assert.match(context.messages.at(-1).text, /supports text only/);
+});
+test('Wingman surfaces Claude provider errors', async () => {
+  const context = wingmanContext('anthropic', {fetch:async()=>Response.json({error:{message:'Provider account unavailable'}},{status:400})});
+  await context.send();
+  assert.match(context.messages.at(-1).text, /Provider account unavailable/);
+});

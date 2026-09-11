@@ -22,6 +22,11 @@ export default {
       });
       const tokens = outputLimit(body.max_tokens ?? body.generationConfig?.maxOutputTokens);
       const outbound = { contents, generationConfig: { maxOutputTokens: tokens, candidateCount: 1, ...(model.startsWith('gemini-2.5-flash') ? { thinkingConfig: { thinkingBudget: 0 } } : {}) } };
+      if (body.systemInstruction != null) {
+        const parts = body.systemInstruction?.parts;
+        if (!Array.isArray(parts) || !parts.length || parts.some(p => !p || typeof p.text !== 'string')) throw new Error('System instructions must contain text parts');
+        outbound.systemInstruction = { parts: parts.map(p => ({ text: p.text })) };
+      }
       const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`;
       const headers = { 'Content-Type': 'application/json', 'x-goog-api-key': env.GEMINI_API_KEY };
       const limited = await reserve(env, inputUnits, tokens);
