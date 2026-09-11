@@ -17,7 +17,7 @@ export function projectDaily(input, params = new URLSearchParams(), now = Date.n
   const dates = [...new Set(flags.map(f => f.last_verified_at))];
   const generated = flags.length && dates.length === 1 && typeof dates[0] === 'string' && Number.isFinite(Date.parse(dates[0])) ? dates[0] : null;
   const age = generated ? now - Date.parse(generated) : NaN;
-  const coverage = {status: !flags.length || !Number.isFinite(age) ? 'unavailable' : age < -300000 || age > 72 * 3600000 ? 'stale' : 'available', generated_at: generated, meaning: 'Collection age; source publication dates are shown separately'};
+  const coverage = {status: !flags.length || !Number.isFinite(age) ? 'unavailable' : age < -300000 || age > 72 * 3600000 ? 'stale' : 'available', generated_at: generated, collector_health: 'not_assessed', meaning: 'Flag comparison age. Rebuilding an existing artifact does not verify upstream collection or refresh source evidence.'};
   const counts = Object.fromEntries([...STATES].map(k => [k, 0]));
   const requestedRecord = params.get('record') || '';
   const idCounts = new Map();
