@@ -60,6 +60,15 @@
     const parsed = parseDate(value);
     return parsed ? parsed.getTime() : 0;
   }
+  function recordSourceDate(record) {
+    return text(record.type === 'flag' ? record.source_published_at : record.date);
+  }
+  function flagDateFields(record) {
+    const sourceDate = recordSourceDate(record);
+    // Older indexes and saved packets used the observation date as `date`.
+    return {date:sourceDate, source_published_at:sourceDate,
+      observed_at:text(record.observed_at || (!Object.hasOwn(record, 'source_published_at') ? record.date : ''))};
+  }
   function flatten(value, depth, output, seen) {
     if (value == null || depth > 5) return output;
     if (typeof value === 'string' || typeof value === 'number' || typeof value === 'boolean') {
@@ -148,6 +157,7 @@
       title,
       summary,
       date: text(fields.date),
+      ...(type === 'flag' ? {source_published_at:text(fields.source_published_at), observed_at:text(fields.observed_at)} : {}),
       source: text(fields.source),
       destination: fields.destination || TYPE_DESTINATION[type] || '/patterns-home/',
       semantics: text(fields.semantics),
@@ -183,7 +193,9 @@
       id:row.id || row.flag_id || stableId(row),
       title:row.title || row.headline || row.flag_type || row.id,
       summary:row.detail || row.summary || row.description || row.rationale,
-      date:dateValue(row),
+      date:row.source_published_at,
+      source_published_at:row.source_published_at,
+      observed_at:row.observed_at || row.last_seen || row.timestamp || row.date || row.first_seen,
       source:row.source || row.entity || row.category,
       citations:citationsFromFlag(row),
       semantics:'Analytic signal derived from indexed public records. It is not an allegation, legal finding, or authoritative compliance determination.'
@@ -287,6 +299,7 @@
     return {
       id:shorten(record.id, 240), key:recordKey(record), type:record.type, title:shorten(record.title, 320),
       summary:shorten(record.summary, 800), date:shorten(record.date, 80), source:shorten(record.source, 160),
+      ...(record.type === 'flag' ? Object.fromEntries(Object.entries(flagDateFields(record)).map(([key,value]) => [key,shorten(value,80)])) : {}),
       destination:recordUrl(record), sourceUrl:safeHttpUrl(record.destination),
       datasetDestination:record.type === 'flag' ? `/patterns/#flag=${encodeURIComponent(record.id)}` : record.type === 'entity' ? `/dossier/?m=${encodeURIComponent(record.id)}` : '',
       entities:record.raw && record.raw.entities && typeof record.raw.entities === 'object' ? Object.fromEntries(Object.entries(record.raw.entities).filter(([,values]) => Array.isArray(values)).map(([name, values]) => [name,values.filter(value => typeof value === 'string').slice(0,12).map(value => value.slice(0,120))])) : {},
@@ -297,7 +310,7 @@
   }
   function publicRecord(record) {
     const { searchText, titleText, summaryText, raw, ...visible } = record;
-    return visible;
+    return record.type === 'flag' ? {...visible, ...flagDateFields(record)} : visible;
   }
   function projectResearch(index, params) {
     if (!index || index.schema_version !== 1 || !Array.isArray(index.records)) throw new Error('Research index missing or incompatible');
@@ -320,17 +333,17 @@
     if (params.get('view') === 'summary') return base;
     let records = index.records.filter(record => !type || type === 'all' || record.type === type);
     const after = parseDate(params.get('after'));
-    if (after) records = records.filter(record => dateSortValue(record.date) >= after.getTime());
+    if (after) records = records.filter(record => dateSortValue(recordSourceDate(record)) >= after.getTime());
     if (query && !queryTerms(query).length) return {...base, total_matches:0, ranked:[]};
     if (!query) {
-      records.sort((a,b) => dateSortValue(b.date) - dateSortValue(a.date) || recordKey(a).localeCompare(recordKey(b)));
+      records.sort((a,b) => dateSortValue(recordSourceDate(b)) - dateSortValue(recordSourceDate(a)) || recordKey(a).localeCompare(recordKey(b)));
       return {...base, total_matches:records.length, records:records.slice(offset, offset + limit).map(visible)};
     }
     // Rank once with the publication's clock; save that revision with packets.
     const context = queryContext(query);
     const ranked = records.filter(record => context.patterns.some(pattern => pattern.test(record.searchText))).map(record => ({record, ranking:scoreRecord(record, query, {now:index.meta && index.meta.generated_at, context})}))
       .filter(item => item.ranking.matchedTerms.length)
-      .sort((a,b) => Number(b.ranking.direct) - Number(a.ranking.direct) || b.ranking.score - a.ranking.score || dateSortValue(b.record.date) - dateSortValue(a.record.date) || recordKey(a.record).localeCompare(recordKey(b.record)));
+      .sort((a,b) => Number(b.ranking.direct) - Number(a.ranking.direct) || b.ranking.score - a.ranking.score || dateSortValue(recordSourceDate(b.record)) - dateSortValue(recordSourceDate(a.record)) || recordKey(a.record).localeCompare(recordKey(b.record)));
     return {...base, total_matches:ranked.length, ranked:ranked.slice(offset, offset + limit).map(item => ({record:visible(item.record), ranking:item.ranking}))};
   }
 
@@ -370,7 +383,7 @@
     if (direct) score += 8;
     else score += Math.round(coverage * 4);
     score += Math.min(4, record.citations.length);
-    const age = dateSortValue(record.date);
+    const age = dateSortValue(recordSourceDate(record));
     if (age) {
       const days = ((dateSortValue(options && options.now) || Date.now()) - age) / 86400000;
       if (days >= 0 && days <= 30) score += 3;
@@ -389,7 +402,7 @@
       .sort((left, right) => {
         if (left.ranking.direct !== right.ranking.direct) return left.ranking.direct ? -1 : 1;
         if (right.ranking.score !== left.ranking.score) return right.ranking.score - left.ranking.score;
-        const dateDelta = dateSortValue(right.record.date) - dateSortValue(left.record.date);
+        const dateDelta = dateSortValue(recordSourceDate(right.record)) - dateSortValue(recordSourceDate(left.record));
         if (dateDelta) return dateDelta;
         const typeDelta = TYPE_ORDER.indexOf(left.record.type) - TYPE_ORDER.indexOf(right.record.type);
         return typeDelta || text(left.record.id).localeCompare(text(right.record.id)) || left.index - right.index;
@@ -453,22 +466,25 @@
     return Number.isFinite(number) ? `${(number * 100).toFixed(1)}%` : 'Not reported';
   }
   function renderCitation(citation, number) {
-    return `<li id="citation-${number}"><a href="${htmlEscape(citation.url)}" target="_blank" rel="noopener noreferrer">[${number}] ${htmlEscape(citation.title)}</a><span>${htmlEscape(citation.source)}${citation.date ? ` · ${htmlEscape(formatDate(citation.date))}` : ''}</span></li>`;
+    return `<li id="citation-${number}"><a href="${htmlEscape(citation.url)}" target="_blank" rel="noopener noreferrer">[${number}] ${htmlEscape(citation.title)}</a><span>${htmlEscape(citation.source)} · Source published: ${citation.date ? htmlEscape(formatDate(citation.date)) : 'unknown'}</span></li>`;
   }
   function citationNumbers(record, packet) {
     const keys = packet.citations.map(citationKey);
     return record.citations.map(citation => keys.indexOf(citationKey(citation)) + 1).filter(number => number > 0);
   }
   function renderResult(item, packet) {
-    const record = item.record;
+    const record = publicRecord(item.record);
     const numbers = citationNumbers(record, packet);
     const cited = numbers.map(number => `<a href="#citation-${number}">[${number}]</a>`).join(' ');
     const reasons = item.ranking.reason.slice(0, 6).map(reason => `<span>${htmlEscape(reason)}</span>`).join('');
+    const dates = record.type === 'flag'
+      ? `<span>Source published: ${record.source_published_at ? htmlEscape(formatDate(record.source_published_at)) : 'unknown'}</span><span>Observed: ${record.observed_at ? htmlEscape(formatDate(record.observed_at)) : 'unknown'}</span>`
+      : `<span>${htmlEscape(formatDate(record.date))}</span>`;
     return `<article class="evidence-card">
       <div class="evidence-head"><span class="type ${htmlEscape(record.type)}">${htmlEscape(TYPE_LABEL[record.type] || record.type)}</span><span class="score">retrieval score ${item.ranking.score}</span></div>
       <h3>${htmlEscape(record.title)} ${cited}</h3>
       <p>${htmlEscape(record.summary)}</p>
-      <div class="evidence-meta"><span>${htmlEscape(formatDate(record.date))}</span><span>${htmlEscape(record.source || 'Source label not reported')}</span><span>${item.ranking.direct ? 'all query terms matched' : `${Math.round(item.ranking.coverage * 100)}% term coverage`}</span></div>
+      <div class="evidence-meta">${dates}<span>${htmlEscape(record.source || 'Source label not reported')}</span><span>${item.ranking.direct ? 'all query terms matched' : `${Math.round(item.ranking.coverage * 100)}% term coverage`}</span></div>
       <div class="reasons">${reasons || '<span>indexed-field match</span>'}</div>
       <p class="semantics">${htmlEscape(record.semantics)}${record.dataset_status ? ` Dataset: ${htmlEscape(record.dataset_status)} (${htmlEscape(record.dataset_origin || 'origin untracked')}); source artifact date ${htmlEscape(record.dataset_generated_at || 'unknown')}.` : ''}</p>
       <div class="actions"><a href="${htmlEscape(record.destination)}"${safeHttpUrl(record.destination) ? ' target="_blank" rel="noopener noreferrer"' : ''}>Open exact record →</a>${record.datasetDestination ? ` · <a href="${htmlEscape(record.datasetDestination)}">Open dossier / source record</a>` : ''}</div>
@@ -637,6 +653,6 @@
     STOPWORDS, TYPE_ORDER, text, normalize, termPattern, queryTerms, safeHttpUrl, parseDate,
     normalizeCitation, dedupeCitations, citationsFromFlag, citationsFromActor, citationsFromTtp,
     articleRecords, flagRecords, actorRecords, ttpRecords, buildCorpus, scoreRecord, rankEvidence,
-    evidencePacket, coverageFacts, htmlEscape, stableId, genericRecords, compactRecord, recordKey, recordUrl, projectResearch, publicRecord, citationNumbers, researchRequest, savedPacket, readSaved, writeSaved, boot
+    evidencePacket, coverageFacts, htmlEscape, stableId, genericRecords, compactRecord, recordKey, recordUrl, projectResearch, publicRecord, citationNumbers, renderResult, renderCitation, researchRequest, savedPacket, readSaved, writeSaved, boot
   };
 });

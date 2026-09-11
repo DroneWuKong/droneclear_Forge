@@ -98,8 +98,47 @@ test('generator records input bytes and revision, preserves source age, and excl
 
 test('observation dates do not become publication dates in supporting citations',()=>{
   const record=ask.flagRecords([{id:'F',title:'Signal',date:'2026-09-11',source_url:'https://example.test/a',sources:[{url:'https://example.test/b'}]}])[0];
-  assert.equal(record.date,'2026-09-11');assert.ok(record.citations.every(citation=>!citation.date));
+  assert.equal(record.date,'');assert.equal(record.observed_at,'2026-09-11');assert.ok(record.citations.every(citation=>!citation.date));
   assert.equal(normal.dates({date:'2026-02-30'},{}).pub_date,'');assert.equal(ask.parseDate('2026-02-30'),null);
+});
+
+test('flag cards label observed and source dates separately while preserving exact links and citation anchors',()=>{
+  const record=ask.compactRecord(ask.flagRecords([{id:'F / #1',title:'Shahed signal',timestamp:'2026-05-29T14:00:00Z',sources:[{title:'Source',url:'https://source.test/report#section'}]}])[0]);
+  const packet=ask.evidencePacket(ask.rankEvidence([record],'Shahed'),'Shahed');
+  const markup=ask.renderResult(packet.ranked[0],packet);
+  assert.equal(record.date,'');assert.equal(record.source_published_at,'');assert.equal(record.observed_at,'2026-05-29T14:00:00Z');
+  assert.match(markup,/<span>Source published: unknown<\/span>/);
+  assert.match(markup,/<span>Observed: May 29, 2026<\/span>/);
+  assert.match(markup,/href="\/patterns\/#flag=F%20%2F%20%231"/);
+  assert.match(markup,/href="#citation-1"/);
+  const bibliography=ask.renderCitation(packet.citations[0],1);
+  assert.match(bibliography,/id="citation-1"/);assert.match(bibliography,/href="https:\/\/source.test\/report#section"/);
+  assert.match(bibliography,/Source published: unknown/);
+  const saved=ask.savedPacket(packet,{}).ranked[0].record;
+  assert.equal(saved.source_published_at,'');assert.equal(saved.observed_at,record.observed_at);
+});
+
+test('explicit flag source dates survive compaction independently of pipeline observations',()=>{
+  const record=ask.compactRecord(ask.flagRecords([{id:'dated',title:'Shahed signal',last_seen:'2026-09-11',source_published_at:'2026-08',source_url:'https://source.test/report'}])[0]);
+  assert.equal(record.date,'2026-08');assert.equal(record.source_published_at,'2026-08');assert.equal(record.observed_at,'2026-09-11');
+  const packet=ask.evidencePacket(ask.rankEvidence([record],'Shahed'),'Shahed');
+  assert.match(ask.renderResult(packet.ranked[0],packet),/Source published: 2026-08 \(source precision\)/);
+  assert.match(ask.renderResult(packet.ranked[0],packet),/Observed: Sep 11, 2026/);
+  assert.equal(packet.citations[0].date,'2026-08');
+});
+
+test('legacy flag observation dates neither gain source recency nor satisfy publication-date filters',()=>{
+  const legacy={...ask.compactRecord(ask.flagRecords([{id:'old',title:'Shahed signal'}])[0]),date:'2026-09-10'};
+  delete legacy.source_published_at;delete legacy.observed_at;
+  const undated={...legacy,date:''};
+  assert.equal(ask.scoreRecord(legacy,'Shahed',{now:'2026-09-11'}).score,ask.scoreRecord(undated,'Shahed',{now:'2026-09-11'}).score);
+  const index={schema_version:1,meta:{},records:[legacy],counts:{flag:1}};
+  assert.equal(ask.projectResearch(index,new URLSearchParams({after:'2026-09-01'})).total_matches,0);
+  const projected=ask.projectResearch(index,new URLSearchParams({record:'flag:old'})).records[0];
+  assert.equal(projected.date,'');assert.equal(projected.source_published_at,'');assert.equal(projected.observed_at,'2026-09-10');
+  const packet=ask.evidencePacket(ask.rankEvidence([legacy],'Shahed'),'Shahed');
+  const markup=ask.renderResult(packet.ranked[0],packet);
+  assert.match(markup,/Source published: unknown/);assert.match(markup,/Observed: Sep 10, 2026/);
 });
 
 test('collector-local article IDs use distinct stable record keys',()=>{
