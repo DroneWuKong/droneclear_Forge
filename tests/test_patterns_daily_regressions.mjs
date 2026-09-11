@@ -27,6 +27,7 @@ class Element {
   addEventListener(name,callback){this.events[name]=callback;}
   setAttribute(name,value){this.attrs[name]=value;}
   removeAttribute(name){delete this.attrs[name];}
+  scrollIntoView(){this.scrolled=true;}
   replaceChildren(){this.children=[];}
   append(child){this.children.push(child);}
   click(){return this.events.click?.({preventDefault(){}});}
@@ -64,6 +65,12 @@ test('export uses applied collection filters instead of unsubmitted input edits'
   page.root.querySelector('input').value='unsubmitted change';
   page.root.querySelector('[data-evidence]').querySelector('[data-export]').click();
   const exported=JSON.parse(await page.blobs[0].text());assert.equal(exported.query,'Battery');assert.equal(exported.filters.state,'new');assert.equal(exported.record.id,'a');
+});
+test('mobile selection brings evidence into view and offers a return to the list',async()=>{
+  const page=harness();await settle();page.context.window.matchMedia=()=>({matches:true});
+  page.context.dailyTest.showEvidence('a');
+  const panel=page.root.querySelector('[data-evidence]');assert.equal(panel.scrolled,true);
+  panel.querySelector('[data-back-to-list]').click();assert.equal(page.root.querySelector('[data-list]').scrolled,true);
 });
 test('a malformed or missing record URL cannot silently show the first available record',async()=>{
   const page=harness('https://uas-patterns.com/patterns-home/#daily=missing',async()=>({ok:true,json:async()=>({data:projectDaily([flag('a')],new URLSearchParams(),now)})}));await settle();
