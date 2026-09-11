@@ -9,16 +9,23 @@ import freshness from '../forge-source/data-freshness.js';
 import groq from '../workers/groq-proxy.js';
 import gemini from '../workers/gemini-proxy.js';
 import claude from '../workers/claude-proxy.js';
+import forecasts from '../forge-source/forecast-accountability-model.js';
 import { budgetDecision } from '../workers/proxy-policy.mjs';
 
 test('forecast accuracy excludes legacy and revoked verdicts', () => {
   const source = fs.readFileSync(new URL('../forge-source/forecast-accountability.html', import.meta.url), 'utf8');
   const predicate = source.match(/function isGraded\(o\)\{[^\n]+\}/)[0];
-  const context = vm.createContext({});
+  const context = vm.createContext({ForecastAccountability: forecasts});
   vm.runInContext(predicate, context);
   assert.equal(context.isGraded({was_correct:true}), false);
-  const row = {was_correct:true, resolution_method:'reviewed-evidence-v1', calibration_eligible:true};
+  const row = {was_correct:true, resolution_method:'reviewed-evidence-v2', calibration_eligible:true,
+    record_type:'forecast', cohort:'prospective-v1', prediction_id:'forecast-one', issuance_id:'forecast-one', issuance_sha256:'a'.repeat(64),
+    predicted_probability:0.8, resolution_outcome:'confirmed', event:'Future event', issued_at:'2026-08-01T00:00:00Z',
+    resolution_criteria:{event:'Future event',entities:['Acme'],direction:'occurs',threshold:'One event',ambiguity_policy:'Unresolved if unclear',
+      resolution_sources:['https://example.com/'],window_start:'2026-08-02T00:00:00Z',window_end:'2026-09-01T00:00:00Z'},
+    evidence_review:{prediction_id:'forecast-one',issuance_sha256:'a'.repeat(64),criteria_sha256:'b'.repeat(64),prediction_sha256:'c'.repeat(64),evidence_sha256:'d'.repeat(64),verdict:'confirmed',reviewed_by:'analyst',reviewed_at:'2026-09-10T00:00:00Z',evidence:[{url:'https://example.com/evidence',published_at:'2026-09-02T00:00:00Z',event_date:'2026-08-20T00:00:00Z',excerpt:'Review evidence'}]}};
   assert.equal(context.isGraded(row), true);
+  assert.equal(context.isGraded({...row,resolution_method:'reviewed-evidence-v1'}), false);
   assert.equal(context.isGraded({...row, review_status:'needs_review'}), false);
   assert.equal(context.isGraded({...row, calibration_eligible:false}), false);
 });
