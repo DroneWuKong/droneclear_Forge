@@ -267,6 +267,7 @@ a.brief-source-chip:hover{color:var(--text-s);border-color:var(--border-hi)}
 </style>
 
 <script src="static/patterns-decision-support.js"></script>
+<script src="/static/dossier-signals.js?v=2"></script>
 </head>
 <body><h1 style="position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap;border:0">Pattern Intelligence — Forge Module</h1>
 <main id="main-content">
@@ -1285,6 +1286,7 @@ function closeDetailModal() {
   var ov = document.getElementById('flag-modal-overlay');
   if (ov) ov.classList.remove('open');
   selectedFlag = null;
+  if (location.hash.startsWith('#flag=')) history.replaceState(null, '', location.pathname + location.search);
 }
 document.addEventListener('DOMContentLoaded', function() {
   var ov = document.getElementById('flag-modal-overlay');
@@ -2683,6 +2685,8 @@ function renderDecisionSupportPanel(flag) {
 function renderFlagDetail() {
   if (!selectedFlag) return;
   const f = selectedFlag;
+  const targetHash = '#flag=' + encodeURIComponent(f.id);
+  if (location.hash !== targetHash) history.pushState(null, '', targetHash);
   const m = FLAG_META[f.flag_type] || {};
   const conf = Math.round((f.confidence||0)*100);
   const _d = f.timestamp ? new Date(f.timestamp) : null;
@@ -2747,27 +2751,16 @@ function renderFlagDetail() {
 }
 
 function renderRelatedIntel(flag) {
-  // Try to match flag to entity graph by entity_id, title keywords, or component/platform id
-  const searchTerms = [
-    flag.entity_id,
-    flag.platform_id,
-    flag.component_id,
-    ...((flag.title||'').split(/\s+/).filter(w=>w.length>4))
-  ].filter(Boolean).map(s=>s.toLowerCase());
-
-  if (!searchTerms.length || !Object.keys(ENTITY_GRAPH).length) return '';
-
-  // Find matching entities
+  if (!window.ForgeDossierSignals || !Object.keys(ENTITY_GRAPH).length) return '';
   const matches = [];
   for (const [key, node] of Object.entries(ENTITY_GRAPH)) {
-    const nodeName = (node.name||'').toLowerCase();
-    if (searchTerms.some(t => nodeName.includes(t) || t.includes(nodeName))) {
-      if (nodeName.length > 2) matches.push(node);
-    }
+    const match = ForgeDossierSignals.matchFlag(flag, key, node, node.parts || []);
+    if (match && match._match_confidence === 'direct') matches.push(node);
   }
   if (!matches.length) return '';
-
-  const node = matches[0]; // best match
+  if (matches.length > 1) return `<div style="margin-top:14px">Entity match is ambiguous (${matches.length} records). <a href="/ask-pie/?q=${encodeURIComponent(flag.entity || flag.title || '')}">Inspect the evidence →</a></div>`;
+  const node = Object.assign({parts:[], articles:[], contracts:[], solicitations:[], flags:[]}, matches[0]);
+  for (const field of ['parts','articles','contracts','solicitations','flags']) if (!Array.isArray(node[field])) node[field] = [];
   const hasData = node.parts.length || node.articles.length || node.contracts.length || node.solicitations.length || node.flags.length;
   if (!hasData) return '';
 
@@ -6854,18 +6847,32 @@ ${esc(e.stack||e.message||e)}</div>`;
 
   // Handle hash routing for bookmarked regions
   const hash = window.location.hash;
-  if (hash.startsWith('#region-')) {
+  if (hash.startsWith('#flag=')) {
+    openLinkedFlag(hash);
+  } else if (hash.startsWith('#region-')) {
     const slug = hash.replace('#region-', '');
     if (REGION_DATA[slug]) selectRegion(slug);
   }
 }
 
 // Listen for hash changes (back/forward)
+function openLinkedFlag(hash) {
+  let id;
+  try { id = decodeURIComponent(hash.slice(6)); } catch { id = ''; }
+  const matches = FLAGS.filter(flag => String(flag.id) === id);
+  if (matches.length === 1) { selectedFlag = matches[0]; renderFlagDetail(); return; }
+  selectedFlag = null;
+  openDetailModal('Signal unavailable', 'Exact record lookup', '<p>This exact signal is unavailable or ambiguous in the current collection. <a href="/ask-pie/">Open research</a> to inspect the evidence.</p>');
+}
 window.addEventListener('hashchange', () => {
   const hash = window.location.hash;
-  if (hash.startsWith('#region-')) {
+  if (hash.startsWith('#flag=')) {
+    openLinkedFlag(hash);
+  } else if (hash.startsWith('#region-')) {
+    closeDetailModal();
     selectRegion(hash.replace('#region-', ''));
   } else if (hash === '' || hash === '#') {
+    closeDetailModal();
     backToGlobal();
   }
 });

@@ -78,7 +78,7 @@ REPLACEMENTS = (
     ),
     Replacement(
         'forge-source/patterns-home.html',
-        '<a href="/ask-pie/">Ask PIE</a>',
+        '<a href="/ask-pie/">',
         '      <a href="/priorities/">Priorities</a>\n      <a href="#current">Current</a>',
         '      <a href="/priorities/">Priorities</a>\n      <a href="/ask-pie/">Ask PIE</a>\n      <a href="#current">Current</a>',
     ),
