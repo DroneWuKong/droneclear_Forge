@@ -24,6 +24,14 @@ test('empty and stale collections cannot establish current coverage',()=>{
   assert.equal(projectDaily([],new URLSearchParams(),now).coverage.status,'unavailable');
   assert.equal(projectDaily([flag('a',{last_verified_at:'2026-07-01T00:00:00Z'})],new URLSearchParams(),now).coverage.status,'stale');
 });
+test('a newly compared artifact does not certify upstream collection or refresh its evidence',()=>{
+  const p=projectDaily([flag('a',{source_published_at:'2020-01-01',change_schema_version:1,change_kind:'unchanged',comparison_baseline_established:true})],new URLSearchParams(),now);
+  assert.equal(p.coverage.status,'available');
+  assert.equal(p.coverage.collector_health,'not_assessed');
+  assert.equal(p.items[0].source_published_at,'2020-01-01');
+  assert.equal(p.items[0].lens,'Historical context');
+  assert.equal(p.counts.new,0);
+});
 test('reference and body payloads are bounded and unsafe links rejected',()=>{
   const rows=Array.from({length:120},(_,i)=>flag(`${i}`,{detail:'x'.repeat(5000),sources:[{name:'Unsafe',url:'javascript:alert(1)'}]}));
   const p=projectDaily(rows,new URLSearchParams('limit=99999'),now);
