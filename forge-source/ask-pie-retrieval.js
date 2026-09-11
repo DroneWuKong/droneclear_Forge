@@ -310,7 +310,7 @@
     function visible(record) {
       const dataset = record.dataset || index.meta?.dataset_by_type?.[record.type];
       const source = index.meta?.inputs?.[dataset] || {};
-      return {...publicRecord(record), semantics:record.semantics || index.meta?.record_semantics?.[record.type] || 'Indexed public record; support and relationships require review.', dataset, dataset_sha256:record.dataset_sha256 || source.sha256 || null, dataset_generated_at:record.dataset_generated_at || source.generated_at || null, dataset_status:record.dataset_status || source.evidence_status || 'unversioned'};
+      return {...publicRecord(record), semantics:record.semantics || index.meta?.record_semantics?.[record.type] || 'Indexed public record; support and relationships require review.', dataset, dataset_sha256:record.dataset_sha256 || source.sha256 || null, dataset_generated_at:record.dataset_generated_at || source.generated_at || null, dataset_status:record.dataset_status || source.evidence_status || 'unversioned', dataset_origin:source.origin || 'untracked local input', dataset_revision:source.revision_verified === true ? source.upstream_ref : null};
     }
     const base = {schema_version:1, meta:index.meta, counts:index.counts, query:{q:query, record_type:type || 'all', limit, offset}, records:[]};
     if (id) {
@@ -470,7 +470,7 @@
       <p>${htmlEscape(record.summary)}</p>
       <div class="evidence-meta"><span>${htmlEscape(formatDate(record.date))}</span><span>${htmlEscape(record.source || 'Source label not reported')}</span><span>${item.ranking.direct ? 'all query terms matched' : `${Math.round(item.ranking.coverage * 100)}% term coverage`}</span></div>
       <div class="reasons">${reasons || '<span>indexed-field match</span>'}</div>
-      <p class="semantics">${htmlEscape(record.semantics)}${record.dataset_status ? ` Dataset: ${htmlEscape(record.dataset_status)}; source artifact date ${htmlEscape(record.dataset_generated_at || 'unknown')}.` : ''}</p>
+      <p class="semantics">${htmlEscape(record.semantics)}${record.dataset_status ? ` Dataset: ${htmlEscape(record.dataset_status)} (${htmlEscape(record.dataset_origin || 'origin untracked')}); source artifact date ${htmlEscape(record.dataset_generated_at || 'unknown')}.` : ''}</p>
       <div class="actions"><a href="${htmlEscape(record.destination)}"${safeHttpUrl(record.destination) ? ' target="_blank" rel="noopener noreferrer"' : ''}>Open exact record →</a>${record.datasetDestination ? ` · <a href="${htmlEscape(record.datasetDestination)}">Open dossier / source record</a>` : ''}</div>
     </article>`;
   }
@@ -535,10 +535,10 @@
     function coverage(publication) {
       const meta = publication.meta || {};
       const inputs = Object.entries(meta.inputs || {});
-      coverageNode.innerHTML = `<p>Snapshot ${htmlEscape(meta.input_revision || 'unknown')}. Publication ${htmlEscape(meta.publication_revision || 'not supplied')}.</p>
+      coverageNode.innerHTML = `<p>Snapshot ${htmlEscape(meta.input_revision || 'unknown')}. Publication ${htmlEscape(meta.publication_revision || 'no single verified upstream revision')} · ${htmlEscape(meta.publication_consistency || 'source consistency unknown')}.</p>
         <p>Index built ${htmlEscape(meta.generated_at || 'unknown')}; served from ${htmlEscape(publication.source || 'saved packet')}. This is not the date of the underlying evidence.</p>
         <p>${htmlEscape(meta.caveat || 'Source coverage is limited to indexed public records.')}</p>
-        <details><summary>Input revisions and availability</summary><ul>${inputs.map(([name,row]) => `<li>${htmlEscape(name)}: ${htmlEscape(row.status)} · source artifact date ${htmlEscape(row.generated_at || 'unknown')} · ${htmlEscape(row.sha256 || 'no hash')}</li>`).join('')}</ul></details>`;
+        <details><summary>Input revisions and availability</summary><ul>${inputs.map(([name,row]) => `<li>${htmlEscape(name)}: ${htmlEscape(row.status)} · ${htmlEscape(row.origin || 'origin untracked')} · upstream revision ${htmlEscape(row.upstream_ref || 'unverified')} · source artifact date ${htmlEscape(row.generated_at || 'unknown')} · ${htmlEscape(row.sha256 || 'no hash')}</li>`).join('')}</ul></details>`;
     }
     function display(packet, publication, saved) {
       current = savedPacket(packet, publication);

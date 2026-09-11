@@ -89,7 +89,7 @@ test('generator records input bytes and revision, preserves source age, and excl
     fs.writeFileSync(path.join(dir,'intel_articles.json'),JSON.stringify([article('a')]));
     fs.writeFileSync(path.join(dir,'flags.json'),JSON.stringify([{id:'F',title:'Shahed',last_verified_at:'2026-09-01T00:00:00Z'}]));
     const index=buildResearchIndex(dir,{generatedAt:'2026-09-11T00:00:00Z',revision:'commit'});
-    assert.equal(index.meta.publication_revision,'commit');assert.equal(index.meta.inputs.intel_articles.sha256.length,64);
+    assert.equal(index.meta.publication_revision,null);assert.equal(index.meta.requested_publication_revision,'commit');assert.equal(index.meta.publication_consistency,'local_snapshot');assert.equal(index.meta.inputs.intel_articles.sha256.length,64);
     assert.equal(ask.projectResearch(index,new URLSearchParams({record:'flag:F'})).records[0].dataset_status,'historical snapshot');
     assert.equal(index.meta.availability,'partial');assert.equal(JSON.stringify(index).includes('large body'),false);
     assert.equal(buildResearchIndex(dir,{generatedAt:'2026-09-12T00:00:00Z'}).meta.input_revision,index.meta.input_revision);
@@ -108,4 +108,21 @@ test('collector-local article IDs use distinct stable record keys',()=>{
   const data={schema_version:1,meta:{},counts:{article:2},records:rows};
   assert.equal(ask.projectResearch(data,new URLSearchParams({record:ask.recordKey(rows[0])})).records[0].title,'One');
   assert.equal(ask.projectResearch(data,new URLSearchParams({record:'article:ART-1'})).record_status,'ambiguous');
+});
+
+test('mixed publication input origins cannot claim one pinned upstream revision',()=>{
+  const dir=fs.mkdtempSync(path.join(os.tmpdir(),'research-origin-test-'));
+  try {
+    const articles=JSON.stringify([article('a')]), flags=JSON.stringify([{id:'F',title:'Shahed'}]);
+    const hash=value=>require('node:crypto').createHash('sha256').update(value).digest('hex');
+    fs.writeFileSync(path.join(dir,'intel_articles.json'),articles);fs.writeFileSync(path.join(dir,'flags.json'),flags);
+    const manifest={schema_version:1,inputs:{'intel-db/articles.json':{status:'selected_input',origin:'pinned_selected_input',revision_verified:true,upstream_ref:'a'.repeat(40),sha256:hash(articles),destinations:['intel_articles.json']},'flags.json':{status:'missing_in_selected_input',origin:'retained_local_fallback',revision_verified:false,destinations:['flags.json'],fallback_artifacts:{'flags.json':{sha256:hash(flags)}}}}};
+    fs.writeFileSync(path.join(dir,'publication_inputs.json'),JSON.stringify(manifest));
+    const index=buildResearchIndex(dir,{revision:'a'.repeat(40)});
+    assert.equal(index.meta.publication_revision,null);assert.equal(index.meta.publication_consistency,'mixed_sources');
+    assert.equal(index.meta.inputs.intel_articles.origin,'pinned_selected_input');assert.equal(index.meta.inputs.flags.origin,'retained_local_fallback');
+    const record=ask.projectResearch(index,new URLSearchParams({record:'flag:F'})).records[0];assert.equal(record.dataset_origin,'retained_local_fallback');assert.equal(record.dataset_revision,null);
+    fs.writeFileSync(path.join(dir,'flags.json'),'[{"id":"F2","title":"changed"}]');
+    assert.equal(buildResearchIndex(dir).meta.inputs.flags.origin,'unreconciled_artifact');
+  } finally {for(const file of fs.readdirSync(dir))fs.unlinkSync(path.join(dir,file));fs.rmdirSync(dir);}
 });

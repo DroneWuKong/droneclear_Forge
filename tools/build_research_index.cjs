@@ -6,6 +6,17 @@ const normal = require('../forge-source/intel-normalization.js');
 
 function buildResearchIndex(inputDir, options = {}) {
   const inputs = {};
+  const publicationFile=['publication_inputs.json','static/publication_inputs.json'].map(name=>path.join(inputDir,name)).find(name=>fs.existsSync(name));
+  const publication=publicationFile ? JSON.parse(fs.readFileSync(publicationFile,'utf8')) : null;
+  if (publication && (publication.schema_version !== 1 || !publication.inputs)) throw new Error('Publication input manifest is incompatible');
+  function originFor(name, sha256) {
+    const destination=name+'.json';
+    const row=Object.values(publication?.inputs || {}).find(row=>(row.destinations || []).includes(destination));
+    if (!row) return {origin:'untracked_local_input',revision_verified:false,upstream_ref:null};
+    const expected=row.status==='selected_input' ? row.sha256 : row.fallback_artifacts?.[destination]?.sha256;
+    if (expected !== sha256) return {origin:'unreconciled_artifact',revision_verified:false,upstream_ref:null};
+    return {origin:row.origin || (row.status==='selected_input'?'explicit_directory':'retained_local_fallback'),revision_verified:row.revision_verified === true,upstream_ref:row.revision_verified === true ? row.upstream_ref : null};
+  }
   function read(name, alternatives = []) {
     const candidates = [name + '.json', 'static/' + name + '.json', ...alternatives];
     const relative = candidates.find(candidate => fs.existsSync(path.join(inputDir, candidate)));
@@ -15,6 +26,7 @@ function buildResearchIndex(inputDir, options = {}) {
       let value = JSON.parse(bytes);
       if (value && value.data !== undefined) value = value.data;
       inputs[name] = {status:'available', path:relative, sha256:crypto.createHash('sha256').update(bytes).digest('hex'), bytes:bytes.length, generated_at:value?.meta?.generated_at || value?.meta?.last_updated || value?.generated_at || (Array.isArray(value) && value.length && value.every(row => row.last_verified_at && row.last_verified_at===value[0].last_verified_at) ? value[0].last_verified_at : null)};
+      Object.assign(inputs[name],originFor(name,inputs[name].sha256));
       return value;
     } catch { inputs[name] = {status:'invalid', path:relative}; return null; }
   }
@@ -55,7 +67,12 @@ function buildResearchIndex(inputDir, options = {}) {
     delete record.titleText; delete record.summaryText; delete record.semantics;
   }
   const inputRevision = crypto.createHash('sha256').update(JSON.stringify(Object.fromEntries(Object.entries(inputs).map(([key,{evidence_status,...input}])=>[key,input])))).digest('hex');
-  return {schema_version:1, meta:{generated_at:options.generatedAt || new Date().toISOString(), generator:'tools/build_research_index.cjs', raw_record_count:rawRecordCount, exact_duplicate_rows_removed:rawRecordCount-records.length, input_revision:inputRevision, publication_revision:options.revision || null, inputs, dataset_by_type:datasetByType, record_semantics:semantics, availability:Object.values(inputs).some(input => input.status !== 'available') ? 'partial' : 'available', duplicate_record_ids:[...duplicateIds], caveat:'Bounded search of this publication snapshot. Generated time is not evidence recency. Source labels are not independent corroboration; missing records are not absence.'}, counts, records};
+  const available=Object.values(inputs).filter(input=>input.status==='available');
+  const refs=[...new Set(available.map(input=>input.upstream_ref).filter(Boolean))];
+  const allPinned=available.length>0 && available.every(input=>input.revision_verified===true) && refs.length===1;
+  const origins=new Set(available.map(input=>input.origin));
+  const consistency=allPinned?'pinned_selected_input':origins.has('unreconciled_artifact') || origins.size>1 ? 'mixed_sources' : origins.has('explicit_directory') ? 'explicit_directory' : 'local_snapshot';
+  return {schema_version:1, meta:{generated_at:options.generatedAt || new Date().toISOString(), generator:'tools/build_research_index.cjs', raw_record_count:rawRecordCount, exact_duplicate_rows_removed:rawRecordCount-records.length, input_revision:inputRevision, publication_revision:allPinned ? refs[0] : null, requested_publication_revision:options.revision || null, publication_consistency:consistency, inputs, dataset_by_type:datasetByType, record_semantics:semantics, availability:Object.values(inputs).some(input => input.status !== 'available') ? 'partial' : 'available', duplicate_record_ids:[...duplicateIds], caveat:'Bounded search of this publication snapshot. Generated time is not evidence recency. Source labels are not independent corroboration; missing records are not absence.'}, counts, records};
 }
 if (require.main === module) {
   const args = process.argv.slice(2);
