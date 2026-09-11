@@ -256,7 +256,7 @@ function prob(o){
   var p = Number(o.predicted_probability);
   return Number.isFinite(p) ? p : 0.5;
 }
-function isGraded(o){ return typeof o.was_correct === 'boolean'; }
+function isGraded(o){ return !!o && o.resolution_method === 'reviewed-evidence-v1' && o.calibration_eligible === true && o.review_status !== 'needs_review' && typeof o.was_correct === 'boolean'; }
 
 function analyze(outcomes){
   var N = outcomes.length;
@@ -515,7 +515,7 @@ function renderConfHist(a){
 // calls land, how good is the Brier, and does stated confidence match realized
 // frequency? Slices with < BO_MIN_N graded calls get a low-sample badge and
 // muted styling — no confident claims off tiny samples.
-var BO_MIN_N = 3;
+var BO_MIN_N = 30;
 
 function breakoutGroups(outcomes, field){
   var m = {};
@@ -679,7 +679,7 @@ function render(outcomes){
   var a = analyze(outcomes);
   // Graded = a real ✓/✗ verdict; sort newest resolution first.
   _resolved = (outcomes || [])
-    .filter(function(o){ return typeof o.was_correct === 'boolean'; })
+    .filter(isGraded)
     .sort(function(x, y){ return String(y.resolution_date||'').localeCompare(String(x.resolution_date||'')); });
   renderKpis(a, null); renderFunnel(a); renderResolved(); renderReasons(a);
   renderImpact(a); renderConfHist(a); renderDomains(a);
@@ -701,7 +701,7 @@ var _calibFetch = fetch('/api/data?type=calibration_scores')
   .then(function(r){ return r.ok ? r.json() : null; })
   .then(function(payload){
     var d = payload && payload.data ? payload.data : payload;
-    return (d && typeof d === 'object' && !Array.isArray(d)) ? d : null;
+    return (d && d.methodology === 'reviewed-evidence-v1' && typeof d === 'object' && !Array.isArray(d)) ? d : null;
   })
   .catch(function(){ return null; });
 

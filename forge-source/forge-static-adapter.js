@@ -265,7 +265,8 @@
 
     window.fetch = async function (url, options) {
         // Only intercept our API paths — but NOT /api/data (handled by CF Pages Functions)
-        if (typeof url === 'string' && url.startsWith('/api/') && !url.startsWith('/api/data')) {
+        const legacy = /^\/api\/(?:categories|components|schema|drone-models|build-guides|build-sessions|industry|export\/parts|import\/parts)(?:[/?]|$)/;
+        if (typeof url === 'string' && legacy.test(url)) {
             await _ready;
             return handleApiCall(url, options || {});
         }

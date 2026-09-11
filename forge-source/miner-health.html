@@ -79,39 +79,16 @@
     </section>
   </main>
 
+  <script src="/static/data-freshness.js"></script>
   <script>
     const endpoints = ['/api/data?type=dataset_catalog', `/static/dataset_catalog.json?ts=${Date.now()}`];
     const state = { catalog: null, filtered: [] };
 
-    function unwrap(payload) {
-      const value = payload && payload.data ? payload.data : payload;
-      if (!value || !value.meta || !Array.isArray(value.datasets)) throw new Error('catalog contract invalid');
-      return value;
-    }
-
     async function fetchCatalog() {
-      let lastError;
-      for (const endpoint of endpoints) {
-        try {
-          const response = await fetch(endpoint, { cache: 'no-store' });
-          if (!response.ok) throw new Error(`${endpoint}: HTTP ${response.status}`);
-          return unwrap(await response.json());
-        } catch (error) { lastError = error; }
-      }
-      throw lastError || new Error('catalog unavailable');
+      return DataFreshness.load(endpoints, { catalog: true });
     }
-
     async function fetchQuality() {
-      const urls = ['/api/data?type=data_quality_score', `/static/data_quality_score.json?ts=${Date.now()}`];
-      for (const endpoint of urls) {
-        try {
-          const response = await fetch(endpoint, { cache: 'no-store' });
-          if (!response.ok) continue;
-          const payload = await response.json();
-          return payload && payload.data ? payload.data : payload;
-        } catch (_) {}
-      }
-      return null;
+      return DataFreshness.load(['/api/data?type=data_quality_score', `/static/data_quality_score.json?ts=${Date.now()}`]);
     }
 
     function renderQuality(doc) {
@@ -134,7 +111,7 @@
         card.title = dim.formula || '';
         card.append(value, label); grid.append(card);
       }
-      document.getElementById('quality-note').textContent = (doc.limitations || [])[0] || 'Inspect each dimension for its formula and component counts.';
+      document.getElementById('quality-note').textContent = `Generated ${dateLabel(doc.generated_at, true)}. ${(doc.limitations || [])[0] || 'Inspect dimensions for formulas and counts.'}`;
     }
 
     function dateLabel(value, includeTime = false) {
@@ -370,7 +347,7 @@
     }
 
     fetchCatalog().then(render).catch(renderError);
-    fetchQuality().then(renderQuality);
+    fetchQuality().then(renderQuality).catch(() => renderQuality(null));
   </script>
 </body>
 </html>

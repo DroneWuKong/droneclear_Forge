@@ -268,7 +268,8 @@ a.brief-source-chip:hover{color:var(--text-s);border-color:var(--border-hi)}
 
 <script src="static/patterns-decision-support.js"></script>
 </head>
-<body>
+<body><h1 style="position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap;border:0">Pattern Intelligence — Forge Module</h1>
+<main id="main-content">
 <!-- ── Unified UAS-Nav ───────────────────────────────────────── -->
 <style id="dc-unified-nav-styles">
 #dc-nav{display:flex;align-items:center;justify-content:space-between;padding:0 16px;height:44px;background:#0c0c0a;border-bottom:1px solid #1e1e18;position:sticky;top:0;z-index:500;font-family:'Inter',system-ui,sans-serif}
@@ -459,7 +460,7 @@ a.brief-source-chip:hover{color:var(--text-s);border-color:var(--border-hi)}
 <!-- ═══ Tabs ═══ -->
 <div class="tabs" id="tabs">
   <button type="button" class="tab active" data-tab="brief">📋 Brief</button>
-  <button type="button" class="tab" data-tab="flags">🚩 Flags <span class="count" id="flag-count">—</span></button>
+  <button type="button" class="tab" data-tab="flags">🚩 Flags <span class="count" id="flag-total-count">—</span></button>
   <button type="button" class="tab" data-tab="dashboard">📊 Dashboard</button>
   <button type="button" class="tab" data-tab="regions">🌍 Regions</button>
   <button type="button" class="tab" data-tab="platforms">🛡 Blue UAS</button>
@@ -1649,7 +1650,7 @@ async function loadData() {
   //   FLAGS tab   → 210 real flags from parts-db + grayzone analysis
   //   Predictions tab → LLM synthesis from intel articles
   //   Brief tab   → brief_generator.py picks top 2-3 predictions inline
-  document.getElementById("flag-count").textContent = FLAGS.length;
+  document.getElementById("flag-total-count").textContent = FLAGS.length;
   var _savedTab = typeof activeTab !== "undefined" ? activeTab : "brief";
   renderAll();
   // Data transparency footer
@@ -1870,13 +1871,13 @@ function watchlistHTML(){
 // how it resolved" is the most defensible trust/retention asset for an analyst
 // audience. Built from calibration_scores + prediction_outcomes.
 function trackRecordHTML(){
-  if(!CALIB || !CALIB.resolved) return '';
+  if(!CALIB || CALIB.methodology !== 'reviewed-evidence-v1' || !CALIB.resolved) return '';
   const acc = Math.round((CALIB.accuracy||0)*100);
   const brier = (typeof CALIB.brier_score==='number') ? CALIB.brier_score.toFixed(3) : '—';
-  const calLabel = (typeof CALIB.brier_score==='number')
+  const calLabel = CALIB.calibration_ready && (typeof CALIB.brier_score==='number')
     ? (CALIB.brier_score<0.1?'well-calibrated':CALIB.brier_score<0.25?'calibrated':'noisy') : '';
   const resolved = (Array.isArray(OUTCOMES)?OUTCOMES:[])
-    .filter(o=>o && (o.was_correct===true||o.was_correct===false) && o.resolution_date)
+    .filter(o=>o && o.resolution_method==='reviewed-evidence-v1' && o.calibration_eligible===true && o.review_status!=='needs_review' && (o.was_correct===true||o.was_correct===false) && o.resolution_date)
     .sort((a,b)=>(b.resolution_date||'').localeCompare(a.resolution_date||''))
     .slice(0,3);
   const rows = resolved.map(o=>{
@@ -6099,10 +6100,11 @@ function renderProcurement() {
 
   // ── Load federal_awards + watchlist if not yet loaded ──
   if (!window._FEDERAL_AWARDS) {
+    window._AWARDS_LOAD_ERROR = false;
     el.innerHTML = '<div style="color:var(--text-d);font-size:12px;padding:40px;text-align:center">Loading award records…</div>';
     Promise.all([
       fetch('/api/data?type=federal_awards&token='+encodeURIComponent(localStorage.getItem('forge_token')||localStorage.getItem('wingman_sub_token')||''))
-        .then(r=>r.json()).then(raw=>{ const d=raw.summary_only?null:(raw.data||raw); return (d&&(d.awards||d))||[]; }).catch(()=>[]),
+        .then(r=>{if(!r.ok)throw new Error('Award data unavailable');return r.json();}).then(raw=>{ const d=raw.summary_only?null:(raw.data||raw); const rows=d&&(d.awards||d); if(!Array.isArray(rows))throw new Error('Award records unavailable'); return rows; }).catch(()=>{window._AWARDS_LOAD_ERROR=true;return [];}),
       fetch('/api/data?type=sam_watchlist')
         .then(r=>r.json()).then(raw=>{ const d=raw.data||raw; return (d&&d.notices)||[]; }).catch(()=>[]),
     ]).then(([awards, watchlist])=>{
@@ -6114,6 +6116,10 @@ function renderProcurement() {
   }
 
   const awards  = window._FEDERAL_AWARDS || [];
+  if (window._AWARDS_LOAD_ERROR) {
+    el.innerHTML = '<div role="status" style="padding:24px;color:var(--text-d)">Award data is unavailable. Counts and totals are withheld until records can be loaded. <button class="btn" onclick="window._FEDERAL_AWARDS=null;renderProcurement()">Retry</button></div>';
+    return;
+  }
   const sols    = (PROCUREMENT_DATA && PROCUREMENT_DATA.solicitations) || [];
   const today   = new Date().toISOString().slice(0,10);
 
@@ -7683,6 +7689,7 @@ function updateNavTokenStatus() {
   var tok = localStorage.getItem('forge_token') || localStorage.getItem('wingman_sub_token') || '';
   var statusEl = document.getElementById('nav-token-status');
   var btnEl = document.getElementById('nav-token-btn');
+  if (!statusEl || !btnEl) return;
   if (tok) {
     try {
       var decoded = JSON.parse(atob(tok));
@@ -7719,7 +7726,7 @@ updateNavTokenStatus();
         <div id="flag-modal-meta" style="display:flex;gap:6px;align-items:center;margin-bottom:6px;flex-wrap:wrap"></div>
         <div id="flag-modal-title" style="font:600 14px var(--font);color:var(--text);line-height:1.4"></div>
       </div>
-      <button type="button" id="flag-modal-close"><i class="ph ph-x"></i></button>
+      <button type="button" id="flag-modal-close" aria-label="Close flag details"><i class="ph ph-x"></i></button>
     </div>
     <div id="flag-modal-body"></div>
   </div>
@@ -7852,5 +7859,6 @@ updateNavTokenStatus();
   }).catch(function(){});
 })();
 </script>
+</main>
 </body>
 </html>

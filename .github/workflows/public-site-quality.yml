@@ -5,8 +5,13 @@ on:
   pull_request:
     paths:
       - "forge-source/**"
+      - "package*.json"
       - "workers/**"
-      - "tools/audit_public_site.py"
+      - "functions/**"
+      - "tests/**"
+      - "wrangler*.jsonc"
+      - "tools/**"
+      - "generate_free_tier.py"
       - "tools/apply_record_dossier_patch.py"
       - "tools/apply_priority_view_patch.py"
       - "tools/apply_ask_pie_patch.py"
@@ -29,8 +34,13 @@ on:
     branches: [master]
     paths:
       - "forge-source/**"
+      - "package*.json"
       - "workers/**"
-      - "tools/audit_public_site.py"
+      - "functions/**"
+      - "tests/**"
+      - "wrangler*.jsonc"
+      - "tools/**"
+      - "generate_free_tier.py"
       - "tools/apply_record_dossier_patch.py"
       - "tools/apply_priority_view_patch.py"
       - "tools/apply_ask_pie_patch.py"
@@ -86,15 +96,20 @@ jobs:
             tools/apply_ask_pie_patch_fixed.py \
             tools/fix_ask_pie_term_pattern.py
 
+      - name: Validate concurrent and persistent Worker budget
+        run: |
+          npm ci
+          npm run test:runtime
+
       - name: Run software-only public-site fixture tests
-        run: python -m unittest -v tests/test_public_site_audit.py
+        run: python -m unittest -v tests/test_public_site_audit.py tests/test_pages_build.py tests/test_public_deployment_smoke.py
 
       - name: Run software-only dossier, decision-support, event-evidence, PIR, and cited-retrieval tests
         run: |
-          node --test tests/test_dossier_signals.cjs tests/test_record_dossiers.cjs tests/test_patterns_decision_support.cjs \
+          node --test tests/test_audit_regressions.mjs tests/test_dossier_signals.cjs tests/test_record_dossiers.cjs tests/test_patterns_decision_support.cjs \
             tests/test_actor_event_evidence.cjs \
-            tests/test_forge_data_projections.mjs \
             tests/test_pie_quality_surfaces.cjs \
+            tests/test_forge_data_projections.mjs \
             tests/test_pir_priority_view.cjs \
             tests/test_ask_pie_retrieval.cjs
           node --check forge-source/dossier-signals.js
@@ -110,16 +125,16 @@ jobs:
           python tools/apply_ask_pie_patch_fixed.py --check
           python tools/fix_ask_pie_term_pattern.py --check
 
-      - name: Audit critical source surfaces
-        run: python tools/audit_public_site.py --strict --require-catalog --dry-run
+      - name: Audit all source surfaces
+        run: python tools/audit_public_site.py --all --strict --require-catalog --dry-run
 
       - name: Build the public site
         env:
           GITHUB_PAT: ${{ secrets.GITHUB_PAT }}
-        run: python3 build_static.py
+        run: python3 build_static.py --offline
 
       - name: Audit built routes and copied metadata
-        run: python tools/audit_public_site.py --site-dir build --built --strict --require-catalog --dry-run
+        run: python tools/audit_public_site.py --site-dir build --built --all --strict --require-catalog --dry-run
 
       - name: Verify built Actor event surface and immutable helper asset
         run: |

@@ -1,10 +1,11 @@
+import { verifyAccessToken, createSession, verifySession } from '../../workers/access-auth.mjs';
 /**
  * CF Pages Function — gate for /private/*
  * Deployed at functions/private/[[path]].js → runs for every /private/* request
  * (see _routes.json include "/private/*").
  *
  * Two ways in, fail-closed:
- *  1) Cloudflare Access identity header (if Access is ever put in front) → allow.
+ *  1) Cryptographically verified Cloudflare Access JWT → allow.
  *  2) Shared password (PRIVATE_GATE_SECRET env). Unauthenticated visitors get a
  *     password prompt page; a correct password sets the `pg` cookie so every
  *     later page / .md / .json fetch passes. POST keeps the password out of the
@@ -14,12 +15,13 @@
  */
 const COOKIE_MAX_AGE = 60 * 60 * 24 * 7; // 7 days
 
-function setCookieRedirect(secret, dest) {
+async function setCookieRedirect(secret, dest) {
+  const session = await createSession(secret, COOKIE_MAX_AGE);
   return new Response(null, {
     status: 303,
     headers: {
       'Location': dest,
-      'Set-Cookie': `pg=${encodeURIComponent(secret)}; Path=/private; HttpOnly; Secure; SameSite=Lax; Max-Age=${COOKIE_MAX_AGE}`,
+      'Set-Cookie': `pg=${encodeURIComponent(session)}; Path=/private; HttpOnly; Secure; SameSite=Lax; Max-Age=${COOKIE_MAX_AGE}`,
       'Cache-Control': 'no-store',
     },
   });
@@ -89,8 +91,14 @@ export async function onRequest(context) {
   const url = new URL(request.url);
 
   // 1) Cloudflare Access identity (only trustworthy when Access is in front).
-  if (request.headers.get('Cf-Access-Authenticated-User-Email') ||
-      request.headers.get('Cf-Access-Jwt-Assertion')) return next();
+  const serve = async () => {
+    const upstream = await next();
+    const response = new Response(upstream.body, upstream);
+    response.headers.set('Cache-Control', 'no-store');
+    response.headers.set('X-Robots-Tag', 'noindex, nofollow');
+    return response;
+  };
+  if (await verifyAccessToken(request.headers.get('Cf-Access-Jwt-Assertion'), env)) return serve();
 
   const secret = env.PRIVATE_GATE_SECRET;
   if (!secret) return promptPage(url.pathname, { locked: true });
@@ -98,7 +106,7 @@ export async function onRequest(context) {
   // Already authenticated via cookie?
   const cookie = request.headers.get('Cookie') || '';
   const m = cookie.match(/(?:^|;\s*)pg=([^;]+)/);
-  if (m && await timingSafeEqual(decodeURIComponent(m[1]), secret)) return next();
+  if (m && await verifySession(m[1], secret)) return serve();
 
   // Password submitted via form POST (keeps it out of the URL).
   if (request.method === 'POST') {

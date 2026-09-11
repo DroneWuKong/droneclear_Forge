@@ -1,3 +1,5 @@
+import freshnessPolicy from '../forge-source/data-freshness.js';
+import { timingSafeEqual } from './_auth.js';
 import { projectDataset } from './forge-data-projections.mjs';
 
 /**
@@ -55,36 +57,8 @@ function resp(data, status = 200, extraHeaders = {}) {
   });
 }
 
-function generatedAtOf(data) {
-  const raw = data && ((data.meta && data.meta.generated_at) || data.generated_at || data.generated);
-  if (typeof raw !== 'string' || !raw.trim()) return null;
-  const timestamp = Date.parse(raw);
-  return Number.isFinite(timestamp) ? timestamp : null;
-}
-
 function freshnessOf(data, type, source) {
-  const generatedAt = generatedAtOf(data);
-  const now = Date.now();
-  const maxAgeMs = FRESHNESS_LIMIT_MS.get(type) || null;
-  const ageMs = generatedAt == null ? null : Math.max(0, now - generatedAt);
-
-  return {
-    source,
-    generated_at:
-      generatedAt == null ? null : new Date(generatedAt).toISOString(),
-    checked_at: new Date(now).toISOString(),
-    age_seconds: ageMs == null ? null : Math.floor(ageMs / 1000),
-    max_age_seconds:
-      maxAgeMs == null ? null : Math.floor(maxAgeMs / 1000),
-    status:
-      maxAgeMs == null
-        ? 'not-gated'
-        : generatedAt == null
-          ? 'unknown'
-          : ageMs > maxAgeMs
-            ? 'stale'
-            : 'fresh',
-  };
+  return { ...freshnessPolicy.inspect(data, FRESHNESS_LIMIT_MS.get(type) ?? null), source };
 }
 
 function serveParsed(data, type, source, params) {
@@ -95,7 +69,7 @@ function serveParsed(data, type, source, params) {
 
   if (
     maxAgeMs != null &&
-    (freshness.generated_at == null || freshness.status === 'stale')
+    freshness.status !== 'fresh'
   ) {
     return resp(
       {
@@ -158,9 +132,9 @@ const DATASETS = new Set([
   'forge_incompatibilities',
   'miner_health',
   'miner_registry',
+  'data_quality_score',
   'dataset_catalog',
   'source_coverage_matrix',
-  'data_quality_score',
   'intel_articles',
   'intel_companies',
   'intel_platforms',
@@ -229,9 +203,9 @@ const PIE_OUTPUTS_KEYS = new Set([
   'intel_programs',
   'miner_health',
   'miner_registry',
+  'data_quality_score',
   'dataset_catalog',
   'source_coverage_matrix',
-  'data_quality_score',
   'solicitations',
   'federal_awards',
   'sam_watchlist',
@@ -283,7 +257,7 @@ export default {
           503,
         );
       }
-      if (provided !== adminKey) {
+      if (!await timingSafeEqual(provided, adminKey)) {
         return resp({ error: 'Invalid admin key' }, 401);
       }
       if (!type || !DATASETS.has(type)) {
@@ -313,17 +287,20 @@ export default {
         const freshness = freshnessOf(parsed, type, 'admin-write');
         if (
           FRESHNESS_LIMIT_MS.has(type) &&
-          freshness.generated_at == null
+          freshness.status !== 'fresh'
         ) {
           return resp(
             {
               error:
-                `Dataset ${type} requires a valid meta.generated_at timestamp`,
+                `Dataset ${type} requires a current, valid meta.generated_at timestamp`,
               freshness,
             },
             400,
           );
         }
+
+        try { projectDataset(parsed, type, url.searchParams); }
+        catch (error) { return resp({ error: String(error.message || error) }, 400); }
 
         const kv = PIE_OUTPUTS_KEYS.has(type)
           ? env.PIE_OUTPUTS
@@ -362,51 +339,40 @@ export default {
       return resp({ error: `Unknown dataset: ${type}` }, 404);
     }
 
+    if (request.method !== 'GET' && request.method !== 'HEAD') return resp({ error: 'GET or POST required' }, 405);
+    const failures = [];
+    let rejected = null;
+    async function candidate(raw, source) {
+      const result = parseAndServe(raw, type, source, url.searchParams);
+      if (result.ok) {
+        if (failures.length) result.headers.set('X-Data-Fallback', failures.join(','));
+        return result;
+      }
+      failures.push(`${source}:${result.status}`);
+      rejected = rejected || result;
+      return null;
+    }
     try {
-      const kv = PIE_OUTPUTS_KEYS.has(type)
-        ? env.PIE_OUTPUTS
-        : env.PIE_DB;
-      const raw = await kv.get(type);
+      const kv = PIE_OUTPUTS_KEYS.has(type) ? env.PIE_OUTPUTS : env.PIE_DB;
+      const raw = await kv?.get(type);
       if (raw) {
-        return parseAndServe(raw, type, 'kv', url.searchParams);
+        const result = await candidate(raw, 'kv');
+        if (result) return result;
       }
-    } catch (error) {
-      console.error(
-        `[forge-data] KV error for ${type}:`,
-        error instanceof Error ? error.message : String(error),
-      );
-    }
-
-    // Static fallback is still useful for availability, but the same freshness
-    // gate applies. Old bundled JSON is never silently labeled current.
-    try {
-      for (const tryPath of [
-        `/${type}.json`,
-        `/static/${type}.json`,
-      ]) {
-        try {
-          const staticUrl = new URL(request.url);
-          staticUrl.pathname = tryPath;
-          staticUrl.search = '';
-          const staticResponse = await env.ASSETS.fetch(
-            new Request(staticUrl.toString()),
-          );
-          if (staticResponse.ok) {
-            const raw = await staticResponse.text();
-            return parseAndServe(
-              raw,
-              type,
-              `static:${tryPath}`,
-              url.searchParams,
-            );
-          }
-        } catch {
-          // Try the next static path.
+    } catch { failures.push('kv:unavailable'); }
+    for (const tryPath of [`/${type}.json`, `/static/${type}.json`]) {
+      try {
+        const staticUrl = new URL(request.url);
+        staticUrl.pathname = tryPath;
+        staticUrl.search = '';
+        const asset = await env.ASSETS?.fetch(new Request(staticUrl));
+        if (asset?.ok) {
+          const result = await candidate(await asset.text(), `static:${tryPath}`);
+          if (result) return result;
         }
-      }
-    } catch {
-      // ASSETS may be absent in local worker tests.
+      } catch { failures.push(`static:${tryPath}:unavailable`); }
     }
+    if (rejected) return rejected;
 
     return resp(
       { error: `Dataset ${type} not available`, type },

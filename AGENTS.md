@@ -2,7 +2,7 @@
 
 ## Project Overview
 
-DroneClear Forge is a **static site** that serves as the public-facing drone component browser, build planner, and integration guide hub. It deploys to **Cloudflare Pages** (project `forge`, see `wrangler.jsonc`) and is served at **uas-forge.com**. Dynamic endpoints run as Cloudflare Workers under `/api/*` (see `workers/` + `functions/api/[[path]].js`). Netlify has been retired.
+DroneClear Forge is a **static site** that serves as the public-facing drone component browser, build planner, and integration guide hub. It deploys to **Cloudflare Pages** (project `droneclear-forge`, see `wrangler.jsonc`) and is served at **uas-forge.com**. Dynamic endpoints run as Cloudflare Workers under `/api/*` (see `workers/` + `functions/api/[[path]].js`). Netlify has been retired.
 
 ## Quick Orientation
 
@@ -20,7 +20,7 @@ python3 build_static.py    # Outputs to build/
 # Cloudflare Pages auto-deploys from build/ on push to the default branch
 ```
 
-Cloudflare Pages config is in `wrangler.jsonc` (`pages_build_output_dir: build`). Build command: `python3 build_static.py`. Redirects/headers live in `_redirects` / `_headers` (CF Pages format); `/api/*` routing is owned by `functions/api/[[path]].js` → `workers/index.js`.
+Cloudflare Pages config is in `wrangler.jsonc` (`pages_build_output_dir: build`). Build command: `python3 tools/build_pages.py`. The wrapper resolves the generated-data branch once and passes its exact commit to the deterministic builder. Redirects/headers live in `_redirects` / `_headers` (CF Pages format); `/api/*` routing is owned by `functions/api/[[path]].js` → `workers/index.js`.
 
 ### Environment Variables / Secrets (Cloudflare dashboard)
 
