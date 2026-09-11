@@ -30,6 +30,23 @@ test('article detail returns one exact bounded excerpt and refuses ID collisions
   rows.push({aid:'1',title:'other'});assert.equal((await (await worker.fetch(request('type=intel_articles&record_id=1'),env)).json()).data.record_status,'ambiguous');
 });
 
+test('fragment-grouped search keeps each original article detail reachable and distinct',async()=>{
+  const rows=[{aid:'bf_06f405f4138b',title:'AirData BRINC drone records',url:'https://source.test/report',body_text:'Original article excerpt'},
+    {aid:'bf_d689c12168d7',title:'AirData BRINC drone records',url:'https://source.test/report#comments',body_text:'Collected comment version excerpt'}];
+  const data={schema_version:1,meta:{generated_at:now},records:ask.articleRecords(rows).map(ask.compactRecord)};
+  const env={PIE_OUTPUTS:{get:async key=>JSON.stringify(key==='research_index'?data:rows)}};
+  const result=await (await worker.fetch(request('type=research_index&q=AirData%20BRINC&limit=5'),env)).json();
+  assert.equal(result.data.retrieval_version,'lexical-subject-v2');assert.equal(result.data.ranked.length,1);
+  const record=result.data.ranked[0].record;
+  assert.equal(record.sourceAliases.length,2);assert.equal(record.citations.length,2);
+  for (const original of data.records) {
+    const detail=await (await worker.fetch(request('type=intel_articles&record_key='+encodeURIComponent(original.key)),env)).json();
+    assert.equal(detail.data.record_status,'found');
+    assert.equal(detail.data.record.body_excerpt,rows.find(row=>row.aid===original.id).body_text);
+    assert.equal(detail.data.record.key,original.key);
+  }
+});
+
 for (const [type,schema] of [['forecast_review_queue','forecast-review-queue-v1'],['analytic_judgments','analytic-judgments-v1']]) {
   test(`${type} is a freshness-gated read-only publication with honest absence`,async()=>{
     const absent=await worker.fetch(request('type='+type),{});assert.equal(absent.status,404);const missing=await absent.json();assert.ok(missing.error);assert.equal(missing.data,undefined);

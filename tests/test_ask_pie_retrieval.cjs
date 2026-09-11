@@ -5,7 +5,7 @@ const ask = require('../forge-source/ask-pie-retrieval.js');
 test('query parsing removes question words and deduplicates terms', () => {
   assert.deepEqual(
     ask.queryTerms('What is the evidence for Shahed supply supply chains?'),
-    ['evidence', 'shahed', 'supply', 'chains']
+    ['shahed', 'supply', 'chains']
   );
 });
 
