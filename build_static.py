@@ -1057,6 +1057,11 @@ def _get_part_count():
 # Round down to the nearest 100 + "+" so the public number doesn't churn
 # on every commit.
 SEO_META = {
+    'forecast-accountability.html': (
+        'Forecast Accountability — UAS Patterns',
+        'Track reviewed forecast outcomes, evidence coverage, and calibration limits. Unreviewed automated verdicts are excluded from accuracy.',
+        'forecast accountability, reviewed evidence, calibration, UAS Patterns',
+    ),
     'priorities.html': (
         'Priority Intelligence View — Local PIR Ranking for UAS Patterns',
         'Choose a transparent local-only profile for FPV supply, NDAA and Blue UAS, procurement, adversary systems, counter-UAS, DFR, or autonomy. Declared terms rank current indexed records without hiding the full corpus.',
