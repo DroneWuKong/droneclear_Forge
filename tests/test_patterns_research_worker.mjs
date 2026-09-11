@@ -1,5 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import {createHash} from 'node:crypto';
 import worker from '../workers/forge-data.js';
 import ask from '../forge-source/ask-pie-retrieval.js';
 const request=query=>new Request('https://uas-patterns.com/api/data?'+query);
@@ -21,6 +22,40 @@ test('daily_changes only accepts a coherent complete ledger batch timestamp',asy
   }
   let key;const response=await worker.fetch(request('type=daily_changes'),{PIE_OUTPUTS:{get:async value=>{key=value;return JSON.stringify([{id:'1',title:'Example',last_verified_at:now,change_kind:'new'}]);}}});
   assert.equal(key,'flags');assert.equal(response.status,200);
+});
+
+test('daily source identity hashes the complete same-load UTF-8 text, independently of filtering',async()=>{
+  const flags=[{id:'a',title:'Drone café → 日本',last_verified_at:now},{id:'b',title:'Battery',last_verified_at:now}];
+  const raw=JSON.stringify(flags,null,2)+'\r\n';
+  const expected=createHash('sha256').update(raw,'utf8').digest('hex');
+  for(const params of ['record=a&limit=1','q=Battery&state=all&limit=20']) {
+    const reads=[];
+    const env={PIE_OUTPUTS:{get:async key=>{reads.push(key);return reads.length===1?raw:'[]';}},ASSETS:{fetch:async()=>{throw new Error('No second metadata fetch');}}};
+    const response=await worker.fetch(request('type=daily_changes&'+params),env);
+    assert.equal(response.status,200);const payload=await response.json(),publication=payload.data.publication;
+    assert.deepEqual(reads,['flags']);assert.equal(payload.data.items.length,1);
+    assert.equal(publication.input_revision,expected);assert.equal(publication.artifact_sha256,expected);assert.equal(publication.hash_basis,'utf8_source_text');
+    assert.equal(publication.input_bytes,Buffer.byteLength(raw,'utf8'));assert.equal(publication.input_record_count,2);
+    assert.equal(publication.source,'kv');assert.equal(publication.source_generated_at,now);assert.equal(publication.publication_revision,null);assert.equal(publication.publication_revision_status,'unavailable');
+  }
+  const changed=JSON.stringify([flags[0],{...flags[1],title:'Changed unselected record'}],null,2)+'\r\n';
+  const response=await worker.fetch(request('type=daily_changes&record=a'),{PIE_OUTPUTS:{get:async()=>changed}});
+  const payload=await response.json();assert.equal(payload.data.items[0].id,'a');assert.notEqual(payload.data.publication.input_revision,expected);
+});
+
+test('daily fallback identifies accepted static content, never rejected KV or a later manifest',async()=>{
+  const staticRaw=JSON.stringify([{id:'b',title:'Accepted source',last_verified_at:now}]);
+  for(const rejected of ['not-json',JSON.stringify([{id:'a',last_verified_at:'2020-01-01T00:00:00Z'}])]) {
+    const reads=[],fetches=[];
+    const response=await worker.fetch(request('type=daily_changes'),{
+      PIE_OUTPUTS:{get:async key=>{reads.push(key);return rejected;}},
+      ASSETS:{fetch:async request=>{fetches.push(new URL(request.url).pathname);return fetches.length===1?new Response('Missing',{status:404}):new Response(staticRaw);}},
+    });
+    assert.equal(response.status,200);assert.match(response.headers.get('X-Data-Fallback'),/^kv:(?:500|503)$/);
+    const payload=await response.json();assert.equal(payload.data.items[0].id,'b');assert.equal(payload.data.publication.source,'static:/static/flags.json');
+    assert.equal(payload.data.publication.artifact_sha256,createHash('sha256').update(staticRaw).digest('hex'));
+    assert.deepEqual(reads,['flags']);assert.deepEqual(fetches,['/flags.json','/static/flags.json']);
+  }
 });
 test('article detail returns one exact bounded excerpt and refuses ID collisions',async()=>{
   const rows=[{aid:'1',title:'A',body_text:'x'.repeat(50000)},{aid:'2',title:'B'}];

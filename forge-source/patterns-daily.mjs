@@ -68,5 +68,25 @@ export function projectDaily(input, params = new URLSearchParams(), now = Date.n
   records.sort((a, b) => b.rank - a.rank || a.id.localeCompare(b.id));
   const requested = Number(params.get('limit') || 10);
   const limit = Number.isFinite(requested) ? Math.max(1, Math.min(50, Math.trunc(requested))) : 10;
-  return {schema_version: 1, generated_at: generated, coverage, counts, ranking_version:'daily-navigation-v1', query:{q:query,state:kindFilter,record:requestedRecord || null}, record_status:requestedRecord ? ambiguousIds.has(requestedRecord) ? 'ambiguous' : records.length === 1 ? 'found' : 'missing' : null, baseline_established: flags.some(f => f?.change_schema_version === 1 && f.comparison_baseline_established === true), total: records.length, items: records.slice(0, limit)};
+  return {schema_version: 1, generated_at: generated, projected_at:new Date(now).toISOString(), coverage, counts, ranking_version:'daily-navigation-v1', query:{q:query,state:kindFilter,record:requestedRecord || null}, record_status:requestedRecord ? ambiguousIds.has(requestedRecord) ? 'ambiguous' : records.length === 1 ? 'found' : 'missing' : null, baseline_established: flags.some(f => f?.change_schema_version === 1 && f.comparison_baseline_established === true), total: records.length, items: records.slice(0, limit)};
+}
+
+export function buildDailyEvidencePacket(collection, recordId, filters, exportedAt = new Date().toISOString()) {
+  const records = collection?.items?.filter(row => row.id === recordId) || [];
+  if (records.length !== 1) throw new Error('The exact record is missing or ambiguous in this collection.');
+  // The selected record, filters and provenance all come from the same displayed
+  // collection. Never fetch a newer manifest while exporting an older record.
+  return JSON.parse(JSON.stringify({
+    schema_version: 2, exported_at: exportedAt,
+    collection_generated_at: collection.generated_at, coverage: collection.coverage,
+    query: filters.q, filters, projection_query: collection.query,
+    projection_schema_version: collection.schema_version,
+    projection_method: collection.ranking_version, projected_at: collection.projected_at ?? null,
+    publication: collection.publication || {
+      schema_version: 1, status: 'unavailable', dataset: 'flags',
+      input_revision: null, artifact_sha256: null, publication_revision: null,
+      limitation: 'This loaded collection did not include source identity; no newer publication was substituted.',
+    },
+    record: records[0],
+  }));
 }

@@ -69,7 +69,7 @@ function freshnessOf(data, type, source) {
   return { ...freshnessPolicy.inspect(data, FRESHNESS_LIMIT_MS.get(type) ?? null), source };
 }
 
-function serveParsed(data, type, source, params) {
+async function serveParsed(data, type, source, params, raw) {
   // Freshness is always evaluated against the complete source document before
   // a summary/actor projection is made.
   const freshness = freshnessOf(data, type, source);
@@ -98,6 +98,21 @@ function serveParsed(data, type, source, params) {
   }
 
   const projected = projectDataset(data, type, params);
+  if (type === 'daily_changes') {
+    // Identify the complete input from this successful load, before filtering.
+    // A separately loaded catalog could describe a newer/different KV snapshot.
+    const bytes = new TextEncoder().encode(raw);
+    const digest = await crypto.subtle.digest('SHA-256', bytes);
+    const sha256 = Array.from(new Uint8Array(digest), byte => byte.toString(16).padStart(2, '0')).join('');
+    projected.publication = {
+      schema_version: 1, status: 'identified_by_content', dataset: 'flags',
+      input_revision: sha256, artifact_sha256: sha256, hash_basis: 'utf8_source_text',
+      input_bytes: bytes.byteLength, input_record_count: Array.isArray(data) ? data.length : data.flags?.length ?? null,
+      source, source_generated_at: projected.generated_at,
+      publication_revision: null, publication_revision_status: 'unavailable',
+      limitation: 'The loaded source provides no Git publication revision. The hash identifies its complete UTF-8 JSON text, not source freshness or claim support.',
+    };
+  }
   return resp(
     {
       data: projected,
@@ -114,9 +129,9 @@ function serveParsed(data, type, source, params) {
   );
 }
 
-function parseAndServe(raw, type, source, params) {
+async function parseAndServe(raw, type, source, params) {
   try {
-    return serveParsed(JSON.parse(raw), type, source, params);
+    return await serveParsed(JSON.parse(raw), type, source, params, raw);
   } catch (error) {
     if (error?.code === 'DATASET_PUBLICATION_CONTROL') return resp({error:`Dataset ${type} failed publication controls`,type,source,details:error.validationErrors,action:'Publish a validated artifact before retrying.'},503,{'X-Data-Source':source});
     return resp(
@@ -363,7 +378,7 @@ export default {
     const failures = [];
     let rejected = null;
     async function candidate(raw, source) {
-      const result = parseAndServe(raw, type, source, url.searchParams);
+      const result = await parseAndServe(raw, type, source, url.searchParams);
       if (result.ok) {
         if (failures.length) result.headers.set('X-Data-Fallback', failures.join(','));
         return result;

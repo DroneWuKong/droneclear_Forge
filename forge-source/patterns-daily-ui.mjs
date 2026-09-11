@@ -1,4 +1,4 @@
-import { safeURL } from './patterns-daily.mjs';
+import { safeURL, buildDailyEvidencePacket } from './patterns-daily.mjs';
 const esc = value => String(value ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;'}[c]));
 function date(value) {
   const raw=String(value || '');
@@ -27,7 +27,7 @@ function showEvidence(id,navigate=true) {
   panel.querySelector('[data-back-to-list]').addEventListener('click',()=>root.querySelector('[data-list]').scrollIntoView({block:'start'}));
   if(navigate && window.matchMedia?.('(max-width:760px)')?.matches) panel.scrollIntoView({block:'start'});
   panel.querySelector('[data-export]').addEventListener('click',()=>{
-    const packet={schema_version:1,exported_at:new Date().toISOString(),collection_generated_at:collection.generated_at,coverage:collection.coverage,query:filters.q,filters,projection_query:collection.query,record:row};
+    const packet=buildDailyEvidencePacket(collection,row.id,filters);
     const url=URL.createObjectURL(new Blob([JSON.stringify(packet,null,2)],{type:'application/json'}));
     const anchor=document.createElement('a');anchor.href=url;anchor.download=`patterns-evidence-${row.id.replace(/[^\w-]/g,'_')}.json`;anchor.click();setTimeout(()=>URL.revokeObjectURL(url),1000);
   });
