@@ -22,6 +22,10 @@
   const TYPE_LABEL = Object.freeze({ article:'Article evidence', flag:'Indexed signal', actor:'Actor context', ttp:'TTP context' });
   const TYPE_DESTINATION = Object.freeze({ article:'/intel/', flag:'/patterns/', actor:'/actors/', ttp:'/ttps/' });
   const MAX_CITATIONS_PER_RECORD = 8;
+  const RETRIEVAL_VERSION = 'lexical-subject-v2';
+  const MAX_GROUPED_SOURCE_VERSIONS = 16;
+  // A registry entry alone cannot disambiguate these ordinary query words.
+  const AMBIGUOUS_SUBJECT_WORDS = new Set(['general','public','records','system','systems','technology','technologies','research','industry','manufacturing','government','defense','national','international','global','advanced','control','flight','drone','drones','air','ground','marine','group','company','corporation','inc','limited','ai']);
 
   function text(value) { return String(value == null ? '' : value).trim(); }
   function normalize(value) {
@@ -35,13 +39,78 @@
     return new RegExp(`(?:^|[^a-z0-9])${body}(?=$|[^a-z0-9])`, 'i');
   }
   function queryTerms(query) {
-    const raw = normalize(query).split(' ').filter(Boolean);
+    // Remove the question's retrieval instructions, not domain phrases such as
+    // "public safety" or "flight records" elsewhere in the question.
+    const question = normalize(query).replace(/^(?:what|which) (?:(?:is|are) (?:the )?)?(?:(?:public|indexed) )?(?:records|reporting|evidence)(?: (?:mention|mentions|describe|describes|discuss|discusses|identify|identifies|link|links))?\b/, '');
+    const raw = question.split(' ').filter(Boolean);
     const meaningful = raw.filter(token => token.length > 1 && !STOPWORDS.has(token));
     return Array.from(new Set(meaningful)).slice(0, 16);
   }
   function safeHttpUrl(value) {
     const candidate = text(value);
     try { const url = new URL(candidate); return ['https:', 'http:'].includes(url.protocol) && !url.username && !url.password ? url.href : ''; } catch { return ''; }
+  }
+  function canonicalArticleSource(record) {
+    if (record.type !== 'article') return '';
+    let source = '';
+    for (const value of [record.sourceUrl, record.destination, record.citations?.[0]?.url]) {
+      if (!value) continue;
+      source = safeHttpUrl(value);
+      if (source) break;
+    }
+    if (!source) return '';
+    const url = new URL(source);
+    // Fragments select a section/comment in one document. Search parameters,
+    // path case, and trailing slashes can identify distinct documents.
+    url.hash = '';
+    return url.href;
+  }
+  function groupArticleSources(items, candidates = []) {
+    const groups = new Map(), versions = new Map(), itemGroups = new Map(), output = [], titles = new Set(), listed = new Set();
+    function append(item, onlyExisting) {
+      const source = canonicalArticleSource(item.record);
+      // Repeated tracker rows at one URL can report different dated events.
+      // Preserve differing titles AND exact publication dates as separate rows.
+      const key = source && JSON.stringify([source, normalize(item.record.title), recordSourceDate(item.record)]);
+      if (!key) { if (!onlyExisting) output.push(item); return; }
+      if (!onlyExisting) itemGroups.set(item,key);
+      if (!groups.has(key)) {
+        if (onlyExisting) return;
+        const group = {...item}; groups.set(key, group); output.push(group);
+        versions.set(key,new Set());
+        titles.add(normalize(item.record.title));
+      }
+      versions.get(key).add(recordKey(item.record));
+      if (versions.get(key).size > MAX_GROUPED_SOURCE_VERSIONS) return;
+      const group = groups.get(key);
+      if (group.record === item.record) return;
+      const previous = group.record;
+      const aliases = previous.sourceAliases || [{key:recordKey(previous), id:previous.id, destination:recordUrl(previous), sourceUrl:safeHttpUrl(previous.sourceUrl || previous.destination)}];
+      group.record = {...previous, canonicalSourceUrl:source,
+        sourceAliases:aliases.some(alias=>alias.key===recordKey(item.record)) ? aliases : [...aliases, {key:recordKey(item.record), id:item.record.id, destination:recordUrl(item.record), sourceUrl:safeHttpUrl(item.record.sourceUrl || item.record.destination)}],
+        citations:dedupeCitations([...previous.citations, ...item.record.citations], Infinity)};
+    }
+    items.forEach(item=>{listed.add(item.record);append(item,false);});
+    // Only an unmatched version of an already selected article can add an
+    // alias. Avoid sorting/parsing every corpus URL a second time.
+    if (titles.size) candidates.filter(record=>!listed.has(record) && record.type==='article' && titles.has(normalize(record.title)))
+      .sort((a,b)=>recordKey(a).localeCompare(recordKey(b))).forEach(record=>append({record},true));
+    if ([...versions.values()].some(keys=>keys.size > MAX_GROUPED_SOURCE_VERSIONS)) {
+      // Do not truncate a large bibliography or return an unbounded alias list.
+      // Oversized cohorts fall back to original rows and normal result paging.
+      const emitted=new Set();
+      return items.flatMap(item=>{
+        const key=itemGroups.get(item), group=groups.get(key), count=versions.get(key)?.size || 0;
+        if (!group) return [item];
+        if (count > MAX_GROUPED_SOURCE_VERSIONS) return [{...item,record:{...item.record,sourceGroupingLimited:true,sourceVersionCount:count,sourceGroupingLimit:MAX_GROUPED_SOURCE_VERSIONS}}];
+        if(emitted.has(key))return [];
+        emitted.add(key);return [group];
+      });
+    }
+    return output;
+  }
+  function withoutPublisherBoilerplate(value) {
+    return value.replace(/the information portal for unmanned air system traffic management utm and counter uas c uas systems/g, '').trim();
   }
   function parseDate(value) {
     const raw = text(value);
@@ -149,7 +218,7 @@
     const title = text(fields.title) || 'Untitled indexed record';
     const summary = text(fields.summary) || 'No summary was provided by the source dataset.';
     const citations = dedupeCitations(fields.citations || []);
-    const searchText = normalize([title, summary, fields.extra || '', searchableText(row)].join(' '));
+    const searchText = withoutPublisherBoilerplate(normalize([title, summary, fields.extra || '', searchableText(row)].join(' ')));
     return {
       id: text(fields.id) || `${type}-${normalize(title).slice(0, 80)}`,
       type,
@@ -163,7 +232,7 @@
       semantics: text(fields.semantics),
       searchText,
       titleText: normalize(title),
-      summaryText: normalize(summary),
+      summaryText: withoutPublisherBoilerplate(normalize(summary)),
       citations,
       raw: row
     };
@@ -325,7 +394,7 @@
       const source = index.meta?.inputs?.[dataset] || {};
       return {...publicRecord(record), semantics:record.semantics || index.meta?.record_semantics?.[record.type] || 'Indexed public record; support and relationships require review.', dataset, dataset_sha256:record.dataset_sha256 || source.sha256 || null, dataset_generated_at:record.dataset_generated_at || source.generated_at || null, dataset_status:record.dataset_status || source.evidence_status || 'unversioned', dataset_origin:source.origin || 'untracked local input', dataset_revision:source.revision_verified === true ? source.upstream_ref : null};
     }
-    const base = {schema_version:1, meta:index.meta, counts:index.counts, query:{q:query, record_type:type || 'all', limit, offset}, records:[]};
+    const base = {schema_version:1, retrieval_version:RETRIEVAL_VERSION, meta:index.meta, counts:index.counts, query:{q:query, record_type:type || 'all', limit, offset}, records:[]};
     if (id) {
       const matches = index.records.filter(record => recordKey(record) === id || `${record.type}:${record.id}` === id);
       return {...base, record_status:matches.length === 1 ? 'found' : matches.length ? 'ambiguous' : 'missing', records:matches.length === 1 ? matches.map(visible) : []};
@@ -337,13 +406,11 @@
     if (query && !queryTerms(query).length) return {...base, total_matches:0, ranked:[]};
     if (!query) {
       records.sort((a,b) => dateSortValue(recordSourceDate(b)) - dateSortValue(recordSourceDate(a)) || recordKey(a).localeCompare(recordKey(b)));
-      return {...base, total_matches:records.length, records:records.slice(offset, offset + limit).map(visible)};
+      const grouped=groupArticleSources(records.map(record=>({record})));
+      return {...base, total_matches:grouped.length, records:grouped.slice(offset, offset + limit).map(item=>visible(item.record))};
     }
     // Rank once with the publication's clock; save that revision with packets.
-    const context = queryContext(query);
-    const ranked = records.filter(record => context.patterns.some(pattern => pattern.test(record.searchText))).map(record => ({record, ranking:scoreRecord(record, query, {now:index.meta && index.meta.generated_at, context})}))
-      .filter(item => item.ranking.matchedTerms.length)
-      .sort((a,b) => Number(b.ranking.direct) - Number(a.ranking.direct) || b.ranking.score - a.ranking.score || dateSortValue(recordSourceDate(b.record)) - dateSortValue(recordSourceDate(a.record)) || recordKey(a.record).localeCompare(recordKey(b.record)));
+    const ranked = rankedRecords(records, query, {now:index.meta && index.meta.generated_at, subjectRecords:index.records});
     return {...base, total_matches:ranked.length, ranked:ranked.slice(offset, offset + limit).map(item => ({record:visible(item.record), ranking:item.ranking}))};
   }
 
@@ -352,9 +419,33 @@
     const matches = haystack.match(new RegExp(pattern.source, 'gi'));
     return matches ? matches.length : 0;
   }
-  function queryContext(query) {
+  function queryContext(query, records = [], subjectRecords = records) {
     const terms=queryTerms(query);
-    return {terms,phrase:normalize(query),patterns:terms.map(term => termPattern(term))};
+    const patterns=terms.map(term => termPattern(term));
+    const counts=terms.map(()=>0), names=new Set(), matchingRecords=[];
+    const question=normalize(query);
+    const meaningfulQuestion=terms.join(' ');
+    const addName=value=>{
+      const name=normalize(value);
+      if (!question.includes(name) && !meaningfulQuestion.includes(name)) return;
+      if (name.length >= 2 && name.length <= 120 && !AMBIGUOUS_SUBJECT_WORDS.has(name) && queryTerms(name).length && (termPattern(name).test(question) || termPattern(name).test(meaningfulQuestion))) names.add(name);
+    };
+    for (const record of records) {
+      const search=withoutPublisherBoilerplate(record.searchText || '');
+      let matches=false;
+      patterns.forEach((pattern,i)=>{if(pattern.test(search)){counts[i]++;matches=true;}});
+      if(matches)matchingRecords.push(record);
+    }
+    for (const record of subjectRecords) {
+      if (record.type === 'entity' || record.type === 'actor') addName(record.title);
+      const entities=record.entities || record.raw?.entities;
+      for (const name of Array.isArray(entities?.companies) ? entities.companies : []) addName(name);
+    }
+    // Only exact, indexed names anchor a question. No alias guessing, fuzzy
+    // matching, capitalization-based inference, or ownership inference.
+    const subjects=[...names].sort();
+    return {terms,phrase:normalize(query),patterns,subjects,subjectPatterns:subjects.map(termPattern),matchingRecords,
+      weights:counts.map(count=>1+Math.log(1+records.length/(1+count)))};
   }
   function scoreRecord(record, query, options) {
     const context = options && options.context || queryContext(query);
@@ -362,23 +453,30 @@
     if (!terms.length) return { score:0, matchedTerms:[], coverage:0, direct:false, reason:[] };
     const phrase = context.phrase;
     const titleText = record.titleText || normalize(record.title);
-    const summaryText = record.summaryText || normalize(record.summary);
+    const summaryText = withoutPublisherBoilerplate(record.summaryText || normalize(record.summary));
+    const searchText = withoutPublisherBoilerplate(record.searchText || '');
     const matchedTerms = [];
     const reason = [];
+    const matchedSubjects=(context.subjects || []).filter((subject,i)=>context.subjectPatterns[i].test(record.searchText || ''));
+    const subjectInTitle=matchedSubjects.some(subject=>termPattern(subject).test(titleText));
+    if (matchedSubjects.length) reason.push(`exact indexed subject: ${matchedSubjects.join(', ')}`);
     let score = 0;
+    let matchedWeight = 0;
     terms.forEach((term, index) => {
       const pattern = context.patterns[index];
-      if (!pattern.test(record.searchText)) return;
+      if (!pattern.test(searchText)) return;
       const inTitle = countOccurrences(titleText, pattern);
       const inSummary = countOccurrences(summaryText, pattern);
       matchedTerms.push(term);
-      if (inTitle) { score += 9 + Math.min(3, inTitle - 1); reason.push(`${term}: title`); }
-      else if (inSummary) { score += 5 + Math.min(2, inSummary - 1); reason.push(`${term}: summary`); }
-      else { score += 2; reason.push(`${term}: indexed fields`); }
+      matchedWeight += context.weights[index];
+      if (inTitle) { score += context.weights[index] * (9 + Math.min(3, inTitle - 1)); reason.push(`${term}: title`); }
+      else if (inSummary) { score += context.weights[index] * (5 + Math.min(2, inSummary - 1)); reason.push(`${term}: summary`); }
+      else { score += context.weights[index] * 2; reason.push(`${term}: indexed fields`); }
     });
     if (phrase.length >= 5 && titleText.includes(phrase)) { score += 14; reason.push('full query: title'); }
     else if (phrase.length >= 5 && summaryText.includes(phrase)) { score += 8; reason.push('full query: summary'); }
     const coverage = matchedTerms.length / terms.length;
+    const weightedCoverage = matchedWeight / context.weights.reduce((sum,value)=>sum+value,0);
     const direct = coverage === 1;
     if (direct) score += 8;
     else score += Math.round(coverage * 4);
@@ -389,24 +487,33 @@
       if (days >= 0 && days <= 30) score += 3;
       else if (days >= 0 && days <= 180) score += 1;
     }
-    return { score, matchedTerms, coverage, direct, reason };
+    return { score:Math.round(score), matchedTerms, coverage, weightedCoverage, matchedSubjects, subjectInTitle, direct, reason };
   }
-  function rankEvidence(records, query, options) {
-    const limit = Math.max(1, Math.min(100, Number(options && options.limit) || 40));
-    const context = queryContext(query);
-    return (Array.isArray(records) ? records : []).map((record, index) => ({
+  function rankedRecords(records, query, options) {
+    records=Array.isArray(records) ? records : [];
+    const context = queryContext(query, records, options && options.subjectRecords || records);
+    const ranked=context.matchingRecords.map(record => ({
       record,
-      index,
       ranking:scoreRecord(record, query, {...options,context})
     })).filter(item => item.ranking.matchedTerms.length > 0)
       .sort((left, right) => {
+        // A lexical subject match prioritizes a result; it never excludes the
+        // other side of a comparison or silently discards contextual matches.
+        if (!!left.ranking.matchedSubjects.length !== !!right.ranking.matchedSubjects.length) return left.ranking.matchedSubjects.length ? -1 : 1;
         if (left.ranking.direct !== right.ranking.direct) return left.ranking.direct ? -1 : 1;
+        if (left.ranking.subjectInTitle !== right.ranking.subjectInTitle) return left.ranking.subjectInTitle ? -1 : 1;
         if (right.ranking.score !== left.ranking.score) return right.ranking.score - left.ranking.score;
+        if (right.ranking.weightedCoverage !== left.ranking.weightedCoverage) return right.ranking.weightedCoverage - left.ranking.weightedCoverage;
         const dateDelta = dateSortValue(recordSourceDate(right.record)) - dateSortValue(recordSourceDate(left.record));
         if (dateDelta) return dateDelta;
         const typeDelta = TYPE_ORDER.indexOf(left.record.type) - TYPE_ORDER.indexOf(right.record.type);
-        return typeDelta || text(left.record.id).localeCompare(text(right.record.id)) || left.index - right.index;
-      }).slice(0, limit);
+        return typeDelta || recordKey(left.record).localeCompare(recordKey(right.record));
+      });
+    return groupArticleSources(ranked, records);
+  }
+  function rankEvidence(records, query, options) {
+    const limit = Math.max(1, Math.min(100, Number(options && options.limit) || 40));
+    return rankedRecords(records, query, options).slice(0, limit);
   }
   function evidencePacket(ranked, query) {
     const direct = ranked.filter(item => item.ranking.direct && item.record.citations.length);
@@ -477,6 +584,9 @@
     const numbers = citationNumbers(record, packet);
     const cited = numbers.map(number => `<a href="#citation-${number}">[${number}]</a>`).join(' ');
     const reasons = item.ranking.reason.slice(0, 6).map(reason => `<span>${htmlEscape(reason)}</span>`).join('');
+    const aliases = record.sourceGroupingLimited
+      ? `<p>Source grouping limit reached (${Number(record.sourceVersionCount)} indexed versions). Records remain separate with their own citations; not independent corroboration.</p>`
+      : record.sourceAliases?.length > 1 ? `<p>${record.sourceAliases.length} indexed versions of this source; not independent corroboration. ${record.sourceAliases.map((alias,index)=>`<a href="${htmlEscape(`/ask-pie/?record=${encodeURIComponent(alias.key)}`)}">Exact version ${index+1}</a>`).join(' · ')}</p>` : '';
     const dates = record.type === 'flag'
       ? `<span>Source published: ${record.source_published_at ? htmlEscape(formatDate(record.source_published_at)) : 'unknown'}</span><span>Observed: ${record.observed_at ? htmlEscape(formatDate(record.observed_at)) : 'unknown'}</span>`
       : `<span>${htmlEscape(formatDate(record.date))}</span>`;
@@ -484,7 +594,8 @@
       <div class="evidence-head"><span class="type ${htmlEscape(record.type)}">${htmlEscape(TYPE_LABEL[record.type] || record.type)}</span><span class="score">retrieval score ${item.ranking.score}</span></div>
       <h3>${htmlEscape(record.title)} ${cited}</h3>
       <p>${htmlEscape(record.summary)}</p>
-      <div class="evidence-meta">${dates}<span>${htmlEscape(record.source || 'Source label not reported')}</span><span>${item.ranking.direct ? 'all query terms matched' : `${Math.round(item.ranking.coverage * 100)}% term coverage`}</span></div>
+      <div class="evidence-meta">${dates}<span>${htmlEscape(record.source || 'Source label not reported')}</span><span>${item.ranking.direct ? 'all meaningful query terms matched' : `${Math.round(item.ranking.coverage * 100)}% meaningful term coverage`}</span></div>
+      ${aliases}
       <div class="reasons">${reasons || '<span>indexed-field match</span>'}</div>
       <p class="semantics">${htmlEscape(record.semantics)}${record.dataset_status ? ` Dataset: ${htmlEscape(record.dataset_status)} (${htmlEscape(record.dataset_origin || 'origin untracked')}); source artifact date ${htmlEscape(record.dataset_generated_at || 'unknown')}.` : ''}</p>
       <div class="actions"><a href="${htmlEscape(record.destination)}"${safeHttpUrl(record.destination) ? ' target="_blank" rel="noopener noreferrer"' : ''}>Open exact record →</a>${record.datasetDestination ? ` · <a href="${htmlEscape(record.datasetDestination)}">Open dossier / source record</a>` : ''}</div>
@@ -650,7 +761,7 @@
   }
 
   return {
-    STOPWORDS, TYPE_ORDER, text, normalize, termPattern, queryTerms, safeHttpUrl, parseDate,
+    STOPWORDS, TYPE_ORDER, text, normalize, termPattern, queryTerms, safeHttpUrl, parseDate, canonicalArticleSource,
     normalizeCitation, dedupeCitations, citationsFromFlag, citationsFromActor, citationsFromTtp,
     articleRecords, flagRecords, actorRecords, ttpRecords, buildCorpus, scoreRecord, rankEvidence,
     evidencePacket, coverageFacts, htmlEscape, stableId, genericRecords, compactRecord, recordKey, recordUrl, projectResearch, publicRecord, citationNumbers, renderResult, renderCitation, researchRequest, savedPacket, readSaved, writeSaved, boot

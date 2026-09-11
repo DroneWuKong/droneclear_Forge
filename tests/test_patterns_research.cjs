@@ -165,3 +165,143 @@ test('mixed publication input origins cannot claim one pinned upstream revision'
     assert.equal(buildResearchIndex(dir).meta.inputs.flags.origin,'unreconciled_artifact');
   } finally {for(const file of fs.readdirSync(dir))fs.unlinkSync(path.join(dir,file));fs.rmdirSync(dir);}
 });
+
+test('question scaffolding is excluded from coverage while domain phrases remain searchable',()=>{
+  assert.deepEqual(ask.queryTerms('What records describe ModalAI visual inertial odometry or onboard compute?'),['modalai','visual','inertial','odometry','onboard','compute']);
+  assert.deepEqual(ask.queryTerms('What public records mention BVLOS waivers for drone as first responder programs?'),['bvlos','waivers','drone','first','responder','programs']);
+  assert.deepEqual(ask.queryTerms('What records describe public safety flight records?'),['public','safety','flight','records']);
+});
+
+test('Q025 exact indexed ModalAI subject precedes Skydio and excludes a records-only minister article',()=>{
+  const records=[
+    ...ask.flagRecords([{id:'0965070b85ef',title:'Nav/PNT: Skydio Visual-Inertial Odometry',detail:'Skydio visual inertial odometry uses cameras.'}]),
+    ...ask.genericRecords([{id:'modalai',name:'ModalAI',capability:'visual inertial odometry'}],'entity','entities'),
+    ...ask.articleRecords([{aid:'ART-3976',title:'Emergency call records deepen probe into former Turkish minister’s death',url:'https://source.test/minister'},
+      {aid:'modalai-report',title:'ModalAI onboard compute',summary:'Visual inertial odometry',url:'https://source.test/modalai'}])
+  ].map(ask.compactRecord);
+  const index={schema_version:1,meta:{},records};
+  const q='What records describe ModalAI visual inertial odometry or onboard compute?';
+  const result=ask.projectResearch(index,new URLSearchParams({q}));
+  assert.deepEqual(result.ranked.map(item=>item.record.id),['modalai-report','modalai','0965070b85ef']);
+  assert.ok(result.ranked.slice(0,2).every(item=>item.ranking.matchedSubjects.includes('modalai')));
+  assert.equal(result.ranked[1].ranking.coverage,4/6);
+  assert.deepEqual(ask.rankEvidence(records,q).map(item=>item.record.id),result.ranked.map(item=>item.record.id));
+  // Type filtering must not discard the entity vocabulary used by the query.
+  assert.deepEqual(ask.projectResearch(index,new URLSearchParams({q,record_type:'article'})).ranked.map(item=>item.record.id),['modalai-report']);
+  const missing=ask.projectResearch(index,new URLSearchParams({q:'What records describe ModalAIX onboard compute?'}));
+  assert.ok(missing.ranked.every(item=>!item.ranking.matchedSubjects.includes('modalai')));
+});
+
+test('known subject phrases require exact token boundaries without merging distinct actors',()=>{
+  const records=[...ask.genericRecords([{id:'firestorm labs',name:'Firestorm Labs'}],'entity','entities'),
+    ...ask.articleRecords([{aid:'exact',title:'Firestorm Labs manufacturing',url:'https://source.test/exact'},
+      {aid:'different',title:'Firestorm LabsX manufacturing',url:'https://source.test/different'}])].map(ask.compactRecord);
+  assert.deepEqual(ask.rankEvidence(records,'What public records discuss Firestorm Labs manufacturing?').map(item=>item.record.id),['exact','firestorm labs','different']);
+  const actors=ask.actorRecords({actors:[{actor:'Ukraine / HUR (GUR)'},{actor:'Ukraine / SBU'}]});
+  assert.deepEqual(ask.rankEvidence(actors,'Ukraine / HUR (GUR)').map(item=>item.record.id),['Ukraine / HUR (GUR)','Ukraine / SBU']);
+});
+
+test('ordinary General wording cannot impose an entity priority or exclude procurement results',()=>{
+  const records=[...ask.genericRecords([{id:'general',name:'General'}],'entity','entities'),
+    ...ask.articleRecords([{aid:'procurement',title:'Drone procurement',summary:'Public procurement practices',url:'https://source.test/procurement'},
+      {aid:'staff',title:'General staff news',url:'https://source.test/staff'}])].map(ask.compactRecord);
+  const result=ask.rankEvidence(records,'general drone procurement');
+  assert.equal(result[0].record.id,'procurement');
+  assert.ok(result.every(item=>item.ranking.matchedSubjects.length===0));
+});
+
+test('short and overlapping exact names retain both sides of comparisons',()=>{
+  for(const names of [['FT','DJI'],['3B','DJI'],['Alpha','Alpha Labs']]) {
+    const records=[...ask.genericRecords(names.map(name=>({id:name,name})),'entity','entities'),
+      ...ask.articleRecords(names.map(name=>({aid:'article-'+name,title:name+' flight controllers',url:'https://source.test/'+encodeURIComponent(name)})))].map(ask.compactRecord);
+    const result=ask.rankEvidence(records,`Compare ${names[0]} and ${names[1]} flight controllers`);
+    for(const name of names) {
+      assert.ok(result.find(item=>item.record.id===name)?.ranking.matchedSubjects.includes(name.toLowerCase()));
+      assert.ok(result.find(item=>item.record.id==='article-'+name)?.ranking.matchedSubjects.includes(name.toLowerCase()));
+    }
+  }
+});
+
+test('rare waiver evidence beats generic DFR overlap and publisher boilerplate contributes no matches',()=>{
+  const records=ask.articleRecords([
+    {aid:'generic',title:'Drone as First Responder programs',summary:'Public records',url:'https://source.test/generic'},
+    {aid:'specific',title:'BVLOS waivers for drone programs',summary:'First responder approvals',url:'https://source.test/specific'},
+    ...Array.from({length:30},(_,i)=>({aid:'background'+i,title:'Drone programs and first responder update '+i,url:'https://source.test/background'+i})),
+    {aid:'portal',title:'Other news',summary:'The information portal for unmanned air system traffic management (UTM) and counter-UAS (C-UAS) systems',url:'https://source.test/portal'}
+  ]).map(ask.compactRecord);
+  const ranked=ask.rankEvidence(records,'What public records mention BVLOS waivers for drone as first responder programs?');
+  assert.equal(ranked[0].record.id,'specific');assert.equal(ranked[0].ranking.direct,true);
+  assert.ok(ranked[0].ranking.weightedCoverage>ranked[1].ranking.weightedCoverage);
+  assert.equal(ask.rankEvidence([records.at(-1)],'unmanned systems').length,0);
+});
+
+test('fragment-only article variants share one result while preserving every exact identity and citation',()=>{
+  const base='https://dronelife.com/2026/04/22/airdata-brinc-integration-public-safety-drone-records/';
+  const rows=[{aid:'bf_06f405f4138b',title:'AirData and BRINC flight records',summary:'Drone programs',url:base},
+    {aid:'bf_d689c12168d7',title:'AirData and BRINC flight records',summary:'Other excerpt',url:base+'#comments'},
+    {aid:'query-a',title:'AirData and BRINC flight records',url:base+'?edition=A'},
+    {aid:'query-b',title:'AirData and BRINC flight records',url:base+'?edition=B'},
+    {aid:'different-title',title:'Different publication at a reused URL',url:base}];
+  const records=ask.articleRecords(rows).map(ask.compactRecord);
+  const original=JSON.stringify(records), index={schema_version:1,meta:{},records};
+  const result=ask.projectResearch(index,new URLSearchParams({q:'AirData BRINC',limit:'1'}));
+  // The reused-URL title also matches via its original source URL, but remains a
+  // distinct publication rather than being merged into the fragment group.
+  assert.equal(result.total_matches,4);assert.equal(result.ranked.length,1);
+  const grouped=result.ranked[0].record;
+  assert.equal(grouped.sourceAliases.length,2);assert.equal(grouped.citations.length,2);assert.equal(grouped.canonicalSourceUrl,base);
+  for(const record of records) {
+    const exact=ask.projectResearch(index,new URLSearchParams({record:record.key}));
+    assert.equal(exact.record_status,'found');assert.equal(exact.records[0].sourceUrl,record.sourceUrl);assert.equal(exact.records[0].summary,record.summary);
+  }
+  assert.equal(ask.projectResearch(index,new URLSearchParams()).total_matches,4);
+  const page2=ask.projectResearch(index,new URLSearchParams({q:'AirData BRINC',limit:'1',offset:'1'}));
+  assert.notEqual(page2.ranked[0].record.key,grouped.key);
+  const packet=ask.evidencePacket(result.ranked,'AirData BRINC');
+  assert.equal(ask.savedPacket(packet,{}).citations.length,2);
+  const markup=ask.renderResult(result.ranked[0],packet);
+  assert.match(markup,/2 indexed versions/);assert.match(markup,/not independent corroboration/);
+  for(const alias of grouped.sourceAliases)assert.ok(markup.includes(encodeURIComponent(alias.key)));
+  assert.equal(JSON.stringify(records),original);
+  index.records.reverse();assert.deepEqual(ask.projectResearch(index,new URLSearchParams({q:'AirData BRINC',limit:'1'})),result);
+  // The non-matching fragment variant still contributes its exact alias/citation.
+  const limited=ask.projectResearch(index,new URLSearchParams({q:'programs'}));
+  assert.equal(limited.ranked[0].record.sourceAliases.length,2);
+});
+
+test('same-title tracker records at one URL remain separate across publication dates',()=>{
+  const records=ask.articleRecords([
+    {aid:'april',title:'Air Defence: 1 Iskander launched',url:'https://source.test/tracker',pub_date:'2026-04-16'},
+    {aid:'august',title:'Air Defence: 1 Iskander launched',url:'https://source.test/tracker',pub_date:'2026-08-28'},
+    {aid:'august-comments',title:'Air Defence: 1 Iskander launched',url:'https://source.test/tracker#comments',pub_date:'2026-08-28'},
+    {aid:'unknown',title:'Air Defence: 1 Iskander launched',url:'https://source.test/tracker#unknown'}
+  ]).map(ask.compactRecord);
+  const data={schema_version:1,meta:{},records};
+  const result=ask.projectResearch(data,new URLSearchParams({q:'Iskander'}));
+  assert.equal(result.total_matches,3);
+  const group=result.ranked.find(row=>row.record.sourceAliases);
+  assert.equal(group.record.date,'2026-08-28');assert.equal(group.record.sourceAliases.length,2);
+  assert.equal(group.record.citations.length,2);
+  assert.equal(result.ranked.find(row=>row.record.id==='april').record.citations[0].date,'2026-04-16');
+  assert.ok(result.ranked.some(row=>row.record.id==='unknown'));
+});
+
+test('oversized source cohorts retain original rows, full citations, bounded responses and honest exports',()=>{
+  const records=ask.articleRecords(Array.from({length:600},(_,i)=>({aid:'version-'+i,title:'Drone source report',url:'https://source.test/'+ 'a'.repeat(900)+'#version-'+i,pub_date:'2026-09-01'}))).map(ask.compactRecord);
+  const data={schema_version:1,meta:{},records};
+  const first=ask.projectResearch(data,new URLSearchParams({q:'drone',limit:'1'}));
+  assert.equal(first.total_matches,600);assert.equal(first.ranked.length,1);
+  assert.ok(Buffer.byteLength(JSON.stringify(first))<100000);
+  assert.equal(first.ranked[0].record.sourceGroupingLimited,true);
+  assert.equal(first.ranked[0].record.sourceVersionCount,600);
+  assert.equal(first.ranked[0].record.sourceAliases,undefined);
+  const packet=ask.evidencePacket(first.ranked,'drone'),saved=ask.savedPacket(packet,{});
+  assert.equal(saved.citations.length,1);assert.equal(saved.ranked[0].record.sourceGroupingLimited,true);
+  assert.match(ask.renderResult(first.ranked[0],packet),/Records remain separate with their own citations/);
+  const keys=new Set(),citations=new Set();
+  for(let offset=0;offset<600;offset+=100){
+    const page=ask.projectResearch(data,new URLSearchParams({q:'drone',limit:'100',offset:String(offset)}));
+    for(const {record} of page.ranked){keys.add(record.key);for(const citation of record.citations)citations.add(citation.url);}
+  }
+  assert.equal(keys.size,600);assert.equal(citations.size,600);
+});
