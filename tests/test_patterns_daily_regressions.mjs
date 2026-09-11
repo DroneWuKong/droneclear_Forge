@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import vm from 'node:vm';
-import {projectDaily,safeURL} from '../forge-source/patterns-daily.mjs';
+import {projectDaily,safeURL,buildDailyEvidencePacket} from '../forge-source/patterns-daily.mjs';
 const now=Date.parse('2026-09-11T12:00:00Z');
 const flag=(id,extra={})=>({id,title:'Record '+id,last_verified_at:'2026-09-11T11:00:00Z',change_schema_version:1,change_kind:'new',...extra});
 
@@ -39,7 +39,7 @@ function harness(initial='https://uas-patterns.com/patterns-home/',fetcher) {
   let address=new URL(initial);
   const location={get href(){return address.href;},get hash(){return address.hash;},get pathname(){return address.pathname;},get search(){return address.search;}};
   class BrowserURL extends URL {static createObjectURL(blob){blobs.push(blob);return 'blob:test';}static revokeObjectURL(){}}
-  const context={safeURL,console,URL:BrowserURL,URLSearchParams,AbortController,Blob,Date,location,
+  const context={safeURL,buildDailyEvidencePacket,console,URL:BrowserURL,URLSearchParams,AbortController,Blob,Date,location,
     localStorage:{getItem:()=>null,setItem(){}},
     document:{getElementById:()=>root,createElement:()=>new Element()},
     window:{addEventListener:(name,callback)=>{listeners[name]=callback;}},
@@ -65,6 +65,37 @@ test('export uses applied collection filters instead of unsubmitted input edits'
   page.root.querySelector('input').value='unsubmitted change';
   page.root.querySelector('[data-evidence]').querySelector('[data-export]').click();
   const exported=JSON.parse(await page.blobs[0].text());assert.equal(exported.query,'Battery');assert.equal(exported.filters.state,'new');assert.equal(exported.record.id,'a');
+  assert.equal(exported.schema_version,2);assert.equal(exported.publication.status,'unavailable');assert.equal(exported.publication.input_revision,null);
+  assert.match(exported.publication.limitation,/no newer publication was substituted/);
+  assert.equal(page.requests.length,1);
+});
+
+test('an export closure keeps its displayed record and same-load identity after another collection loads',async()=>{
+  let revision='a';
+  const page=harness('https://uas-patterns.com/patterns-home/?q=Battery',async()=>{
+    const data=projectDaily([flag(revision,{title:revision==='a'?'Battery supply':'Motor supply',sources:[{url:`https://example.test/${revision}`} ]})],new URLSearchParams(),now);
+    data.publication={schema_version:1,status:'identified_by_content',input_revision:revision.repeat(64),artifact_sha256:revision.repeat(64),source:'kv',publication_revision:null};
+    return {ok:true,json:async()=>({data})};
+  });
+  await settle();
+  const oldExport=page.root.querySelector('[data-evidence]').querySelector('[data-export]').events.click;
+  revision='b';page.root.querySelector('input').value='Motor';page.context.dailyTest.queryLoad();await settle();
+  oldExport();page.root.querySelector('[data-evidence]').querySelector('[data-export]').click();
+  const oldPacket=JSON.parse(await page.blobs[0].text()),newPacket=JSON.parse(await page.blobs[1].text());
+  assert.equal(oldPacket.record.id,'a');assert.equal(oldPacket.record.sources[0].url,'https://example.test/a');assert.equal(oldPacket.query,'Battery');assert.equal(oldPacket.publication.input_revision,'a'.repeat(64));
+  assert.equal(newPacket.record.id,'b');assert.equal(newPacket.query,'Motor');assert.equal(newPacket.publication.input_revision,'b'.repeat(64));
+  assert.equal(oldPacket.projected_at,new Date(now).toISOString());assert.equal(oldPacket.projection_method,'daily-navigation-v1');
+  assert.equal(page.requests.length,2,'export must not fetch a newer snapshot or catalog');
+});
+
+test('packet builder cannot substitute another collection record and copies the captured evidence',()=>{
+  const collection=projectDaily([flag('a',{sources:[{url:'https://example.test/a'}]})],new URLSearchParams(),now);
+  collection.publication={schema_version:1,input_revision:'a'.repeat(64)};
+  assert.throws(()=>buildDailyEvidencePacket(collection,'missing',{q:''}),/missing or ambiguous/);
+  assert.throws(()=>buildDailyEvidencePacket({...collection,items:[collection.items[0],collection.items[0]]},'a',{q:''}),/missing or ambiguous/);
+  const packet=buildDailyEvidencePacket(collection,'a',{q:''});
+  collection.publication.input_revision='b'.repeat(64);collection.items[0].sources[0].url='https://example.test/changed';
+  assert.equal(packet.publication.input_revision,'a'.repeat(64));assert.equal(packet.record.sources[0].url,'https://example.test/a');
 });
 test('mobile selection brings evidence into view and offers a return to the list',async()=>{
   const page=harness();await settle();page.context.window.matchMedia=()=>({matches:true});
@@ -81,9 +112,12 @@ test('an older successful load cannot overwrite a newer query or clear its busy 
   const pending=[];const page=harness('https://uas-patterns.com/patterns-home/',()=>new Promise(resolve=>pending.push(resolve)));
   page.root.querySelector('input').value='Motor';page.context.dailyTest.queryLoad();
   const newer=projectDaily([flag('b',{title:'Motor supply'})],new URLSearchParams(),now);
+  newer.publication={input_revision:'b'.repeat(64)};
   pending[1]({ok:true,json:async()=>({data:newer})});await settle();
-  const old=projectDaily([flag('a',{title:'Battery supply'})],new URLSearchParams(),now);pending[0]({ok:true,json:async()=>({data:old})});await settle();
+  const old=projectDaily([flag('a',{title:'Battery supply'})],new URLSearchParams(),now);old.publication={input_revision:'a'.repeat(64)};pending[0]({ok:true,json:async()=>({data:old})});await settle();
   assert.match(page.root.querySelector('[data-evidence]').innerHTML,/Motor supply/);assert.doesNotMatch(page.root.querySelector('[data-list]').innerHTML,/Battery supply/);
+  page.root.querySelector('[data-evidence]').querySelector('[data-export]').click();
+  assert.equal(JSON.parse(await page.blobs[0].text()).publication.input_revision,'b'.repeat(64));
 });
 test('daily user-facing labels are valid text rather than double-decoded UTF-8',()=>{
   assert.doesNotMatch(uiSource,/\u00e2\u2020|\u00c2\u00b7|\u00e2\u20ac/);
