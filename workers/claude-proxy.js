@@ -12,7 +12,7 @@ export default {
         return { role: message.role, content: message.content };
       });
       const tokens = outputLimit(body.max_tokens);
-      const model = allowedModel(body, env, 'CLAUDE', 'claude-sonnet-4-20250514');
+      const model = allowedModel(body, env, 'CLAUDE', 'claude-sonnet-4-6');
       const url = 'https://api.anthropic.com/v1/messages';
       const headers = { 'Content-Type': 'application/json', 'x-api-key': env.ANTHROPIC_API_KEY, 'anthropic-version': '2023-06-01' };
       if (messages.some(m => m.role === 'system')) throw new Error('Use the system field for Claude instructions');

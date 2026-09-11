@@ -645,7 +645,7 @@
     <label class="cfg-label">AI Provider</label>
     <div style="display:flex;gap:6px;margin-bottom:6px;">
       <button id="prov-gemini" onclick="setProvider('gemini')" style="flex:1;padding:8px;border-radius:6px;border:1px solid var(--border);background:var(--bg-card);color:var(--g2);font-family:system-ui;font-size:12px;cursor:pointer;font-weight:600;">Gemini <span style="font-size:10px;opacity:.6">API key</span></button>
-      <button id="prov-groq" onclick="setProvider('groq')" style="flex:1;padding:8px;border-radius:6px;border:1px solid var(--border);background:var(--bg-card);color:var(--g2);font-family:system-ui;font-size:12px;cursor:pointer;font-weight:600;">Groq / Llama <span style="font-size:10px;opacity:.6">API key</span></button>
+      <button id="prov-groq" onclick="setProvider('groq')" style="flex:1;padding:8px;border-radius:6px;border:1px solid var(--border);background:var(--bg-card);color:var(--g2);font-family:system-ui;font-size:12px;cursor:pointer;font-weight:600;">Groq / GPT-OSS <span style="font-size:10px;opacity:.6">API key</span></button>
       <button id="prov-anthropic" onclick="setProvider('anthropic')" style="flex:1;padding:8px;border-radius:6px;border:1px solid var(--border);background:var(--bg-card);color:var(--g2);font-family:system-ui;font-size:12px;cursor:pointer;font-weight:600;">Claude <span style="font-size:10px;opacity:.6">BYOK</span></button>
     </div>
     <div style="font-size:10px;color:var(--g3);margin-bottom:16px">API key is set inline next to the model picker above the chat box.</div>
@@ -2413,7 +2413,7 @@ function renderStarters() {
 // ─── MODEL CHIP ───────────────────────────────────────────────
 var MODEL_CYCLE = [
   { label: 'gemini-2.5-flash', provider: 'gemini' },
-  { label: 'llama-3.3-70b',   provider: 'groq'   },
+  { label: 'GPT-OSS 120B',   provider: 'groq'   },
   { label: 'gemini-2.5-flash', provider: 'gemini' },
 ];
 // Claude available via Settings (BYOK) — not in public cycle
@@ -2481,7 +2481,7 @@ function setMode(m) {
 function setProvider(p) {
   provider = p;
   const chip = document.getElementById('model-chip');
-  if (chip) chip.textContent = p === 'anthropic' ? 'Claude' : p === 'groq' ? 'llama-3.3-70b' : 'gemini-2.5-flash';
+  if (chip) chip.textContent = p === 'anthropic' ? 'Claude' : p === 'groq' ? 'GPT-OSS 120B' : 'gemini-2.5-flash';
   localStorage.setItem('wingman_provider', p);
   document.getElementById('anthropic-cfg').style.display = p === 'anthropic' ? '' : 'none';
   document.getElementById('gemini-cfg').style.display    = p === 'gemini'     ? '' : 'none';
@@ -2713,7 +2713,7 @@ async function send() {
   renderMessages();
   showThinking();
 
-  // Keep last 6 turns to avoid token limits (especially Groq free tier)
+  // Keep recent turns within provider token limits
   const recentMessages = messages.slice(-6);
   const apiMessages = recentMessages.map(m => ({ role: m.role, content: Array.isArray(m.content) && m.content.length ? m.content : [{ type: 'text', text: m.text || '' }] }));
 
@@ -2802,7 +2802,7 @@ async function send() {
       // ═══ GROQ API (Llama 3.3 70B) ═══
       const sysPrompt = buildPrompt(txt, hasImages);
       const groqMessages = [{ role: 'system', content: sysPrompt.slice(0, 3000) }];
-      // Groq free tier: strict token limits — keep last 4 turns, truncate content
+      // Keep the last 4 turns within the shared input budget
       const groqHistory = messages.slice(-4);
       for (const m of groqHistory) {
         const role = m.role === 'assistant' ? 'assistant' : 'user';
@@ -2817,9 +2817,10 @@ async function send() {
         if (content) groqMessages.push({ role, content: content.slice(0, 800) });
       }
       const groqBody = {
-        model: 'llama-3.3-70b-versatile',
+        model: 'openai/gpt-oss-120b',
         messages: groqMessages,
-        max_tokens: 1024,  // Reduced from 4096 — Groq free TPM is tight
+        max_tokens: 1024,
+        reasoning_effort: 'low', include_reasoning: false,
         temperature: 0.7,
       };
       // Use BYOK if provided, otherwise server proxy
@@ -3463,15 +3464,17 @@ Maximum 8 gaps. Be specific and factual. If a gap favors one entity, say which.`
       // Claude API
       const res = await fetch('https://api.anthropic.com/v1/messages', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'x-api-key': usedKey, 'anthropic-version': '2023-06-01' },
+        headers: { 'Content-Type': 'application/json', 'x-api-key': usedKey, 'anthropic-version': '2023-06-01', 'anthropic-dangerous-direct-browser-access': 'true' },
         body: JSON.stringify({
-          model: 'claude-sonnet-4-20250514',
+          model: 'claude-sonnet-4-6',
           max_tokens: 1000,
           messages: [{ role: 'user', content: prompt }]
         })
       });
       const data = await res.json();
-      const raw = data.content?.[0]?.text || '[]';
+      if (!res.ok || data.error) throw new Error(data.error?.message || 'Claude request failed');
+      const raw = data.content?.[0]?.text;
+      if (!raw) throw new Error('Claude returned an empty response');
       gaps = JSON.parse(raw.replace(/```json|```/g, '').trim());
     } else if (geminiKey) {
       // Gemini API

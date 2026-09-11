@@ -231,7 +231,7 @@
       <div class="cf-examples" id="cf-examples">
         <span class="lbl">EXAMPLES:</span>
       </div>
-      <div class="cf-kbnote" id="cf-kbnote">Grounded with canonical pinouts. Drone parts are matched to the <b>Forge catalog</b> for real thumbnails, prices, and NDAA status. <b>Bring your own API key</b> — <b>Gemini</b> and <b>Groq</b> are free. Your key stays in your browser and goes straight to the provider.</div>
+      <div class="cf-kbnote" id="cf-kbnote">Grounded with canonical pinouts. Drone parts are matched to the <b>Forge catalog</b> for real thumbnails, prices, and NDAA status. <b>Bring your own API key</b> — Provider account limits and billing apply. Your key stays in your browser and goes straight to the provider.</div>
     </div>
 
     <div class="cf-pipeline" id="cf-pipeline" hidden>
@@ -424,11 +424,11 @@ function runERC(components, connections){
 // Every engine is BYOK: the user's key is stored in their browser (localStorage)
 // and the request goes DIRECT to the provider. The key never touches our servers
 // and there is NO owner-funded default — this site runs for free, so it can't
-// foot the API bill for anonymous traffic. Gemini and Groq are free to the user.
+// foot the API bill for anonymous traffic. Provider account limits and billing apply.
 const MAX_TOKENS = 2048;
 const PROVIDERS = {
-  gemini:    { label:"Gemini (free)",         tier:"free", ls:"cf_key_gemini",    keyUrl:"https://aistudio.google.com/apikey",          keyName:"Google AI Studio" },
-  groq:      { label:"Groq · Llama (free)",   tier:"free", ls:"cf_key_groq",      keyUrl:"https://console.groq.com/keys",               keyName:"Groq Console" },
+  gemini:    { label:"Gemini — your key",     tier:"BYOK", ls:"cf_key_gemini",    keyUrl:"https://aistudio.google.com/apikey",          keyName:"Google AI Studio" },
+  groq:      { label:"Groq · GPT-OSS 120B",   tier:"BYOK", ls:"cf_key_groq",      keyUrl:"https://console.groq.com/keys",               keyName:"Groq Console" },
   anthropic: { label:"Claude — your key",     tier:"paid", ls:"cf_key_anthropic", keyUrl:"https://console.anthropic.com/settings/keys", keyName:"Anthropic Console" },
   openai:    { label:"ChatGPT — your key",    tier:"paid", ls:"cf_key_openai",    keyUrl:"https://platform.openai.com/api-keys",        keyName:"OpenAI Platform" },
   xai:       { label:"Grok · xAI — your key", tier:"paid", ls:"cf_key_xai",       keyUrl:"https://console.x.ai/",                       keyName:"xAI Console" },
@@ -439,9 +439,9 @@ function getKey(p){ const m=PROVIDERS[p]; return (m && m.ls) ? (localStorage.get
 async function callLLM(prompt){
   const p = provider;
   const key = getKey(p);
-  if(!key) throw new Error(`Add your ${PROVIDERS[p].label} API key above to generate. Gemini and Groq are free — grab a key from the link next to the engine picker.`);
+  if(!key) throw new Error(`Add your ${PROVIDERS[p].label} API key above to generate. Get a key from the link next to the engine picker; provider quotas and billing apply.`);
   if(p === "gemini")    return callGemini(prompt, key);
-  if(p === "groq")      return callOpenAICompat(prompt, key, "https://api.groq.com/openai/v1/chat/completions", "llama-3.3-70b-versatile", "Groq");
+  if(p === "groq")      return callOpenAICompat(prompt, key, "https://api.groq.com/openai/v1/chat/completions", "openai/gpt-oss-120b", "Groq");
   if(p === "openai")    return callOpenAICompat(prompt, key, "https://api.openai.com/v1/chat/completions", "gpt-4o-mini", "OpenAI");
   if(p === "xai")       return callOpenAICompat(prompt, key, "https://api.x.ai/v1/chat/completions", "grok-2-latest", "xAI");
   if(p === "anthropic") return callAnthropic(prompt, key);
@@ -468,11 +468,11 @@ function retryDelayMs(res, data){
 
 // "limit: 0" on a free-tier metric means the key's project has no free allowance
 // here (billing-enabled project, brand-new key, or unsupported region) — retrying
-// won't help, so explain it and point at the reliably-free Groq engine.
+// may not help; show the account limit without promising another free provider.
 function quotaHint(data){
   const s = JSON.stringify(data || "");
   if(/"limit":\s*0|limit:\s*0|free_tier/.test(s))
-    return " — this key's project has no free-tier quota here (billing-enabled project, brand-new key, or unsupported region). Switch the engine to Groq (free), or use a Gemini key from a free-tier Google account.";
+    return " — check this key's project quota and model access in the provider console. Free-tier availability varies by account and model.";
   return "";
 }
 
@@ -483,7 +483,7 @@ async function postJSON(url, opts, label){
   for(let attempt = 0; ; attempt++){
     let res;
     try { res = await fetch(url, opts); }
-    catch(e){ throw new Error(`${label}: request blocked (the provider may not allow direct browser calls — try the free Gemini or Groq engine instead).`); }
+    catch(e){ throw new Error(`${label}: request blocked (the provider may not allow direct browser calls — check the provider browser-access policy or select another configured engine).`); }
     let data; try { data = await res.json(); } catch { data = {}; }
     if(res.status === 429 && attempt < 2){
       const wait = retryDelayMs(res, data) || (2000 * (attempt + 1));
@@ -523,7 +523,7 @@ async function callGemini(prompt, key){
 async function callOpenAICompat(prompt, key, url, model, label){
   const { data } = await postJSON(url, {
     method:"POST", headers:{ "Content-Type":"application/json", "Authorization":`Bearer ${key}` },
-    body: JSON.stringify({ model, max_tokens: MAX_TOKENS, messages:[{ role:"user", content: prompt }] }),
+    body: JSON.stringify({ model, max_tokens: MAX_TOKENS, ...(model.startsWith('openai/gpt-oss-') ? { reasoning_effort: 'low', include_reasoning: false } : {}), messages:[{ role:"user", content: prompt }] }),
   }, label);
   if(data.error) throw new Error(`${label}: ` + (data.error.message || JSON.stringify(data.error)) + quotaHint(data));
   const t = data.choices?.[0]?.message?.content;
