@@ -45,7 +45,7 @@ class AssetVersionTests(unittest.TestCase):
         self.write('entry.mjs', "import {value} from './middle.mjs'; export {value};")
         self.write('middle.mjs', "export {value} from './leaf.mjs?mode=one';")
         self.write('leaf.mjs', leaf)
-        builder.version_module_imports()
+        builder.version_script_dependencies()
         return (
             builder.add_asset_cache_busters('<script src="/static/entry.mjs?v=1"></script>'),
             (self.root / 'static' / 'entry.mjs').read_text(encoding='utf-8'),
@@ -64,7 +64,7 @@ class AssetVersionTests(unittest.TestCase):
     def test_cycles_and_dynamic_imports_share_a_version_without_recursive_hashes(self):
         self.write('a.mjs', "import './b.mjs'; const later=import('./b.mjs');")
         self.write('b.mjs', "export * from './a.mjs';")
-        builder.version_module_imports()
+        builder.version_script_dependencies()
         combined = ''.join((self.root/'static'/name).read_text(encoding='utf-8') for name in ['a.mjs', 'b.mjs'])
         versions = re.findall(r'\?v=([0-9a-f]{16})', combined)
         self.assertEqual(len(versions), 3)
@@ -73,8 +73,23 @@ class AssetVersionTests(unittest.TestCase):
     def test_unknown_import_targets_and_external_modules_stay_unchanged(self):
         source = "import './missing.mjs'; import 'https://example.org/remote.mjs'; import './plain.js';"
         self.write('entry.mjs', source)
-        builder.version_module_imports()
+        builder.version_script_dependencies()
         self.assertEqual((self.root/'static/entry.mjs').read_text(encoding='utf-8'), source)
+
+    def test_dynamic_dossier_child_update_changes_loader_and_parent_url(self):
+        def build(child):
+            self.write('dossier-signals.js', "const script=document.createElement('script'); script.src = '/static/record-dossiers.js';")
+            self.write('record-dossiers.js', child)
+            builder.version_script_dependencies()
+            return (
+                builder.add_asset_cache_busters('<script src="/static/dossier-signals.js?v=1"></script>'),
+                (self.root/'static/dossier-signals.js').read_text(encoding='utf-8'),
+            )
+        before = build('const relationshipLanding=false;')
+        after = build('const relationshipLanding=true;')
+        self.assertNotEqual(before[0], after[0])
+        self.assertNotEqual(before[1], after[1])
+        self.assertRegex(after[1], r'record-dossiers.js\?v=[0-9a-f]{16}')
 
 
 if __name__ == '__main__':
