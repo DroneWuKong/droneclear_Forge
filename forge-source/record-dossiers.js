@@ -265,6 +265,33 @@
     };
   }
 
+  function findComponentReferenceRelationships(query, components) {
+    const wanted = normalize(query);
+    if (!wanted) return [];
+    const rows = Array.isArray(components) ? components : [];
+    const relationships = [];
+    for (const row of rows) {
+      // A processor-family label describes a dependency, never a board identity.
+      // Only complete values in explicit processor fields qualify. Descriptions,
+      // partial tokens, and qualified/multiple-processor strings do not match.
+      const fields = [];
+      for (const field of ['processor', 'companion_processor']) {
+        if (typeof row[field] === 'string' && normalize(row[field]) === wanted) {
+          fields.push({field, value:row[field]});
+        }
+        if (typeof row.specs?.[field] === 'string' && normalize(row.specs[field]) === wanted) {
+          fields.push({field:`specs.${field}`, value:row.specs[field]});
+        }
+      }
+      if (!fields.length || !row.pid || resolveRecord(rows, row.pid, 'component').record !== row) continue;
+      relationships.push(Object.assign({}, row, {
+        _reference_fields:fields,
+        _relationship_reason:`Catalog PID ${row.pid}; ${fields.map(item => `${item.field} = ${item.value}`).join('; ')}`
+      }));
+    }
+    return relationships.sort((a,b) => String(a.pid).localeCompare(String(b.pid)));
+  }
+
   function collectReferences(value, output, depth) {
     const target = output || new Set();
     const level = depth || 0;
@@ -752,7 +779,38 @@
     });
   }
 
-  function renderResolutionError(main, kind, query, result) {
+  function renderComponentReferencePage(query, context) {
+    const reference = String(query == null ? '' : query).trim();
+    const related = findComponentReferenceRelationships(reference, context.components);
+    const platformLinks = new Map();
+    for (const component of related) {
+      for (const platform of findRelatedPlatforms(component, context.platforms)) {
+        const key = platformKey(platform);
+        if (resolveRecord(context.platforms, key, 'platform').record == null || platformLinks.has(key)) continue;
+        platformLinks.set(key, Object.assign({}, platform, {
+          _relationship_reason:`Via catalog component ${component.pid}: ${platform._relationship_reason}`
+        }));
+      }
+    }
+    const signals = (context.flags || []).filter(flag => flag && String(flag.component_id || '').trim() === reference && flag.id);
+    const researchUrl = `https://uas-patterns.com/ask-pie/?q=${encodeURIComponent(reference)}`;
+    return `<div class="frd-back"><a href="/browse/">← Browse components</a></div>
+      <header class="frd-hero"><div><div class="frd-eyebrow">Forge · Component reference</div><h1>${escapeHtml(reference)}</h1><p>No exact catalog identity</p></div><div class="frd-actions"><a href="${escapeHtml(researchUrl)}">Research this original reference →</a></div></header>
+      <div class="frd-notice">This signal reference does not resolve to one catalog component. The reference is preserved; related products below have their own identities. A processor dependency does not establish an equivalent product or substitute.</div>
+      <section class="frd-section"><h2>Documented processor relationships <span>${related.length}</span></h2><p>Complete structured processor values match the reference after case and punctuation normalization. The matched field and stable catalog PID are shown for each record. Verify the recorded relationship against product documentation.</p>${renderRecordCards(related, 'component', 'No exact structured processor relationship is recorded for this reference.')}</section>
+      ${platformLinks.size ? `<section class="frd-section"><h2>Recorded platform relationships</h2><p>These links come from explicit component or platform BOM fields, via the catalog components above.</p>${renderRecordCards([...platformLinks.values()], 'platform', '')}</section>` : ''}
+      <section class="frd-section"><h2>Signals carrying this exact reference</h2>${signals.length ? `<div class="frd-card-grid">${signals.map(flag => `<a class="frd-card" href="https://uas-patterns.com/patterns/#flag=${encodeURIComponent(String(flag.id))}"><strong>${escapeHtml(flag.title || flag.id)}</strong><span>${escapeHtml(flag.status || 'Status not reported')}</span></a>`).join('')}</div>` : '<div class="frd-empty">No signal with this exact component reference was available in the loaded public data.</div>'}</section>
+      ${trustBlock('component', context.catalog)}`;
+  }
+
+  function renderResolutionError(main, kind, query, result, context) {
+    if (kind === 'component' && !result?.ambiguous) {
+      document.title = `${query} — Component Reference — Forge`;
+      main.innerHTML = renderComponentReferencePage(query, context);
+      const navLabel = document.getElementById('dc-nav-page');
+      if (navLabel) navLabel.textContent = 'Component Reference';
+      return;
+    }
     const matches = result && Array.isArray(result.matches) ? result.matches : [];
     const suggestion = matches.length
       ? `<div class="frd-card-grid">${matches.slice(0, 12).map(row => `<a class="frd-card" href="${escapeHtml(kind === 'platform' ? platformUrl(row) : componentUrl(row))}"><strong>${escapeHtml(recordName(row, kind))}</strong><span>${escapeHtml(kind === 'platform' ? recordManufacturer(row) : row._category || row.category || '')}</span></a>`).join('')}</div>`
@@ -778,7 +836,7 @@
     const query = componentQuery || platformQuery;
     const result = resolveRecord(kind === 'component' ? context.components : context.platforms, query, kind);
     if (!result.record) {
-      renderResolutionError(main, kind, query, result);
+      renderResolutionError(main, kind, query, result, context);
       return false;
     }
 
@@ -816,6 +874,8 @@
     flattenPlatforms,
     identityAliases,
     resolveRecord,
+    findComponentReferenceRelationships,
+    renderComponentReferencePage,
     collectReferences,
     referencesFromFields,
     findRelatedPlatforms,

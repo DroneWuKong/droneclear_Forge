@@ -193,9 +193,9 @@
     if (row.component_id) {
       links.push({
         id: 'component_dossier',
-        label: 'Forge component dossier',
+        label: 'Forge component reference',
         url: `https://uas-forge.com/dossier/?component=${encodeURIComponent(String(row.component_id))}`,
-        reason: `Open the exact indexed component record (${String(row.component_id)}) with specifications, documented platform relationships, candidate alternatives, matched Patterns evidence, freshness, and limitations.`
+        reason: `Resolve the component reference (${String(row.component_id)}) against the catalog, or inspect documented relationships when no exact catalog identity is available.`
       });
     }
 
@@ -205,7 +205,7 @@
         label: 'Forge component catalog',
         url: 'https://uas-forge.com/browse/?view=components',
         reason: row.component_id
-          ? `Review the affected component record (${String(row.component_id)}), compatible alternatives, and related platforms.`
+          ? `Review catalog records and documented relationships for component reference ${String(row.component_id)}; verify identity and compatibility before comparing products.`
           : 'Review affected component categories, origin evidence, availability, and substitutes.'
       });
       links.push({
