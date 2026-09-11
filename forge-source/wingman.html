@@ -609,7 +609,7 @@
   <div id="staged-images"></div>
   <!-- Model + API key row -->
   <div style="display:flex;align-items:center;gap:6px;margin-bottom:6px;">
-    <span class="model-chip" id="model-chip" onclick="cycleModel()" title="Click to cycle model" style="cursor:pointer;flex-shrink:0;">gemini-2.0-flash</span>
+    <span class="model-chip" id="model-chip" onclick="cycleModel()" title="Click to cycle model" style="cursor:pointer;flex-shrink:0;">gemini-2.5-flash</span>
     <input type="password" id="inline-api-key" placeholder="API key (optional)"
       style="flex:1;background:#141410;border:1px solid #2e2e26;border-radius:6px;color:#b8b0a0;font:400 10px 'Inter',sans-serif;padding:5px 8px;outline:none;min-width:0;"
       title="Gemini / Groq / Anthropic API key">
@@ -2408,9 +2408,9 @@ function renderStarters() {
 
 // ─── MODEL CHIP ───────────────────────────────────────────────
 var MODEL_CYCLE = [
-  { label: 'gemini-2.0-flash', provider: 'gemini' },
+  { label: 'gemini-2.5-flash', provider: 'gemini' },
   { label: 'llama-3.3-70b',   provider: 'groq'   },
-  { label: 'gemini-2.0-flash', provider: 'gemini' },
+  { label: 'gemini-2.5-flash', provider: 'gemini' },
 ];
 // Claude available via Settings (BYOK) — not in public cycle
 var modelIdx = 0;
@@ -2742,12 +2742,12 @@ async function send() {
       const geminiBody = {
         systemInstruction: { parts: [{ text: sysPrompt.slice(0, 6000) }] },
         contents: geminiMessages,
-        generationConfig: { maxOutputTokens: 4096, temperature: 0.7 },
+        generationConfig: { maxOutputTokens: 4096, temperature: 0.7, thinkingConfig: { thinkingBudget: 0 } },
         tools: [{ google_search: {} }],
       };
 
       // Use proxy (free) if no user key, direct API if BYOK
-      const modelName = MODEL_CYCLE[modelIdx]?.label || 'gemini-2.0-flash';
+      const modelName = MODEL_CYCLE[modelIdx]?.label || 'gemini-2.5-flash';
       const geminiUrl = geminiKey
         ? `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${geminiKey}`
         : '/api/wingman/gemini';
@@ -3452,12 +3452,12 @@ Maximum 8 gaps. Be specific and factual. If a gap favors one entity, say which.`
       gaps = JSON.parse(raw.replace(/```json|```/g, '').trim());
     } else if (geminiKey) {
       // Gemini API
-      const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${geminiKey}`, {
+      const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${geminiKey}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           contents: [{ parts: [{ text: prompt }] }],
-          generationConfig: { temperature: 0.2, maxOutputTokens: 1000 }
+          generationConfig: { temperature: 0.2, maxOutputTokens: 1000, thinkingConfig: { thinkingBudget: 0 } }
         })
       });
       const data = await res.json();
