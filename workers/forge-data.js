@@ -35,6 +35,8 @@ const NO_CACHE = {
 const FRESHNESS_LIMIT_MS = new Map([
   ['daily_changes', 72 * 60 * 60 * 1000],
   ['research_index', 72 * 60 * 60 * 1000],
+  ['forecast_review_queue', 72 * 60 * 60 * 1000],
+  ['analytic_judgments', 72 * 60 * 60 * 1000],
   ['adversary_bom', 72 * 60 * 60 * 1000],
   ['component_mirroring_index', 72 * 60 * 60 * 1000],
   ['sanctions_evasion_graph', 72 * 60 * 60 * 1000],
@@ -116,6 +118,7 @@ function parseAndServe(raw, type, source, params) {
   try {
     return serveParsed(JSON.parse(raw), type, source, params);
   } catch (error) {
+    if (error?.code === 'DATASET_PUBLICATION_CONTROL') return resp({error:`Dataset ${type} failed publication controls`,type,source,details:error.validationErrors,action:'Publish a validated artifact before retrying.'},503,{'X-Data-Source':source});
     return resp(
       {
         error: `Dataset ${type} contains invalid JSON`,
@@ -141,6 +144,8 @@ const DATASETS = new Set([
   'dataset_catalog',
   'source_coverage_matrix',
   'data_quality_score',
+  'forecast_review_queue',
+  'analytic_judgments',
   'research_index',
   'daily_changes',
   'intel_articles',
@@ -205,6 +210,8 @@ const PIE_OUTPUTS_KEYS = new Set([
   'gap_analysis_latest',
   'entity_graph',
   'forge_intel',
+  'forecast_review_queue',
+  'analytic_judgments',
   'research_index',
   'daily_changes',
   'intel_articles',
@@ -255,7 +262,7 @@ export default {
     const url = new URL(request.url);
     const type = url.searchParams.get('type') || '';
 
-    if (request.method === 'POST' && type === 'daily_changes') return resp({error:'daily_changes is a read-only flags projection'}, 405);
+    if (request.method === 'POST' && ['daily_changes','forecast_review_queue','analytic_judgments'].includes(type)) return resp({error:`${type} is a read-only publication`}, 405);
 
     if (request.method === 'POST') {
       const adminKey = env.FORGE_BLOBS_ADMIN_KEY;

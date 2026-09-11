@@ -103,6 +103,17 @@ export function articleEventPublicationErrors(data) {
 }
 
 export function validateDatasetForPublication(data, type) {
+  const schema = {forecast_review_queue:'forecast-review-queue-v1',analytic_judgments:'analytic-judgments-v1'}[type];
+  if (schema) {
+    const errors=[];
+    if (!data || Array.isArray(data) || data.schema_version !== schema) errors.push(`schema_version must be ${schema}`);
+    if (!Array.isArray(data?.records) || data.records.some(row=>!row || typeof row !== 'object' || Array.isArray(row))) errors.push('records must be a list of objects');
+    if (type === 'forecast_review_queue') {
+      if (!data?.counts || typeof data.counts !== 'object' || Array.isArray(data.counts) || Object.values(data.counts).some(count=>!Number.isInteger(count)||count<0)) errors.push('queue counts must be nonnegative integers');
+      else if (Array.isArray(data.records) && Object.values(data.counts).reduce((sum,count)=>sum+count,0) !== data.records.length) errors.push('queue counts must reconcile with records');
+    }
+    return errors;
+  }
   if (type === 'article_event_clusters') {
     return articleEventPublicationErrors(data);
   }

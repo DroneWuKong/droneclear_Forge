@@ -29,3 +29,18 @@ test('article detail returns one exact bounded excerpt and refuses ID collisions
   assert.equal(payload.data.record.body_excerpt.length,16000);assert.equal(payload.data.record_status,'found');
   rows.push({aid:'1',title:'other'});assert.equal((await (await worker.fetch(request('type=intel_articles&record_id=1'),env)).json()).data.record_status,'ambiguous');
 });
+
+for (const [type,schema] of [['forecast_review_queue','forecast-review-queue-v1'],['analytic_judgments','analytic-judgments-v1']]) {
+  test(`${type} is a freshness-gated read-only publication with honest absence`,async()=>{
+    const absent=await worker.fetch(request('type='+type),{});assert.equal(absent.status,404);const missing=await absent.json();assert.ok(missing.error);assert.equal(missing.data,undefined);
+    const valid={schema_version:schema,generated_at:now,records:[{prediction_id:'P',state:'pending'}],...(type==='forecast_review_queue'?{counts:{pending:1}}:{})};
+    const response=await worker.fetch(request('type='+type),{ASSETS:{fetch:async()=>Response.json(valid)}});assert.equal(response.status,200);const result=await response.json();assert.equal(result.data.records.length,1);assert.match(result.source,/static/);
+    const stale={...valid,generated_at:'2020-01-01'};assert.equal((await worker.fetch(request('type='+type),{PIE_OUTPUTS:{get:async()=>JSON.stringify(stale)}})).status,503);
+    const malformed={...valid,records:null};const bad=await worker.fetch(request('type='+type),{PIE_OUTPUTS:{get:async()=>JSON.stringify(malformed)}});assert.equal(bad.status,503);assert.match((await bad.json()).error,/publication controls/);
+    const write=await worker.fetch(new Request('https://uas-patterns.com/api/data?type='+type,{method:'POST',body:JSON.stringify(valid)}),{FORGE_BLOBS_ADMIN_KEY:'test'});assert.equal(write.status,405);
+  });
+}
+test('queue nonzero counters cannot accompany an empty result artifact',async()=>{
+  const artifact={schema_version:'forecast-review-queue-v1',generated_at:now,counts:{due:3},records:[]};
+  assert.equal((await worker.fetch(request('type=forecast_review_queue'),{PIE_OUTPUTS:{get:async()=>JSON.stringify(artifact)}})).status,503);
+});
