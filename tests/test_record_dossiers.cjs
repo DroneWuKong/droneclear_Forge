@@ -175,3 +175,87 @@ test('output language never issues automatic procurement or compliance decisions
   const joined = JSON.stringify(alternatives);
   assert.doesNotMatch(joined, /must buy|must avoid|automatically noncompliant|guaranteed compatible/i);
 });
+
+const processorDatabase = {
+  components: {companion_computers:[
+    {pid:'COMP-0001',name:'ModalAI VOXL 2',manufacturer:'ModalAI',processor:'Qualcomm QRB5165',compatible_platforms:['PLAT-001']},
+    {pid:'COMP-0002',name:'ModalAI VOXL 2 Mini',manufacturer:'ModalAI',specs:{companion_processor:'Qualcomm QRB5165'}},
+    {pid:'COMP-0005',name:'ARK carrier',processor:'Qualcomm QRB5165 (via VOXL 2)'},
+    {pid:'OTHER',name:'Different chip',processor:'Qualcomm Snapdragon 845'},
+    {pid:'PROSE',name:'Unrelated product',description:'Qualcomm QRB5165 mentioned in marketing copy'},
+    {pid:'LONGER',name:'Longer identifier',processor:'Qualcomm QRB5165X'}
+  ]},
+  drone_models:database.drone_models
+};
+const processorComponents=records.flattenComponents(processorDatabase);
+const referenceContext={
+  components:processorComponents, platforms:records.flattenPlatforms(processorDatabase,[]), catalog:{datasets:[]},
+  flags:[{id:'flag /1',component_id:'qualcomm-qrb5165',title:'Processor signal',status:'active'},
+    {id:'unrelated',component_id:'qualcomm-snapdragon-845',title:'Other processor signal'}]
+};
+
+test('chip reference stays unresolved and only full structured processor values form relationships', () => {
+  const query='qualcomm-qrb5165';
+  assert.equal(records.resolveRecord(processorComponents,query,'component').record,null);
+  const related=records.findComponentReferenceRelationships(query,processorComponents);
+  assert.deepEqual(related.map(row=>row.pid),['COMP-0001','COMP-0002']);
+  assert.deepEqual(related[0]._reference_fields,[{field:'processor',value:'Qualcomm QRB5165'}]);
+  assert.match(related[1]._relationship_reason,/specs\.companion_processor = Qualcomm QRB5165/);
+  assert.deepEqual(records.findComponentReferenceRelationships('Qualcomm',processorComponents),[]);
+  assert.deepEqual(records.findComponentReferenceRelationships('QRB5165',processorComponents),[]);
+  assert.equal(records.resolveRecord(processorComponents,'COMP-0001','component').record.name,'ModalAI VOXL 2');
+});
+
+test('relationships exclude duplicate catalog PIDs that cannot resolve to one exact product', () => {
+  const duplicate=processorComponents.concat({...processorComponents[0],name:'Conflicting product'});
+  assert.deepEqual(records.findComponentReferenceRelationships('qualcomm-qrb5165',duplicate).map(row=>row.pid),['COMP-0002']);
+});
+
+test('unresolved reference page preserves the reference and links documented products, BOMs, and exact signals', () => {
+  const markup=records.renderComponentReferencePage('qualcomm-qrb5165',referenceContext);
+  assert.match(markup,/Component reference/);assert.match(markup,/No exact catalog identity/);
+  assert.match(markup,/<h1>qualcomm-qrb5165<\/h1>/);
+  assert.match(markup,/href="\/dossier\/\?component=COMP-0001"/);
+  assert.match(markup,/processor = Qualcomm QRB5165/);
+  assert.match(markup,/href="\/dossier\/\?platform=PLAT-001"/);
+  assert.match(markup,/Via catalog component COMP-0001/);
+  assert.match(markup,/href="https:\/\/uas-patterns\.com\/ask-pie\/\?q=qualcomm-qrb5165"/);
+  assert.match(markup,/href="https:\/\/uas-patterns\.com\/patterns\/#flag=flag%20%2F1"/);
+  assert.doesNotMatch(markup,/>Other processor signal</);
+  assert.doesNotMatch(markup,/Candidate alternatives|drop-in replacement|location\.(?:href|replace)/);
+});
+
+test('unknown reference text is escaped and research URLs retain the complete encoded identifier', () => {
+  const query='unknown / <img src=x onerror=alert(1)>&"';
+  const markup=records.renderComponentReferencePage(query,referenceContext);
+  assert.doesNotMatch(markup,/<img/);
+  assert.ok(markup.includes('q='+encodeURIComponent(query)));
+  assert.match(markup,/No exact structured processor relationship/);
+});
+
+test('browser bootstrap renders chip reference recovery while genuine PID still opens its exact dossier', async () => {
+  const originals=Object.fromEntries(['document','location','window','fetch'].map(key=>[key,globalThis[key]]));
+  const main={innerHTML:'',querySelector:()=>null};
+  const nav={textContent:''};
+  globalThis.document={title:'',querySelector:selector=>selector==='main'?main:null,
+    getElementById:id=>id==='forge-record-dossier-styles'?{}:id==='dc-nav-page'?nav:null};
+  globalThis.location={search:'?component=qualcomm-qrb5165',href:'https://uas-forge.com/dossier/?component=qualcomm-qrb5165'};
+  globalThis.window={};
+  globalThis.fetch=async url=>({ok:true,json:async()=>url.includes('forge_database')?processorDatabase:url.includes('pie_flags')?referenceContext.flags:url.includes('dataset_catalog')?referenceContext.catalog:[]});
+  try {
+    assert.equal(await records.bootstrapFromLocation(),false);
+    assert.match(main.innerHTML,/No exact catalog identity/);
+    assert.match(main.innerHTML,/component=COMP-0001/);
+    assert.equal(nav.textContent,'Component Reference');
+    assert.equal(location.search,'?component=qualcomm-qrb5165');
+    location.search='?component=COMP-0001';
+    assert.equal(await records.bootstrapFromLocation(),true);
+    assert.match(main.innerHTML,/<h1>ModalAI VOXL 2<\/h1>/);
+    assert.doesNotMatch(main.innerHTML,/No exact catalog identity/);
+    assert.equal(nav.textContent,'Component Dossier');
+  } finally {
+    for (const [key,value] of Object.entries(originals)) {
+      if (value===undefined) delete globalThis[key]; else globalThis[key]=value;
+    }
+  }
+});
