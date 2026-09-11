@@ -268,6 +268,7 @@ a.brief-source-chip:hover{color:var(--text-s);border-color:var(--border-hi)}
 
 <script src="static/patterns-decision-support.js"></script>
 <script src="/static/dossier-signals.js?v=2"></script>
+<script src="/static/patterns-flag-evidence.js?v=1"></script>
 </head>
 <body><h1 style="position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap;border:0">Pattern Intelligence — Forge Module</h1>
 <main id="main-content">
@@ -517,8 +518,8 @@ a.brief-source-chip:hover{color:var(--text-s);border-color:var(--border-hi)}
       <button type="button" id="wl-toggle" onclick="toggleWlFilter()" title="Show only flags matching your watchlist" style="background:var(--surface);border:1px solid var(--border);border-radius:6px;padding:6px 10px;font:600 11px var(--mono);color:var(--text);cursor:pointer;min-height:32px">★ Watchlist</button>
       <span style="font:10px var(--mono);color:var(--text-d)">Sort:</span>
       <select id="flag-sort" onchange="renderFlags()" style="background:var(--surface);border:1px solid var(--border);border-radius:6px;padding:6px 10px;font:11px var(--mono);color:var(--text);outline:none;-webkit-appearance:menulist;appearance:menulist;min-height:32px">
-        <option value="confidence-desc">Confidence ↓</option>
-        <option value="confidence-asc">Confidence ↑</option>
+        <option value="confidence-desc">Legacy heuristic ↓</option>
+        <option value="confidence-asc">Legacy heuristic ↑</option>
         <option value="date-desc" selected>Newest first</option>
         <option value="severity">Most critical first</option>
         <option value="date-asc">Oldest first</option>
@@ -599,8 +600,8 @@ a.brief-source-chip:hover{color:var(--text-s);border-color:var(--border-hi)}
 
     <!-- Row 6: Confidence Distribution -->
     <div style="background:var(--surface);border-radius:10px;padding:14px;margin-bottom:16px">
-      <div style="font:600 10px var(--mono);color:var(--text-d);text-transform:uppercase;letter-spacing:.06em;margin-bottom:10px">Intelligence Confidence Levels</div>
-      <p style="font-size:10px;color:var(--text-xd);margin-bottom:10px">How confident is each flag? Higher confidence = stronger evidence chain.</p>
+      <div style="font:600 10px var(--mono);color:var(--text-d);text-transform:uppercase;letter-spacing:.06em;margin-bottom:10px">Recorded evidence status</div>
+      <p style="font-size:10px;color:var(--text-xd);margin-bottom:10px">Counts distinguish recorded lifecycle reviews, unreviewed source references, and missing evidence.</p>
       <div id="dash-confidence"></div>
     </div>
 
@@ -1316,7 +1317,7 @@ const FLAG_META = {
   cost_analysis:     {label:"Cost Analysis",badge:"badge-warning",sev:"warning",icon:"◈"},
   diversion_risk:    {label:"Diversion Risk",badge:"badge-red",sev:"critical",icon:"⚠"},
   contract_signal:   {label:"Contract Signal",badge:"badge-blue",sev:"info",icon:"★"},
-  prediction:        {label:"Prediction",badge:"badge-purple",sev:"prediction",icon:"◎"},
+  prediction:        {label:"Unregistered hypothesis",badge:"badge-purple",sev:"prediction",icon:"◎"},
   correlation:       {label:"Correlation",badge:"badge-cyan",sev:"info",icon:"⟐"},
   grayzone:          {label:"Gray Zone",badge:"badge-red",sev:"critical",icon:"🔒"},
   grayzone_xref:     {label:"Gray Zone Cross-Ref",badge:"badge-warning",sev:"warning",icon:"🔗"},
@@ -1653,7 +1654,7 @@ async function loadData() {
   //   Predictions tab → LLM synthesis from intel articles
   //   Brief tab   → brief_generator.py picks top 2-3 predictions inline
   document.getElementById("flag-total-count").textContent = FLAGS.length;
-  var _savedTab = typeof activeTab !== "undefined" ? activeTab : "brief";
+  var _savedTab = location.hash.startsWith('#flag=') ? 'flags' : typeof activeTab !== "undefined" ? activeTab : "brief";
   renderAll();
   // Data transparency footer
   const existingFooter = flagList.querySelector('.flags-transparency-footer');
@@ -1661,17 +1662,11 @@ async function loadData() {
     const footer = document.createElement('div');
     footer.className = 'flags-transparency-footer';
     footer.style.cssText = 'margin-top:16px;padding:10px 12px;background:var(--surface);border-radius:8px;font:400 10px var(--mono);color:var(--text-d);line-height:1.6;border:1px solid var(--border)';
-    // Buckets match the published evidence-tier lexicon (/lexicon/) — keep in sync
-    const primary = FLAGS.filter(f => (f.confidence||0) >= 0.9).length;
-    const strong  = FLAGS.filter(f => (f.confidence||0) >= 0.8 && (f.confidence||0) < 0.9).length;
-    const analytical = FLAGS.filter(f => (f.confidence||0) >= 0.6 && (f.confidence||0) < 0.8).length;
-    const signal = FLAGS.filter(f => (f.confidence||0) < 0.6).length;
     footer.innerHTML = `<span style="color:var(--text-s);font-weight:600">Data basis:</span> `
       + `${FLAGS.length} flags from parts-db + grayzone + procurement analysis `
-      + `(${primary} primary source · ${strong} strong inference · ${analytical} analytical · ${signal} signal). `
-      + `LLM predictions are in the 🔮 Predictions tab. `
-      + `<span style="color:var(--amber)">Confidence scores reflect evidence quality, not statistical probability</span> `
-      + `— <a href="/lexicon/" target="_blank" rel="noopener" style="color:var(--text-s);text-decoration:underline">estimative-language reference</a>.`;
+      + `(${PatternsFlagEvidence.summary(FLAGS)}). `
+      + `Flag hypotheses are unregistered. Legacy scores are uncalibrated ranking metadata. `
+      + `<a href="/forecast-accountability/" style="color:var(--text-s);text-decoration:underline">Forecast registration and review</a>.`;
     flagList.appendChild(footer);
   }
 
@@ -2272,7 +2267,7 @@ function renderFilters() {
   // Severity row
   const c = document.getElementById("severity-filters");
   const sevs = ["critical","warning","info","prediction","high"];
-  const sevLabels = {critical:"Critical",warning:"Warning",info:"Info",prediction:"Prediction",high:"High"};
+  const sevLabels = {critical:"Critical",warning:"Warning",info:"Info",prediction:"Hypothesis",high:"High"};
   c.innerHTML = sevs.map(s => {
     const count = FLAGS.filter(f => f.severity === s || (FLAG_META[f.flag_type]||{}).sev === s).length;
     if (count === 0) return "";
@@ -2416,23 +2411,21 @@ function getGroupMeta(key, flags) {
   const labels = {gz:'Gray Zone', comp:'Component', mfg:'Manufacturer', corr:'Correlation', geo:'Region/Country', cascade:'Supply Chain', prog:'Program', type:'Category'};
   
   const sevCounts = {critical:0, warning:0, info:0, high:0};
-  let maxConf = 0;
   flags.forEach(f => {
     const sev = f.severity || (FLAG_META[f.flag_type]||{}).sev || 'info';
     if (sevCounts[sev] !== undefined) sevCounts[sev]++;
-    maxConf = Math.max(maxConf, f.confidence || 0);
   });
   
   const topSev = sevCounts.critical > 0 ? 'critical' : sevCounts.high > 0 ? 'high' : sevCounts.warning > 0 ? 'warning' : 'info';
   const sevColor = topSev === 'critical' ? 'var(--red)' : topSev === 'high' ? 'var(--orange)' : topSev === 'warning' ? 'var(--warning)' : 'var(--cyan)';
   
-  return { icon: icons[prefix] || '📋', label: labels[prefix] || 'Other', name, sevCounts, topSev, sevColor, maxConf };
+  return { icon: icons[prefix] || '📋', label: labels[prefix] || 'Other', name, sevCounts, topSev, sevColor };
 }
 
 // ── Flag list ──
 function renderFlags() {
   const list = document.getElementById("flag-list");
-  let flags = FLAGS;
+  let flags = [...FLAGS];
 
   // Severity filter (hide-based)
   if (hiddenSeverities.size > 0) flags = flags.filter(f => {
@@ -2541,7 +2534,7 @@ function renderFlags() {
               <span style="font:10px var(--mono);color:var(--text-d);background:var(--surface);padding:1px 6px;border-radius:4px">${gFlags.length}</span>
               ${meta.sevCounts.critical ? `<span class="badge badge-red" style="font-size:10px">${meta.sevCounts.critical} critical</span>` : ''}
               ${meta.sevCounts.warning ? `<span class="badge badge-warning" style="font-size:10px">${meta.sevCounts.warning} warning</span>` : ''}
-              ${meta.maxConf >= 0.9 ? `<span class="badge" style="background:rgba(34,197,94,.1);color:var(--green);font-size:10px">primary source</span>` : meta.maxConf >= 0.8 ? `<span class="badge" style="background:rgba(6,182,212,.1);color:var(--cyan);font-size:10px">strong inference</span>` : `<span class="badge" style="background:var(--surface);color:var(--text-d);font-size:10px">analytical</span>`}
+              <span style="font-size:10px;color:var(--text-d)">${PatternsFlagEvidence.summary(gFlags)}</span>
             </div>
             <div style="font-size:10px;color:var(--text-d);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(topTitle)}${gFlags.length > 1 ? ` (+${gFlags.length-1} more)` : ''}</div>
           </div>
@@ -2557,7 +2550,7 @@ function renderFlags() {
                 <span class="sev sev-${esc(sev)}"></span>
                 <div style="flex:1;min-width:0">
                   <div class="title">${wlStar(f)}${esc_(f.title)}${lcBadge(f)}</div>
-                  <div style="font-size:10px;color:var(--text-d);margin-top:1px">${esc(sev)} · ${Math.round((f.confidence||0)*100)}%</div>
+                  <div style="font-size:10px;color:var(--text-d);margin-top:1px">${esc(sev)} · ${PatternsFlagEvidence.badge(f)}</div>
                 </div>
               </div>`;
             }).join("")}
@@ -2597,8 +2590,6 @@ function renderFlags() {
   
   list.innerHTML = flags.map(f => {
     const m = FLAG_META[f.flag_type] || {label:"Unknown",badge:"badge-amber",sev:"info",icon:"?"};
-    const conf = Math.round((f.confidence||0)*100);
-    const confBadge = conf > 85 ? "badge-green" : "badge-amber";
     const d = f.timestamp ? new Date(f.timestamp) : null;
     const date = (d && !isNaN(d)) ? d.toLocaleDateString() : '';
     const regions = extractRegions(f);
@@ -2609,7 +2600,7 @@ function renderFlags() {
         <div class="meta">
           <span class="badge ${m.badge}">${m.icon} ${m.label}</span>
           <span style="font:10px var(--mono);color:var(--text-d)">${date}</span>
-          <span class="badge ${confBadge}">${conf}%</span>
+          ${PatternsFlagEvidence.badge(f)}
           ${regionTags}
         </div>
         <div class="title">${wlStar(f)}${esc_(f.title)}${lcBadge(f)}</div>
@@ -2673,8 +2664,8 @@ function renderDecisionSupportPanel(flag) {
     ${links ? `<div class="decision-label" style="margin-top:9px">Affected Forge records and tools</div><div class="decision-links">${links}</div>` : ''}
     <div class="decision-evidence">
       <span>${Number(stats.reference_count || 0)} source references</span>
-      <span>${Number(stats.unique_source_count || 0)} unique sources</span>
-      <span>${Number(stats.primary_reference_count || 0)} primary references</span>
+      <span>${Number(stats.unique_source_count || 0)} distinct reference URLs</span>
+      <span>${Number(stats.primary_reference_count || 0)} references marked primary in source metadata</span>
       <span>${esc_((result.kinds || ['general']).join(' · '))}</span>
     </div>
     <div class="decision-limit">${limitations}</div>
@@ -2688,7 +2679,6 @@ function renderFlagDetail() {
   const targetHash = '#flag=' + encodeURIComponent(f.id);
   if (location.hash !== targetHash) history.pushState(null, '', targetHash);
   const m = FLAG_META[f.flag_type] || {};
-  const conf = Math.round((f.confidence||0)*100);
   const _d = f.timestamp ? new Date(f.timestamp) : null;
   const date = (_d && !isNaN(_d)) ? _d.toLocaleDateString() : '';
   document.getElementById("flag-modal-meta").innerHTML =
@@ -2698,32 +2688,20 @@ function renderFlagDetail() {
   document.getElementById("flag-modal-title").textContent = f.title || "";
   let html = "";
   html += `<div style="font:400 12px var(--font);color:var(--text-s);line-height:1.6;margin-bottom:12px">${esc_(f.detail)}</div>`;
-  // Evidence tier: tells user what the confidence number actually means
-  const evidenceTier = conf >= 90 ? {label:"PRIMARY SOURCE", color:"var(--green)", desc:"Verified from government records, teardown reports, or direct documentation"}
-    : conf >= 80 ? {label:"STRONG INFERENCE", color:"var(--cyan)", desc:"Multiple corroborating sources; conclusion is well-supported"}
-    : conf >= 60 ? {label:"ANALYTICAL", color:"var(--amber)", desc:"Derived from parts-db and supply chain analysis; reflects our methodology"}
-    : {label:"SIGNAL", color:"var(--text-d)", desc:"Early indicator; treat as a lead to investigate, not a conclusion"};
-  html += `<div style="background:var(--surface);border-radius:6px;padding:7px 10px;margin-bottom:10px;border-left:2px solid ${evidenceTier.color}">
-    <div style="display:flex;align-items:center;gap:6px;margin-bottom:2px">
-      <span style="font:700 10px var(--mono);color:${evidenceTier.color}">${evidenceTier.label}</span>
-      <span style="font:700 11px var(--mono);color:${evidenceTier.color}">${conf}%</span>
-      <a href="/lexicon/" target="_blank" rel="noopener" style="font:500 9px var(--mono);color:var(--text-xd);margin-left:auto;text-decoration:underline;text-decoration-color:var(--border-hi)">what tiers mean ↗</a>
-    </div>
-    <div style="font:400 10px var(--font);color:var(--text-d);line-height:1.4">${evidenceTier.desc}</div>
-  </div>`;
+  html += PatternsFlagEvidence.panel(f);
   html += `<div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-bottom:12px">
     ${f.correlation_r ? `<span class="badge badge-cyan" style="font-size:10px">r=${esc(f.correlation_r)}${f.correlation_lag_weeks?" · "+esc(f.correlation_lag_weeks)+"wk lag":""}</span>` : ""}
     ${(f.data_sources||[]).map(s=>`<span class="badge" style="background:var(--surface);color:var(--text-d);font-size:10px">${esc_(String(s).replace(/_/g," "))}</span>`).join("")}
   </div>`;
   if (f.prediction) {
     html += `<div style="background:var(--purple-d);border:1px solid #a78bfa22;border-radius:6px;padding:7px 10px;margin-bottom:8px">
-      <div style="font:600 10px var(--font);color:var(--purple);text-transform:uppercase;letter-spacing:.06em;margin-bottom:2px">◎ Prediction</div>
+      <div style="font:600 10px var(--font);color:var(--purple);text-transform:uppercase;letter-spacing:.06em;margin-bottom:2px">◎ Unregistered hypothesis</div>
       <div style="font-size:11px;color:var(--text-s);line-height:1.5">${esc_(f.prediction)}</div>
     </div>`;
   }
   if (f.sources && f.sources.length) {
     const tc2 = {primary:"var(--green)",reporting:"var(--blue)",aggregated:"var(--cyan)",derived:"var(--amber)",estimated:"var(--orange)",unknown:"var(--text-d)"};
-    html += `<div style="margin-top:10px"><div style="font:600 10px var(--font);color:var(--text-d);text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px">Sources</div><div style="display:flex;flex-direction:column;gap:4px">`;
+    html += `<div style="margin-top:10px"><div style="font:600 10px var(--font);color:var(--text-d);text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px">Source references · types supplied by source metadata</div><div style="display:flex;flex-direction:column;gap:4px">`;
     f.sources.forEach(s => {
       const tc = tc2[s.type] || "var(--text-d)";
       html += `<div style="background:var(--surface);border-radius:6px;padding:7px 9px;border-left:2px solid ${tc}">
@@ -3924,29 +3902,8 @@ function renderDashboard() {
     </div>
   `).join("");
 
-  // ── Confidence Distribution ──
-  const confBuckets = {'90-100%':0, '80-89%':0, '70-79%':0, '60-69%':0, '<60%':0};
-  FLAGS.forEach(f => {
-    const c = Math.round((f.confidence||0)*100);
-    if (c >= 90) confBuckets['90-100%']++;
-    else if (c >= 80) confBuckets['80-89%']++;
-    else if (c >= 70) confBuckets['70-79%']++;
-    else if (c >= 60) confBuckets['60-69%']++;
-    else confBuckets['<60%']++;
-  });
-  const confColors = {'90-100%':'var(--green)', '80-89%':'var(--cyan)', '70-79%':'var(--amber)', '60-69%':'var(--orange)', '<60%':'var(--red)'};
-  const maxConf = Math.max(...Object.values(confBuckets));
-  document.getElementById("dash-confidence").innerHTML = Object.entries(confBuckets).map(([b,c]) => `
-    <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">
-      <span style="font:10px var(--mono);color:${confColors[b]};width:55px;text-align:right">${b}</span>
-      <div style="flex:1;background:var(--card);border-radius:4px;height:22px;overflow:hidden">
-        <div style="width:${c ? (c/maxConf)*100 : 0}%;height:100%;background:${confColors[b]}20;border-right:2px solid ${confColors[b]};display:flex;align-items:center;padding-left:6px;min-width:${c?25:0}px">
-          <span style="font:600 10px var(--mono);color:${confColors[b]}">${c}</span>
-        </div>
-      </div>
-      <span style="font-size:10px;color:var(--text-xd);width:30px">${c ? Math.round(c/FLAGS.length*100)+'%' : ''}</span>
-    </div>
-  `).join("");
+  // Counts of recorded evidence states; legacy scores do not establish support.
+  document.getElementById("dash-confidence").innerHTML = PatternsFlagEvidence.distribution(FLAGS);
 }
 
 const REGION_DATA = {
@@ -4274,7 +4231,6 @@ function selectRegion(slug) {
       <div id="region-flags-list" style="display:flex;flex-direction:column;gap:3px">
         ${regionFlags.map(f => {
           const sevColor = f.severity === 'critical' ? 'var(--red)' : f.severity === 'warning' ? 'var(--warning)' : 'var(--cyan)';
-          const conf = Math.round((f.confidence||0)*100);
           const detail_text = (f.detail||'').replace(/"/g,'&quot;').replace(/</g,'&lt;');
           const sources = (f.sources||[]).map(s => 
             typeof s === 'string' ? s : (s.url || s.name || '')
@@ -4287,13 +4243,13 @@ function selectRegion(slug) {
             <div class="region-flag-header" style="padding:7px 9px;display:flex;align-items:center">
               <div style="flex:1;min-width:0">
                 <div style="font-size:11px;font-weight:600;color:var(--text);line-height:1.3">${esc(f.title.substring(0,80))}${f.title.length>80?'…':''}</div>
-                <div style="font-size:10px;color:var(--text-d);margin-top:2px">${esc(f.severity)} · ${conf >= 90 ? '<span style=\'color:var(--green)\'>primary source</span>' : conf >= 80 ? '<span style=\'color:var(--cyan)\'>strong inference</span>' : conf >= 60 ? '<span style=\'color:var(--amber)\'>analytical</span>' : '<span style=\'color:var(--text-d)\'>signal</span>'} · ${conf}%</div>
+                <div style="font-size:10px;color:var(--text-d);margin-top:2px">${esc(f.severity)} · ${PatternsFlagEvidence.badge(f)}</div>
               </div>
               <span class="flag-chevron" style="color:var(--text-d);font-size:14px;margin-left:6px;transition:transform .2s">▸</span>
             </div>
             <div class="region-flag-body" style="display:none;padding:0 9px 9px">
               <div style="font-size:10px;color:var(--text-s);line-height:1.5;margin-bottom:6px">${esc_(f.detail||'No additional detail.')}</div>
-              ${f.prediction ? `<div style="background:var(--purple-d);border:1px solid #a78bfa22;border-radius:4px;padding:5px 8px;margin-bottom:6px"><div style="font:600 10px var(--font);color:var(--purple);text-transform:uppercase;margin-bottom:2px">Prediction</div><div style="font-size:10px;color:var(--text-s);line-height:1.4">${esc_(f.prediction)}</div></div>` : ''}
+              ${f.prediction ? `<div style="background:var(--purple-d);border:1px solid #a78bfa22;border-radius:4px;padding:5px 8px;margin-bottom:6px"><div style="font:600 10px var(--font);color:var(--purple);text-transform:uppercase;margin-bottom:2px">Unregistered hypothesis</div><div style="font-size:10px;color:var(--text-s);line-height:1.4">${esc_(f.prediction)}</div></div>` : ''}
               ${sourceHtml ? `<div style="margin-top:4px"><div style="font:600 10px var(--mono);color:var(--text-d);margin-bottom:3px">SOURCES</div>${sourceHtml}</div>` : ''}
             </div>
           </div>`;
@@ -6506,10 +6462,10 @@ var _explorerFiltered = [];   // rows after search filter
 const EXPLORER_DATASETS = {
   flags: {
     label: 'Flags',
-    loader: async () => FLAGS,
-    cols: ['id','flag_type','severity','confidence','title','detail','prediction','platform_id','component_id','timestamp'],
+    loader: async () => FLAGS.map(({confidence, prediction, ...row}) => ({...row, legacy_heuristic_score: confidence, unregistered_hypothesis: prediction})),
+    cols: ['id','flag_type','severity','legacy_heuristic_score','title','detail','unregistered_hypothesis','platform_id','component_id','timestamp'],
     fmt: {
-      confidence: v => v != null ? Math.round(v*100)+'%' : '',
+      legacy_heuristic_score: v => PatternsFlagEvidence.legacyScore({confidence:v}),
       timestamp: v => (v||'').slice(0,10),
     }
   },
@@ -6792,14 +6748,14 @@ function exportFlagsCSV() {
   var flags = getExportFlags();
   // Proper CSV quoting: wrap in double quotes, double any embedded quotes
   var q = function(v) { return '"' + (v==null?'':v).toString().replace(/"/g, '""') + '"'; };
-  var header = 'id,timestamp,flag_type,severity,confidence,title,entity,detail,prediction,platform_id,component_id,status,data_sources,sources';
+  var header = 'id,timestamp,flag_type,severity,legacy_heuristic_score,title,entity,detail,unregistered_hypothesis,platform_id,component_id,status,data_sources,sources';
   var rows = flags.map(function(f) {
     return [
       q(f.id),
       q((f.timestamp||'').slice(0,19).replace('T',' ')),
       q(f.flag_type),
       q(f.severity || (FLAG_META[f.flag_type]||{}).sev || ''),
-      q(Math.round((f.confidence||0)*100)+'%'),
+      q(PatternsFlagEvidence.legacyScore(f)),
       q(f.title),
       q(f.entity),
       q(f.detail),
@@ -6857,6 +6813,8 @@ ${esc(e.stack||e.message||e)}</div>`;
 
 // Listen for hash changes (back/forward)
 function openLinkedFlag(hash) {
+  const flagsTab = document.querySelector('.tab[data-tab="flags"]');
+  if (flagsTab) flagsTab.click();
   let id;
   try { id = decodeURIComponent(hash.slice(6)); } catch { id = ''; }
   const matches = FLAGS.filter(flag => String(flag.id) === id);
@@ -7506,7 +7464,7 @@ function updateSliderLabel() {
 loadData();
 // Restore last active tab from sessionStorage
 (function(){
-  var saved = sessionStorage.getItem('patterns_tab');
+  var saved = location.hash.startsWith('#flag=') ? 'flags' : sessionStorage.getItem('patterns_tab');
   if (saved && saved !== 'brief') {
     var btn = document.querySelector('.tab[data-tab="'+saved+'"]');
     var panel = document.getElementById('panel-'+saved);
