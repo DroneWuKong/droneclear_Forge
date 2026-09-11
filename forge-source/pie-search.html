@@ -95,9 +95,9 @@ h1{font:700 24px var(--mono);color:#22c55e;letter-spacing:-0.02em;margin-bottom:
   <div class="eyebrow">uas-patterns · PIE intelligence</div>
   <h1>PIE Search</h1>
   <p class="tagline">
-    One box across everything the pipeline produces — <code>flags</code>, <code>predictions</code>,
+    Search the published records — <code>flags</code>, <code>predictions</code>,
     <code>threat actors</code>, <code>entities</code>, and the <code>intel article</code> corpus.
-    Multi-term AND match, case-insensitive, indexed client-side on load.
+    Shared deterministic ranking, exact record links, and bounded results from the published research snapshot.
     Use <a href="/ask-pie/">Ask PIE</a> for a cited evidence packet with match reasons, coverage, and limitations.
   </p>
 
@@ -120,281 +120,39 @@ h1{font:700 24px var(--mono);color:#22c55e;letter-spacing:-0.02em;margin-bottom:
   <p class="footnote" id="foot">Source: <code>/api/data</code> — loading datasets…</p>
 </main>
 
+<script src="/static/ask-pie-retrieval.js"></script>
 <script>
-function esc(s){ return String(s==null?'':s).replace(/[&<>"']/g, function(c){ return ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'})[c]; }); }
-
-// Only allow http/https URLs from data; anything else falls back.
-function safeUrl(u, fallback){
-  var s = String(u == null ? '' : u).trim();
-  if(/^https?:\/\//i.test(s)) return s;
-  return fallback;
-}
-
-var INDEX = [];                 // {type,label,sub,text,href,external}
-var LOADED = {};                // dataset name -> record count (or -1 = failed)
-var ACTIVE = 'all';
-var MAX_PER_TYPE = 50;
-
-var TYPE_META = {
-  flag:       {label:'Flags',       page:'/patterns/'},
-  prediction: {label:'Predictions', page:'/patterns/'},
-  actor:      {label:'Actors',      page:'/actors/'},
-  entity:     {label:'Entities',    page:'/entity-graph/'},
-  article:    {label:'Articles',    page:'/intel/'}
-};
-var TYPE_ORDER = ['flag','prediction','actor','entity','article'];
-
-// ── fetch helpers (same unwrap pattern as the other lens pages) ──────────────
-function getData(type){
-  return fetch('/api/data?type=' + type)
-    .then(function(r){ return r.ok ? r.json() : null; })
-    .then(function(e){ return e && e.data !== undefined ? e.data : e; })
-    .then(function(e){ return e && e.data !== undefined ? e.data : e; })
-    .catch(function(){ return null; });
-}
-// try primary type name; if empty, fall back to alternate
-function getEither(primary, alt){
-  return getData(primary).then(function(d){
-    if(d != null) return d;
-    return alt ? getData(alt) : null;
-  });
-}
-
-function day(s){ return String(s == null ? '' : s).slice(0, 10); }
-function pct(v){ return v == null || isNaN(v) ? '—' : Math.round(Number(v) * 100) + '%'; }
-
-// ── indexers: one per dataset, each returns number of records added ──────────
-function indexFlags(d){
-  var arr = Array.isArray(d) ? d : (d && Array.isArray(d.flags) ? d.flags : null);
-  if(!arr) return -1;
-  arr.forEach(function(f){
-    var sev = String(f.severity || '').toLowerCase();
-    var sub = '<span class="sev-' + esc(sev) + '">' + esc(sev || 'flag') + '</span>'
-      + (f.date ? ' · ' + esc(day(f.date)) : '')
-      + (f.entity ? ' · ' + esc(f.entity) : '')
-      + (f.category ? ' · ' + esc(f.category) : '');
-    INDEX.push({
-      type: 'flag',
-      label: f.title || f.id || 'Untitled flag',
-      sub: sub,
-      text: [f.title, f.id, f.entity, f.category, f.flag_type, f.severity, f.detail, f.prediction].join(' ').toLowerCase(),
-      href: '/patterns/'
-    });
-  });
-  return arr.length;
-}
-
-function indexPredictions(d){
-  var arr = Array.isArray(d) ? d : (d && Array.isArray(d.predictions) ? d.predictions : null);
-  if(!arr) return -1;
-  arr.forEach(function(p){
-    var sub = 'P=' + pct(p.probability)
-      + (p.impact ? ' · impact ' + esc(p.impact) : '')
-      + (p.timeframe ? ' · ' + esc(p.timeframe) : '')
-      + (p.target_date ? ' · target ' + esc(day(p.target_date)) : '');
-    INDEX.push({
-      type: 'prediction',
-      label: p.event || p.id || 'Untitled prediction',
-      sub: sub,
-      text: [p.event, p.id, p.domain, p.timeframe, p.impact, (p.drivers || []).join(' ')].join(' ').toLowerCase(),
-      href: '/patterns/'
-    });
-  });
-  return arr.length;
-}
-
-function indexActors(d){
-  var arr = d && Array.isArray(d.actors) ? d.actors : (Array.isArray(d) ? d : null);
-  if(!arr) return -1;
-  arr.forEach(function(a){
-    var sub = 'activity/exposure ' + (a.threat_score != null ? Number(a.threat_score).toFixed(2) : '—')
-      + ' · ' + esc(a.article_mention_count != null ? a.article_mention_count : (a.incident_count != null ? a.incident_count : '?')) + ' article mentions'
-      + (a.last_seen ? ' · last ' + esc(day(a.last_seen)) : '');
-    INDEX.push({
-      type: 'actor',
-      label: a.actor || 'Unknown actor',
-      sub: sub,
-      text: [a.actor, (a.dominant_regions || []).join(' '), (a.top_drones || []).join(' '),
-             (a.undefended_ttps || []).join(' '), a.rationale].join(' ').toLowerCase(),
-      href: '/actors/'
-    });
-  });
-  return arr.length;
-}
-
-function indexEntities(d){
-  var map = d && d.entities && typeof d.entities === 'object' ? d.entities : null;
-  if(!map) return -1;
-  var n = 0;
-  Object.keys(map).forEach(function(k){
-    var e = map[k];
-    if(!e) return;
-    n++;
-    var bits = [];
-    if((e.parts || []).length) bits.push((e.parts || []).length + ' parts');
-    if((e.flags || []).length) bits.push((e.flags || []).length + ' flags');
-    if((e.articles || []).length) bits.push((e.articles || []).length + ' articles');
-    if((e.contracts || []).length) bits.push((e.contracts || []).length + ' contracts');
-    var tags = (e.tags || []).slice(0, 4).join(', ');
-    INDEX.push({
-      type: 'entity',
-      label: e.name || e.key || k,
-      sub: esc(bits.join(' · ') || 'no links') + (tags ? ' · ' + esc(tags) : ''),
-      text: [e.name, e.key, k, (e.tags || []).join(' '), (e.programs || []).join(' ')].join(' ').toLowerCase(),
-      href: '/entity-graph/'
-    });
-  });
-  return n;
-}
-
-function indexArticles(d){
-  var arr = Array.isArray(d) ? d : (d && Array.isArray(d.articles) ? d.articles : null);
-  if(!arr) return -1;
-  arr.forEach(function(a){
-    var ents = a.entities || {};
-    var url = safeUrl(a.url, '/intel/');
-    INDEX.push({
-      type: 'article',
-      label: a.title || a.aid || 'Untitled article',
-      sub: esc(day(a.pub_date) || '?') + (a.site ? ' · ' + esc(a.site) : '') + (a.aid ? ' · ' + esc(a.aid) : ''),
-      text: [a.title, a.summary, a.site, a.aid,
-             (ents.companies || []).join(' '), (ents.programs || []).join(' '), (ents.tags || []).join(' ')].join(' ').toLowerCase(),
-      href: url,
-      external: url !== '/intel/'
-    });
-  });
-  return arr.length;
-}
-
-// ── search + render ──────────────────────────────────────────────────────────
-function countsByType(records){
-  var c = {};
-  records.forEach(function(r){ c[r.type] = (c[r.type] || 0) + 1; });
-  return c;
-}
-
-function renderRow(r){
-  var href = esc(r.href);
-  var target = r.external ? ' target="_blank" rel="noopener noreferrer"' : '';
-  return '<a class="rrow" href="' + href + '"' + target + '>'
-    + '<span class="pill ' + esc(r.type) + '">' + esc(r.type) + '</span>'
-    + '<span class="body">'
-    +   '<span class="lbl">' + esc(r.label) + '</span>'
-    +   '<span class="sub">' + r.sub + '</span>'   // sub is pre-escaped piecewise above
-    + '</span>'
-    + '<span class="go">' + (r.external ? '↗' : '→') + '</span>'
-    + '</a>';
-}
-
-function renderIdle(){
-  var c = countsByType(INDEX);
-  var html = '<div class="stats">';
-  TYPE_ORDER.forEach(function(t){
-    html += '<div class="st"><span class="st-n">' + (c[t] || 0).toLocaleString() + '</span>'
-          + '<span class="st-l">' + esc(TYPE_META[t].label) + '</span></div>';
-  });
-  html += '</div>';
-  html += '<div class="empty"><span class="big">' + INDEX.length.toLocaleString() + ' records indexed</span>'
-        + 'Start typing to search — terms are ANDed, matching is case-insensitive substring.</div>';
-  document.getElementById('results').innerHTML = html;
-}
-
-function runSearch(){
-  var q = document.getElementById('q').value.trim().toLowerCase();
-  if(!q){ renderIdle(); return; }
-  var terms = q.split(/\s+/).filter(function(t){ return t.length > 0; });
-  var byType = {};
-  var total = 0;
-  INDEX.forEach(function(r){
-    if(ACTIVE !== 'all' && r.type !== ACTIVE) return;
-    for(var i = 0; i < terms.length; i++){
-      if(r.text.indexOf(terms[i]) === -1) return;
-    }
-    if(!byType[r.type]) byType[r.type] = [];
-    byType[r.type].push(r);
-    total++;
-  });
-
-  if(!total){
-    document.getElementById('results').innerHTML =
-      '<div class="empty"><span class="big">No matches for &ldquo;' + esc(q) + '&rdquo;</span>'
-      + 'Try fewer or shorter terms' + (ACTIVE !== 'all' ? ', or switch the filter back to All' : '') + '.</div>';
-    return;
+(function() {
+  const api=window.AskPieRetrieval, esc=api.htmlEscape;
+  const input=document.getElementById('q'), node=document.getElementById('results'), foot=document.getElementById('foot');
+  const params=new URL(location.href).searchParams;
+  let active=params.get('record_type') || 'all', offset=0, generation=0, timer, controller;
+  input.value=params.get('q') || '';
+  async function render(updateUrl) {
+    const serial=++generation;
+    if(controller) controller.abort(); controller=new AbortController();
+    document.querySelectorAll('[data-type]').forEach(button => button.classList.toggle('on',button.dataset.type===active));
+    if(updateUrl) { const url=new URL(location.href); url.searchParams.set('q',input.value.trim()); url.searchParams.set('record_type',active); history.replaceState(null,'',url); }
+    foot.textContent='Searching this publication snapshot...';
+    try {
+      const result=await api.researchRequest({q:input.value.trim(),record_type:active,offset:String(offset),limit:'48'},controller.signal);
+      if(serial!==generation)return;
+      const data=result.data;
+      const ranked=data.ranked || (data.records || []).map(record => ({record,ranking:{direct:false,reason:['latest dated records']}}));
+      document.querySelectorAll('[data-count]').forEach(span => span.textContent=' '+Number(data.counts?.[span.dataset.count] || 0).toLocaleString());
+      node.innerHTML=ranked.length ? ranked.map(({record,ranking}) => `<a class="rrow" href="${esc(record.destination)}"><span class="pill ${esc(record.type)}">${esc(record.type)}</span><span class="body"><span class="lbl">${esc(record.title)}</span><span class="sub">${esc(record.date || 'Date not reported')} · ${esc(record.source || 'Source not labeled')} · ${record.citations.length} references</span><span class="sub">${esc(ranking.reason.slice(0,3).join(' · '))}</span></span><span class="go">→</span></a>`).join('') : '<div class="empty">No matching records in this snapshot. Missing reporting is not absence.</div>';
+      const total=Number(data.total_matches || 0);
+      node.innerHTML+=`<div class="chips"><button class="chip" id="previous" ${offset===0?'disabled':''}>Previous</button><span>${total?offset+1:0}–${Math.min(offset+ranked.length,total)} of ${total}</span><button class="chip" id="next" ${offset+ranked.length>=total?'disabled':''}>Next</button></div><p><a href="/ask-pie/?q=${encodeURIComponent(input.value.trim())}">Build and save an evidence packet →</a></p>`;
+      document.getElementById('previous').onclick=() => {offset=Math.max(0,offset-48);render(false);};
+      document.getElementById('next').onclick=() => {offset+=48;render(false);};
+      foot.textContent=`Snapshot ${data.meta?.input_revision || 'unknown'} · ${data.meta?.availability || 'availability unknown'} · ${result.source}. Index built ${data.meta?.generated_at || 'unknown'}; source evidence dates are shown per record. Ranking and dataset scope match Ask PIE.`;
+    } catch(error) {if(serial===generation && error.name!=='AbortError'){node.innerHTML='<div class="empty">Research is unavailable. No empty-result conclusion can be drawn.</div>';foot.textContent=error.message;}}
   }
-
-  var html = '';
-  TYPE_ORDER.forEach(function(t){
-    var hits = byType[t];
-    if(!hits || !hits.length) return;
-    var shown = hits.slice(0, MAX_PER_TYPE);
-    html += '<div class="group-lbl">' + esc(TYPE_META[t].label)
-          + ' <span class="count-badge">' + hits.length.toLocaleString()
-          + (hits.length > MAX_PER_TYPE ? ' · showing ' + MAX_PER_TYPE : '') + '</span></div>';
-    html += shown.map(renderRow).join('');
-  });
-  document.getElementById('results').innerHTML = html;
-}
-
-// debounce 150ms
-var _deb = null;
-document.getElementById('q').addEventListener('input', function(){
-  if(_deb) clearTimeout(_deb);
-  _deb = setTimeout(runSearch, 150);
-});
-
-// filter chips
-document.getElementById('chips').addEventListener('click', function(ev){
-  var btn = ev.target.closest ? ev.target.closest('.chip') : null;
-  if(!btn) return;
-  ACTIVE = btn.getAttribute('data-type') || 'all';
-  var chips = document.querySelectorAll('.chip');
-  for(var i = 0; i < chips.length; i++){
-    chips[i].classList.toggle('on', chips[i] === btn);
-  }
-  runSearch();
-});
-
-// ── load all five datasets in parallel; failures just drop out of the index ──
-Promise.all([
-  getEither('flags', 'pie_flags'),
-  getEither('predictions', 'pie_predictions'),
-  getData('threat_scores'),
-  getData('entity_graph'),
-  getData('intel_articles')
-]).then(function(arr){
-  LOADED.flags         = indexFlags(arr[0]);
-  LOADED.predictions   = indexPredictions(arr[1]);
-  LOADED.threat_scores = indexActors(arr[2]);
-  LOADED.entity_graph  = indexEntities(arr[3]);
-  LOADED.intel_articles= indexArticles(arr[4]);
-
-  // chip count badges
-  var c = countsByType(INDEX);
-  var chipCounts = {flag:c.flag, prediction:c.prediction, actor:c.actor, entity:c.entity, article:c.article};
-  Object.keys(chipCounts).forEach(function(t){
-    var el = document.querySelector('[data-count="' + t + '"]');
-    if(el) el.textContent = chipCounts[t] ? ' ' + chipCounts[t].toLocaleString() : '';
-  });
-
-  // footer: which datasets made it in
-  var parts = Object.keys(LOADED).map(function(k){
-    return LOADED[k] >= 0
-      ? '<span class="ok">' + esc(k) + '</span> <code>' + LOADED[k].toLocaleString() + '</code>'
-      : '<span class="bad">' + esc(k) + ' unavailable</span>';
-  });
-  document.getElementById('foot').innerHTML =
-    'Indexed from <code>/api/data</code>: ' + parts.join(' · ')
-    + '. Failed datasets are simply omitted from the index.';
-
-  if(INDEX.length){
-    renderIdle();
-    runSearch(); // in case the user typed while loading
-  } else {
-    document.getElementById('results').innerHTML =
-      '<div class="empty"><span class="big">Nothing to index</span>'
-      + 'None of the PIE datasets loaded — check the <code>/api/data</code> worker allowlist.</div>';
-  }
-});
+  document.querySelectorAll('[data-type]').forEach(button => button.onclick=() => {active=button.dataset.type;offset=0;render(true);});
+  input.addEventListener('input',() => {clearTimeout(timer);offset=0;timer=setTimeout(() => render(true),250);});
+  window.addEventListener('popstate',() => {const p=new URL(location.href).searchParams;input.value=p.get('q')||'';active=p.get('record_type')||'all';offset=0;render(false);});
+  render(false);
+})();
 </script>
 </body>
 </html>

@@ -33,6 +33,8 @@ const NO_CACHE = {
 // A 72-hour limit tolerates a missed daily run without allowing a weeks-old
 // analytic ranking or event grouping to appear current.
 const FRESHNESS_LIMIT_MS = new Map([
+  ['daily_changes', 72 * 60 * 60 * 1000],
+  ['research_index', 72 * 60 * 60 * 1000],
   ['adversary_bom', 72 * 60 * 60 * 1000],
   ['component_mirroring_index', 72 * 60 * 60 * 1000],
   ['sanctions_evasion_graph', 72 * 60 * 60 * 1000],
@@ -58,6 +60,10 @@ function resp(data, status = 200, extraHeaders = {}) {
 }
 
 function freshnessOf(data, type, source) {
+  if (type === 'daily_changes' && Array.isArray(data)) {
+    const dates = [...new Set(data.map(row => row && row.last_verified_at))];
+    data = {generated_at:data.length && dates.length === 1 && typeof dates[0] === 'string' ? dates[0] : null};
+  }
   return { ...freshnessPolicy.inspect(data, FRESHNESS_LIMIT_MS.get(type) ?? null), source };
 }
 
@@ -135,6 +141,8 @@ const DATASETS = new Set([
   'dataset_catalog',
   'source_coverage_matrix',
   'data_quality_score',
+  'research_index',
+  'daily_changes',
   'intel_articles',
   'intel_companies',
   'intel_platforms',
@@ -197,6 +205,8 @@ const PIE_OUTPUTS_KEYS = new Set([
   'gap_analysis_latest',
   'entity_graph',
   'forge_intel',
+  'research_index',
+  'daily_changes',
   'intel_articles',
   'intel_companies',
   'intel_platforms',
@@ -244,6 +254,8 @@ export default {
 
     const url = new URL(request.url);
     const type = url.searchParams.get('type') || '';
+
+    if (request.method === 'POST' && type === 'daily_changes') return resp({error:'daily_changes is a read-only flags projection'}, 405);
 
     if (request.method === 'POST') {
       const adminKey = env.FORGE_BLOBS_ADMIN_KEY;
@@ -340,6 +352,7 @@ export default {
     }
 
     if (request.method !== 'GET' && request.method !== 'HEAD') return resp({ error: 'GET or POST required' }, 405);
+    const loadType = type === 'daily_changes' ? 'flags' : type;
     const failures = [];
     let rejected = null;
     async function candidate(raw, source) {
@@ -353,14 +366,14 @@ export default {
       return null;
     }
     try {
-      const kv = PIE_OUTPUTS_KEYS.has(type) ? env.PIE_OUTPUTS : env.PIE_DB;
-      const raw = await kv?.get(type);
+      const kv = PIE_OUTPUTS_KEYS.has(loadType) ? env.PIE_OUTPUTS : env.PIE_DB;
+      const raw = await kv?.get(loadType);
       if (raw) {
         const result = await candidate(raw, 'kv');
         if (result) return result;
       }
     } catch { failures.push('kv:unavailable'); }
-    for (const tryPath of [`/${type}.json`, `/static/${type}.json`]) {
+    for (const tryPath of [`/${loadType}.json`, `/static/${loadType}.json`]) {
       try {
         const staticUrl = new URL(request.url);
         staticUrl.pathname = tryPath;
