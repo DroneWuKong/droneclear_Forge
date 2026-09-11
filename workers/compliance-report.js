@@ -5,7 +5,11 @@
  * Generates PIE intelligence compliance reports via Anthropic API.
  */
 
+import claudeProxy from './claude-proxy.js';
+import { authorize, readBoundedJson, json } from './proxy-policy.mjs';
+
 const CORS = {
+  'Cache-Control': 'no-store',
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Methods': 'POST, OPTIONS',
   'Access-Control-Allow-Headers': 'Content-Type, X-Proxy-Secret',
@@ -44,19 +48,20 @@ function scoreEntities(flags) {
 
 export default {
   async fetch(req, env) {
-    if (req.method === 'OPTIONS') return new Response(null, { status: 204, headers: CORS });
-    if (req.method !== 'POST') {
-      return new Response(JSON.stringify({ error: 'POST required' }), { status: 405, headers: CORS });
-    }
-
-    const proxySecret = env.WINGMAN_PROXY_SECRET;
-    const clientSecret = req.headers.get('x-proxy-secret') || '';
-    if (!proxySecret || clientSecret !== proxySecret) {
-      return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401, headers: CORS });
-    }
+    const denied = await authorize(req, env);
+    if (denied) return denied;
+    let body;
+    try {
+      ({ body } = await readBoundedJson(req));
+      for (const [key, max] of [['report_type', 100], ['subject', 2000]]) {
+        if (body[key] != null && (typeof body[key] !== 'string' || body[key].length > max)) {
+          throw new Error(`${key} must be text up to ${max} characters`);
+        }
+      }
+    } catch (error) { return json({ error: error.message }, 400); }
 
     try {
-      const { report_type, subject } = await req.json();
+      const { report_type, subject } = body;
 
       // Load flags from KV
       const flagsRaw = await env.PIE_OUTPUTS.get('pie_flags');
@@ -85,27 +90,30 @@ Top critical flags: ${JSON.stringify(critical.slice(0, 5).map(f => ({ title: f.t
 
 Return a JSON object with: { executive_summary, risk_level, entity_risks, top_flags, recommendations, generated_at }`;
 
-      const upstream = await fetch('https://api.anthropic.com/v1/messages', {
+      const upstream = await claudeProxy.fetch(new Request(req.url, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'x-api-key': apiKey,
-          'anthropic-version': '2023-06-01',
+          'X-Proxy-Secret': req.headers.get('x-proxy-secret'),
         },
         body: JSON.stringify({
-          model: 'claude-sonnet-4-20250514',
           max_tokens: 2048,
           messages: [{ role: 'user', content: prompt }],
         }),
-      });
+      }), env);
+      if (!upstream.ok) return upstream;
 
       const result = await upstream.json();
-      const text = result.content?.[0]?.text || '{}';
+      const text = (result.content || []).filter(block => block.type === 'text').map(block => block.text).join('');
+      if (!text.trim()) return json({ error: 'Provider returned an empty report' }, 502);
       let reportData;
       try {
         reportData = JSON.parse(text.replace(/```json|```/g, '').trim());
       } catch {
         reportData = { executive_summary: text, risk_level: 'unknown' };
+      }
+      if (!reportData || Array.isArray(reportData) || typeof reportData !== 'object' || !Object.keys(reportData).length) {
+        return json({ error: 'Provider returned an invalid report' }, 502);
       }
       reportData.generated_at = new Date().toISOString();
       reportData.raw_flag_counts = { total: flags.length, critical: critical.length, warning: warnings.length };

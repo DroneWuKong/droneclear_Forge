@@ -12,10 +12,10 @@ export default {
         return { role: message.role, content: message.content };
       });
       const tokens = outputLimit(body.max_tokens);
-      const model = allowedModel(body, env, 'GROQ', 'llama-3.3-70b-versatile');
+      const model = allowedModel(body, env, 'GROQ', 'openai/gpt-oss-120b');
       const url = 'https://api.groq.com/openai/v1/chat/completions';
       const headers = { 'Content-Type': 'application/json', Authorization: `Bearer ${env.GROQ_API_KEY}` };
-      const outbound = { model, messages, max_tokens: tokens, n: 1 };
+      const outbound = { model, messages, max_tokens: tokens, n: 1, ...(model.startsWith('openai/gpt-oss-') ? { reasoning_effort: 'low', include_reasoning: false } : {}) };
       const limited = await reserve(env, inputUnits, tokens);
       if (limited) return limited;
       let upstream;
