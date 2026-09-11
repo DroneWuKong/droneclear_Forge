@@ -574,8 +574,10 @@
   <div id="source-pills">
     <span class="source-pill">fallback</span>
   </div>
-  <span class="source-pill web-pill" id="live-web-pill">+ live web</span>
+  <span class="source-pill web-pill" id="live-web-pill">Web search: compatible BYOK</span>
   <div id="sources-spacer"></div>
+  <button class="icon-btn" onclick="newChat()" aria-label="Start a new chat">New chat</button>
+  <button class="icon-btn" onclick="openCfg()" aria-label="Open Wingman settings">Settings</button>
 </div>
 
 <!-- ── MESSAGES ─────────────────────────────────────────────── -->
@@ -2455,6 +2457,17 @@ function updateSourcePills() {
 }
 
 // ─── MODE ─────────────────────────────────────────────────────
+function newChat() {
+  if (loading) return;
+  messages = [];
+  stagedImgs = [];
+  renderStagedImages();
+  renderMessages();
+  const empty = document.getElementById('empty-state');
+  if (empty) empty.style.display = '';
+  document.getElementById('text-input').focus();
+}
+
 function setMode(m) {
   mode = m;
   messages = [];
@@ -2467,6 +2480,8 @@ function setMode(m) {
 // ─── CONFIG ──────────────────────────────────────────────────
 function setProvider(p) {
   provider = p;
+  const chip = document.getElementById('model-chip');
+  if (chip) chip.textContent = p === 'anthropic' ? 'Claude' : p === 'groq' ? 'llama-3.3-70b' : 'gemini-2.5-flash';
   localStorage.setItem('wingman_provider', p);
   document.getElementById('anthropic-cfg').style.display = p === 'anthropic' ? '' : 'none';
   document.getElementById('gemini-cfg').style.display    = p === 'gemini'     ? '' : 'none';
@@ -3633,8 +3648,8 @@ document.addEventListener('DOMContentLoaded', function() {
                                (localStorage.getItem('wingman_api_key') || '');
     inlineKey.value = key;
     inlineKey.placeholder = p === 'anthropic' ? 'sk-ant-... (Claude BYOK)' :
-                            p === 'groq'      ? 'gsk_... (Groq, optional)' :
-                                               'AIzaSy... (Gemini, optional)';
+                            p === 'groq'      ? 'gsk_... (Groq API key)' :
+                                               'AIzaSy... (Gemini API key)';
     // Sync hidden inputs so existing JS still works
     var gemInput = document.getElementById('gemini-key-input');
     var groqInput = document.getElementById('groq-key-input');
