@@ -243,7 +243,7 @@ body{background:var(--bg);color:var(--text);font-family:var(--font);min-height:1
 </script>
 <!-- ── /Unified UAS-Nav ─────────────────────────────────────── -->
 
-<div class="page" id="page-content">
+<main class="page" id="page-content"><h1 style="position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap;border:0">Operator Credentials — UAS-</h1>
 
   <!-- FAA Lookup Panel -->
   <div class="faa-lookup" id="faa-lookup-panel">
@@ -269,7 +269,6 @@ body{background:var(--bg);color:var(--text);font-family:var(--font);min-height:1
     <div style="font-size:10px;color:var(--text-d);margin-top:10px">Data: FAA Releasable Airmen DB · Part 107 Remote Pilot Certificates · Refreshed monthly</div>
   </div>
 
-</div>
 
 <script>
 // ── FAA Lookup ───────────────────────────────────────────────────────────────
@@ -380,11 +379,12 @@ document.getElementById('faa-cert-input').addEventListener('keydown', e => { if(
 document.getElementById('faa-last-input').addEventListener('keydown', e => { if(e.key==='Enter') faaLookupName(); });
 document.getElementById('faa-first-input').addEventListener('keydown', e => { if(e.key==='Enter') faaLookupName(); });
 
-  <div style="text-align:center;padding:40px 20px;color:var(--text-d)">
+</script>
+  <section id="credential-content"><div style="text-align:center;padding:40px 20px;color:var(--text-d)">
     <i class="ph ph-spinner" style="font-size:24px;display:block;margin-bottom:8px"></i>
     Loading...
-  </div>
-</div>
+  </div></section>
+</main>
 
 <script>
 const STORE_KEY = 'dc_tracker_v1';
@@ -552,30 +552,30 @@ function renderPublicView(data, slug) {
   // Share box
   html += `
     <div class="share-box">
-      <div style="font:700 10px var(--mono);color:var(--text-d);text-transform:uppercase;letter-spacing:.1em;margin-bottom:8px">Share this page</div>
+      <div style="font:700 10px var(--mono);color:var(--text-d);text-transform:uppercase;letter-spacing:.1em;margin-bottom:8px">Local credential bookmark</div>
       <div class="share-url">${url}</div>
       <div style="display:flex;gap:8px;flex-wrap:wrap">
         <button class="btn" id="copy-btn" onclick="copyUrl('${url}')"><i class="ph ph-link"></i> Copy link</button>
         <a href="/tracker/" class="btn btn-ghost"><i class="ph ph-pencil-simple"></i> Edit credentials</a>
       </div>
-      <div style="font-size:10px;color:var(--text-d);margin-top:8px">This page reflects your current tracker data. Only approved waivers and active items are shown.</div>
+      <div style="font-size:10px;color:var(--text-d);margin-top:8px">This bookmark works with this browser’s tracker data. It does not publish credentials to other devices.</div>
     </div>`;
 
-  document.getElementById('page-content').innerHTML = html;
+  document.getElementById('credential-content').innerHTML = html;
 }
 
 function renderSetup() {
-  document.getElementById('page-content').innerHTML = `
+  document.getElementById('credential-content').innerHTML = `
     <div style="font:700 10px var(--mono);color:var(--text-d);letter-spacing:.14em;text-transform:uppercase;margin-bottom:8px">// Operator Credentials</div>
     <div class="setup-card">
       <i class="ph ph-identification-card" style="font-size:40px;color:var(--border);display:block;margin-bottom:12px"></i>
       <div style="font:700 16px var(--font);color:var(--text);margin-bottom:6px">Create your credential page</div>
-      <div style="font-size:12px;color:var(--text-d);margin-bottom:16px;line-height:1.5">A shareable page showing your Part 107 cert, registered aircraft, active COWs, and insurance. Send to clients before a job.</div>
+      <div style="font-size:12px;color:var(--text-d);margin-bottom:16px;line-height:1.5">A local view of your Part 107 certificate, registered aircraft, active COWs, and insurance. Credentials remain in this browser.</div>
       <div class="setup-steps">
         <div class="setup-step"><div class="step-num">1</div><div>Add your Part 107 certificate to the Cert Tracker</div></div>
         <div class="setup-step"><div class="step-num">2</div><div>Add your registered aircraft</div></div>
         <div class="setup-step"><div class="step-num">3</div><div>Add any active COW authorizations</div></div>
-        <div class="setup-step"><div class="step-num">4</div><div>Come back here to generate your shareable link</div></div>
+        <div class="setup-step"><div class="step-num">4</div><div>Come back here to review your credentials</div></div>
       </div>
       <a href="/tracker/" class="btn" style="margin-top:4px"><i class="ph ph-arrow-right"></i> Go to Cert Tracker</a>
     </div>`;
@@ -587,15 +587,14 @@ const sharedSlug = params.get('id');
 
 if (sharedSlug) {
   // Viewing someone else's shared page — render what's in their URL params
-  // Since data is localStorage-only, shared links show the current user's data
-  // with the slug as the identifier. This is intentional — the URL IS the credential.
+  // A different person's URL must never be populated with this browser's credentials.
   const data = load();
   const hasCerts = (data.cert||[]).length > 0;
-  if (hasCerts) {
+  if (hasCerts && localStorage.getItem(SLUG_KEY) === sharedSlug) {
     renderPublicView(data, sharedSlug);
   } else {
     // Shared link but no local data — show placeholder
-    document.getElementById('page-content').innerHTML = `
+    document.getElementById('credential-content').innerHTML = `
       <div class="empty-state">
         <i class="ph ph-identification-card"></i>
         <div style="font:600 14px var(--font);color:var(--text);margin-bottom:6px">Operator credential page</div>

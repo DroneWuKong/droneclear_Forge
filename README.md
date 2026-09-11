@@ -30,10 +30,10 @@ Current analytic datasets may fail closed when stale or malformed. Historical an
 ## Build
 
 ```bash
-python3 build_static.py
+python3 build_static.py --offline
 ```
 
-The static builder writes the deployable site to `build/`. It can synchronize upstream data when credentials are configured and otherwise uses committed local fallbacks.
+The static builder writes the deployable site to `build/`. Local builds use committed inputs. Upstream builds must instead pass `--data-ref <40-character-commit>` and configure `GITHUB_PAT`; failed synchronization stops the build. `--data-dir <directory>` explicitly selects local PIE inputs. Source files are staged in a temporary directory and are never overwritten. `build/build-manifest.json` records input and artifact hashes. Private exports require `--include-private` and the same pinned upstream commit. See [repair and rollout notes](docs/AUDIT_REPAIRS_2026-09-09.md).
 
 ## Software-only validation
 
@@ -41,9 +41,9 @@ The final site and data-quality gates require no physical hardware:
 
 ```bash
 python -m unittest -v tests/test_public_site_audit.py
-python tools/audit_public_site.py --strict --require-catalog --dry-run
-python3 build_static.py
-python tools/audit_public_site.py --strict --require-catalog --site-dir build --built --dry-run
+python tools/audit_public_site.py --all --strict --require-catalog --dry-run
+python3 build_static.py --offline
+python tools/audit_public_site.py --all --strict --require-catalog --site-dir build --built --dry-run
 ```
 
 `--dry-run` is the explicit no-write/simulation path. Camera or other browser hardware features are not required for the audit.
@@ -79,7 +79,7 @@ Cloudflare Pages deploys from `master` using the project configuration in `wrang
 
 | Setting | Value |
 |---|---|
-| Build command | `python3 build_static.py` |
+| Build command | `python3 build_static.py --offline` |
 | Publish directory | `build` |
 | Primary data source | `DroneWuKong/Ai-Project` |
 | Public data status | `/miner-health/` |

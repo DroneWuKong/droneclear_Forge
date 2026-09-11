@@ -19,7 +19,7 @@ from pathlib import Path
 SEARCH_PATHS = [
     Path(p) for p in [
         os.environ.get('AI_PROJECT_DATA'),
-        '../Ai-Project/data',
+        'forge-source',
         'data',
         'forge-source/static',  # pie_flags.json, pie_predictions.json live here
     ] if p

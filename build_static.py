@@ -17,6 +17,10 @@ import json
 import subprocess
 import sys
 import hashlib
+import argparse
+import tempfile
+import base64
+from pathlib import Path
 
 SRC_DIR = 'forge-source'
 BUILD_DIR = 'build'
@@ -860,6 +864,8 @@ def inject_nav(html, src_name):
     if re.search(r'id=["\']dc-nav["\']', html, flags=re.IGNORECASE):
         return html
 
+    html = re.sub(r'<style\b[^>]*\bid=[\"\']dc-unified-nav-styles[\"\'][^>]*>.*?</style>', '', html, flags=re.DOTALL | re.IGNORECASE)
+
     # Inject the fresh nav after <body>
     nav_block = "\n" + _UNIFIED_NAV + "\n"
     if "<body>" in html:
@@ -1051,6 +1057,11 @@ def _get_part_count():
 # Round down to the nearest 100 + "+" so the public number doesn't churn
 # on every commit.
 SEO_META = {
+    'forecast-accountability.html': (
+        'Forecast Accountability — UAS Patterns',
+        'Track reviewed forecast outcomes, evidence coverage, and calibration limits. Unreviewed automated verdicts are excluded from accuracy.',
+        'forecast accountability, reviewed evidence, calibration, UAS Patterns',
+    ),
     'priorities.html': (
         'Priority Intelligence View — Local PIR Ranking for UAS Patterns',
         'Choose a transparent local-only profile for FPV supply, NDAA and Blue UAS, procurement, adversary systems, counter-UAS, DFR, or autonomy. Declared terms rank current indexed records without hiding the full corpus.',
@@ -1327,8 +1338,8 @@ SEO_META = {
         'drone regulations, FAA Part 107, NDAA 848, FCC covered list drones, drone law reference, UAS regulations',
     ),
     'verify.html': (
-        'NDAA Compliance Verifier — Check Drone & Component Status',
-        'Verify NDAA compliance status for drone platforms and components. Cross-reference FCC Covered List, Blue UAS Framework, NDAA Section 848, and country-of-origin data.',
+        'Operator Credentials — FAA Lookup and Local Records',
+        'Look up FAA airmen records and review credentials stored in this browser. Local bookmarks do not publish your records.',
         'NDAA compliance check, drone compliance verifier, FCC covered list lookup, Blue UAS status, drone NDAA status',
     ),
     'report.html': (
@@ -1665,7 +1676,7 @@ COMPONENT_CATEGORIES = [
 ]
 
 
-def sync_handbook_data():
+def sync_handbook_data(data_ref=None):
     """Clone the Ai-Project repo and assemble forge_database.json from its parts-db."""
     print("Ã¢ÂÂ" * 50)
     print("  Syncing data from Ai-Project...")
@@ -1675,30 +1686,31 @@ def sync_handbook_data():
     if os.path.exists(DATA_CLONE_DIR):
         shutil.rmtree(DATA_CLONE_DIR)
 
-    # Build clone URL — use GITHUB_PAT env var for private repo access
+    if not data_ref or not re.fullmatch(r'[0-9a-fA-F]{40}', data_ref):
+        raise ValueError('Online builds require an immutable 40-character --data-ref')
     clone_url = DATA_REPO
-    pat = os.environ.get('GITHUB_PAT', '')
+    git_env = os.environ.copy()
+    pat = git_env.get('GITHUB_PAT', '')
     if pat:
-        clone_url = DATA_REPO.replace('https://', f'https://x-access-token:{pat}@')
-        print("  Using GITHUB_PAT for private repo access")
-    else:
-        print("  WARNING: No GITHUB_PAT set — clone may fail for private repos")
-
+        auth = base64.b64encode(('x-access-token:' + pat).encode()).decode()
+        git_env.update(GIT_CONFIG_COUNT='1', GIT_CONFIG_KEY_0='http.https://github.com/.extraheader', GIT_CONFIG_VALUE_0='Authorization: Basic ' + auth)
     # Shallow sparse clone — just data/parts-db
     result = subprocess.run(
         ['git', 'clone', '--depth', '1', '--filter=blob:none', '--sparse', clone_url, DATA_CLONE_DIR],
-        capture_output=True, text=True
+        capture_output=True, text=True, env=git_env, timeout=180
     )
     if result.returncode != 0:
         print(f"  WARNING: Could not clone data repo: {result.stderr.strip()}")
         print("  Falling back to local forge_database.json")
         return False
 
+    subprocess.run(['git','-C',DATA_CLONE_DIR,'fetch','--depth','1','origin',data_ref], check=True, capture_output=True, env=git_env, timeout=180)
+    subprocess.run(['git','-C',DATA_CLONE_DIR,'checkout','--detach',data_ref], check=True, capture_output=True, env=git_env, timeout=180)
     subprocess.run(
         ['git', '-C', DATA_CLONE_DIR, 'sparse-checkout', 'set', '--no-cone',
          '/data/parts-db/', '/docs/database/',
          '/scripts/validate_forge_database.py', '/data/forge_database.schema.json'],
-        capture_output=True, text=True
+        check=True, capture_output=True, text=True, env=git_env, timeout=180
     )
 
     parts_dir = os.path.join(DATA_CLONE_DIR, 'data', 'parts-db')
@@ -1960,7 +1972,7 @@ def sync_private_dossiers():
     import glob, tempfile
     print("  Syncing private dossiers from Ai-Project...")
     research = None
-    sibling = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'Ai-Project', 'research')
+    sibling = ''  # No machine-dependent sibling discovery
     tmp_clone = None
     if os.path.isdir(sibling):
         research = sibling
@@ -1971,39 +1983,14 @@ def sync_private_dossiers():
             print("    SKIP: no sibling checkout and no GITHUB_PAT — dossiers omitted from build")
             return False
         tmp_clone = tempfile.mkdtemp(prefix='aiproj_')
-        url = DATA_REPO.replace('https://', f'https://x-access-token:{pat}@')
-        # On a Pages preview build, prefer the matching Ai-Project branch (e.g.
-        # the dossiers live on a feature branch before PR merge). CF sets
-        # CF_PAGES_BRANCH; AI_PROJECT_REF is a manual override. Fall back to the
-        # repo default branch (production / merged state).
-        refs = []
-        for r in (os.environ.get('AI_PROJECT_REF'), os.environ.get('CF_PAGES_BRANCH')):
-            r = (r or '').strip()
-            if r and r not in refs:
-                refs.append(r)
-        refs.append(None)  # repo default branch, tried last (production state)
-        print(f"    dossier clone refs (in order): {[r or 'default' for r in refs]}")
-        cloned = False
-        for ref in refs:
-            cmd = ['git', 'clone', '--depth', '1', '--filter=blob:none']
-            if ref:
-                cmd += ['--branch', ref]
-            try:
-                subprocess.run(cmd + [url, tmp_clone],
-                               check=True, capture_output=True, text=True, timeout=180)
-                research = os.path.join(tmp_clone, 'research')
-                print(f"    cloned Ai-Project ref={ref or 'default'}")
-                cloned = True
-                break
-            except Exception as e:
-                msg = (getattr(e, 'stderr', '') or str(e)).strip().splitlines()[-1:] or ['']
-                print(f"    ref={ref or 'default'} not usable ({msg[0]})")
-                shutil.rmtree(tmp_clone, ignore_errors=True)
-                tmp_clone = tempfile.mkdtemp(prefix='aiproj_')
-        if not cloned:
-            print("    SKIP: clone failed for all refs — dossiers omitted")
-            shutil.rmtree(tmp_clone, ignore_errors=True)
-            return False
+        ref = os.environ.get('PATTERNS_PINNED_DATA_REF', '')
+        if not re.fullmatch(r'[0-9a-fA-F]{40}', ref): raise ValueError('Private export requires --data-ref')
+        git_env = os.environ.copy()
+        auth = base64.b64encode(('x-access-token:' + pat).encode()).decode()
+        git_env.update(GIT_CONFIG_COUNT='1', GIT_CONFIG_KEY_0='http.https://github.com/.extraheader', GIT_CONFIG_VALUE_0='Authorization: Basic ' + auth)
+        subprocess.run(['git','clone','--no-checkout',DATA_REPO,tmp_clone], check=True, capture_output=True, env=git_env, timeout=180)
+        subprocess.run(['git','-C',tmp_clone,'checkout','--detach',ref], check=True, capture_output=True, env=git_env, timeout=180)
+        research = os.path.join(tmp_clone, 'research')
 
     out_dir = os.path.join(BUILD_DIR, 'private', 'dossiers')
     os.makedirs(out_dir, exist_ok=True)
@@ -2104,9 +2091,9 @@ def sync_private_dossiers():
     return True
 
 
-def build():
-    # Step 0: Sync data from handbook repo
-    sync_handbook_data()
+def build(*, offline=False, data_ref=None, data_dir=None, include_private=False):
+    if not offline and not sync_handbook_data(data_ref):
+        raise RuntimeError('Pinned upstream synchronization failed')
 
     # Step 0.5: SQLite integrity checks (warn-only, never blocks build)
     _db_path = os.path.join(SRC_DIR, 'forge_database.json')
@@ -2196,10 +2183,11 @@ def build():
         import generate_free_tier
         import importlib
         importlib.reload(generate_free_tier)
+        generate_free_tier.SEARCH_PATHS = ([Path(data_dir)] if data_dir else []) + [Path(SRC_DIR), Path(SRC_DIR)/'static']
         generate_free_tier.main([str(os.path.join(BUILD_DIR, 'static'))])
         print("  Free-tier data slices generated")
     except Exception as e:
-        print(f"  WARNING: free-tier generation failed: {e}")
+        raise RuntimeError("Public data generation failed") from e
 
     # Process HTML pages
     for src_name, dst_path in PAGES.items():
@@ -2269,7 +2257,8 @@ def build():
     # which otherwise serves index.html with HTTP 200 for every unknown URL
     # (soft-404s that search engines index).
     with open(os.path.join(BUILD_DIR, '404.html'), 'w', encoding='utf-8') as f:
-        f.write(generate_404_page())
+        from tools.normalize_public_html import normalize
+        f.write(normalize(generate_404_page()))
     print(f"  Generated 404.html")
     
     # Copy service worker to build root (must be at root for scope)
@@ -2320,6 +2309,8 @@ def build():
             ok = False
         if ok:
             print(f"  Ã¢ÂÂ Counts match: {src_parts} parts, {src_models} models, {src_cats} categories")
+        else:
+            raise RuntimeError('Built database counts do not match the input')
 
 
     # ── Cloudflare Pages routing files ──────────────────────────
@@ -2332,10 +2323,55 @@ def build():
 
     # ── PRIVATE gated dossiers (pulled from Ai-Project; served behind Access) ──
     try:
-        sync_private_dossiers()
+        if include_private:
+            if not sync_private_dossiers():
+                raise RuntimeError('Private export did not complete')
+        else:
+            print('  Private export omitted; enable explicitly with --include-private')
     except Exception as e:
-        print(f"  NOTE: private dossier sync skipped ({e})")
+        raise RuntimeError("Requested private export failed") from e
 
+
+def main():
+    global SRC_DIR, BUILD_DIR, DATA_CLONE_DIR
+    parser = argparse.ArgumentParser(description='Build from explicit inputs without modifying source data')
+    parser.add_argument('--offline', action='store_true', help='Use local public inputs; no network or private export')
+    parser.add_argument('--data-ref', default=os.environ.get('AI_PROJECT_REF'), help='Exact 40-character upstream commit')
+    parser.add_argument('--data-dir', help='Explicit directory for public PIE inputs')
+    parser.add_argument('--output', default='build')
+    parser.add_argument('--include-private', action='store_true')
+    args = parser.parse_args()
+    if args.offline and args.include_private: parser.error('--offline cannot export private upstream data')
+    if not args.offline and not re.fullmatch(r'[0-9a-fA-F]{40}', args.data_ref or ''):
+        parser.error('Use --offline or supply an immutable --data-ref')
+    repo = Path(__file__).resolve().parent
+    destination = (repo / args.output).resolve()
+    if destination != repo/'build' and not (destination.is_relative_to(repo) and destination.name.startswith('build-')):
+        parser.error('Output must be build or a build-* directory within this checkout')
+    data_dir = str(Path(args.data_dir).resolve()) if args.data_dir else None
+    if data_dir and (not Path(data_dir).is_dir() or Path(data_dir).is_relative_to(destination)):
+        parser.error('Data directory must exist outside the output directory')
+    os.chdir(repo)
+    BUILD_DIR = str(destination)
+    with tempfile.TemporaryDirectory(prefix='patterns-build-') as scratch:
+        SRC_DIR = str(Path(scratch)/'source')
+        DATA_CLONE_DIR = str(Path(scratch)/'upstream')
+        shutil.copytree(repo/'forge-source', SRC_DIR)
+        # Explicit public metadata follows the chosen data input; never import
+        # arbitrary files (especially private dossiers) from the data directory.
+        if data_dir:
+            for name in ('dataset_catalog.json', 'data_quality_score.json', 'calibration_scores.json', 'source_coverage_matrix.json'):
+                candidate = Path(data_dir)/name
+                if candidate.is_file():
+                    json.loads(candidate.read_text(encoding='utf-8'))
+                    shutil.copy2(candidate, Path(SRC_DIR)/name)
+        if args.include_private: os.environ['PATTERNS_PINNED_DATA_REF'] = args.data_ref
+        build(offline=args.offline, data_ref=args.data_ref, data_dir=data_dir, include_private=args.include_private)
+        inputs = {str(p.relative_to(SRC_DIR)).replace('\\','/'):hashlib.sha256(p.read_bytes()).hexdigest() for p in sorted(Path(SRC_DIR).rglob('*')) if p.is_file()}
+        artifacts = {str(p.relative_to(destination)).replace('\\','/'):hashlib.sha256(p.read_bytes()).hexdigest() for p in sorted(destination.rglob('*')) if p.is_file()}
+        external_inputs = {str(p.relative_to(data_dir)).replace('\\','/'):hashlib.sha256(p.read_bytes()).hexdigest() for p in sorted(Path(data_dir).glob('*.json')) if p.is_file()} if data_dir else {}
+        manifest = {'schema_version':1, 'upstream_ref':args.data_ref if not args.offline else None, 'offline':args.offline, 'inputs':inputs, 'external_inputs':external_inputs, 'artifacts':artifacts}
+        (destination/'build-manifest.json').write_text(json.dumps(manifest,indent=2)+'\n',encoding='utf-8')
 
 if __name__ == '__main__':
-    build()
+    main()

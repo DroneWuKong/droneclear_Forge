@@ -214,7 +214,7 @@ def normalize_route(href: str) -> str | None:
 
 
 def check_inline_scripts(path: Path, scripts: list[dict[str, str]], report: AuditReport, node: str | None) -> None:
-    if not node or path.stem not in {"patterns-home", "miner-health", "index"}:
+    if not node:
         return
     for index, script in enumerate(scripts, start=1):
         text = script["text"].strip()
@@ -227,7 +227,7 @@ def check_inline_scripts(path: Path, scripts: list[dict[str, str]], report: Audi
         try:
             result = subprocess.run([node, "--check", str(temp_path)], text=True, capture_output=True, timeout=20, check=False)
             if result.returncode:
-                detail = (result.stderr or result.stdout).strip().splitlines()[-1] if (result.stderr or result.stdout).strip() else "node --check failed"
+                detail = next((line for line in (result.stderr or result.stdout).splitlines() if "SyntaxError:" in line), "node --check failed")
                 report.add("error", "javascript-syntax", path, f"Inline script {index}: {detail}")
         except (OSError, subprocess.TimeoutExpired) as exc:
             report.add("warning", "javascript-check-unavailable", path, f"Could not run Node syntax check: {exc}")

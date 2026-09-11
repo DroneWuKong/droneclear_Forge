@@ -1,86 +1,35 @@
-/**
- * gemini-proxy — CF Worker replacing /.netlify/functions/gemini-proxy
- * Route: /api/wingman/gemini
- */
-
-const rateLimiter = new Map();
-const RATE_LIMIT = 20;
-const RATE_WINDOW = 60_000;
-
-const CORS = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Methods': 'POST, OPTIONS',
-  'Access-Control-Allow-Headers': 'Content-Type',
-};
-
-function checkRateLimit(ip) {
-  const now = Date.now();
-  const entry = rateLimiter.get(ip);
-  if (!entry || now > entry.resetAt) {
-    rateLimiter.set(ip, { count: 1, resetAt: now + RATE_WINDOW });
-    return true;
-  }
-  if (entry.count >= RATE_LIMIT) return false;
-  entry.count++;
-  return true;
-}
-
+import { authorize, json, PROXY_HEADERS, readBoundedJson, outputLimit, allowedModel, reserve } from './proxy-policy.mjs';
 export default {
   async fetch(req, env) {
-    if (req.method === 'OPTIONS') return new Response(null, { status: 204, headers: CORS });
-    if (req.method !== 'POST') {
-      return new Response(JSON.stringify({ error: 'Method not allowed' }), { status: 405, headers: CORS });
-    }
-
-    const apiKey = env.GEMINI_API_KEY;
-    if (!apiKey) {
-      return new Response(JSON.stringify({ error: 'GEMINI_API_KEY not configured' }), {
-        status: 500, headers: { ...CORS, 'Content-Type': 'application/json' },
-      });
-    }
-
-    const ip = req.headers.get('cf-connecting-ip') || req.headers.get('x-forwarded-for') || 'unknown';
-    if (!checkRateLimit(ip)) {
-      return new Response(JSON.stringify({ error: 'Rate limit exceeded.' }), {
-        status: 429, headers: { ...CORS, 'Content-Type': 'application/json' },
-      });
-    }
-
+    const denied = await authorize(req, env);
+    if (denied) return denied;
+    if (!env.GEMINI_API_KEY) return json({ error: 'Provider not configured' }, 503);
     try {
-      const body = await req.json();
-      const model = body.model || 'gemini-2.0-flash';
-      // Translate Anthropic-style body to Gemini format if needed
-      let geminiBody = body;
+      const { body, inputUnits } = await readBoundedJson(req);
+      const model = allowedModel(body, env, 'GEMINI', 'gemini-2.0-flash');
+      let contents = body.contents;
       if (body.messages) {
-        geminiBody = {
-          contents: body.messages.map(m => ({
-            role: m.role === 'assistant' ? 'model' : 'user',
-            parts: [{ text: typeof m.content === 'string' ? m.content : m.content.map(c => c.text || '').join('') }],
-          })),
-          generationConfig: {
-            maxOutputTokens: Math.min(body.max_tokens || 1000, 8192),
-          },
-        };
+        if (!Array.isArray(body.messages)) throw new Error('Messages must be a list');
+        contents = body.messages.map(m => ({ role: m.role === 'assistant' ? 'model' : m.role, parts: [{ text: m.content }] }));
       }
-
-      const upstream = await fetch(
-        `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`,
-        {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(geminiBody),
-        }
-      );
-
-      const data = await upstream.text();
-      return new Response(data, {
-        status: upstream.status,
-        headers: { ...CORS, 'Content-Type': 'application/json' },
+      if (!Array.isArray(contents) || !contents.length || contents.length > 100) throw new Error('1-100 contents required');
+      contents = contents.map(c => {
+        if (!c || !['user','model'].includes(c.role || 'user') || !Array.isArray(c.parts) || !c.parts.length) throw new Error('Invalid content');
+        return { role: c.role || 'user', parts: c.parts.map(p => {
+          if (!p || typeof p.text !== 'string') throw new Error('Text parts required');
+          return { text: p.text };
+        }) };
       });
-    } catch(e) {
-      return new Response(JSON.stringify({ error: e.message }), {
-        status: 502, headers: { ...CORS, 'Content-Type': 'application/json' },
-      });
-    }
-  }
+      const tokens = outputLimit(body.max_tokens ?? body.generationConfig?.maxOutputTokens);
+      const outbound = { contents, generationConfig: { maxOutputTokens: tokens, candidateCount: 1 } };
+      const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`;
+      const headers = { 'Content-Type': 'application/json', 'x-goog-api-key': env.GEMINI_API_KEY };
+      const limited = await reserve(env, inputUnits, tokens);
+      if (limited) return limited;
+      let upstream;
+      try { upstream = await fetch(url, { method: 'POST', headers, body: JSON.stringify(outbound), signal: AbortSignal.timeout(30000) }); }
+      catch { return json({ error: 'Provider unavailable' }, 502); }
+      return new Response(upstream.body, { status: upstream.status, headers: PROXY_HEADERS });
+    } catch (error) { return json({ error: error.message || 'Invalid request' }, 400); }
+  },
 };
