@@ -585,7 +585,7 @@
       <div class="topper"></div>
       <div class="body">
         <h2>Welcome to <span id="welcome-name">Wingman AI</span></h2>
-        <p>Drone systems intelligence powered by the Forge KB, 861 intel articles, and live web search. Just start typing — powered by Gemini AI. Enter your API key next to the model chip below.</p>
+        <p>Drone systems assistance using Forge reference material. Add your provider API key below or configure authorized shared access in Settings. Web search and image input require a compatible provider and your own API key.</p>
       </div>
     </div>
     <div class="stat-grid">
@@ -610,7 +610,7 @@
   <!-- Model + API key row -->
   <div style="display:flex;align-items:center;gap:6px;margin-bottom:6px;">
     <span class="model-chip" id="model-chip" onclick="cycleModel()" title="Click to cycle model" style="cursor:pointer;flex-shrink:0;">gemini-2.5-flash</span>
-    <input type="password" id="inline-api-key" placeholder="API key (optional)"
+    <input type="password" id="inline-api-key" placeholder="Your provider API key"
       style="flex:1;background:#141410;border:1px solid #2e2e26;border-radius:6px;color:#b8b0a0;font:400 10px 'Inter',sans-serif;padding:5px 8px;outline:none;min-width:0;"
       title="Gemini / Groq / Anthropic API key">
   </div>
@@ -642,8 +642,8 @@
 
     <label class="cfg-label">AI Provider</label>
     <div style="display:flex;gap:6px;margin-bottom:6px;">
-      <button id="prov-gemini" onclick="setProvider('gemini')" style="flex:1;padding:8px;border-radius:6px;border:1px solid var(--border);background:var(--bg-card);color:var(--g2);font-family:system-ui;font-size:12px;cursor:pointer;font-weight:600;">Gemini <span style="font-size:10px;opacity:.6">free</span></button>
-      <button id="prov-groq" onclick="setProvider('groq')" style="flex:1;padding:8px;border-radius:6px;border:1px solid var(--border);background:var(--bg-card);color:var(--g2);font-family:system-ui;font-size:12px;cursor:pointer;font-weight:600;">Groq / Llama <span style="font-size:10px;opacity:.6">free</span></button>
+      <button id="prov-gemini" onclick="setProvider('gemini')" style="flex:1;padding:8px;border-radius:6px;border:1px solid var(--border);background:var(--bg-card);color:var(--g2);font-family:system-ui;font-size:12px;cursor:pointer;font-weight:600;">Gemini <span style="font-size:10px;opacity:.6">API key</span></button>
+      <button id="prov-groq" onclick="setProvider('groq')" style="flex:1;padding:8px;border-radius:6px;border:1px solid var(--border);background:var(--bg-card);color:var(--g2);font-family:system-ui;font-size:12px;cursor:pointer;font-weight:600;">Groq / Llama <span style="font-size:10px;opacity:.6">API key</span></button>
       <button id="prov-anthropic" onclick="setProvider('anthropic')" style="flex:1;padding:8px;border-radius:6px;border:1px solid var(--border);background:var(--bg-card);color:var(--g2);font-family:system-ui;font-size:12px;cursor:pointer;font-weight:600;">Claude <span style="font-size:10px;opacity:.6">BYOK</span></button>
     </div>
     <div style="font-size:10px;color:var(--g3);margin-bottom:16px">API key is set inline next to the model picker above the chat box.</div>
@@ -652,7 +652,9 @@
     <input type="hidden" id="api-key-input"/>
     <input type="hidden" id="gemini-key-input"/>
     <input type="hidden" id="groq-key-input"/>
-    <input type="hidden" id="proxy-secret-input"/>
+    <label class="cfg-label" for="proxy-secret-input">Shared access credential (owner supplied)</label>
+    <input type="password" id="proxy-secret-input" autocomplete="off" placeholder="Optional authorized shared access"/>
+    <p style="font-size:11px;color:var(--g3)">Shared access supports text chat with a daily budget. It does not include web search or images.</p>
     <div id="anthropic-cfg" style="display:none;"></div>
     <div id="gemini-cfg" style="display:none;"></div>
     <div id="groq-cfg" style="display:none;"></div>
@@ -662,7 +664,7 @@
     <div style="margin-bottom:16px;">
       <label class="cfg-label" style="display:flex;align-items:center;gap:6px;margin-bottom:6px;">
         <span style="display:inline-block;width:7px;height:7px;border-radius:50%;background:var(--cyan);flex-shrink:0"></span>
-        Access Token <span style="font-size:10px;color:var(--g3);font-weight:400;text-transform:none;letter-spacing:0">(optional — legacy codes still work; everything is free)</span>
+        Access Token <span style="font-size:10px;color:var(--g3);font-weight:400;text-transform:none;letter-spacing:0">(legacy token — does not authorize model calls)</span>
       </label>
       <input type="password" id="sub-token-input" placeholder="Paste your token here…" style="font-size:11px;letter-spacing:.03em"/>
       <div id="sub-token-status" style="font-size:10px;margin-top:5px;min-height:14px;"></div>
@@ -2497,12 +2499,12 @@ function openCfg() {
         const daysLeft = p.exp ? Math.max(0, Math.ceil((p.exp - Date.now()) / 86400000)) : null;
         const expired = p.exp && Date.now() > p.exp;
         statusEl.textContent = expired
-          ? 'Token expired — everything is free now, no renewal needed'
+          ? 'Legacy token expired — add a provider key or shared access credential'
           : (daysLeft !== null ? `✓ Token present · ${daysLeft} days` : '✓ Token present');
         statusEl.style.color = expired ? 'var(--g2)' : 'var(--cyan)';
       } catch { statusEl.textContent = '✓ Token present'; statusEl.style.color = 'var(--cyan)'; }
     } else {
-      statusEl.textContent = 'No token required — everything is free';
+      statusEl.textContent = 'Model calls require a provider key or shared access credential';
       statusEl.style.color = 'var(--g3)';
     }
   }
@@ -2528,15 +2530,15 @@ function saveCfgAndConnect() {
     localStorage.setItem('wingman_gemini_key', geminiKey);
   }
 
-  // Save sub token
+  proxySecret = document.getElementById('proxy-secret-input').value.trim();
+  if (proxySecret) localStorage.setItem('wingman_proxy_secret', proxySecret);
+  else localStorage.removeItem('wingman_proxy_secret');
+
+  // Save legacy sub token
   const newSubToken = document.getElementById('sub-token-input').value.trim();
   if (newSubToken) {
     subToken = newSubToken;
     localStorage.setItem('wingman_sub_token', subToken);
-    // Switch to Claude automatically if token present
-    if (provider !== 'anthropic') {
-      setProvider('anthropic');
-    }
   } else if (document.getElementById('sub-token-input').value === '') {
     // User cleared it — remove
     subToken = '';
@@ -2698,23 +2700,27 @@ async function send() {
 
   // Keep last 6 turns to avoid token limits (especially Groq free tier)
   const recentMessages = messages.slice(-6);
-  const apiMessages = recentMessages.map(m => ({ role: m.role, content: m.content }));
+  const apiMessages = recentMessages.map(m => ({ role: m.role, content: Array.isArray(m.content) && m.content.length ? m.content : [{ type: 'text', text: m.text || '' }] }));
 
   try {
     const activeKey = provider === 'gemini' ? geminiKey : provider === 'groq' ? groqKey : apiKey;
     const keyName = provider === 'gemini' ? 'Google Gemini' : provider === 'groq' ? 'Groq' : 'Anthropic';
     const keyUrl  = provider === 'gemini' ? 'https://aistudio.google.com/apikey' : provider === 'groq' ? 'https://console.groq.com' : 'https://console.anthropic.com/settings/keys';
 
-    // Gemini + Groq work without key (server proxy)
-    // Anthropic works with BYOK key OR proxy secret
-    if (!activeKey && !proxySecret && provider !== 'gemini' && provider !== 'groq') {
-      messages.push({ role: 'assistant', content: [], text: `Please add your ${keyName} API key in Settings (gear button) to start chatting.\n\n[Get a free key →](${keyUrl})`, searched: false });
+    // All shared provider requests require the owner credential.
+    if (!activeKey && !proxySecret) {
+      messages.push({ role: 'assistant', content: [], text: `Add your ${keyName} API key beside the model picker, or an owner-supplied shared access credential in Settings.\n\n[Open provider settings →](${keyUrl})`, searched: false });
       loading = false;
       hideThinking();
       renderMessages();
       updateSendBtn();
       scrollBottom();
       return;
+    }
+
+    const historyHasImages = recentMessages.some(m => Array.isArray(m.content) && m.content.some(c => c.type === 'image'));
+    if (historyHasImages && (!activeKey || provider === 'groq')) {
+      throw new Error('This connection supports text only. Use your own Gemini or Anthropic API key for images, or start a new text chat.');
     }
 
     let text = '', searched = false;
@@ -2724,7 +2730,7 @@ async function send() {
       const sysPrompt = buildPrompt(txt, hasImages);
       const geminiMessages = [];
       // Convert conversation history to Gemini format
-      for (const m of messages) {
+      for (const m of recentMessages) {
         const role = m.role === 'assistant' ? 'model' : 'user';
         const parts = [];
         if (Array.isArray(m.content) && m.content.length > 0) {
@@ -2746,15 +2752,17 @@ async function send() {
         tools: [{ google_search: {} }],
       };
 
-      // Use proxy (free) if no user key, direct API if BYOK
-      const modelName = MODEL_CYCLE[modelIdx]?.label || 'gemini-2.5-flash';
+      if (!geminiKey) delete geminiBody.tools;
+
+      // Use authorized shared access if no user key, direct API if BYOK
+      const modelName = 'gemini-2.5-flash';
       const geminiUrl = geminiKey
         ? `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${geminiKey}`
         : '/api/wingman/gemini';
 
       const res = await fetch(geminiUrl, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', ...(!geminiKey ? { 'X-Proxy-Secret': proxySecret } : {}) },
         body: JSON.stringify(geminiBody),
       });
       const data = await res.json();
@@ -2789,6 +2797,7 @@ async function send() {
         } else if (typeof m.content === 'string') {
           content = m.content;
         }
+        if (!content && m.role === 'assistant') content = m.text || '';
         // Truncate each message to 800 chars to stay under TPM limit
         if (content) groqMessages.push({ role, content: content.slice(0, 800) });
       }
@@ -2804,6 +2813,7 @@ async function send() {
         : '/api/wingman/groq';
       const groqHeaders = { 'Content-Type': 'application/json' };
       if (groqKey) groqHeaders['Authorization'] = `Bearer ${groqKey}`;
+      else groqHeaders['X-Proxy-Secret'] = proxySecret;
       const res = await fetch(groqUrl, {
         method: 'POST',
         headers: groqHeaders,
@@ -2821,16 +2831,13 @@ async function send() {
       // ═══ ANTHROPIC API ═══
       // Use server proxy if proxy secret set and no BYOK key,
       // or BYOK direct if user has their own key
-      const useProxy = (proxySecret || subToken) && !apiKey;
+      const useProxy = !!proxySecret && !apiKey;
       const claudeUrl = useProxy
         ? '/api/wingman/claude'
         : 'https://api.anthropic.com/v1/messages';
       const claudeHeaders = { 'Content-Type': 'application/json' };
-      // Sub token also authorizes proxy
-      const useSubProxy = subToken && !apiKey && !proxySecret;
-      if (useProxy || useSubProxy) {
-        if (proxySecret) claudeHeaders['x-proxy-secret'] = proxySecret;
-        if (subToken)    claudeHeaders['x-sub-token']    = subToken;
+      if (useProxy) {
+        claudeHeaders['X-Proxy-Secret'] = proxySecret;
       } else {
         claudeHeaders['x-api-key'] = apiKey;
         claudeHeaders['anthropic-version'] = '2023-06-01';
@@ -2839,11 +2846,11 @@ async function send() {
       const claudeBody = {
         model: 'claude-sonnet-4-6',
         max_tokens: 4096,
-        system: buildPrompt(txt, hasImages),
-        messages: apiMessages,
+        system: buildPrompt(txt, hasImages).slice(0, 6000),
+        messages: useProxy ? apiMessages.map(m => ({ role: m.role, content: m.content.map(c => c.text || '').join('\n') })) : apiMessages,
       };
-      // Web search available for subscribers AND BYOK users
-      claudeBody.tools = [{ type: 'web_search_20250305', name: 'web_search' }];
+      if (useProxy) delete claudeBody.model; // Server selects its configured allowlisted model.
+      else claudeBody.tools = [{ type: 'web_search_20250305', name: 'web_search' }];
 
       const res = await fetch(claudeUrl, {
         method: 'POST',
@@ -2851,6 +2858,7 @@ async function send() {
         body: JSON.stringify(claudeBody),
       });
       const data = await res.json();
+      if (data.error) throw new Error(data.error.message || String(data.error));
       for (const b of (data.content || [])) {
         if (b.type === 'text') text += b.text;
         if (b.type === 'tool_use' && b.name === 'web_search') searched = true;
