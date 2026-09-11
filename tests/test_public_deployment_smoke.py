@@ -105,6 +105,16 @@ def event_actor_payload(actor="Actor A"):
 
 
 class SmokeTests(unittest.TestCase):
+    def test_product_targets_match_current_source_surfaces(self):
+        source_dir = MODULE.parents[1] / "forge-source"
+        for target in smoke.build_targets("https://p.example/", "https://f.example/"):
+            if target.name not in {"patterns-home", "ask-pie"}:
+                continue
+            with self.subTest(surface=target.name):
+                body = (source_dir / f"{target.name}.html").read_text(encoding="utf-8")
+                snapshot = smoke.Snapshot(target.url, 200, HEADERS, body)
+                self.assertEqual(smoke.validate_html(snapshot, target), [])
+
     def test_html_markers_and_headers(self):
         target = smoke.build_targets("https://p.example/", "https://f.example/")[0]
         body = " ".join(target.required_markers)
