@@ -5,6 +5,7 @@ on:
   pull_request:
     paths:
       - "forge-source/**"
+      - "data/**"
       - "package*.json"
       - "workers/**"
       - "functions/**"
@@ -28,12 +29,15 @@ on:
       - "tests/test_ask_pie_retrieval.cjs"
       - "build_static.py"
       - "_headers"
+      - "_redirects"
+      - "_routes.json"
       - "README.md"
       - ".github/workflows/public-site-quality.yml"
   push:
     branches: [master]
     paths:
       - "forge-source/**"
+      - "data/**"
       - "package*.json"
       - "workers/**"
       - "functions/**"
@@ -57,6 +61,8 @@ on:
       - "tests/test_ask_pie_retrieval.cjs"
       - "build_static.py"
       - "_headers"
+      - "_redirects"
+      - "_routes.json"
       - "README.md"
       - ".github/workflows/public-site-quality.yml"
   workflow_dispatch:
@@ -91,6 +97,8 @@ jobs:
           python -m py_compile \
             tools/audit_public_site.py \
             tests/test_public_site_audit.py \
+            tools/public_inputs.py \
+            tests/test_public_inputs.py \
             tools/apply_priority_view_patch.py \
             tools/apply_ask_pie_patch.py \
             tools/apply_ask_pie_patch_fixed.py \
@@ -102,22 +110,35 @@ jobs:
           npm run test:runtime
 
       - name: Run software-only public-site fixture tests
-        run: python -m unittest -v tests/test_public_site_audit.py tests/test_pages_build.py tests/test_public_deployment_smoke.py
+        run: python -m unittest -v tests/test_public_site_audit.py tests/test_pages_build.py tests/test_public_deployment_smoke.py tests/test_public_inputs.py
 
-      - name: Run software-only dossier, decision-support, event-evidence, PIR, and cited-retrieval tests
+      - name: Run public evidence, daily navigation, and forecast accountability regressions
         run: |
           node --test tests/test_report_budget.mjs tests/test_audit_regressions.mjs tests/test_dossier_signals.cjs tests/test_record_dossiers.cjs tests/test_patterns_decision_support.cjs \
             tests/test_actor_event_evidence.cjs \
             tests/test_forge_data_projections.mjs \
             tests/test_pie_quality_surfaces.cjs \
             tests/test_pir_priority_view.cjs \
-            tests/test_ask_pie_retrieval.cjs
+            tests/test_ask_pie_retrieval.cjs \
+            tests/test_patterns_research.cjs \
+            tests/test_patterns_research_worker.mjs \
+            tests/test_patterns_daily.mjs \
+            tests/test_patterns_daily_regressions.mjs \
+            tests/test_patterns_flag_evidence.cjs \
+            tests/test_forecast_accountability.cjs
           node --check forge-source/dossier-signals.js
           node --check forge-source/record-dossiers.js
           node --check forge-source/patterns-decision-support.js
+          node --check forge-source/patterns-flag-evidence.js
           node --check forge-source/actor-event-evidence.js
           node --check forge-source/pir-priority-view.js
           node --check forge-source/ask-pie-retrieval.js
+          node --check forge-source/intel-normalization.js
+          node --check forge-source/patterns-daily.mjs
+          node --check forge-source/patterns-daily-ui.mjs
+          node --check forge-source/forecast-accountability-model.js
+          node --check tools/build_research_index.cjs
+          node --check workers/patterns-daily-projection.mjs
           node --check workers/forge-data-projections.mjs
           node --input-type=module --check < workers/forge-data.js
           python tools/apply_record_dossier_patch.py --check
@@ -160,14 +181,47 @@ jobs:
           test -f build/ask-pie/index.html
           test -f build/static/ask-pie-retrieval.js
           grep -F "Cited retrieval · no generated conclusion" build/ask-pie/index.html
-          grep -F "Ask PIE for the evidence—not a confident-sounding answer." build/ask-pie/index.html
+          grep -F 'id="save-packet"' build/ask-pie/index.html
+          grep -F 'id="export-packet"' build/ask-pie/index.html
           grep -F "No LLM writes the answer or changes the ranking." build/ask-pie/index.html
           grep -F "Ask PIE" build/patterns-home/index.html
-          grep -F "article mentions" build/pie-search/index.html
+          grep -F "Shared deterministic ranking" build/pie-search/index.html
           if grep -F "incidents" build/pie-search/index.html; then
             echo "ERROR: stale actor incident terminology remains in built raw search"
             exit 1
           fi
+
+      - name: Verify built daily, research, and forecast integration
+        run: |
+          test -f build/static/patterns-daily.mjs
+          test -f build/static/patterns-daily-ui.mjs
+          test -f build/static/patterns-flag-evidence.js
+          test -f build/static/intel-normalization.js
+          test -f build/static/forecast-accountability-model.js
+          test -f build/research_index.json
+          grep -F 'id="daily-workspace"' build/patterns-home/index.html
+          grep -F 'patterns-flag-evidence.js' build/patterns/index.html
+          grep -F 'Recorded evidence status' build/patterns/index.html
+          grep -F 'patterns-daily-ui.mjs' build/brief/index.html
+          grep -F 'forecast-accountability-model.js' build/forecast-accountability/index.html
+          node --input-type=module <<'NODE'
+          import assert from 'node:assert/strict';
+          import {readFileSync} from 'node:fs';
+          import research from './forge-source/ask-pie-retrieval.js';
+          const index = JSON.parse(readFileSync('build/research_index.json', 'utf8'));
+          assert.equal(index.schema_version, 1);
+          assert.ok(index.records.length > 0);
+          assert.match(index.meta.input_revision, /^[0-9a-f]{64}$/);
+          const summary = research.projectResearch(index, new URLSearchParams({view:'summary'}));
+          assert.deepEqual(summary.records, []);
+          const results = research.projectResearch(index, new URLSearchParams({q:'uas',limit:'100'}));
+          assert.ok(results.ranked.length <= 100);
+          assert.ok(Buffer.byteLength(JSON.stringify(results)) <= 1000000, 'Bounded research response exceeds 1 MB');
+          for (const {record} of results.ranked) {
+            assert.equal(record.raw, undefined);
+            assert.equal(record.searchText, undefined);
+          }
+          NODE
 
       - name: Summary
         if: always()
@@ -178,9 +232,13 @@ jobs:
             echo "- Source audit: critical public surfaces including manufacturer, component, platform, actor, Patterns flag, local Priority Intelligence, and Ask PIE cited-retrieval views"
             echo "- Dossier join tests: direct/contextual matching, inactive-row exclusion, evidence summary, and review prompts"
             echo "- Flag decision-support tests: classification, source quality, affected-record links, uncertainty, and prohibited conclusion language"
+            echo "- Flag evidence tests: no numeric verification tiers, explicit legacy heuristics, unregistered hypotheses, rendered evidence states, and exact-link tab restoration"
             echo "- Actor event tests: four-unit semantics, exact actor filtering, bounded pagination, rolling-URL guards, event artifact publication controls, and evidence URL safety"
             echo "- PIR tests: declared-term ranking, token boundaries, source-order fallback, local-storage failure handling, event-summary joins, evidence URL safety, and coverage gaps"
-            echo "- Ask PIE tests: term parsing, punctuation-tolerant boundaries, citation safety/deduplication, exact actor joins, direct/context separation, source coverage, and no automatic conclusions"
+            echo "- Research tests: complete citations/export, stable identities, bounded shared retrieval, source revisions, missing dates, and exact record resolution"
+            echo "- Daily tests: coherent freshness, truthful change states, URL/history restoration, export context, ambiguous identities, and load races"
+            echo "- Forecast tests: immutable issuance eligibility, explicit unavailable review queues, legacy cohorts, and safe evidence rendering"
+            echo "- Public inputs: selected publication copies, malformed input failure, and private-file exclusion"
             echo "- Built audit: generated route indexes, actor/PIR/Ask PIE markers, immutable helper assets, and copied metadata"
             echo "- Hardware required: none"
           } >> "$GITHUB_STEP_SUMMARY"

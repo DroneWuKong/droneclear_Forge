@@ -82,7 +82,7 @@ REPLACEMENTS = (
     ),
     Replacement(
         'forge-source/patterns-home.html',
-        '<a href="/priorities/">Priorities</a>',
+        '<a href="/priorities/">',
         '      <a href="#current">Current</a>\n      <a href="#evidence">Evidence</a>',
         '      <a href="/priorities/">Priorities</a>\n      <a href="#current">Current</a>\n      <a href="#evidence">Evidence</a>',
     ),
@@ -106,7 +106,7 @@ REPLACEMENTS = (
     ),
     Replacement(
         'workers/forge-data.js',
-        "  'dataset_catalog',\n  'source_coverage_matrix',\n  'data_quality_score',\n  'intel_articles',",
+        "  'dataset_catalog',\n  'source_coverage_matrix',\n  'data_quality_score',",
         "  'dataset_catalog',\n  'intel_articles',",
         "  'dataset_catalog',\n  'source_coverage_matrix',\n  'intel_articles',",
     ),

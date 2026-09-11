@@ -160,7 +160,7 @@ PAGES = {
 }
 
 # Static assets to copy (JS, CSS, JSON, images)
-STATIC_EXTENSIONS = {'.js', '.css', '.json', '.xml', '.txt', '.png', '.jpg', '.svg', '.ico', '.gif', '.webp'}
+STATIC_EXTENSIONS = {'.js', '.mjs', '.css', '.json', '.xml', '.txt', '.png', '.jpg', '.svg', '.ico', '.gif', '.webp'}
 
 # Files that must NOT appear in the public build/ static/ directory.
 # These are served by forge-data.mjs with tier-based auth.
@@ -338,6 +338,7 @@ _MOBILE_CSS = """<style>
 _UNIFIED_NAV = r"""<!-- ── Unified UAS- Nav (5-domain accordion drawer) ──────────────── -->
 <style id="dc-unified-nav-styles">
 #dc-nav{display:flex;align-items:center;justify-content:space-between;padding:0 16px;height:44px;background:#0c0c0a;border-bottom:1px solid #1e1e18;position:sticky;top:0;z-index:500;font-family:'DM Sans',system-ui,sans-serif}
+#dc-nav~nav.nav{top:44px}
 #dc-nav-left{display:flex;align-items:center;gap:10px;min-width:0;flex:1}
 #dc-nav-brand{font:700 13px 'JetBrains Mono',monospace;color:#f59e0b;text-decoration:none;letter-spacing:-.02em;flex-shrink:0}
 #dc-nav-sep{color:#2e2e26;font-size:12px;flex-shrink:0}
@@ -1283,13 +1284,13 @@ SEO_META = {
         'drone supply chain intelligence, PIE flags, NDAA procurement signals, gray zone drones, drone industry predictions, UAS threat assessment',
     ),
     'patterns-home.html': (
-        'P.I.E. Pattern Intelligence Engine — Drone Industry Threat Assessment',
-        'The Pattern Intelligence Engine tracks supply chain concentration, gray zone vendors, regulatory pressure, and procurement signals across the US UAS ecosystem.',
+        'UAS Patterns — Daily Changes and Evidence Research',
+        'Review changes in the UAS ecosystem, inspect the supporting sources, and research actors and technologies with traceable evidence.',
         'drone intelligence platform, PIE engine, UAS supply chain, drone procurement intelligence, NDAA threat tracking',
     ),
     'brief.html': (
-        'Daily PIE Brief — UAS Ecosystem Intelligence Report',
-        'Daily AI-synthesized intelligence brief covering drone supply chain signals, gray zone entity activity, regulatory developments, and procurement velocity.',
+        'UAS Patterns — Daily Evidence Brief',
+        'Inspect daily UAS changes, source coverage, and evidence before reading the generated narrative brief.',
         'drone intelligence brief, daily UAS report, PIE brief, drone supply chain news, NDAA procurement signals',
     ),
     'analytics.html': (
@@ -1663,6 +1664,7 @@ def generate_404_page():
 
 DATA_REPO = 'https://github.com/DroneWuKong/Ai-Project.git'
 DATA_CLONE_DIR = '_data_source'
+from tools.public_inputs import PUBLIC_INPUTS, sync_public_inputs, public_artifact_hashes, selected_public_hashes
 
 # All component categories supported by the Forge schema
 COMPONENT_CATEGORIES = [
@@ -1709,11 +1711,13 @@ def sync_handbook_data(data_ref=None):
     subprocess.run(
         ['git', '-C', DATA_CLONE_DIR, 'sparse-checkout', 'set', '--no-cone',
          '/data/parts-db/', '/docs/database/',
-         '/scripts/validate_forge_database.py', '/data/forge_database.schema.json'],
+         '/scripts/validate_forge_database.py', '/data/forge_database.schema.json',
+         *('/data/' + name for name in PUBLIC_INPUTS)],
         check=True, capture_output=True, text=True, env=git_env, timeout=180
     )
 
     parts_dir = os.path.join(DATA_CLONE_DIR, 'data', 'parts-db')
+    sync_public_inputs(Path(DATA_CLONE_DIR)/'data', SRC_DIR, data_ref, verified_revision=True)
     if not os.path.isdir(parts_dir):
         print(f"  WARNING: {parts_dir} not found after clone")
         print("  Falling back to local forge_database.json")
@@ -1915,6 +1919,9 @@ def sync_handbook_data(data_ref=None):
             shutil.rmtree(DATA_CLONE_DIR, ignore_errors=True)
             return False
 
+    # Assembly time and pinned parts input do not pretend every reference row is new.
+    forge_db.setdefault('meta', {})['parts_input_revision'] = data_ref
+    forge_db['meta']['assembly_source'] = 'Pinned upstream parts plus retained local reference records'
     # Write updated forge_database.json
     with open(local_db_path, 'w', encoding='utf-8') as f:
         json.dump(forge_db, f, separators=(',', ':'))
@@ -2146,7 +2153,8 @@ def build(*, offline=False, data_ref=None, data_dir=None, include_private=False)
 
     # Explicitly copy full intel files to build root (served at /pie_flags.json etc.)
     # These are NOT in /static/ — they live at root so authed users get full data
-    ROOT_INTEL_FILES = ['flags.xml', 'brief.xml', 'pie_flags.json', 'pie_predictions.json', 'predictions_best.json',
+    ROOT_INTEL_FILES = ['flags.json', 'forecast_review_queue.json', 'analytic_judgments.json', 'publication_inputs.json',
+                        'flags.xml', 'brief.xml', 'pie_flags.json', 'pie_predictions.json', 'predictions_best.json',
                         'pie_brief.json', 'pie_brief_history.json', 'pie_trends.json', 'solicitations.json',
                         'intel_articles.json', 'intel_companies.json', 'intel_platforms.json',
                         'intel_programs.json', 'forge_intel.json', 'entity_graph.json',
@@ -2183,7 +2191,7 @@ def build(*, offline=False, data_ref=None, data_dir=None, include_private=False)
         import generate_free_tier
         import importlib
         importlib.reload(generate_free_tier)
-        generate_free_tier.SEARCH_PATHS = ([Path(data_dir)] if data_dir else []) + [Path(SRC_DIR), Path(SRC_DIR)/'static']
+        generate_free_tier.SEARCH_PATHS = [Path(SRC_DIR), Path(SRC_DIR)/'static']
         generate_free_tier.main([str(os.path.join(BUILD_DIR, 'static'))])
         print("  Free-tier data slices generated")
     except Exception as e:
@@ -2229,7 +2237,7 @@ def build(*, offline=False, data_ref=None, data_dir=None, include_private=False)
         # NOTE: patterns.html is intentionally excluded — its native brief panel
         # (renderBriefPanel → #brief-inner) already shows the same counts + analyst
         # summary, so injecting the card there just stacked a redundant duplicate.
-        if src_name in {'tracker.html', 'patterns-home.html', 'clock.html'}:
+        if src_name in {'tracker.html', 'clock.html'}:
             html = html.replace('</body>', '  <script defer src="/static/dash-brief.js?v=3"></script>\n</body>', 1)
         html = fix_nav_links(html, depth)
         html = rewrite_legacy_domains(html)
@@ -2342,6 +2350,7 @@ def main():
     parser.add_argument('--include-private', action='store_true')
     args = parser.parse_args()
     if args.offline and args.include_private: parser.error('--offline cannot export private upstream data')
+    if args.data_dir and not args.offline: parser.error('--data-dir is an offline input; online builds use the pinned checkout only')
     if not args.offline and not re.fullmatch(r'[0-9a-fA-F]{40}', args.data_ref or ''):
         parser.error('Use --offline or supply an immutable --data-ref')
     repo = Path(__file__).resolve().parent
@@ -2360,17 +2369,24 @@ def main():
         # Explicit public metadata follows the chosen data input; never import
         # arbitrary files (especially private dossiers) from the data directory.
         if data_dir:
-            for name in ('dataset_catalog.json', 'data_quality_score.json', 'calibration_scores.json', 'source_coverage_matrix.json'):
-                candidate = Path(data_dir)/name
-                if candidate.is_file():
-                    json.loads(candidate.read_text(encoding='utf-8'))
-                    shutil.copy2(candidate, Path(SRC_DIR)/name)
+            sync_public_inputs(data_dir, SRC_DIR, args.data_ref)
+        elif args.offline:
+            sync_public_inputs(None, SRC_DIR)
         if args.include_private: os.environ['PATTERNS_PINNED_DATA_REF'] = args.data_ref
         build(offline=args.offline, data_ref=args.data_ref, data_dir=data_dir, include_private=args.include_private)
-        inputs = {str(p.relative_to(SRC_DIR)).replace('\\','/'):hashlib.sha256(p.read_bytes()).hexdigest() for p in sorted(Path(SRC_DIR).rglob('*')) if p.is_file()}
-        artifacts = {str(p.relative_to(destination)).replace('\\','/'):hashlib.sha256(p.read_bytes()).hexdigest() for p in sorted(destination.rglob('*')) if p.is_file()}
-        external_inputs = {str(p.relative_to(data_dir)).replace('\\','/'):hashlib.sha256(p.read_bytes()).hexdigest() for p in sorted(Path(data_dir).glob('*.json')) if p.is_file()} if data_dir else {}
-        manifest = {'schema_version':1, 'upstream_ref':args.data_ref if not args.offline else None, 'offline':args.offline, 'inputs':inputs, 'external_inputs':external_inputs, 'artifacts':artifacts}
+        # Research shares the exact public inputs already assembled by this build.
+        subprocess.run(['node', str(repo/'tools/build_research_index.cjs'),
+                        '--input', str(destination), '--output', str(destination/'research_index.json'),
+                        '--revision', args.data_ref if not args.offline else 'offline'], check=True)
+        inputs = public_artifact_hashes(SRC_DIR)
+        artifacts = public_artifact_hashes(destination)
+        publication_path = Path(SRC_DIR)/'publication_inputs.json'
+        publication = json.loads(publication_path.read_text(encoding='utf-8')) if publication_path.is_file() else {}
+        external_inputs = selected_public_hashes(publication) if data_dir else {}
+        manifest = {'schema_version':1, 'upstream_ref':args.data_ref if not args.offline else None,
+                    'upstream_ref_scope':'selected_input_rows_only', 'offline':args.offline,
+                    'publication_consistency':publication.get('publication_consistency', 'local_snapshot'),
+                    'inputs':inputs, 'external_inputs':external_inputs, 'artifacts':artifacts}
         (destination/'build-manifest.json').write_text(json.dumps(manifest,indent=2)+'\n',encoding='utf-8')
 
 if __name__ == '__main__':

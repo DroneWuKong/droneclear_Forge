@@ -113,7 +113,7 @@
   function matchFlag(flag, slug, record, parts) {
     if (!flag || typeof flag !== 'object') return null;
     const status = normalize(flag.status || 'active');
-    if (status && !['active', 'open', 'current', 'monitoring', 'watch'].includes(status)) return null;
+    if (status && !['active', 'open', 'current', 'monitoring', 'watch', 'new', 'changed', 'escalated'].includes(status)) return null;
 
     const aliases = entityAliases(slug, record);
     const canonicalSlug = normalize(String(slug || '').replace(/-/g, ' '));

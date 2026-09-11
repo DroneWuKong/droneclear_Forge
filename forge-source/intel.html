@@ -242,6 +242,9 @@ a{color:var(--blue);text-decoration:none}a:hover{text-decoration:underline}
   </div><!-- /dc-drawer-body -->
 </div>
 
+<script src="/static/dossier-signals.js"></script>
+<script src="/static/intel-normalization.js"></script>
+<script src="/static/ask-pie-retrieval.js"></script>
 <script>
 (function(){
   var path = location.pathname.replace(/\/$/, '').split('/').pop() || 'home';
@@ -349,7 +352,7 @@ a{color:var(--blue);text-decoration:none}a:hover{text-decoration:underline}
     </div>
     <div class="stats-bar" id="feed-stats">Loading...</div>
     <div id="pie-sidebar" style="background:var(--surface);border:1px solid var(--border);border-left:2px solid var(--amber);padding:10px 12px;margin-bottom:12px;border-radius:6px;font-size:11px">Loading PIE…</div>
-    <div id="feed-list">Loading...</div>
+    <p style="margin:12px 0;color:var(--text-d);font-size:12px">This feed shows the latest 100 indexed article records plus reference desks. <a href="/pie-search/" style="color:var(--green)">Search the full published corpus →</a></p><div id="feed-list">Loading...</div>
   </div>
   <div class="panel" id="panel-defense">
     <div class="stats-bar" id="defense-stats">Loading...</div>
@@ -454,7 +457,7 @@ function renderDFR(){
         ${isExcl?'<span class="badge" style="background:var(--dfr-d);color:var(--dfr)">EXCLUSIVE</span>':''}
         <span class="badge" style="background:var(--dfr-d);color:var(--dfr)">DFR</span>
         <span class="badge" style="background:var(--surface);color:var(--text-d)">${esc(x.site||'forge')}</span>
-        <span style="font:10px var(--mono);color:var(--text-xd);margin-left:auto">${esc((x.pub_date||'').slice(0,10))}</span>
+        <span style="font:10px var(--mono);color:var(--text-xd);margin-left:auto">${esc(x.pub_date || 'Date not reported')}</span>
       </div>
       <h3>${esc(x.title||'Untitled')}</h3>
       <div class="sum">${esc(x.summary||(x.body_text||'').slice(0,200)||'—')}</div>
@@ -508,7 +511,7 @@ function renderFeed(){
   l.innerHTML=a.slice(0,100).map(x=>{
     const c=cat(x),rg=ar(x),en=x.entities||{},pr=(en.programs||[]).slice(0,2),co=(en.companies||[]).slice(0,2),u=x.url||'#';
         var fi=window.DC.push(x)-1;
-    return`<div class="acard ${c}" onclick="window.dc(${fi})"><div style="display:flex;gap:6px;align-items:center;margin-bottom:4px;flex-wrap:wrap"><span class="badge" style="background:${CC[c]}18;color:${CC[c]}">${c}</span><span class="badge" style="background:var(--surface);color:var(--text-d)">${esc(SL[x.site]||x.site)}</span><span style="font:10px var(--mono);color:var(--text-xd);margin-left:auto">${esc((x.pub_date||'').slice(0,10))}</span></div><h3>${esc(x.title||'Untitled')}</h3><div class="sum">${esc(x.summary||(x.body_text||'').slice(0,200)||'—')}</div><div style="display:flex;gap:3px;flex-wrap:wrap;margin-top:6px">${pr.map(p=>`<span class="badge badge-red">${esc(p)}</span>`).join('')}${co.map(c=>`<span class="badge badge-blue">${esc(c)}</span>`).join('')}${rg.slice(0,2).map(r=>`<span class="badge badge-cyan">${r}</span>`).join('')}</div></div>`;
+    return`<div class="acard ${c}" onclick="window.dc(${fi})"><div style="display:flex;gap:6px;align-items:center;margin-bottom:4px;flex-wrap:wrap"><span class="badge" style="background:${CC[c]}18;color:${CC[c]}">${c}</span><span class="badge" style="background:var(--surface);color:var(--text-d)">${esc(SL[x.site]||x.site)}</span><span style="font:10px var(--mono);color:var(--text-xd);margin-left:auto">${esc(x.pub_date || 'Date not reported')}</span></div><h3>${esc(x.title||'Untitled')}</h3><div class="sum">${esc(x.summary||(x.body_text||'').slice(0,200)||'—')}</div><div style="display:flex;gap:3px;flex-wrap:wrap;margin-top:6px">${pr.map(p=>`<span class="badge badge-red">${esc(p)}</span>`).join('')}${co.map(c=>`<span class="badge badge-blue">${esc(c)}</span>`).join('')}${rg.slice(0,2).map(r=>`<span class="badge badge-cyan">${r}</span>`).join('')}</div></div>`;
   }).join('')+(a.length>100?`<div style="text-align:center;padding:20px;color:var(--text-d);font:11px var(--mono)">Showing 100 of ${a.length}</div>`:'');
 }
 function rP(){
@@ -642,7 +645,7 @@ window.openDM=function(record){
     <div class="dm-title">${esc(record.title||'Untitled')}</div>
     <div class="dm-meta">
       <span>${esc(record.source||'')}</span>
-      ${record.pub_date?`<span>· ${esc(record.pub_date.slice(0,10))}</span>`:''}
+      <span>· ${esc(record.pub_date || 'Date not reported')}</span>
       ${conf?`<span>· ${esc(conf)}</span>`:''}
     </div>
     <div class="dm-summary">${esc(record.summary||'No summary available.')}</div>`;
@@ -676,12 +679,12 @@ window.openDM=function(record){
   // PIE flags
   if(flags.length){
     html+=`<div style="font:600 10px var(--mono);color:var(--red);text-transform:uppercase;letter-spacing:.1em">⚡ PIE Flags</div>
-    <div class="dm-flags">${flags.map(f=>`<div class="dm-flag"><div style="font-weight:600;color:var(--red);margin-bottom:2px">${esc(f.title)}</div><div style="color:var(--text-s)">${esc((f.detail||'').slice(0,160))}…</div></div>`).join('')}</div>`;
+    <div class="dm-flags">${flags.map(f=>`<div class="dm-flag"><div style="font-weight:600;color:var(--red);margin-bottom:2px">${esc(f.title)} · ${esc(f._match_confidence || 'unresolved')} identity match</div><div style="color:var(--text-s)">${esc((f.detail||'').slice(0,160))}…</div></div>`).join('')}</div>`;
   }
 
   // Source + CTA
   html+=`<div class="dm-cta">
-    ${isPDF
+    ${!IntelNormalization.sourceUrl(record.url) ? '<span>Source citation not supplied</span>' : isPDF
       ? `<a href="${esc(safeUrl(record.url))}" target="_blank" class="dm-btn primary">↗ Open PDF Source</a>`
       : `<button class="dm-btn primary" data-url="${esc(record.url||'')}" data-title="${esc((record.title||'').slice(0,60))}" onclick="closeDM();or(this.dataset.url,this.dataset.title)">Open in Reader</button>
          <a href="${esc(safeUrl(record.url))}" target="_blank" class="dm-btn">↗ Source</a>`
@@ -726,15 +729,7 @@ function paywallGate(title, vertical){
 
 // Get PIE flags relevant to a record's title/summary
 function getPIEFlags(record){
-  if(!PIE_FLAGS.length) return [];
-  const t=((record.title||'')+(record.summary||'')).toLowerCase();
-  return PIE_FLAGS.filter(f=>{
-    const ft=(f.title||'').toLowerCase();
-    const fd=(f.detail||'').toLowerCase();
-    // Match if any significant word from the record appears in the flag
-    const words=t.split(/\s+/).filter(w=>w.length>5);
-    return words.some(w=>ft.includes(w)||fd.includes(w));
-  }).slice(0,2);
+  return IntelNormalization.relatedFlags(record, PIE_FLAGS, window.ForgeDossierSignals).slice(0,2);
 }
 
 function pieFlagBadge(flag){
@@ -769,94 +764,8 @@ function renderPIESidebar(){
 // ── FORGE INTEL ADAPTERS ──
 // Convert forge_intel.json sections into normalized records for each vertical
 
-function forgeIntelToDefenseRecords(fi){
-  if(!fi||!fi.contracts) return [];
-  const records=[];
-  const TODAY=new Date().toISOString().slice(0,10);
-
-  // Contracts → defense records
-  (fi.contracts||[]).forEach((c,i)=>{
-    records.push({
-      id:'forge_contract_'+i,
-      title:(c.program||'Defense Contract')+' — '+(c.awardee||''),
-      summary:`${c.awardee||''} | ${c.value||'Undisclosed'} | ${c.type||''} | ${c.notes||''}`,
-      pub_date:c.date||TODAY, source:'forge_intel',
-      vertical_tag:'defense', data_category:'procurement',
-      paywall:false, url:c.url||'https://www.diu.mil',
-    });
-  });
-
-  // Funding rounds (defense-tagged) → defense records
-  (fi.funding||[]).filter(f=>f.type&&(f.type.toLowerCase().includes('defense')||f.type.toLowerCase().includes('series'))).forEach((f,i)=>{
-    records.push({
-      id:'forge_funding_def_'+i,
-      title:(f.company||'')+ ' raises '+(f.amount||'')+(f.type?' ('+f.type+')':''),
-      summary:`${f.company||''} | ${f.amount||''} | ${f.valuation?'Valuation: '+f.valuation+' | ':''} ${f.note||''}`,
-      pub_date:f.date||TODAY, source:'forge_intel',
-      vertical_tag:'defense', data_category:'financial',
-      paywall:false, url:f.url||'https://dronelife.com',
-    });
-  });
-
-  // Market stats → one summary record
-  if(fi.market_stats){
-    const ms=fi.market_stats;
-    records.push({
-      id:'forge_market_stats',
-      title:`Defense UAS Market — ${ms['2026_ytd_funding']||''} YTD, ${ms['2025_defense_share']||''} of 2025 funding`,
-      summary:`2025 total: ${ms['2025_total_funding']||''}. Defense share: ${ms['2025_defense_share']||''}. 2026 YTD: ${ms['2026_ytd_funding']||''}. Largest contract: ${ms['largest_contract_2026']||''}. ${ms['key_trend']||''}`,
-      pub_date:TODAY, source:'forge_intel',
-      vertical_tag:'defense', data_category:'financial',
-      paywall:false, url:'https://dronelife.com',
-    });
-  }
-
-  return records;
-}
-
-function forgeIntelToCommercialRecords(fi){
-  if(!fi) return [];
-  const records=[];
-  const TODAY=new Date().toISOString().slice(0,10);
-
-  // Funding rounds (non-defense) → commercial records
-  (fi.funding||[]).filter(f=>!f.type||!f.type.toLowerCase().includes('defense')).forEach((f,i)=>{
-    records.push({
-      id:'forge_funding_com_'+i,
-      title:(f.company||'')+' raises '+(f.amount||'')+(f.type?' ('+f.type+')':''),
-      summary:`${f.company||''} | ${f.amount||''} | ${f.valuation?'Valuation: '+f.valuation+' | ':''} ${f.note||''}`,
-      pub_date:f.date||TODAY, source:'forge_intel',
-      vertical_tag:'commercial', data_category:'financial',
-      paywall:false, url:f.url||'https://dronelife.com',
-    });
-  });
-
-  // Commercial sources → platform records
-  (fi.commercial_sources||[]).slice(0,10).forEach((s,i)=>{
-    records.push({
-      id:'forge_com_source_'+i,
-      title:(s.name||'')+(s.type?' — '+s.type:''),
-      summary:`${s.type||''} | ${s.parts?s.parts+' parts/products | ':''}${s.note||''}`,
-      pub_date:TODAY, source:'forge_intel',
-      vertical_tag:'commercial', data_category:'platform_intel',
-      paywall:false, url:s.url||'',
-    });
-  });
-
-  // Grants/awards that are commercial/DFR/program → commercial
-  (fi.grants_awards||[]).filter(g=>g.type&&!g.type.toLowerCase().includes('defense')&&!g.type.toLowerCase().includes('legislation')).forEach((g,i)=>{
-    records.push({
-      id:'forge_grant_com_'+i,
-      title:(g.program||'')+(g.date?' — '+g.date:''),
-      summary:`${g.type||''} | ${g.note||''} | ${g.amount||''}`,
-      pub_date:g.date||TODAY, source:'forge_intel',
-      vertical_tag:'commercial', data_category:'grant',
-      paywall:false, url:g.url||'',
-    });
-  });
-
-  return records;
-}
+const forgeIntelToDefenseRecords=IntelNormalization.defenseRecords;
+const forgeIntelToCommercialRecords=IntelNormalization.commercialRecords;
 
 // ── DEFENSE VERTICAL ──
 let defSubFilter='all';
@@ -890,7 +799,7 @@ function renderDefense(){
         ${isPaid?'<span class="badge" style="background:var(--defense-d);color:var(--defense)">🔒 PRO</span>':''}
         <span class="badge" style="background:var(--defense-d);color:var(--defense)">DEFENSE</span>
         <span class="badge" style="background:var(--surface);color:var(--text-d)">${esc(x.source||x.site||'forge')}</span>
-        <span style="font:10px var(--mono);color:var(--text-xd);margin-left:auto">${esc((x.pub_date||'').slice(0,10))}</span>
+        <span style="font:10px var(--mono);color:var(--text-xd);margin-left:auto">${esc(x.pub_date || 'Date not reported')}</span>
       </div>
       <h3>${esc(x.title||'Untitled')}</h3>
       <div class="sum">${esc(x.summary||(x.body_text||'').slice(0,200)||'—')}</div>
@@ -932,7 +841,7 @@ function renderCommercial(){
         ${isPaid?'<span class="badge" style="background:var(--commercial-d);color:var(--commercial)">🔒 PRO</span>':''}
         <span class="badge" style="background:var(--commercial-d);color:var(--commercial)">COMMERCIAL</span>
         <span class="badge" style="background:var(--surface);color:var(--text-d)">${esc(x.source||x.site||'forge')}</span>
-        <span style="font:10px var(--mono);color:var(--text-xd);margin-left:auto">${esc((x.pub_date||'').slice(0,10))}</span>
+        <span style="font:10px var(--mono);color:var(--text-xd);margin-left:auto">${esc(x.pub_date || 'Date not reported')}</span>
       </div>
       <h3>${esc(x.title||'Untitled')}</h3>
       <div class="sum">${esc(x.summary||(x.body_text||'').slice(0,200)||'—')}</div>
@@ -973,7 +882,7 @@ function showCard(r){
   html += `<div class="cs-title">${esc(r.title||'Untitled')}</div>`;
   html += '<div class="cs-meta">';
   if(r.source) html += `<span>${esc(r.source)}</span>`;
-  if(r.pub_date) html += `<span>· ${esc(r.pub_date.slice(0,10))}</span>`;
+  html += `<span>· ${esc(r.pub_date || 'Date not reported')}</span>`;
   if(r.confidence) html += `<span>· ${esc(r.confidence)}% confidence</span>`;
   html += '</div>';
   html += '<div class="cs-divider"></div>';
@@ -1031,7 +940,7 @@ function showCard(r){
       html += '<div class="cs-pie-flags">';
       flags.forEach(f=>{
         html += `<div class="cs-pie-flag">
-          <div class="cs-pie-flag-title">${esc(f.title)}</div>
+          <div class="cs-pie-flag-title">${esc(f.title)} · ${esc(f._match_confidence)} identity match (${esc(f._matched_identity)})</div>
           <div class="cs-pie-flag-detail">${esc((f.detail||'').slice(0,180))}${(f.detail||'').length>180?'…':''}</div>
         </div>`;
       });
@@ -1041,10 +950,13 @@ function showCard(r){
 
   // Actions
   html += '<div class="cs-actions">';
-  if(r.url && r.url!=='#'){
+  if(IntelNormalization.sourceUrl(r.url)){
     const isPDF = (r.url||'').toLowerCase().endsWith('.pdf');
     html += `<a href="${esc(safeUrl(r.url))}" target="_blank" rel="noopener" class="cs-btn primary">${isPDF?'📄 Open PDF':'↗ Read Source'}</a>`;
   }
+  if(!IntelNormalization.sourceUrl(r.url)) html += '<span>Source citation not supplied</span>';
+  if(r._research_record) html += `<a class="cs-btn" href="${esc(r._research_record)}">Exact record and saved research</a>`;
+  if(r.reference_as_of) html += `<span>Reference dataset as of ${esc(r.reference_as_of)}; publication date ${esc(r.pub_date || 'unknown')}</span>`;
   html += `<button class="cs-btn" onclick="closeCard()">Close</button>`;
   html += '</div>';
 
@@ -1061,8 +973,16 @@ function showCard(r){
     if(btn){btn.click();}
   }
 })();
+let ARTICLE_WINDOW={total:0,meta:null};
+async function loadResearchArticles(){
+  const result=await AskPieRetrieval.researchRequest({record_type:'article',limit:'100'});
+  ARTICLE_WINDOW={total:result.data.total_matches || 0,meta:result.data.meta};
+  const el=document.getElementById('last-updated');
+  if(el) el.textContent=`Latest 100 of ${ARTICLE_WINDOW.total} indexed article records · index ${result.data.meta?.generated_at || 'unknown'}`;
+  return result.data.records.map(row=>({aid:row.id,title:row.title,summary:row.summary,pub_date:row.date,site:row.source,url:row.sourceUrl || row.citations[0]?.url || '',_research_record:row.destination,_body_deferred:true,entities:row.entities || {}}));
+}
 Promise.all([
-  fetch('/api/data?type=intel_articles').then(r=>r.ok?r.json():[]).then(e=>e&&e.data!==undefined?e.data:e).catch(()=>[]),
+  loadResearchArticles(),
   fetch('/data/defense/defense_master.json').then(r=>r.ok?r.json():{records:[]}).catch(()=>({records:[]})),
   fetch('/data/commercial/commercial_master.json').then(r=>r.ok?r.json():{records:[]}).catch(()=>({records:[]})),
   fetch('/data/dfr/dfr_master.json').then(r=>r.ok?r.json():{records:[]}).catch(()=>({records:[]})),
@@ -1258,11 +1178,6 @@ function fmtUpdated(iso) {
     if (el) el.textContent = 'Pipeline: ' + dt + ' · ' + timeStr;
   } catch(e) {}
 }
-fetch('/intel_articles.json').then(r=>r.json()).then(arts=>{
-    var dates = arts.map(a=>a.pub_date||a.scraped_date||'').filter(Boolean).sort();
-    var latest = dates[dates.length-1];
-    if(latest) { var el=document.getElementById('last-updated'); if(el) el.textContent='Latest article: '+latest; }
-  }).catch(()=>{});
 </script>
 
 <!-- Analytics injected by build_static.py (unified _ANALYTICS_SNIPPET + _UNIFIED_NAV) -->

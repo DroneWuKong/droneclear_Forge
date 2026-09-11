@@ -1,3 +1,5 @@
+import research from '../forge-source/ask-pie-retrieval.js';
+import { projectDailyChanges } from './patterns-daily-projection.mjs';
 const DEFAULT_EVENT_LIMIT = 20;
 const MAX_EVENT_LIMIT = 100;
 const MAX_REPORTING_SPAN_DAYS = 5.01;
@@ -101,6 +103,17 @@ export function articleEventPublicationErrors(data) {
 }
 
 export function validateDatasetForPublication(data, type) {
+  const schema = {forecast_review_queue:'forecast-review-queue-v1',analytic_judgments:'analytic-judgments-v1'}[type];
+  if (schema) {
+    const errors=[];
+    if (!data || Array.isArray(data) || data.schema_version !== schema) errors.push(`schema_version must be ${schema}`);
+    if (!Array.isArray(data?.records) || data.records.some(row=>!row || typeof row !== 'object' || Array.isArray(row))) errors.push('records must be a list of objects');
+    if (type === 'forecast_review_queue') {
+      if (!data?.counts || typeof data.counts !== 'object' || Array.isArray(data.counts) || Object.values(data.counts).some(count=>!Number.isInteger(count)||count<0)) errors.push('queue counts must be nonnegative integers');
+      else if (Array.isArray(data.records) && Object.values(data.counts).reduce((sum,count)=>sum+count,0) !== data.records.length) errors.push('queue counts must reconcile with records');
+    }
+    return errors;
+  }
   if (type === 'article_event_clusters') {
     return articleEventPublicationErrors(data);
   }
@@ -201,6 +214,13 @@ export function projectDataset(data, type, params) {
     error.code = 'DATASET_PUBLICATION_CONTROL';
     error.validationErrors = errors;
     throw error;
+  }
+  if (type === 'research_index') return research.projectResearch(data, params);
+  if (type === 'daily_changes') return projectDailyChanges(data, params);
+  if (type === 'intel_articles' && (params.get('record_id') || params.get('record_key'))) {
+    const rows = Array.isArray(data) ? data : data.articles || [];
+    const matches = rows.filter(row => params.get('record_key') ? research.recordKey(research.articleRecords([row])[0]) === params.get('record_key') : String(row.aid || row.id || research.stableId(row)) === params.get('record_id'));
+    return {record_status:matches.length === 1 ? 'found' : matches.length ? 'ambiguous' : 'missing', record:matches.length === 1 ? {...research.publicRecord(research.compactRecord(research.articleRecords(matches)[0])), body_excerpt:String(matches[0].body_text || matches[0].summary || '').slice(0, 16000)} : null};
   }
   if (type === 'article_event_clusters') {
     return projectArticleEventClusters(data, params);

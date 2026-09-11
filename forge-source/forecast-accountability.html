@@ -106,6 +106,26 @@ tr.bo-low td{opacity:.55}
 .insight b{color:var(--text);font-weight:700}
 .footnote{margin-top:14px;font-size:11px;color:var(--text-xd);line-height:1.6}
 .footnote a{color:var(--amber);text-decoration:underline}
+.forecast-muted{font-size:12px;line-height:1.6;color:var(--text-d);margin:8px 0}
+.forecast-table{overflow-x:auto}
+.forecast-table tbody th{text-align:left;font:600 12px var(--font);padding:8px 6px;border-bottom:1px dashed var(--border)}
+.forecast-queue-row{border-top:1px solid var(--border);padding:15px 0}
+.forecast-queue-row h3{font-size:14px;line-height:1.5}
+.forecast-state{font:600 10px var(--mono);color:var(--amber)}
+.forecast-queue-row[data-state="reviewed"] .forecast-state{color:var(--green)}
+.forecast-queue-row[data-state="legacy_unregistered"] .forecast-state{color:var(--text-d)}
+.forecast-criteria{margin-top:10px;font-size:12px}
+.forecast-criteria summary{cursor:pointer;color:var(--text-s);padding:5px 0}
+.forecast-criteria dl{display:grid;grid-template-columns:120px minmax(0,1fr);gap:6px 12px;margin:10px 0}
+.forecast-criteria dt{color:var(--text-d)}
+.forecast-criteria dd{margin:0;overflow-wrap:anywhere}
+.forecast-criteria code{font:10px var(--mono);overflow-wrap:anywhere}
+.forecast-criteria a,.forecast-docs{color:var(--amber);text-decoration:underline;overflow-wrap:anywhere}
+.forecast-criteria ol,.forecast-criteria ul{padding-left:20px;line-height:1.8}
+.forecast-search{background:var(--surface);border:1px solid var(--border);color:var(--text);font:12px var(--font);padding:8px 10px;width:100%;margin:6px 0 12px;border-radius:4px}
+.forecast-summary{font:600 13px var(--font);cursor:pointer}
+button:focus-visible,input:focus-visible,summary:focus-visible,a:focus-visible{outline:2px solid var(--amber);outline-offset:3px}
+@media(max-width:600px){.page{padding:22px 14px 50px}.forecast-criteria dl{grid-template-columns:1fr}.forecast-criteria dd{margin-bottom:7px}.stats{flex-wrap:wrap}.st{flex:1 1 50%;border-bottom:1px solid var(--border)}}
 </style>
 </head>
 <body>
@@ -113,10 +133,9 @@ tr.bo-low td{opacity:.55}
   <div class="eyebrow">uas-patterns · PIE intelligence</div>
   <h1>Forecast Accountability</h1>
   <p class="tagline">
-    PIE issues confident probabilistic forecasts every day. This page asks the
-    uncomfortable question back: <strong>how many does it actually grade — and is
-    it calibrated?</strong> Reads <code>prediction_outcomes</code> live from the
-    intel API; everything below is computed in the browser from that payload.
+    Inspect the questions issued before outcomes, the evidence waiting for review,
+    and how reviewed forecasts compare with simple baselines. Event probability
+    and confidence in evidence are separate. Legacy history remains visible and ungraded.
   </p>
 
   <div class="caveat caveat-strong" data-test-id="forecast-accountability-disclaimer">
@@ -128,6 +147,29 @@ tr.bo-low td{opacity:.55}
     <strong>at least 30 graded forecasts including an evidence-backed refutation</strong>.
     Legacy automated verdicts remain in the audit history but do not count toward accuracy or calibration.
   </div>
+
+  <section class="panel" aria-labelledby="cohort-title">
+    <h2 class="panel-h" id="cohort-title">Prospective forecasts and retained history</h2>
+    <div id="forecast-cohorts" aria-live="polite"><p class="forecast-muted">Loading cohort coverage…</p></div>
+  </section>
+
+  <section class="panel" aria-labelledby="queue-title">
+    <h2 class="panel-h" id="queue-title">Forecast review queue</h2>
+    <p class="panel-sub">Inspect deadlines, immutable criteria and candidate evidence. Public status is read-only.
+      <a class="forecast-docs" href="https://github.com/DroneWuKong/Ai-Project/blob/main/docs/FORECAST_REGISTRATION.md" target="_blank" rel="noopener noreferrer">Analyst registration and review guide ↗</a></p>
+    <div id="queue-controls" class="resolved-controls" aria-label="Forecast status filters"></div>
+    <label class="forecast-muted" for="queue-search">Find a question, actor or version</label>
+    <input class="forecast-search" id="queue-search" type="search" placeholder="Search the forecast queue" autocomplete="off">
+    <p id="queue-status" class="forecast-muted" role="status">Loading forecast review status…</p>
+    <div id="forecast-queue"></div>
+    <button id="queue-more" class="rc-btn" type="button" hidden>Show more forecasts</button>
+  </section>
+
+  <section class="panel" aria-labelledby="evaluation-title">
+    <h2 class="panel-h" id="evaluation-title">Reviewed questions against simple baselines</h2>
+    <p class="panel-sub">Descriptive scores on the same questions. The earliest issued version is used; a later revision cannot replace an unreviewed original.</p>
+    <div id="forecast-evaluation"><p class="forecast-muted">Loading prospective evaluation…</p></div>
+  </section>
 
   <div class="stats" id="kpis">
     <div class="st"><span class="st-n" id="k-total">—</span><span class="st-l">Outcome records</span></div>
@@ -147,7 +189,7 @@ tr.bo-low td{opacity:.55}
     <div class="panel">
       <div class="panel-h">Resolved calls — the actual verdicts</div>
       <div class="panel-sub">Every graded prediction: what PIE called, the
-        confidence it assigned, and the open-source evidence that confirmed or
+        event probability it assigned, and the open-source evidence that confirmed or
         refuted it. Newest first.</div>
       <div class="resolved-controls" id="resolved-controls"></div>
       <div id="resolved-list"></div>
@@ -170,7 +212,7 @@ tr.bo-low td{opacity:.55}
     </div>
 
     <div class="panel">
-      <div class="panel-h">Where the engine places its confidence</div>
+      <div class="panel-h">Reported probability distribution</div>
       <div class="panel-sub">Histogram of predicted probability across all resolved forecasts.</div>
       <svg class="chart" id="conf-hist" viewBox="0 0 820 240" preserveAspectRatio="xMidYMid meet"></svg>
       <div class="insight" id="conf-insight" hidden></div>
@@ -185,9 +227,9 @@ tr.bo-low td{opacity:.55}
     </div>
 
     <div class="panel" id="breakout-panel" hidden>
-      <div class="panel-h">Where PIE is sharp — and where it isn&rsquo;t</div>
+      <div class="panel-h">Calibration by domain and impact</div>
       <div class="panel-sub">Calibration broken out by domain and impact tier: how often
-        each slice&rsquo;s calls land (<code>hit rate</code>), how honest the stated
+        each slice&rsquo;s statements resolve true (<code>confirmed share</code>), how the stated
         probabilities are (<code>Brier</code>, lower&nbsp;=&nbsp;better), and whether the
         engine over- or under-states its confidence in that slice.</div>
       <div id="breakout"></div>
@@ -201,12 +243,20 @@ tr.bo-low td{opacity:.55}
 
     <div class="panel">
       <div class="panel-h">Grading rate by domain</div>
-      <div class="panel-sub">Where forecasts go to die — volume vs. how often they close.</div>
+      <div class="panel-sub">Historical volume and reviewed coverage by domain.</div>
       <table id="domain-table">
         <thead><tr><th class="l">Domain</th><th>Total</th><th>Graded</th><th>Rate</th></tr></thead>
         <tbody></tbody>
       </table>
     </div>
+  </section>
+
+  <section class="panel" aria-labelledby="history-title">
+    <details><summary id="history-title" class="forecast-summary">Retained ungraded outcome history</summary>
+      <p class="forecast-muted">Original automated and unregistered labels remain inspectable. They do not count toward prospective calibration.</p>
+      <div id="legacy-history"><p class="forecast-muted">Loading historical records…</p></div>
+      <button id="history-more" type="button" class="rc-btn" hidden>Show more historical records</button>
+    </details>
   </section>
 
   <div id="loading" class="panel"><div class="empty">Loading prediction outcomes…</div></div>
@@ -219,6 +269,7 @@ tr.bo-low td{opacity:.55}
   </p>
 </main>
 
+<script src="/static/forecast-accountability-model.js?v=1"></script>
 <script>
 // ── helpers ────────────────────────────────────────────────────────────────
 function escapeHtml(s){
@@ -253,10 +304,9 @@ var C = {
 // forecast) distinct from a missing/garbage value (→ fallback). `+x || d`
 // would wrongly map a real 0 to the fallback.
 function prob(o){
-  var p = Number(o.predicted_probability);
-  return Number.isFinite(p) ? p : 0.5;
+  return ForecastAccountability.probability(o.predicted_probability);
 }
-function isGraded(o){ return !!o && o.resolution_method === 'reviewed-evidence-v1' && o.calibration_eligible === true && o.review_status !== 'needs_review' && typeof o.was_correct === 'boolean'; }
+function isGraded(o){ return ForecastAccountability.eligible(o); }
 
 function analyze(outcomes){
   var N = outcomes.length;
@@ -273,8 +323,7 @@ function analyze(outcomes){
   outcomes.forEach(function(o){
     var p = prob(o), g = isGraded(o), ro = o.resolution_outcome;
 
-    totalMass += p;
-    if(!g) ungradedMass += p;
+    if(p !== null){ totalMass += p; if(!g) ungradedMass += p; }
 
     if(g){
       graded.push(o);
@@ -307,8 +356,10 @@ function analyze(outcomes){
     if(g) impact[im].graded++;
 
     // confidence histogram: where the engine places its probability mass
-    var hb = Math.min(Math.floor(p * 10), 9);
-    confHist[hb] = (confHist[hb] || 0) + 1;
+    if(p !== null){
+      var hb = Math.min(Math.floor(p * 10), 9);
+      confHist[hb] = (confHist[hb] || 0) + 1;
+    }
   });
 
   var brier = null;
@@ -343,9 +394,9 @@ function renderKpis(a, calibration){
   mass.textContent = pct(a.massUnverified);
   mass.className = 'st-n ' + (a.massUnverified <= 0.3 ? 'good' : a.massUnverified <= 0.6 ? 'warn' : 'bad');
   var brier = document.getElementById('k-brier');
-  var ready = calibration && calibration.calibration_ready === true;
+  var ready = calibration && calibration.calibration_ready === true && a.graded >= 30 && (a.graded-a.correct) >= 1;
   brier.textContent = ready && a.brier !== null ? a.brier.toFixed(3) : 'Not rated';
-  brier.className = 'st-n ' + (ready ? 'good' : 'warn');
+  brier.className = 'st-n ' + (ready ? '' : 'warn');
   brier.title = ready ? 'Calibration sample gate passed' : ((calibration && calibration.sample_gate && calibration.sample_gate.reasons) || ['30 graded forecasts and a refutation required']).join('; ');
 }
 
@@ -354,7 +405,7 @@ function renderFunnel(a){
   var stages = [
     {label:'Historical outcome records', val:a.N, col:C.resolved},
     {label:'Got a real verdict', val:a.graded, col:C.verdict},
-    {label:'Graded correct', val:a.correct, col:C.graded}
+    {label:'Reviewed confirmed', val:a.correct, col:C.graded}
   ];
   var html = '';
   stages.forEach(function(s){
@@ -371,7 +422,8 @@ function renderFunnel(a){
 function renderReasons(a){
   var entries = Object.keys(a.reasons).map(function(k){ return [k, a.reasons[k]]; })
                   .sort(function(x,y){ return y[1]-x[1]; });
-  var total = entries.reduce(function(s,e){ return s+e[1]; }, 0) || 1;
+  var total = entries.reduce(function(s,e){ return s+e[1]; }, 0);
+  if(!total){ document.getElementById('reasons').innerHTML='<p class="forecast-muted">No ungraded finalized records in this publication.</p>'; document.getElementById('reasons-legend').innerHTML=''; return; }
   var cols = [C.unresolvable, C.partial, C.other];
   var W=300,H=200,cx=100,cy=100,r=78,rin=46;
   var svg = '<svg class="chart" viewBox="0 0 '+W+' '+H+'" style="height:200px">';
@@ -420,7 +472,7 @@ function renderReliability(a, calibration){
 
   // Insight: is the graded set large enough to call calibration at all?
   var nBuckets = Object.keys(a.buckets).length;
-  if(!calibration || calibration.calibration_ready !== true){
+  if(!calibration || calibration.calibration_ready !== true || a.graded < 30 || (a.graded-a.correct) < 1){
     var gate = calibration && calibration.sample_gate;
     var reasons = gate && gate.reasons ? gate.reasons.join('; ') : '30 graded forecasts and at least one evidence-backed refutation are required';
     setInsight('reliability-insight', 'warn',
@@ -505,8 +557,8 @@ function renderConfHist(a){
     var sev = share>=0.6 ? 'warn' : 'good';
     setInsight('conf-insight', sev,
       '<b>'+hiConf+' of '+total+' ('+pct(share)+')</b> forecasts sit at 0.7 or higher. '
-      + (share>=0.6 ? 'The engine rarely hedges — a concentration that reads as overconfidence until calibration is established on a larger graded set.'
-                    : 'Probability is spread across the range rather than piled at the high end.'));
+      + (share>=0.6 ? 'A concentration of high values alone does not establish overconfidence; that requires reviewed outcomes on these questions.'
+                    : 'These are reported historical values. Unregistered values are excluded from prospective skill evaluation.'));
   }
 }
 
@@ -541,9 +593,9 @@ function boHint(g){
   if(!g.resolved || g.resolved < BO_MIN_N) return '—';
   var meanP = g.sumP / g.resolved, freq = g.hits / g.resolved, d = meanP - freq;
   var pair = pct(meanP) + ' stated vs ' + pct(freq) + ' realized';
-  if(d > 0.1)  return '<span style="color:var(--amber)">overconfident</span> · ' + pair;
-  if(d < -0.1) return '<span style="color:var(--blue)">underconfident</span> · ' + pair;
-  return '<span style="color:var(--green)">in line</span> · ' + pair;
+  if(d > 0.1)  return '<span style="color:var(--amber)">stated &gt; observed</span> · ' + pair;
+  if(d < -0.1) return '<span style="color:var(--blue)">stated &lt; observed</span> · ' + pair;
+  return '<span style="color:var(--text-s)">similar means</span> · ' + pair;
 }
 
 function boRow(g, resolverBrier){
@@ -571,7 +623,7 @@ function boRow(g, resolverBrier){
 
 function boTable(title, groups, resolverByName){
   var head = '<thead><tr><th class="l">' + escapeHtml(title) + '</th><th>Predictions</th>'
-    + '<th>Graded</th><th>Hit rate</th><th>Brier</th><th class="l">Confidence check</th></tr></thead>';
+    + '<th>Graded</th><th>Confirmed share</th><th>Brier</th><th class="l">Probability check</th></tr></thead>';
   var body = groups.map(function(g){
     var rb = resolverByName && resolverByName[g.name] ? resolverByName[g.name].brier_score : null;
     return boRow(g, rb);
@@ -641,7 +693,7 @@ function rcallHtml(o){
     +   '<span class="rcall-meta">called ' + prob + (meta ? ' · ' + meta : '') + '</span>'
     + '</div>'
     + '<div class="rcall-event">' + escapeHtml(o.event || '') + '</div>'
-    + ev
+    + ForecastAccountability.criteriaHTML(o) + ev
     + '</div>';
 }
 
@@ -676,6 +728,7 @@ function renderResolved(){
 function setResolvedFilter(f){ _resolvedFilter = f; renderResolved(); }
 
 function render(outcomes){
+  _history = outcomes.filter(function(o){ return !isGraded(o); }); renderHistory();
   var a = analyze(outcomes);
   // Graded = a real ✓/✗ verdict; sort newest resolution first.
   _resolved = (outcomes || [])
@@ -693,6 +746,41 @@ function render(outcomes){
   document.getElementById('content').hidden = false;
 }
 
+// Queue and retained history are usable independently of the outcome charts.
+var _queue = null, _queueFilter = 'prospective', _queueLimit = 20, _history = [], _historyLimit = 20;
+function renderQueue(){
+  if(!_queue) return;
+  var rows = ForecastAccountability.queueRows(_queue, _queueFilter, document.getElementById('queue-search').value);
+  var definitions = [['prospective','Prospective'],['due','Due'],['candidate_evidence','Evidence candidates'],['pending','Window open'],['reviewed','Reviewed'],['legacy_unregistered','Legacy'],['all','All']];
+  document.getElementById('queue-controls').innerHTML = definitions.map(function(item){
+    var count = ForecastAccountability.queueRows(_queue, item[0]).length;
+    return '<button type="button" class="rc-btn'+(_queueFilter===item[0]?' on':'')+'" data-queue-filter="'+item[0]+'" aria-pressed="'+(_queueFilter===item[0])+'">'+item[1]+' ('+count+')</button>';
+  }).join('');
+  document.querySelectorAll('[data-queue-filter]').forEach(function(button){
+    button.addEventListener('click',function(){_queueFilter=button.dataset.queueFilter;_queueLimit=20;renderQueue();});
+  });
+  document.getElementById('forecast-queue').innerHTML = rows.slice(0,_queueLimit).map(ForecastAccountability.queueCard).join('') || '<p class="forecast-muted">No questions match this view. Legacy registrations remain available under Legacy and All.</p>';
+  document.getElementById('queue-status').textContent = 'Published '+ForecastAccountability.when(_queue.generated_at)+' · showing '+Math.min(rows.length,_queueLimit)+' of '+rows.length+' matching questions';
+  document.getElementById('queue-more').hidden=rows.length<=_queueLimit;
+}
+function renderHistory(){
+  document.getElementById('legacy-history').innerHTML = _history.slice(0,_historyLimit).map(function(row){
+    return ForecastAccountability.queueCard(Object.assign({},row,{
+      probability:row.predicted_probability,
+      state:row.issuance_id?'issuance_invalid':'legacy_unregistered',
+      reason:'Historical outcome label: '+(row.resolution_outcome||'none')+'. Not eligible for prospective calibration.'
+    }));
+  }).join('') || '<p class="forecast-muted">No retained ungraded outcomes in this publication.</p>';
+  document.getElementById('history-more').hidden=_history.length<=_historyLimit;
+}
+document.getElementById('queue-search').addEventListener('input',function(){_queueLimit=20;renderQueue();});
+document.getElementById('queue-more').addEventListener('click',function(){_queueLimit+=20;renderQueue();});
+document.getElementById('history-more').addEventListener('click',function(){_historyLimit+=20;renderHistory();});
+fetch('/api/data?type=forecast_review_queue')
+  .then(function(response){if(!response.ok)throw new Error('unavailable');return response.json();})
+  .then(function(payload){_queue=ForecastAccountability.queueDocument(payload);if(!_queue)throw new Error('schema');renderQueue();})
+  .catch(function(){document.getElementById('queue-status').textContent='Review queue unavailable in this publication. Missing status is not a count of zero; retained outcomes and the review guide remain available.';document.getElementById('queue-search').disabled=true;});
+
 // ── fetch (mirrors market-lens.html: CONFIG_404 vs PAYLOAD_THIN) ────────────
 // Side-fetch for the calibration breakout. Fully graceful: any failure (404,
 // bad JSON, wrong shape) resolves to null and the breakout falls back to
@@ -701,9 +789,15 @@ var _calibFetch = fetch('/api/data?type=calibration_scores')
   .then(function(r){ return r.ok ? r.json() : null; })
   .then(function(payload){
     var d = payload && payload.data ? payload.data : payload;
-    return (d && d.methodology === 'reviewed-evidence-v1' && typeof d === 'object' && !Array.isArray(d)) ? d : null;
+    return (d && d.methodology === 'reviewed-evidence-v2' && typeof d === 'object' && !Array.isArray(d)) ? d : null;
   })
   .catch(function(){ return null; });
+_calibFetch.then(function(calibration){
+  var evaluation=calibration && calibration.evaluation;
+  document.getElementById('forecast-cohorts').innerHTML=ForecastAccountability.cohortHTML(evaluation);
+  document.getElementById('forecast-evaluation').innerHTML=ForecastAccountability.evaluationHTML(evaluation);
+});
+
 
 fetch('/api/data?type=prediction_outcomes')
   .then(function(r){
@@ -713,15 +807,15 @@ fetch('/api/data?type=prediction_outcomes')
   })
   .then(function(payload){
     var d = payload && payload.data ? payload.data : payload;
-    if(!Array.isArray(d) || d.length < 1) return Promise.reject('PAYLOAD_THIN');
-    render(d);
+    if(!Array.isArray(d)) return Promise.reject('PAYLOAD_THIN');
+    render(d.filter(function(row){ return row && typeof row === 'object' && !Array.isArray(row); }));
   })
   .catch(function(err){
     var box = document.getElementById('loading');
+    document.getElementById('legacy-history').innerHTML='<p class="forecast-muted">Historical outcome records are unavailable; this does not mean there are zero outcomes.</p>';
     if(err === 'CONFIG_404'){
       box.innerHTML = '<div class="empty">Outcomes dataset not deployed yet '
-        + '(<span class="err-code">CONFIG_404</span>). Check the <code>prediction_outcomes</code> '
-        + 'allowlist in <code>workers/forge-data.js</code>.</div>';
+        + '(<span class="err-code">CONFIG_404</span>). Forecast review status above loads separately.</div>';
       console.error('[forecast-accountability] CONFIG_404 — add prediction_outcomes to DATASETS + PIE_OUTPUTS_KEYS');
     } else if(err === 'PAYLOAD_THIN'){
       box.innerHTML = '<div class="empty">No resolved predictions yet '

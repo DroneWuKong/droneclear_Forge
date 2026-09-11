@@ -324,10 +324,14 @@ a:hover{text-decoration:underline}
 
 <div style="padding:5px 16px;font:500 10px var(--mono);color:var(--text-xd);border-bottom:1px solid var(--border);background:var(--bg);display:flex;align-items:center;gap:8px"><span id="brief-date-tag"></span><a href="/brief-archive/" style="color:var(--text-d);text-decoration:none;border:1px solid var(--border);border-radius:5px;padding:2px 8px">📂 Archive</a><span id="last-updated" style="margin-left:auto"></span></div>
 
+<link rel="stylesheet" href="/static/patterns-daily.css?v=1">
+<script type="module" src="/static/patterns-daily-ui.mjs?v=1"></script>
 <div class="content">
+  <section id="daily-workspace" aria-label="Daily changes and evidence">Loading daily changes…</section>
+  <details><summary>Read the generated briefing and background</summary>
   <div id="brief-content">
     <div class="loading">Loading intelligence brief...</div>
-  </div>
+  </div></details>
 </div>
 
 <script>
@@ -443,11 +447,12 @@ function renderBrief(b) {
   // ── Predictions ──
   html += `<div class="section-label">🔮 Predictions & Hedges</div>`;
   for (const p of (b.predictions||[])) {
-    const pct = Math.round((p.probability||0)*100);
+    const issued = p.record_type === 'forecast' && p.issuance_id && p.issued_at && p.resolution_criteria;
+    const pct = issued && Number.isFinite(p.probability) ? Math.round(p.probability*100) : null;
     html += `<div class="brief-card pred">
       <div class="pred-prob">
-        <span class="pct" style="color:${pctColor(p.probability)}">${pct}%</span>
-        <span class="pct-lbl">prob</span>
+        <span class="pct" style="color:var(--text-d)">${pct === null ? '—' : pct+'%'}</span>
+        <span class="pct-lbl">${issued ? 'forecast' : 'unrated'}</span>
       </div>
       <div class="pred-body">
         <div class="pred-event">${esc(p.event||'')}</div>
@@ -477,9 +482,7 @@ async function loadBrief() {
   } catch(e) {
     document.getElementById('brief-content').innerHTML = `<div class="no-brief">
       <strong>No brief available yet</strong>
-      <p>The PIE pipeline generates a fresh brief daily at 14:30 UTC.<br>
-      Add <code>ANTHROPIC_API_KEY</code> to repo secrets to enable AI generation.<br><br>
-      <span style="font-family:var(--mono);font-size:10px;color:var(--text-xd)">${e.message}</span></p>
+      <p>The generated briefing is unavailable. Use the daily evidence workspace above or inspect <a href="/miner-health/">source coverage</a>.</p>
     </div>`;
   }
 }
@@ -497,7 +500,9 @@ function fmtUpdated(iso) {
     if (el) el.textContent = 'Pipeline ' + new Date(iso).toISOString().slice(11,16) + ' UTC · ' + timeStr;
   } catch(e) {}
 }
-fetch('/api/data?type=flags').then(r=>r.json()).then(flags=>{
+fetch('/api/data?type=flags').then(r=>r.json()).then(envelope=>{
+  const flags = Array.isArray(envelope) ? envelope : envelope.data;
+  if (!Array.isArray(flags)) return;
   var ts = flags.map(f=>f.timestamp||'').filter(Boolean).sort().pop();
   if(ts) fmtUpdated(ts);
 }).catch(()=>{});
