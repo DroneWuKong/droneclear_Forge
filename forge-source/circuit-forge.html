@@ -510,9 +510,9 @@ async function callAnthropic(prompt, key){
 }
 
 async function callGemini(prompt, key){
-  const { data } = await postJSON(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${encodeURIComponent(key)}`, {
+  const { data } = await postJSON(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${encodeURIComponent(key)}`, {
     method:"POST", headers:{ "Content-Type":"application/json" },
-    body: JSON.stringify({ contents:[{ parts:[{ text: prompt }] }], generationConfig:{ maxOutputTokens: MAX_TOKENS } }),
+    body: JSON.stringify({ contents:[{ parts:[{ text: prompt }] }], generationConfig:{ maxOutputTokens: MAX_TOKENS, thinkingConfig: { thinkingBudget: 0 } } }),
   }, "Gemini");
   if(data.error) throw new Error("Gemini: " + (data.error.message || "request failed") + quotaHint(data));
   const t = (data.candidates?.[0]?.content?.parts || []).map(x => x.text || "").join("");

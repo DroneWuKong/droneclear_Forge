@@ -6,7 +6,7 @@ export default {
     if (!env.GEMINI_API_KEY) return json({ error: 'Provider not configured' }, 503);
     try {
       const { body, inputUnits } = await readBoundedJson(req);
-      const model = allowedModel(body, env, 'GEMINI', 'gemini-2.0-flash');
+      const model = allowedModel(body, env, 'GEMINI', 'gemini-2.5-flash');
       let contents = body.contents;
       if (body.messages) {
         if (!Array.isArray(body.messages)) throw new Error('Messages must be a list');
@@ -21,7 +21,7 @@ export default {
         }) };
       });
       const tokens = outputLimit(body.max_tokens ?? body.generationConfig?.maxOutputTokens);
-      const outbound = { contents, generationConfig: { maxOutputTokens: tokens, candidateCount: 1 } };
+      const outbound = { contents, generationConfig: { maxOutputTokens: tokens, candidateCount: 1, ...(model.startsWith('gemini-2.5-flash') ? { thinkingConfig: { thinkingBudget: 0 } } : {}) } };
       const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`;
       const headers = { 'Content-Type': 'application/json', 'x-goog-api-key': env.GEMINI_API_KEY };
       const limited = await reserve(env, inputUnits, tokens);
