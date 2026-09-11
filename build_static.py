@@ -241,21 +241,62 @@ def _asset_version(rel_path):
 
 
 def add_asset_cache_busters(html):
-    """Append ?v=<content-hash> to unversioned static/*.js|css references.
+    """Version local JS, ES module and CSS references by their built bytes.
 
     /static/* is served with a 1-year immutable Cache-Control (_headers), so
     an unversioned reference pins returning visitors to a stale copy until the
-    cache expires — deploys silently don't propagate. References that already
-    carry a ?v= (e.g. dash-brief.js?v=3) are left untouched. Must run after
+    cache expires — deploys silently don't propagate. Replace manual ?v= values
+    too: a fixed version is not evidence that an asset stayed unchanged. Run after
     static assets are copied into BUILD_DIR so the hash reflects the built file.
     """
+    from html import escape, unescape
+    from urllib.parse import parse_qsl, urlencode, urlsplit, urlunsplit
+
     def _sub(m):
-        attr, prefix, rel = m.group(1), m.group(2) or '', m.group(3)
+        attr, quote, prefix, rel, suffix = m.group(1), m.group(2), m.group(3) or '', m.group(4), m.group(5)
         v = _asset_version(rel)
         if not v:
             return m.group(0)
-        return f'{attr}="{prefix}{rel}?v={v}"'
-    return re.sub(r'\b(src|href)="((?:\.\./)+|/)?(static/[^"?#]+\.(?:js|css))"', _sub, html)
+        parsed = urlsplit(prefix + rel + unescape(suffix))
+        query = [(k, value) for k, value in parse_qsl(parsed.query, keep_blank_values=True) if k != 'v']
+        query.append(('v', v))
+        url = urlunsplit(('', '', parsed.path, urlencode(query), parsed.fragment))
+        return f'{attr}={quote}{escape(url, quote=True)}{quote}'
+    return re.sub(r'''\b(src|href)=(['"])((?:\.\./)+|/)?(static/[^"'?#]+\.(?:mjs|js|css))([^"']*)\2''', _sub, html)
+
+
+def version_script_dependencies():
+    """Version local script dependencies before hashing HTML entrypoints.
+
+    A shared digest of the copied script set handles transitive dependencies and
+    cycles without recursive hash computation. Every build starts with source
+    bytes, and a change to any script changes import/loader URLs and entrypoint
+    bytes. Includes the dynamic dossier script loader. External URLs and missing
+    or non-script resources are left alone.
+    """
+    from urllib.parse import parse_qsl, urlencode, urlsplit, urlunsplit
+
+    root = Path(BUILD_DIR, 'static').resolve()
+    modules = {path: path.read_text(encoding='utf-8') for path in sorted(root.rglob('*')) if path.suffix in {'.js', '.mjs'} and path.is_file()}
+    digest = hashlib.sha256()
+    for path, source in modules.items():
+        digest.update(path.relative_to(root).as_posix().encode('utf-8') + b'\0')
+        digest.update(source.encode('utf-8') + b'\0')
+    version = digest.hexdigest()[:16]
+    pattern = re.compile(r'''(\b(?:from\s*|import\s*\(\s*|import\s+))(['"])(\.{1,2}/[^'"\s]+)\2''')
+    loader_pattern = re.compile(r'''(\.src\s*=\s*)(['"])(/static/[^'"]+)\2(?=\s*(?:;|\n|$))''')
+    for path, source in modules.items():
+        def replace(match):
+            parsed = urlsplit(match.group(3))
+            target = (root / parsed.path.removeprefix('/static/')).resolve() if parsed.path.startswith('/static/') else (path.parent / parsed.path).resolve()
+            if not target.is_relative_to(root) or target not in modules:
+                return match.group(0)
+            query = [(k, value) for k, value in parse_qsl(parsed.query, keep_blank_values=True) if k != 'v']
+            query.append(('v', version))
+            url = urlunsplit(('', '', parsed.path, urlencode(query), parsed.fragment))
+            return match.group(1) + match.group(2) + url + match.group(2)
+        path.write_text(loader_pattern.sub(replace, pattern.sub(replace, source)), encoding='utf-8', newline='\n')
+    _ASSET_HASH_CACHE.clear()
 
 
 # Optional analytics is loaded by static/analytics-consent.js only after a visitor opts in.
@@ -2150,6 +2191,7 @@ def build(*, offline=False, data_ref=None, data_dir=None, include_private=False)
         copied += 1
 
     print(f"  Copied {copied} static assets, skipped {skipped} gated files")
+    version_script_dependencies()
 
     # Explicitly copy full intel files to build root (served at /pie_flags.json etc.)
     # These are NOT in /static/ — they live at root so authed users get full data
@@ -2232,8 +2274,8 @@ def build(*, offline=False, data_ref=None, data_dir=None, include_private=False)
         html = inject_analytics(html, src_name, dst_path)
         html = inject_disclaimer(html, src_name)
         # Generated "At a glance" brief on the dash.uas-forge.com intel surfaces
-        # (computed summary + optional analyst narrative; see dash-brief.js). Bump
-        # ?v= when dash-brief.js changes — /static/* is immutable-cached.
+        # (computed summary + optional analyst narrative; see dash-brief.js).
+        # Content-based asset versions below keep immutable-cached scripts current.
         # NOTE: patterns.html is intentionally excluded — its native brief panel
         # (renderBriefPanel → #brief-inner) already shows the same counts + analyst
         # summary, so injecting the card there just stacked a redundant duplicate.
