@@ -24,3 +24,10 @@ class PagesBuildTests(unittest.TestCase):
         with patch.dict(os.environ,{'GITHUB_PAT':'test-only'},clear=True),patch.object(build.urllib.request,'urlopen',return_value=io.BytesIO(b'{"sha":"' + b'b'*40 + b'"}')) as network:
             self.assertEqual(build.resolve_ref(),'b'*40)
             network.assert_called_once()
+
+    def test_production_build_includes_fail_closed_private_export(self):
+        ref = 'c' * 40
+        command = build.build_command(ref)
+        self.assertEqual(command[:2], [build.sys.executable, str(build.ROOT/'build_static.py')])
+        self.assertEqual(command[command.index('--data-ref') + 1], ref)
+        self.assertIn('--include-private', command)
