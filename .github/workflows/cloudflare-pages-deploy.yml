@@ -1,0 +1,58 @@
+name: Deploy Forge to Cloudflare Pages
+
+on:
+  push:
+    branches: [master]
+  workflow_dispatch:
+
+concurrency:
+  group: cloudflare-pages-production
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  deploy:
+    name: Build and deploy production Pages bundle
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Require production deployment credentials
+        env:
+          GITHUB_PAT: ${{ secrets.GITHUB_PAT }}
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          set -euo pipefail
+          test -n "$GITHUB_PAT"
+          test -n "$CLOUDFLARE_API_TOKEN"
+          test -n "$CLOUDFLARE_ACCOUNT_ID"
+
+      - name: Build pinned public and private inputs
+        env:
+          GITHUB_PAT: ${{ secrets.GITHUB_PAT }}
+        run: python3 tools/build_pages.py
+
+      - name: Verify gated export and current DDG results
+        run: |
+          set -euo pipefail
+          test -s build/private/dossiers/index.json
+          test -s build/private/supply_links.json
+          test -s build/private/data/index.json
+          grep -F "SEP 17 2026" build/private/ddg/index.html
+          grep -F "Perennial Autonomy" build/private/ddg/index.html
+          grep -F "Close Quarters Battle" build/private/ddg/index.html
+
+      - name: Deploy to Cloudflare Pages
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          command: pages deploy build --project-name=droneclear-forge --branch=master --commit-hash=${{ github.sha }}
