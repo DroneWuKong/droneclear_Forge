@@ -10,6 +10,17 @@ import urllib.request
 
 ROOT = Path(__file__).resolve().parents[1]
 
+
+def build_command(ref):
+    """Return the production Pages build command for one immutable input ref."""
+    return [
+        sys.executable,
+        str(ROOT / 'build_static.py'),
+        '--data-ref',
+        ref,
+        '--include-private',
+    ]
+
 def resolve_ref():
     explicit = os.environ.get('AI_PROJECT_REF')
     if explicit:
@@ -31,5 +42,5 @@ def resolve_ref():
 
 if __name__ == '__main__':
     ref = resolve_ref()
-    print(f'Building public inputs from Ai-Project commit {ref}', flush=True)
-    subprocess.run([sys.executable, str(ROOT/'build_static.py'), '--data-ref', ref], cwd=ROOT, check=True)
+    print(f'Building public and gated private inputs from Ai-Project commit {ref}', flush=True)
+    subprocess.run(build_command(ref), cwd=ROOT, check=True)
