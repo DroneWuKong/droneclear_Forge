@@ -183,6 +183,44 @@ GATED_FROM_BUILD = {
     'forge_orqa_configs.json',
 }
 
+# Cloudflare Pages rejects any individual asset larger than 25 MiB.  The
+# upstream article corpus keeps the complete scraped body in Ai-Project; the
+# deployed fallback only needs enough body text for search/detail context.
+DEPLOYED_ARTICLE_BODY_CHARS = 2000
+PAGES_MAX_ASSET_BYTES = 25 * 1024 * 1024
+
+
+def copy_root_intel_file(src, dst, fname):
+    """Copy an intel fallback, bounding the article corpus for Pages."""
+    if fname != 'intel_articles.json':
+        shutil.copy2(src, dst)
+        return
+
+    with open(src, 'r', encoding='utf-8') as handle:
+        articles = json.load(handle)
+    if not isinstance(articles, list):
+        raise ValueError('intel_articles.json must contain a JSON array')
+
+    projected = []
+    for article in articles:
+        if not isinstance(article, dict):
+            raise ValueError('intel_articles.json rows must be JSON objects')
+        row = dict(article)
+        body = row.get('body_text')
+        if isinstance(body, str) and len(body) > DEPLOYED_ARTICLE_BODY_CHARS:
+            row['body_text'] = body[:DEPLOYED_ARTICLE_BODY_CHARS]
+            row['body_text_truncated'] = True
+        projected.append(row)
+
+    with open(dst, 'w', encoding='utf-8') as handle:
+        json.dump(projected, handle, ensure_ascii=False, separators=(',', ':'))
+    deployed_bytes = os.path.getsize(dst)
+    if deployed_bytes > PAGES_MAX_ASSET_BYTES:
+        raise ValueError(
+            'Projected intel_articles.json exceeds the Cloudflare Pages '
+            f'25 MiB asset limit ({deployed_bytes} bytes)'
+        )
+
 
 def strip_django_tags(html):
     """Remove Django template tags and convert to plain HTML paths."""
@@ -2193,8 +2231,9 @@ def build(*, offline=False, data_ref=None, data_dir=None, include_private=False)
     print(f"  Copied {copied} static assets, skipped {skipped} gated files")
     version_script_dependencies()
 
-    # Explicitly copy full intel files to build root (served at /pie_flags.json etc.)
-    # These are NOT in /static/ — they live at root so authed users get full data
+    # Explicitly copy intel fallbacks to build root (served at /pie_flags.json etc.).
+    # The article fallback is a deployment-safe projection; Ai-Project remains
+    # the source of truth for complete scraped bodies.
     ROOT_INTEL_FILES = ['flags.json', 'forecast_review_queue.json', 'analytic_judgments.json', 'publication_inputs.json',
                         'flags.xml', 'brief.xml', 'pie_flags.json', 'pie_predictions.json', 'predictions_best.json',
                         'pie_brief.json', 'pie_brief_history.json', 'pie_trends.json', 'solicitations.json',
@@ -2212,7 +2251,7 @@ def build(*, offline=False, data_ref=None, data_dir=None, include_private=False)
         src = os.path.join(SRC_DIR, fname)
         dst = os.path.join(BUILD_DIR, fname)
         if os.path.exists(src):
-            shutil.copy2(src, dst)
+            copy_root_intel_file(src, dst, fname)
     print(f"  Copied {len(ROOT_INTEL_FILES)} intel files to build root")
 
     # Master DB files — served at /data/<vertical>/<vertical>_master.json to
