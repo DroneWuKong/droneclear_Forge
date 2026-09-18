@@ -373,7 +373,7 @@
       datasetDestination:record.type === 'flag' ? `/patterns/#flag=${encodeURIComponent(record.id)}` : record.type === 'entity' ? `/dossier/?m=${encodeURIComponent(record.id)}` : '',
       entities:record.raw && record.raw.entities && typeof record.raw.entities === 'object' ? Object.fromEntries(Object.entries(record.raw.entities).filter(([,values]) => Array.isArray(values)).map(([name, values]) => [name,values.filter(value => typeof value === 'string').slice(0,12).map(value => value.slice(0,120))])) : {},
       semantics:shorten(record.semantics, 500),
-      titleText:shorten(record.titleText, 500), summaryText:shorten(record.summaryText, 1200), searchText:shorten(record.searchText, 3600),
+      titleText:shorten(record.titleText, 500), summaryText:shorten(record.summaryText, 1200), searchText:shorten(record.searchText, 1800),
       citations:record.citations.map(citation => ({...citation, title:shorten(citation.title, 320), source:shorten(citation.source, 160), url:citation.url}))
     };
   }
