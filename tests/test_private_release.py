@@ -29,6 +29,39 @@ def test_release_auditor_expected_results_are_ten_placements_nine_companies():
     spec.loader.exec_module(module)
     assert len(module.EXPECTED) == 10
     assert len({company for company, _score in module.EXPECTED.values()}) == 9
+    assert module.EXPECTED_FINALISTS == (
+        "Perennial Autonomy",
+        "Hyperscale",
+        "Neros",
+        "Skycutter",
+        "Swarm Defense Technologies",
+        "ORQA US LLC",
+        "XTEND Reality Inc.",
+        "Vector",
+        "ModalAI Inc.",
+    )
+
+
+def test_company_focus_uses_only_published_g2_finalists():
+    html = (ROOT / "forge-source" / "ddg.html").read_text(encoding="utf-8")
+    focus = html.split("finalist_profiles:[", 1)[1].split("]\n};", 1)[0]
+    expected = (
+        "Perennial Autonomy",
+        "Hyperscale",
+        "Neros",
+        "Skycutter",
+        "Swarm Defense Technologies",
+        "ORQA US LLC",
+        "XTEND Reality Inc.",
+        "Vector",
+        "ModalAI Inc.",
+    )
+    assert focus.count('dossier:"') == len(expected)
+    for company in expected:
+        assert f'name:"{company}"' in focus
+    for stale in ("AeroVironment", "Auterion", "Kratos", "Griffon Aerospace", "Napatree"):
+        assert f'name:"{stale}"' not in focus
+    assert "Vendor Standings — G-II Readiness" not in html
 
 
 def test_result_briefs_match_official_scores():

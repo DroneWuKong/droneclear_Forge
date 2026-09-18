@@ -22,6 +22,7 @@ EXPECTED = {
     ("Close Quarters Battle", 4): ("Vector", 78.2),
     ("Close Quarters Battle", 5): ("ModalAI Inc.", 74.3),
 }
+EXPECTED_FINALISTS = tuple(dict.fromkeys(company for company, _points in EXPECTED.values()))
 
 ROUTES = (
     "/private/ddg/",
@@ -53,6 +54,7 @@ def main():
     assert release.get("published") == "2026-09-17"
     assert release.get("placements") == 10
     assert release.get("unique_companies") == 9
+    assert tuple(release.get("official_finalists", [])) == EXPECTED_FINALISTS
     assert re.fullmatch(r"[0-9a-f]{40}", release.get("upstream_ref", ""))
 
     data_index = load(BUILD / "data" / "index.json")
@@ -74,6 +76,14 @@ def main():
     assert "COMPLETE · RESULTS PUBLISHED" in ddg
     assert "Ten Top-5 placements" in ddg
     assert "rs.action_needed && rs.banner && !resultRows.length" in ddg
+    assert "Companies Focused — '+finalists.length+' Official G-II Finalists" in ddg
+    assert "Vendor Standings — G-II Readiness" not in ddg
+    focus = ddg.split("finalist_profiles:[", 1)[1].split("]\n};", 1)[0]
+    assert focus.count('dossier:"') == 9, "company focus must contain exactly nine finalist profiles"
+    for company in EXPECTED_FINALISTS:
+        assert f'name:"{company}"' in focus, f"company focus lacks official finalist: {company}"
+    for stale in ("AeroVironment", "Auterion", "Kratos", "Griffon Aerospace", "Napatree"):
+        assert f'name:"{stale}"' not in focus, f"G-I forecast company leaked into current focus: {stale}"
 
     for page in ("dossiers", "supply-web", "data", "components-bom", "drone-config"):
         html = (BUILD / page / "index.html").read_text(encoding="utf-8")

@@ -2265,6 +2265,7 @@ def sync_private_dossiers():
         'upstream_ref': data_ref,
         'placements': len(result_rows),
         'unique_companies': len({r['company'] for r in result_rows}),
+        'official_finalists': list(dict.fromkeys(r['company'] for r in result_rows)),
         'official_results': result_rows,
         'artifacts': artifacts,
     }
