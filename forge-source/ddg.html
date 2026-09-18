@@ -722,18 +722,18 @@
       </div>
       <div class="phase-status done">COMPLETE</div>
     </div>
-    <div class="phase-card upcoming">
+    <div class="phase-card active">
       <div class="phase-num">Phase II</div>
       <div class="phase-name">Gauntlet II</div>
       <div class="phase-detail">
         <span class="go">Venue:</span> Fort Carson, CO<br>
-        <span class="go">Advanced:</span> 19 companies from 49 qualifier invitees · ~79 unique drones<br>
-        <span class="hi">Missions:</span> Long Range Strike + Tactical Assault (CQB)<br>
-        <span class="hi">Stages:</span> Qualifier complete → Production &amp; Delivery Test → Gauntlet II<br>
-        <span class="hi">NEW:</span> Chinese motors/batteries banned · DDPSCF compliance<br>
-        Funded under $1.1B advanced market commitment
+        <span class="go">Main Event:</span> Completed Aug 2026 · Fort Carson<br>
+        <span class="go">Results:</span> Published Sep 17, 2026<br>
+        <span class="hi">Finalists:</span> 10 placements · 9 companies<br>
+        <span class="hi">Awards:</span> Prototype awards and quantities pending<br>
+        19 advanced from 49 qualifier invitees
       </div>
-      <div class="phase-status pending">19 ADVANCED · FORT CARSON AUG 2026</div>
+      <div class="phase-status done">COMPLETE · RESULTS PUBLISHED</div>
     </div>
     <div class="phase-card upcoming">
       <div class="phase-num">Phase III</div>
@@ -843,19 +843,18 @@
         <li>Cyclops Defense</li>
         <li>DefendEye USA</li>
         <li>Envision Technology</li>
-        <li>Grim Tech</li>
-        <li>Hyperscale</li>
+        <li>Ewing Aerospace</li>
+        <li>Farage Precision</li>
+        <li>Halo Aeronautics</li>
         <li><strong style="color:var(--text);">Kratos</strong></li>
         <li>LTMiltech USA</li>
-        <li>Mountain Horse Solutions + AG3Labs</li>
-        <li>ORQA US</li>
-        <li>Perennial Autonomy</li>
+        <li>Mithril Defense</li>
+        <li>Mountain Horse Solutions + Draganfly</li>
+        <li>Performance Drone Works (PDW)</li>
         <li>Planned Systems International</li>
         <li>Powerus</li>
         <li>Rajant Corporation</li>
-        <li>Renegade UxS</li>
         <li>SOF Landing</li>
-        <li>Stellarion</li>
         <li>T3i</li>
         <li>Tesseract Ventures</li>
         <li>UAS Nexus</li>
@@ -863,7 +862,7 @@
         <li>Viter Systems</li>
         <li>Volatus Aerospace USA</li>
         <li>WGS Systems</li>
-        <li>Wilcox Cherry Defense</li>
+        <li>W.S. Darley &amp; Co.</li>
         <li>Zaruba</li>
       </ul>
     </div>
@@ -905,7 +904,7 @@
   <div class="section-title">Gauntlet II — Results &amp; Forecast Record</div>
   <p style="font-size:12px;color:var(--text-dim);margin-bottom:20px;max-width:760px;">
     Official Gauntlet II results from Fort Carson are shown first, followed by the pre-event analyst forecast record.
-    Ten companies placed in the Top 5 across Deep Strike and Close Quarters Battle. Prototype contract awards are not
+    Ten Top-5 placements across Deep Strike and Close Quarters Battle represent nine unique companies because Neros placed in both. Prototype contract awards are not
     guaranteed and order quantities remain pending. Historical probabilities are qualitative estimates — not official program data.
   </p>
 
@@ -1095,7 +1094,10 @@ function renderDDG2(d){
   // The pipeline's autonomous watcher (ddg2_roster_check.py) flags when the
   // OFFICIAL Phase II invitee roster publishes; until then figures are curated.
   const rs = d.roster_status||{};
-  if(rs.action_needed && rs.banner){
+  const results = d.official_results||{};
+  const resultRows = (results.deep_strike||[]).concat(results.close_quarters_battle||[]);
+  const uniqueResultCompanies = new Set(resultRows.map(function(row){return row.company||row.name;}).filter(Boolean)).size;
+  if(rs.action_needed && rs.banner && !resultRows.length){
     h += '<div style="margin-bottom:14px;padding:10px 14px;background:rgba(34,197,94,0.10);border:1px solid var(--green);border-left:3px solid var(--green);border-radius:6px;font:600 12px var(--body);color:var(--text);">'
        + '<span style="font:700 9px var(--mono);letter-spacing:1.5px;color:var(--green);margin-right:8px;">UPDATE</span>'
        + ddgEsc(rs.banner)
@@ -1115,7 +1117,8 @@ function renderDDG2(d){
     ['Qualifier', (q.window||'—')+' · '+(q.location||'')],
     ['Gauntlet II', g2.window||'—'],
     ['G-II field', (adv.vendors||'—')+' companies'+(adv.location?' · '+adv.location:'')],
-    ['Selected', ((pr.selected||{}).vendors||'—')+' finalists'],
+    ['Top-5 placements', resultRows.length||((pr.selected||{}).vendors||'—')],
+    ['Unique finalists', uniqueResultCompanies||'—'],
     ['Price (fixed)', (pc.long_range||'—')+' LR / '+(pc.close_quarters||'—')+' CQ'+(pc.munition?' / '+pc.munition+' munition':'')],
     ['Units (Ph II)', un.value||'—']
   ];
@@ -1126,7 +1129,6 @@ function renderDDG2(d){
     + '</div>';
 
   // ── Official Gauntlet II results ──
-  const results = d.official_results||{};
   const resultGroups = [
     ['Deep Strike', results.deep_strike||[]],
     ['Close Quarters Battle', results.close_quarters_battle||[]]

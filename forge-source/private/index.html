@@ -14,6 +14,8 @@ nav{height:48px;display:flex;align-items:center;padding:0 20px;border-bottom:1px
 .wrap{max-width:900px;margin:0 auto;padding:40px 20px;flex:1}
 h1{font:900 38px var(--head);text-transform:uppercase;letter-spacing:.5px}
 .sub{font:400 13px var(--mono);color:var(--text-d2);margin:8px 0 30px}
+.release{font:400 12px/1.6 var(--mono);color:var(--text-d2);background:var(--bg2);border:1px solid var(--border);border-left:3px solid var(--green);padding:12px 14px;margin:-14px 0 24px}
+.release b{color:var(--text)}
 .cards{display:grid;grid-template-columns:1fr 1fr;gap:16px}
 @media(max-width:680px){.cards{grid-template-columns:1fr}}
 a.card{display:block;background:var(--bg2);border:1px solid var(--border);border-radius:8px;padding:22px;text-decoration:none;color:var(--text)}
@@ -27,6 +29,7 @@ a.card p{font-size:13px;color:var(--text-d2);margin-top:6px}
 <div class="wrap">
   <h1>Private Intel</h1>
   <div class="sub">Gated workspace · Cloudflare Access required · internal use only</div>
+  <div class="release" id="release">loading release status…</div>
   <div class="cards">
     <a class="card" href="/private/ddg/"><h2>DDG Tracker</h2><p>Drone Dominance Program / Gauntlet scoreboard, vendor standings, predictions &amp; forecast record.</p></a>
     <a class="card" href="/private/dossiers/"><h2>Intel Dossiers</h2><p>Deep OSINT supply-chain &amp; ownership profiles of DDG companies (confidence-tagged).</p></a>
@@ -37,4 +40,11 @@ a.card p{font-size:13px;color:var(--text-d2);margin-top:6px}
   </div>
   <div class="note">If you reached this page you are authenticated. Content is served only behind the gate; do not screenshot or redistribute.</div>
 </div></main>
+<script>
+fetch('/private/release.json',{cache:'no-store'}).then(r=>{if(!r.ok)throw new Error(r.status);return r.json();}).then(x=>{
+  document.getElementById('release').innerHTML='<b>Current release:</b> official Gauntlet II results published '+String(x.published||'unknown')+
+    ' · '+String(x.placements||0)+' Top-5 placements · '+String(x.unique_companies||0)+' unique companies'+
+    '<br><b>Pinned private input:</b> '+String(x.upstream_ref||'unknown');
+}).catch(()=>{document.getElementById('release').textContent='Private release manifest unavailable. The deployment should be treated as incomplete.';});
+</script>
 </body></html>

@@ -630,6 +630,7 @@ _UNIFIED_NAV = r"""<!-- ── Unified UAS- Nav (5-domain accordion drawer) ─�
       <a class="dc-dom-sublink" href="https://uas-forge.com/private/ddg/" rel="nofollow" data-noindex="true" data-page="ddg">DDG Tracker</a>
       <a class="dc-dom-sublink" href="https://uas-forge.com/private/dossiers/" rel="nofollow" data-noindex="true" data-page="dossiers">Intel Dossiers</a>
       <a class="dc-dom-sublink" href="https://uas-forge.com/private/supply-web/" rel="nofollow" data-noindex="true" data-page="supply-web">Supply Web</a>
+      <a class="dc-dom-sublink" href="https://uas-forge.com/private/data/" rel="nofollow" data-noindex="true" data-page="data">Intel Data</a>
       <a class="dc-dom-sublink" href="https://uas-forge.com/private/components-bom/" rel="nofollow" data-noindex="true" data-page="components-bom">Component BOMs</a>
       <a class="dc-dom-sublink" href="https://uas-forge.com/private/drone-config/" rel="nofollow" data-noindex="true" data-page="drone-config">Build Configurator</a>
     </div>
@@ -2078,6 +2079,10 @@ def sync_private_dossiers():
         subprocess.run(['git','-C',tmp_clone,'checkout','--detach',ref], check=True, capture_output=True, env=git_env, timeout=180)
         research = os.path.join(tmp_clone, 'research')
 
+    data_ref = os.environ.get('PATTERNS_PINNED_DATA_REF', '')
+    if not re.fullmatch(r'[0-9a-fA-F]{40}', data_ref):
+        raise ValueError('Private export requires PATTERNS_PINNED_DATA_REF')
+
     out_dir = os.path.join(BUILD_DIR, 'private', 'dossiers')
     os.makedirs(out_dir, exist_ok=True)
     SKIP = {'_TEMPLATE.md', 'README.md'}
@@ -2110,19 +2115,35 @@ def sync_private_dossiers():
             g = 'Cross-cutting' if fn in ('ddg2-roster.md',) else group
             index.append({'slug': slug, 'title': title_of(src), 'group': g})
             n += 1
+
+    # Result-only briefs fill the two official G-II finalist gaps without
+    # pretending that an unresolved identity or missing supplier research is a
+    # full company dossier. These committed templates contain only published
+    # outcome facts and are still emitted exclusively under the private gate.
+    result_brief_dir = os.path.join(SRC_DIR, 'private', 'result-dossiers')
+    for src in sorted(glob.glob(os.path.join(result_brief_dir, '*.md'))):
+        fn = os.path.basename(src)
+        if fn in seen:
+            continue
+        seen.add(fn)
+        slug = fn[:-3]
+        shutil.copy2(src, os.path.join(out_dir, fn))
+        index.append({'slug': slug, 'title': title_of(src), 'group': 'Official result briefs'})
+        n += 1
     # sort: Company dossiers first (alpha), Cross-cutting last
-    index.sort(key=lambda d: (d['group'] != 'Company dossiers', d['title'].lower()))
+    group_order = {'Company dossiers': 0, 'Official result briefs': 1, 'Cross-cutting': 2}
+    index.sort(key=lambda d: (group_order.get(d['group'], 9), d['title'].lower()))
     with open(os.path.join(out_dir, 'index.json'), 'w', encoding='utf-8') as f:
         json.dump(index, f, separators=(',', ':'))
 
     # Also pull the structured supplier->platform web that drives the gated
     # /private/supply-web/ visual. Same gate, same never-committed rule.
     repo_root = os.path.dirname(research.rstrip('/'))
+    private_out = os.path.join(BUILD_DIR, 'private')
+    os.makedirs(private_out, exist_ok=True)
     supply_src = os.path.join(repo_root, 'data', 'ddg_supply_links.json')
     if os.path.isfile(supply_src):
-        priv_dir = os.path.join(BUILD_DIR, 'private')
-        os.makedirs(priv_dir, exist_ok=True)
-        shutil.copy2(supply_src, os.path.join(priv_dir, 'supply_links.json'))
+        shutil.copy2(supply_src, os.path.join(private_out, 'supply_links.json'))
         print("    Copied ddg_supply_links.json to build/private/supply_links.json")
     else:
         print("    NOTE: data/ddg_supply_links.json not found — supply-web page will show empty state")
@@ -2150,13 +2171,42 @@ def sync_private_dossiers():
     ]
     data_out = os.path.join(BUILD_DIR, 'private', 'data')
     os.makedirs(data_out, exist_ok=True)
+    def source_meta(path):
+        try:
+            with open(path, encoding='utf-8') as handle:
+                payload = json.load(handle)
+            meta = payload.get('meta', {}) if isinstance(payload, dict) else {}
+            generated = meta.get('generated') or meta.get('generated_at') or meta.get('as_of')
+            count = len(payload) if isinstance(payload, list) else None
+            if count is None and isinstance(payload, dict):
+                arrays = [len(v) for v in payload.values() if isinstance(v, list)]
+                count = max(arrays) if arrays else None
+            return generated, count
+        except Exception:
+            return None, None
+
+    def artifact(rel, path, public_path):
+        generated, count = source_meta(path)
+        row = {
+            'source_path': rel,
+            'path': public_path,
+            'bytes': os.path.getsize(path),
+            'sha256': hashlib.sha256(Path(path).read_bytes()).hexdigest(),
+        }
+        if generated:
+            row['source_generated'] = generated
+        if count is not None:
+            row['records'] = count
+        return row
+
     data_index = []
     for rel, outname, label, desc in PRIVATE_DATASETS:
         src = os.path.join(repo_root, rel)
         if os.path.isfile(src):
             shutil.copy2(src, os.path.join(data_out, outname))
+            provenance = artifact(rel, src, '/private/data/' + outname)
             data_index.append({'file': outname, 'label': label, 'desc': desc,
-                               'bytes': os.path.getsize(src)})
+                               'upstream_ref': data_ref, **provenance})
     with open(os.path.join(data_out, 'index.json'), 'w', encoding='utf-8') as f:
         json.dump(data_index, f, separators=(',', ':'))
     print(f"    Copied {len(data_index)}/{len(PRIVATE_DATASETS)} private datasets to build/private/data/")
@@ -2165,12 +2215,62 @@ def sync_private_dossiers():
     # Supply Web graph stays third-party-only; the Component BOMs page merges both.
     pbom_src = os.path.join(repo_root, 'data', 'platform_boms.json')
     if os.path.isfile(pbom_src):
-        priv_dir = os.path.join(BUILD_DIR, 'private')
-        os.makedirs(priv_dir, exist_ok=True)
-        shutil.copy2(pbom_src, os.path.join(priv_dir, 'platform_boms.json'))
+        shutil.copy2(pbom_src, os.path.join(private_out, 'platform_boms.json'))
         print("    Copied platform_boms.json to build/private/platform_boms.json")
     else:
         print("    NOTE: data/platform_boms.json not found — Component BOMs page falls back to supply_links only")
+    # One release manifest distinguishes the publication event from the age of
+    # each underlying research artifact. Private pages use this instead of
+    # implying that every copied file was freshly researched today.
+    ddg2_src = os.path.join(repo_root, 'data', 'ddg2.json')
+    if not os.path.isfile(ddg2_src):
+        raise FileNotFoundError('Ai-Project data/ddg2.json is required for the private release')
+    with open(ddg2_src, encoding='utf-8') as handle:
+        ddg2 = json.load(handle)
+    results = ddg2.get('official_results', {})
+    result_rows = []
+    for mission_key, mission_label in (
+        ('deep_strike', 'Deep Strike'),
+        ('close_quarters_battle', 'Close Quarters Battle'),
+    ):
+        for row in results.get(mission_key, []):
+            result_rows.append({
+                'mission': mission_label,
+                'rank': row.get('rank'),
+                'company': row.get('company') or row.get('name'),
+                'points': row.get('points') or row.get('score'),
+            })
+    if len(result_rows) != 10 or len({r['company'] for r in result_rows}) != 9:
+        raise ValueError('Expected 10 official G-II placements across 9 unique companies')
+
+    artifacts = {
+        'ddg2': artifact('data/ddg2.json', ddg2_src, '/private/ddg/'),
+        'dossiers': {
+            'source_path': 'research/profiles/*.md + forge result briefs',
+            'path': '/private/dossiers/',
+            'records': len(index),
+        },
+        'private_datasets': data_index,
+    }
+    if os.path.isfile(supply_src):
+        artifacts['supply_web'] = artifact('data/ddg_supply_links.json', supply_src, '/private/supply_links.json')
+    if os.path.isfile(pbom_src):
+        artifacts['platform_boms'] = artifact('data/platform_boms.json', pbom_src, '/private/platform_boms.json')
+    release = {
+        'schema_version': 1,
+        'release_status': 'official_results_published',
+        'published': results.get('published') or results.get('published_at') or ddg2.get('as_of'),
+        'official_source': results.get('source_url') or results.get('source') or 'https://drone-dominance.io/leaderboard.html',
+        'upstream_repository': 'DroneWuKong/Ai-Project',
+        'upstream_ref': data_ref,
+        'placements': len(result_rows),
+        'unique_companies': len({r['company'] for r in result_rows}),
+        'official_results': result_rows,
+        'artifacts': artifacts,
+    }
+    with open(os.path.join(private_out, 'release.json'), 'w', encoding='utf-8') as handle:
+        json.dump(release, handle, separators=(',', ':'))
+
     if tmp_clone:
         shutil.rmtree(tmp_clone, ignore_errors=True)
     print(f"    Copied {n} dossiers + index.json to build/private/dossiers/")

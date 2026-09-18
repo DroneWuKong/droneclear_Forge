@@ -67,6 +67,8 @@ pre .k{color:var(--blue)}pre .s{color:var(--green)}pre .n{color:var(--amber)}
     <a class="nav-pill" href="/private/dossiers/">Dossiers</a>
     <a class="nav-pill" href="/private/supply-web/">Supply Web</a>
     <a class="nav-pill active" href="/private/data/">Intel Data</a>
+    <a class="nav-pill" href="/private/components-bom/">Component BOMs</a>
+    <a class="nav-pill" href="/private/drone-config/">Configurator</a>
   </div>
 </div></nav>
 
@@ -127,10 +129,15 @@ function render(){
   const r=document.getElementById('reader');
   if(!CURDATA){r.innerHTML='<div id="status2">select a dataset.</div>';return;}
   const main=findMainArray(CURDATA);
-  let meta='';
-  if(CURDATA&&CURDATA.meta&&typeof CURDATA.meta==='object'){
-    meta='<div class="meta-box">'+Object.entries(CURDATA.meta).map(([k,v])=>'<div><b>'+esc(k)+':</b> '+esc(typeof v==='object'?JSON.stringify(v):v)+'</div>').join('')+'</div>';
-  }
+  const provenance={
+    source_path:CUR&&CUR.source_path,
+    source_generated:CUR&&CUR.source_generated,
+    records:CUR&&CUR.records,
+    sha256:CUR&&CUR.sha256,
+    upstream_ref:CUR&&CUR.upstream_ref,
+  };
+  if(CURDATA&&CURDATA.meta&&typeof CURDATA.meta==='object')Object.assign(provenance,CURDATA.meta);
+  const meta='<div class="meta-box">'+Object.entries(provenance).filter(([,v])=>v!==undefined&&v!==null&&v!=='').map(([k,v])=>'<div><b>'+esc(k)+':</b> '+esc(typeof v==='object'?JSON.stringify(v):v)+'</div>').join('')+'</div>';
   const canTable=!!main;
   let body;
   if(RAWMODE||!canTable){body=prettyJSON(CURDATA);}
@@ -172,7 +179,7 @@ async function loadDS(file){
 }
 function renderNav(){
   let h='';
-  INDEX.forEach(d=>{h+='<a class="ds-link" data-file="'+d.file+'" onclick="loadDS(\''+d.file+'\')"><div class="t">'+esc(d.label)+'</div><div class="d">'+esc(d.desc||'')+'</div><div class="sz">'+fmtBytes(d.bytes||0)+'</div></a>';});
+  INDEX.forEach(d=>{h+='<a class="ds-link" data-file="'+d.file+'" onclick="loadDS(\''+d.file+'\')"><div class="t">'+esc(d.label)+'</div><div class="d">'+esc(d.desc||'')+'</div><div class="sz">'+fmtBytes(d.bytes||0)+(d.source_generated?' · source '+esc(d.source_generated):' · source date unavailable')+'</div></a>';});
   document.getElementById('nav-list').innerHTML=h||'<div id="status">no datasets available.</div>';
 }
 (async function(){

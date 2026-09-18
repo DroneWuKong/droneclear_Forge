@@ -45,15 +45,8 @@ jobs:
           GITHUB_PAT: ${{ secrets.GITHUB_PAT || secrets.GIT_PAT }}
         run: python3 tools/build_pages.py
 
-      - name: Verify gated export and current DDG results
-        run: |
-          set -euo pipefail
-          test -s build/private/dossiers/index.json
-          test -s build/private/supply_links.json
-          test -s build/private/data/index.json
-          grep -F "SEP 17 2026" build/private/ddg/index.html
-          grep -F "Perennial Autonomy" build/private/ddg/index.html
-          grep -F "Close Quarters Battle" build/private/ddg/index.html
+      - name: Audit gated export, provenance, and current DDG results
+        run: python3 tools/audit_private_release.py
 
       - name: Deploy to Cloudflare Pages
         uses: cloudflare/wrangler-action@v3
