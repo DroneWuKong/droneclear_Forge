@@ -52,6 +52,11 @@
   .reader th,.reader td{border:1px solid var(--border);padding:6px 9px;text-align:left;vertical-align:top}
   .reader th{background:var(--bg3);color:var(--text);font:700 11px var(--mono);text-transform:uppercase}
   .reader hr{border:0;border-top:1px solid var(--border);margin:18px 0}
+  .result-box{background:rgba(34,197,94,.07);border:1px solid var(--green-dim);border-left:3px solid var(--green);border-radius:6px;padding:12px 14px;margin-bottom:16px}
+  .result-box .rh{font:700 10px var(--mono);letter-spacing:.1em;text-transform:uppercase;color:var(--green);margin-bottom:6px}
+  .result-box .rr{font:600 13px var(--mono);color:var(--text);margin:3px 0}
+  .result-box .rp{font:400 10px var(--mono);color:var(--text-d2);margin-top:8px}
+  .result-box a{color:var(--blue)}
   .conf{font:700 10px var(--mono);padding:0 4px;border-radius:3px}
   .c-C{color:var(--green)} .c-I{color:var(--amber)} .c-S{color:#e08a3c} .c-U{color:var(--red)}
   .muted{color:var(--text-d2);font:400 12px var(--mono)}
@@ -114,9 +119,9 @@
 // (headings, tables, lists, blockquotes, code, bold/italic, links). Content is
 // served only from the gated /private/ path.
 const BASE='/private/dossiers/';
-let INDEX=[];
+let INDEX=[],RELEASE=null;
 
-function esc(s){return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
+function esc(s){return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
 function inline(s){
   s=esc(s);
   s=s.replace(/`([^`]+)`/g,(m,x)=>'<code>'+x+'</code>');
@@ -152,13 +157,25 @@ function mdToHtml(md){
   }
   return out.join('\n');
 }
+function canon(s){return String(s||'').toLowerCase().replace(/[^a-z0-9]+/g,' ').replace(/\b(inc|llc|corp|corporation|technologies|technology|reality|us)\b/g,' ').replace(/\s+/g,' ').trim();}
+function resultHTML(title){
+  if(!RELEASE||!Array.isArray(RELEASE.official_results))return '';
+  const t=canon(title);
+  const rows=RELEASE.official_results.filter(x=>{const c=canon(x.company);return c===t||c.startsWith(t)||t.startsWith(c);});
+  if(!rows.length)return '';
+  return '<section class="result-box"><div class="rh">Official Gauntlet II result</div>'+
+    rows.map(x=>'<div class="rr">'+esc(x.mission)+' · #'+esc(x.rank)+' · '+esc(x.points)+' points</div>').join('')+
+    '<div class="rp">Published '+esc(RELEASE.published||'2026-09-17')+' · release '+esc((RELEASE.upstream_ref||'').slice(0,12))+
+    (RELEASE.official_source?' · <a href="'+esc(RELEASE.official_source)+'" target="_blank" rel="noopener">official source</a>':'')+'</div></section>';
+}
 async function loadDoc(slug){
   document.querySelectorAll('.doc-link').forEach(a=>a.classList.toggle('active',a.dataset.slug===slug));
   const r=document.getElementById('reader');r.innerHTML='<div id="status">loading…</div>';
   try{
     const res=await fetch(BASE+slug+'.md',{cache:'no-store'});
     if(!res.ok)throw new Error(res.status);
-    r.innerHTML=mdToHtml(await res.text());r.scrollTop=0;
+    const entry=INDEX.find(d=>d.slug===slug);
+    r.innerHTML=resultHTML(entry&&entry.title)+mdToHtml(await res.text());r.scrollTop=0;
     history.replaceState(null,'','#'+slug);
     // mobile: collapse the menu and jump to the article
     if(window.matchMedia('(max-width:860px)').matches){
@@ -177,9 +194,13 @@ function renderNav(filter){
 }
 (async function(){
   try{
-    const res=await fetch(BASE+'index.json',{cache:'no-store'});
+    const [res,release]=await Promise.all([
+      fetch(BASE+'index.json',{cache:'no-store'}),
+      fetch('/private/release.json',{cache:'no-store'}).then(r=>r.ok?r.json():null).catch(()=>null)
+    ]);
     if(!res.ok)throw new Error(res.status);
     INDEX=await res.json();
+    RELEASE=release;
     renderNav('');
     const slug=location.hash.replace('#','')||(INDEX[0]&&INDEX[0].slug);
     if(slug)loadDoc(slug);

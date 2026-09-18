@@ -86,6 +86,7 @@ tr.empty td{color:var(--text-d2);font-style:italic;opacity:.65}
     <a class="nav-pill" href="/private/ddg/">DDG Tracker</a>
     <a class="nav-pill" href="/private/dossiers/">Dossiers</a>
     <a class="nav-pill" href="/private/supply-web/">Supply Web</a>
+    <a class="nav-pill" href="/private/data/">Intel Data</a>
     <a class="nav-pill active" href="/private/components-bom/">Component BOMs</a>
     <a class="nav-pill" href="/private/drone-config/">Configurator</a>
   </div>
@@ -102,7 +103,7 @@ tr.empty td{color:var(--text-d2);font-style:italic;opacity:.65}
 
   <div class="stats" id="stats"></div>
 
-  <div class="panel-h">Gauntlet II roster coverage</div>
+  <div class="panel-h">Official Gauntlet II finalist coverage</div>
   <div class="coverage" id="coverage"></div>
 
   <div class="panel-h">Platform BOMs</div>
@@ -238,20 +239,25 @@ function moneyRange(lo,hi){return lo===hi?money(lo):money(lo)+"–"+money(hi);}
 
 function esc(s){return String(s==null?"":s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;"}[c]));}
 
-let PLATFORMS=[],ROSTER=ROSTER_FALLBACK,MODELS=[],COMPONENTS=[],GENERATED="";
+let PLATFORMS=[],ROSTER=ROSTER_FALLBACK,FINALISTS=[],MODELS=[],COMPONENTS=[],GENERATED="",RELEASE=null;
 
 Promise.allSettled([
   fetch("/private/supply_links.json",{cache:"no-store"}).then(r=>{if(!r.ok)throw 0;return r.json();}),
   fetch("/static/forge_database.json",{cache:"no-store"}).then(r=>r.ok?r.json():null).catch(()=>null),
   fetch("/api/data?type=ddg2",{cache:"no-store"}).then(r=>r.ok?r.json():null).catch(()=>null),
   fetch("/private/platform_boms.json",{cache:"no-store"}).then(r=>r.ok?r.json():null).catch(()=>null),
-]).then(([sl,db,ddg2,pb])=>{
+  fetch("/private/release.json",{cache:"no-store"}).then(r=>r.ok?r.json():null).catch(()=>null),
+]).then(([sl,db,ddg2,pb,release])=>{
   if(sl.status!=="fulfilled"||!sl.value){
     document.getElementById("cards").innerHTML='<div class="empty-state">supply_links.json unavailable.<br>Build with a sibling ../Ai-Project checkout or GITHUB_PAT, then re-deploy.</div>';
     return;
   }
   const data=sl.value;
   GENERATED=(data.meta&&data.meta.generated)||"";
+  if(release.status==="fulfilled"&&release.value){
+    RELEASE=release.value;
+    FINALISTS=[...new Set((RELEASE.official_results||[]).map(r=>r.company).filter(Boolean))];
+  }
   if(db.status==="fulfilled"&&db.value){
     if(Array.isArray(db.value.drone_models))MODELS=db.value.drone_models;
     const comps=db.value.components||{};
@@ -315,20 +321,23 @@ function render(){
   // ── stats ──
   const lineItems=PLATFORMS.reduce((n,p)=>n+p.items.length,0);
   const suppliers=new Set();PLATFORMS.forEach(p=>p.items.forEach(i=>suppliers.add(i.supplier)));
-  const covered=ROSTER.filter(r=>PLATFORMS.some(p=>rosterMatch(r,p.company))).length;
+  const resultSet=FINALISTS.length?FINALISTS:ROSTER;
+  const covered=resultSet.filter(r=>PLATFORMS.some(p=>rosterMatch(r,p.company))).length;
   const fleetLo=PLATFORMS.reduce((n,p)=>n+p.cost.low,0);
   const fleetHi=PLATFORMS.reduce((n,p)=>n+p.cost.high,0);
   document.getElementById("stats").innerHTML=
     stat(PLATFORMS.length,"platforms")+
     stat(lineItems,"component lines")+
     stat(suppliers.size,"distinct suppliers")+
-    stat(covered+" / "+ROSTER.length,"roster covered")+
+    stat(covered+" / "+resultSet.length,"finalists with BOM")+
     stat(moneyRange(fleetLo,fleetHi),"est. fleet cost")+
-    (GENERATED?stat(GENERATED,"data as of"):"");
+    (GENERATED?stat(GENERATED,"source data as of"):"")+
+    (RELEASE?stat(RELEASE.published||"—","results published"):"")+
+    (RELEASE?stat((RELEASE.upstream_ref||"").slice(0,12),"pinned release"):"");
 
   // ── coverage chips ──
   const cov=document.getElementById("coverage");
-  cov.innerHTML=ROSTER.map(r=>{
+  cov.innerHTML=resultSet.map(r=>{
     const plat=PLATFORMS.filter(p=>rosterMatch(r,p.company));
     if(plat.length){
       const cnt=plat.reduce((n,p)=>n+p.items.length,0);
@@ -353,7 +362,7 @@ function render(){
     "Confidence — <b>C</b> confirmed (primary/reputable source), <b>I</b> inferred, "+
     "<b>S</b> single-source / weak. Specs &amp; compliance badges are matched best-effort "+
     "against the public parts database and may lag. Coverage reflects how many of the "+
-    ROSTER.length+" Gauntlet II invitees we can attach at least one sourced component to — "+
+    resultSet.length+" official Gauntlet II finalist companies we can attach at least one sourced component to — "+
     "most have no public BOM yet. <b>Cost</b> is layered: a real parts-DB price "+
     "(<b>DB</b> tag) when a component shares its supplier's brand and a compatible "+
     "category, otherwise an order-of-magnitude band by subsystem (<b>est</b> tag). "+
