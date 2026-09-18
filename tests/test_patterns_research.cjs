@@ -40,6 +40,11 @@ test('research responses cap records and omit full search index and raw bodies',
   assert.ok(Buffer.byteLength(JSON.stringify(response))<1000000);
   const summary=ask.projectResearch(data,new URLSearchParams({view:'summary'}));assert.equal(summary.records.length,0);
 });
+test('compact research records bound searchable text for Pages deployment',()=>{
+  const record=ask.articleRecords([{aid:'bounded',title:'Bounded search',summary:'x'.repeat(5000),url:'https://source.test/bounded'}]).map(ask.compactRecord)[0];
+  assert.equal(record.searchText.length,1800);
+  assert.match(record.searchText,/^bounded search/);
+});
 test('queries and exact links preserve identities and explicitly refuse missing or ambiguous IDs',()=>{
   const data=fixture(2);
   assert.equal(ask.projectResearch(data,new URLSearchParams({record:'article:0'})).record_status,'found');
