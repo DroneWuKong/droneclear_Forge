@@ -697,12 +697,11 @@ body {
 
 <!-- History trend -->
 <div class="history-panel">
-  <div class="section-label">Flag Severity History</div>
+  <div class="section-label">Flag History · Latest 14 Observations</div>
   <div class="history-chart" id="history-chart"></div>
   <div class="history-legend">
     <div class="hl-item"><div class="hl-dot" style="background:var(--red)"></div> Critical</div>
-    <div class="hl-item"><div class="hl-dot" style="background:var(--amber)"></div> Warning</div>
-    <div class="hl-item"><div class="hl-dot" style="background:#c8bfb0"></div> Info</div>
+    <div class="hl-item"><div class="hl-dot" style="background:var(--amber)"></div> Other active</div>
   </div>
 </div>
 
@@ -765,11 +764,36 @@ body {
   <span>No cookies · No PII · Intelligence only</span>
 </div>
 
+<script src="/static/clock-time.js"></script>
+<script src="/static/clock-data.js"></script>
 <script>
 // ── DATA — loaded from live pipeline output ───────────────────────────────────
 // Falls back to hardcoded snapshot if fetch fails
 function esc(s){ return String(s==null?'':s).replace(/[&<>"']/g, function(c){ return ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'})[c]; }); }
 let DATA = null;
+
+async function loadDataset(type, staticName) {
+  const sources = [
+    `/api/data?type=${type}`,
+    `/static/${staticName}`,
+    `../static/${staticName}`,
+  ];
+  for (const src of sources) {
+    try {
+      const r = await fetch(src);
+      if (!r.ok) continue;
+      const raw = await r.json();
+      const payload = (raw && raw.data !== undefined) ? raw.data : raw;
+      if (!window.UasClockData.isFreshDataset(type, payload, raw && raw.freshness)) {
+        console.warn('[UAS Clock] Rejected stale', type, 'from', src);
+        continue;
+      }
+      console.log('[UAS Clock] Loaded', type, 'from', src);
+      return payload;
+    } catch(e) {}
+  }
+  return null;
+}
 
 async function loadData() {
   // Prefer live KV via the intel API (synced daily by the PIE pipeline), then
@@ -792,13 +816,28 @@ async function loadData() {
         if (cs && cs.generated) {
           DATA = mapClockScore(cs);
           console.log('[UAS Clock] Loaded live data from', src, ':', cs.ueri_score, cs.threat_level);
-          return;
+          break;
         }
       }
     } catch(e) {}
   }
-  console.log('[UAS Clock] Using embedded snapshot');
-  DATA = DATA_FALLBACK;
+  if (!DATA) {
+    console.log('[UAS Clock] Using embedded snapshot');
+    DATA = DATA_FALLBACK;
+  }
+
+  // Clock score owns the score/factors only. Load each supporting surface from
+  // its current PIE artifact so a fresh score cannot be mixed with April demo
+  // predictions, flags, or history.
+  const [predictions, flags, trends] = await Promise.all([
+    loadDataset('predictions', 'pie_predictions.json'),
+    loadDataset('flags', 'pie_flags.json'),
+    loadDataset('pie_trends', 'pie_trends.json'),
+  ]);
+  const projected = window.UasClockData.projectAuxData({ predictions, flags, trends });
+  DATA.predictions = projected.predictions;
+  DATA.top_flags = projected.top_flags;
+  DATA.history = projected.history;
 }
 
 function mapClockScore(cs) {
@@ -822,9 +861,9 @@ function mapClockScore(cs) {
     gray_zone: Object.fromEntries(
       ((f.grayzone && f.grayzone.top_entities) || []).map(e => [e.entity, e.score])
     ),
-    predictions: (fb.predictions) || [],
-    top_flags:   (fb.top_flags)   || [],
-    history:     (fb.history)     || [],
+    predictions: [],
+    top_flags:   [],
+    history:     [],
   };
 }
 
@@ -927,25 +966,6 @@ function computeClockScore() {
   return { normalized, flagScore, predScore, gzScore, supplyScore };
 }
 
-function scoreToTime(score) {
-  // 0–30 min scale: UERI 0 → 30 min to midnight, UERI 100 → 0 min.
-  // Keeps the hand on the upper half of the clock face for any meaningful
-  // threat level (≥50 UERI puts the hand above 9 o'clock).
-  const totalMinutesExact = Math.max(0.1, (100 - score) / 100 * 30);
-  const minutesToMidnight = Math.floor(totalMinutesExact);
-  const secondsComponent = Math.round((totalMinutesExact - minutesToMidnight) * 60);
-  // SVG hand: negative rotation = counterclockwise from 12 o'clock.
-  // N min before midnight → minute hand at (60-N) mark → -(N/60)*360°.
-  const angleDeg = -(totalMinutesExact / 60) * 360;
-  return {
-    minutesToMidnight,
-    secondsComponent,
-    totalMinutesExact,
-    display: `${minutesToMidnight}m ${secondsComponent.toString().padStart(2,'0')}s`,
-    angleDeg
-  };
-}
-
 function getVerdict(score) {
   if (score >= 85) return "Existential risk to US UAS sovereignty — procurement collapse imminent.";
   if (score >= 70) return "Severe systemic pressure. Gray zone saturation and supply chain concentration demand immediate action.";
@@ -965,8 +985,8 @@ function _startCountdown(minutesToMidnight, secondsComponent) {
 
 // ── RENDER CLOCK ─────────────────────────────────────────────────────────────
 function renderClock() {
-  // Always derive time from UERI score via scoreToTime() so the hand always
-  // moves toward midnight as risk increases, regardless of pipeline scale.
+  // The pipeline owns the UERI-to-clock scale. Use its canonical countdown for
+  // both text and hand position; derive from UERI only for legacy snapshots.
   let normalized, minutesToMidnight, secondsComponent, display, angleDeg;
   if (DATA && DATA.ueri_score != null) {
     normalized = DATA.ueri_score;
@@ -974,7 +994,7 @@ function renderClock() {
     const computed = computeClockScore();
     normalized = computed.normalized;
   }
-  const t = scoreToTime(normalized);
+  const t = window.UasClockTime.resolveClockTime(DATA, normalized);
   minutesToMidnight = t.minutesToMidnight;
   secondsComponent = t.secondsComponent;
   display = t.display;
@@ -1033,6 +1053,10 @@ function renderClock() {
 // ── RENDER TABS ───────────────────────────────────────────────────────────────
 function renderPredictions() {
   const el = document.getElementById('tab-predictions');
+  if (!DATA.predictions.length) {
+    el.innerHTML = '<div class="pred-meta">Current predictions unavailable; stale fallback suppressed.</div>';
+    return;
+  }
   el.innerHTML = DATA.predictions.slice(0, 6).map(p => `
     <div class="pred-card">
       <span class="pred-impact ${esc(p.impact)}">${esc(p.impact.toUpperCase())}</span>
@@ -1047,6 +1071,10 @@ function renderPredictions() {
 
 function renderFlags() {
   const el = document.getElementById('tab-flags');
+  if (!DATA.top_flags.length) {
+    el.innerHTML = '<div class="pred-meta">Current flags unavailable; stale fallback suppressed.</div>';
+    return;
+  }
   el.innerHTML = DATA.top_flags.map(f => `
     <div class="flag-row">
       <span class="flag-sev ${esc(f.severity)}">${esc(f.severity.toUpperCase())}</span>
@@ -1079,6 +1107,10 @@ function switchTab(name, btn) {
 function renderRolling() {
   const sorted = [...DATA.predictions].sort((a, b) => b.probability - a.probability);
   const el = document.getElementById('rolling-track');
+  if (!sorted.length) {
+    el.innerHTML = '<div class="pred-meta">Current prediction log unavailable; stale fallback suppressed.</div>';
+    return;
+  }
   // Duplicate for seamless appearance
   const cards = [...sorted, ...sorted].map(p => `
     <div class="rolling-card ${esc(p.impact)}">
@@ -1095,19 +1127,20 @@ function renderRolling() {
 // ── HISTORY CHART ─────────────────────────────────────────────────────────────
 function renderHistory() {
   const el = document.getElementById('history-chart');
-  const maxTotal = Math.max(...DATA.history.map(h => h.critical + h.warning + h.info), 1);
+  if (!DATA.history.length) {
+    el.innerHTML = '<div class="pred-meta">Current trend history unavailable; stale April history suppressed.</div>';
+    return;
+  }
+  const maxTotal = Math.max(...DATA.history.map(h => h.critical + h.other), 1);
   el.innerHTML = DATA.history.map(h => {
-    const totalH = h.critical + h.warning + h.info;
     const chartH = 56;
     const critH = Math.round((h.critical / maxTotal) * chartH);
-    const warnH = Math.round((h.warning / maxTotal) * chartH);
-    const infoH = Math.round((h.info / maxTotal) * chartH);
+    const otherH = Math.round((h.other / maxTotal) * chartH);
     return `
       <div class="hbar-col">
         <div class="hbar-seg-wrap">
           ${critH > 0 ? `<div class="hbar-seg crit" style="height:${critH}px"></div>` : ''}
-          ${warnH > 0 ? `<div class="hbar-seg warn" style="height:${warnH}px"></div>` : ''}
-          ${infoH > 0 ? `<div class="hbar-seg info" style="height:${infoH}px"></div>` : ''}
+          ${otherH > 0 ? `<div class="hbar-seg warn" style="height:${otherH}px"></div>` : ''}
         </div>
         <div class="hbar-date">${esc(h.date)}</div>
       </div>
