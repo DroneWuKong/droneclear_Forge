@@ -765,6 +765,7 @@ body {
   <span>No cookies · No PII · Intelligence only</span>
 </div>
 
+<script src="/static/clock-time.js"></script>
 <script>
 // ── DATA — loaded from live pipeline output ───────────────────────────────────
 // Falls back to hardcoded snapshot if fetch fails
@@ -927,25 +928,6 @@ function computeClockScore() {
   return { normalized, flagScore, predScore, gzScore, supplyScore };
 }
 
-function scoreToTime(score) {
-  // 0–30 min scale: UERI 0 → 30 min to midnight, UERI 100 → 0 min.
-  // Keeps the hand on the upper half of the clock face for any meaningful
-  // threat level (≥50 UERI puts the hand above 9 o'clock).
-  const totalMinutesExact = Math.max(0.1, (100 - score) / 100 * 30);
-  const minutesToMidnight = Math.floor(totalMinutesExact);
-  const secondsComponent = Math.round((totalMinutesExact - minutesToMidnight) * 60);
-  // SVG hand: negative rotation = counterclockwise from 12 o'clock.
-  // N min before midnight → minute hand at (60-N) mark → -(N/60)*360°.
-  const angleDeg = -(totalMinutesExact / 60) * 360;
-  return {
-    minutesToMidnight,
-    secondsComponent,
-    totalMinutesExact,
-    display: `${minutesToMidnight}m ${secondsComponent.toString().padStart(2,'0')}s`,
-    angleDeg
-  };
-}
-
 function getVerdict(score) {
   if (score >= 85) return "Existential risk to US UAS sovereignty — procurement collapse imminent.";
   if (score >= 70) return "Severe systemic pressure. Gray zone saturation and supply chain concentration demand immediate action.";
@@ -965,8 +947,8 @@ function _startCountdown(minutesToMidnight, secondsComponent) {
 
 // ── RENDER CLOCK ─────────────────────────────────────────────────────────────
 function renderClock() {
-  // Always derive time from UERI score via scoreToTime() so the hand always
-  // moves toward midnight as risk increases, regardless of pipeline scale.
+  // The pipeline owns the UERI-to-clock scale. Use its canonical countdown for
+  // both text and hand position; derive from UERI only for legacy snapshots.
   let normalized, minutesToMidnight, secondsComponent, display, angleDeg;
   if (DATA && DATA.ueri_score != null) {
     normalized = DATA.ueri_score;
@@ -974,7 +956,7 @@ function renderClock() {
     const computed = computeClockScore();
     normalized = computed.normalized;
   }
-  const t = scoreToTime(normalized);
+  const t = window.UasClockTime.resolveClockTime(DATA, normalized);
   minutesToMidnight = t.minutesToMidnight;
   secondsComponent = t.secondsComponent;
   display = t.display;
