@@ -825,19 +825,33 @@ async function loadData() {
     console.log('[UAS Clock] Using embedded snapshot');
     DATA = DATA_FALLBACK;
   }
+}
 
-  // Clock score owns the score/factors only. Load each supporting surface from
-  // its current PIE artifact so a fresh score cannot be mixed with April demo
-  // predictions, flags, or history.
-  const [predictions, flags, trends] = await Promise.all([
-    loadDataset('predictions', 'pie_predictions.json'),
-    loadDataset('flags', 'pie_flags.json'),
-    loadDataset('pie_trends', 'pie_trends.json'),
-  ]);
-  const projected = window.UasClockData.projectAuxData({ predictions, flags, trends });
-  DATA.predictions = projected.predictions;
-  DATA.top_flags = projected.top_flags;
-  DATA.history = projected.history;
+function renderSupportingLoading() {
+  document.getElementById('tab-predictions').innerHTML = '<div class="pred-meta">Loading current predictions…</div>';
+  document.getElementById('tab-flags').innerHTML = '<div class="pred-meta">Loading current flags…</div>';
+  document.getElementById('rolling-track').innerHTML = '<div class="pred-meta">Loading current prediction log…</div>';
+  document.getElementById('history-chart').innerHTML = '<div class="pred-meta">Loading current trend history…</div>';
+}
+
+function loadSupportingData() {
+  // These feeds are independent and can be large (the complete flags payload
+  // is currently more than 1 MB). Never hold the clock's first render behind
+  // them: update each surface as soon as its own current dataset arrives.
+  const predictionTask = loadDataset('predictions', 'pie_predictions.json').then(predictions => {
+    DATA.predictions = window.UasClockData.selectPredictions(predictions);
+    renderPredictions();
+    renderRolling();
+  });
+  const flagTask = loadDataset('flags', 'pie_flags.json').then(flags => {
+    DATA.top_flags = window.UasClockData.selectTopFlags(flags);
+    renderFlags();
+  });
+  const trendTask = loadDataset('pie_trends', 'pie_trends.json').then(trends => {
+    DATA.history = window.UasClockData.historyFromTrends(trends);
+    renderHistory();
+  });
+  return Promise.allSettled([predictionTask, flagTask, trendTask]);
 }
 
 function mapClockScore(cs) {
@@ -1175,14 +1189,12 @@ function renderDates() {
 }
 
 // ── INIT ──────────────────────────────────────────────────────────────────────
+renderSupportingLoading();
 loadData().then(() => {
   renderClock();
-  renderPredictions();
-  renderFlags();
   renderGrayZone();
-  renderRolling();
-  renderHistory();
   renderDates();
+  loadSupportingData();
 });
 </script>
 <div style="padding:16px 16px 24px;font:400 10px 'JetBrains Mono',monospace;letter-spacing:.04em;border-top:1px solid #1a1a14;">
