@@ -2,6 +2,8 @@
 'use strict';
 
 const assert = require('node:assert/strict');
+const { readFileSync } = require('node:fs');
+const { join } = require('node:path');
 const test = require('node:test');
 const data = require('../forge-source/clock-data.js');
 
@@ -39,4 +41,12 @@ test('active flag selection prefers new and recently changed evidence', () => {
     { title: 'new warning', severity: 'warning', status: 'active', change_kind: 'new', changed_at: '2026-09-18' },
   ]);
   assert.equal(flags[0].title, 'new warning');
+});
+
+test('clock first render is not blocked by supporting datasets', () => {
+  const page = readFileSync(join(__dirname, '../forge-source/clock.html'), 'utf8');
+  const init = page.slice(page.indexOf('// ── INIT'));
+  assert.ok(init.indexOf('renderClock();') < init.indexOf('loadSupportingData();'));
+  assert.match(page, /Promise\.allSettled\(\[predictionTask, flagTask, trendTask\]\)/);
+  assert.doesNotMatch(page, /const \[predictions, flags, trends\] = await Promise\.all/);
 });
