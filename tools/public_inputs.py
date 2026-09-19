@@ -18,7 +18,7 @@ PUBLIC_INPUTS = {
         'dataset_catalog', 'data_quality_score', 'source_coverage_matrix',
         'calibration_scores', 'prediction_outcomes', 'predictions.metadata',
         'prediction_outcomes.metadata', 'forecast_review_queue', 'analytic_judgments',
-        'pie_delta', 'pie_brief', 'pie_brief_history', 'pie_trends', 'entity_graph',
+        'pie_delta', 'pie_brief', 'pie_brief_history', 'pie_trends', 'clock_score', 'entity_graph',
         'forge_intel', 'actor_fingerprints', 'ttp_counter_gap', 'article_event_clusters',
         'adversary_bom', 'component_mirroring_index', 'sanctions_evasion_graph',
         'threat_scores', 'market_lens')},
