@@ -402,6 +402,22 @@ export default {
         rejected = resp({error: `Dataset ${type} failed transport integrity checks`, type, source: 'kv'}, 503, {'X-Data-Source': 'kv'});
       } else failures.push('kv:unavailable');
     }
+    if (loadType === 'research_index') {
+      const source = `static:${RESEARCH_GZIP_PATH}`;
+      try {
+        // A published transport manifest identifies the current index. Cached
+        // legacy JSON can coexist after deployment and must not supersede it.
+        const raw = await readResearchStaticJSON(env.ASSETS, request.url);
+        if (raw !== null) {
+          const result = await candidate(raw, source);
+          return result || rejected;
+        }
+      } catch {
+        // Only an absent manifest permits legacy JSON. A damaged current
+        // publication must not silently return a healthy older snapshot.
+        return resp({error:`Dataset ${type} failed transport integrity checks`,type,source},503,{'X-Data-Source':source});
+      }
+    }
     for (const tryPath of [`/${loadType}.json`, `/static/${loadType}.json`]) {
       try {
         const staticUrl = new URL(request.url);
@@ -413,19 +429,6 @@ export default {
           if (result) return result;
         }
       } catch { failures.push(`static:${tryPath}:unavailable`); }
-    }
-    if (loadType === 'research_index') {
-      const source = `static:${RESEARCH_GZIP_PATH}`;
-      try {
-        const raw = await readResearchStaticJSON(env.ASSETS, request.url);
-        if (raw !== null) {
-          const result = await candidate(raw, source);
-          if (result) return result;
-        }
-      } catch {
-        failures.push(`${source}:503`);
-        rejected = rejected || resp({error:`Dataset ${type} failed transport integrity checks`,type,source},503,{'X-Data-Source':source});
-      }
     }
     if (rejected) return rejected;
 

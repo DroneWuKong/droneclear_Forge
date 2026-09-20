@@ -29,10 +29,12 @@ jobs:
         with:
           fetch-depth: 0
 
-      - uses: actions/checkout@v4
+      - name: Check out generated lens data
+        uses: actions/checkout@v4
         with:
           repository: DroneWuKong/Ai-Project
           token: ${{ secrets.MINER_PAT }}
+          ref: automation/patterns-data
           path: _aiproj
           sparse-checkout: |
             data/sanctions_evasion_graph.json
@@ -43,18 +45,35 @@ jobs:
             data/ttp_counter_gap.json
             data/threat_scores.json
             data/intel-db/articles.json
+          sparse-checkout-cone-mode: false
+          fetch-depth: 1
+
+      - name: Check out source validator
+        uses: actions/checkout@v4
+        with:
+          repository: DroneWuKong/Ai-Project
+          token: ${{ secrets.MINER_PAT }}
+          ref: main
+          path: _aiproj_validator
+          sparse-checkout: |
             scripts/validate_intel_lens_outputs.py
           sparse-checkout-cone-mode: false
           fetch-depth: 1
+
+      - name: Record immutable input revisions
+        run: |
+          set -euo pipefail
+          echo "Lens data commit: $(git -C _aiproj rev-parse HEAD)"
+          echo "Validator source commit: $(git -C _aiproj_validator rev-parse HEAD)"
 
       - uses: actions/setup-python@v5
         with:
           python-version: "3.11"
 
       - name: Validate source artifacts
-        working-directory: _aiproj
         run: |
-          python scripts/validate_intel_lens_outputs.py \
+          python _aiproj_validator/scripts/validate_intel_lens_outputs.py \
+            --data-dir _aiproj/data \
             --max-age-hours 36 \
             --max-source-age-days 14 \
             --sentinel -

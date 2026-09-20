@@ -47,7 +47,7 @@ test('generator selects lossless gzip, removes stale format, and preserves all s
       const payload=await response.json();
       assert.equal(payload.source,'static:/research_index.json.gzip');
       assert.deepEqual(payload.data,JSON.parse(JSON.stringify(ask.projectResearch(index,new URLSearchParams(query)))));
-      assert.equal(binding.calls.length,4);
+      assert.equal(binding.calls.length,2);
     }
     builder.writeResearchIndex(index,path.join(data.dir,'research_index.json'));
     assert.equal(fs.readFileSync(path.join(data.dir,'research_index.json'),'utf8'),raw);
@@ -56,10 +56,12 @@ test('generator selects lossless gzip, removes stale format, and preserves all s
   } finally {fs.rmSync(data.dir,{recursive:true,force:true});}
 });
 
-test('legacy plain index retains its API shape and uses only its existing asset request',async()=>{
+test('legacy plain index retains its API shape after confirming the manifest is absent',async()=>{
   const index=fixture();let calls=0;
-  const response=await worker.fetch(new Request('https://site.test/api/data?type=research_index&q=Shahed'),{ASSETS:{fetch:async()=>{calls++;return Response.json(index);}}});
-  assert.equal(response.status,200);assert.equal(calls,1);
+  const response=await worker.fetch(new Request('https://site.test/api/data?type=research_index&q=Shahed'),{ASSETS:{fetch:async request=>{
+    calls++;return new URL(request.url).pathname.endsWith('.metadata.json')?new Response('Missing',{status:404}):Response.json(index);
+  }}});
+  assert.equal(response.status,200);assert.equal(calls,2);
   assert.deepEqual((await response.json()).data,JSON.parse(JSON.stringify(ask.projectResearch(index,new URLSearchParams({q:'Shahed'})))));
 });
 
@@ -77,7 +79,10 @@ for(const variant of ['hash','length','unknown-codec','null-metadata','truncated
   test('research compressed fallback fails closed for '+variant,async()=>{
     const data=files(fixture());
     try {
-      const metadata=JSON.parse(data.metadata),overrides={};
+      const metadata=JSON.parse(data.metadata),overrides={
+        '/research_index.json':()=>Response.json(fixture()),
+        '/static/research_index.json':()=>Response.json(fixture()),
+      };
       if(variant==='hash')metadata.sha256='0'.repeat(64);
       if(variant==='length')metadata.uncompressed_bytes--;
       if(variant==='unknown-codec')metadata.encoding='brotli';
@@ -90,7 +95,8 @@ for(const variant of ['hash','length','unknown-codec','null-metadata','truncated
       const binding=assets(data,overrides);
       const response=await worker.fetch(new Request('https://site.test/api/data?type=research_index&q=Shahed'),{ASSETS:binding});
       assert.equal(response.status,503);assert.match((await response.json()).error,/integrity/);
-      assert.ok(binding.calls.length<=4);
+      assert.ok(binding.calls.length<=2);
+      assert.equal(binding.calls.includes('/research_index.json'),false);
     } finally {fs.rmSync(data.dir,{recursive:true,force:true});}
   });
 }
@@ -105,6 +111,26 @@ test('encoded body is bounded even without Content-Length and the stream is canc
     await assert.rejects(readResearchStaticJSON(binding,'https://site.test/api/data'),/limit/);
     assert.equal(canceled,true);
     assert.equal(binding.calls.length,2);
+  } finally {fs.rmSync(data.dir,{recursive:true,force:true});}
+});
+
+test('production overlap: current gzip wins over the still-fresh prior plain publication',async t=>{
+  const observed=JSON.parse(fs.readFileSync(new URL('./fixtures/research_publication_overlap.json',import.meta.url)));
+  t.mock.method(Date,'now',()=>Date.parse(observed.captured_at));
+  const current=fixture(), old={schema_version:1,...observed.older_plain,records:[]};
+  current.meta.generated_at=observed.captured_at;
+  assert.ok(Date.now()-Date.parse(old.meta.generated_at)<72*3600000);
+  assert.ok(observed.current_gzip_manifest.uncompressed_bytes>25*1024*1024);
+  const data=files(current);
+  try {
+    const binding=assets(data,{'/research_index.json':()=>Response.json(old),'/static/research_index.json':()=>Response.json(old)});
+    const response=await worker.fetch(new Request('https://site.test/api/data?type=research_index&view=summary'),{ASSETS:binding});
+    assert.equal(response.status,200);
+    const payload=await response.json();
+    assert.equal(payload.source,'static:/research_index.json.gzip');
+    assert.equal(payload.data.meta.input_revision,'source-snapshot');
+    assert.equal(payload.data.counts.article,4);
+    assert.deepEqual(binding.calls,['/research_index.metadata.json','/research_index.json.gzip']);
   } finally {fs.rmSync(data.dir,{recursive:true,force:true});}
 });
 

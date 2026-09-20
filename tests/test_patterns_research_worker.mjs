@@ -11,7 +11,7 @@ test('research endpoint bounds KV reads and preserves source metadata',async()=>
   assert.equal(response.status,200);const result=await response.json();assert.equal(result.source,'kv');assert.equal(result.data.ranked.length,100);assert.equal(result.data.meta.input_revision,'snapshot');
 });
 test('static research fallback is explicit, and stale indexes fail closed',async()=>{
-  const result=await worker.fetch(request('type=research_index&view=summary'),{ASSETS:{fetch:async()=>Response.json(index)}});
+  const result=await worker.fetch(request('type=research_index&view=summary'),{ASSETS:{fetch:async request=>new URL(request.url).pathname.endsWith('.metadata.json')?new Response('Missing',{status:404}):Response.json(index)}});
   assert.equal(result.status,200);assert.match((await result.json()).source,/static/);
   const stale={...index,meta:{...index.meta,generated_at:'2020-01-01T00:00:00Z'}};
   assert.equal((await worker.fetch(request('type=research_index&q=Shahed'),{PIE_OUTPUTS:{get:async()=>JSON.stringify(stale)}})).status,503);
