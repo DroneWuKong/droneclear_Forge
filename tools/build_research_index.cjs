@@ -1,6 +1,7 @@
 const fs = require('node:fs');
 const path = require('node:path');
 const crypto = require('node:crypto');
+const zlib = require('node:zlib');
 const ask = require('../forge-source/ask-pie-retrieval.js');
 const normal = require('../forge-source/intel-normalization.js');
 
@@ -74,14 +75,40 @@ function buildResearchIndex(inputDir, options = {}) {
   const consistency=allPinned?'pinned_selected_input':origins.has('unreconciled_artifact') || origins.size>1 ? 'mixed_sources' : origins.has('explicit_directory') ? 'explicit_directory' : 'local_snapshot';
   return {schema_version:1, meta:{generated_at:options.generatedAt || new Date().toISOString(), generator:'tools/build_research_index.cjs', raw_record_count:rawRecordCount, exact_duplicate_rows_removed:rawRecordCount-records.length, input_revision:inputRevision, publication_revision:allPinned ? refs[0] : null, requested_publication_revision:options.revision || null, publication_consistency:consistency, inputs, dataset_by_type:datasetByType, record_semantics:semantics, availability:Object.values(inputs).some(input => input.status !== 'available') ? 'partial' : 'available', duplicate_record_ids:[...duplicateIds], caveat:'Bounded search of this publication snapshot. Generated time is not evidence recency. Source labels are not independent corroboration; missing records are not absence.'}, counts, records};
 }
+const RESEARCH_LIMITS = Object.freeze({encoded:25*1024*1024, decoded:64*1024*1024});
+
+function writeResearchIndex(index, output, limits = RESEARCH_LIMITS) {
+  // Transport the complete existing search representation. No records or fields
+  // are removed to fit the platform's per-asset limit.
+  const raw = Buffer.from(JSON.stringify(index));
+  if (raw.length > limits.decoded) throw new Error('Research index exceeds the 64 MiB decoded transport limit');
+  const compressed = raw.length > limits.encoded ? zlib.gzipSync(raw, {level:6}) : null;
+  if (compressed && compressed.length > limits.encoded) throw new Error('Compressed research index exceeds the Pages asset limit');
+  const gzipPath = output + '.gzip';
+  const metadataPath = output.replace(/\.json$/, '') + '.metadata.json';
+  fs.mkdirSync(path.dirname(output), {recursive:true});
+  if (compressed) {
+    const metadata = {schema:'kv-json-gzip-v1', encoding:'gzip', uncompressed_bytes:raw.length,
+      sha256:crypto.createHash('sha256').update(raw).digest('hex')};
+    fs.writeFileSync(gzipPath, compressed);
+    fs.writeFileSync(metadataPath, JSON.stringify(metadata));
+    fs.rmSync(output, {force:true});
+  } else {
+    fs.writeFileSync(output, raw);
+    fs.rmSync(gzipPath, {force:true});
+    fs.rmSync(metadataPath, {force:true});
+  }
+  return {output:compressed ? gzipPath : output, encoding:compressed ? 'gzip' : 'plain',
+    bytes:(compressed || raw).length, uncompressed_bytes:raw.length};
+}
+
 if (require.main === module) {
   const args = process.argv.slice(2);
   const value = key => args[args.indexOf(key) + 1];
   if (!args.includes('--input') || !args.includes('--output')) throw new Error('Usage: node tools/build_research_index.cjs --input build --output build/research_index.json [--revision revision]');
   const output = value('--output');
   const index = buildResearchIndex(value('--input'), {revision:args.includes('--revision') ? value('--revision') : null});
-  fs.mkdirSync(path.dirname(output), {recursive:true});
-  fs.writeFileSync(output, JSON.stringify(index));
-  console.log(JSON.stringify({output, count:index.records.length, bytes:fs.statSync(output).size, revision:index.meta.input_revision, availability:index.meta.availability}));
+  const transport = writeResearchIndex(index, output);
+  console.log(JSON.stringify({...transport, count:index.records.length, revision:index.meta.input_revision, availability:index.meta.availability}));
 }
-module.exports = {buildResearchIndex};
+module.exports = {buildResearchIndex, writeResearchIndex, RESEARCH_LIMITS};

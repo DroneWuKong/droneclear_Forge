@@ -34,6 +34,13 @@ or notification subscriptions.
 ## Reproducible research
 
 The static build creates `research_index.json` from public, allowlisted inputs.
+If the complete compact index exceeds the Pages 25 MiB asset limit, the build
+stores it losslessly as `research_index.json.gzip` with
+`research_index.metadata.json`. The API checks the declared byte count and
+SHA-256 before serving the same search and detail projections. Gzip is a file
+format here, with identity HTTP content encoding. The reader accepts at most
+25 MiB encoded and 64 MiB decoded; builds fail if either bound is exceeded.
+The final build also checks every asset against the Pages size limit.
 The Worker searches that index and returns bounded summaries, rather than
 shipping every article body on initial page load. Article detail is loaded only
 for an exact namespaced record key. Ask PIE and Search share the same retrieval

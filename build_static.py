@@ -21,6 +21,7 @@ import argparse
 import tempfile
 import base64
 from pathlib import Path
+from tools.pages_asset_limits import PAGES_MAX_ASSET_BYTES, validate_pages_asset_sizes
 
 SRC_DIR = 'forge-source'
 BUILD_DIR = 'build'
@@ -187,7 +188,6 @@ GATED_FROM_BUILD = {
 # upstream article corpus keeps the complete scraped body in Ai-Project; the
 # deployed fallback only needs enough body text for search/detail context.
 DEPLOYED_ARTICLE_BODY_CHARS = 2000
-PAGES_MAX_ASSET_BYTES = 25 * 1024 * 1024
 
 
 def copy_root_intel_file(src, dst, fname):
@@ -2570,6 +2570,7 @@ def main():
                     'publication_consistency':publication.get('publication_consistency', 'local_snapshot'),
                     'inputs':inputs, 'external_inputs':external_inputs, 'artifacts':artifacts}
         (destination/'build-manifest.json').write_text(json.dumps(manifest,indent=2)+'\n',encoding='utf-8')
+        validate_pages_asset_sizes(destination)
 
 if __name__ == '__main__':
     main()
