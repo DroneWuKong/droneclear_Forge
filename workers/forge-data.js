@@ -2,6 +2,7 @@ import freshnessPolicy from '../forge-source/data-freshness.js';
 import { timingSafeEqual } from './_auth.js';
 import { projectDataset } from './forge-data-projections.mjs';
 import { readKVJSON } from './kv-json-transport.mjs';
+import { readResearchStaticJSON, RESEARCH_GZIP_PATH } from './research-static-transport.mjs';
 
 /**
  * forge-data — Cloudflare Worker route for /api/data?type=<dataset>
@@ -412,6 +413,19 @@ export default {
           if (result) return result;
         }
       } catch { failures.push(`static:${tryPath}:unavailable`); }
+    }
+    if (loadType === 'research_index') {
+      const source = `static:${RESEARCH_GZIP_PATH}`;
+      try {
+        const raw = await readResearchStaticJSON(env.ASSETS, request.url);
+        if (raw !== null) {
+          const result = await candidate(raw, source);
+          if (result) return result;
+        }
+      } catch {
+        failures.push(`${source}:503`);
+        rejected = rejected || resp({error:`Dataset ${type} failed transport integrity checks`,type,source},503,{'X-Data-Source':source});
+      }
     }
     if (rejected) return rejected;
 
