@@ -1,6 +1,7 @@
 import freshnessPolicy from '../forge-source/data-freshness.js';
 import { timingSafeEqual } from './_auth.js';
 import { projectDataset } from './forge-data-projections.mjs';
+import { readKVJSON } from './kv-json-transport.mjs';
 
 /**
  * forge-data — Cloudflare Worker route for /api/data?type=<dataset>
@@ -389,12 +390,17 @@ export default {
     }
     try {
       const kv = PIE_OUTPUTS_KEYS.has(loadType) ? env.PIE_OUTPUTS : env.PIE_DB;
-      const raw = await kv?.get(loadType);
+      const raw = loadType === 'intel_articles' ? await readKVJSON(kv, loadType) : await kv?.get(loadType);
       if (raw) {
         const result = await candidate(raw, 'kv');
         if (result) return result;
       }
-    } catch { failures.push('kv:unavailable'); }
+    } catch (error) {
+      if (error?.code === 'KV_JSON_TRANSPORT') {
+        failures.push('kv:503');
+        rejected = resp({error: `Dataset ${type} failed transport integrity checks`, type, source: 'kv'}, 503, {'X-Data-Source': 'kv'});
+      } else failures.push('kv:unavailable');
+    }
     for (const tryPath of [`/${loadType}.json`, `/static/${loadType}.json`]) {
       try {
         const staticUrl = new URL(request.url);
