@@ -41,10 +41,22 @@ test('workerd and real asset binding preserve an oversized research corpus and i
     // source corpora that repeat an identical article more than once.
     const expectedKeys=[...new Set(ask.articleRecords(articles).map(ask.recordKey))].sort();
     assert.deepEqual([...new Set(index.records.filter(row=>row.type==='article').map(ask.recordKey))].sort(),expectedKeys);
+    const assetDir=path.join(scratch,'assets');fs.mkdirSync(assetDir);
+    for(const filename of ['research_index.metadata.json','research_index.json.gzip']) {
+      fs.copyFileSync(path.join(inputDir,filename),path.join(assetDir,filename));
+    }
+    fs.copyFileSync(path.join(repo,'_headers'),path.join(assetDir,'_headers'));
+    // Production can retain a cached plain index from the prior deployment.
+    // Keep it valid and within the freshness window: only manifest precedence
+    // prevents this smaller but older publication from winning the fallback.
+    fs.writeFileSync(path.join(assetDir,'research_index.json'),JSON.stringify({schema_version:1,
+      meta:{generated_at:new Date(Date.now()-3600000).toISOString(),input_revision:'old-cached-plain'},counts:{article:0},records:[]}));
     const bundled=await build({stdin:{contents:"import worker from './workers/forge-data.js'; export default {fetch(request,env,ctx){return new URL(request.url).pathname==='/api/data'?worker.fetch(request,env,ctx):env.ASSETS.fetch(request);}};",resolveDir:repo},
       bundle:true,format:'esm',platform:'browser',write:false});
     runtime=new Miniflare(convertV4MiniflareOptions({name:'research-test',modules:true,script:bundled.outputFiles[0].text,
-      compatibilityDate:'2026-09-09',assets:{directory:inputDir,binding:'ASSETS',run_worker_first:true,routerConfig:{has_user_worker:true}}}));
+      compatibilityDate:'2026-09-09',assets:{directory:assetDir,binding:'ASSETS',run_worker_first:true,routerConfig:{has_user_worker:true}}}));
+    const oldAsset=await runtime.dispatchFetch('http://localhost/research_index.json');
+    assert.equal((await oldAsset.json()).meta.input_revision,'old-cached-plain');
     const asset=await runtime.dispatchFetch('http://localhost/research_index.json.gzip',{headers:{'Accept-Encoding':'identity'}});
     assert.equal(asset.status,200,asset.ok ? '' : await asset.text());
     assert.match(asset.headers.get('Content-Type'),/^application\/gzip/);
