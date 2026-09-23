@@ -43,6 +43,22 @@ class DdgResultsTests(unittest.TestCase):
             with self.subTest(stale=stale):
                 self.assertNotIn(stale, self.source)
 
+    def test_gauntlet_three_is_separate_and_evidence_bounded(self):
+        self.assertIn("fetch('/api/data?type=ddg3')", self.source)
+        self.assertIn("DDG3_FALLBACK", self.source)
+        self.assertIn("AWAITING FINAL RFS", self.source)
+        self.assertIn("not a G-III down-select", self.source)
+        self.assertIn('evidence_status:"planning"', self.source)
+        self.assertIn("Commercial proof chain", self.source)
+
+    def test_stale_gauntlet_three_planning_values_are_removed(self):
+        for stale in ("~$400M", "~$3,200/unit", "~Mar 2027 (est.)"):
+            with self.subTest(stale=stale):
+                self.assertNotIn(stale, self.source)
+        self.assertIn("February–July 2027", self.source)
+        self.assertIn("$300 million", self.source)
+        self.assertIn("$3,000", self.source)
+
 
 if __name__ == "__main__":
     unittest.main()
