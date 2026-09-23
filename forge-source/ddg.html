@@ -739,14 +739,14 @@
       <div class="phase-num">Phase III</div>
       <div class="phase-name">Gauntlet III</div>
       <div class="phase-detail">
-        <span class="go">Timing:</span> ~Mar 2027 (est.)<br>
-        <span class="hi">Orders:</span> ~$400M · 100,000 units<br>
-        <span class="hi">Max price:</span> ~$3,200/unit<br>
-        <span class="go">Vendors:</span> Down to ~7<br>
-        Advanced autonomy scenarios<br>
-        Swarm performance evaluated
+        <span class="go">Planning window:</span> Feb–Jul 2027<br>
+        <span class="hi">Planning baseline:</span> ~$300M · ~100,000 systems<br>
+        <span class="hi">Average planning value:</span> ~$3,000/system<br>
+        <span class="go">Planning maximum:</span> 7 vendors<br>
+        Final RFS not yet published<br>
+        Values are non-final Phase I planning estimates
       </div>
-      <div class="phase-status pending">UPCOMING ~Q1 2027</div>
+      <div class="phase-status pending">AWAITING FINAL RFS</div>
     </div>
     <div class="phase-card upcoming">
       <div class="phase-num">Phase IV</div>
@@ -941,6 +941,16 @@
       </p>
     </div>
   </div>
+</div>
+
+<!-- GAUNTLET III READINESS -->
+<div class="section" data-phase="g3" id="g3-readiness">
+  <div class="section-title">Gauntlet III — Planning &amp; Readiness</div>
+  <p style="font-size:12px;color:var(--text-dim);margin-bottom:16px;max-width:840px;line-height:1.65;">
+    No final public Gauntlet III RFS is represented here. The planning baseline below is kept separate from final requirements,
+    and Gauntlet II finalists are shown only as a monitoring cohort—not as a Gauntlet III down-select.
+  </p>
+  <div id="ddg3-board" data-ts=""></div>
 </div>
 
 <!-- DNF SECTION -->
@@ -1336,6 +1346,72 @@ function renderDDG2(d){
     renderDDG2(_ddg2);
     const host=document.getElementById('ddg2-board'); if(host&&_ddg2&&_ddg2.generated) host.setAttribute('data-ts',_ddg2.generated);
   });
+})();
+
+// Gauntlet III is deliberately a separate dataset. Its evidence_status fields
+// prevent an older planning estimate from silently becoming an official RFS fact.
+const DDG3_FALLBACK = {
+  as_of:"September 23, 2026",
+  disclaimer:"No final public Gauntlet III RFS is known to this dataset. Planning values are not final requirements, prices, awards, or quantities.",
+  program_status:{state:"awaiting_final_rfs",final_rfs_published:false},
+  planning_baseline:{
+    window:{value:"February–July 2027",evidence_status:"planning"},
+    budget:{value:"$300 million",evidence_status:"planning"},
+    quantity:{value:"100,000 systems",evidence_status:"planning"},
+    average_unit_price:{value:"$3,000",evidence_status:"planning"},
+    maximum_vendors:{value:7,evidence_status:"planning"}
+  },
+  expected_directions:[
+    {label:"Warfighter-led unscripted scenarios",evidence_status:"planning"},
+    {label:"More sophisticated counter-UAS, RF and navigation denial",evidence_status:"planning"},
+    {label:"Reduced operator burden, including more than one aircraft per operator",evidence_status:"planning"},
+    {label:"Integration with two or more munitions providers",evidence_status:"planning"},
+    {label:"Potential linkage to ATAK and other battlefield systems",evidence_status:"planning"},
+    {label:"Harder environmental conditions and moving targets",evidence_status:"planning"}
+  ],
+  readiness_dimensions:[
+    {label:"Phase III supply-chain evidence"},{label:"Multi-provider payload integration"},
+    {label:"RF/GNSS-denied operations"},{label:"One-to-many control"},
+    {label:"Battlefield interoperability"},{label:"Environmental envelope"},
+    {label:"Moving-target performance"},{label:"Production and acceptance"},{label:"Unit economics"}
+  ],
+  candidate_cohort:["Perennial Autonomy","Hyperscale","Neros","Skycutter","Swarm Defense Technologies","ORQA US LLC","XTEND Reality Inc.","Vector","ModalAI Inc."].map(function(name){return {company:name,basis:"Gauntlet II Top-5 placement; this does not confer Gauntlet III eligibility, selection, or award."};}),
+  order_state_model:[
+    {label:"Leaderboard placement"},{label:"Finalist selection"},{label:"Award announced"},
+    {label:"Contract or delivery order signed"},{label:"Systems shipped"},
+    {label:"Government acceptance"},{label:"Follow-on production"}
+  ]
+};
+let _ddg3Source='unknown';
+function renderDDG3(d){
+  const host=document.getElementById('ddg3-board'); if(!host) return;
+  const baseline=d.planning_baseline||{}, status=d.program_status||{};
+  const fields=[['Window',baseline.window],['Budget',baseline.budget],['Quantity',baseline.quantity],['Average value',baseline.average_unit_price],['Max vendors',baseline.maximum_vendors]];
+  let h='';
+  if(_ddg3Source==='fallback'){
+    h+='<div role="status" style="margin-bottom:14px;padding:10px 14px;background:rgba(201,162,39,0.10);border:1px solid var(--amber);border-left:3px solid var(--amber);font:600 11px var(--body);color:var(--text);">'
+      +'<span style="font:700 9px var(--mono);letter-spacing:1.5px;color:var(--amber);margin-right:8px;">CACHED PLANNING SNAPSHOT</span>Live G-III data is unavailable; every displayed baseline remains non-final.</div>';
+  }
+  h+='<div style="padding:12px 14px;margin-bottom:14px;background:rgba(59,130,246,0.08);border:1px solid var(--blue);">'
+    +'<div style="font:700 10px var(--mono);letter-spacing:1.5px;color:var(--blue);">'+(status.state==='rfs_review_required'?'CANDIDATE RFS · REVIEW REQUIRED':(status.final_rfs_published?'FINAL RFS CONFIRMED':'AWAITING FINAL RFS'))+'</div>'
+    +'<div style="font:400 11px var(--body);color:var(--text-dim);margin-top:5px;">'+ddgEsc(d.disclaimer||'Planning values are non-final.')+'</div></div>';
+  h+='<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(145px,1fr));gap:1px;background:var(--border);border:1px solid var(--border);margin-bottom:14px;">'
+    +fields.map(function(pair){var row=pair[1]||{};return '<div style="background:var(--bg2);padding:12px 14px;"><div style="font:600 9px var(--mono);letter-spacing:1.4px;text-transform:uppercase;color:var(--text-dim);">'+ddgEsc(pair[0])+'</div><div style="font:700 15px var(--body);color:var(--text);margin-top:4px;">'+ddgEsc(row.value==null?'—':row.value)+'</div><div style="font:600 9px var(--mono);color:var(--amber);margin-top:4px;text-transform:uppercase;">'+ddgEsc(row.evidence_status||'unknown')+'</div></div>';}).join('')+'</div>';
+  h+='<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(250px,1fr));gap:1px;background:var(--border);border:1px solid var(--border);">'
+    +'<div style="background:var(--bg2);padding:14px 16px;"><div style="font:600 9px var(--mono);letter-spacing:2px;text-transform:uppercase;color:var(--green);margin-bottom:8px;">Expected directions · planning</div><ul style="margin:0;padding-left:17px;">'+(d.expected_directions||[]).map(function(row){return '<li style="font:400 11px var(--body);color:var(--text-dim);line-height:1.55;">'+ddgEsc(row.label)+'</li>';}).join('')+'</ul></div>'
+    +'<div style="background:var(--bg2);padding:14px 16px;"><div style="font:600 9px var(--mono);letter-spacing:2px;text-transform:uppercase;color:var(--amber);margin-bottom:8px;">Readiness evidence required</div><ul style="margin:0;padding-left:17px;">'+(d.readiness_dimensions||[]).map(function(row){return '<li style="font:400 11px var(--body);color:var(--text-dim);line-height:1.55;">'+ddgEsc(row.label)+'</li>';}).join('')+'</ul></div>'
+    +'</div>';
+  h+='<div style="margin-top:14px;padding:14px 16px;background:var(--bg2);border:1px solid var(--border);"><div style="font:600 9px var(--mono);letter-spacing:2px;text-transform:uppercase;color:var(--blue);margin-bottom:8px;">G-II monitoring cohort · not a G-III down-select</div><div style="display:flex;flex-wrap:wrap;gap:6px;">'+(d.candidate_cohort||[]).map(function(row){return '<span title="'+ddgEsc(row.basis||'')+'" style="font:600 10px var(--mono);color:var(--text);border:1px solid var(--border);padding:5px 7px;">'+ddgEsc(row.company)+'</span>';}).join('')+'</div></div>';
+  h+='<div style="margin-top:10px;font:400 10px var(--mono);color:var(--text-dim);">Commercial proof chain: '+(d.order_state_model||[]).map(function(row){return ddgEsc(row.label);}).join(' → ')+'</div>';
+  host.innerHTML=h;
+}
+(function loadDDG3(){
+  fetch('/api/data?type=ddg3').then(function(r){return r.ok?r.json():null;}).then(function(raw){
+    const d=(raw&&raw.data)?raw.data:raw;
+    const valid=d&&d.schema_version===1&&d.planning_baseline&&Array.isArray(d.readiness_dimensions)&&Array.isArray(d.candidate_cohort);
+    if(valid){_ddg3Source='live';renderDDG3(d);const host=document.getElementById('ddg3-board');if(host&&d.generated)host.setAttribute('data-ts',d.generated);}
+    else{_ddg3Source='fallback';renderDDG3(DDG3_FALLBACK);}
+  }).catch(function(){_ddg3Source='fallback';renderDDG3(DDG3_FALLBACK);});
 })();
 </script>
 

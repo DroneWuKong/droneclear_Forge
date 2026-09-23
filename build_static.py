@@ -1380,8 +1380,8 @@ SEO_META = {
     ),
     'ddg.html': (
         'Defense Drone Gauntlet Tracker — G-I & G-II Program Analysis',
-        'Live tracker for the Defense Drone Gauntlet (DDG) program. Competitor scoring, NDAA compliance posture, production readiness, funding depth, and G-II phase predictions for all 8 awardees.',
-        'Defense Drone Gauntlet, DDG program, drone procurement, NDAA compliant drones, DoD drone competition, G-I G-II tracker',
+        'Live tracker for the Drone Dominance Program. Official Gauntlet II results plus evidence-bounded Gauntlet III planning, lifecycle, and readiness tracking.',
+        'Drone Dominance Program, DDG program, drone procurement, Gauntlet II results, Gauntlet III readiness tracker',
     ),
     'private/components-bom.html': (
         'Component BOMs — DDG Platform Bill-of-Materials (Private)',
@@ -2252,6 +2252,9 @@ def sync_private_dossiers():
         },
         'private_datasets': data_index,
     }
+    ddg3_src = os.path.join(repo_root, 'data', 'ddg3.json')
+    if os.path.isfile(ddg3_src):
+        artifacts['ddg3'] = artifact('data/ddg3.json', ddg3_src, '/private/ddg/')
     if os.path.isfile(supply_src):
         artifacts['supply_web'] = artifact('data/ddg_supply_links.json', supply_src, '/private/supply_links.json')
     if os.path.isfile(pbom_src):
