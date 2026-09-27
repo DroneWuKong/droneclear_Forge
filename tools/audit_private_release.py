@@ -77,6 +77,9 @@ def main():
             f"{slug} still uses a result-only brief rather than an upstream company profile"
         )
 
+    roster = (BUILD / "dossiers" / "ddg2-roster.md").read_text(encoding="utf-8")
+    assert "hyperscale.us" in roster, "gated roster still lacks the resolved Hyperscale program identity"
+
     ddg = (BUILD / "ddg" / "index.html").read_text(encoding="utf-8")
     assert "COMPLETE · RESULTS PUBLISHED" in ddg
     assert "Ten Top-5 placements" in ddg
