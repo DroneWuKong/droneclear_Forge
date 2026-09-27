@@ -497,7 +497,7 @@ _UNIFIED_NAV = r"""<!-- ── Unified UAS- Nav (5-domain accordion drawer) ─�
 <div id="dc-overlay" onclick="dcNavClose()"></div>
 <div id="dc-drawer">
   <div id="dc-drawer-head">
-    <span id="dc-drawer-brand">UAS-</span>
+    <span id="dc-drawer-brand">Forge</span>
     <button id="dc-drawer-close" onclick="dcNavClose()">✕</button>
   </div>
 
@@ -1131,6 +1131,33 @@ def _get_part_count():
     except Exception:
         _PART_COUNT_CACHE = 3500
     return _PART_COUNT_CACHE
+
+def inject_catalog_counts(html, src_name):
+    """Render public landing page fallbacks from the database shipped in this build."""
+    if src_name not in ('mission-control.html', 'forge-home.html'):
+        return html
+    with open(os.path.join(SRC_DIR, 'forge_database.json'), encoding='utf-8') as f:
+        db = json.load(f)
+    components = db['components']
+    counts = {
+        's-parts': sum(len(v) for v in components.values() if isinstance(v, list)),
+        's-cats': len(components),
+        's-plat': len(db['drone_models']),
+        's-platforms': len(db['drone_models']),
+        's-guide': len(db.get('build_guides', [])),
+        'parts-count': sum(len(v) for v in components.values() if isinstance(v, list)),
+        'plat-count': len(db['drone_models']),
+    }
+    for element_id, value in counts.items():
+        html = re.sub(r'(<span\b[^>]*\bid="' + element_id + r'"[^>]*>)[^<]*(</span>)',
+                      lambda match: match[1] + f'{value:,}' + match[2], html, count=1)
+    if src_name == 'mission-control.html':
+        html = re.sub(r'(<span data-parts-count>)[^<]*(</span>)',
+                      lambda match: match[1] + f'{counts["s-parts"]:,}' + match[2], html)
+        html = re.sub(r'\b\d[\d,]* (defense & commercial )?platforms\b',
+                      lambda match: f'{counts["s-plat"]:,} ' + (match[1] or '') + 'platforms', html)
+        html = re.sub(r'across \d+ categories', f'across {counts["s-cats"]} categories', html)
+    return html
 
 # SEO metadata per page: (title, description, keywords)
 # Use __PART_COUNT__ as a placeholder; inject_seo() substitutes the real
@@ -2391,6 +2418,7 @@ def build(*, offline=False, data_ref=None, data_dir=None, include_private=False)
         
         with open(src_file, 'r', encoding='utf-8') as f:
             html = f.read()
+        html = inject_catalog_counts(html, src_name)
         
         # Calculate nesting depth for relative paths
         depth = dst_path.count('/')
