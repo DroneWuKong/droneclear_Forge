@@ -80,6 +80,14 @@ def main():
     roster = (BUILD / "dossiers" / "ddg2-roster.md").read_text(encoding="utf-8")
     assert "hyperscale.us" in roster, "gated roster still lacks the resolved Hyperscale program identity"
 
+    perennial = (BUILD / "dossiers" / "perennial-autonomy.md").read_text(encoding="utf-8")
+    assert "## September 27 verification pass:" in perennial, (
+        "Perennial dossier lacks the latest verification record"
+    )
+    assert "Entered model remains UNKNOWN." in perennial, (
+        "Perennial dossier must not assign an unverified Gauntlet aircraft"
+    )
+
     ddg = (BUILD / "ddg" / "index.html").read_text(encoding="utf-8")
     assert "COMPLETE · RESULTS PUBLISHED" in ddg
     assert "Ten Top-5 placements" in ddg
