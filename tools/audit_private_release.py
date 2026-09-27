@@ -87,6 +87,9 @@ def main():
     assert "Entered model remains UNKNOWN." in perennial, (
         "Perennial dossier must not assign an unverified Gauntlet aircraft"
     )
+    assert "USPTO Trademark Status and Document Retrieval" in perennial, (
+        "Perennial dossier lacks the verified U.S. entity record"
+    )
 
     ddg = (BUILD / "ddg" / "index.html").read_text(encoding="utf-8")
     assert "COMPLETE · RESULTS PUBLISHED" in ddg
