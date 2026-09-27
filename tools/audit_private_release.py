@@ -71,6 +71,11 @@ def main():
         assert any(t == key or t.startswith(key) or key.startswith(t) for t in titles), (
             f"official finalist lacks dossier or result brief: {company}"
         )
+    for slug in ("perennial-autonomy", "hyperscale"):
+        matches = [d for d in dossier_index if d.get("slug") == slug]
+        assert len(matches) == 1 and matches[0].get("group") == "Company dossiers", (
+            f"{slug} still uses a result-only brief rather than an upstream company profile"
+        )
 
     ddg = (BUILD / "ddg" / "index.html").read_text(encoding="utf-8")
     assert "COMPLETE · RESULTS PUBLISHED" in ddg
