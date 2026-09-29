@@ -2,6 +2,7 @@
 """Fail a deployment when the gated workspace is incomplete or contradictory."""
 
 import json
+import hashlib
 import re
 import sys
 from pathlib import Path
@@ -46,6 +47,26 @@ def canon(value):
     return re.sub(r"\s+", " ", value).strip()
 
 
+def audit_relationships(build, release):
+    path = build / 'relationships.json'
+    data = load(path)
+    manifest = release.get('artifacts', {}).get('relationships', {})
+    assert data.get('schema_version') == 1
+    assert data.get('upstream_ref') == release['upstream_ref'], 'relationship input revision differs from release'
+    assert manifest.get('sha256') == hashlib.sha256(path.read_bytes()).hexdigest(), 'relationship artifact hash mismatch'
+    assert manifest.get('records') == len(data['relationships'])
+    node_ids = {n['id'] for n in data['nodes']}
+    ids = {r['id'] for r in data['relationships']}
+    assert len(ids) == len(data['relationships']), 'duplicate relationship identities'
+    for row in data['relationships']:
+        assert row['source'] in node_ids and row['target'] in node_ids
+        assert all(ident in ids for ident in row['conflicting_record_ids'])
+        if row['review_status'] in {'needs_review', 'stale_review'}:
+            assert row['verified_on'] is None, 'unreviewed claim acquired a verification date'
+    for public_path in (build.parent/'relationships.json', build.parent/'static/relationships.json'):
+        assert not public_path.exists(), 'private relationship data copied to a public route'
+
+
 def main():
     release = load(BUILD / "release.json")
     rows = release.get("official_results", [])
@@ -56,6 +77,7 @@ def main():
     assert release.get("unique_companies") == 9
     assert tuple(release.get("official_finalists", [])) == EXPECTED_FINALISTS
     assert re.fullmatch(r"[0-9a-f]{40}", release.get("upstream_ref", ""))
+    audit_relationships(BUILD, release)
 
     update = load(BUILD / "data" / "ddg_program_update.json")
     phase3 = load(BUILD / "data" / "ddg3.json")

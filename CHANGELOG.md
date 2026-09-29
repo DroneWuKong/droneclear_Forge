@@ -1,5 +1,18 @@
 # Changelog
 
+## [Session] - 2026-09-29 — Private relationship evidence pilot
+
+- Add a deterministic, private-only evidence projection for legacy supply links
+  and optional Graphify candidates, with source passages, file hashes, separate
+  review decisions, expired-review detection, and conflicting-claim comparison.
+- Replace the full-network mobile view with searchable, focused neighborhoods
+  and complete evidence cards; connect candidate records to their dossiers.
+- Preserve supplier-level citation scope and existing assessment codes. No
+  extraction automatically changes a supplier BOM or establishes ownership.
+- Hash and audit the new gated output in the existing pinned release. Public
+  API/KV allowlists and the private access gate are unchanged.
+
+
 ## [Session] - 2026-07-04 — Site-wide audit fixes + PIE feature wave
 
 ### Security
