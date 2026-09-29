@@ -15,12 +15,15 @@ from urllib.parse import urlsplit
 
 GRAPH_PATH = "data/private_graphify/graph.json"
 REVIEWS_PATH = "data/private_graphify/reviews.json"
+SOURCES_PATH = "data/private_graphify/sources.json"
+INACTIVE = {"rejected", "superseded", "not_supported"}
 RELATIONS = {
     "owns", "acquired", "announced_acquisition_of", "invested_in",
     "partnered_with", "manufactures", "supplies_component", "brand_of",
     "program_contact_for", "formerly_named", "unverified_supply_claim", "backed_by",
+    "division_of", "beneficial_owner_of",
 }
-KINDS = {"company", "person", "platform", "component"}
+KINDS = {"company", "person", "platform", "component", "division"}
 
 
 def digest(value):
@@ -90,12 +93,54 @@ def source_evidence(edge, root):
     return evidence, gaps
 
 
+
+def primary_evidence(refs, sources):
+    """Resolve curated source observations; retrieval is not independent verification.
+
+    The entire observation is included in the relationship fingerprint. Registry
+    edits expire reviews even if the URL and research-note excerpt stay unchanged.
+    """
+    evidence, gaps = [], []
+    for ref in refs:
+        source = sources.get(ref.get("source_id"))
+        if not source:
+            gaps.append("Referenced source observation is missing")
+            continue
+        url = web_url(source.get("url"))
+        if (not url or not source.get("publisher") or not source.get("title")
+                or not source.get("summary") or not source.get("locator")
+                or not valid_date(source.get("retrieved_on"))
+                or source.get("kind") not in {"manufacturer", "government", "regulatory_filing"}
+                or (source.get("published_on") is not None and not valid_date(source["published_on"]))
+                or ref.get("supports") not in {"claim", "context", "correction"}):
+            gaps.append("Source observation has incomplete provenance")
+            continue
+        evidence.append({**source, "urls": [url], "supports": ref["supports"],
+                         "observation_sha256": digest(source), "evidence_type": "primary_source"})
+    return evidence, gaps
+
+
+def scopes_overlap(a, b):
+    # Different roles (base radio / optional relay) are not contradictions. An
+    # unspecified role is intentionally broad and still reaches the review queue.
+    for field in ("role", "configuration"):
+        av, bv = a.get(field), b.get(field)
+        if av and bv and av != bv:
+            return False
+    ac, bc = a.get("component"), b.get("component")
+    return not ac or not bc or ac.casefold() == bc.casefold()
+
+
 def build_evidence(root, upstream_ref):
     root = Path(root).resolve()
     if not re.fullmatch(r"[0-9a-fA-F]{40}", upstream_ref):
         raise ValueError("An immutable upstream commit is required")
     supply = read_json(root / "data/ddg_supply_links.json", {"suppliers": []})
     graph = read_json(root / GRAPH_PATH, {"nodes": [], "links": []})
+    source_list = read_json(root / SOURCES_PATH, {"sources": []}).get("sources", [])
+    sources = {s["id"]: s for s in source_list}
+    if len(sources) != len(source_list):
+        raise ValueError("Duplicate source observation ID")
     nodes, records, rejected = {}, {}, []
 
     def node(kind, label):
@@ -107,8 +152,10 @@ def build_evidence(root, upstream_ref):
 
     def add(row):
         row["id"] = "rel:" + digest({k: row.get(k) for k in (
-            "source", "target", "relation", "component", "origin", "source_file", "source_location", "assertion")})[:24]
+            "source", "target", "relation", "component", "origin", "source_file", "source_location", "assertion", "role", "configuration")})[:24]
         row["fingerprint"] = digest(row)
+        if row["id"] in records:
+            raise ValueError("Duplicate relationship identity; consolidate evidence explicitly")
         records[row["id"]] = row
 
     for supplier in supply.get("suppliers", []):
@@ -116,8 +163,12 @@ def build_evidence(root, upstream_ref):
         for feed in supplier.get("feeds", []):
             specific = bool(feed.get("sources"))
             urls = feed.get("sources") if specific else supplier.get("sources", [])
-            evidence = [{"urls": [url], "excerpt": "", "source_date": None}
-                        for url in (web_url(u) for u in urls) if url]
+            evidence, gaps = primary_evidence(feed.get("evidence_refs", []), sources)
+            if not evidence:
+                evidence = [{"urls": [url], "excerpt": "", "source_date": None}
+                            for url in (web_url(u) for u in urls) if url]
+                gaps += (["Sources are pooled at supplier level; relationship attribution needed"]
+                         if not specific else []) + ["Supporting passage and verification date missing"]
             add({"source": sid, "target": node("platform", feed["platform"]),
                  "relation": "supplies_component", "component": supplier.get("component", ""),
                  "subsystem": supplier.get("subsystem", ""), "company": feed.get("company", ""),
@@ -126,10 +177,11 @@ def build_evidence(root, upstream_ref):
                  "review_status": "needs_review", "verified_on": None,
                  "source_file": "data/ddg_supply_links.json",
                  "source_generated": supply.get("meta", {}).get("generated"),
-                 "evidence_scope": "relationship" if specific else "supplier",
-                 "evidence": evidence, "note": supplier.get("note", ""),
-                 "review_gaps": (["Sources are pooled at supplier level; relationship attribution needed"]
-                                 if not specific else []) + ["Supporting passage and verification date missing"]})
+                 "evidence_scope": "relationship" if specific or feed.get("evidence_refs") else "supplier",
+                 "evidence": evidence, "note": feed.get("note", supplier.get("note", "")),
+                 "role": feed.get("role", ""), "configuration": feed.get("configuration", ""),
+                 "lifecycle": feed.get("lifecycle", "unspecified"),
+                 "review_gaps": gaps})
 
     raw_nodes = {}
     for n in graph.get("nodes", []):
@@ -146,6 +198,8 @@ def build_evidence(root, upstream_ref):
             if assertion not in {"affirmed", "disputed", "unknown"}:
                 raise ValueError("Invalid assertion polarity")
             evidence, gaps = source_evidence(edge, root)
+            primary, primary_gaps = primary_evidence(edge.get("evidence_refs", []), sources)
+            gaps.extend(primary_gaps)
             confidence = edge.get("confidence")
             if confidence not in {"EXTRACTED", "INFERRED", "AMBIGUOUS"}:
                 raise ValueError("Missing Graphify extraction classification")
@@ -156,7 +210,9 @@ def build_evidence(root, upstream_ref):
                  "extraction": confidence, "review_status": "needs_review", "verified_on": None,
                  "source_file": evidence["source_path"], "source_location": evidence["source_location"],
                  "evidence_scope": "relationship",
-                 "evidence": [evidence], "note": edge.get("note", ""), "review_gaps": gaps,
+                 "evidence": [evidence] + primary, "note": edge.get("note", ""), "review_gaps": gaps,
+                 "role": edge.get("role", ""), "configuration": edge.get("configuration", ""),
+                 "lifecycle": edge.get("lifecycle", "unspecified"),
                  "extractor": graph.get("graph", {}).get("extractor", "unspecified")})
         except (KeyError, TypeError, ValueError) as error:
             rejected.append({"edge_index": number, "reason": str(error)})
@@ -164,17 +220,21 @@ def build_evidence(root, upstream_ref):
     # A review is separate from extraction, bound to all displayed claim/evidence
     # fields. Changes invalidate it; publication time never becomes verified_on.
     reviews = read_json(root / REVIEWS_PATH, {"reviews": []}).get("reviews", [])
-    for review in reviews:
+    for review in sorted(reviews, key=lambda r: (r.get("reviewed_on", ""), r.get("sequence", 0))):
         row = records.get(review.get("record_id"))
         if not row:
             continue
         row.setdefault("review_history", []).append(review)
         valid = (review.get("fingerprint") == row["fingerprint"]
-                 and review.get("status") in {"supported", "disputed", "rejected", "superseded"}
+                 and review.get("status") in {"supported", "disputed", "rejected", "superseded", "not_supported"}
                  and valid_date(review.get("reviewed_on"))
                  and review.get("reviewer") and review.get("rationale")
                  and not row["review_gaps"])
+        if review.get("review_type") == "source_checked" and review.get("status") == "supported":
+            valid = valid and any(e.get("evidence_type") == "primary_source" and e["supports"] == "claim"
+                                  for e in row["evidence"])
         row["review_status"] = review["status"] if valid else "stale_review"
+        row["review_type"] = review.get("review_type", "analyst_review") if valid else None
         row["verified_on"] = review["reviewed_on"] if valid else None
 
     # Same endpoints/relation, opposing assertions: expose a conflict for review.
@@ -186,9 +246,29 @@ def build_evidence(root, upstream_ref):
                                      and (other["source"], other["target"], family(other))
                                      == (row["source"], row["target"], family(row))]
         row["conflicting_record_ids"] = [ident for ident in row["related_record_ids"]
-                                         if {records[ident]["assertion"], row["assertion"]} == {"affirmed", "disputed"}]
+                                         if {records[ident]["assertion"], row["assertion"]} == {"affirmed", "disputed"}
+                                         and row["review_status"] not in INACTIVE
+                                         and records[ident]["review_status"] not in INACTIVE
+                                         and scopes_overlap(row, records[ident])]
+        row["active"] = row["review_status"] not in INACTIVE
+        row["source_count"] = len({e["url"] for e in row["evidence"] if e.get("evidence_type") == "primary_source"})
+        row["source_publishers"] = sorted({e["publisher"] for e in row["evidence"] if e.get("evidence_type") == "primary_source"})
+        row["quality_flags"] = list(row["review_gaps"])
+        if row["active"] and row["review_status"] in {"needs_review", "stale_review"}:
+            row["quality_flags"].append("No current review for this claim")
+        if row["source_count"] == 1:
+            row["quality_flags"].append("One primary source; independent corroboration not established")
+        if row.get("legacy_confidence") == "C":
+            if row["review_status"] != "supported":
+                row["quality_flags"].append("Legacy confirmed label has not passed the evidence review")
+        row["review_priority"] = ("resolved" if not row["active"] else
+                                  "high" if row["conflicting_record_ids"] or row["review_status"] == "stale_review"
+                                  or (row.get("legacy_confidence") == "C" and row["review_status"] != "supported") else
+                                  "normal" if row["review_status"] != "supported" else "follow_up")
 
-    return {"schema_version": 1, "upstream_ref": upstream_ref,
+    return {"schema_version": 1,
+            "research_checked_on": max((s.get("retrieved_on", "") for s in source_list), default=None),
+            "source_observations": source_list, "upstream_ref": upstream_ref,
             "supply_source_generated": supply.get("meta", {}).get("generated"),
             "nodes": sorted(nodes.values(), key=lambda n: n["id"]),
             "relationships": sorted(records.values(), key=lambda r: r["id"]),
@@ -196,14 +276,39 @@ def build_evidence(root, upstream_ref):
             "summary": {"supply_links": sum(r["origin"] == "legacy_supply" for r in records.values()),
                         "candidates": sum(r["origin"] == "graphify_candidate" for r in records.values()),
                         "conflicted_records": sum(bool(r["conflicting_record_ids"]) for r in records.values()),
-                        "rejected_candidates": len(rejected)}}
+                        "rejected_candidates": len(rejected),
+                        "supported": sum(r["review_status"] == "supported" for r in records.values()),
+                        "primary_sources": len({e["url"] for r in records.values() for e in r["evidence"] if e.get("evidence_type") == "primary_source"}),
+                        "needs_review": sum(r["active"] and r["review_status"] != "supported" for r in records.values()),
+                        "high_priority": sum(r["review_priority"] == "high" for r in records.values()),
+                        "resolved": sum(not r["active"] for r in records.values())}}
 
 
-def write_evidence(root, upstream_ref, output):
+def reviewed_graph(payload):
+    """Safe Graphify query corpus: active, affirmative, source-checked claims only.
+
+    Raw candidate traversal ignores our review ledger; never use that raw graph
+    as an answer corpus. The full evidence export keeps unresolved/history rows.
+    """
+    rows = [r for r in payload['relationships'] if r['active'] and r['assertion'] == 'affirmed'
+            and r['review_status'] == 'supported' and r.get('review_type') == 'source_checked']
+    used = {r[k] for r in rows for k in ('source', 'target')}
+    return {'directed': True, 'multigraph': True,
+            'graph': {'upstream_ref': payload['upstream_ref'], 'scope': 'Source-checked affirmative claims only; document support, not independent certification'},
+            'nodes': [{**n, 'file_type': 'document'} for n in payload['nodes'] if n['id'] in used],
+            'links': [{**r, 'confidence': r.get('extraction', 'EXTRACTED'),
+                       'context': ' · '.join(x for x in [r.get('role'), r.get('configuration'), r.get('lifecycle')] if x)} for r in rows]}
+
+
+def write_evidence(root, upstream_ref, output, graph_output=None):
     payload = build_evidence(root, upstream_ref)
     output = Path(output)
     output.parent.mkdir(parents=True, exist_ok=True)
     output.write_text(json.dumps(payload, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
+    if graph_output is not None:
+        graph_output = Path(graph_output)
+        graph_output.parent.mkdir(parents=True, exist_ok=True)
+        graph_output.write_text(json.dumps(reviewed_graph(payload), indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
     return payload
 
 
@@ -212,9 +317,13 @@ def main():
     parser.add_argument("--upstream-dir", type=Path, required=True)
     parser.add_argument("--upstream-ref", required=True)
     parser.add_argument("--output", type=Path, required=True)
+    parser.add_argument("--graph-output", type=Path, help="Optional source-checked Graphify query corpus")
+    parser.add_argument("--strict", action="store_true", help="Fail on rejected candidates or stale/incomplete reviewed claims")
     args = parser.parse_args()
-    payload = write_evidence(args.upstream_dir, args.upstream_ref, args.output)
+    payload = write_evidence(args.upstream_dir, args.upstream_ref, args.output, args.graph_output)
     print(json.dumps(payload["summary"]))
+    if args.strict and (payload["rejected_candidates"] or any(r["review_status"] == "stale_review" for r in payload["relationships"])):
+        raise SystemExit("Private evidence validation failed; repair rejected candidates or stale reviews")
 
 
 if __name__ == "__main__":

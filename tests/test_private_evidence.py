@@ -51,7 +51,7 @@ def test_extraction_never_becomes_confirmation_and_conflict_preserves_both(corpu
     root, _ = corpus
     original = (root / 'data/ddg_supply_links.json').read_bytes()
     result = evidence.build_evidence(root, REF)
-    assert result['summary'] == {'supply_links': 1, 'candidates': 1, 'conflicted_records': 2, 'rejected_candidates': 0}
+    assert {k: result['summary'][k] for k in ['supply_links', 'candidates', 'conflicted_records', 'rejected_candidates']} == {'supply_links': 1, 'candidates': 1, 'conflicted_records': 2, 'rejected_candidates': 0}
     assert all(r['review_status'] == 'needs_review' and r['verified_on'] is None for r in result['relationships'])
     legacy = next(r for r in result['relationships'] if r['origin'] == 'legacy_supply')
     assert legacy['legacy_confidence'] == 'C'
@@ -170,3 +170,136 @@ def test_private_export_emits_hashed_index_and_auditor_detects_tampering(corpus,
         handle.write(' ')
     with pytest.raises(AssertionError, match='hash mismatch'):
         audit.audit_relationships(out, release)
+
+
+def attach_primary(root, graph, supports='claim'):
+    sources = {'sources': [{'id': 'source-1', 'title': 'Manufacturer statement', 'publisher': 'Example Manufacturer',
+        'url': 'https://example.com/statement', 'kind': 'manufacturer', 'published_on': '2025-01-01',
+        'retrieved_on': '2026-09-29', 'locator': 'Integration section', 'summary': 'A bounded manufacturer claim.'}]}
+    put(root, evidence.SOURCES_PATH, sources)
+    graph['links'][0]['evidence_refs'] = [{'source_id': 'source-1', 'supports': supports}]
+    put(root, evidence.GRAPH_PATH, graph)
+    return sources
+
+
+def review(root, row, status='supported', **kwargs):
+    put(root, evidence.REVIEWS_PATH, {'reviews': [{'record_id': row['id'], 'fingerprint': row['fingerprint'],
+        'status': status, 'review_type': 'source_checked', 'reviewed_on': '2026-09-29',
+        'reviewer': 'Test analyst', 'rationale': 'Checked the scoped primary-source claim.', **kwargs}]})
+
+
+def test_primary_observation_change_expires_review_even_when_note_unchanged(corpus):
+    root, graph = corpus
+    sources = attach_primary(root, graph)
+    row = candidate(evidence.build_evidence(root, REF))
+    review(root, row)
+    assert candidate(evidence.build_evidence(root, REF))['review_status'] == 'supported'
+    sources['sources'][0]['summary'] = 'Corrected source interpretation.'
+    put(root, evidence.SOURCES_PATH, sources)
+    changed = candidate(evidence.build_evidence(root, REF))
+    assert changed['id'] == row['id']
+    assert changed['fingerprint'] != row['fingerprint']
+    assert changed['review_status'] == 'stale_review'
+    assert changed['verified_on'] is None
+
+
+def test_context_source_cannot_promote_claim_and_missing_source_is_a_gap(corpus):
+    root, graph = corpus
+    attach_primary(root, graph, 'context')
+    row = candidate(evidence.build_evidence(root, REF))
+    review(root, row)
+    assert candidate(evidence.build_evidence(root, REF))['review_status'] == 'stale_review'
+    (root / evidence.SOURCES_PATH).unlink()
+    assert 'missing' in ' '.join(candidate(evidence.build_evidence(root, REF))['review_gaps'])
+
+
+def test_superseded_claim_stays_in_history_without_active_conflict(corpus):
+    root, graph = corpus
+    attach_primary(root, graph, 'correction')
+    row = candidate(evidence.build_evidence(root, REF))
+    review(root, row, 'superseded')
+    result = evidence.build_evidence(root, REF)
+    assert not candidate(result)['active']
+    assert candidate(result)['related_record_ids']
+    assert result['summary']['conflicted_records'] == 0
+    assert result['summary']['resolved'] == 1
+
+
+def test_different_component_roles_do_not_form_false_conflicts(corpus):
+    root, graph = corpus
+    graph['links'][0].update(role='optional_relay', component='Different radio')
+    put(root, evidence.GRAPH_PATH, graph)
+    supply = json.loads((root/'data/ddg_supply_links.json').read_text())
+    supply['suppliers'][0]['feeds'][0]['role'] = 'base_datalink'
+    put(root, 'data/ddg_supply_links.json', supply)
+    result = evidence.build_evidence(root, REF)
+    assert result['summary']['conflicted_records'] == 0
+    assert candidate(result)['related_record_ids']
+
+
+def test_legacy_relationship_can_be_reviewed_but_pooled_sources_cannot(corpus):
+    root, graph = corpus
+    attach_primary(root, graph)
+    supply = json.loads((root/'data/ddg_supply_links.json').read_text())
+    feed = supply['suppliers'][0]['feeds'][0]
+    feed['evidence_refs'] = [{'source_id':'source-1','supports':'claim'}]
+    feed.update(role='base_datalink', note='This individual link, not every supplier customer.')
+    put(root, 'data/ddg_supply_links.json', supply)
+    row = next(r for r in evidence.build_evidence(root, REF)['relationships'] if r['origin']=='legacy_supply')
+    assert row['evidence_scope'] == 'relationship'
+    assert not row['review_gaps']
+    review(root, row)
+    result = evidence.build_evidence(root, REF)
+    assert result['summary']['supported'] == 1
+    feed['role'] = 'optional_relay'
+    put(root, 'data/ddg_supply_links.json', supply)
+    result = evidence.build_evidence(root, REF)
+    assert result['summary']['supported'] == 0
+
+
+def test_duplicate_sources_fail_and_duplicate_edges_are_reported(corpus):
+    root, graph = corpus
+    sources = attach_primary(root, graph)
+    graph['links'].append(dict(graph['links'][0]))
+    put(root, evidence.GRAPH_PATH, graph)
+    assert len(evidence.build_evidence(root, REF)['rejected_candidates']) == 1
+    sources['sources'].append(dict(sources['sources'][0]))
+    put(root, evidence.SOURCES_PATH, sources)
+    with pytest.raises(ValueError, match='Duplicate source'):
+        evidence.build_evidence(root, REF)
+
+
+def test_graphify_query_export_excludes_unreviewed_negative_and_retired_claims(corpus):
+    root, graph = corpus
+    attach_primary(root, graph)
+    graph['links'][0]['assertion'] = 'affirmed'
+    graph['links'][0]['relation'] = 'supplies_component'
+    put(root, evidence.GRAPH_PATH, graph)
+    payload = evidence.build_evidence(root, REF)
+    assert not evidence.reviewed_graph(payload)['links']
+    row = candidate(payload)
+    review(root, row)
+    payload = evidence.build_evidence(root, REF)
+    query = evidence.reviewed_graph(payload)
+    assert [r['id'] for r in query['links']] == [row['id']]
+    assert len(query['nodes']) == 2
+    review(root, row, 'superseded')
+    assert not evidence.reviewed_graph(evidence.build_evidence(root, REF))['links']
+
+
+def test_review_cli_rejects_stale_fingerprint_and_records_explicit_actor(corpus):
+    import subprocess
+    import sys
+    root, graph = corpus
+    attach_primary(root, graph)
+    row = candidate(evidence.build_evidence(root, REF))
+    args = [sys.executable, str(ROOT/'tools/review_private_evidence.py'), '--upstream-dir', str(root),
+            '--upstream-ref', REF, '--record-id', row['id'], '--status', 'not_supported',
+            '--reviewer', 'Actual reviewer', '--reviewed-on', '2026-09-29', '--rationale', 'Source describes a different variant.',
+            '--expected-fingerprint']
+    assert subprocess.run(args + ['wrong'], capture_output=True).returncode != 0
+    assert not (root/evidence.REVIEWS_PATH).exists()
+    assert subprocess.run(args + [row['fingerprint']], capture_output=True).returncode == 0
+    reviewed = candidate(evidence.build_evidence(root, REF))
+    assert reviewed['review_status'] == 'not_supported'
+    assert reviewed['review_history'][-1]['reviewer'] == 'Actual reviewer'

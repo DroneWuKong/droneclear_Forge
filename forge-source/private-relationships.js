@@ -1,24 +1,28 @@
 (function (root) {
   'use strict';
   const api = {};
-  const statusNames = {needs_review: 'Needs review', stale_review: 'Review expired', supported: 'Supported', disputed: 'Disputed', rejected: 'Rejected', superseded: 'Superseded'};
+  const statusNames = {needs_review: 'Needs review', stale_review: 'Review expired', supported: 'Source supported', not_supported: 'Unsupported attribution', disputed: 'Disputed', rejected: 'Rejected', superseded: 'Superseded'};
   const text = value => String(value == null ? '' : value);
   api.safeUrl = function (value) {
     try { const u = new URL(value); return /^https?:$/.test(u.protocol) && !u.username ? u.href : null; } catch (_) { return null; }
   };
+  const lifecycleNames = {documented:'Documented integration', available_option:'Available option', tested:'Tested integration', demonstrated:'Demonstrated', announced:'Announced collaboration', completed:'Completed transaction', unspecified:'Configuration unrecorded'};
   api.filterRows = function (data, filters) {
     const nodes = new Map(data.nodes.map(n => [n.id, n]));
     const query = text(filters.query).toLowerCase().trim();
     return data.relationships.filter(r => {
+      if (filters.status === 'resolved' ? r.active !== false : (!filters.includeHistory && r.active === false)) return false;
+      if (filters.status === 'priority' && r.review_priority !== 'high') return false;
+      if (filters.lifecycle && r.lifecycle !== filters.lifecycle) return false;
       if (filters.view === 'supply' && r.origin !== 'legacy_supply') return false;
       if (filters.view === 'research' && r.origin !== 'graphify_candidate') return false;
       if (filters.dossier && !r.evidence.some(e => e.dossier_slug === filters.dossier)) return false;
       if (filters.status === 'conflict' && !r.conflicting_record_ids.length) return false;
       if (filters.status === 'supported' && r.review_status !== 'supported') return false;
       if (filters.status === 'needs_review' && !['needs_review', 'stale_review'].includes(r.review_status)) return false;
-      const haystack = [nodes.get(r.source)?.label, nodes.get(r.target)?.label, r.component, r.company, r.relation, r.subsystem].join(' ').toLowerCase();
+      const haystack = [nodes.get(r.source)?.label, nodes.get(r.target)?.label, r.component, r.company, r.relation, r.subsystem, r.role, r.configuration, ...(r.source_publishers || [])].join(' ').toLowerCase();
       return !query || haystack.includes(query);
-    });
+    }).sort((a,b) => (filters.status === 'priority' ? (b.conflicting_record_ids.length - a.conflicting_record_ids.length) : 0) || (nodes.get(a.source)?.label || '').localeCompare(nodes.get(b.source)?.label || '') || (nodes.get(a.target)?.label || '').localeCompare(nodes.get(b.target)?.label || ''));
   };
   api.connected = (rows, id) => rows.filter(r => r.source === id || r.target === id);
   api.entities = function (data, rows) {
@@ -49,21 +53,36 @@
       box.append(el('p', 'Conflicting claim in another record — compare the evidence before relying on this link.', 'relationship-conflict'));
       box.append(anchor('Compare conflicting evidence', '/private/supply-web/?view=all&status=conflict&q=' + encodeURIComponent(nodes.get(row.source)?.label || '')));
     }
-    box.append(el('p', row.verified_on ? 'Reviewed ' + row.verified_on : 'Verification date not recorded', 'relationship-date'));
-    if (row.note) box.append(el('p', (row.origin === 'legacy_supply' ? 'Supplier-level context: ' : '') + row.note));
+    box.append(el('p', lifecycleNames[row.lifecycle] || lifecycleNames.unspecified, 'relationship-scope'));
+    if (row.role || row.configuration) box.append(el('p', [row.role?.replaceAll('_', ' '), row.configuration].filter(Boolean).join(' · '), 'relationship-kind'));
+    box.append(el('p', row.verified_on ? (row.review_type === 'source_checked' ? 'Sources checked ' : 'Reviewed ') + row.verified_on : 'Review date not recorded', 'relationship-date'));
+    if (row.source_count) box.append(el('p', `${row.source_count} primary source${row.source_count === 1 ? '' : 's'} · ${(row.source_publishers || []).length} publisher${row.source_publishers?.length === 1 ? '' : 's'}. Source support is not independent hardware verification.`, 'relationship-date'));
+    if (row.active === false) box.append(el('p', 'Retained as review history; excluded from active relationships.', 'relationship-gap'));
+    box.append(anchor('Link to this record', '/private/supply-web/?view=all&record=' + encodeURIComponent(row.id) + (row.active === false ? '&status=resolved' : '')));
+    if (row.note) box.append(el('p', (row.evidence_scope === 'supplier' ? 'Supplier-level context: ' : '') + row.note));
     if (row.evidence_scope === 'supplier') box.append(el('p', 'These sources belong to the supplier record. They have not been attributed to this individual connection.', 'relationship-gap'));
     row.review_gaps.forEach(g => box.append(el('p', g, 'relationship-gap')));
+    if (row.review_priority === 'high') box.append(el('p', 'Priority review: resolve the conflict, expired review, or unsupported legacy confirmation.', 'relationship-gap'));
     const details = el('details'); details.open = !compact;
     details.append(el('summary', 'Evidence and review history'));
-    row.evidence.forEach(e => {
-      if (e.excerpt) details.append(el('blockquote', e.excerpt));
+    [...row.evidence].sort((a,b) => Number(b.evidence_type === 'primary_source') - Number(a.evidence_type === 'primary_source')).forEach(e => {
+      if (e.evidence_type === 'primary_source') {
+        const block = el('section', null, 'relationship-source');
+        const link = external(e.title, e.url); if (link) block.append(link);
+        block.append(el('p', `${e.publisher} · ${e.kind.replaceAll('_',' ')} · ${e.supports === 'claim' ? 'supports this claim' : e.supports}`, 'relationship-kind'));
+        block.append(el('p', e.summary));
+        block.append(el('p', `Published/modified ${e.published_on || 'date unknown'} · retrieved ${e.retrieved_on}`, 'relationship-date'));
+        block.append(el('p', 'Passage: ' + e.locator, 'relationship-date'));
+        details.append(block); return;
+      }
+      if (e.excerpt && !row.source_count) details.append(el('blockquote', e.excerpt));
       if (e.source_path) {
         const p = el('p', e.source_location + (e.source_date ? ' · source dated ' + e.source_date : ' · source date not recorded'));
         p.append(doc.createTextNode(' · '), anchor('Read dossier', '/private/dossiers/#' + encodeURIComponent(e.dossier_slug)));
         details.append(p);
         details.append(el('p', e.passage_matches ? 'Passage matches the pinned document; truth of the claim still requires review.' : 'Passage needs to be checked against the current document.', 'relationship-date'));
       }
-      (e.urls || []).forEach(url => { const a = external(url, url); if (a) details.append(a); });
+      (row.source_count && e.source_path ? [] : e.urls || []).forEach(url => { const a = external(new URL(api.safeUrl(url) || 'https://invalid.local').hostname + ' — source', url); if (a) details.append(a); });
     });
     (row.review_history || []).forEach(r => details.append(el('p', `${r.reviewed_on} · ${r.reviewer}: ${r.status} — ${r.rationale}`)));
     if (!row.evidence.length) details.append(el('p', 'No source attached.'));
@@ -76,10 +95,10 @@
     try {
       const data = await load();
       if (reader.dataset.relationshipSlug !== slug) return;
-      const rows = api.filterRows(data, {view: 'research', dossier: slug});
+      const rows = api.filterRows(data, {view: 'research', dossier: slug, includeHistory: true});
       if (!rows.length) return;
       const nodes = new Map(data.nodes.map(n => [n.id, n]));
-      panel.append(el('h2', 'Relationship evidence'), el('p', `${rows.length} extracted claims. Extraction labels do not mean independently verified.`));
+      panel.append(el('h2', 'Relationship evidence'), el('p', `${rows.length} claims and review records. Source checks and extraction labels remain separate.`));
       panel.append(anchor('Explore these connections', '/private/supply-web/?view=research&dossier=' + encodeURIComponent(slug)));
       rows.forEach(row => panel.append(card(row, nodes, true)));
       reader.prepend(panel);
@@ -96,16 +115,22 @@
       const data = await load(), nodeMap = new Map(data.nodes.map(n => [n.id, n]));
       const params = new URLSearchParams(root.location.search);
       get('view').value = ['research', 'all'].includes(params.get('view')) ? params.get('view') : 'supply';
-      get('status-filter').value = ['conflict', 'supported', 'needs_review'].includes(params.get('status')) ? params.get('status') : '';
+      get('status-filter').value = ['conflict', 'supported', 'needs_review', 'priority', 'resolved'].includes(params.get('status')) ? params.get('status') : '';
       get('query').value = params.get('q') || '';
-      let dossier = params.get('dossier') || '', selected = '';
+      get('lifecycle-filter').value = Object.keys(lifecycleNames).includes(params.get('stage')) ? params.get('stage') : '';
+      const linkedRecord = data.relationships.find(r => r.id === params.get('record'));
+      let dossier = params.get('dossier') || '', selected = linkedRecord?.source || '', matchingRows = [];
+      get('show-all').checked = params.get('list') === 'all' || get('status-filter').value === 'priority';
       get('dossier-filter').hidden = !dossier;
       get('clear-dossier').textContent = dossier ? 'Clear dossier filter: ' + dossier : '';
-      get('provenance').textContent = `Supply data dated ${data.supply_source_generated || 'unknown'} · release ${data.upstream_ref.slice(0, 12)}. Each connection has its own review status.`;
-      get('summary').textContent = `${data.summary.supply_links} supply links · ${data.summary.candidates} research candidates · ${data.summary.conflicted_records} records with conflicts`;
+      get('provenance').textContent = `Dataset updated ${data.supply_source_generated || 'unknown'} · research checked ${data.research_checked_on || 'not recorded'} · release ${data.upstream_ref.slice(0, 12)}. Dataset dates do not reverify individual claims.`;
+      get('summary').textContent = `${data.summary.supply_links} supply links · ${data.summary.candidates} research records · ${data.summary.supported || 0} source supported · ${data.summary.primary_sources || 0} linked primary sources`;
       if (data.rejected_candidates.length) get('summary').append(doc.createTextNode(` · ${data.rejected_candidates.length} candidate(s) excluded because their input needs repair`));
+      get('queue-button').textContent = `Review priority gaps (${data.summary.high_priority || 0})`;
+      get('history-button').textContent = `View corrections (${data.summary.resolved || 0})`;
       function update() {
-        const rows = api.filterRows(data, {view: get('view').value, query: get('query').value, status: get('status-filter').value, dossier});
+        const rows = api.filterRows(data, {view: get('view').value, query: get('query').value, status: get('status-filter').value, lifecycle: get('lifecycle-filter').value, dossier});
+        matchingRows = rows;
         const entities = api.entities(data, rows);
         if (!entities.some(n => n.id === selected)) selected = entities[0]?.id || '';
         get('entity').replaceChildren();
@@ -113,10 +138,21 @@
         get('entity').value = selected;
         const connected = api.connected(rows, selected);
         get('connections').replaceChildren();
-        connected.forEach(row => get('connections').append(card(row, nodeMap, false)));
-        get('result-count').textContent = rows.length ? `${rows.length} matching records · showing ${connected.length} connections for ${nodeMap.get(selected)?.label}` : 'No matching relationships. Try clearing the filters.';
+        const displayed = get('show-all').checked ? rows : connected;
+        displayed.forEach(row => get('connections').append(card(row, nodeMap, displayed.length > 3)));
+        get('result-count').textContent = rows.length ? `${rows.length} matching records · ${rows.filter(r=>r.review_status === 'supported').length} source supported · ${get('show-all').checked ? 'showing all matches' : 'showing ' + connected.length + ' connections for ' + nodeMap.get(selected)?.label}` : 'No matching relationships. Try clearing the filters.';
         if (!rows.length && get('view').value === 'research' && !data.summary.candidates) get('result-count').textContent = 'No Graphify candidates in this release. Existing supply evidence is available in Supply links.';
         draw(connected);
+        const next = new URLSearchParams();
+        next.set('view', get('view').value);
+        if (get('query').value) next.set('q', get('query').value);
+        if (get('status-filter').value) next.set('status', get('status-filter').value);
+        if (get('lifecycle-filter').value) next.set('stage', get('lifecycle-filter').value);
+        if (get('show-all').checked) next.set('list', 'all');
+        if (dossier) next.set('dossier', dossier);
+        if (linkedRecord && displayed.some(r=>r.id === linkedRecord.id)) next.set('record', linkedRecord.id);
+        root.history.replaceState(null, '', '?' + next);
+        get('export-matches').disabled = !rows.length;
       }
       function draw(rows) {
         const svg = get('relationship-graph'); svg.replaceChildren();
@@ -142,13 +178,22 @@
           svg.append(g);
         });
       }
-      ['view', 'status-filter'].forEach(id => get(id).addEventListener('change', update));
+      ['view', 'status-filter', 'lifecycle-filter', 'show-all'].forEach(id => get(id).addEventListener('change', update));
       get('query').addEventListener('input', update);
       get('entity').addEventListener('change', () => { selected = get('entity').value; update(); });
       get('clear-dossier').addEventListener('click', () => { dossier = ''; get('dossier-filter').hidden = true; update(); });
-      get('reset').addEventListener('click', () => { dossier = ''; selected = ''; get('dossier-filter').hidden = true; get('query').value = ''; get('status-filter').value = ''; update(); });
+      get('reset').addEventListener('click', () => { dossier = ''; selected = ''; get('dossier-filter').hidden = true; get('query').value = ''; get('status-filter').value = ''; get('lifecycle-filter').value = ''; get('show-all').checked = false; update(); });
+      get('queue-button').addEventListener('click', () => { get('view').value = 'all'; get('status-filter').value = 'priority'; get('query').value = ''; get('lifecycle-filter').value = ''; get('show-all').checked = true; dossier = ''; get('dossier-filter').hidden = true; update(); });
+      get('history-button').addEventListener('click', () => { get('view').value = 'all'; get('status-filter').value = 'resolved'; get('query').value = ''; get('lifecycle-filter').value = ''; get('show-all').checked = true; dossier = ''; get('dossier-filter').hidden = true; update(); });
+      get('export-matches').addEventListener('click', () => {
+        const ids = new Set(matchingRows.flatMap(r=>[r.source,r.target]));
+        const payload = {schema_version:data.schema_version, upstream_ref:data.upstream_ref, filtered:true, nodes:data.nodes.filter(n=>ids.has(n.id)), relationships:matchingRows};
+        const url = URL.createObjectURL(new Blob([JSON.stringify(payload, null, 2)], {type:'application/json'}));
+        const a = anchor('Download filtered evidence', url); a.download = 'private-relationship-evidence.json'; a.click(); root.setTimeout(()=>URL.revokeObjectURL(url),1000);
+      });
       root.addEventListener('resize', update);
       update();
+      if (linkedRecord) doc.getElementById(linkedRecord.id)?.scrollIntoView({block:'center'});
     } catch (_) { get('result-count').textContent = 'Relationship evidence could not be loaded. Reload after signing in, or check that this release includes its private evidence index.'; }
   }
   if (doc.readyState === 'loading') doc.addEventListener('DOMContentLoaded', start); else start();

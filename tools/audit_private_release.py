@@ -63,7 +63,17 @@ def audit_relationships(build, release):
         assert all(ident in ids for ident in row['conflicting_record_ids'])
         if row['review_status'] in {'needs_review', 'stale_review'}:
             assert row['verified_on'] is None, 'unreviewed claim acquired a verification date'
-    for public_path in (build.parent/'relationships.json', build.parent/'static/relationships.json'):
+    graph_path = build / 'graphify.json'
+    graph = load(graph_path)
+    graph_manifest = release['artifacts']['graphify']
+    assert graph_manifest['sha256'] == hashlib.sha256(graph_path.read_bytes()).hexdigest(), 'Graphify artifact hash mismatch'
+    assert graph['graph']['upstream_ref'] == data['upstream_ref']
+    expected = {r['id'] for r in data['relationships'] if r['active'] and r['assertion'] == 'affirmed'
+                and r['review_status'] == 'supported' and r.get('review_type') == 'source_checked'}
+    assert {r['id'] for r in graph['links']} == expected, 'Query graph includes unreviewed claims or omits reviewed ones'
+    assert graph_manifest['records'] == len(graph['links'])
+    for public_path in (build.parent/'relationships.json', build.parent/'static/relationships.json',
+                        build.parent/'graphify.json', build.parent/'static/graphify.json'):
         assert not public_path.exists(), 'private relationship data copied to a public route'
 
 

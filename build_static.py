@@ -2179,7 +2179,8 @@ def sync_private_dossiers():
     # separate from curated supply links and never reach the public data API.
     from tools.private_evidence import write_evidence
     evidence_path = Path(private_out) / 'relationships.json'
-    evidence = write_evidence(repo_root, data_ref, evidence_path)
+    graphify_path = Path(private_out) / 'graphify.json'
+    evidence = write_evidence(repo_root, data_ref, evidence_path, graphify_path)
     print(f"    Private relationships: {evidence['summary']}")
 
     # Pull the genuinely-private Ai-Project datasets (never on public /api/data)
@@ -2301,6 +2302,11 @@ def sync_private_dossiers():
         'sha256': hashlib.sha256(evidence_path.read_bytes()).hexdigest(),
         'records': len(evidence['relationships']),
         'summary': evidence['summary'],
+    }
+    artifacts['graphify'] = {
+        'path': '/private/graphify.json',
+        'sha256': hashlib.sha256(graphify_path.read_bytes()).hexdigest(),
+        'records': len(json.loads(graphify_path.read_text())['links']),
     }
     if os.path.isfile(pbom_src):
         artifacts['platform_boms'] = artifact('data/platform_boms.json', pbom_src, '/private/platform_boms.json')

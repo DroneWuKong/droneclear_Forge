@@ -1,5 +1,13 @@
 # Changelog
 
+## 2026-09-29 — Primary-source relationship review expansion
+
+- Added per-claim primary observations, configuration roles, integration stages and content-bound source checks.
+- Added a priority queue, correction history, stable record links and filtered downloads to the private evidence browser.
+- Export only source-supported affirmative claims for Graphify queries; preserve the full review history separately.
+- Show option scopes in component BOMs and avoid treating mixed options as an installed cost total.
+- Validate both private output hashes and test review invalidation, role-aware conflicts and safe query exports.
+
 ## [Session] - 2026-09-29 — Private relationship evidence pilot
 
 - Add a deterministic, private-only evidence projection for legacy supply links

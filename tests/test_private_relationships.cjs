@@ -27,3 +27,14 @@ test('source links reject executable and credential URLs', () => {
   for(const url of ['javascript:alert(1)','data:text/html,x','file:///etc/passwd','https://user:secret@example.com/']) assert.equal(api.safeUrl(url),null);
   assert.equal(api.safeUrl('https://example.com/source'),'https://example.com/source');
 });
+test('retired claims are hidden by default but reachable in history', () => {
+  const d={...data,relationships:[...data.relationships,{...data.relationships[0],id:'old',active:false,review_status:'superseded'}]};
+  assert.equal(api.filterRows(d,{}).length,3);
+  assert.deepEqual(api.filterRows(d,{status:'resolved'}).map(r=>r.id),['old']);
+  assert.equal(api.filterRows(d,{includeHistory:true}).length,4);
+});
+test('role stages and priority queue filter the same evidence', () => {
+  const d={...data,relationships:data.relationships.map((r,i)=>({...r,review_priority:i===0?'high':'normal',lifecycle:i===2?'tested':'available_option'}))};
+  assert.deepEqual(api.filterRows(d,{status:'priority'}).map(r=>r.id),['r1']);
+  assert.deepEqual(api.filterRows(d,{lifecycle:'tested'}).map(r=>r.id),['r3']);
+});
