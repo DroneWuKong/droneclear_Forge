@@ -57,6 +57,17 @@ def main():
     assert tuple(release.get("official_finalists", [])) == EXPECTED_FINALISTS
     assert re.fullmatch(r"[0-9a-f]{40}", release.get("upstream_ref", ""))
 
+    update = load(BUILD / "data" / "ddg_program_update.json")
+    phase3 = load(BUILD / "data" / "ddg3.json")
+    assert update.get("revision") == "phase3-rev3-2026-09-29", "DDG update is stale"
+    assert phase3["program_update"]["revision"] == update["revision"]
+    assert phase3["program_status"]["final_rfs_published"] is True
+    assert len(set(update["phase_2_5"]["invitees"])) == 17
+    assert phase3["official_baseline"]["budget"]["value"] == "$450 million"
+    assert (BUILD / "dossiers" / "ddg-program-update.md").is_file()
+    for page in ("index.html", "ddg/index.html", "dossiers/index.html", "supply-web/index.html", "data/index.html", "components-bom/index.html", "drone-config/index.html"):
+        assert "ddg-program-update.js" in (BUILD / page).read_text(encoding="utf-8"), page
+
     data_index = load(BUILD / "data" / "index.json")
     assert data_index, "private data index is empty"
     for row in data_index:
