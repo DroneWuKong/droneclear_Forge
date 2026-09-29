@@ -2139,7 +2139,7 @@ def sync_private_dossiers():
             seen.add(fn)
             slug = fn[:-3]
             shutil.copy2(src, os.path.join(out_dir, fn))
-            g = 'Cross-cutting' if fn in ('ddg2-roster.md',) else group
+            g = 'Cross-cutting' if fn in ('ddg2-roster.md', 'ddg-program-update.md') else group
             index.append({'slug': slug, 'title': title_of(src), 'group': g})
             n += 1
 
@@ -2179,6 +2179,10 @@ def sync_private_dossiers():
     # into build/private/data/ for the gated Intel Data browser. Each entry:
     #   (source path under the repo, output filename, label, one-line description)
     PRIVATE_DATASETS = [
+        ('data/ddg_program_update.json', 'ddg_program_update.json', 'DDG Program Update',
+         'Reviewed Phase 3 RFS, deadlines, Phase 2.5 invitees and source discrepancies.'),
+        ('data/ddg3.json', 'ddg3.json', 'DDG Phase 3 Tracker',
+         'Official RFS baseline separated from superseded planning and company award evidence.'),
         ('data/gur_teardowns.json', 'gur_teardowns.json', 'GUR Teardowns (raw)',
          'Raw adversary teardown BOMs — the source the public Adversary BOM lens is derived from.'),
         ('data/ownership_graph.json', 'ownership_graph.json', 'Ownership Graph',
@@ -2298,6 +2302,7 @@ def sync_private_dossiers():
         'official_finalists': list(dict.fromkeys(r['company'] for r in result_rows)),
         'official_results': result_rows,
         'artifacts': artifacts,
+        'program_update': {'revision': 'phase3-rev3-2026-09-29', 'reviewed_on': '2026-09-29', 'path': '/private/data/ddg_program_update.json'},
     }
     with open(os.path.join(private_out, 'release.json'), 'w', encoding='utf-8') as handle:
         json.dump(release, handle, separators=(',', ':'))
