@@ -1,0 +1,32 @@
+name: Private relationship evidence
+on:
+  pull_request:
+    paths:
+      - 'build_static.py'
+      - 'tools/private_evidence.py'
+      - 'tools/review_private_evidence.py'
+      - 'forge-source/private/components-bom.html'
+      - 'tools/audit_private_release.py'
+      - 'forge-source/private-relationships.*'
+      - 'forge-source/private/supply-web.html'
+      - 'forge-source/private/dossiers.html'
+      - 'tests/test_private_evidence.py'
+      - 'tests/test_private_relationships.cjs'
+      - '.github/workflows/private-evidence-tests.yml'
+permissions:
+  contents: read
+jobs:
+  evidence:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: python -m pip install pytest
+      - run: python -m pytest tests/test_private_evidence.py tests/test_private_release.py tests/test_pages_build.py -q
+      - run: node --test tests/test_private_relationships.cjs

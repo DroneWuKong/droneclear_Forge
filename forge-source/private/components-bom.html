@@ -288,7 +288,8 @@ function buildPlatforms(suppliers){
         component:s.component||s.supplier,
         supplier:s.supplier,
         confidence:f.confidence||"I",
-        sources:s.sources||[],
+        sources:f.sources||s.sources||[],
+        role:f.role||"", lifecycle:f.lifecycle||"", configuration:f.configuration||"", note:f.note||s.note||"",
       });
     });
   });
@@ -445,7 +446,7 @@ function cardHTML(p,confOnly,showGaps){
     spec+
     '<div class="compl"><div class="lbl"><span>BOM completeness</span><span>'+c.filled+' / '+c.total+' slots</span></div>'+
     '<div class="bar"><i style="width:'+c.pct+'%"></i></div></div>'+
-    '<div class="costline">Est. BOM cost: '+moneyRange(p.cost.low,p.cost.high)+
+    '<div class="costline">'+(p.items.some(i=>["available_option","tested","demonstrated"].includes(i.lifecycle)) ? 'Configuration varies — no installed BOM total' : 'Est. BOM cost: '+moneyRange(p.cost.low,p.cost.high))+
       '<span class="meta"> · '+p.cost.ndb+' DB-priced · '+p.cost.nest+' estimated'+
       (p.cost.nna?(' · '+p.cost.nna+' unpriced'):'')+'</span></div>'+
     '<table><thead><tr><th>Subsystem</th><th>Component</th><th>Est. $</th><th>Conf</th><th>Src</th></tr></thead>'+
@@ -461,7 +462,7 @@ function rowHTML(i){
     :money(pr.typ)+' <span class="ptag '+pr.src+'" title="'+esc(pr.ref||(pr.src==="est"?"subsystem band":""))+'">'+(pr.src==="db"?"DB":"est")+'</span>';
   return '<tr>'+
     '<td class="sub-cell">'+esc(SLOT_LABEL[i.subsystem]||i.subsystem)+'</td>'+
-    '<td class="comp-cell"><b>'+esc(i.component)+'</b><span class="vend">'+esc(i.supplier)+'</span></td>'+
+    '<td class="comp-cell"><b>'+esc(i.component)+'</b><span class="vend">'+esc(i.supplier)+'</span>'+([i.lifecycle.replaceAll('_',' '),i.role.replaceAll('_',' '),i.configuration].filter(Boolean).length ? '<span class="vend">'+esc([i.lifecycle.replaceAll('_',' '),i.role.replaceAll('_',' '),i.configuration].filter(Boolean).join(' · '))+'</span>' : '')+(i.note?'<span class="vend">'+esc(i.note)+'</span>':'')+'</td>'+
     '<td class="cost-cell">'+cost+'</td>'+
     '<td><span class="cf '+esc(i.confidence)+'">'+esc(i.confidence)+'</span></td>'+
     '<td><span class="src">'+(srcs||'—')+'</span></td>'+

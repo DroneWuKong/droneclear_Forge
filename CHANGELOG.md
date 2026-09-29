@@ -1,5 +1,26 @@
 # Changelog
 
+## 2026-09-29 — Primary-source relationship review expansion
+
+- Added per-claim primary observations, configuration roles, integration stages and content-bound source checks.
+- Added a priority queue, correction history, stable record links and filtered downloads to the private evidence browser.
+- Export only source-supported affirmative claims for Graphify queries; preserve the full review history separately.
+- Show option scopes in component BOMs and avoid treating mixed options as an installed cost total.
+- Validate both private output hashes and test review invalidation, role-aware conflicts and safe query exports.
+
+## [Session] - 2026-09-29 — Private relationship evidence pilot
+
+- Add a deterministic, private-only evidence projection for legacy supply links
+  and optional Graphify candidates, with source passages, file hashes, separate
+  review decisions, expired-review detection, and conflicting-claim comparison.
+- Replace the full-network mobile view with searchable, focused neighborhoods
+  and complete evidence cards; connect candidate records to their dossiers.
+- Preserve supplier-level citation scope and existing assessment codes. No
+  extraction automatically changes a supplier BOM or establishes ownership.
+- Hash and audit the new gated output in the existing pinned release. Public
+  API/KV allowlists and the private access gate are unchanged.
+
+
 ## [Session] - 2026-07-04 — Site-wide audit fixes + PIE feature wave
 
 ### Security

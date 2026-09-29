@@ -2175,6 +2175,14 @@ def sync_private_dossiers():
     else:
         print("    NOTE: data/ddg_supply_links.json not found — supply-web page will show empty state")
 
+    # Deterministic evidence projection; optional Graphify proposals stay
+    # separate from curated supply links and never reach the public data API.
+    from tools.private_evidence import write_evidence
+    evidence_path = Path(private_out) / 'relationships.json'
+    graphify_path = Path(private_out) / 'graphify.json'
+    evidence = write_evidence(repo_root, data_ref, evidence_path, graphify_path)
+    print(f"    Private relationships: {evidence['summary']}")
+
     # Pull the genuinely-private Ai-Project datasets (never on public /api/data)
     # into build/private/data/ for the gated Intel Data browser. Each entry:
     #   (source path under the repo, output filename, label, one-line description)
@@ -2288,6 +2296,18 @@ def sync_private_dossiers():
         artifacts['ddg3'] = artifact('data/ddg3.json', ddg3_src, '/private/ddg/')
     if os.path.isfile(supply_src):
         artifacts['supply_web'] = artifact('data/ddg_supply_links.json', supply_src, '/private/supply_links.json')
+    artifacts['relationships'] = {
+        'path': '/private/relationships.json',
+        'source_path': 'data/ddg_supply_links.json + data/private_graphify/',
+        'sha256': hashlib.sha256(evidence_path.read_bytes()).hexdigest(),
+        'records': len(evidence['relationships']),
+        'summary': evidence['summary'],
+    }
+    artifacts['graphify'] = {
+        'path': '/private/graphify.json',
+        'sha256': hashlib.sha256(graphify_path.read_bytes()).hexdigest(),
+        'records': len(json.loads(graphify_path.read_text())['links']),
+    }
     if os.path.isfile(pbom_src):
         artifacts['platform_boms'] = artifact('data/platform_boms.json', pbom_src, '/private/platform_boms.json')
     release = {
