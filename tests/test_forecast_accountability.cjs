@@ -52,6 +52,20 @@ test('queue filters retain legacy records and search only narrows the requested 
   assert.equal(forecast.queueDocument({...doc,records:[{prediction_id:'x',state:'auto_approved'}]}),null);
 });
 
+test('candidate leads disclose binding URL restrictions and unknown source eligibility',()=>{
+  const row={...issued(),state:'candidate_evidence',review_candidates:[
+    {title:'Relevant plan',url:'https://example.com/new',candidate_context:{source_allowed:false}},
+    {title:'Allowed report',url:'https://example.com/announcements/new',candidate_context:{source_allowed:true}},
+    {title:'Older lead',url:'https://example.com/old'}]};
+  const html=forecast.queueCard(row);
+  assert.match(html,/restricted to specific URL paths/);
+  assert.match(html,/Outside issued source hierarchy · research lead only/);
+  assert.match(html,/Within issued source hierarchy · requires event and threshold review/);
+  assert.match(html,/Source eligibility not assessed/);
+  const root={...row,resolution_criteria:{...row.resolution_criteria,resolution_sources:['https://example.com/']}};
+  assert.doesNotMatch(forecast.queueCard(root),/restricted to specific URL paths/);
+});
+
 test('fetched strings and URLs cannot create executable content in forecast details',()=>{
   const row={...issued(),state:'due',event:'<img src=x onerror=alert(1)>',reason:'<script>bad()</script>',owner:'" onclick="bad()',
     resolution_criteria:{...issued().resolution_criteria,resolution_sources:['javascript:alert(1)','https://user:pass@example.com/']},
