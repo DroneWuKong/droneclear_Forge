@@ -49,11 +49,11 @@ function renderEditorGuideList() {
     }
 
     list.innerHTML = guideState.guides.map(g => `
-        <div class="guide-editor-guide-item${guideState.editingGuide?.pid === g.pid ? ' active' : ''}"
+        <button type="button" style="width:100%;font:inherit;color:inherit;text-align:left;" class="guide-editor-guide-item${guideState.editingGuide?.pid === g.pid ? ' active' : ''}"
              onclick="selectEditorGuide('${g.pid}')">
             <div class="guide-editor-guide-item-title">${escHTML(g.name)}</div>
             <div class="guide-editor-guide-item-meta">${g.pid} &middot; ${g.step_count ?? 0} steps</div>
-        </div>
+        </button>
     `).join('');
 }
 
@@ -335,7 +335,7 @@ async function saveGuide() {
     if (guideState.editingStepIndex >= 0) readStepDetailForm();
 
     const guide = guideState.editingGuide;
-    if (!guide) return;
+    if (!guide) return false;
 
     // POLISH-018: Validate required fields before submit
     const name = getVal('ge-name').trim();
@@ -343,16 +343,16 @@ async function saveGuide() {
     if (!name) {
         showToast('Guide name is required.', 'error');
         document.getElementById('ge-name')?.focus();
-        return;
+        return false;
     }
     if (time !== undefined && time !== null && !isNaN(time) && time < 0) {
         showToast('Estimated time cannot be negative.', 'error');
         document.getElementById('ge-time')?.focus();
-        return;
+        return false;
     }
 
     const payload = {
-        pid: getVal('ge-pid'),
+        pid: guide.pid,
         name: getVal('ge-name'),
         description: getVal('ge-description'),
         difficulty: getVal('ge-difficulty'),
@@ -377,17 +377,19 @@ async function saveGuide() {
             method: 'PUT',
             body: JSON.stringify(payload),
         });
-        // Reload to get server-side IDs
+        // Reload the browser-local record
         await selectEditorGuide(payload.pid);
         await loadEditorGuideList();
         if (btn) {
             btn.innerHTML = '<i class="ph ph-check"></i> Saved!';
             setTimeout(() => { btn.innerHTML = originalHTML; }, 1500);
         }
+        return true;
     } catch (err) {
         console.error('Save failed:', err);
         showToast('Failed to save guide.', 'error');
         if (btn) btn.innerHTML = originalHTML;
+        return false;
     }
 }
 
@@ -395,10 +397,11 @@ async function saveGuide() {
 async function deleteGuide() {
     const guide = guideState.editingGuide;
     if (!guide) return;
-    if (!confirm(`Delete guide "${guide.name}"? This cannot be undone.`)) return;
+    if (!confirm(`Remove "${guide.name}" from this browser? The published reference will stay unchanged.`)) return;
 
     try {
-        await fetch(GUIDE_API.guideDetail(guide.pid), { method: 'DELETE', headers: { 'X-CSRFToken': getCookie('csrftoken') } });
+        const response = await fetch(GUIDE_API.guideDetail(guide.pid), { method: 'DELETE', headers: { 'X-CSRFToken': getCookie('csrftoken') } });
+        if (!response.ok) throw new Error('Browser-local removal failed');
         guideState.editingGuide = null;
         guideState.editingStepIndex = -1;
         _editorSteps = [];
@@ -417,11 +420,10 @@ async function previewGuide() {
     if (!guide) return;
 
     // Save first
-    await saveGuide();
+    if (!await saveGuide()) return;
 
-    // Switch to browse mode
-    guideDOM['btn-mode-browse']?.classList.add('active');
-    guideDOM['btn-mode-edit']?.classList.remove('active');
+    // Switch to browse mode after the local save succeeds.
+    switchMode('browse');
 
     // Load and show overview
     await selectGuide(guide.pid);
