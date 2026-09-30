@@ -98,18 +98,28 @@
     const p = probability(row.probability);
     const registered = !!row.issuance_id && row.state !== 'issuance_invalid';
     const candidates = Array.isArray(row.review_candidates) ? row.review_candidates : [];
+    const sources = row.resolution_criteria && row.resolution_criteria.resolution_sources;
+    const pathRestricted = registered && Array.isArray(sources) && sources.length > 0 && sources.every(value => {
+      const url = safeURL(value);
+      return url && new URL(url).pathname !== '/';
+    });
     return '<article class="forecast-queue-row" data-state="' + escape(row.state) + '">' +
       '<div class="rcall-top"><span class="forecast-state">' + escape(STATES[row.state]) + '</span>' +
       '<span class="rcall-meta">' + escape(registered ? 'Issued probability ' + percent(p) : 'Historical value ' + percent(p) + ' · ungraded') + '</span></div>' +
       '<h3>' + escape(row.event || 'Untitled forecast') + '</h3>' +
       '<p class="forecast-muted">' + escape(row.reason) + '</p>' +
+      (pathRestricted ? '<p class="forecast-muted"><strong>Allowed sources are restricted to specific URL paths.</strong> Reporting elsewhere is a research lead and cannot resolve this forecast. Issued criteria remain binding.</p>' : '') +
       (row.deadline ? '<p class="rcall-meta">Deadline ' + escape(when(row.deadline)) + (row.state === 'due' && numeric(row.age_days) ? ' · due ' + Math.max(0, Math.floor(row.age_days)) + ' days' : '') + '</p>' : '') +
       (row.owner ? '<p class="rcall-meta">Reviewer: ' + escape(row.owner) + '</p>' : '') +
       criteriaHTML(row) +
       (candidates.length ? '<details class="forecast-criteria"><summary>Candidate evidence (' + candidates.length + ')</summary><ul>' + candidates.map(item => {
         const url = safeURL(item.url);
+        const context = item.candidate_context || {};
+        const sourceStatus = context.source_allowed === true ? 'Within issued source hierarchy · requires event and threshold review' :
+          context.source_allowed === false ? 'Outside issued source hierarchy · research lead only' : 'Source eligibility not assessed';
         return '<li>' + (url ? '<a href="' + escape(url) + '" target="_blank" rel="noopener noreferrer">' + escape(item.title || url) + '</a>' : escape(item.title || 'Source unavailable')) +
-          '<span class="forecast-muted"> · ' + escape(item.published_at || 'Publication date unknown') + '</span></li>';
+          '<span class="forecast-muted"> · ' + escape(item.published_at || 'Publication date unknown') + '</span>' +
+          '<p class="forecast-muted">' + escape(sourceStatus) + '</p></li>';
       }).join('') + '</ul><p class="forecast-muted">Retrieval candidates require analyst review; they are not verdicts.</p></details>' : '') + '</article>';
   }
 
