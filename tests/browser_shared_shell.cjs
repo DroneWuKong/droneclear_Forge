@@ -36,6 +36,9 @@ assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth),width
 await page.reload();await page.locator('#btn-mode-edit').click();await page.locator('.guide-editor-guide-item').filter({hasText:pid}).click();await page.waitForFunction(p=>guideState.editingGuide?.pid===p,pid);
 assert.equal(await page.locator('#ge-name').inputValue(),'Local acceptance guide '+width,'Local guide must survive reload');}
 
+await page.evaluate(()=>renderEditorMediaList([{type:'video',url:'',caption:'Local fixture'}]));
+assert.equal(await page.locator('#se-media-list [data-field="caption"]').inputValue(),'Local fixture');
+for(const field of ['type','url','caption'])assert.ok(await page.locator('#se-media-list [data-field="'+field+'"]').evaluate(e=>e.labels.length>0),'Media fields need visible associated labels');
 await page.goto('http://forge.test.localhost/intel/feed/');await page.waitForTimeout(150);assert.equal(await page.evaluate(()=>typeof IntelNormalization),'object');
 assert.deepEqual(errors,[]);console.log('PASS: closed/open menu focus, Tab wrap/Escape restore, 9 reading-size viewport states, setting persistence, Audit request/failure, Guide detail/edit/save/reload at phone and desktop, Intel dependencies');
 }finally{await browser.close()}})().catch(e=>{console.error(e);process.exitCode=1});

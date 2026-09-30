@@ -447,24 +447,24 @@ function renderEditorMediaList(media) {
             ? `<img class="guide-editor-media-thumb" src="${escHTML(item.url)}"
                    alt="" onerror="this.style.display='none'">`
             : '';
-        return `<div class="guide-editor-media-item" data-index="${i}">
+        return `<div class="guide-editor-media-item" data-index="${i}" style="flex-wrap:wrap;">
             ${thumbHtml}
-            <select class="form-input" data-field="type" style="width:80px; font-size:12px; padding:4px;">
+            <label>Media type <select class="form-input" data-field="type" style="width:80px; font-size:12px; padding:4px;">
                 <option value="image"${item.type === 'image' ? ' selected' : ''}>Image</option>
                 <option value="video"${item.type === 'video' ? ' selected' : ''}>Video</option>
-            </select>
-            <input class="form-input" type="text" data-field="url" value="${escHTML(item.url || '')}"
-                   placeholder="URL or upload..." style="flex:1; font-size:12px; padding:4px 8px;">
+            </select></label>
+            <label style="flex:1;min-width:120px;">URL <input class="form-input" type="text" data-field="url" value="${escHTML(item.url || '')}"
+                   placeholder="URL or upload..." style="width:100%; font-size:12px; padding:4px 8px;"></label>
             <label class="btn btn-outline guide-editor-upload-btn" title="Upload file">
-                <i class="ph ph-upload-simple"></i>
+                Upload file
                 <input type="file" class="guide-editor-upload-input" data-media-index="${i}"
                        accept="image/jpeg,image/png,image/gif,image/webp,video/mp4,video/webm"
                        style="display:none;">
             </label>
-            <input class="form-input" type="text" data-field="caption" value="${escHTML(item.caption || '')}"
-                   placeholder="Caption (optional)" style="width:140px; font-size:12px; padding:4px 8px;">
-            <button type="button" class="guide-editor-step-item-remove" aria-label="Remove step ${i + 1}: ${escHTML(s.title || 'Untitled')}" style="width:auto;min-height:24px;padding:2px 6px;" onclick="removeEditorMedia(${i})" type="button">
-                Remove step
+            <label>Caption (optional) <input class="form-input" type="text" data-field="caption" value="${escHTML(item.caption || '')}"
+                   placeholder="Caption (optional)" style="width:140px; font-size:12px; padding:4px 8px;"></label>
+            <button type="button" class="guide-editor-step-item-remove" aria-label="Remove media ${i + 1}" style="width:auto;min-height:24px;padding:2px 6px;" onclick="removeEditorMedia(${i})">
+                Remove media
             </button>
         </div>`;
     }).join('');
@@ -761,8 +761,8 @@ function renderComponentChips(pidList) {
         const label = comp ? comp.name : pid;
         return `<span class="guide-comp-chip" data-pid="${escHTML(pid)}">
             ${escHTML(label)}
-            <button type="button" onclick="removeComponentChip('${escHTML(pid)}')" class="guide-comp-chip-remove">
-                Remove step
+            <button type="button" onclick="removeComponentChip('${escHTML(pid)}')" class="guide-comp-chip-remove" aria-label="Remove component ${escHTML(label)}">
+                Remove
             </button>
         </span>`;
     }).join('');
