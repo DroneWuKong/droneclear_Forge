@@ -33,7 +33,8 @@
       .topbar-links{display:flex;gap:4px;flex-shrink:0}
       .topbar-pill{font:500 11px var(--font);color:var(--text-d);padding:4px 10px;border:1px solid var(--border);border-radius:20px;transition:all .15s;text-decoration:none;white-space:nowrap}
       .topbar-pill:hover{border-color:var(--border-hi);color:var(--text-s)}
-    </style>
+    .tier-dot.unknown{background:#94a3b8}.evidence-note{margin-top:6px;font-size:12px;line-height:1.5;overflow-wrap:anywhere}
+</style>
     <script src="https://unpkg.com/@phosphor-icons/web"></script>
     <script>
         (function(){
@@ -291,7 +292,7 @@
         <main class="compliance-page">
       <div class="page-header">
         <h1>Compliance Dashboard</h1>
-        <p>Blue UAS, NDAA §848 (FY2020) + ASDA / FAR 52.240-1 (FY2024), ITAR, and country-of-origin status for all 219 platforms in the Forge database.</p>
+        <p>Recorded platform procurement flags, available sources and country-of-origin fields. Catalog flags support preliminary screening; they do not establish whole-configuration approval. Missing or conflicting evidence is shown separately.</p>
         <div style="display:flex;gap:6px;margin-top:8px;flex-wrap:wrap;">
           <a href="../spec-sheets/" style="font:600 10px var(--mono);color:var(--c-amber);padding:4px 10px;border:1px solid rgba(245,158,11,.35);border-radius:20px;background:var(--c-amber-d);text-decoration:none;">→ §848 Spec Sheet Viewer</a>
           <a href="../compliance-matrix/" style="font:600 10px var(--mono);color:var(--c-amber);padding:4px 10px;border:1px solid rgba(245,158,11,.35);border-radius:20px;background:var(--c-amber-d);text-decoration:none;">→ Compliance Matrix</a>
@@ -303,7 +304,7 @@
         <i class="ph ph-warning-octagon" style="color:var(--c-red);font-size:16px;flex-shrink:0;margin-top:1px;"></i>
         <div>
           <strong style="color:var(--text);font-weight:600;">FCC Covered List update, Dec 22 2025:</strong>
-          FCC categorically prohibits authorization of foreign-produced UAS and critical UAS components for US use. Applies to <em>every</em> US buyer, not just federal procurement. DJI and Autel named explicitly; narrow Blue UAS / Framework exemptions apply.
+          Read the dated FCC notice and current official exceptions alongside the exact product configuration. A country field or catalog flag alone does not establish current authorization or procurement eligibility.
           <a href="https://docs.fcc.gov/public/attachments/DA-25-1086A1.pdf" target="_blank" rel="noopener noreferrer" style="color:var(--c-amber);text-decoration:underline;">FCC DA-25-1086 →</a>
         </div>
       </div>
@@ -313,10 +314,10 @@
 
             <!-- Legend -->
             <div class="compliance-legend">
-                <div class="legend-item"><span class="tier-dot green"></span> Blue UAS + NDAA — cleared for US Gov procurement</div>
-                <div class="legend-item"><span class="tier-dot yellow"></span> NDAA compliant — no adversary components</div>
-                <div class="legend-item"><span class="tier-dot orange"></span> Non-NDAA — commercial / allied nation</div>
-                <div class="legend-item"><span class="tier-dot red"></span> Adversary nation — banned / restricted</div>
+                <div class="legend-item"><span class="tier-dot green"></span> Recorded Blue UAS and NDAA flags are true</div>
+                <div class="legend-item"><span class="tier-dot yellow"></span> Recorded NDAA flag is true; listing not established</div>
+                <div class="legend-item"><span class="tier-dot orange"></span> Recorded NDAA flag is false; inspect the source</div>
+                <div class="legend-item"><span class="tier-dot unknown"></span> NDAA flag not documented or conflicting</div>
                 <div class="legend-item"><span class="badge badge-combat" style="font-size:10px;">COMBAT</span> Combat-proven in conflict</div>
             </div>
 
@@ -361,6 +362,7 @@
                 No platforms match your filters.
             </div>
         </main>
+    <script src="/static/catalog-screening.js"></script>
     <script>
     (function() {
         'use strict';
@@ -378,18 +380,18 @@
             return d.innerHTML;
         };
 
-        function getTier(p) {
-            const blue = p.blue_uas === true || p.compliance?.blue_uas === true;
-            const ndaa = p.ndaa_compliant === true || p.compliance?.ndaa_compliant === true;
-            const country = (p.country || '').toLowerCase();
-            const adversary = ['china', 'iran', 'russia', 'north korea'].some(c => country.includes(c));
-            if (blue && ndaa) return 'green';
-            if (ndaa && !blue) return 'yellow';
-            if (!ndaa && !adversary) return 'orange';
-            return 'red';
+        function getTier(p) { return window.CatalogScreening.tier(p); }
+        function recordedFlag(p, key) { return window.CatalogScreening.flag(p, key); }
+        function evidenceText(p) {
+            const evidence = window.CatalogScreening.evidence(p);
+            const source = evidence.source
+                ? `<a href="${ESC(evidence.source)}" target="_blank" rel="noopener noreferrer">Record source</a>`
+                : 'Source not documented';
+            const date = evidence.verifiedAt ? `Recorded verification date: ${ESC(evidence.verifiedAt)}` : 'Verification date not documented';
+            return `${source}<br>${date}<br>Verify the exact configuration and applicable procurement requirements.`;
         }
 
-        function tierOrder(t) { return { green: 0, yellow: 1, orange: 2, red: 3 }[t] ?? 4; }
+        function tierOrder(t) { return { green: 0, yellow: 1, orange: 2, unknown: 3 }[t] ?? 4; }
 
         function render() {
             let filtered = platforms.filter(p => {
@@ -428,8 +430,8 @@
 
             tbody.innerHTML = filtered.map(p => {
                 const tier = getTier(p);
-                const blue = p.blue_uas === true || p.compliance?.blue_uas === true;
-                const ndaa = p.ndaa_compliant === true || p.compliance?.ndaa_compliant === true;
+                const blue = recordedFlag(p, 'blue_uas');
+                const ndaa = recordedFlag(p, 'ndaa_compliant');
                 const combat = p.compliance?.combat_proven === true;
                 const note = p.compliance?.note || '';
 
@@ -440,24 +442,24 @@
                     </td>
                     <td class="platform-mfr">${ESC(p.manufacturer || '—')}</td>
                     <td class="country-flag">${ESC(p.country || 'Unknown')}</td>
-                    <td>${blue ? '<span class="badge badge-green"><i class="ph ph-seal-check"></i> Listed</span>' : '<span class="badge badge-muted">—</span>'}</td>
-                    <td>${ndaa ? '<span class="badge badge-green"><i class="ph ph-check"></i> Yes</span>' : '<span class="badge badge-red"><i class="ph ph-x"></i> No</span>'}</td>
+                    <td>${blue === true ? '<span class="badge badge-green">Recorded true</span>' : blue === false ? '<span class="badge badge-muted">Recorded false</span>' : '<span class="badge badge-muted">Not documented / conflicting</span>'}</td>
+                    <td>${ndaa === true ? '<span class="badge badge-green">Recorded true</span>' : ndaa === false ? '<span class="badge badge-red">Recorded false</span>' : '<span class="badge badge-muted">Not documented / conflicting</span>'}</td>
                     <td>${combat ? '<span class="badge badge-combat"><i class="ph ph-crosshair"></i> Yes</span>' : '<span class="badge badge-muted">—</span>'}</td>
-                    <td><span class="note-text" title="${ESC(note)}">${ESC(note)}</span></td>
+                    <td><span class="note-text" title="${ESC(note)}">${ESC(note)}</span><div class="evidence-note">${evidenceText(p)}</div></td>
                 </tr>`;
             }).join('');
         }
 
         function renderSummary() {
-            const counts = { all: 0, green: 0, yellow: 0, orange: 0, red: 0 };
+            const counts = { all: 0, green: 0, yellow: 0, orange: 0, unknown: 0 };
             platforms.forEach(p => { counts[getTier(p)]++; counts.all++; });
 
             const cards = [
-                { tier: 'all', label: 'All Platforms', count: counts.all, desc: 'Complete database' },
-                { tier: 'green', label: 'Blue UAS + NDAA', count: counts.green, desc: 'Cleared for US Gov' },
-                { tier: 'yellow', label: 'NDAA Compliant', count: counts.yellow, desc: 'No adversary components' },
-                { tier: 'orange', label: 'Non-NDAA', count: counts.orange, desc: 'Commercial / allied' },
-                { tier: 'red', label: 'Restricted', count: counts.red, desc: 'Adversary nation' },
+                { tier: 'all', label: 'All records', count: counts.all, desc: 'Loaded platform rows' },
+                { tier: 'green', label: 'Both flags true', count: counts.green, desc: 'Recorded Blue UAS + NDAA' },
+                { tier: 'yellow', label: 'NDAA flag true', count: counts.yellow, desc: 'Listing not established' },
+                { tier: 'orange', label: 'NDAA flag false', count: counts.orange, desc: 'Inspect recorded evidence' },
+                { tier: 'unknown', label: 'Not documented', count: counts.unknown, desc: 'Missing or conflicting NDAA flags' },
             ];
 
             document.getElementById('summary-cards').innerHTML = cards.map(c =>
