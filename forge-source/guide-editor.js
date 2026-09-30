@@ -154,10 +154,10 @@ function renderEditorStepsList() {
                 <i class="ph ph-dots-six-vertical"></i>
             </span>
             <span class="guide-editor-step-item-order">${s.order}</span>
-            <span class="guide-editor-step-item-title">${escHTML(s.title || 'Untitled')}</span>
+            <button type="button" class="guide-editor-step-item-title" style="font:inherit;color:inherit;text-align:left;background:none;border:0;padding:0;min-height:24px;" aria-label="Edit step ${i + 1}: ${escHTML(s.title || 'Untitled')}" onclick="event.stopPropagation(); selectEditorStep(${i})">${escHTML(s.title || 'Untitled')}</button>
             <span class="guide-editor-step-item-type">${s.step_type || 'assembly'}</span>
-            <button class="guide-editor-step-item-remove" onclick="event.stopPropagation(); removeEditorStep(${i})">
-                <i class="ph ph-x"></i>
+            <button type="button" class="guide-editor-step-item-remove" aria-label="Remove step ${i + 1}: ${escHTML(s.title || 'Untitled')}" style="width:auto;min-height:24px;padding:2px 6px;" onclick="event.stopPropagation(); removeEditorStep(${i})">
+                Remove step
             </button>
         </div>
     `).join('');
@@ -463,8 +463,8 @@ function renderEditorMediaList(media) {
             </label>
             <input class="form-input" type="text" data-field="caption" value="${escHTML(item.caption || '')}"
                    placeholder="Caption (optional)" style="width:140px; font-size:12px; padding:4px 8px;">
-            <button class="guide-editor-step-item-remove" onclick="removeEditorMedia(${i})" type="button">
-                <i class="ph ph-x"></i>
+            <button type="button" class="guide-editor-step-item-remove" aria-label="Remove step ${i + 1}: ${escHTML(s.title || 'Untitled')}" style="width:auto;min-height:24px;padding:2px 6px;" onclick="removeEditorMedia(${i})" type="button">
+                Remove step
             </button>
         </div>`;
     }).join('');
@@ -762,7 +762,7 @@ function renderComponentChips(pidList) {
         return `<span class="guide-comp-chip" data-pid="${escHTML(pid)}">
             ${escHTML(label)}
             <button type="button" onclick="removeComponentChip('${escHTML(pid)}')" class="guide-comp-chip-remove">
-                <i class="ph ph-x"></i>
+                Remove step
             </button>
         </span>`;
     }).join('');
