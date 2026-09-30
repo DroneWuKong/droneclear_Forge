@@ -977,7 +977,10 @@ class _NavigationStripper(HTMLParser):
                     self.active = None
         elif tag == 'script' and self.script_start is not None:
             block = self.source[self.script_start:end]
-            if 'window.dcNavToggle' in block and 'dcNavBrandClick' in block:
+            if ('window.dcNavToggle' in block and 'dcNavBrandClick' in block) or (
+                'function dcNavBrandClick' in block and 'const _dcPageMap' in block
+                and "getElementById('dc-nav-current')" in block
+            ):
                 self.removals.append((self.script_start, end))
             self.script_start = None
 

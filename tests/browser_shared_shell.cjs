@@ -39,6 +39,7 @@ assert.equal(await page.locator('#ge-name').inputValue(),'Local acceptance guide
 await page.evaluate(()=>renderEditorMediaList([{type:'video',url:'',caption:'Local fixture'}]));
 assert.equal(await page.locator('#se-media-list [data-field="caption"]').inputValue(),'Local fixture');
 for(const field of ['type','url','caption'])assert.ok(await page.locator('#se-media-list [data-field="'+field+'"]').evaluate(e=>e.labels.length>0),'Media fields need visible associated labels');
+await page.goto('http://forge.test.localhost/software-library/');await page.waitForTimeout(150);assert.ok(Number(await page.locator('#totalCount').innerText())>0,'Software catalog must retain startup after shell replacement');
 await page.goto('http://forge.test.localhost/intel/feed/');await page.waitForTimeout(150);assert.equal(await page.evaluate(()=>typeof IntelNormalization),'object');
 assert.deepEqual(errors,[]);console.log('PASS: closed/open menu focus, Tab wrap/Escape restore, 9 reading-size viewport states, setting persistence, Audit request/failure, Guide detail/edit/save/reload at phone and desktop, Intel dependencies');
 }finally{await browser.close()}})().catch(e=>{console.error(e);process.exitCode=1});

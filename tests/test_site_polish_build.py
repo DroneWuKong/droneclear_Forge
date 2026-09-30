@@ -19,6 +19,13 @@ class NavigationRewriteTests(unittest.TestCase):
         self.assertEqual(twice.count('id="dc-drawer"'), 1)
         self.assertEqual(twice.count('intel-normalization.js'), 1)
 
+    def test_software_library_legacy_chrome_is_removed_without_losing_catalog(self):
+        source = (Path(__file__).resolve().parents[1] / 'forge-source/software-library.html').read_text()
+        built = builder.inject_nav(source, 'software-library.html')
+        self.assertNotIn('const _dcPageMap', built)
+        self.assertIn('const SOFTWARE', built)
+        self.assertIn('id="totalCount"', built)
+
     def test_unmarked_shell_does_not_consume_interleaved_application_content(self):
         source = '''<html><body class="reference"><nav id="dc-nav"><a>Old</a></nav>
         <script src="/static/app.js"></script><div id="dc-overlay"></div>
