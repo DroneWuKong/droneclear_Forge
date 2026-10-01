@@ -356,18 +356,21 @@ a{color:var(--blue);text-decoration:none}a:hover{text-decoration:underline}
   </div>
   <div class="panel" id="panel-defense">
     <div class="stats-bar" id="defense-stats">Loading...</div>
+    <p id="defense-reference-age" style="font-size:11px;color:var(--text-d)"></p>
     <input class="search-bar" id="defense-search" placeholder="Search defense intel... (e.g. Blue UAS, Replicator, DDP, NDAA, Silvus, counter-UAS)" oninput="renderDefense()">
     <div class="filter-row" style="margin-bottom:14px" id="defense-filters"></div>
     <div id="defense-list">Loading...</div>
   </div>
   <div class="panel" id="panel-dfr">
     <div class="stats-bar" id="dfr-stats">Loading...</div>
+    <p id="dfr-reference-age" style="font-size:11px;color:var(--text-d)"></p>
     <input class="search-bar" id="dfr-search" placeholder="Search DFR intel... (e.g. Wisconsin, BRINC, NASAO, FAA BEYOND, grant)" oninput="renderDFR()">
     <div class="filter-row" style="margin-bottom:14px" id="dfr-filters"></div>
     <div id="dfr-list">Loading...</div>
   </div>
   <div class="panel" id="panel-commercial">
     <div class="stats-bar" id="commercial-stats">Loading...</div>
+    <p id="commercial-reference-age" style="font-size:11px;color:var(--text-d)"></p>
     <input class="search-bar" id="commercial-search" placeholder="Search commercial intel... (e.g. DJI ban, Trimble, survey, mapping, Everdrone, NDAA transition)" oninput="renderCommercial()">
     <div class="filter-row" style="margin-bottom:14px" id="commercial-filters"></div>
     <div id="commercial-list">Loading...</div>
@@ -400,7 +403,7 @@ a{color:var(--blue);text-decoration:none}a:hover{text-decoration:underline}
   </div>
 </div>
 <div style="padding:16px 20px;border-top:1px solid var(--border);max-width:960px;margin:0 auto">
-  <div style="font-size:10px;color:var(--text-xd)">Pipeline: live scraper · Cross-referenced with <a href="/patterns/" style="color:var(--amber)" id="pie-footer-count">PIE (loading…)</a></div>
+  <div style="font-size:10px;color:var(--text-xd)">Published article index and dated reference desks · Cross-referenced with <a href="/patterns/" style="color:var(--amber)" id="pie-footer-count">PIE (loading…)</a></div>
 </div>
 <script>
 function esc(s){ return String(s==null?'':s).replace(/[&<>"']/g, function(c){ return ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'})[c]; }); }
@@ -994,6 +997,11 @@ Promise.all([
   fetch('/api/data?type=intel_programs').then(r=>r.ok?r.json():[]).then(e=>e&&e.data!==undefined?e.data:e).catch(()=>[]),
   fetch('/api/data?type=intel_companies').then(r=>r.ok?r.json():[]).then(e=>e&&e.data!==undefined?e.data:e).catch(()=>[]),
 ]).then(([articles, defDB, comDB, dfrDB, forgeIntel, pieFlags, piePreds, pieBrief, solData, intelPrograms, intelCompanies])=>{
+  [[defDB,'defense'],[dfrDB,'dfr'],[comDB,'commercial']].forEach(([desk,id])=>{
+    const stamp=desk.meta?.last_updated || desk.meta?.generated_at;
+    const el=document.getElementById(id+'-reference-age');
+    if(el)el.textContent='Reference desk snapshot: '+(stamp ? String(stamp).slice(0,10) : 'date unavailable')+'. Article matches may be newer.';
+  });
   ALL=articles;
   INTEL_PROGRAMS=intelPrograms||[];
   INTEL_COMPANIES=intelCompanies||[];
