@@ -115,6 +115,14 @@
   function parseDate(value) {
     const raw = text(value);
     if (!raw) return null;
+    // Source feeds can publish day.month.year; Date.parse treats 11.05 as
+    // November 5 in US locales and rejects dates with days above twelve.
+    const dmy = raw.match(/^(\d{1,2})\.(\d{1,2})\.(\d{4})(?:[ T](\d{1,2}):(\d{2})(?::(\d{2}))?)?$/);
+    if (dmy) {
+      const [, day, month, year, hour = '0', minute = '0', second = '0'] = dmy;
+      const parsed = new Date(Date.UTC(+year, +month - 1, +day, +hour, +minute, +second));
+      return parsed.getUTCFullYear() === +year && parsed.getUTCMonth() === +month - 1 && parsed.getUTCDate() === +day && parsed.getUTCHours() === +hour && parsed.getUTCMinutes() === +minute && parsed.getUTCSeconds() === +second ? parsed : null;
+    }
     if (/^\d{4}-\d{2}-\d{2}/.test(raw)) {
       const day = new Date(raw.slice(0,10));
       if (!Number.isFinite(day.getTime()) || day.toISOString().slice(0,10) !== raw.slice(0,10)) return null;

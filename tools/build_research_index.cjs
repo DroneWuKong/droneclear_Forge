@@ -15,7 +15,10 @@ function buildResearchIndex(inputDir, options = {}) {
     const row=Object.values(publication?.inputs || {}).find(row=>(row.destinations || []).includes(destination));
     if (!row) return {origin:'untracked_local_input',revision_verified:false,upstream_ref:null};
     const expected=row.status==='selected_input' ? row.sha256 : row.fallback_artifacts?.[destination]?.sha256;
-    if (expected !== sha256) return {origin:'unreconciled_artifact',revision_verified:false,upstream_ref:null};
+    const projection=row.projections?.[destination];
+    const matchesDirect=expected===sha256;
+    const matchesProjection=row.status==='selected_input' && projection?.source_sha256===expected && projection?.sha256===sha256 && projection?.transform==='intel-article-body-prefix-2000-v1';
+    if (!matchesDirect && !matchesProjection) return {origin:'unreconciled_artifact',revision_verified:false,upstream_ref:null};
     return {origin:row.origin || (row.status==='selected_input'?'explicit_directory':'retained_local_fallback'),revision_verified:row.revision_verified === true,upstream_ref:row.revision_verified === true ? row.upstream_ref : null};
   }
   function read(name, alternatives = []) {
