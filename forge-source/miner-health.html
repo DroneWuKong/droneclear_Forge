@@ -110,6 +110,15 @@
       const score = document.getElementById('quality-score');
       score.textContent = `${doc.overall_score}/100`;
       score.className = `grade-${String(doc.grade || '').toLowerCase()}`;
+      const coverage = doc.dimensions && doc.dimensions.source_coverage && doc.dimensions.source_coverage.components;
+      if (coverage && Number(coverage.healthy_active_sources) < Number(coverage.active_sources)) {
+        const banner = document.getElementById('catalog-banner');
+        if (banner.classList.contains('fresh')) {
+          banner.className = 'banner mixed';
+          banner.querySelector('strong').textContent = 'Dataset refresh is current; collection is partial';
+        }
+        banner.querySelector('p').textContent += ` Collector health: ${coverage.healthy_active_sources} of ${coverage.active_sources} active sources healthy.`;
+      }
       const tier = String(doc.tier || 'unrated').replaceAll('-', ' ');
       document.getElementById('quality-tier').textContent = `${doc.grade || '—'} · ${tier}`;
       const grid = document.getElementById('quality-dims');
@@ -231,7 +240,7 @@
       banner.replaceChildren();
       const copy = document.createElement('div');
       const title = document.createElement('strong');
-      title.textContent = requiredBroken ? `${requiredBroken} required dataset${requiredBroken === 1 ? '' : 's'} unavailable or invalid` : currentProblems.length ? `${currentProblems.length} required-current dataset${currentProblems.length === 1 ? '' : 's'} outside a clean fresh state` : 'Refresh schedule is healthy';
+      title.textContent = requiredBroken ? `${requiredBroken} required dataset${requiredBroken === 1 ? '' : 's'} unavailable or invalid` : currentProblems.length ? `${currentProblems.length} required-current dataset${currentProblems.length === 1 ? '' : 's'} outside a clean fresh state` : 'Required dataset refresh is current';
       const detail = document.createElement('p');
       detail.textContent = currentProblems.length ? currentProblems.map(row => `${row.label}: ${row.status_reason}`).join(' · ') : catalog.meta.publication_principle;
       copy.append(title, detail);
