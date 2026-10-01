@@ -20,6 +20,7 @@ import hashlib
 import argparse
 import tempfile
 import base64
+from datetime import datetime, timezone
 from html.parser import HTMLParser
 from urllib.parse import urlsplit
 from pathlib import Path
@@ -216,6 +217,26 @@ def copy_root_intel_file(src, dst, fname):
 
     with open(dst, 'w', encoding='utf-8') as handle:
         json.dump(projected, handle, ensure_ascii=False, separators=(',', ':'))
+    # Keep the original publication hash and the deterministic Pages projection
+    # connected. The compacted JSON cannot have the same hash as the input.
+    manifest_path = os.path.join(os.path.dirname(dst), 'publication_inputs.json')
+    if os.path.isfile(manifest_path):
+        import hashlib
+        with open(manifest_path, encoding='utf-8') as handle:
+            manifest = json.load(handle)
+        for input_row in manifest.get('inputs', {}).values():
+            if fname not in input_row.get('destinations', []):
+                continue
+            source_sha = hashlib.sha256(Path(src).read_bytes()).hexdigest()
+            if input_row.get('sha256') == source_sha and input_row.get('revision_verified') is True:
+                input_row.setdefault('projections', {})[fname] = {
+                    'source_sha256': source_sha,
+                    'sha256': hashlib.sha256(Path(dst).read_bytes()).hexdigest(),
+                    'transform': f'intel-article-body-prefix-{DEPLOYED_ARTICLE_BODY_CHARS}-v1',
+                }
+                with open(manifest_path, 'w', encoding='utf-8') as handle:
+                    json.dump(manifest, handle, sort_keys=True, separators=(',', ':'))
+            break
     deployed_bytes = os.path.getsize(dst)
     if deployed_bytes > PAGES_MAX_ASSET_BYTES:
         raise ValueError(
@@ -1226,7 +1247,7 @@ def _get_part_count():
 
 def inject_catalog_counts(html, src_name):
     """Render public landing page fallbacks from the database shipped in this build."""
-    if src_name not in ('mission-control.html', 'forge-home.html'):
+    if src_name not in ('mission-control.html', 'forge-home.html', 'uas-hub.html'):
         return html
     with open(os.path.join(SRC_DIR, 'forge_database.json'), encoding='utf-8') as f:
         db = json.load(f)
@@ -1243,12 +1264,21 @@ def inject_catalog_counts(html, src_name):
     for element_id, value in counts.items():
         html = re.sub(r'(<span\b[^>]*\bid="' + element_id + r'"[^>]*>)[^<]*(</span>)',
                       lambda match: match[1] + f'{value:,}' + match[2], html, count=1)
+    if src_name == 'uas-hub.html':
+        for element_id, value in (('stat-parts', counts['s-parts']),
+                                  ('hero-parts', counts['s-parts']),
+                                  ('stat-platforms', counts['s-plat']),
+                                  ('hero-platforms', counts['s-plat'])):
+            html = re.sub(r'(<span\b[^>]*\bid="' + element_id + r'"[^>]*>)[^<]*(</span>)',
+                          lambda match: match[1] + f'{value:,}' + match[2], html, count=1)
     if src_name == 'mission-control.html':
         html = re.sub(r'(<span data-parts-count>)[^<]*(</span>)',
                       lambda match: match[1] + f'{counts["s-parts"]:,}' + match[2], html)
         html = re.sub(r'\b\d[\d,]* (defense & commercial )?platforms\b',
                       lambda match: f'{counts["s-plat"]:,} ' + (match[1] or '') + 'platforms', html)
         html = re.sub(r'across \d+ categories', f'across {counts["s-cats"]} categories', html)
+        html = re.sub(r'\b\d[\d,]* defense & commercial platform records\b',
+                      f'{counts["s-plat"]:,} model and platform records', html)
     return html
 
 # SEO metadata per page: (title, description, keywords)
@@ -2142,6 +2172,9 @@ def sync_handbook_data(data_ref=None):
     # Assembly time and pinned parts input do not pretend every reference row is new.
     forge_db.setdefault('meta', {})['parts_input_revision'] = data_ref
     forge_db['meta']['assembly_source'] = 'Pinned upstream parts plus retained local reference records'
+    forge_db['meta']['assembly_at'] = datetime.now(timezone.utc).isoformat()
+    forge_db['meta']['base_reference_updated_at'] = forge_db['meta'].pop('last_updated', None)
+    forge_db.pop('_audit', None)  # A prior snapshot audit does not validate this assembled dataset.
     # Write updated forge_database.json
     with open(local_db_path, 'w', encoding='utf-8') as f:
         json.dump(forge_db, f, separators=(',', ':'))
@@ -2534,6 +2567,11 @@ def build(*, offline=False, data_ref=None, data_dir=None, include_private=False)
         if os.path.exists(src_m):
             os.makedirs(dst_dir, exist_ok=True)
             shutil.copy2(src_m, os.path.join(dst_dir, f'{vertical}_master.json'))
+            # Worker allowlist and legacy feed clients both resolve these names.
+            shutil.copy2(src_m, os.path.join(BUILD_DIR, f'{vertical}_master.json'))
+            static_dst = os.path.join(BUILD_DIR, 'static')
+            os.makedirs(static_dst, exist_ok=True)
+            shutil.copy2(src_m, os.path.join(static_dst, f'{vertical}_master.json'))
     print('  Copied defense / commercial / dfr master files to build/data/')
     
     # Generate free-tier data slices (same data, truncated — for public build)
@@ -2571,6 +2609,7 @@ def build(*, offline=False, data_ref=None, data_dir=None, include_private=False)
             'patterns.html','brief.html','patterns-home.html',
             'intel.html','intel-home.html',
             'intel-dfr.html','intel-commercial.html',
+            'uas-hub.html',
             'clock.html','entity-graph.html','analytics.html',
             'adversary-bom.html','mirroring.html','actors.html',
             'ttps.html','evasion.html',
