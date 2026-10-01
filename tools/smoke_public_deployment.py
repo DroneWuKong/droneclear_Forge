@@ -378,6 +378,33 @@ def validate_event_actor_sample(snapshot: Snapshot, actor: str) -> list[str]:
     return errors
 
 
+def validate_corpus_actor_parity(
+    catalog_snapshot: Snapshot, actors_snapshot: Snapshot, events_snapshot: Snapshot
+) -> list[str]:
+    """Reject a fresh-looking but mixed public article/actor/event release."""
+    try:
+        catalog = parse_json_snapshot(catalog_snapshot, "dataset-catalog")
+        actors = parse_json_snapshot(actors_snapshot, "actor-fingerprints")
+        events = parse_json_snapshot(events_snapshot, "article-event-summary")
+    except SmokeFailure as exc:
+        return [str(exc)]
+    rows = catalog.get("datasets") or []
+    article = next((row for row in rows if isinstance(row, dict) and row.get("id") == "intel_articles"), {})
+    corpus_count = article.get("record_count")
+    actor_count = (actors.get("meta") or {}).get("total_articles")
+    errors = []
+    if not isinstance(corpus_count, int) or not isinstance(actor_count, int):
+        errors.append("publication parity: corpus or actor article count is missing")
+    elif corpus_count != actor_count:
+        errors.append(f"publication parity: catalog corpus {corpus_count} != actor corpus {actor_count}")
+    fingerprints = {row.get("actor"): row.get("article_mention_count") for row in actors.get("fingerprints") or [] if isinstance(row, dict)}
+    for row in events.get("actor_summary") or []:
+        if isinstance(row, dict) and row.get("actor") in fingerprints:
+            if row.get("article_mention_count") != fingerprints[row["actor"]]:
+                errors.append(f"publication parity: event and fingerprint mentions differ for {row['actor']}")
+    return errors
+
+
 def fetch_catalog(
     patterns_base: str,
     *,
@@ -422,6 +449,7 @@ def check_once(
         errors.extend(validate_html(snapshot, target))
 
     max_age = timedelta(hours=max_catalog_age_hours)
+    catalog_snapshot = None
     try:
         catalog_snapshot, prior_failures = fetch_catalog(
             patterns_base, timeout=timeout, fetcher=fetcher
@@ -445,6 +473,9 @@ def check_once(
             max_age=max_age,
         )
         errors.extend(summary_errors)
+        if catalog_snapshot is not None and not summary_errors:
+            actors_url = urljoin(patterns, "api/data?type=actor_fingerprints")
+            errors.extend(validate_corpus_actor_parity(catalog_snapshot, fetcher(actors_url, timeout), summary_snapshot))
         if actor and not summary_errors:
             actor_url = urljoin(
                 patterns,

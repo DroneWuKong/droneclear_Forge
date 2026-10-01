@@ -34,7 +34,7 @@ def catalog_payload(status="fresh", generated="2026-07-31T11:00:00+00:00"):
         "source_coverage_matrix",
         "data_quality_score",
     ]
-    ids += [f"extra_{i}" for i in range(14)]
+    ids += ["intel_articles"] + [f"extra_{i}" for i in range(14)]
     return {
         "meta": {"generated_at": generated},
         "datasets": [
@@ -42,6 +42,7 @@ def catalog_payload(status="fresh", generated="2026-07-31T11:00:00+00:00"):
                 "id": dataset_id,
                 "required": dataset_id in smoke.REQUIRED_DATASET_IDS,
                 "status": status,
+                "record_count": 100 if dataset_id == "intel_articles" else 1,
             }
             for dataset_id in ids
         ],
@@ -196,6 +197,14 @@ class SmokeTests(unittest.TestCase):
             [],
         )
 
+    def test_publication_parity_rejects_a_mixed_live_release(self):
+        catalog=smoke.Snapshot('catalog',200,{},json.dumps({'data':catalog_payload()}))
+        actors=smoke.Snapshot('actors',200,{},json.dumps({'data':{'meta':{'total_articles':99},'fingerprints':[{'actor':'Actor A','article_mention_count':19}]}}))
+        events=smoke.Snapshot('events',200,{},json.dumps({'data':event_summary_payload()}))
+        errors=smoke.validate_corpus_actor_parity(catalog,actors,events)
+        self.assertTrue(any('catalog corpus 100 != actor corpus 99' in error for error in errors))
+        self.assertTrue(any('event and fingerprint mentions differ' in error for error in errors))
+
     def test_catalog_fallback_uses_first_success(self):
         calls = []
 
@@ -234,6 +243,8 @@ class SmokeTests(unittest.TestCase):
                 return smoke.Snapshot(
                     url, 200, {}, json.dumps({"data": catalog_payload()})
                 )
+            if data_type == "actor_fingerprints":
+                return smoke.Snapshot(url,200,{},json.dumps({'data':{'meta':{'total_articles':100},'fingerprints':[{'actor':'Actor A','article_mention_count':20}]}}))
             if data_type == "article_event_clusters" and query.get("view") == ["summary"]:
                 return smoke.Snapshot(
                     url, 200, {}, json.dumps({"data": event_summary_payload()})
