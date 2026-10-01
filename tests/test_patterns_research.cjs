@@ -58,6 +58,15 @@ test('empty, stopword and restrictive type queries behave explicitly',()=>{
   assert.equal(ask.projectResearch(data,new URLSearchParams({q:'Shahed',record_type:'flag'})).total_matches,0);
   assert.equal(ask.projectResearch(data,new URLSearchParams({q:'Shahed',after:'2026-09-02'})).total_matches,0);
 });
+test('day.month.year source dates sort by their actual calendar day',()=>{
+  assert.equal(ask.parseDate('11.05.2026 15:21').toISOString(),'2026-05-11T15:21:00.000Z');
+  assert.equal(ask.parseDate('23.11.2026 15:21').toISOString(),'2026-11-23T15:21:00.000Z');
+  assert.equal(ask.parseDate('31.02.2026'),null);
+  const rows=[article('may'),article('october')];
+  rows[0].pub_date='11.05.2026 15:21';rows[1].pub_date='2026-10-01';
+  const data={schema_version:1,meta:{},records:ask.articleRecords(rows).map(ask.compactRecord)};
+  assert.equal(ask.projectResearch(data,new URLSearchParams()).records[0].title,rows[1].title);
+});
 test('reordering records does not change search order or synthetic IDs',()=>{
   const data=fixture();const before=ask.projectResearch(data,new URLSearchParams({q:'Shahed'}));data.records.reverse();
   assert.deepEqual(ask.projectResearch(data,new URLSearchParams({q:'Shahed'})),before);
