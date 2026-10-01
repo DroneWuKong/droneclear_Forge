@@ -99,8 +99,8 @@
       <div class="brand-name">UAS<span class="hyphen">-</span></div>
       <div class="tagline">
         A four-property intelligence platform for drone procurement, compliance,
-        and supply-chain signals. Built on <strong>3,954+ vetted components</strong>,
-        <strong>272 platforms</strong>, and a daily <strong>Pattern Intelligence Engine</strong>
+        and supply-chain signals. Built on <strong><span id="hero-parts">Loading</span> component records</strong>,
+        <strong><span id="hero-platforms">Loading</span> model and platform records</strong>, and a daily <strong>Pattern Intelligence Engine</strong>
         that surfaces gray-zone risk, federal awards, and procurement momentum across
         the defense and commercial UAS market.
       </div>
@@ -108,11 +108,11 @@
 
     <!-- ── Stats bar (client-side enriched from /static/miner_health.json) ── -->
     <div class="stats" id="stats">
-      <div class="st"><span class="st-n" id="stat-parts">3,954</span><span class="st-l">Parts</span></div>
-      <div class="st"><span class="st-n" id="stat-platforms">272</span><span class="st-l">Platforms</span></div>
-      <div class="st"><span class="st-n" id="stat-flags">258</span><span class="st-l">PIE Flags</span></div>
-      <div class="st"><span class="st-n" id="stat-articles">1,898</span><span class="st-l">Intel</span></div>
-      <div class="st"><span class="st-n" id="stat-sols">744</span><span class="st-l">Solicitations</span></div>
+      <div class="st"><span class="st-n" id="stat-parts">Loading</span><span class="st-l">Parts</span></div>
+      <div class="st"><span class="st-n" id="stat-platforms">Loading</span><span class="st-l">Models / platforms</span></div>
+      <div class="st"><span class="st-n" id="stat-flags">Loading</span><span class="st-l">PIE Flags</span></div>
+      <div class="st"><span class="st-n" id="stat-articles">Loading</span><span class="st-l">Articles</span></div>
+      <div class="st"><span class="st-n" id="stat-sols">Loading</span><span class="st-l">Solicitations</span></div>
     </div>
 
     <!-- ── Portals ────────────────────────────────────────── -->
@@ -225,52 +225,33 @@
 
   </main>
 
-  <!-- ── Live stats hydration (best-effort — silent failure OK) ── -->
+  <!-- Counts are hydrated from the published datasets. An unavailable feed is
+       shown as unavailable, never as a permanently plausible old number. -->
   <script>
   (function(){
-    // Try to pull fresh counts from the miner health JSON served at /static/
-    // Works when hosted on uas-forge.com (same origin) — CORS prevents
-    // cross-origin fetches from other uas-* domains, so fall back silently.
-    fetch('/api/data?type=miner_health').then(r=>r.ok?r.json():null).then(function(e){return e&&e.data!==undefined?e.data:e;}).then(function(r){
-      if(!r.ok) return null;
-      return r.json();
-    }).then(function(h){
-      if(!h) return;
-      // miner_health.json has different shapes over time — try multiple paths
-      var parts = h.total_parts || (h.forge && h.forge.total_parts) || null;
-      if(parts){
-        var el = document.getElementById('stat-parts');
-        if(el) el.textContent = parts.toLocaleString();
-      }
-    }).catch(function(){/* silent */});
-
-    // Flag count from pie_flags.json
-    fetch('/api/data?type=flags').then(function(r){
-      if(!r.ok) return null;
-      return r.json();
-    }).then(function(f){
-      if(!f) return;
-      var n = Array.isArray(f) ? f.length : (f.flags && f.flags.length) || null;
-      if(n){
-        var el = document.getElementById('stat-flags');
-        if(el) el.textContent = n.toLocaleString();
-      }
-    }).catch(function(){/* silent */});
-
-    // Intel article count from miner_registry
-    fetch('/api/data?type=miner_registry').then(r=>r.ok?r.json():null).then(function(e){return e&&e.data!==undefined?e.data:e;}).then(function(r){
-      if(!r.ok) return null;
-      return r.json();
-    }).then(function(m){
-      if(!m) return;
-      var total = 0;
-      if(Array.isArray(m)) m.forEach(function(miner){ total += (miner.articles || 0); });
-      else if(m.total_articles) total = m.total_articles;
-      if(total > 0){
-        var el = document.getElementById('stat-articles');
-        if(el) el.textContent = total.toLocaleString();
-      }
-    }).catch(function(){/* silent */});
+    function setCount(ids, value){
+      var formatted = Number.isSafeInteger(value) && value >= 0 ? value.toLocaleString() : 'Unavailable';
+      ids.forEach(function(id){var el=document.getElementById(id); if(el) el.textContent=formatted;});
+    }
+    function get(type){
+      return fetch('/api/data?type='+encodeURIComponent(type),{cache:'no-store'}).then(function(response){
+        if(!response.ok) throw new Error(type+' HTTP '+response.status);
+        return response.json();
+      }).then(function(payload){return payload && payload.data !== undefined ? payload.data : payload;});
+    }
+    get('forge_database').then(function(db){
+      var parts = db && db.components && Object.values(db.components).reduce(function(sum,rows){return sum+(Array.isArray(rows)?rows.length:0);},0);
+      setCount(['stat-parts','hero-parts'],parts);
+      setCount(['stat-platforms','hero-platforms'],db && db.drone_models && db.drone_models.length);
+    }).catch(function(){setCount(['stat-parts','hero-parts'],null);setCount(['stat-platforms','hero-platforms'],null);});
+    get('dataset_catalog').then(function(catalog){
+      if(!catalog || !Array.isArray(catalog.datasets)) throw new Error('Invalid catalog');
+      var byId=Object.fromEntries(catalog.datasets.map(function(row){return [row.id,row];}));
+      [['flags','stat-flags'],['intel_articles','stat-articles'],['solicitations','stat-sols']].forEach(function(pair){
+        var row=byId[pair[0]];
+        setCount([pair[1]],row && row.status === 'fresh' ? row.record_count : null);
+      });
+    }).catch(function(){['stat-flags','stat-articles','stat-sols'].forEach(function(id){setCount([id],null);});});
   })();
   </script>
 </body>
