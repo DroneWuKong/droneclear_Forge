@@ -14,6 +14,13 @@ import { verifyAccessToken, createSession, verifySession } from '../../workers/a
  * NEVER served unauthenticated.
  */
 const COOKIE_MAX_AGE = 60 * 60 * 24 * 7; // 7 days
+const escapeHTML = value => String(value).replace(/[&<>"']/g, char => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[char]);
+
+function destination(url) {
+  const clean = new URL(url);
+  clean.searchParams.delete('key');
+  return clean.pathname + clean.search;
+}
 
 async function setCookieRedirect(secret, dest) {
   const session = await createSession(secret, COOKIE_MAX_AGE);
@@ -31,11 +38,12 @@ function promptPage(pathname, { error = false, locked = false } = {}) {
   const msg = locked
     ? `<p class="err">This area is locked. (No access password is configured yet.)</p>`
     : error
-      ? `<p class="err">Incorrect password.</p>`
-      : `<p class="hint">Enter the access password to continue.</p>`;
+      ? `<p class="err" id="access-error" role="alert">Incorrect password. Try again.</p>`
+      : `<p class="hint" id="access-hint">Enter the access password to continue.</p>`;
   const form = locked ? '' : `
-    <form method="POST" action="${pathname}">
-      <input type="password" name="key" placeholder="Access password" autofocus autocomplete="current-password" />
+    <form method="POST" action="${escapeHTML(pathname)}">
+      <label for="access-password">Access password</label>
+      <input id="access-password" type="password" name="key" required autofocus autocomplete="current-password" aria-describedby="${error ? 'access-error' : 'access-hint'}"${error ? ' aria-invalid="true"' : ''} />
       <button type="submit">Enter</button>
     </form>`;
   return new Response(
@@ -44,7 +52,7 @@ function promptPage(pathname, { error = false, locked = false } = {}) {
 <meta name="robots" content="noindex, nofollow">
 <title>Private · DroneWuKong</title>
 <style>
-  :root{--bg:#0c0c0a;--bg2:#141410;--border:#2a2a22;--green:#22c55e;--red:#d62828;--text:#d8d4ca;--dim:#7a7268;--mono:'JetBrains Mono',ui-monospace,monospace}
+  :root{--bg:#0c0c0a;--bg2:#141410;--border:#2a2a22;--green:#22c55e;--red:#ff8b8b;--text:#d8d4ca;--dim:#b8b0a0;--mono:'JetBrains Mono',ui-monospace,monospace}
   *{box-sizing:border-box}
   body{background:var(--bg);color:var(--text);font:14px/1.6 var(--mono);min-height:100vh;display:flex;align-items:center;justify-content:center;margin:0;padding:20px}
   .card{width:100%;max-width:360px;background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:28px 24px}
@@ -53,8 +61,9 @@ function promptPage(pathname, { error = false, locked = false } = {}) {
   .hint{color:var(--dim);margin:0 0 16px}
   .err{color:var(--red);margin:0 0 16px}
   form{display:flex;flex-direction:column;gap:10px}
-  input{background:var(--bg);border:1px solid var(--border);border-radius:6px;color:var(--text);font:14px var(--mono);padding:11px 12px;width:100%}
-  input:focus{outline:none;border-color:var(--green)}
+  label{font-weight:600}
+  input{background:var(--bg);border:1px solid var(--border);border-radius:6px;color:var(--text);font:16px var(--mono);padding:11px 12px;width:100%}
+  input:focus-visible,button:focus-visible{outline:2px solid var(--green);outline-offset:3px}
   button{background:var(--green);color:#06140a;border:0;border-radius:6px;font:700 14px var(--mono);padding:11px;cursor:pointer}
   button:hover{filter:brightness(1.08)}
   .foot{color:var(--dim);font-size:11px;margin-top:16px}
@@ -89,6 +98,7 @@ async function timingSafeEqual(a, b) {
 export async function onRequest(context) {
   const { request, env, next } = context;
   const url = new URL(request.url);
+  const dest = destination(url);
 
   // 1) Cloudflare Access identity (only trustworthy when Access is in front).
   const serve = async () => {
@@ -101,7 +111,7 @@ export async function onRequest(context) {
   if (await verifyAccessToken(request.headers.get('Cf-Access-Jwt-Assertion'), env)) return serve();
 
   const secret = env.PRIVATE_GATE_SECRET;
-  if (!secret) return promptPage(url.pathname, { locked: true });
+  if (!secret) return promptPage(dest, { locked: true });
 
   // Already authenticated via cookie?
   const cookie = request.headers.get('Cookie') || '';
@@ -115,13 +125,13 @@ export async function onRequest(context) {
       const form = await request.formData();
       submitted = (form.get('key') || '').toString();
     } catch (_) { /* not form data */ }
-    if (await timingSafeEqual(submitted, secret)) return setCookieRedirect(secret, url.pathname);
-    return promptPage(url.pathname, { error: true });
+    if (await timingSafeEqual(submitted, secret)) return setCookieRedirect(secret, dest);
+    return promptPage(dest, { error: true });
   }
 
   // Shareable ?key= link.
-  if (await timingSafeEqual(url.searchParams.get('key'), secret)) return setCookieRedirect(secret, url.pathname);
+  if (await timingSafeEqual(url.searchParams.get('key'), secret)) return setCookieRedirect(secret, dest);
 
   // Otherwise show the password prompt (fail-closed: no content served).
-  return promptPage(url.pathname);
+  return promptPage(dest);
 }

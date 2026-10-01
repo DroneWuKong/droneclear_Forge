@@ -49,11 +49,11 @@ function renderEditorGuideList() {
     }
 
     list.innerHTML = guideState.guides.map(g => `
-        <div class="guide-editor-guide-item${guideState.editingGuide?.pid === g.pid ? ' active' : ''}"
+        <button type="button" style="width:100%;font:inherit;color:inherit;text-align:left;" class="guide-editor-guide-item${guideState.editingGuide?.pid === g.pid ? ' active' : ''}"
              onclick="selectEditorGuide('${g.pid}')">
             <div class="guide-editor-guide-item-title">${escHTML(g.name)}</div>
             <div class="guide-editor-guide-item-meta">${g.pid} &middot; ${g.step_count ?? 0} steps</div>
-        </div>
+        </button>
     `).join('');
 }
 
@@ -154,10 +154,10 @@ function renderEditorStepsList() {
                 <i class="ph ph-dots-six-vertical"></i>
             </span>
             <span class="guide-editor-step-item-order">${s.order}</span>
-            <span class="guide-editor-step-item-title">${escHTML(s.title || 'Untitled')}</span>
+            <button type="button" class="guide-editor-step-item-title" style="font:inherit;color:inherit;text-align:left;background:none;border:0;padding:0;min-height:24px;" aria-label="Edit step ${i + 1}: ${escHTML(s.title || 'Untitled')}" onclick="event.stopPropagation(); selectEditorStep(${i})">${escHTML(s.title || 'Untitled')}</button>
             <span class="guide-editor-step-item-type">${s.step_type || 'assembly'}</span>
-            <button class="guide-editor-step-item-remove" onclick="event.stopPropagation(); removeEditorStep(${i})">
-                <i class="ph ph-x"></i>
+            <button type="button" class="guide-editor-step-item-remove" aria-label="Remove step ${i + 1}: ${escHTML(s.title || 'Untitled')}" style="width:auto;min-height:24px;padding:2px 6px;" onclick="event.stopPropagation(); removeEditorStep(${i})">
+                Remove step
             </button>
         </div>
     `).join('');
@@ -335,7 +335,7 @@ async function saveGuide() {
     if (guideState.editingStepIndex >= 0) readStepDetailForm();
 
     const guide = guideState.editingGuide;
-    if (!guide) return;
+    if (!guide) return false;
 
     // POLISH-018: Validate required fields before submit
     const name = getVal('ge-name').trim();
@@ -343,16 +343,16 @@ async function saveGuide() {
     if (!name) {
         showToast('Guide name is required.', 'error');
         document.getElementById('ge-name')?.focus();
-        return;
+        return false;
     }
     if (time !== undefined && time !== null && !isNaN(time) && time < 0) {
         showToast('Estimated time cannot be negative.', 'error');
         document.getElementById('ge-time')?.focus();
-        return;
+        return false;
     }
 
     const payload = {
-        pid: getVal('ge-pid'),
+        pid: guide.pid,
         name: getVal('ge-name'),
         description: getVal('ge-description'),
         difficulty: getVal('ge-difficulty'),
@@ -377,17 +377,19 @@ async function saveGuide() {
             method: 'PUT',
             body: JSON.stringify(payload),
         });
-        // Reload to get server-side IDs
+        // Reload the browser-local record
         await selectEditorGuide(payload.pid);
         await loadEditorGuideList();
         if (btn) {
             btn.innerHTML = '<i class="ph ph-check"></i> Saved!';
             setTimeout(() => { btn.innerHTML = originalHTML; }, 1500);
         }
+        return true;
     } catch (err) {
         console.error('Save failed:', err);
         showToast('Failed to save guide.', 'error');
         if (btn) btn.innerHTML = originalHTML;
+        return false;
     }
 }
 
@@ -395,10 +397,11 @@ async function saveGuide() {
 async function deleteGuide() {
     const guide = guideState.editingGuide;
     if (!guide) return;
-    if (!confirm(`Delete guide "${guide.name}"? This cannot be undone.`)) return;
+    if (!confirm(`Remove "${guide.name}" from this browser? The published reference will stay unchanged.`)) return;
 
     try {
-        await fetch(GUIDE_API.guideDetail(guide.pid), { method: 'DELETE', headers: { 'X-CSRFToken': getCookie('csrftoken') } });
+        const response = await fetch(GUIDE_API.guideDetail(guide.pid), { method: 'DELETE', headers: { 'X-CSRFToken': getCookie('csrftoken') } });
+        if (!response.ok) throw new Error('Browser-local removal failed');
         guideState.editingGuide = null;
         guideState.editingStepIndex = -1;
         _editorSteps = [];
@@ -417,11 +420,10 @@ async function previewGuide() {
     if (!guide) return;
 
     // Save first
-    await saveGuide();
+    if (!await saveGuide()) return;
 
-    // Switch to browse mode
-    guideDOM['btn-mode-browse']?.classList.add('active');
-    guideDOM['btn-mode-edit']?.classList.remove('active');
+    // Switch to browse mode after the local save succeeds.
+    switchMode('browse');
 
     // Load and show overview
     await selectGuide(guide.pid);
@@ -445,24 +447,24 @@ function renderEditorMediaList(media) {
             ? `<img class="guide-editor-media-thumb" src="${escHTML(item.url)}"
                    alt="" onerror="this.style.display='none'">`
             : '';
-        return `<div class="guide-editor-media-item" data-index="${i}">
+        return `<div class="guide-editor-media-item" data-index="${i}" style="flex-wrap:wrap;">
             ${thumbHtml}
-            <select class="form-input" data-field="type" style="width:80px; font-size:12px; padding:4px;">
+            <label>Media type <select class="form-input" data-field="type" style="width:80px; font-size:12px; padding:4px;">
                 <option value="image"${item.type === 'image' ? ' selected' : ''}>Image</option>
                 <option value="video"${item.type === 'video' ? ' selected' : ''}>Video</option>
-            </select>
-            <input class="form-input" type="text" data-field="url" value="${escHTML(item.url || '')}"
-                   placeholder="URL or upload..." style="flex:1; font-size:12px; padding:4px 8px;">
+            </select></label>
+            <label style="flex:1;min-width:120px;">URL <input class="form-input" type="text" data-field="url" value="${escHTML(item.url || '')}"
+                   placeholder="URL or upload..." style="width:100%; font-size:12px; padding:4px 8px;"></label>
             <label class="btn btn-outline guide-editor-upload-btn" title="Upload file">
-                <i class="ph ph-upload-simple"></i>
+                Upload file
                 <input type="file" class="guide-editor-upload-input" data-media-index="${i}"
                        accept="image/jpeg,image/png,image/gif,image/webp,video/mp4,video/webm"
                        style="display:none;">
             </label>
-            <input class="form-input" type="text" data-field="caption" value="${escHTML(item.caption || '')}"
-                   placeholder="Caption (optional)" style="width:140px; font-size:12px; padding:4px 8px;">
-            <button class="guide-editor-step-item-remove" onclick="removeEditorMedia(${i})" type="button">
-                <i class="ph ph-x"></i>
+            <label>Caption (optional) <input class="form-input" type="text" data-field="caption" value="${escHTML(item.caption || '')}"
+                   placeholder="Caption (optional)" style="width:140px; font-size:12px; padding:4px 8px;"></label>
+            <button type="button" class="guide-editor-step-item-remove" aria-label="Remove media ${i + 1}" style="width:auto;min-height:24px;padding:2px 6px;" onclick="removeEditorMedia(${i})">
+                Remove media
             </button>
         </div>`;
     }).join('');
@@ -759,8 +761,8 @@ function renderComponentChips(pidList) {
         const label = comp ? comp.name : pid;
         return `<span class="guide-comp-chip" data-pid="${escHTML(pid)}">
             ${escHTML(label)}
-            <button type="button" onclick="removeComponentChip('${escHTML(pid)}')" class="guide-comp-chip-remove">
-                <i class="ph ph-x"></i>
+            <button type="button" onclick="removeComponentChip('${escHTML(pid)}')" class="guide-comp-chip-remove" aria-label="Remove component ${escHTML(label)}">
+                Remove
             </button>
         </span>`;
     }).join('');

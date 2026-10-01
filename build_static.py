@@ -20,6 +20,8 @@ import hashlib
 import argparse
 import tempfile
 import base64
+from html.parser import HTMLParser
+from urllib.parse import urlsplit
 from pathlib import Path
 from tools.pages_asset_limits import PAGES_MAX_ASSET_BYTES, validate_pages_asset_sizes
 
@@ -404,7 +406,7 @@ _MOBILE_CSS = """<style>
   /* Content padding tighten */
   .content{padding:12px 12px!important}
   /* Prevent wide modals/cards */
-  .modal,.pred-modal,.flag-detail,[class*="-modal"]{width:calc(100vw - 24px)!important;max-width:calc(100vw - 24px)!important;left:12px!important;right:12px!important}
+  .modal,.pred-modal,.flag-detail,[class*="-modal"]{width:calc(100vw / var(--uas-text-scale,1) - 24px)!important;max-width:calc(100vw / var(--uas-text-scale,1) - 24px)!important;left:12px!important;right:12px!important}
 }
 @media(max-width:400px){
   [style*="grid-template-columns:1fr 1fr"],[style*="grid-template-columns: 1fr 1fr"]{grid-template-columns:1fr!important}
@@ -423,9 +425,9 @@ _UNIFIED_NAV = r"""<!-- ── Unified UAS- Nav (5-domain accordion drawer) ─�
 #dc-nav-sep{color:#2e2e26;font-size:12px;flex-shrink:0}
 #dc-nav-page{font:600 11px 'DM Sans',system-ui;color:#b8b0a0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:200px}
 #dc-nav-right{display:flex;align-items:center;gap:8px;flex-shrink:0}
-#dc-hamburger{display:flex;align-items:center;justify-content:center;width:32px;height:32px;border-radius:6px;border:1px solid #2a2a22;background:none;color:#6b6358;cursor:pointer;transition:all .15s;flex-shrink:0}
+#dc-hamburger{display:flex;align-items:center;justify-content:center;width:32px;height:32px;border-radius:6px;border:1px solid #2a2a22;background:none;color:#b8b0a0;cursor:pointer;transition:all .15s;flex-shrink:0}
 #dc-hamburger:hover{border-color:#3e3e34;color:#b8b0a0}
-#dc-hamburger.open{border-color:#dc2626;color:#dc2626;background:rgba(220,38,38,.08)}
+#dc-hamburger.open{border-color:#ff9292;color:#ff9292;background:rgba(220,38,38,.08)}
 .dc-nav-top-btn{display:inline-flex;align-items:center;gap:6px;height:30px;padding:0 10px;border-radius:6px;border:1px solid #2a2a22;background:none;color:#b8b0a0;font:600 11px 'DM Sans',system-ui,sans-serif;text-decoration:none;cursor:pointer;transition:all .15s;flex-shrink:0}
 .dc-nav-top-btn:hover{border-color:#f59e0b;color:#f59e0b;background:rgba(245,158,11,.06)}
 .dc-nav-top-btn.dc-active{border-color:#22c55e;color:#22c55e;background:rgba(34,197,94,.06)}
@@ -433,12 +435,14 @@ _UNIFIED_NAV = r"""<!-- ── Unified UAS- Nav (5-domain accordion drawer) ─�
 @media (max-width:520px){.dc-nav-top-btn span.dc-nav-top-label{display:none}}
 #dc-overlay{position:fixed;inset:0;z-index:498;background:rgba(0,0,0,.6);backdrop-filter:blur(4px);opacity:0;pointer-events:none;transition:opacity .25s}
 #dc-overlay.open{opacity:1;pointer-events:auto}
-#dc-drawer{position:fixed;top:0;left:0;bottom:0;z-index:499;width:280px;max-width:85vw;background:#111110;border-right:1px solid #2a2a22;transform:translateX(-100%);transition:transform .3s cubic-bezier(.4,0,.2,1);display:flex;flex-direction:column;overflow-y:auto}
+#dc-drawer{position:fixed;top:0;left:0;bottom:0;z-index:499;width:280px;max-width:calc(85vw / var(--uas-text-scale,1));background:#111110;border-right:1px solid #2a2a22;transform:translateX(-100%);transition:transform .3s cubic-bezier(.4,0,.2,1);display:flex;flex-direction:column;overflow-y:auto}
 #dc-drawer.open{transform:translateX(0)}
+#dc-drawer[hidden]{display:none!important}
+#dc-drawer :focus-visible,#dc-hamburger:focus-visible{outline:2px solid #f59e0b;outline-offset:3px}
 #dc-drawer-head{padding:16px;border-bottom:1px solid #1e1e18;display:flex;align-items:center;justify-content:space-between;flex-shrink:0}
 #dc-drawer-brand{font:700 14px 'JetBrains Mono',monospace;color:#f59e0b;letter-spacing:-.02em}
-#dc-drawer-close{width:28px;height:28px;border-radius:6px;border:1px solid #2a2a22;background:none;color:#6b6358;cursor:pointer;font-size:16px;display:flex;align-items:center;justify-content:center;transition:all .15s}
-#dc-drawer-close:hover{color:#dc2626;border-color:rgba(220,38,38,.3)}
+#dc-drawer-close{width:28px;height:28px;border-radius:6px;border:1px solid #2a2a22;background:none;color:#b8b0a0;cursor:pointer;font-size:16px;display:flex;align-items:center;justify-content:center;transition:all .15s}
+#dc-drawer-close:hover{color:#ff9292;border-color:rgba(220,38,38,.3)}
 .dc-dom-group{border-bottom:1px solid #1a1a14}
 .dc-dom-group > summary{padding:14px 16px;cursor:pointer;list-style:none;display:flex;align-items:center;gap:12px;transition:all .15s;user-select:none}
 .dc-dom-group > summary::-webkit-details-marker{display:none}
@@ -447,29 +451,29 @@ _UNIFIED_NAV = r"""<!-- ── Unified UAS- Nav (5-domain accordion drawer) ─�
 .dc-dom-ico{font-size:18px;flex-shrink:0;filter:grayscale(.3)}
 .dc-dom-info{flex:1;min-width:0}
 .dc-dom-name{font:700 12px 'DM Sans',system-ui;color:#b8b0a0;letter-spacing:-.01em;transition:color .15s}
-.dc-dom-url{font:400 9px 'JetBrains Mono',monospace;color:#6b6358;margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.dc-dom-url{font:400 9px 'JetBrains Mono',monospace;color:#b8b0a0;margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .dc-dom-chev{color:#3e3e34;font-size:9px;transition:transform .2s;flex-shrink:0}
-.dc-dom-group[open] > summary .dc-dom-chev{transform:rotate(90deg);color:#dc2626}
-.dc-dom-group[open] > summary .dc-dom-name{color:#dc2626}
+.dc-dom-group[open] > summary .dc-dom-chev{transform:rotate(90deg);color:#ff9292}
+.dc-dom-group[open] > summary .dc-dom-name{color:#ff9292}
 .dc-dom-group[open] > summary .dc-dom-ico{filter:grayscale(0)}
 .dc-dom-sublinks{padding:0 0 10px 0;display:flex;flex-direction:column;gap:0;background:rgba(0,0,0,.15)}
-.dc-dom-sublink{display:block;padding:8px 16px 8px 46px;font:400 11px 'DM Sans',system-ui;color:#6b6358;text-decoration:none;border-left:2px solid transparent;transition:all .1s}
+.dc-dom-sublink{display:block;padding:8px 16px 8px 46px;font:400 11px 'DM Sans',system-ui;color:#b8b0a0;text-decoration:none;border-left:2px solid transparent;transition:all .1s}
 .dc-dom-sublink:hover{color:#b8b0a0;background:rgba(255,255,255,.02);border-left-color:#2e2e26}
 .dc-dom-sublink.dc-active{color:#22c55e;border-left-color:#22c55e;background:rgba(34,197,94,.04)}
 .dc-dom-standalone{padding:14px 16px;display:flex;align-items:center;gap:12px;text-decoration:none;border-bottom:1px solid #1a1a14;transition:all .15s}
 .dc-dom-standalone:hover{background:rgba(255,255,255,.02)}
-.dc-dom-standalone:hover .dc-dom-name{color:#dc2626}
+.dc-dom-standalone:hover .dc-dom-name{color:#ff9292}
 .dc-dom-standalone:hover .dc-dom-ico{filter:grayscale(0)}
 .dc-dom-standalone.dc-active .dc-dom-name{color:#22c55e}
 .dc-dom-standalone.dc-active{background:rgba(34,197,94,.04);border-left:2px solid #22c55e}
-#dc-drawer-foot{margin-top:auto;padding:16px;border-top:1px solid #1e1e18;font:400 10px 'JetBrains Mono',monospace;color:#2e2e26;display:flex;flex-direction:column;gap:6px}
+#dc-drawer-foot{margin-top:auto;padding:16px;border-top:1px solid #1e1e18;font:400 10px 'JetBrains Mono',monospace;color:#b8b0a0;display:flex;flex-direction:column;gap:6px}
 #dc-drawer-foot a{color:#f59e0b;text-decoration:none}
-#dc-drawer-foot a:hover{color:#dc2626}
+#dc-drawer-foot a:hover{color:#ff9292}
 </style>
 
 <nav id="dc-nav">
   <div id="dc-nav-left">
-    <button id="dc-hamburger" onclick="dcNavToggle()" aria-label="Menu">
+    <button id="dc-hamburger" type="button" onclick="dcNavToggle()" aria-label="Menu" aria-controls="dc-drawer" aria-expanded="false">
       <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round">
         <line x1="1" y1="3" x2="13" y2="3"/><line x1="1" y1="7" x2="13" y2="7"/><line x1="1" y1="11" x2="13" y2="11"/>
       </svg>
@@ -494,11 +498,11 @@ _UNIFIED_NAV = r"""<!-- ── Unified UAS- Nav (5-domain accordion drawer) ─�
   </div>
 </nav>
 
-<div id="dc-overlay" onclick="dcNavClose()"></div>
-<div id="dc-drawer">
+<div id="dc-overlay" onclick="dcNavClose()" aria-hidden="true"></div>
+<div id="dc-drawer" role="dialog" aria-modal="true" aria-label="UAS website menu" hidden inert aria-hidden="true" tabindex="-1">
   <div id="dc-drawer-head">
     <span id="dc-drawer-brand">Forge</span>
-    <button id="dc-drawer-close" onclick="dcNavClose()">✕</button>
+    <button id="dc-drawer-close" type="button" onclick="dcNavClose()" aria-label="Close menu">✕</button>
   </div>
 
   <details class="dc-dom-group" data-host="uas-forge.com" data-hub-href="https://uas-forge.com/forge/">
@@ -610,9 +614,9 @@ _UNIFIED_NAV = r"""<!-- ── Unified UAS- Nav (5-domain accordion drawer) ─�
     </summary>
     <div class="dc-dom-sublinks">
       <a class="dc-dom-sublink" href="https://uas-handbook.com/" data-page="handbook">Read the handbook</a>
-      <a class="dc-dom-sublink" href="https://uas-handbook.com/#c13" data-page="ch13">Chapter 13 — Parts</a>
-      <a class="dc-dom-sublink" href="https://uas-handbook.com/#c05" data-page="ch05">Chapter 5 — Mesh</a>
-      <a class="dc-dom-sublink" href="https://uas-handbook.com/#c08" data-page="ch08">Chapter 8 — NDAA</a>
+      <a class="dc-dom-sublink" href="https://uas-handbook.com/#ch13" data-page="ch13">Chapter 13 — Adding a Companion Computer</a>
+      <a class="dc-dom-sublink" href="https://uas-handbook.com/#ch14" data-page="ch14">Chapter 14 — Mesh Radios for Multi-Vehicle</a>
+      <a class="dc-dom-sublink" href="https://uas-handbook.com/#ch8" data-page="ch8">Chapter 8 — UART Layout and Why It Matters</a>
     </div>
   </details>
 
@@ -763,18 +767,49 @@ _UNIFIED_NAV = r"""<!-- ── Unified UAS- Nav (5-domain accordion drawer) ─�
     });
   });
 
-  // Hamburger toggle
+  // Closed navigation is absent from both Tab order and the accessible tree.
+  var drawer = document.getElementById('dc-drawer');
+  var trigger = document.getElementById('dc-hamburger');
+  var overlay = document.getElementById('dc-overlay');
+  var previousFocus = null, background = [], previousOverflow = '';
+  function focusable(){
+    return Array.from(drawer.querySelectorAll('a[href],button:not([disabled]),summary,input,select,[tabindex="0"]'))
+      .filter(function(el){return el.getClientRects().length && !el.closest('[inert]');});
+  }
   window.dcNavToggle = function(){
-    var open = document.getElementById('dc-drawer').classList.toggle('open');
-    document.getElementById('dc-overlay').classList.toggle('open', open);
-    document.getElementById('dc-hamburger').classList.toggle('open', open);
+    if(!drawer.hidden){ window.dcNavClose(); return; }
+    previousFocus = document.activeElement;
+    drawer.hidden = false; drawer.inert = false;
+    drawer.setAttribute('aria-hidden','false'); drawer.classList.add('open');
+    overlay.classList.add('open'); trigger.classList.add('open');
+    trigger.setAttribute('aria-expanded','true');
+    background = Array.from(document.body.children).filter(function(el){
+      return el !== drawer && el !== overlay && !['SCRIPT','STYLE','LINK'].includes(el.tagName);
+    }).map(function(el){var saved = [el,el.inert]; el.inert = true; return saved;});
+    previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    (focusable()[0] || drawer).focus();
   };
   window.dcNavClose = function(){
-    document.getElementById('dc-drawer').classList.remove('open');
-    document.getElementById('dc-overlay').classList.remove('open');
-    document.getElementById('dc-hamburger').classList.remove('open');
+    if(drawer.hidden) return;
+    drawer.classList.remove('open'); drawer.hidden = true; drawer.inert = true;
+    drawer.setAttribute('aria-hidden','true');
+    overlay.classList.remove('open'); trigger.classList.remove('open');
+    trigger.setAttribute('aria-expanded','false');
+    background.forEach(function(saved){saved[0].inert = saved[1];}); background = [];
+    document.body.style.overflow = previousOverflow;
+    (previousFocus && previousFocus.isConnected ? previousFocus : trigger).focus();
   };
-  document.addEventListener('keydown', function(e){ if(e.key==='Escape') dcNavClose(); });
+  document.addEventListener('keydown', function(e){
+    if(drawer.hidden) return;
+    if(e.key === 'Escape'){ e.preventDefault(); window.dcNavClose(); }
+    if(e.key === 'Tab'){
+      var controls = focusable(), first = controls[0], last = controls[controls.length-1];
+      if(!first){ e.preventDefault(); drawer.focus(); return; }
+      if(e.shiftKey && (document.activeElement === first || !drawer.contains(document.activeElement))){e.preventDefault(); last.focus();}
+      else if(!e.shiftKey && (document.activeElement === last || !drawer.contains(document.activeElement))){e.preventDefault(); first.focus();}
+    }
+  });
 })();
 </script>
 <!-- ── /Unified UAS- Nav ─────────────────────────────────────────── -->"""
@@ -905,6 +940,81 @@ def inject_disclaimer(html, src_name):
     return html + block
 
 
+class _NavigationStripper(HTMLParser):
+    """Remove only known shell elements; preserve interleaved app imports."""
+
+    def __init__(self, source):
+        super().__init__(convert_charrefs=False)
+        self.source = source
+        self.line_offsets = [0]
+        self.line_offsets.extend(m.end() for m in re.finditer('\n', source))
+        self.removals = []
+        self.active = None
+        self.script_start = None
+
+    def source_offset(self):
+        line, column = self.getpos()
+        return self.line_offsets[line - 1] + column
+
+    def handle_starttag(self, tag, attrs):
+        if self.active:
+            if tag == self.active['tag']:
+                self.active['depth'] += 1
+            return
+        values = dict(attrs)
+        if values.get('id') in {'dc-nav', 'dc-overlay', 'dc-drawer', 'dc-unified-nav-styles'}:
+            self.active = {'tag': tag, 'depth': 1, 'start': self.source_offset()}
+        elif tag == 'script' and not values.get('src'):
+            self.script_start = self.source_offset()
+
+    def handle_endtag(self, tag):
+        end = self.source.find('>', self.source_offset()) + 1
+        if self.active:
+            if tag == self.active['tag']:
+                self.active['depth'] -= 1
+                if not self.active['depth']:
+                    self.removals.append((self.active['start'], end))
+                    self.active = None
+        elif tag == 'script' and self.script_start is not None:
+            block = self.source[self.script_start:end]
+            if ('window.dcNavToggle' in block and 'dcNavBrandClick' in block) or (
+                'function dcNavBrandClick' in block and 'const _dcPageMap' in block
+                and "getElementById('dc-nav-current')" in block
+            ):
+                self.removals.append((self.script_start, end))
+            self.script_start = None
+
+    def stripped(self):
+        self.feed(self.source)
+        result = self.source
+        for start, end in sorted(self.removals, reverse=True):
+            result = result[:start] + result[end:]
+        return result
+
+
+def validate_script_assets(html, dst_path):
+    """Fail the build on self-requesting or absent local application scripts."""
+    class Scripts(HTMLParser):
+        def handle_starttag(self, tag, attrs):
+            values = dict(attrs)
+            if tag != 'script' or 'src' not in values:
+                return
+            src = values['src'] or ''
+            parsed = urlsplit(src)
+            if parsed.scheme or parsed.netloc:
+                return
+            if not parsed.path:
+                raise ValueError(f'{dst_path}: script src requests its own HTML: {src!r}')
+            if not parsed.path.endswith(('.js', '.mjs')):
+                return
+            root = Path(BUILD_DIR).resolve()
+            asset = (root / parsed.path.lstrip('/')) if parsed.path.startswith('/') else (root / dst_path).parent / parsed.path
+            asset = asset.resolve()
+            if root not in asset.parents or not asset.is_file():
+                raise ValueError(f'{dst_path}: missing local script: {src}')
+    Scripts().feed(html)
+
+
 def inject_nav(html, src_name):
     """Inject unified nav after <body> on every page except analytics and clock.
 
@@ -917,28 +1027,10 @@ def inject_nav(html, src_name):
     if src_name in skip:
         return html
 
-    # Strip any existing nav block (old OR new — matches any brand name
-    # between "Unified" and "Nav", handles DroneClear / UAS- / future renames)
-    html = re.sub(
-        r'<!-- ── Unified[^\n]*?Nav[^\n]*?-->.*?<!-- ── /Unified[^\n]*?-->',
-        '',
-        html,
-        count=1,
-        flags=re.DOTALL,
-    )
-
-    # Some early lens pages embedded a nav without the marker comments above.
-    # Remove that complete pre-main structural block before injecting the
-    # canonical nav. This keeps the build idempotent and prevents duplicate
-    # dc-nav/drawer IDs in generated HTML.
-    if re.search(r'<nav\s+id=["\']dc-nav["\']', html, flags=re.IGNORECASE):
-        html = re.sub(
-            r'\s*<nav\s+id=["\']dc-nav["\'].*?(?=<main\b)',
-            '\n',
-            html,
-            count=1,
-            flags=re.DOTALL | re.IGNORECASE,
-        )
+    # Marker-delimited blocks can contain application imports, including
+    # Intel's normalization helpers. Never delete the whole pre-main region.
+    html = _NavigationStripper(html).stripped()
+    html = re.sub(r'<!-- ── /?Unified[^\n]*?Nav[^\n]*?-->', '', html)
 
     # Fail safe: never inject a second nav if an unusual legacy structure did
     # not match the known pre-main layout.
@@ -949,8 +1041,8 @@ def inject_nav(html, src_name):
 
     # Inject the fresh nav after <body>
     nav_block = "\n" + _UNIFIED_NAV + "\n"
-    if "<body>" in html:
-        return html.replace("<body>", "<body>" + nav_block, 1)
+    if re.search(r'<body\b[^>]*>', html):
+        return re.sub(r'(<body\b[^>]*>)', lambda m: m.group(1) + nav_block, html, count=1)
     return html
 
 
@@ -976,9 +1068,9 @@ def inject_analytics(html, src_name, dst_path):
             '<script src="/static/text-size-control.js"></script>\n'
             + f'<script>var __FORGE_PAGE__="{slug}";</script>\n'
             + f'<script id="uas-first-party-analytics" type="text/plain">{_ANALYTICS_SNIPPET}</script>\n'
-            + '<script src="static/analytics-consent.js"></script>\n'
+            + '<script src="/static/analytics-consent.js"></script>\n'
         )
-    tag = analytics_tag + f'{_MOBILE_CSS}\n'
+    tag = analytics_tag + '<link rel="stylesheet" href="/static/site-accessibility.css">\n<script defer src="/static/site-accessibility.js"></script>\n' + f'{_MOBILE_CSS}\n'
     html = inject_nav(html, src_name)
     if '</body>' in html:
         return html.replace('</body>', tag + '</body>', 1)
@@ -1197,17 +1289,17 @@ SEO_META = {
     ),
     'mission-control.html': (
         'Forge — Drone Build Planner & Intelligence Platform',
-        'Browse __PART_COUNT__+ vetted drone parts, validate build compatibility, assemble step-by-step guides, and access defense intelligence. The interactive companion to the Drone Integration Handbook.',
+        'Browse __PART_COUNT__+ drone component records, inspect recorded compatibility, assemble step-by-step guides, and access defense intelligence. The interactive companion to the Drone Integration Handbook.',
         'drone build planner, FPV parts database, drone compatibility, NDAA compliant drones, Blue UAS, drone components',
     ),
     'index.html': (
         'Model Builder — Forge Drone Build Planner',
-        'Assemble drone builds from __PART_COUNT__+ vetted parts with real-time 12-check compatibility validation. Flight controllers, ESCs, motors, frames, and more.',
+        'Plan drone builds from __PART_COUNT__+ component records with rule-based compatibility checks. Flight controllers, ESCs, motors, frames, and more.',
         'drone model builder, FPV build tool, drone parts compatibility, flight controller selector',
     ),
     'wingman.html': (
         'Wingman AI — Drone Troubleshooter & Wiring Analyzer',
-        'AI-powered FPV drone troubleshooter. Upload photos for wiring analysis, get PID tuning help, firmware guidance, and real-time web search. Powered by Gemini.',
+        'AI-assisted drone troubleshooting, wiring review and firmware guidance. Features depend on the selected provider, credentials and connection.',
         'drone troubleshooter AI, FPV wiring analyzer, Betaflight help, drone repair assistant, PID tuning AI',
     ),
     'circuit-forge.html': (
@@ -1341,7 +1433,7 @@ SEO_META = {
         'drone build guide, FPV assembly instructions, drone wiring guide, step by step drone build',
     ),
     'editor.html': (
-        'Parts Library — __PART_COUNT__+ Vetted Drone Components',
+        'Parts Library — __PART_COUNT__+ Drone Component Records',
         'Browse and search the full parts library with specs, compatibility data, and filtering by category, manufacturer, and voltage.',
         'drone parts library, FPV component database, flight controller database, motor database',
     ),
@@ -1457,7 +1549,7 @@ SEO_META = {
     ),
     'start.html': (
         'Get Started with Forge — Drone Intelligence Platform',
-        'Start using Forge: browse 3,700+ vetted drone parts, check NDAA compliance, build your stack, access PIE intelligence flags, and chat with Wingman AI.',
+        'Start using Forge: browse cataloged drone component records, check NDAA compliance, build your stack, access PIE intelligence flags, and chat with Wingman AI.',
         'drone intelligence platform, Forge onboarding, drone parts database, NDAA compliance tool, FPV build planner',
     ),
     'grants.html': (
@@ -1467,7 +1559,7 @@ SEO_META = {
     ),
     'forge-home.html': (
         'Forge — Drone Build Hub, Parts Database & Compliance Toolkit',
-        'The Forge hub: 3,500+ vetted drone components, 272 platforms, a build planner with a 12-check compatibility engine, NDAA compliance tools, and integration guides for FPV, commercial, and defense UAS.',
+        'The Forge hub: 3,500+ drone component records, 272 platforms, a build planner with a 12-check compatibility engine, NDAA compliance tools, and integration guides for FPV, commercial, and defense UAS.',
         'drone parts database, UAS build planner, NDAA compliance, drone component browser, FPV parts, Blue UAS platforms',
     ),
     'vault.html': (
@@ -1487,7 +1579,7 @@ SEO_META = {
     ),
     'contribute.html': (
         'Contribute to Forge — Submit Parts & Intelligence',
-        'Submit new drone parts, flag incorrect data, or contribute intelligence to the Forge database. Community submissions are reviewed and merged into the vetted parts database.',
+        'Submit new drone parts, flag incorrect data, or contribute intelligence to the Forge database. Community submissions are reviewed and merged into the component records database.',
         'contribute drone parts, Forge community, drone database submission, FPV parts database, drone intelligence contribution',
     ),
     'tools-home.html': (
@@ -1527,10 +1619,31 @@ SEO_META = {
     ),
 }
 
+
+# Accurate per-tool metadata for the audited public routes; avoid unsupported counts.
+SEO_META.update({
+    'autonomy.html': ('Autonomy Datasets and Benchmarks — UAS Forge', 'Explore drone autonomy datasets and benchmarks by task, license class, and usability notes. Verify source terms before reuse.', 'UAS tools, drone reference, source evidence'),
+    'donate.html': ('Support the UAS Websites — Forge, Patterns and Handbook', 'Support the hosting and maintenance of UAS Forge, UAS Patterns, and the Drone Integration Handbook.', 'UAS tools, drone reference, source evidence'),
+    'uas-hub.html': ('UAS Website Hub — Forge, Patterns and Handbook', 'Find UAS Forge build tools, UAS Patterns evidence research, and the Drone Integration Handbook field reference.', 'UAS tools, drone reference, source evidence'),
+    'adversary-bom.html': ('Adversary Component Teardowns — UAS Patterns', 'Inspect components reported in captured-platform teardowns and the source evidence behind them. Rankings are research heuristics, not policy recommendations.', 'UAS tools, drone reference, source evidence'),
+    'mirroring.html': ('Component Mirroring — UAS Patterns', 'Explore statistical similarities between cataloged component profiles and captured-platform teardowns. Similarity does not establish supply or affiliation.', 'UAS tools, drone reference, source evidence'),
+    'actors.html': ('Threat Actor Reporting and Evidence — UAS Patterns', 'Inspect actor-centered public reporting, retained source articles, duplicate-adjusted reporting groups, and candidate events with explicit uncertainty.', 'UAS tools, drone reference, source evidence'),
+    'ttps.html': ('TTP Defense-Gap Evidence — UAS Patterns', 'Inspect keyword-based UAS tactic and defensive-procurement evidence. Weak matching repository evidence does not establish that a defense or program is absent.', 'UAS tools, drone reference, source evidence'),
+    'evasion.html': ('Sanctions-Evasion Research Graph — UAS Patterns', 'Inspect graph paths connecting flagged records through shared investors, programs, components, or reporting. Connections are research leads, not findings of wrongdoing.', 'UAS tools, drone reference, source evidence'),
+    'market-lens.html': ('Market Lens — PIE Coverage and Equity Comparisons', 'Compare PIE reporting coverage with sector-relative equity observations for the stated historical window. Descriptive analytics do not establish causation.', 'UAS tools, drone reference, source evidence'),
+    'pie-trends.html': ('PIE Pipeline Trends — UAS Patterns', "Inspect changes in the pipeline's own measurements and qualified linear extrapolations. These describe recorded momentum, not predictions of real-world events.", 'UAS tools, drone reference, source evidence'),
+    'contribute-doctrine.html': ('Submit a Doctrine Document — UAS Patterns', 'Submit a UAS, counter-UAS, or supply-chain reference document for editorial review, with source and reuse information.', 'UAS tools, drone reference, source evidence'),
+    'audit-doctrine.html': ('Doctrine Submission Review Queue — UAS Patterns', 'Review pending doctrine document submissions and their source details. Authorized reviewers can update submission status.', 'UAS tools, drone reference, source evidence'),
+    'platforms.html': ('Drone Platform Reference Catalog — UAS Forge', 'Search drone platform reference records by name, country of origin, specifications, and recorded compliance indicators. Verify status against primary sources.', 'UAS tools, drone reference, source evidence'),
+    'compliance.html': ('UAS Compliance Reference — UAS Forge', 'Inspect recorded drone-platform compliance indicators and source evidence for NDAA, ASDA, Blue UAS, ITAR, and origin screening. Verify current requirements.', 'UAS tools, drone reference, source evidence'),
+    'payload-compare.html': ('Drone Payload Comparison — UAS Forge', 'Compare recorded payload capacity, flight time, and mission profiles across drone-platform reference records, with available filtering criteria.', 'UAS tools, drone reference, source evidence'),
+    'forge-home.html': ('UAS Forge — Drone Parts and Build Tools', 'Browse drone component records, plan builds, inspect compatibility checks, and find integration guides and platform reference tools.', 'UAS tools, drone reference, source evidence'),
+})
+
 DEFAULT_SEO = (
-    'Forge — Drone Integration Handbook',
-    'Interactive build planner and intelligence platform for the Drone Integration Handbook. __PART_COUNT__+ parts, 219 platforms, compliance tracking.',
-    'drone build planner, FPV parts, drone intelligence platform',
+    'UAS Forge — Drone Build and Reference Tools',
+    'Browse drone component and platform reference records, plan builds, and explore integration tools.',
+    'drone build planner, FPV parts, drone reference tools',
 )
 
 
@@ -2480,6 +2593,7 @@ def build(*, offline=False, data_ref=None, data_dir=None, include_private=False)
         html = fix_nav_links(html, depth)
         html = rewrite_legacy_domains(html)
         html = add_asset_cache_busters(html)
+        validate_script_assets(html, dst_path)
 
         with open(dst_file, 'w', encoding='utf-8') as f:
             f.write(html)

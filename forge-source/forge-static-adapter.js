@@ -22,6 +22,31 @@
     let _schema = null;
     let _ready = null; // Promise that resolves when data is loaded
     const COMPONENT_PATCH_KEY = 'forge-component-patch-v1';
+    const GUIDE_PATCH_KEY = 'forge-guide-patch-v1';
+
+    function readGuidePatch() {
+        try {
+            const patch = JSON.parse(localStorage.getItem(GUIDE_PATCH_KEY) || 'null');
+            if (patch && patch.items && typeof patch.items === 'object' && !Array.isArray(patch.items) && Array.isArray(patch.deleted)) return patch;
+        } catch (_) {}
+        return { items: {}, deleted: [] };
+    }
+
+    function getGuides() {
+        const patch = readGuidePatch();
+        const records = new Map((_db.build_guides || []).map(guide => [guide.pid, guide]));
+        Object.values(patch.items).forEach(guide => { if (guide && typeof guide.pid === 'string') records.set(guide.pid, guide); });
+        patch.deleted.forEach(pid => records.delete(pid));
+        return Array.from(records.values()).map(guide => ({...guide, step_count: Array.isArray(guide.steps) ? guide.steps.length : guide.step_count}));
+    }
+
+    function saveGuideRecord(record) {
+        const patch = readGuidePatch();
+        patch.items = { ...patch.items, [record.pid]: record };
+        patch.deleted = patch.deleted.filter(pid => pid !== record.pid);
+        localStorage.setItem(GUIDE_PATCH_KEY, JSON.stringify(patch));
+        return record;
+    }
 
     // ── Load static data on page load ──
     async function _loadDB() {
@@ -381,9 +406,36 @@
             }
         }
 
-        // GET /api/build-guides/
-        if (path === '/api/build-guides' && method === 'GET') {
-            return jsonResponse(_db.build_guides || []);
+        // Published guides remain unchanged. Edits/deletions are browser-local
+        // overlays, matching the existing component/model editor contract.
+        if (path === '/api/build-guides' || path.startsWith('/api/build-guides/')) {
+            const detail = path !== '/api/build-guides';
+            const pid = detail ? path.slice('/api/build-guides/'.length) : null;
+            const existing = detail ? getGuides().find(guide => guide.pid === pid) : null;
+            if (method === 'GET') return detail
+                ? (existing ? jsonResponse(existing) : jsonResponse({detail:'Guide not found'},404))
+                : jsonResponse(getGuides());
+            if (method === 'POST' && !detail || method === 'PUT' && detail) {
+                if (detail && !existing) return jsonResponse({detail:'Guide not found'},404);
+                let record;
+                try { record = JSON.parse(options.body); } catch (_) { return jsonResponse({detail:'Invalid guide JSON'},400); }
+                if (!record || typeof record !== 'object' || Array.isArray(record)) return jsonResponse({detail:'Expected a guide record'},400);
+                record.pid = pid || record.pid;
+                if (typeof record.pid !== 'string' || !/^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$/.test(record.pid) || typeof record.name !== 'string' || !record.name.trim() || !Array.isArray(record.steps)) return jsonResponse({detail:'Guide requires an identifier, name and steps array'},400);
+                if (!detail && getGuides().some(guide => guide.pid === record.pid)) return jsonResponse({detail:'Guide identifier already exists'},409);
+                try { return jsonResponse(saveGuideRecord(record), detail ? 200 : 201); }
+                catch (_) { return jsonResponse({detail:'Browser storage unavailable; guide was not saved'},507); }
+            }
+            if (method === 'DELETE' && detail) {
+                if (!existing) return jsonResponse({detail:'Guide not found'},404);
+                const patch = readGuidePatch();
+                delete patch.items[pid];
+                patch.deleted = [...new Set([...patch.deleted, pid])];
+                try { localStorage.setItem(GUIDE_PATCH_KEY,JSON.stringify(patch)); }
+                catch (_) { return jsonResponse({detail:'Browser storage unavailable; guide was not removed'},507); }
+                return new Response(null,{status:204});
+            }
+            return jsonResponse({detail:'Unsupported guide operation'},405);
         }
 
         if (path === '/api/export/parts' && method === 'GET') {

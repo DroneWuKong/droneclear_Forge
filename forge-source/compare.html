@@ -130,7 +130,8 @@
             .compare-table .row-label { min-width: 120px; font-size: 11px; }
             .compare-table td { padding: 8px 10px; font-size: 12px; }
         }
-    </style>
+    .slot-tier-bar.unknown{background:#94a3b8}
+</style>
 <style>html,body{background:#0c0c0a!important;color:#f5f0e8;overflow-x:hidden}</style>
 <style id="global-mobile-fix">
 @media(max-width:640px){
@@ -307,6 +308,7 @@
         </main>
     </div>
 
+    <script src="/static/catalog-screening.js"></script>
     <script>
     (function() {
         'use strict';
@@ -345,21 +347,21 @@
             return flags.sort((a,b) => ({critical:0,high:1,warning:2,info:3}[a.severity]||3) - ({critical:0,high:1,warning:2,info:3}[b.severity]||3));
         }
 
-        function getTier(p) {
-            const blue = p.blue_uas === true || p.compliance?.blue_uas === true;
-            const ndaa = p.ndaa_compliant === true || p.compliance?.ndaa_compliant === true;
-            const country = (p.country || '').toLowerCase();
-            const adversary = ['china', 'iran', 'russia', 'north korea'].some(c => country.includes(c));
-            if (blue && ndaa) return 'green';
-            if (ndaa && !blue) return 'yellow';
-            if (!ndaa && !adversary) return 'orange';
-            return 'red';
+        function getTier(p) { return window.CatalogScreening.tier(p); }
+        function recordedFlag(p, key) { return window.CatalogScreening.flag(p, key); }
+        function evidenceText(p) {
+            const evidence = window.CatalogScreening.evidence(p);
+            const source = evidence.source
+                ? `<a href="${ESC(evidence.source)}" target="_blank" rel="noopener noreferrer">Record source</a>`
+                : 'Source not documented';
+            const date = evidence.verifiedAt ? `Recorded verification date: ${ESC(evidence.verifiedAt)}` : 'Verification date not documented';
+            return `${source}<br>${date}<br>Verify the exact configuration and applicable procurement requirements.`;
         }
 
         function fmtBool(val, yesClass, yesText, noText) {
             if (val === true) return `<span class="badge-sm ${yesClass}">${yesText || 'Yes'}</span>`;
             if (val === false) return `<span class="badge-sm red">${noText || 'No'}</span>`;
-            return '<span class="badge-sm muted">—</span>';
+            return '<span class="badge-sm muted">Not documented / conflicting</span>';
         }
 
         function fmtVal(v) {
@@ -497,12 +499,13 @@
                 { label: 'Thermal', fn: p => fmtBool(p.thermal_capable, 'green', 'Yes', 'No') },
                 { label: 'RF Bands', fn: p => fmtVal(p.rf_bands) },
                 { section: 'Compliance' },
-                { label: 'Blue UAS', fn: p => fmtBool(p.blue_uas === true || p.compliance?.blue_uas === true, 'green', '<i class="ph ph-seal-check"></i> Listed', 'No') },
-                { label: 'NDAA §848', fn: p => fmtBool(p.ndaa_compliant === true || p.compliance?.ndaa_compliant === true, 'green', 'Compliant', 'Non-compliant') },
+                { label: 'Blue UAS', fn: p => fmtBool(recordedFlag(p, 'blue_uas'), 'green', 'Recorded true', 'Recorded false') },
+                { label: 'NDAA §848', fn: p => fmtBool(recordedFlag(p, 'ndaa_compliant'), 'green', 'Recorded true', 'Recorded false') },
+                { label: 'Evidence and limits', fn: p => evidenceText(p) },
                 { label: 'Combat Proven', fn: p => fmtBool(p.compliance?.combat_proven, 'purple', 'Yes', '—') },
                 { label: 'PIE Risk', fn: p => {
                     const flags = getPlatformPieFlags(p);
-                    if (!flags.length) return '<span style="color:#5e5a50;font-size:11px">— Clean</span>';
+                    if (!flags.length) return '<span style="color:#5e5a50;font-size:11px">No matching flags in loaded dataset; coverage may be incomplete</span>';
                     const worst = flags[0].severity;
                     const COLOR = {critical:'#ef4444',high:'#f97316',warning:'#f59e0b',info:'#60a5fa'};
                     const col = COLOR[worst]||'#f59e0b';
@@ -511,7 +514,7 @@
                 }},
                 { label: 'Compliance Tier', fn: p => {
                     const t = getTier(p);
-                    const labels = { green: 'Green — Gov cleared', yellow: 'Yellow — NDAA OK', orange: 'Orange — Commercial', red: 'Red — Restricted' };
+                    const labels = { green: 'Recorded Blue UAS + NDAA flags true', yellow: 'Recorded NDAA flag true', orange: 'Recorded NDAA flag false', unknown: 'Not documented / conflicting' };
                     return `<span class="badge-sm ${t === 'orange' ? 'muted' : t}">${labels[t]}</span>`;
                 }},
                 { section: 'Integration' },

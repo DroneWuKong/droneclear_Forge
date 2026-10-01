@@ -29,6 +29,8 @@ async function initGuidePage() {
 function switchMode(mode) {
     guideDOM['btn-mode-browse']?.classList.toggle('active', mode === 'browse');
     guideDOM['btn-mode-edit']?.classList.toggle('active', mode === 'edit');
+    guideDOM['btn-mode-browse']?.setAttribute('aria-pressed', String(mode === 'browse'));
+    guideDOM['btn-mode-edit']?.setAttribute('aria-pressed', String(mode === 'edit'));
 
     // Show/hide sidebar guide list for edit mode
     const sidebarList = guideDOM['sidebar-guide-list-panel'];
@@ -70,8 +72,7 @@ function renderGuideSelection() {
     empty?.classList.add('hidden');
 
     grid.innerHTML = guideState.guides.map(g => `
-        <div class="guide-card" data-pid="${g.pid}" tabindex="0" role="button" onclick="selectGuide('${g.pid}')">
-    // POLISH-010: Keyboard accessible
+        <button type="button" class="guide-card" data-pid="${g.pid}" style="font:inherit;color:inherit;text-align:left;padding:0;" onclick="selectGuide('${g.pid}')">
             <div class="guide-card-thumb">
                 ${g.thumbnail
                     ? `<img src="${g.thumbnail}" alt="${g.name}" onerror="this.parentElement.innerHTML='<i class=\\'ph ph-clipboard-text\\'></i>'">`
@@ -89,7 +90,7 @@ function renderGuideSelection() {
                     ${g.drone_class ? `<span><i class="ph ph-drone"></i> ${escHTML(g.drone_class)}</span>` : ''}
                 </div>
             </div>
-        </div>
+        </button>
     `).join('');
 }
 
