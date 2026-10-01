@@ -2,7 +2,7 @@
  * prices-api — CF Worker replacing /.netlify/functions/prices-api
  * Route: /api/prices
  *
- * GET  — serve pricing data from PARTS_DB KV
+ * GET  — serve pricing data from PARTS_DB KV or a labeled catalog estimate
  * POST — community price submission (PRICES_API_KEY auth), stored in PARTS_DB KV
  */
 
@@ -16,8 +16,19 @@ const CORS = {
 
 function resp(data, status = 200) {
   return new Response(JSON.stringify(data), {
-    status, headers: { ...CORS, 'Content-Type': 'application/json' },
+    status, headers: { ...CORS, 'Content-Type': 'application/json', 'Cache-Control':'no-store' },
   });
+}
+
+async function catalogPrices(req, env) {
+  const source = new URL('/static/forge_database.json', req.url);
+  const response = await env.ASSETS?.fetch(new Request(source));
+  if (!response?.ok) throw new Error('Pricing catalog unavailable');
+  const database = await response.json();
+  if (!database || !database.components || typeof database.components !== 'object') throw new Error('Invalid pricing catalog');
+  return Object.entries(database.components).flatMap(([category, rows]) =>
+    (Array.isArray(rows) ? rows : []).filter(row => Number.isFinite(Number(row.price_usd ?? row.approx_price_usd ?? row.approx_price)) && Number(row.price_usd ?? row.approx_price_usd ?? row.approx_price) > 0)
+      .map(row => ({pid:row.pid,name:row.name,category,price_usd:Number(row.price_usd ?? row.approx_price_usd ?? row.approx_price),source_url:row.link || null,price_kind:'catalog_estimate'})));
 }
 
 export default {
@@ -60,8 +71,10 @@ export default {
     const allFlag = url.searchParams.get('all');
 
     try {
-      const raw = await env.PARTS_DB.get('prices');
-      const components = raw ? JSON.parse(raw) : [];
+      const raw = await env.PARTS_DB?.get('prices');
+      const stored = raw ? JSON.parse(raw) : [];
+      const components = Array.isArray(stored) && stored.length ? stored : await catalogPrices(req, env);
+      const source = Array.isArray(stored) && stored.length ? 'parts_db' : 'catalog_estimate';
 
       let filtered = components;
       if (componentFilter) {
@@ -78,7 +91,9 @@ export default {
         components: filtered,
         meta: {
           total: components.length,
-          generated: new Date().toISOString(),
+          source,
+          as_of: source === 'catalog_estimate' ? null : new Date().toISOString(),
+          caveat: source === 'catalog_estimate' ? 'Catalog estimates; verify seller price and availability before procurement.' : null,
           community_submissions: 0,
         }
       });
