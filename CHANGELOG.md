@@ -1,5 +1,11 @@
 # Changelog
 
+## 2026-10-02 — Consistent lens fallback publication
+
+- Select all lens fallbacks and their article corpus from one immutable generated-data commit.
+- Retain an earlier fresh snapshot only when the full upstream validator passes; disclose the selected revision and rejected newer snapshots.
+- Keep existing fallbacks when no acceptable snapshot exists. Test current, partial, missing and wholly invalid source snapshots.
+
 ## 2026-09-29 — Primary-source relationship review expansion
 
 - Added per-claim primary observations, configuration roles, integration stages and content-bound source checks.

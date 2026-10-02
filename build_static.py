@@ -2552,7 +2552,7 @@ def build(*, offline=False, data_ref=None, data_dir=None, include_private=False)
                         'market_lens.json',
                         'prediction_outcomes.json', 'calibration_scores.json', 'data_quality_score.json',
                         # Health + health history
-                        'miner_health.json', 'miner_registry.json']
+                        'miner_health.json', 'miner_registry.json', 'lens_snapshot_selection.json']
     for fname in ROOT_INTEL_FILES:
         src = os.path.join(SRC_DIR, fname)
         dst = os.path.join(BUILD_DIR, fname)

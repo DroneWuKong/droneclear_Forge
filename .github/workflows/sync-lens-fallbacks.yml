@@ -1,11 +1,18 @@
 name: Sync Validated Lens Fallbacks
 
 on:
+  pull_request:
+    paths:
+      - ".github/workflows/sync-lens-fallbacks.yml"
+      - "tools/select_lens_snapshot.py"
+      - "tests/test_lens_snapshot_selection.py"
   push:
     branches: [master]
     paths:
       - ".github/workflows/sync-lens-fallbacks.yml"
+      - "tools/select_lens_snapshot.py"
       - "workers/forge-data.js"
+      - "tests/test_lens_snapshot_selection.py"
       - "forge-source/actors.html"
       - "forge-source/ttps.html"
   schedule:
@@ -20,7 +27,18 @@ permissions:
   contents: write
 
 jobs:
+  tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - run: python -m unittest discover -s tests -p test_lens_snapshot_selection.py -v
+
   sync:
+    needs: tests
+    if: github.event_name != 'pull_request'
     name: Copy fresh Ai-Project lens artifacts
     runs-on: ubuntu-latest
     timeout-minutes: 10
@@ -46,7 +64,7 @@ jobs:
             data/threat_scores.json
             data/intel-db/articles.json
           sparse-checkout-cone-mode: false
-          fetch-depth: 1
+          fetch-depth: 60
 
       - name: Check out source validator
         uses: actions/checkout@v4
@@ -72,11 +90,11 @@ jobs:
 
       - name: Validate source artifacts
         run: |
-          python _aiproj_validator/scripts/validate_intel_lens_outputs.py \
-            --data-dir _aiproj/data \
-            --max-age-hours 36 \
-            --max-source-age-days 14 \
-            --sentinel -
+          python tools/select_lens_snapshot.py \
+            --repo _aiproj \
+            --validator _aiproj_validator/scripts/validate_intel_lens_outputs.py \
+            --output "$RUNNER_TEMP/validated-lens" \
+            --receipt forge-source/lens_snapshot_selection.json
 
       - name: Copy validated static fallbacks
         run: |
@@ -89,7 +107,7 @@ jobs:
             article_event_clusters \
             ttp_counter_gap \
             threat_scores; do
-            cp "_aiproj/data/${name}.json" "forge-source/${name}.json"
+            cp "$RUNNER_TEMP/validated-lens/${name}.json" "forge-source/${name}.json"
           done
 
       - name: Validate worker JavaScript syntax
@@ -101,6 +119,7 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git add \
+            forge-source/lens_snapshot_selection.json \
             forge-source/sanctions_evasion_graph.json \
             forge-source/adversary_bom.json \
             forge-source/component_mirroring_index.json \
