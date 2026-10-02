@@ -125,6 +125,7 @@ PAGES = {
     'patterns-home.html': 'patterns-home/index.html',
     'priorities.html': 'priorities/index.html',
     'ask-pie.html': 'ask-pie/index.html',
+    'evidence-lab.html': 'evidence-lab/index.html',
     'tools-home.html': 'tools-home/index.html',
     'software-library.html': 'software-library/index.html',
     'tracker.html': 'tracker/index.html',
@@ -902,6 +903,7 @@ _DISCLAIMER_PAGES = {
     "patterns-home.html": "patterns",
     "priorities.html": "patterns",
     "ask-pie.html": "patterns",
+    "evidence-lab.html": "patterns",
     "pie-trends.html": "patterns",
     "pie-search.html": "patterns",
     "brief-archive.html": "patterns",
@@ -1302,6 +1304,11 @@ SEO_META = {
         'Ask PIE — Cited UAS Evidence Retrieval',
         'Ask a UAS question and receive a deterministic evidence packet with source citations, dates, match reasons, collection coverage, and limitations. No generated conclusion.',
         'cited UAS evidence, Ask PIE, drone intelligence sources, public source UAS research, evidence retrieval, drone supply chain citations',
+    ),
+    'evidence-lab.html': (
+        'Evidence Lab — UAS Patterns Autonomous Research',
+        'Live aggregate status and evidence boundaries for independent, source-hashed UAS Patterns research.',
+        'UAS Patterns autonomous evidence, source provenance, deterministic adjudication, research status',
     ),
     'pie-search.html': (
         'PIE Search — Flags, Predictions, Actors, Entities & Intel',
