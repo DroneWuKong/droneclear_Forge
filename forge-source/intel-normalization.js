@@ -14,7 +14,7 @@
     const isoDay=/^\d{4}-\d{2}-\d{2}/.test(raw) ? new Date(raw.slice(0,10)) : null;
     const validDay=isoDay && Number.isFinite(isoDay.getTime()) && isoDay.toISOString().slice(0,10)===raw.slice(0,10);
     const precision = /^\d{4}$/.test(raw) ? 'year' : /^\d{4}-\d{2}$/.test(raw) ? 'month' : /^\d{4}-\d{2}-\d{2}(?:$|T)/.test(raw) && validDay && Number.isFinite(Date.parse(raw)) ? 'day' : raw ? 'unparsed' : 'unknown';
-    return {pub_date:precision === 'unparsed' ? '' : raw, publication_date_raw:raw, date_precision:precision, date_basis:raw ? 'source reported' : 'not reported', collected_at:text(row.collected_at || row.scraped_at), reference_as_of:text(meta && (meta.last_updated || meta.generated_at))};
+    return {pub_date:precision === 'unparsed' ? '' : raw, publication_date_raw:raw, date_precision:precision, date_basis:raw ? text(row.date_semantics).replace(/_/g,' ') || 'source reported' : 'not reported', collected_at:text(row.collected_at || row.scraped_at), reference_as_of:text(meta && (meta.last_updated || meta.generated_at))};
   }
   function stableReferenceId(row) {
     const value=JSON.stringify([row.program,row.awardee,row.company,row.name,row.type,row.amount,row.value,row.date]);
@@ -23,7 +23,7 @@
   }
   function reference(row, meta, fields) {
     const url = sourceUrl(row.url || row.source_url);
-    return {...fields, id:row.id || fields.id.replace(/_\d+$/, '')+'_'+stableReferenceId(row), ...dates(row, meta), url, citation_status:url ? 'source URL supplied; support not reviewed' : 'missing', source:'forge_intel', paywall:false, record_type:'reference', entities:{companies:[row.awardee, row.company].filter(Boolean)}};
+    return {...fields, id:row.id || row.reference_id || fields.id.replace(/_\d+$/, '')+'_'+stableReferenceId(row), ...dates(row, meta), url, citation_status:url ? 'source URL supplied; support not reviewed' : 'missing', source:'forge_intel', paywall:false, record_type:'reference', entities:{companies:[row.awardee, row.company].filter(Boolean)}};
   }
   function defenseRecords(fi) {
     if (!fi) return [];

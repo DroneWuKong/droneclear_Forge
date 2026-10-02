@@ -84,6 +84,13 @@ test('reference IDs remain attached to their original identity after reorder',()
   const contracts=[{program:'One',awardee:'Acme'},{program:'Two',awardee:'Zeta'}];
   assert.equal(normal.defenseRecords({contracts})[0].id,normal.defenseRecords({contracts:contracts.slice().reverse()})[1].id);
 });
+test('official award identity and date basis survive amount updates',()=>{
+  const contract={reference_id:'usaspending:CONT_AWD_ABC',program:'Drone support',awardee:'Acme',value:'$100,000',date:'2026-09-29',date_semantics:'base_obligation_date'};
+  const first=normal.defenseRecords({contracts:[contract]})[0];
+  const changed=normal.defenseRecords({contracts:[{...contract,value:'$120,000'}]})[0];
+  assert.equal(first.id,contract.reference_id);assert.equal(changed.id,first.id);
+  assert.equal(first.date_basis,'base obligation date');assert.equal(first.record_type,'reference');
+});
 test('shared generic words do not attach flags; exact structured identities and contextual names carry reasons',()=>{
   const flags=[{id:'F1',title:'Acme production update',entity:'Acme',status:'new'},{id:'F2',title:'Acme support announcement',entity:'all'},{id:'F3',title:'Other production update',entity:'Other'},{id:'F4',title:'Acme old issue',entity:'Acme',status:'resolved'}];
   assert.deepEqual(normal.relatedFlags({title:'Production update technology platform'},flags,signals),[]);

@@ -44,6 +44,7 @@ def select_snapshot(repo, validator, output, receipt, *, ref='HEAD', history=30)
             for name in NAMES:
                 (output / (name + '.json')).write_bytes((root / 'data' / (name + '.json')).read_bytes())
             payload = {'schema_version': 1, 'head_revision': head, 'selected_revision': sha,
+                'applies_to': 'repository_static_lens_fallbacks',
                 'selection': 'head' if sha == head else 'retained_validated_snapshot',
                 'max_artifact_age_hours': 36, 'max_source_age_days': 14, 'rejected_snapshots': rejected}
             receipt.parent.mkdir(parents=True, exist_ok=True)
