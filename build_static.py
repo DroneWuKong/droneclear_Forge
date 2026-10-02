@@ -25,6 +25,7 @@ from html.parser import HTMLParser
 from urllib.parse import urlsplit
 from pathlib import Path
 from tools.pages_asset_limits import PAGES_MAX_ASSET_BYTES, validate_pages_asset_sizes
+from tools.public_brand_assets import write_brand_assets
 
 SRC_DIR = 'forge-source'
 BUILD_DIR = 'build'
@@ -1776,6 +1777,7 @@ def inject_seo(html, src_name, dst_path):
     <meta name="description" content="{description}">
     <meta name="keywords" content="{keywords}">
     <link rel="canonical" href="{canonical}">
+    <link rel="icon" href="/favicon.ico" type="image/x-icon">
 
     <!-- Open Graph -->
     <meta property="og:type" content="website">
@@ -1786,6 +1788,7 @@ def inject_seo(html, src_name, dst_path):
 
     <!-- Open Graph Image -->
     <meta property="og:image" content="https://uas-forge.com/static/og-image.png">
+    <meta property="og:image:alt" content="UAS quadrotor mark">
     <meta name="twitter:image" content="https://uas-forge.com/static/og-image.png">
 
     <!-- Twitter Card -->
@@ -2531,6 +2534,7 @@ def build(*, offline=False, data_ref=None, data_dir=None, include_private=False)
         copied += 1
 
     print(f"  Copied {copied} static assets, skipped {skipped} gated files")
+    write_brand_assets(BUILD_DIR)
     version_script_dependencies()
 
     # Explicitly copy intel fallbacks to build root (served at /pie_flags.json etc.).
