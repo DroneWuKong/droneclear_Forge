@@ -1,0 +1,67 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Live aggregate status and evidence boundaries for UAS Patterns autonomous research.">
+  <title>Evidence Lab — UAS Patterns</title>
+  <style>
+    :root{color-scheme:dark;--bg:#0b0c0a;--surface:#151711;--border:#34392d;--text:#f4f1e8;--muted:#b7b2a4;--dim:#817b6d;--green:#22c55e;--amber:#f59e0b;--red:#f87171;--blue:#60a5fa;font-family:Inter,system-ui,sans-serif}
+    *{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);line-height:1.55}a{color:var(--blue)}nav{display:flex;justify-content:space-between;gap:16px;padding:14px clamp(16px,4vw,40px);border-bottom:1px solid var(--border)}nav a{text-decoration:none}.brand{font-weight:700;color:var(--green)}main{width:min(980px,calc(100% - 30px));margin:0 auto;padding:54px 0 70px}.eyebrow{color:var(--green);font:700 11px ui-monospace,monospace;text-transform:uppercase;letter-spacing:.12em}h1{margin:8px 0 14px;font-size:clamp(38px,7vw,68px);line-height:1}.lede{max-width:760px;color:var(--muted);font-size:17px}.grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;margin:34px 0}.card{padding:17px;border:1px solid var(--border);border-radius:10px;background:var(--surface)}.card strong{display:block;font:700 18px ui-monospace,monospace}.card span{display:block;margin-top:6px;color:var(--dim);font-size:11px}.ok{color:var(--green)}.warn{color:var(--amber)}.bad{color:var(--red)}section{margin-top:24px;padding:22px;border:1px solid var(--border);border-radius:12px;background:var(--surface)}h2{margin:0 0 10px;font-size:21px}p,li{color:var(--muted)}ul{margin:10px 0 0;padding-left:20px}.boundary{border-left:3px solid var(--amber)}.status-line{color:var(--dim);font:600 11px ui-monospace,monospace}footer{margin-top:34px;color:var(--dim);font-size:11px}@media(max-width:760px){.grid{grid-template-columns:repeat(2,1fr)}}@media(max-width:440px){.grid{grid-template-columns:1fr}}
+  </style>
+</head>
+<body>
+  <nav><a class="brand" href="/patterns-home/">UAS Patterns</a><a href="/ask-pie/">Ask PIE</a></nav>
+  <main>
+    <p class="eyebrow">Autonomous evidence · production status</p>
+    <h1>Evidence Lab</h1>
+    <p class="lede">Two independent research roles can collect public-source evidence. Trusted code retrieves and hashes the source bytes; deterministic rules decide whether the result abstains, escalates, or becomes eligible for human review.</p>
+
+    <div class="grid" aria-live="polite">
+      <div class="card"><strong id="service">Checking…</strong><span>research service</span></div>
+      <div class="card"><strong id="research">Checking…</strong><span>live provider</span></div>
+      <div class="card"><strong id="snapshots">Checking…</strong><span>private snapshots</span></div>
+      <div class="card"><strong id="publication">Off</strong><span>automatic publication</span></div>
+    </div>
+    <p id="status-line" class="status-line">Loading the public aggregate status…</p>
+
+    <section class="boundary">
+      <h2>Research is not approved guidance</h2>
+      <ul>
+        <li>Model agreement is not evidence.</li>
+        <li>Weak or ambiguous claims abstain; regulatory and procurement claims escalate.</li>
+        <li>Hardware, installed-device, field, flight, and safety claims always require evidence outside this software service.</li>
+        <li>No AI conclusion is written automatically to the public PIE dataset.</li>
+      </ul>
+    </section>
+
+    <section>
+      <h2>What the service preserves</h2>
+      <p>Each stored packet keeps its role, source provenance, exact-byte SHA-256 hashes, limitations, contradictions, and deterministic decision. Private review routes require the production reviewer token.</p>
+    </section>
+
+    <footer><a href="/patterns-home/">Patterns hub</a> · <a href="/ask-pie/">Cited retrieval</a> · public status contains aggregate counts only.</footer>
+  </main>
+  <script>
+    (async function(){
+      const set=(id,text,state)=>{const node=document.getElementById(id);node.textContent=text;if(state)node.className=state;};
+      try{
+        const response=await fetch('/api/autonomy/status',{headers:{accept:'application/json'}});
+        if(!response.ok)throw new Error('status unavailable');
+        const data=await response.json();
+        set('service',data.enabled?'Ready':'Unavailable',data.enabled?'ok':'bad');
+        set('research',data.live_research?'Ready':'Unavailable',data.live_research?'ok':'warn');
+        set('snapshots',data.source_snapshots?'Private':'Disabled',data.source_snapshots?'ok':'warn');
+        set('publication',data.automatic_publication?'On':'Off',data.automatic_publication?'bad':'ok');
+        const specs=(data.specs||[]).reduce((sum,row)=>sum+Number(row.count||0),0);
+        const decisions=(data.decisions||[]).reduce((sum,row)=>sum+Number(row.count||0),0);
+        document.getElementById('status-line').textContent='Schema '+data.schema_version+' · '+specs+' research specifications · '+decisions+' deterministic decisions';
+      }catch(error){
+        set('service','Unavailable','bad');set('research','Unknown','warn');set('snapshots','Unknown','warn');
+        document.getElementById('status-line').textContent='The public status endpoint could not be reached. The reviewed software-only fallback remains in effect.';
+      }
+    }());
+  </script>
+</body>
+</html>
+
