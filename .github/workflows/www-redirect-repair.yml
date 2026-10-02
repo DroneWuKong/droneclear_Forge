@@ -1,0 +1,52 @@
+name: Check or repair UAS www redirects
+on:
+  push:
+    branches: [master]
+    paths: ['tools/repair_www_redirects.py', '.github/workflows/www-redirect-repair.yml']
+  pull_request:
+    paths: ['tools/repair_www_redirects.py', 'tests/test_www_redirects.py', '.github/workflows/www-redirect-repair.yml']
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: 'Check is read-only; apply repairs only the two fixed www hostnames'
+        type: choice
+        options: [check, apply]
+        default: check
+permissions:
+  contents: read
+concurrency:
+  group: uas-www-redirect-repair
+  cancel-in-progress: false
+jobs:
+  fixtures:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: python3 -m unittest discover -s tests -p test_www_redirects.py -v
+  cloudflare:
+    if: github.event_name == 'workflow_dispatch' || github.event_name == 'push'
+    needs: fixtures
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Preflight or apply scoped redirect configuration
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN || secrets.CLOUDFLAR_API_TOKEN }}
+          UAS_REDIRECT_MODE: ${{ inputs.mode || 'apply' }}
+        run: |
+          if test "$UAS_REDIRECT_MODE" = apply; then
+            python3 tools/repair_www_redirects.py --apply
+          else
+            python3 tools/repair_www_redirects.py
+          fi
