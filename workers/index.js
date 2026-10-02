@@ -19,6 +19,7 @@ import doctrineQueue  from './doctrine-queue.js';
 import contributionSubmit from './contribution-submit.js';
 import faaLookup     from './faa-lookup.js';
 import digest        from './digest.js';
+import patternsAutonomy from './patterns-autonomy.mjs';
 
 const CORS = {
   'Access-Control-Allow-Origin': '*',
@@ -73,6 +74,11 @@ export default {
     // PIE email digest (subscribe / confirm / unsubscribe / preview / admin send)
     if (path.startsWith('/api/digest/'))
       return digest.fetch(req, env, ctx);
+
+    // Autonomous evidence: public aggregate status and explicit feedback,
+    // signed provider webhook, and reviewer-authenticated evidence routes.
+    if (path === '/api/autonomy' || path.startsWith('/api/autonomy/'))
+      return patternsAutonomy.fetch(req, env, ctx);
 
     // Legacy /.netlify/functions/* redirect → /api/* equivalents
     if (path.startsWith('/.netlify/functions/')) {
