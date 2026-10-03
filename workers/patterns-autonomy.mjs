@@ -48,6 +48,41 @@ const OFFICIAL_DOMAINS = [
   'fcc.gov', 'federalregister.gov', 'gao.gov', 'govinfo.gov', 'sam.gov',
   'usaspending.gov', 'nist.gov', 'cisa.gov', 'ntia.gov', 'itu.int',
 ];
+const RETRIEVAL_FEEDBACK_LABELS = new Set([
+  'helpful', 'wrong_match', 'missing_source', 'outdated_evidence', 'misleading_citation',
+]);
+const RETRIEVAL_REVIEW_ACTIONS = new Set([
+  'accept-as-judgment', 'reject-as-noise', 'needs-context',
+]);
+const SHADOW_THRESHOLDS = Object.freeze({
+  minimum_receipts: 100,
+  minimum_unique_queries: 25,
+  minimum_duration_seconds: 7 * 24 * 60 * 60,
+  maximum_error_basis_points: 100,
+  maximum_p95_latency_ms: 50,
+});
+const SERVING_MONITOR_THRESHOLDS = Object.freeze({
+  window_seconds: 24 * 60 * 60,
+  minimum_receipts: 100,
+  maximum_fallback_basis_points: 100,
+  maximum_p95_latency_ms: 75,
+});
+const HARD_POLICY_FALLBACKS = new Set([
+  'manifest-contract-invalid', 'parameters-digest-invalid',
+  'approval-digest-invalid', 'manifest-digest-invalid',
+  'manifest-signature-invalid', 'manifest-verification-failed',
+  'active-policy-json-invalid', 'active-policy-incompatible',
+]);
+const INGRESS_RATE_LIMITS = Object.freeze({feedback:60, shadow:300});
+const RETENTION_DAYS = Object.freeze({
+  retrieval_feedback:180,
+  retrieval_shadow:90,
+  retrieval_serving_receipts:30,
+  policy_monitor_evaluations:365,
+});
+const SHADOW_FEATURES = [
+  'coverage', 'weighted_coverage', 'direct', 'subject_in_title', 'citation_count',
+];
 const respond = (status, data, extraHeaders = {}) => new Response(JSON.stringify(data), {
   status, headers:{...JSON_HEADERS, ...extraHeaders},
 });
@@ -86,6 +121,50 @@ async function parseBody(request, limit = 262144) {
   const text = await request.text();
   if (encoder.encode(text).length > limit) throw new Error('Body too large');
   return JSON.parse(text);
+}
+
+async function opaqueRateKey(secret, route, address, bucket) {
+  const key = await crypto.subtle.importKey(
+    'raw', encoder.encode(secret), {name:'HMAC', hash:'SHA-256'}, false, ['sign']);
+  return hex(new Uint8Array(await crypto.subtle.sign(
+    'HMAC', key, encoder.encode(`${route}\x1f${address}\x1f${bucket}`),
+  ))).slice(0, 32);
+}
+
+async function consumeIngressRateLimit(request, env, route, now = Date.now()) {
+  const secret = String(env.PATTERNS_RATE_LIMIT_SECRET || '');
+  const address = String(request.headers.get('cf-connecting-ip') || '').trim();
+  if (encoder.encode(secret).length < 32 || !address) return {configured:false};
+  const windowMs = 60 * 60 * 1000;
+  const bucket = Math.floor(now / windowMs);
+  const id = await opaqueRateKey(secret, route, address, bucket);
+  const updated = new Date(now).toISOString();
+  const expiresAt = new Date((bucket + 1) * windowMs).toISOString();
+  await env.AUTONOMY_DB.prepare(
+    'INSERT INTO autonomy_ingress_rate_buckets(id,route,count,expires_at,created,updated) '
+    + 'VALUES(?1,?2,1,?3,?4,?4) ON CONFLICT(id) DO UPDATE SET '
+    + 'count=autonomy_ingress_rate_buckets.count+1,updated=excluded.updated',
+  ).bind(id, route, expiresAt, updated).run();
+  const row = await env.AUTONOMY_DB.prepare(
+    'SELECT count,expires_at FROM autonomy_ingress_rate_buckets WHERE id=?1',
+  ).bind(id).first();
+  const limit = INGRESS_RATE_LIMITS[route];
+  return {
+    configured:true, allowed:row.count <= limit, limit, count:row.count,
+    remaining:Math.max(0, limit - row.count),
+    retryAfter:Math.max(1, Math.ceil((Date.parse(row.expires_at) - now) / 1000)),
+  };
+}
+
+function rateLimitResponse(rate) {
+  if (!rate.configured) return respond(503, {
+    error:'Privacy-preserving ingress rate limiting is not configured',
+  });
+  if (!rate.allowed) return respond(429, {
+    error:'Too many autonomy observations; retry after the current window',
+  }, {'retry-after':String(rate.retryAfter), 'x-ratelimit-limit':String(rate.limit),
+    'x-ratelimit-remaining':'0'});
+  return null;
 }
 
 function decodeSecret(secret) {
