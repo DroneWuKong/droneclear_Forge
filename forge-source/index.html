@@ -7,6 +7,7 @@
 <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
 <script src="https://unpkg.com/@phosphor-icons/web"></script>
 <script src="/static/builder-values.js"></script>
+<script src="/static/build-store.js"></script>
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
 :root{
@@ -406,7 +407,7 @@ button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible{ou
 </script>
 <!-- ── /Unified UAS-Nav ─────────────────────────────────────── -->
 
-<section id="build-intro" style="padding:18px 20px;border-bottom:1px solid var(--border)"><h1 style="font-size:24px;margin:0 0 6px">My build</h1><p id="build-progress" style="color:var(--text-d);margin:0 0 12px">Choose a frame or search for a part to start your component list.</p><div style="display:flex;gap:10px;flex-wrap:wrap"><button class="btn btn-outline" id="review-build">Review selected parts</button><a class="btn btn-outline" id="build-cost-link" href="/cost/?current=1">Review cost & weight</a><a class="btn btn-outline" href="/guides/">Find a guide</a></div><p id="build-storage-note" role="status" style="font-size:12px;color:var(--text-d)">Saved in this browser. Export a copy to keep it elsewhere.</p></section>
+<section id="build-intro" style="padding:18px 20px;border-bottom:1px solid var(--border)"><h1 style="font-size:24px;margin:0 0 6px">My builds</h1><div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px"><label>Saved build <select id="saved-builds" disabled aria-label="Saved build"></select></label><button class="btn btn-outline" id="new-build" disabled type="button">New build</button><label>Name <input id="build-name" disabled aria-label="Build name" maxlength="80" style="max-width:160px"></label><button class="btn btn-outline" id="rename-build" disabled type="button">Save name</button></div><p id="build-progress" style="color:var(--text-d);margin:0 0 12px">Choose a frame or search for a part to start your component list.</p><div style="display:flex;gap:10px;flex-wrap:wrap"><button class="btn btn-outline" id="review-build">Review selected parts</button><a class="btn btn-outline" id="build-cost-link" href="/cost/?current=1">Review cost & weight</a><a class="btn btn-outline" href="/guides/">Find a guide</a></div><p id="build-storage-note" role="status" style="font-size:12px;color:var(--text-d)">Saved in this browser. Export a copy to keep it elsewhere.</p></section>
 <div id="app">
 
   <!-- Topbar -->
@@ -583,11 +584,23 @@ let DB = null;
 let allParts = [];
 let currentCat = null;
 let currentParts = [];
-let build = [];
-try {
-  const saved = JSON.parse(localStorage.getItem('forge-build') || '[]');
-  if (Array.isArray(saved)) build = saved.filter(item => item && typeof item.pid === 'string');
-} catch { /* Malformed or unavailable local storage must not prevent browsing. */ }
+let buildSession=null,buildDocument=null,buildPersisted=false,build=[];
+try{buildSession=ForgeBuildStore.open(localStorage);buildDocument=buildSession.read();build=ForgeBuildStore.active(buildDocument).items;buildPersisted=true;}
+catch(error){$('build-storage-note').textContent=error.message+' You can browse and export a temporary build.';buildDocument=ForgeBuildStore.initial(null);}
+function workspaceControls(){
+  for(const id of ['saved-builds','new-build','build-name','rename-build'])$(id).disabled=false;
+  const selected=ForgeBuildStore.active(buildDocument);selected.items=build;
+  $('saved-builds').innerHTML=buildDocument.builds.map(b=>`<option value="${esc(b.id)}"${b.id===selected.id?' selected':''}>${esc(b.name)}</option>`).join('');
+  $('build-name').value=selected.name;
+}
+function chooseBuild(id){
+  buildDocument.active_id=id;build=ForgeBuildStore.active(buildDocument).items;
+  saveBuild();workspaceControls();updateBuildUI();renderFilterBar();renderGrid();
+}
+$('saved-builds').addEventListener('change',event=>chooseBuild(event.target.value));
+$('new-build').addEventListener('click',()=>{try{buildDocument=ForgeBuildStore.create(buildDocument,'Untitled build',crypto.randomUUID());build=[];saveBuild();workspaceControls();updateBuildUI();renderFilterBar();renderGrid();}catch(error){$('build-storage-note').textContent=error.message;}});
+$('rename-build').addEventListener('click',()=>{const name=$('build-name').value.trim();if(!name){$('build-storage-note').textContent='Enter a build name.';return;}ForgeBuildStore.active(buildDocument).name=name;saveBuild();workspaceControls();});
+window.addEventListener('storage',event=>{if(event.key===ForgeBuildStore.KEY){buildPersisted=false;updateBuildUI();$('build-storage-note').textContent='Saved builds changed in another tab. Export any edits, then reload to use that version.';}});
 const values = window.ForgeBuilderValues;
 let modalPart = null;
 let activeFilters = {};
@@ -1027,23 +1040,15 @@ async function init() {
     for (const p of parts) allParts.push({...p, _cat: cat});
   }
 
-  // Resolve saved records against this catalog; stale or duplicate IDs cannot break startup.
-  const savedPids = new Set(build.map(item => item.pid));
-  build = [...savedPids].map(pid => allParts.find(part => part.pid === pid)).filter(Boolean).map(part => ({pid:part.pid,name:part.name,cat:part._cat}));
-
-  // Hydrate build from ?b= shareable URL param (overrides localStorage)
-  const bParam = new URLSearchParams(location.search).get('b');
-  if (bParam) {
-    const pids = decodeBuildParam(bParam);
-    if (pids && Array.isArray(pids)) {
-      build = pids
-        .map(pid => allParts.find(p => p.pid === pid))
-        .filter(Boolean)
-        .map(p => ({pid: p.pid, name: p.name, cat: p._cat || p.category}));
-      saveBuild();
-    }
-  }
-
+  // Retain missing IDs so catalog updates cannot silently delete user work.
+  build=build.map(item=>{const part=allParts.find(p=>p.pid===item.pid);return {...item,name:part?.name||item.name||item.pid,cat:part?._cat||item.cat||''};});
+  const params=new URLSearchParams(location.search),bParam=params.get('b');
+  if(bParam){
+    const shared=values.decodeItems(bParam);
+    if(shared){try{buildDocument=ForgeBuildStore.create(buildDocument,'Shared build',crypto.randomUUID());build=shared.map(item=>{const part=allParts.find(p=>p.pid===item.pid);return {...item,name:part?.name||item.pid,cat:part?._cat||''};});buildPersisted=false;$('build-storage-note').textContent='Shared build opened as a separate list. Edit or save its name to keep it; existing builds are unchanged.';}catch(error){$('build-storage-note').textContent=error.message+' Your saved build is still shown.';}}
+    else $('build-storage-note').textContent='The shared build link is invalid. Your saved build is still shown.';
+  }else if(params.get('build')&&buildDocument.builds.some(b=>b.id===params.get('build'))){buildDocument.active_id=params.get('build');build=ForgeBuildStore.active(buildDocument).items;}
+  workspaceControls();
   renderSidebar();
   $('loader').style.display = 'none';
   $('grid').style.display = 'grid';
@@ -1243,7 +1248,7 @@ function closeModal() {
 function addToBuild(pid) {
   const p = allParts.find(x => x.pid === pid);
   if (!p || build.some(b => b.pid === pid)) return;
-  build.push({pid: p.pid, name: p.name, cat: p._cat || p.category});
+  build.push({pid: p.pid, name: p.name, cat: p._cat || p.category,qty:1});
   saveBuild();
   updateBuildUI();
   renderFilterBar();
@@ -1271,11 +1276,13 @@ function clearBuild() {
 }
 
 function saveBuild() {
-  try { localStorage.setItem('forge-build', JSON.stringify(build)); $('build-storage-note').textContent='Saved in this browser. Export a copy to keep it elsewhere.'; } catch(e) { $('build-storage-note').textContent='Browser storage is unavailable. Export this build before leaving.'; }
+  ForgeBuildStore.active(buildDocument).items=build;
+  try{if(!buildSession)throw new Error('Browser storage is unavailable.');buildSession.save(buildDocument);buildPersisted=true;$('build-storage-note').textContent='Saved in this browser. Export a copy to keep it elsewhere.';}
+  catch(error){buildPersisted=false;$('build-storage-note').textContent=error.message+' Export before leaving.';}
 }
 
 // ── Share ──
-function encodeBuildParam() { return values.encode(build.map(item => item.pid)); }
+function encodeBuildParam() { return values.encodeItems(build); }
 function decodeBuildParam(encoded) { return values.decode(encoded); }
 function shareBuild() {
   if (!build.length) { alert('Build is empty — add parts before sharing.'); return; }
@@ -1292,7 +1299,7 @@ function shareBuild() {
 
 function updateBuildUI() {
   $('build-progress').textContent=build.length ? build.length+' selected parts. Add parts below; review your list and its known cost when ready.' : 'Choose a frame or search for a part to start your component list.';
-  $('build-cost-link').href='/cost/?current=1&b='+values.encode(build.map(item=>item.pid));
+  $('build-cost-link').href=buildPersisted?'/cost/?build='+encodeURIComponent(buildDocument.active_id):'/cost/?b='+values.encodeItems(build);
   $('build-count').textContent = build.length;
   $('build-n').textContent = build.length;
 
@@ -1311,12 +1318,19 @@ function updateBuildUI() {
     <div class="build-slot">
       <span class="slot-cat">${esc(fmtCat(b.cat||''))}</span>
       <span class="slot-name" title="${esc(b.name)}">${esc(b.name)}</span>
+      <label style="font-size:11px">Qty <input type="number" min="1" max="999" step="1" value="${b.qty||1}" data-quantity="${esc(b.pid)}" aria-label="Quantity for ${esc(b.name)}" style="width:55px"></label>
       <button class="slot-remove" data-pid="${esc(b.pid)}" title="Remove"><i class="ph ph-x"></i></button>
     </div>
   `).join('');
   slots.querySelectorAll('.slot-remove').forEach(btn => {
     btn.addEventListener('click', () => removeFromBuild(btn.dataset.pid));
   });
+
+  slots.querySelectorAll('[data-quantity]').forEach(input=>input.addEventListener('change',()=>{
+    const value=Number(input.value),item=build.find(row=>row.pid===input.dataset.quantity);
+    if(!Number.isInteger(value)||value<1||value>999){input.value=item.qty||1;$('build-storage-note').textContent='Quantity must be a whole number from 1 to 999.';return;}
+    item.qty=value;saveBuild();updateBuildUI();
+  }));
 
   // ── Live BOM panel ──
   const CAT_COLORS = {
@@ -1328,7 +1342,7 @@ function updateBuildUI() {
   const summary = values.totals(rows);
   const totalCost = summary.price, totalWeight = summary.weight;
   const catWeight = {};
-  rows.forEach(row => { if (row.weight != null) catWeight[row.cat] = (catWeight[row.cat] || 0) + row.weight; });
+  rows.forEach(row => { if (row.weight != null) catWeight[row.cat] = (catWeight[row.cat] || 0) + row.weight*(row.qty||1); });
   const costCls = summary.unknownPrices ? 'amber' : totalCost < 350 ? 'green' : totalCost < 700 ? 'amber' : 'red';
   $('bom-cost').textContent = rows.length === summary.unknownPrices ? '—' : '$' + totalCost.toFixed(2);
   $('bom-cost').className = 'bom-gauge-val ' + costCls;
@@ -1347,7 +1361,7 @@ function updateBuildUI() {
   ).join('') : '';
 
   $('bom-rows').innerHTML = rows.map(row =>
-    `<div class="bom-row"><span class="bom-name">${esc(row.name)}</span><span class="bom-price">${row.price == null ? esc(row.priceNote) : '$' + row.price.toFixed(2)}</span></div>`
+    `<div class="bom-row"><span class="bom-name">${esc(row.name)} × ${row.qty||1}</span><span class="bom-price">${row.price == null ? esc(row.priceNote) : '$' + (row.price*(row.qty||1)).toFixed(2)}</span></div>`
   ).join('');
 
   bom.style.display = 'block';

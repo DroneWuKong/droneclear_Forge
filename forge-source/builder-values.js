@@ -32,13 +32,13 @@
     return build.map(item => {
       const part = byPid.get(item.pid);
       const value = price(part);
-      return { pid: item.pid, name: part?.name || item.name || item.pid, cat: part?._cat || item.cat || '', price: value.amount, priceNote: value.note, weight: weight(part) };
+      return { pid: item.pid, name: part?.name || item.name || item.pid, cat: part?._cat || item.cat || '', qty:Number.isInteger(item.qty)&&item.qty>0?item.qty:1, price: value.amount, priceNote: value.note, weight: weight(part) };
     });
   }
   function totals(items) {
     return items.reduce((total, item) => {
-      if (item.price == null) total.unknownPrices++; else total.price += item.price;
-      if (item.weight == null) total.unknownWeights++; else total.weight += item.weight;
+      if (item.price == null) total.unknownPrices++; else total.price += item.price * (item.qty || 1);
+      if (item.weight == null) total.unknownWeights++; else total.weight += item.weight * (item.qty || 1);
       return total;
     }, { price: 0, weight: 0, unknownPrices: 0, unknownWeights: 0 });
   }
@@ -46,9 +46,9 @@
   function csv(items) {
     const total = totals(items);
     const cells = [
-      ['PID', 'Name', 'Category', 'Price_USD', 'Weight_g', 'Price_Notes', 'Weight_Notes'],
-      ...items.map(item => [item.pid, item.name, item.cat, item.price, item.weight, item.priceNote, item.weight == null ? 'Weight unavailable' : '']),
-      ['', '', total.unknownPrices || total.unknownWeights ? 'KNOWN TOTAL' : 'TOTAL', total.price.toFixed(2), total.weight.toFixed(1), total.unknownPrices ? `${total.unknownPrices} part prices excluded` : '', total.unknownWeights ? `${total.unknownWeights} part weights excluded` : ''],
+      ['PID', 'Name', 'Category', 'Price_USD', 'Weight_g', 'Price_Notes', 'Weight_Notes', 'Quantity'],
+      ...items.map(item => [item.pid, item.name, item.cat, item.price, item.weight, item.priceNote, item.weight == null ? 'Weight unavailable' : '', item.qty || 1]),
+      ['', '', total.unknownPrices || total.unknownWeights ? 'KNOWN TOTAL' : 'TOTAL', total.price.toFixed(2), total.weight.toFixed(1), total.unknownPrices ? `${total.unknownPrices} part prices excluded` : '', total.unknownWeights ? `${total.unknownWeights} part weights excluded` : '', ''],
     ];
     return cells.map(row => row.map(csvCell).join(',')).join('\r\n');
   }
@@ -69,6 +69,21 @@
       return Array.isArray(pids) && pids.every(pid => typeof pid === 'string') ? pids : null;
     } catch { return null; }
   }
+  function encodeItems(items) {
+    // Use the existing UTF-8 transport; legacy arrays of IDs remain accepted.
+    return encode({schema_version:2,items:items.map(item=>({pid:item.pid,qty:item.qty||1}))});
+  }
+  function decodeItems(encoded) {
+    try {
+      const normalized=encoded.replace(/-/g,'+').replace(/_/g,'/');
+      const binary=atob(normalized+'='.repeat((4-normalized.length%4)%4));
+      let raw;try{raw=new TextDecoder('utf-8',{fatal:true}).decode(Uint8Array.from(binary,c=>c.charCodeAt(0)));}catch{raw=binary;}
+      const value=JSON.parse(raw);
+      const items=Array.isArray(value)?value.map(pid=>({pid,qty:1})):value?.schema_version===2?value.items:null;
+      if(!Array.isArray(items)||items.length>1000||items.some(i=>!i||typeof i.pid!=='string'||!i.pid||i.pid.length>240||!Number.isInteger(i.qty)||i.qty<1||i.qty>999)||new Set(items.map(i=>i.pid)).size!==items.length)return null;
+      return items;
+    }catch{return null;}
+  }
   function currentBuildModel(saved, encoded) {
     let rows=Array.isArray(saved)?saved.filter(row=>row && typeof row.pid==='string'):[];
     const shared=encoded ? decode(encoded) : null;
@@ -77,5 +92,5 @@
     for(const row of rows){if(seen.has(row.pid))continue;seen.add(row.pid);const slot=typeof row.cat==='string'?row.cat:'selected_parts';(relations[slot] ||= []).push(row.pid);}
     return {pid:'__current_build__',name:'My current build',relations};
   }
-  return { currentBuildModel, finiteAmount, price, weight, rows, totals, csv, encode, decode };
+  return { encodeItems, decodeItems, currentBuildModel, finiteAmount, price, weight, rows, totals, csv, encode, decode };
 });

@@ -985,6 +985,7 @@ async function loadResearchArticles(offset=0){
   const scope=newsScope;
   const result=await AskPieRetrieval.researchRequest({record_type:'article',scope,limit:'100',offset:String(offset)});
   if(result.data.query?.scope!==scope)throw new Error('News filtering is not available on this API release. Open Research to search the corpus.');
+  if(offset && ARTICLE_WINDOW.meta?.input_revision!==result.data.meta?.input_revision)throw new Error('The news snapshot changed. Select a scope again to restart from the latest records.');
   ARTICLE_WINDOW={total:result.data.total_matches || 0,meta:result.data.meta,offset:offset+result.data.records.length};
   const el=document.getElementById('last-updated');
   if(el) el.textContent=`${ARTICLE_WINDOW.offset} of ${ARTICLE_WINDOW.total} ${scope==='uas'?'UAS text-matched':'full-corpus'} articles loaded · source dates shown below`;
@@ -992,11 +993,11 @@ async function loadResearchArticles(offset=0){
   return result.data.records.map(row=>({aid:row.id,title:row.title,summary:row.summary,pub_date:row.date,site:row.source,url:row.sourceUrl || row.citations[0]?.url || '',article_type:row.article_type,vertical:row.vertical,source_date_status:row.source_date_status,_research_record:row.destination,_body_deferred:true,entities:row.entities || {}}));
 }
 async function changeNewsScope(){
-  const serial=++newsGeneration;newsScope=document.getElementById('news-scope').value;
+  const previousScope=newsScope;const serial=++newsGeneration;newsScope=document.getElementById('news-scope').value;
   const next=document.getElementById('news-next');next.disabled=true;document.getElementById('news-scope').disabled=true;
   document.getElementById('last-updated').textContent='Loading articles…';
-  try{const rows=await loadResearchArticles();if(serial!==newsGeneration)return;ALL=rows;feedLimit=100;rFi();renderFeed();}
-  catch(error){document.getElementById('last-updated').textContent=error.message+' Previous results remain displayed.';}
+  try{const rows=await loadResearchArticles();if(serial!==newsGeneration)return;ALL=rows;feedLimit=100;cC=cS=cR='all';rFi();renderFeed();}
+  catch(error){newsScope=previousScope;document.getElementById('news-scope').value=previousScope;document.getElementById('last-updated').textContent=error.message+' Previous results remain displayed.';}
   finally{if(serial===newsGeneration){next.disabled=false;document.getElementById('news-scope').disabled=false;}}
 }
 async function moreNews(){
@@ -1005,8 +1006,9 @@ async function moreNews(){
   catch(error){document.getElementById('last-updated').textContent=error.message;}
   finally{button.disabled=false;document.getElementById('news-scope').disabled=false;}
 }
+let newsLoadError=null;
 Promise.all([
-  loadResearchArticles(),
+  loadResearchArticles().catch(error=>{newsLoadError=error;return[];}),
   fetch('/data/defense/defense_master.json').then(r=>r.ok?r.json():{records:[]}).catch(()=>({records:[]})),
   fetch('/data/commercial/commercial_master.json').then(r=>r.ok?r.json():{records:[]}).catch(()=>({records:[]})),
   fetch('/data/dfr/dfr_master.json').then(r=>r.ok?r.json():{records:[]}).catch(()=>({records:[]})),
@@ -1038,6 +1040,7 @@ Promise.all([
   const pfc=document.getElementById('pie-footer-count');if(pfc)pfc.textContent=`PIE (${(pieFlags||[]).length} flags, ${(piePreds||[]).length} predictions)`;
   const sc=document.getElementById('sol-count');if(sc){const n=(SOL_DATA.solicitations||[]).length;sc.textContent=n>0?n:'—';}
   [['rFi',rFi],['renderFeed',renderFeed],['renderDFR',renderDFR],['renderDefense',renderDefense],['renderCommercial',renderCommercial],['renderPIESidebar',renderPIESidebar],['rP',rP],['rC',rC],['rR',rR]].forEach(([name,fn])=>{try{fn();}catch(e){console.error(name+' error:',e);}});
+  if(newsLoadError){document.getElementById('last-updated').textContent=newsLoadError.message;document.getElementById('feed-list').textContent='News is unavailable. Choose a scope to retry, or open Research. Reference desks remain available.';}
 }).catch(e=>{document.getElementById('feed-list').innerHTML=`<div style="text-align:center;padding:40px;color:var(--red)">Error: ${esc(e.message)}</div>`;});
 
 

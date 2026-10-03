@@ -375,7 +375,7 @@
   // Restrict text matching to article content; publisher footers and entity names
   // alone cannot turn an unrelated article into a UAS result.
   function isUasArticle(record) {
-    return /\b(?:drones?|uas|uavs?|suas|fpv|bvlos|quadcopters?|multirotors?|uncrewed aircraft|unmanned (?:aircraft|aerial|air vehicle)|drone-as-first-responder)\b/i.test([record.title,record.summary].filter(Boolean).join(' '));
+    return /\b(?:drones?|uas|uavs?|suas|fpv|bvlos|rpas|quadcopters?|multirotors?|uncrewed aircraft|unmanned (?:aircraft|aerial|air vehicle)|drone-as-first-responder)\b/i.test(withoutPublisherBoilerplate(normalize([record.title,record.summary].filter(Boolean).join(' '))));
   }
   function sourceDateStatus(record, now) {
     const date=parseDate(recordSourceDate(record));

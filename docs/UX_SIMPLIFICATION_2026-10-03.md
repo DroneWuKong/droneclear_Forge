@@ -22,45 +22,30 @@ The product needs three clear entrances: **Research (Patterns), Build (Forge), L
 2. Update research presentation and indexed news projection together.
 3. Connect current-build cost and correct incomplete totals.
 4. Run focused regression suites, an offline production build, and the all-page static audit. Inspect mobile and desktop in a browser where preview access permits.
-5. Review the pull request; release the data worker with its matching static site. The News UI requires the new `query.scope` contract and reports an explicit error against an older worker rather than presenting an unfiltered feed.
+5. Review the pull request; release the Pages build with its bundled API functions. The News UI requires the new `query.scope` contract and reports an explicit error against an older worker rather than presenting an unfiltered feed.
 
-## Remaining product work after this change
+## Implementation follow-up
 
-These need separate implementation or user evidence; this branch does not claim to solve them:
+Research and implementation details are in [UX_IMPLEMENTATION_RESEARCH_2026-10-03.md](UX_IMPLEMENTATION_RESEARCH_2026-10-03.md).
 
-- **Handbook repository:** adopt the same three-area navigation and add task-oriented chapter search. This repository links to the existing Handbook; its source is a separate project.
-- **Build workspace depth:** unify named/multiple builds, quantities, assembly records and specialist wiring/stack tools only after specifying a versioned shared model. Today only Builder and Cost share the current component list. Existing wiring, guide and audit tools must not claim they automatically consume it.
-- **Research relevance:** validate the transparent title/summary filter against a labeled editorial sample. Measure false positives/negatives before adding trained ranking or changing upstream ingestion. A text match is not a verified relevance judgment.
-- **Usage validation:** have first-time and returning users perform four tasks: find today's change, research a question with citations, resume a build and inspect its known cost, find an advanced tool. Record completion, wrong turns and time. No usability improvement percentage is claimed without this evidence.
-- **Retirement decisions:** review usage and owners before removing routes, data, subscriptions, or specialist functions. Stable links are preserved by this change.
+- Named builds, quantities, versioned storage, legacy share support and Cost continuity are implemented in this branch.
+- Guide, Audit, Stack and Wiring now display the current build as read-only context with a return link. Automatic field mapping and assembly records remain separate work.
+- The companion Handbook change adopts Research / Build / Learn, compact chapter navigation and task-oriented search starters.
+- Editorial relevance sampling and observed usability sessions still require representative labels and real users. No improvement percentage or editorial accuracy is claimed.
+- No routes, subscriptions or specialist tools are retired without usage and owner review.
 
 ## Release checks
 
-- Deploy worker before or atomically with static UI; verify scope echo, pagination and future-date samples on the deployed API.
+- Verify the Pages deployment includes matching API functions: `functions/api/[[path]].js` imports `workers/index.js`. Check scope echo, pagination and future-date samples on that deployment; no independent worker rollout is required by this repository routing.
 - Check 390px mobile and desktop: menu open/close, keyboard focus, directory filter, empty/loading/error states, search/save/restore, and build-cost-return.
 - Confirm private paths still require Cloudflare Access and the disabled public DDG entry stays disabled.
 - Compare live daily counts and coverage against the pinned publication. An offline build verifies code and local snapshots, not live ingestion health.
-- Monitor API errors, navigation dead ends, and failed task reports. Roll back the matched site/worker release if core journeys regress.
+- Monitor API errors, navigation dead ends, and failed task reports. Roll back the matched Pages release if core journeys regress.
 
-## Verification of this branch
+## Verification
 
-- Offline production build: passed, preserving 4,209 component records, 335 model records and 43 categories from local inputs.
-- Generated HTML audit: 95 files, 29 datasets, zero blocking findings. One existing warning: the initially empty, hidden Clear dossier button in the private Supply Web page receives its text at runtime.
-- Eleven Node test files passed: research retrieval and Worker projection, Builder values, new UX regressions, private access context, existing site polish, public quality surfaces, daily work and data projections.
-- Python navigation rewrite and asset checks (five cases) and directory coverage (one case): passed.
-- New cases cover filtering before pagination, full-corpus access, source-date flags, metadata preservation, current-build ID continuity, and Cost handling of missing/range/zero values. New tests are included in CI.
-- Visual/browser verification: **not completed**. The cloud browser rejects the local preview URL with `ERR_BLOCKED_BY_CLIENT`. Mobile layout and live API/browser interactions remain explicit release gates; no screenshot or usability-test success is claimed.
-- [Route inventory](UX_ROUTE_INVENTORY.csv) lists every mapped route, area, discoverability and extent of inspection. The audit covers source and generated output; it does not claim that every tool or authenticated workflow was exercised.
+Source and built audits, offline build, Python fixtures, Node regressions and CI browser acceptance are tracked in the implementation research document and draft PR. Browser access to the hosted preview is blocked by automatic approval review at Cloudflare Access; authenticated preview review remains a release gate.
 
-## Concrete follow-up backlog
-
-| Order | Owner role | Work item | Done when |
-|---|---|---|---|
-| 1 | Frontend/release | Preview this branch with its matching data worker | Four core journeys work at 390px and desktop; keyboard menu and focus pass |
-| 2 | Frontend | Carry shared task navigation into the Handbook repository | Research/Build/Learn labels and destinations match; existing chapter anchors work |
-| 3 | Product + frontend | Specify and implement versioned named builds and quantities | Current build migrates without loss; quantity edits agree across parts, cost and export |
-| 4 | Frontend | Integrate remaining build tools one at a time | Each tool declares what build fields it reads/writes and preserves the return path |
-| 5 | Research/data | Label a representative sample of relevant and irrelevant news | Report precision/recall and date errors; adjust the documented filter based on evidence |
-| 6 | Product | Observe new and returning users on the four core tasks | Record wrong turns and completion; prioritize remaining friction from observations |
+[Route inventory](UX_ROUTE_INVENTORY.csv) lists every mapped route and inspection coverage. Source/generated-output coverage is not a claim that every authenticated workflow has been exercised.
 
 No production deployment or tool retirement is included in this branch.

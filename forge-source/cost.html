@@ -288,7 +288,7 @@
         </main>
     </div>
 
-    <script src="/static/builder-values.js"></script>
+    <script src="/static/builder-values.js"></script><script src="/static/build-store.js"></script>
     <script>
     (function() {
         'use strict';
@@ -488,19 +488,17 @@
                     return Object.values(rels).some(v => v && v.length > 0);
                 });
 
-                let saved=[];
-                try{saved=JSON.parse(localStorage.getItem('forge-build')||'[]');}catch{}
                 const params=new URLSearchParams(location.search),encoded=params.get('b');
-                const current=ForgeBuilderValues.currentBuildModel(saved,encoded);
-                builds.unshift(current);
+                let collection;try{collection=ForgeBuildStore.open(localStorage).read();}catch(error){document.getElementById('cost-context').textContent=error.message;collection=ForgeBuildStore.initial(null);}
+                let savedModels=collection.builds.map(ForgeBuildStore.model);
+                const current=savedModels.find(b=>b.pid==='saved:'+(params.get('build')||collection.active_id))||savedModels[0];
+                selectedBuild=current;
+                if(encoded){const shared=ForgeBuilderValues.decodeItems(encoded);if(shared){selectedBuild=ForgeBuildStore.model({id:'shared',name:'Shared build',items:shared});savedModels.unshift(selectedBuild);document.getElementById('return-build').href='/builder/?view=build&b='+encodeURIComponent(encoded);}else document.getElementById('cost-context').textContent='Invalid shared build link; saved build is shown.';}
+                else document.getElementById('return-build').href='/builder/?view=build&build='+encodeURIComponent((params.get('build')||collection.active_id));
+                builds=[...savedModels,...builds];
                 const context=document.getElementById('cost-context');
-                context.textContent='Current build uses one of each selected part; catalog models use their recorded quantities. Shipping and assembly completeness are not assessed.';
-                if(encoded && ForgeBuilderValues.decode(encoded))document.getElementById('return-build').href='/builder/?view=build&b='+encodeURIComponent(encoded);
+                context.append(document.createTextNode(' Quantities come from the saved list or catalog model. Shipping and assembly completeness are not assessed.'));
                 renderBuildSelector();
-                if (builds.length) {
-                    selectedBuild = builds[0];
-                    renderBuildSelector();
-                }
                 renderBOM();
             } catch (err) {
                 console.error(err);

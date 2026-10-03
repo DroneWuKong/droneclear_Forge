@@ -39,3 +39,9 @@ test('Cost renderer excludes quote/range prices, preserves zero, and labels part
  assert.match(elements['cost-gauges'].innerHTML,/Known cost/);assert.match(elements['cost-gauges'].innerHTML,/2 prices unavailable/);assert.match(elements['cost-gauges'].innerHTML,/\$12/);
  assert.match(elements['bom-output'].innerHTML,/\$0\.00/);assert.match(elements['bom-output'].innerHTML,/Known totals/);assert.doesNotMatch(elements['bom-output'].innerHTML,/NaN/);
 });
+
+test('UAS boundary cases exclude publisher boilerplate and include explicit RPAS reporting',()=>{
+ const data=index([article('boilerplate','Baseball results. The information portal for unmanned air system traffic management UTM and counter UAS C UAS systems.'),article('rpas','RPAS inspection trials begin')]);
+ const result=ask.projectResearch(data,new URLSearchParams({scope:'uas'}));
+ assert.deepEqual(result.records.map(r=>r.id),['rpas']);
+});
