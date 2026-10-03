@@ -444,7 +444,7 @@ _MOBILE_CSS = """<style>
 _UNIFIED_NAV = r"""<!-- ── Unified UAS navigation (Research / Build / Learn) ──────────────── -->
 <style id="dc-unified-nav-styles">
 #dc-nav{display:flex;align-items:center;justify-content:space-between;padding:0 16px;height:44px;background:#0c0c0a;border-bottom:1px solid #1e1e18;position:sticky;top:0;z-index:500;font-family:'DM Sans',system-ui,sans-serif}
-#dc-nav~nav.nav{top:44px}
+#dc-nav~nav.nav{top:var(--uas-header-height,44px)}
 @media(max-width:680px){#dc-nav-page,#dc-nav-sep{display:none}#dc-nav{padding:0 8px}#dc-nav-right{gap:4px}#dc-nav{height:auto;min-height:44px;flex-wrap:wrap;gap:4px;padding-top:4px;padding-bottom:4px}.dc-nav-top-btn{padding:0 7px}}
 #dc-nav-left{display:flex;align-items:center;gap:10px;min-width:0;flex:1}
 #dc-nav-brand{font:700 13px 'JetBrains Mono',monospace;color:var(--uas-accent,#f4c56a);text-decoration:none;letter-spacing:-.02em;flex-shrink:0}
@@ -459,9 +459,9 @@ _UNIFIED_NAV = r"""<!-- ── Unified UAS navigation (Research / Build / Learn)
 .dc-nav-top-btn.dc-active{border-color:var(--uas-accent,#f4c56a);color:var(--uas-accent,#f4c56a);background:var(--uas-tint,#241e12)}
 .dc-nav-top-btn .dc-nav-top-ico{font-size:14px;line-height:1}
 @media (max-width:520px){.dc-nav-top-btn span.dc-nav-top-label{display:none}}
-#dc-overlay{position:fixed;inset:0;z-index:498;background:rgba(0,0,0,.6);backdrop-filter:blur(4px);opacity:0;pointer-events:none;transition:opacity .25s}
+#dc-overlay{position:fixed;inset:0;z-index:501;background:rgba(0,0,0,.6);backdrop-filter:blur(4px);opacity:0;pointer-events:none;transition:opacity .25s}
 #dc-overlay.open{opacity:1;pointer-events:auto}
-#dc-drawer{position:fixed;top:0;left:0;bottom:0;z-index:499;width:280px;max-width:calc(85vw / var(--uas-text-scale,1));background:#111110;border-right:1px solid #2a2a22;transform:translateX(-100%);transition:transform .3s cubic-bezier(.4,0,.2,1);display:flex;flex-direction:column;overflow-y:auto}
+#dc-drawer{position:fixed;top:0;left:0;bottom:0;z-index:502;width:280px;max-width:calc(85vw / var(--uas-text-scale,1));background:#111110;border-right:1px solid #2a2a22;transform:translateX(-100%);transition:transform .3s cubic-bezier(.4,0,.2,1);display:flex;flex-direction:column;overflow-y:auto}
 #dc-drawer.open{transform:translateX(0)}
 #dc-drawer[hidden]{display:none!important}
 #dc-drawer :focus-visible,#dc-hamburger:focus-visible{outline:2px solid var(--uas-accent,#f4c56a);outline-offset:3px}

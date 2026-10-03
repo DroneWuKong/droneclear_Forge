@@ -19,6 +19,7 @@ assert.ok(await page.locator('#dc-drawer-close').evaluate(el=>el===document.acti
 await page.keyboard.press('Shift+Tab');assert.ok(await page.locator('#dc-drawer').evaluate(el=>el.contains(document.activeElement)));
 await page.keyboard.press('Tab');assert.ok(await page.locator('#dc-drawer-close').evaluate(el=>el===document.activeElement));
 await page.keyboard.press('Escape');assert.equal(await page.locator('#dc-drawer').isVisible(),false);assert.equal(await page.locator('#dc-hamburger').getAttribute('aria-expanded'),'false');assert.ok(await page.locator('#dc-hamburger').evaluate(el=>el===document.activeElement));
+await page.locator('#dc-hamburger').click();await page.locator('#dc-drawer-close').click();assert.equal(await page.locator('#dc-drawer').isVisible(),false);
 for(const width of [320,390,1440]){await page.setViewportSize({width,height:900});for(const value of ['default','large','xlarge']){
 await page.locator('[data-text-size-control]').click();await page.locator('.uas-text-size-panel:not([hidden]) input[value="'+value+'"]').check();await page.waitForTimeout(40);
 const box=await page.locator('.uas-text-size-panel:not([hidden])').boundingBox();assert.ok(box.x>=0&&box.x+box.width<=width+1,'Reading popup must stay in viewport');
