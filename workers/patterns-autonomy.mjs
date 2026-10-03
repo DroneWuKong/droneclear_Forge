@@ -4,6 +4,14 @@
  * then deterministic policy marks a claim eligible, abstained, or exceptional.
  * Nothing in this module publishes a model conclusion to PIE_OUTPUTS.
  */
+import {
+  canonicalJson, loadActiveRetrievalPolicy, sha256, verifyPolicyManifest,
+} from './retrieval-policy.mjs';
+import {
+  createActivationDecision, createRollbackDecision, improvementDecisionDigest,
+  validateApprovedDecisionChain,
+} from './portfolio-improvement.mjs';
+
 const JSON_HEADERS = {
   'content-type': 'application/json',
   'cache-control': 'no-store',
@@ -102,6 +110,529 @@ async function recordEvent(env, entityType, entityId, eventType, data) {
     'INSERT OR IGNORE INTO evidence_events(id,entity_type,entity_id,event_type,data,created) VALUES(?1,?2,?3,?4,?5,?6)',
   ).bind(id, entityType, entityId, eventType, serialized, now).run();
   return id;
+}
+
+function feedbackOriginAllowed(request) {
+  const origin = request.headers.get('origin') || '';
+  if (origin === 'https://uas-patterns.com' || origin === 'https://www.uas-patterns.com') return true;
+  try {
+    const url = new URL(origin);
+    return url.protocol === 'http:' && ['localhost', '127.0.0.1'].includes(url.hostname);
+  } catch {
+    return false;
+  }
+}
+
+function finiteNumber(value, minimum, maximum) {
+  const number = Number(value);
+  return Number.isFinite(number) && number >= minimum && number <= maximum ? number : null;
+}
+
+function cleanShadowRegistryBundle(input) {
+  const candidate = input?.candidate;
+  const replay = input?.replay;
+  const holdout = input?.chronological_evaluation;
+  const adjustments = candidate?.parameters?.feature_adjustments;
+  const candidateVersion = String(candidate?.candidate_version || '');
+  const bundleSha256 = String(input?.bundle_sha256 || '');
+  const adjustmentKeys = adjustments && typeof adjustments === 'object'
+    ? Object.keys(adjustments).sort() : [];
+  if (
+    input?.schema_version !== 'retrieval-shadow-registry-bundle-v1'
+    || input?.state !== 'registered-shadow-only'
+    || input?.serving_pointer !== null
+    || input?.promotion_eligible !== false
+    || !/^candidate-[0-9a-f]{16}$/.test(candidateVersion)
+    || input?.candidate_version !== candidateVersion
+    || !/^[0-9a-f]{64}$/.test(bundleSha256)
+    || candidate?.schema_version !== 'retrieval-policy-candidate-v1'
+    || candidate?.policy_id !== 'ask-pie-ranking'
+    || candidate?.candidate_built !== true
+    || candidate?.writes_to_serving !== false
+    || candidate?.promotion_eligible !== false
+    || candidate?.compatible_feature_schema !== 'ask-pie-feedback-features-v1'
+    || !/^[0-9a-f]{64}$/.test(String(candidate?.frozen_corpus_sha256 || ''))
+    || candidate?.parameters?.base_score_weight !== 1
+    || adjustmentKeys.join('|') !== [...SHADOW_FEATURES].sort().join('|')
+    || !SHADOW_FEATURES.every(name => {
+      const value = adjustments[name];
+      return Number.isFinite(value) && value >= -12 && value <= 12 && value % 4 === 0;
+    })
+    || replay?.schema_version !== 'retrieval-frozen-replay-v1'
+    || replay?.candidate_version !== candidateVersion
+    || !/^[0-9a-f]{64}$/.test(String(replay?.replay_evidence_sha256 || ''))
+    || replay?.shadow_eligible !== true
+    || replay?.promotion_eligible !== false
+    || holdout?.schema_version !== 'retrieval-chronological-evaluation-v1'
+    || holdout?.candidate_version !== candidateVersion
+    || !/^[0-9a-f]{64}$/.test(String(holdout?.holdout_evidence_sha256 || ''))
+    || holdout?.chronological_holdout_passed !== true
+    || holdout?.promotion_eligible !== false
+  ) throw new Error('Invalid shadow registry bundle');
+  const incumbentVersion = String(candidate.incumbent_version || '');
+  if (!incumbentVersion || incumbentVersion.length > 128) {
+    throw new Error('Invalid shadow incumbent version');
+  }
+  return {
+    schema_version: 'retrieval-shadow-runtime-v1',
+    policy_id: 'ask-pie-ranking',
+    candidate_version: candidateVersion,
+    incumbent_version: incumbentVersion,
+    bundle_sha256: bundleSha256,
+    parameters: {
+      base_score_weight: 1,
+      feature_adjustments: Object.fromEntries(
+        SHADOW_FEATURES.map(name => [name, Number(adjustments[name])]),
+      ),
+      feature_transforms: {
+        citation_count: 'min(value,4)/4',
+        booleans: '0-or-1',
+      },
+    },
+    evidence: {
+      frozen_corpus_sha256: String(candidate.frozen_corpus_sha256 || ''),
+      replay_evidence_sha256: String(replay.replay_evidence_sha256 || ''),
+      holdout_evidence_sha256: String(holdout.holdout_evidence_sha256 || ''),
+    },
+    state: 'registered-shadow-only',
+    serving_changes: false,
+    promotion_eligible: false,
+  };
+}
+
+function cleanShadowObservation(input, runtime) {
+  const observationId = String(input?.observation_id || '').toLowerCase();
+  const query = String(input?.query || '').trim();
+  const inputRevision = String(input?.input_revision || '').trim();
+  if (
+    input?.schema_version !== 1
+    || !/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/.test(observationId)
+    || !query || query.length > 300
+    || input?.policy_id !== 'ask-pie-ranking'
+    || input?.policy_version !== runtime.incumbent_version
+    || !inputRevision || inputRevision.length > 128
+    || !Array.isArray(input?.results) || input.results.length < 1 || input.results.length > 100
+  ) throw new Error('Invalid shadow observation');
+  const keys = new Set();
+  const positions = new Set();
+  const results = input.results.map(item => {
+    const recordKey = String(item?.record_key || '').trim();
+    const position = finiteNumber(item?.position, 1, 100);
+    const features = item?.features;
+    const score = finiteNumber(features?.score, -100000, 100000);
+    const coverage = finiteNumber(features?.coverage, 0, 1);
+    const weightedCoverage = finiteNumber(features?.weighted_coverage, 0, 1);
+    const citationCount = finiteNumber(features?.citation_count, 0, 100);
+    if (
+      !recordKey || recordKey.length > 256 || keys.has(recordKey)
+      || !Number.isInteger(position) || positions.has(position)
+      || score == null || coverage == null || weightedCoverage == null
+      || !Number.isInteger(citationCount)
+      || typeof features?.direct !== 'boolean'
+      || typeof features?.subject_in_title !== 'boolean'
+    ) throw new Error('Invalid shadow result feature snapshot');
+    keys.add(recordKey);
+    positions.add(position);
+    return {
+      record_key: recordKey,
+      position,
+      features: {
+        score, coverage, weighted_coverage: weightedCoverage,
+        direct: features.direct, subject_in_title: features.subject_in_title,
+        citation_count: citationCount,
+      },
+    };
+  });
+  return { observationId, query, inputRevision, results };
+}
+
+function shadowScore(item, runtime) {
+  const features = item.features;
+  const weights = runtime.parameters.feature_adjustments;
+  return features.score
+    + weights.coverage * features.coverage
+    + weights.weighted_coverage * features.weighted_coverage
+    + weights.direct * Number(features.direct)
+    + weights.subject_in_title * Number(features.subject_in_title)
+    + weights.citation_count * (Math.min(features.citation_count, 4) / 4);
+}
+
+async function evaluateShadowObservation(env, input, runtime) {
+  const observation = cleanShadowObservation(input, runtime);
+  const started = Date.now();
+  const incumbentOrder = [...observation.results]
+    .sort((left, right) => left.position - right.position || left.record_key.localeCompare(right.record_key));
+  const candidateOrder = [...observation.results].sort((left, right) =>
+    shadowScore(right, runtime) - shadowScore(left, runtime)
+    || left.position - right.position
+    || left.record_key.localeCompare(right.record_key));
+  const incumbentKeys = incumbentOrder.map(item => item.record_key);
+  const candidateKeys = candidateOrder.map(item => item.record_key);
+  const changedPositions = incumbentKeys.reduce(
+    (count, key, index) => count + Number(candidateKeys[index] !== key), 0,
+  );
+  const queryId = (await sha(observation.query.toLowerCase().replace(/\s+/g, ' '))).slice(0, 24);
+  const receiptId = (await sha(`shadow-receipt\x1f${observation.observationId}`)).slice(0, 24);
+  const observationSha256 = await sha(JSON.stringify({
+    candidate_version: runtime.candidate_version,
+    query_id: queryId,
+    input_revision: observation.inputRevision,
+    results: observation.results,
+  }));
+  const receipt = {
+    schema_version: 'retrieval-shadow-receipt-v1',
+    observation_id: observation.observationId,
+    policy_id: runtime.policy_id,
+    incumbent_version: runtime.incumbent_version,
+    candidate_version: runtime.candidate_version,
+    bundle_sha256: runtime.bundle_sha256,
+    query_id: queryId,
+    observation_sha256: observationSha256,
+    input_revision: observation.inputRevision,
+    result_count: incumbentKeys.length,
+    incumbent_order_sha256: await sha(JSON.stringify(incumbentKeys)),
+    candidate_order_sha256: await sha(JSON.stringify(candidateKeys)),
+    changed_positions: changedPositions,
+    top_result_changed: incumbentKeys[0] !== candidateKeys[0],
+    evaluation_latency_ms: Date.now() - started,
+    visible_effect: false,
+    serving_changes: false,
+    promotion_eligible: false,
+    data_policy: { raw_query_stored: false, retention_days: 90 },
+  };
+  const serialized = JSON.stringify(receipt);
+  const existing = await env.AUTONOMY_DB.prepare(
+    'SELECT data FROM retrieval_shadow_receipts WHERE id=?1',
+  ).bind(receiptId).first();
+  if (existing) {
+    const previous = JSON.parse(existing.data);
+    if (previous.observation_sha256 !== observationSha256) return { conflict: true, receiptId };
+    return { conflict: false, receiptId, receipt: previous, replayed: true };
+  }
+  if (!existing) {
+    await env.AUTONOMY_DB.prepare(
+      'INSERT INTO retrieval_shadow_receipts(id,candidate_version,query_id,input_revision,data,created) VALUES(?1,?2,?3,?4,?5,?6)',
+    ).bind(receiptId, runtime.candidate_version, queryId, observation.inputRevision,
+      serialized, new Date().toISOString()).run();
+  }
+  return { conflict: false, receiptId, receipt };
+}
+
+async function recordShadowAttempt(env, runtime, observationId, state, latencyMs, errorCode) {
+  if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/.test(
+    String(observationId || '').toLowerCase())) return;
+  const id = (await sha(`shadow-attempt\x1f${String(observationId).toLowerCase()}`)).slice(0, 24);
+  await env.AUTONOMY_DB.prepare(
+    'INSERT OR IGNORE INTO retrieval_shadow_attempts(id,candidate_version,state,latency_ms,error_code,created) VALUES(?1,?2,?3,?4,?5,?6)',
+  ).bind(id, runtime.candidate_version, state, Math.max(0, Math.round(latencyMs)),
+    errorCode || null, new Date().toISOString()).run();
+}
+
+function percentile95(values) {
+  if (!values.length) return null;
+  const sorted = [...values].sort((left, right) => left - right);
+  return sorted[Math.max(0, Math.ceil(sorted.length * .95) - 1)];
+}
+
+async function evaluateShadowWindow(env, candidateVersion, evaluatedAt = new Date().toISOString()) {
+  const candidate = await env.AUTONOMY_DB.prepare(
+    'SELECT bundle_sha256 FROM retrieval_candidates WHERE candidate_version=?1',
+  ).bind(candidateVersion).first();
+  if (!candidate) throw new Error('Invalid shadow candidate');
+  const attempts = (await env.AUTONOMY_DB.prepare(
+    'SELECT state,latency_ms,created FROM retrieval_shadow_attempts WHERE candidate_version=?1 AND created<=?2 ORDER BY created LIMIT 10000',
+  ).bind(candidateVersion, evaluatedAt).all()).results;
+  const receipts = (await env.AUTONOMY_DB.prepare(
+    'SELECT query_id,data,created FROM retrieval_shadow_receipts WHERE candidate_version=?1 AND created<=?2 ORDER BY created LIMIT 10000',
+  ).bind(candidateVersion, evaluatedAt).all()).results;
+  const successful = attempts.filter(row => row.state === 'succeeded');
+  const failures = attempts.length - successful.length;
+  const times = attempts.map(row => Date.parse(row.created)).filter(Number.isFinite).sort();
+  const durationSeconds = times.length > 1 ? Math.max(0, Math.floor((times.at(-1) - times[0]) / 1000)) : 0;
+  const parsedReceipts = receipts.map(row => JSON.parse(row.data));
+  const bundles = new Set(parsedReceipts.map(row => row.bundle_sha256));
+  const metrics = {
+    receipts: receipts.length,
+    attempts: attempts.length,
+    failures,
+    unique_queries: new Set(receipts.map(row => row.query_id)).size,
+    duration_seconds: durationSeconds,
+    p95_latency_ms: percentile95(successful.map(row => Number(row.latency_ms))),
+    error_basis_points: attempts.length ? Math.round(failures * 10000 / attempts.length) : null,
+    top_result_changes: parsedReceipts.filter(row => row.top_result_changed).length,
+    changed_position_observations: parsedReceipts.filter(row => row.changed_positions > 0).length,
+  };
+  const thresholds = {...SHADOW_THRESHOLDS};
+  const gates = {
+    minimum_receipts: {
+      observed: metrics.receipts, minimum: thresholds.minimum_receipts,
+      passed: metrics.receipts >= thresholds.minimum_receipts,
+    },
+    minimum_unique_queries: {
+      observed: metrics.unique_queries, minimum: thresholds.minimum_unique_queries,
+      passed: metrics.unique_queries >= thresholds.minimum_unique_queries,
+    },
+    minimum_duration_seconds: {
+      observed: metrics.duration_seconds, minimum: thresholds.minimum_duration_seconds,
+      passed: metrics.duration_seconds >= thresholds.minimum_duration_seconds,
+    },
+    maximum_error_basis_points: {
+      observed: metrics.error_basis_points, maximum: thresholds.maximum_error_basis_points,
+      passed: metrics.error_basis_points != null
+        && metrics.error_basis_points <= thresholds.maximum_error_basis_points,
+    },
+    maximum_p95_latency_ms: {
+      observed: metrics.p95_latency_ms, maximum: thresholds.maximum_p95_latency_ms,
+      passed: metrics.p95_latency_ms != null
+        && metrics.p95_latency_ms <= thresholds.maximum_p95_latency_ms,
+    },
+    attempt_receipt_reconciliation: {
+      observed_attempt_successes: successful.length,
+      observed_receipts: metrics.receipts,
+      passed: successful.length === metrics.receipts,
+    },
+    single_candidate_bundle: {
+      observed: bundles.size, required: 1,
+      passed: bundles.size === 1 && bundles.has(candidate.bundle_sha256),
+    },
+  };
+  const shadowPassed = Object.values(gates).every(gate => gate.passed);
+  const evidence = {
+    candidate_version: candidateVersion,
+    bundle_sha256: candidate.bundle_sha256,
+    window_start: times.length ? new Date(times[0]).toISOString() : null,
+    window_end: times.length ? new Date(times.at(-1)).toISOString() : null,
+    thresholds,
+    metrics,
+    gates,
+  };
+  const evidenceDigest = await sha(canonicalJson(evidence));
+  const report = {
+    schema_version: 'retrieval-shadow-evaluation-v1',
+    evaluated_at: evaluatedAt,
+    ...evidence,
+    shadow_evidence_sha256: evidenceDigest,
+    shadow_passed: shadowPassed,
+    approval_eligible: shadowPassed,
+    promotion_eligible: false,
+    note: 'Operational shadow evidence can authorize human approval only; it cannot activate serving.',
+  };
+  const id = (await sha(`shadow-evaluation\x1f${candidateVersion}\x1f${evidenceDigest}`)).slice(0, 24);
+  await env.AUTONOMY_DB.prepare(
+    'INSERT OR IGNORE INTO retrieval_shadow_evaluations(id,candidate_version,bundle_sha256,evidence_digest,passed,data,created) VALUES(?1,?2,?3,?4,?5,?6,?7)',
+  ).bind(id, candidateVersion, candidate.bundle_sha256, evidenceDigest,
+    Number(shadowPassed), JSON.stringify(report), evaluatedAt).run();
+  return {id, report};
+}
+
+async function evaluateServingWindow(env, requestedAction, evaluatedAt = new Date().toISOString()) {
+  const state = await env.AUTONOMY_DB.prepare(
+    'SELECT active_version,rollback_version,generation,improvement_decision_json,improvement_chain_digest '
+    + 'FROM retrieval_policy_state WHERE policy_id=?1',
+  ).bind('ask-pie-ranking').first();
+  const activeVersion = state?.active_version || 'lexical-subject-v2';
+  const generation = state?.generation || 0;
+  const windowStart = new Date(
+    Date.parse(evaluatedAt) - SERVING_MONITOR_THRESHOLDS.window_seconds * 1000,
+  ).toISOString();
+  const rows = (await env.AUTONOMY_DB.prepare(
+    'SELECT outcome,fallback_reason,latency_ms,created FROM retrieval_serving_receipts '
+    + 'WHERE policy_id=?1 AND configured_version=?2 AND generation=?3 '
+    + 'AND created>=?4 AND created<=?5 ORDER BY created LIMIT 10000',
+  ).bind('ask-pie-ranking', activeVersion, generation, windowStart, evaluatedAt).all()).results;
+  const fallbackRows = rows.filter(row => row.outcome === 'fallback');
+  const hardFallbacks = [...new Set(fallbackRows.map(row => row.fallback_reason)
+    .filter(reason => HARD_POLICY_FALLBACKS.has(reason)))].sort();
+  const metrics = {
+    receipts: rows.length,
+    served: rows.length - fallbackRows.length,
+    fallbacks: fallbackRows.length,
+    fallback_basis_points: rows.length
+      ? Math.round(fallbackRows.length * 10000 / rows.length) : null,
+    p95_latency_ms: percentile95(rows.map(row => Number(row.latency_ms))),
+    hard_integrity_fallbacks: fallbackRows.filter(
+      row => HARD_POLICY_FALLBACKS.has(row.fallback_reason)).length,
+    hard_integrity_reasons: hardFallbacks,
+  };
+  const thresholds = {...SERVING_MONITOR_THRESHOLDS};
+  const enoughReceipts = metrics.receipts >= thresholds.minimum_receipts;
+  const gates = {
+    minimum_receipts: {
+      observed: metrics.receipts, minimum: thresholds.minimum_receipts,
+      passed: enoughReceipts,
+    },
+    maximum_fallback_basis_points: {
+      observed: metrics.fallback_basis_points,
+      maximum: thresholds.maximum_fallback_basis_points,
+      passed: metrics.fallback_basis_points != null
+        && metrics.fallback_basis_points <= thresholds.maximum_fallback_basis_points,
+    },
+    maximum_p95_latency_ms: {
+      observed: metrics.p95_latency_ms, maximum: thresholds.maximum_p95_latency_ms,
+      passed: metrics.p95_latency_ms != null
+        && metrics.p95_latency_ms <= thresholds.maximum_p95_latency_ms,
+    },
+    no_hard_integrity_fallback: {
+      observed: metrics.hard_integrity_fallbacks, maximum: 0,
+      passed: metrics.hard_integrity_fallbacks === 0,
+    },
+  };
+  const candidateActive = /^candidate-[0-9a-f]{16}$/.test(activeVersion);
+  const rollbackRecommended = candidateActive && (
+    !gates.no_hard_integrity_fallback.passed
+    || (enoughReceipts && (
+      !gates.maximum_fallback_basis_points.passed
+      || !gates.maximum_p95_latency_ms.passed
+    ))
+  );
+  const evidence = {
+    policy_id: 'ask-pie-ranking',
+    evaluated_version: activeVersion,
+    rollback_version: state?.rollback_version || null,
+    generation,
+    window_start: windowStart,
+    window_end: evaluatedAt,
+    first_receipt_at: rows[0]?.created || null,
+    last_receipt_at: rows.at(-1)?.created || null,
+    thresholds,
+    metrics,
+    gates,
+  };
+  const evidenceDigest = await sha(canonicalJson(evidence));
+  const report = {
+    schema_version: 'retrieval-serving-monitor-v1',
+    evaluated_at: evaluatedAt,
+    ...evidence,
+    serving_evidence_sha256: evidenceDigest,
+    rollback_recommended: rollbackRecommended,
+    requested_action: requestedAction,
+    automatic_promotion: false,
+    data_policy: {
+      raw_query_stored: false, identity_stored: false,
+      session_stored: false, ip_address_stored: false,
+    },
+  };
+  const id = (await sha(
+    `serving-monitor\x1f${activeVersion}\x1f${generation}\x1f${evidenceDigest}\x1f${requestedAction}`,
+  )).slice(0, 24);
+  await env.AUTONOMY_DB.prepare(
+    'INSERT OR IGNORE INTO retrieval_policy_monitor_evaluations('
+    + 'id,policy_id,evaluated_version,generation,evidence_digest,rollback_recommended,'
+    + 'requested_action,data,created) VALUES(?1,?2,?3,?4,?5,?6,?7,?8,?9)',
+  ).bind(id, 'ask-pie-ranking', activeVersion, generation, evidenceDigest,
+    Number(rollbackRecommended), requestedAction, JSON.stringify(report), evaluatedAt).run();
+  return {id, state, report};
+}
+
+async function purgeExpiredOperationalData(env, now = new Date()) {
+  const cutoff = days => new Date(now.getTime() - days * 24 * 60 * 60 * 1000).toISOString();
+  const operations = [
+    ['rate_buckets',
+      'DELETE FROM autonomy_ingress_rate_buckets WHERE expires_at<=?1', now.toISOString()],
+    ['feedback_dispositions',
+      "DELETE FROM evidence_events WHERE entity_type='feedback' AND event_type='reviewer-disposition' "
+      + "AND entity_id IN (SELECT id FROM evidence_events WHERE entity_type='retrieval' "
+      + "AND event_type='retrieval-feedback' AND created<?1)",
+      cutoff(RETENTION_DAYS.retrieval_feedback)],
+    ['retrieval_feedback',
+      "DELETE FROM evidence_events WHERE entity_type='retrieval' "
+      + "AND event_type='retrieval-feedback' AND created<?1",
+      cutoff(RETENTION_DAYS.retrieval_feedback)],
+    ['shadow_receipts', 'DELETE FROM retrieval_shadow_receipts WHERE created<?1',
+      cutoff(RETENTION_DAYS.retrieval_shadow)],
+    ['shadow_attempts', 'DELETE FROM retrieval_shadow_attempts WHERE created<?1',
+      cutoff(RETENTION_DAYS.retrieval_shadow)],
+    ['serving_receipts', 'DELETE FROM retrieval_serving_receipts WHERE created<?1',
+      cutoff(RETENTION_DAYS.retrieval_serving_receipts)],
+    ['policy_monitor_evaluations',
+      'DELETE FROM retrieval_policy_monitor_evaluations WHERE created<?1',
+      cutoff(RETENTION_DAYS.policy_monitor_evaluations)],
+  ];
+  const deleted = {};
+  for (const [name, query, boundary] of operations) {
+    const result = await env.AUTONOMY_DB.prepare(query).bind(boundary).run();
+    deleted[name] = Number(result.meta?.changes || 0);
+  }
+  return {deleted, retention_days:{...RETENTION_DAYS}, completed_at:now.toISOString()};
+}
+
+function cleanRetrievalFeedback(input) {
+  const query = String(input?.query || '').trim();
+  const feedbackId = String(input?.feedback_id || '').trim().toLowerCase();
+  const policyId = String(input?.policy_id || '').trim();
+  const policyVersion = String(input?.policy_version || '').trim();
+  const inputRevision = String(input?.input_revision || '').trim();
+  if (
+    input?.schema_version !== 1
+    || !/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/.test(feedbackId)
+    || !query || query.length > 300
+    || policyId !== 'ask-pie-ranking'
+    || !(policyVersion === 'lexical-subject-v2' || /^candidate-[0-9a-f]{16}$/.test(policyVersion))
+    || !inputRevision || inputRevision.length > 128
+    || !RETRIEVAL_FEEDBACK_LABELS.has(input?.label)
+  ) throw new Error('Invalid retrieval feedback');
+
+  let target = null;
+  if (input.target != null) {
+    const features = input.target?.features;
+    const score = finiteNumber(features?.score, -100000, 100000);
+    const coverage = finiteNumber(features?.coverage, 0, 1);
+    const weightedCoverage = finiteNumber(features?.weighted_coverage, 0, 1);
+    const citationCount = finiteNumber(features?.citation_count, 0, 100);
+    const recordKey = String(input.target?.record_key || '').trim();
+    const recordType = String(input.target?.record_type || '').trim();
+    const position = finiteNumber(input.target?.position, 1, 100);
+    if (
+      !recordKey || recordKey.length > 256 || !recordType || recordType.length > 64
+      || !Number.isInteger(position) || !Number.isInteger(citationCount)
+      || score == null || coverage == null || weightedCoverage == null
+      || typeof features?.direct !== 'boolean' || typeof features?.subject_in_title !== 'boolean'
+    ) throw new Error('Invalid retrieval feedback target');
+    target = {
+      record_key: recordKey,
+      position,
+      record_type: recordType,
+      features: {
+        score,
+        coverage,
+        weighted_coverage: weightedCoverage,
+        direct: features.direct,
+        subject_in_title: features.subject_in_title,
+        citation_count: citationCount,
+      },
+    };
+  }
+  if (input.label !== 'missing_source' && !target) {
+    throw new Error('Invalid retrieval feedback target');
+  }
+  return {
+    schema_version: 1,
+    feedback_id: feedbackId,
+    query,
+    policy_id: policyId,
+    policy_version: policyVersion,
+    input_revision: inputRevision,
+    label: input.label,
+    target,
+    signal_quality: 'explicit-unreviewed',
+    data_policy: { collection_tier: 'explicit-feedback', anonymized: true, retention_days: 180 },
+  };
+}
+
+async function recordRetrievalFeedback(env, feedback) {
+  const queryId = (await sha(feedback.query.toLowerCase().replace(/\s+/g, ' '))).slice(0, 24);
+  const eventId = (await sha(`retrieval-feedback\x1f${feedback.feedback_id}`)).slice(0, 24);
+  const data = JSON.stringify({ ...feedback, query_id: queryId });
+  const existing = await env.AUTONOMY_DB.prepare(
+    'SELECT data FROM evidence_events WHERE id=?1',
+  ).bind(eventId).first();
+  if (existing && existing.data !== data) return { conflict: true, eventId, queryId };
+  if (!existing) {
+    await env.AUTONOMY_DB.prepare(
+      'INSERT INTO evidence_events(id,entity_type,entity_id,event_type,data,created) VALUES(?1,?2,?3,?4,?5,?6)',
+    ).bind(eventId, 'retrieval', queryId, 'retrieval-feedback', data, new Date().toISOString()).run();
+  }
+  return { conflict: false, eventId, queryId };
 }
 
 function cleanSpec(input) {
@@ -514,6 +1045,622 @@ export async function handlePatternsAutonomy(request, env, context) {
   }
   if (!db) return respond(503, { error: 'Autonomous evidence storage is not configured' });
   try {
+    if (path === 'candidates' && request.method === 'POST') {
+      if (!await reviewer(request, env.PATTERNS_REVIEW_TOKEN)) {
+        return respond(401, { error: 'Reviewer authorization required' });
+      }
+      const runtime = cleanShadowRegistryBundle(await parseBody(request, 2000000));
+      const serialized = JSON.stringify(runtime);
+      const runtimeDigest = await sha(serialized);
+      const existing = await db.prepare(
+        'SELECT bundle_sha256,runtime_digest,data FROM retrieval_candidates WHERE candidate_version=?1',
+      ).bind(runtime.candidate_version).first();
+      if (existing && (
+        existing.bundle_sha256 !== runtime.bundle_sha256
+        || existing.runtime_digest !== runtimeDigest
+        || existing.data !== serialized
+      )) return respond(409, { error: 'Candidate version is already registered with different evidence' });
+      const now = new Date().toISOString();
+      if (!existing) {
+        await db.prepare(
+          'INSERT INTO retrieval_candidates(candidate_version,bundle_sha256,policy_id,incumbent_version,runtime_digest,state,data,created) VALUES(?1,?2,?3,?4,?5,?6,?7,?8)',
+        ).bind(runtime.candidate_version, runtime.bundle_sha256, runtime.policy_id,
+          runtime.incumbent_version, runtimeDigest, runtime.state, serialized, now).run();
+      }
+      const eventId = await recordEvent(env, 'candidate', runtime.candidate_version,
+        'candidate-registered-for-shadow', {
+          bundle_sha256: runtime.bundle_sha256,
+          runtime_digest: runtimeDigest,
+          serving_changes: false,
+          promotion_eligible: false,
+        });
+      return respond(existing ? 200 : 201, {
+        candidate_version: runtime.candidate_version,
+        bundle_sha256: runtime.bundle_sha256,
+        runtime_digest: runtimeDigest,
+        state: 'registered-shadow-only',
+        event_id: eventId,
+        replayed: Boolean(existing),
+        serving_changes: false,
+        promotion_eligible: false,
+      });
+    }
+    const candidateShadowMatch = path.match(/^(candidates)\/(candidate-[0-9a-f]{16})\/shadow$/);
+    if (candidateShadowMatch && request.method === 'POST') {
+      if (!await reviewer(request, env.PATTERNS_REVIEW_TOKEN)) {
+        return respond(401, { error: 'Reviewer authorization required' });
+      }
+      const input = await parseBody(request, 32768);
+      const action = input?.action;
+      const notes = String(input?.notes || '').trim();
+      if (!['enable-shadow', 'disable-shadow'].includes(action) || !notes || notes.length > 5000) {
+        return respond(400, { error: 'A valid shadow action and concise reviewer note are required' });
+      }
+      const candidateVersion = candidateShadowMatch[2];
+      const candidate = await db.prepare(
+        "SELECT candidate_version FROM retrieval_candidates WHERE candidate_version=?1 AND state='registered-shadow-only'",
+      ).bind(candidateVersion).first();
+      if (!candidate) return respond(404, { error: 'Registered shadow candidate not found' });
+      const enabled = action === 'enable-shadow' ? 1 : 0;
+      const now = new Date().toISOString();
+      await db.prepare(
+        'INSERT INTO retrieval_shadow_state(policy_id,candidate_version,enabled,updated) VALUES(?1,?2,?3,?4) '
+        + 'ON CONFLICT(policy_id) DO UPDATE SET candidate_version=excluded.candidate_version,enabled=excluded.enabled,updated=excluded.updated',
+      ).bind('ask-pie-ranking', candidateVersion, enabled, now).run();
+      const eventId = await recordEvent(env, 'candidate', candidateVersion,
+        'shadow-state-changed', { action, notes, enabled: Boolean(enabled), serving_changes: false });
+      return respond(200, {
+        candidate_version: candidateVersion,
+        shadow_enabled: Boolean(enabled),
+        event_id: eventId,
+        visible_effect: false,
+        serving_changes: false,
+        promotion_eligible: false,
+      });
+    }
+    if (path === 'shadow/status' && request.method === 'GET') {
+      const state = await db.prepare(
+        'SELECT s.enabled,s.candidate_version,c.incumbent_version FROM retrieval_shadow_state s '
+        + 'JOIN retrieval_candidates c ON c.candidate_version=s.candidate_version WHERE s.policy_id=?1',
+      ).bind('ask-pie-ranking').first();
+      return respond(200, {
+        enabled: Boolean(state?.enabled),
+        candidate_version: state?.enabled ? state.candidate_version : null,
+        incumbent_version: state?.enabled ? state.incumbent_version : null,
+        visible_effect: false,
+        serving_changes: false,
+        promotion_eligible: false,
+      });
+    }
+    if (path === 'shadow' && request.method === 'POST') {
+      if (!feedbackOriginAllowed(request)) return respond(403, { error: 'Same-origin shadow observation required' });
+      const state = await db.prepare(
+        'SELECT c.data FROM retrieval_shadow_state s JOIN retrieval_candidates c '
+        + 'ON c.candidate_version=s.candidate_version WHERE s.policy_id=?1 AND s.enabled=1',
+      ).bind('ask-pie-ranking').first();
+      if (!state) return respond(200, {
+        enabled: false, visible_effect: false, serving_changes: false, promotion_eligible: false,
+      });
+      const rateResponse = rateLimitResponse(
+        await consumeIngressRateLimit(request, env, 'shadow'));
+      if (rateResponse) return rateResponse;
+      const runtime = JSON.parse(state.data);
+      const input = await parseBody(request, 131072);
+      const started = Date.now();
+      let evaluated;
+      try {
+        evaluated = await evaluateShadowObservation(env, input, runtime);
+      } catch (error) {
+        await recordShadowAttempt(
+          env, runtime, input?.observation_id, 'failed', Date.now() - started,
+          'invalid-or-failed-observation');
+        throw error;
+      }
+      if (evaluated.conflict) {
+        await recordShadowAttempt(
+          env, runtime, input?.observation_id, 'failed', Date.now() - started,
+          'observation-id-conflict');
+        return respond(409, { error: 'Observation id was already used for different shadow data' });
+      }
+      await recordShadowAttempt(
+        env, runtime, input?.observation_id, 'succeeded', Date.now() - started, null);
+      return respond(202, {
+        enabled: true,
+        receipt_id: evaluated.receiptId,
+        receipt: evaluated.receipt,
+      });
+    }
+    if (path === 'shadow/receipts' && request.method === 'GET') {
+      if (!await reviewer(request, env.PATTERNS_REVIEW_TOKEN)) {
+        return respond(401, { error: 'Reviewer authorization required' });
+      }
+      const result = await db.prepare(
+        'SELECT id,candidate_version,query_id,input_revision,data,created FROM retrieval_shadow_receipts ORDER BY created DESC LIMIT 200',
+      ).all();
+      return respond(200, {
+        receipts: result.results.map(row => ({
+          id: row.id,
+          candidate_version: row.candidate_version,
+          query_id: row.query_id,
+          input_revision: row.input_revision,
+          created: row.created,
+          data: JSON.parse(row.data),
+        })),
+        visible_effect: false,
+        serving_changes: false,
+        promotion_eligible: false,
+      });
+    }
+    const shadowEvaluationMatch = path.match(/^candidates\/(candidate-[0-9a-f]{16})\/shadow\/evaluate$/);
+    if (shadowEvaluationMatch && request.method === 'POST') {
+      if (!await reviewer(request, env.PATTERNS_REVIEW_TOKEN)) {
+        return respond(401, { error: 'Reviewer authorization required' });
+      }
+      const evaluated = await evaluateShadowWindow(env, shadowEvaluationMatch[1]);
+      return respond(evaluated.report.shadow_passed ? 201 : 200, {
+        id: evaluated.id,
+        evaluation: evaluated.report,
+        serving_changes: false,
+      });
+    }
+    if (path === 'promotions' && request.method === 'POST') {
+      if (!await reviewer(request, env.PATTERNS_REVIEW_TOKEN)) {
+        return respond(401, { error: 'Reviewer authorization required' });
+      }
+      if (!env.PATTERNS_POLICY_SIGNING_SECRET) {
+        return respond(503, { error: 'Policy signature verification is not configured' });
+      }
+      const promotionPayload = await parseBody(request, 524288);
+      const manifest = promotionPayload?.manifest || promotionPayload;
+      const decisionChain = promotionPayload?.decision_chain || null;
+      const verified = await verifyPolicyManifest(manifest, env.PATTERNS_POLICY_SIGNING_SECRET);
+      if (!verified.valid) return respond(400, { error: verified.reason });
+      const currentPolicy = await db.prepare(
+        'SELECT generation FROM retrieval_policy_state WHERE policy_id=?1',
+      ).bind('ask-pie-ranking').first();
+      const currentGeneration = currentPolicy?.generation || 0;
+      if (env.REQUIRE_IMPROVEMENT_DECISION_CHAIN === 'true' && !decisionChain) {
+        return respond(400, { error: 'A complete portfolio improvement decision chain is required' });
+      }
+      let admittedChain = null;
+      if (decisionChain) {
+        try {
+          admittedChain = await validateApprovedDecisionChain(
+            decisionChain, manifest, currentGeneration);
+        } catch (error) {
+          return respond(400, { error: error instanceof Error ? error.message : 'Invalid improvement decision chain' });
+        }
+      }
+      const candidate = await db.prepare(
+        'SELECT bundle_sha256,data FROM retrieval_candidates WHERE candidate_version=?1',
+      ).bind(manifest.version).first();
+      if (!candidate || candidate.bundle_sha256 !== manifest.candidate_bundle_sha256) {
+        return respond(409, { error: 'Signed manifest does not match the registered candidate' });
+      }
+      const runtime = JSON.parse(candidate.data);
+      if (await sha256(canonicalJson(runtime.parameters)) !== manifest.parameters_sha256) {
+        return respond(409, { error: 'Signed manifest parameters do not match the registered candidate' });
+      }
+      const shadow = await db.prepare(
+        'SELECT id,data FROM retrieval_shadow_evaluations WHERE candidate_version=?1 AND evidence_digest=?2 AND passed=1',
+      ).bind(manifest.version, manifest.shadow_evidence_sha256).first();
+      if (!shadow) return respond(409, { error: 'Passing shadow evidence is not registered' });
+      const shadowReport = JSON.parse(shadow.data);
+      if (Date.parse(manifest.approval.approved_at) < Date.parse(shadowReport.evaluated_at)) {
+        return respond(409, { error: 'Signed approval predates the registered shadow evaluation' });
+      }
+      const id = (await sha(`policy-manifest\x1f${manifest.manifest_sha256}`)).slice(0, 24);
+      const serialized = JSON.stringify(manifest);
+      const existing = await db.prepare(
+        'SELECT manifest_sha256,signature,data,state FROM retrieval_policy_manifests WHERE candidate_version=?1',
+      ).bind(manifest.version).first();
+      if (existing && (
+        existing.manifest_sha256 !== manifest.manifest_sha256
+        || existing.signature !== manifest.signature
+        || existing.data !== serialized
+      )) return respond(409, { error: 'Candidate already has a different approved manifest' });
+      const now = new Date().toISOString();
+      if (admittedChain) {
+        const existingChain = await db.prepare(
+          'SELECT chain_digest,record_json FROM portfolio_improvement_chains WHERE candidate_digest=?1',
+        ).bind(admittedChain.candidateDigest).first();
+        if (existingChain && (
+          existingChain.chain_digest !== admittedChain.chainDigest
+          || existingChain.record_json !== JSON.stringify(admittedChain.chain)
+        )) return respond(409, { error: 'Candidate already has a different improvement decision chain' });
+        if (!existingChain) {
+          const statements = [];
+          for (const decision of admittedChain.chain.decisions) {
+            const decisionDigest = await improvementDecisionDigest(decision);
+            statements.push(db.prepare(
+              'INSERT INTO portfolio_improvement_decisions('
+              + 'decision_id,decision_digest,chain_digest,lane,candidate_digest,permitted_surface,'
+              + 'previous_state,new_state,active_generation,record_json,created'
+              + ') VALUES(?1,?2,?3,?4,?5,?6,?7,?8,?9,?10,?11)',
+            ).bind(
+              decision.decisionId, decisionDigest, admittedChain.chainDigest,
+              decision.lane, decision.candidateDigest, decision.permittedSurface,
+              decision.previousState, decision.newState, decision.activeGeneration,
+              JSON.stringify(decision), now,
+            ));
+          }
+          statements.push(db.prepare(
+            "INSERT INTO portfolio_improvement_chains(chain_digest,candidate_digest,evidence_chain_digest,final_decision_id,state,record_json,created,updated) VALUES(?1,?2,?3,?4,'approved',?5,?6,?6)",
+          ).bind(
+            admittedChain.chainDigest, admittedChain.candidateDigest,
+            admittedChain.evidenceChainDigest, admittedChain.approvedDecision.decisionId,
+            JSON.stringify(admittedChain.chain), now,
+          ));
+          await db.batch(statements);
+        }
+      }
+      if (!existing) {
+        await db.prepare(
+          "INSERT INTO retrieval_policy_manifests(id,candidate_version,manifest_sha256,signature,state,data,created,updated) VALUES(?1,?2,?3,?4,'approved',?5,?6,?6)",
+        ).bind(id, manifest.version, manifest.manifest_sha256, manifest.signature,
+          serialized, now).run();
+      }
+      return respond(existing ? 200 : 201, {
+        id,
+        version: manifest.version,
+        manifest_sha256: manifest.manifest_sha256,
+        state: existing?.state || 'approved',
+        replayed: Boolean(existing),
+        activation_eligible: (existing?.state || 'approved') === 'approved',
+        serving_changes: false,
+        decision_chain_digest: admittedChain?.chainDigest || null,
+        approved_decision_id: admittedChain?.approvedDecision.decisionId || null,
+      });
+    }
+    const promotionActivateMatch = path.match(/^promotions\/([0-9a-f]{24})\/activate$/);
+    if (promotionActivateMatch && request.method === 'POST') {
+      if (!await reviewer(request, env.PATTERNS_REVIEW_TOKEN)) {
+        return respond(401, { error: 'Reviewer authorization required' });
+      }
+      const input = await parseBody(request, 32768);
+      const notes = String(input?.notes || '').trim();
+      const expectedVersion = String(input?.expected_active_version || '');
+      const expectedGeneration = Number(input?.expected_generation);
+      if (input?.action !== 'activate' || !notes || notes.length > 5000
+        || !expectedVersion || !Number.isInteger(expectedGeneration) || expectedGeneration < 0) {
+        return respond(400, { error: 'Explicit activation, expected pointer, generation, and notes are required' });
+      }
+      const row = await db.prepare(
+        'SELECT state,data FROM retrieval_policy_manifests WHERE id=?1',
+      ).bind(promotionActivateMatch[1]).first();
+      if (!row || row.state !== 'approved') {
+        return respond(409, { error: 'Approved inactive manifest not found' });
+      }
+      const manifest = JSON.parse(row.data);
+      const verified = await verifyPolicyManifest(
+        manifest, env.PATTERNS_POLICY_SIGNING_SECRET || '');
+      if (!verified.valid) return respond(409, { error: 'Approved manifest signature is invalid' });
+      const shadowState = await db.prepare(
+        'SELECT enabled FROM retrieval_shadow_state WHERE policy_id=?1 AND candidate_version=?2',
+      ).bind('ask-pie-ranking', manifest.version).first();
+      if (shadowState?.enabled) {
+        return respond(409, { error: 'Disable candidate shadow execution before activation' });
+      }
+      const current = await db.prepare(
+        'SELECT active_version,generation FROM retrieval_policy_state WHERE policy_id=?1',
+      ).bind('ask-pie-ranking').first();
+      const currentVersion = current?.active_version || 'lexical-subject-v2';
+      const currentGeneration = current?.generation || 0;
+      if (currentVersion !== expectedVersion || currentGeneration !== expectedGeneration
+        || manifest.rollback_to !== currentVersion) {
+        return respond(409, { error: 'Active policy pointer changed or rollback target does not match' });
+      }
+      const now = new Date().toISOString();
+      const admitted = await db.prepare(
+        'SELECT c.chain_digest,d.record_json FROM portfolio_improvement_chains c '
+        + 'JOIN portfolio_improvement_decisions d ON d.decision_id=c.final_decision_id '
+        + "WHERE c.candidate_digest=?1 AND c.state='approved'",
+      ).bind(`sha256:${manifest.candidate_bundle_sha256}`).first();
+      if (!admitted) return respond(409, { error: 'Approved portfolio improvement chain is unavailable' });
+      let activationDecision;
+      try {
+        activationDecision = createActivationDecision({
+          approvedDecision: JSON.parse(admitted.record_json),
+          expectedGeneration,
+          nowMs: Date.parse(now),
+          notes,
+        });
+      } catch (error) {
+        return respond(409, { error: error instanceof Error ? error.message : 'Invalid activation decision' });
+      }
+      const activationDecisionDigest = await improvementDecisionDigest(activationDecision);
+      const changed = await db.prepare(
+        'INSERT INTO retrieval_policy_state('
+        + 'policy_id,active_version,rollback_version,manifest_id,generation,last_action,last_notes,updated,'
+        + 'improvement_decision_json,improvement_decision_digest,improvement_chain_digest) '
+        + "VALUES(?1,?2,?3,?4,?5,'activate',?6,?7,?8,?9,?10) ON CONFLICT(policy_id) DO UPDATE SET "
+        + "active_version=excluded.active_version,rollback_version=excluded.rollback_version,manifest_id=excluded.manifest_id,generation=retrieval_policy_state.generation+1,last_action='activate',last_notes=excluded.last_notes,updated=excluded.updated,"
+        + 'improvement_decision_json=excluded.improvement_decision_json,improvement_decision_digest=excluded.improvement_decision_digest,improvement_chain_digest=excluded.improvement_chain_digest '
+        + 'WHERE retrieval_policy_state.active_version=?11 AND retrieval_policy_state.generation=?12',
+      ).bind('ask-pie-ranking', manifest.version, manifest.rollback_to,
+        promotionActivateMatch[1], expectedGeneration + 1, notes, now,
+        JSON.stringify(activationDecision), activationDecisionDigest, admitted.chain_digest,
+        expectedVersion, expectedGeneration).run();
+      if (!changed.meta?.changes) return respond(409, { error: 'Active policy pointer changed concurrently' });
+      return respond(200, {
+        policy_id: 'ask-pie-ranking',
+        active_version: manifest.version,
+        rollback_version: manifest.rollback_to,
+        generation: expectedGeneration + 1,
+        manifest_sha256: manifest.manifest_sha256,
+        serving_changes: true,
+        rollback_available: true,
+        improvement_decision_id: activationDecision.decisionId,
+        improvement_decision_digest: activationDecisionDigest,
+        improvement_chain_digest: admitted.chain_digest,
+      });
+    }
+    if (path === 'policy/rollback' && request.method === 'POST') {
+      if (!await reviewer(request, env.PATTERNS_REVIEW_TOKEN)) {
+        return respond(401, { error: 'Reviewer authorization required' });
+      }
+      const input = await parseBody(request, 32768);
+      const notes = String(input?.notes || '').trim();
+      const expectedVersion = String(input?.expected_active_version || '');
+      const expectedGeneration = Number(input?.expected_generation);
+      if (input?.action !== 'rollback' || !notes || notes.length > 5000
+        || !expectedVersion || !Number.isInteger(expectedGeneration) || expectedGeneration < 1) {
+        return respond(400, { error: 'Explicit rollback, expected pointer, generation, and notes are required' });
+      }
+      const current = await db.prepare(
+        'SELECT active_version,rollback_version,generation,improvement_decision_json,improvement_chain_digest '
+        + 'FROM retrieval_policy_state WHERE policy_id=?1',
+      ).bind('ask-pie-ranking').first();
+      if (!current || current.active_version !== expectedVersion
+        || current.generation !== expectedGeneration) {
+        return respond(409, { error: 'Active policy pointer changed' });
+      }
+      const targetVersion = current.rollback_version;
+      let targetManifestId = null;
+      let nextRollback = 'lexical-subject-v2';
+      if (targetVersion !== 'lexical-subject-v2') {
+        const target = await db.prepare(
+          "SELECT id,data FROM retrieval_policy_manifests WHERE candidate_version=?1 AND state IN ('superseded','rolled-back','active')",
+        ).bind(targetVersion).first();
+        if (!target) return respond(409, { error: 'Rollback manifest is unavailable' });
+        const targetManifest = JSON.parse(target.data);
+        const verified = await verifyPolicyManifest(
+          targetManifest, env.PATTERNS_POLICY_SIGNING_SECRET || '');
+        if (!verified.valid) return respond(409, { error: 'Rollback manifest signature is invalid' });
+        targetManifestId = target.id;
+        nextRollback = targetManifest.rollback_to;
+      }
+      const now = new Date().toISOString();
+      if (!current.improvement_decision_json || !current.improvement_chain_digest) {
+        return respond(409, { error: 'Active policy lacks its portfolio improvement activation receipt' });
+      }
+      let rollbackDecision;
+      try {
+        rollbackDecision = createRollbackDecision({
+          activeDecision: JSON.parse(current.improvement_decision_json),
+          expectedGeneration,
+          nowMs: Date.parse(now),
+          notes,
+        });
+      } catch (error) {
+        return respond(409, { error: error instanceof Error ? error.message : 'Invalid rollback decision' });
+      }
+      const rollbackDecisionDigest = await improvementDecisionDigest(rollbackDecision);
+      const changed = await db.prepare(
+        "UPDATE retrieval_policy_state SET active_version=?1,rollback_version=?2,manifest_id=?3,generation=generation+1,last_action='rollback',last_notes=?4,updated=?5,"
+        + 'improvement_decision_json=?6,improvement_decision_digest=?7,improvement_chain_digest=?8 '
+        + 'WHERE policy_id=?9 AND active_version=?10 AND generation=?11',
+      ).bind(targetVersion, nextRollback, targetManifestId, notes, now,
+        JSON.stringify(rollbackDecision), rollbackDecisionDigest, current.improvement_chain_digest,
+        'ask-pie-ranking', expectedVersion, expectedGeneration).run();
+      if (!changed.meta?.changes) return respond(409, { error: 'Active policy pointer changed concurrently' });
+      return respond(200, {
+        policy_id: 'ask-pie-ranking',
+        active_version: targetVersion,
+        rollback_version: nextRollback,
+        generation: expectedGeneration + 1,
+        serving_changes: true,
+        rolled_back_from: expectedVersion,
+        improvement_decision_id: rollbackDecision.decisionId,
+        improvement_decision_digest: rollbackDecisionDigest,
+        improvement_chain_digest: current.improvement_chain_digest,
+      });
+    }
+    if (path === 'policy/monitor' && request.method === 'POST') {
+      const reviewAuthorized = await reviewer(request, env.PATTERNS_REVIEW_TOKEN);
+      const monitorAuthorized = await reviewer(request, env.PATTERNS_MONITOR_TOKEN);
+      if (!reviewAuthorized && !monitorAuthorized) {
+        return respond(401, { error: 'Monitor or reviewer authorization required' });
+      }
+      const input = await parseBody(request, 32768);
+      const action = String(input?.action || '');
+      const notes = String(input?.notes || '').trim();
+      if (!['evaluate', 'evaluate-and-rollback'].includes(action)
+        || !notes || notes.length > 5000) {
+        return respond(400, {
+          error: 'A valid monitor action and concise operational note are required',
+        });
+      }
+      const retention = await purgeExpiredOperationalData(env);
+      const evaluated = await evaluateServingWindow(env, action);
+      let rollback = {recommended:evaluated.report.rollback_recommended, applied:false};
+      if (action === 'evaluate-and-rollback' && evaluated.report.rollback_recommended) {
+        const current = evaluated.state;
+        if (!current || current.active_version !== evaluated.report.evaluated_version
+          || current.generation !== evaluated.report.generation) {
+          return respond(409, {error:'Active policy pointer changed during monitor evaluation'});
+        }
+        const targetVersion = current.rollback_version;
+        let targetManifestId = null;
+        let nextRollback = 'lexical-subject-v2';
+        if (targetVersion !== 'lexical-subject-v2') {
+          const target = await db.prepare(
+            "SELECT id,data FROM retrieval_policy_manifests WHERE candidate_version=?1 AND state IN ('superseded','rolled-back','active')",
+          ).bind(targetVersion).first();
+          if (!target) return respond(409, {error:'Automatic rollback manifest is unavailable'});
+          const targetManifest = JSON.parse(target.data);
+          const verified = await verifyPolicyManifest(
+            targetManifest, env.PATTERNS_POLICY_SIGNING_SECRET || '');
+          if (!verified.valid) {
+            return respond(409, {error:'Automatic rollback manifest signature is invalid'});
+          }
+          targetManifestId = target.id;
+          nextRollback = targetManifest.rollback_to;
+        }
+        const now = new Date().toISOString();
+        const monitorNotes = `Automatic hard-gate rollback: ${notes}`.slice(0, 5000);
+        let rollbackDecision = null;
+        let rollbackDecisionDigest = null;
+        if (current.improvement_decision_json && current.improvement_chain_digest) {
+          try {
+            rollbackDecision = createRollbackDecision({
+              activeDecision: JSON.parse(current.improvement_decision_json),
+              expectedGeneration: current.generation,
+              nowMs: Date.parse(now),
+              notes: monitorNotes,
+              monitorEvidenceRef: `monitor:${evaluated.id}`,
+            });
+            rollbackDecisionDigest = await improvementDecisionDigest(rollbackDecision);
+          } catch (error) {
+            return respond(409, {error:error instanceof Error ? error.message : 'Invalid monitor rollback decision'});
+          }
+        }
+        const changed = await db.prepare(
+          "UPDATE retrieval_policy_state SET active_version=?1,rollback_version=?2,manifest_id=?3,generation=generation+1,last_action='rollback',last_notes=?4,updated=?5,"
+          + 'improvement_decision_json=?6,improvement_decision_digest=?7,improvement_chain_digest=?8 '
+          + 'WHERE policy_id=?9 AND active_version=?10 AND generation=?11',
+        ).bind(targetVersion, nextRollback, targetManifestId, monitorNotes, now,
+          rollbackDecision ? JSON.stringify(rollbackDecision) : null,
+          rollbackDecisionDigest, current.improvement_chain_digest || null,
+          'ask-pie-ranking', current.active_version, current.generation).run();
+        if (!changed.meta?.changes) {
+          return respond(409, {error:'Active policy pointer changed concurrently'});
+        }
+        rollback = {
+          recommended:true, applied:true, from_version:current.active_version,
+          to_version:targetVersion, generation:current.generation + 1,
+          improvement_decision_id:rollbackDecision?.decisionId || null,
+          improvement_decision_digest:rollbackDecisionDigest,
+          improvement_chain_digest:current.improvement_chain_digest || null,
+        };
+      }
+      return respond(200, {
+        evaluation_id: evaluated.id,
+        evaluation: evaluated.report,
+        rollback,
+        retention,
+        automatic_promotion: false,
+      });
+    }
+    if (path === 'policy/monitor' && request.method === 'GET') {
+      if (!await reviewer(request, env.PATTERNS_REVIEW_TOKEN)) {
+        return respond(401, { error: 'Reviewer authorization required' });
+      }
+      const result = await db.prepare(
+        'SELECT id,evaluated_version,generation,rollback_recommended,requested_action,data,created '
+        + 'FROM retrieval_policy_monitor_evaluations ORDER BY created DESC LIMIT 100',
+      ).all();
+      return respond(200, {
+        evaluations: result.results.map(row => ({
+          id:row.id, evaluated_version:row.evaluated_version, generation:row.generation,
+          rollback_recommended:Boolean(row.rollback_recommended),
+          requested_action:row.requested_action, created:row.created,
+          data:JSON.parse(row.data),
+        })),
+        automatic_promotion: false,
+      });
+    }
+    if (path === 'maintenance/retention' && request.method === 'POST') {
+      const reviewAuthorized = await reviewer(request, env.PATTERNS_REVIEW_TOKEN);
+      const monitorAuthorized = await reviewer(request, env.PATTERNS_MONITOR_TOKEN);
+      if (!reviewAuthorized && !monitorAuthorized) {
+        return respond(401, {error:'Monitor or reviewer authorization required'});
+      }
+      const input = await parseBody(request, 32768);
+      if (input?.action !== 'purge-expired') {
+        return respond(400, {error:'Explicit purge-expired action is required'});
+      }
+      return respond(200, {
+        ...(await purgeExpiredOperationalData(env)),
+        candidate_registry_deleted:false,
+        policy_transition_history_deleted:false,
+      });
+    }
+    if (path === 'policy/status' && request.method === 'GET') {
+      const active = await loadActiveRetrievalPolicy(env, 'research-index-v1');
+      return respond(200, {...active.receipt, parameters_exposed: false});
+    }
+    if (path === 'policy/transitions' && request.method === 'GET') {
+      if (!await reviewer(request, env.PATTERNS_REVIEW_TOKEN)) {
+        return respond(401, { error: 'Reviewer authorization required' });
+      }
+      const result = await db.prepare(
+        'SELECT policy_id,from_version,to_version,action,generation,manifest_id,notes,created,'
+        + 'improvement_decision_digest,improvement_chain_digest '
+        + 'FROM retrieval_policy_transitions ORDER BY id DESC LIMIT 100',
+      ).all();
+      return respond(200, {
+        transitions: result.results,
+        improvement_contract: 'patterns.improvement-decision.v1',
+        authorizes_action: false,
+      });
+    }
+    if (path === 'feedback' && request.method === 'POST') {
+      if (!feedbackOriginAllowed(request)) return respond(403, { error: 'Same-origin feedback required' });
+      const rateResponse = rateLimitResponse(
+        await consumeIngressRateLimit(request, env, 'feedback'));
+      if (rateResponse) return rateResponse;
+      const feedback = cleanRetrievalFeedback(await parseBody(request, 32768));
+      const activePolicy = await loadActiveRetrievalPolicy(env, 'research-index-v1');
+      if (feedback.policy_version !== activePolicy.receipt.version) {
+        return respond(409, { error: 'Feedback policy version is not the currently served policy' });
+      }
+      const stored = await recordRetrievalFeedback(env, feedback);
+      if (stored.conflict) return respond(409, { error: 'Feedback id was already used for different data' });
+      return respond(202, {
+        received: true,
+        event_id: stored.eventId,
+        query_id: stored.queryId,
+        signal_quality: feedback.signal_quality,
+        automatic_promotion: false,
+      });
+    }
+    if (path === 'feedback' && request.method === 'GET') {
+      if (!await reviewer(request, env.PATTERNS_REVIEW_TOKEN)) {
+        return respond(401, { error: 'Reviewer authorization required' });
+      }
+      const result = await db.prepare(
+        "SELECT e.id,e.entity_id,e.data,e.created,(SELECT d.data FROM evidence_events d WHERE d.entity_type='feedback' AND d.entity_id=e.id AND d.event_type='reviewer-disposition' ORDER BY d.created DESC LIMIT 1) disposition FROM evidence_events e WHERE e.entity_type='retrieval' AND e.event_type='retrieval-feedback' ORDER BY e.created DESC LIMIT 200",
+      ).all();
+      return respond(200, {
+        automatic_promotion: false,
+        feedback: result.results.map(row => ({
+          id: row.id,
+          query_id: row.entity_id,
+          created: row.created,
+          data: JSON.parse(row.data),
+          disposition: row.disposition ? JSON.parse(row.disposition) : null,
+        })),
+      });
+    }
+    const feedbackMatch = path.match(/^feedback\/([0-9a-f]{24})$/);
+    if (feedbackMatch && request.method === 'POST') {
+      if (!await reviewer(request, env.PATTERNS_REVIEW_TOKEN)) {
+        return respond(401, { error: 'Reviewer authorization required' });
+      }
+      const input = await parseBody(request, 32768);
+      const notes = String(input?.notes || '').trim();
+      if (!RETRIEVAL_REVIEW_ACTIONS.has(input?.action) || !notes || notes.length > 5000) {
+        return respond(400, { error: 'A valid feedback disposition and concise reviewer note are required' });
+      }
+      const feedback = await db.prepare(
+        "SELECT id FROM evidence_events WHERE id=?1 AND entity_type='retrieval' AND event_type='retrieval-feedback'",
+      ).bind(feedbackMatch[1]).first();
+      if (!feedback) return respond(404, { error: 'Retrieval feedback not found' });
+      const disposition = { action: input.action, notes, reviewed_at: new Date().toISOString() };
+      const eventId = await recordEvent(env, 'feedback', feedback.id, 'reviewer-disposition', disposition);
+      return respond(200, { id: feedback.id, event_id: eventId, disposition, automatic_promotion: false });
+    }
     if (path === 'runs' && request.method === 'POST') {
       if (!await reviewer(request, env.PATTERNS_REVIEW_TOKEN)) {
         return respond(401, { error: 'Reviewer authorization required' });
