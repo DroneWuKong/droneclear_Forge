@@ -7,6 +7,9 @@ import {
 } from '../workers/patterns-autonomy.mjs';
 import { canonicalJson, sha256 } from '../workers/retrieval-policy.mjs';
 import { APPROVED_CHAIN_STATES } from '../workers/portfolio-improvement.mjs';
+import {
+  FORBIDDEN_CANDIDATE_CAPABILITIES, buildIncident,
+} from '../workers/experiment-runtime.mjs';
 import forgeData from '../workers/forge-data.js';
 
 function setup() {
@@ -17,6 +20,7 @@ function setup() {
   sql.exec(readFileSync(new URL('../migrations/0004_retrieval_policy_monitoring.sql', import.meta.url), 'utf8'));
   sql.exec(readFileSync(new URL('../migrations/0005_autonomy_ingress_controls.sql', import.meta.url), 'utf8'));
   sql.exec(readFileSync(new URL('../migrations/0006_portfolio_improvement_decisions.sql', import.meta.url), 'utf8'));
+  sql.exec(readFileSync(new URL('../migrations/0007_improvement_experiment_os.sql', import.meta.url), 'utf8'));
   const AUTONOMY_DB = {
     prepare(query) {
       let values = {};
@@ -74,6 +78,58 @@ const request = (path, method = 'GET', payload, token, headers = {}) => new Requ
     ...(payload === undefined ? {} : { body: typeof payload === 'string' ? payload : JSON.stringify(payload) }),
   },
 );
+
+const improvementDigest = character => `sha256:${character.repeat(64)}`;
+const improvementExperiment = (overrides = {}) => ({
+  schemaVersion:'patterns.improvement-experiment.v1', experimentId:'experiment:route-001',
+  lane:'ask-pie-ranking', registeredAtMs:4000, baselineDigest:improvementDigest('a'),
+  candidateParentDigests:[improvementDigest('a')],
+  mutationEnvelope:{allowedArtifactKinds:['POLICY'], maximumCandidates:8, maximumWallTimeMs:60_000},
+  requestedCapabilities:['READ_INPUT_ARTIFACTS','WRITE_CANDIDATE_ARTIFACT','EXECUTE_EPHEMERAL'],
+  trainingCutoffMs:1000, replayCutoffMs:2000, holdoutCutoffMs:3000,
+  primaryMetric:{name:'ndcg', direction:'MAXIMIZE', minimumImprovement:0.02},
+  protectedMetrics:[{name:'citationPrecision', maximumRegression:0}],
+  sliceDefinitions:['overall','sparse-query'], minimumSampleSize:100, minimumDurationMs:1000,
+  uncertaintyRule:'lower-bound above zero',
+  budget:{maxCpuMs:10_000, maxMemoryMb:512, maxCostUnits:100, maxNetworkRequests:0},
+  safetyInvariants:['no authority changes','no publication'],
+  automaticStopConditions:['protected metric regression','capability violation'],
+  promotionClass:'HUMAN_APPROVED_ACTIVATION', requiredApproverRoles:['RELEASE_APPROVER','SECURITY_REVIEWER'],
+  rollbackTargetDigest:improvementDigest('a'),
+  evaluatorDigests:[improvementDigest('e'),improvementDigest('f')],
+  toolchainDigest:improvementDigest('c'), datasetDigests:[improvementDigest('d'),improvementDigest('9')],
+  changesAuthority:false, changesHardware:false, authorizesAction:false, ...overrides,
+});
+const improvementCandidate = (overrides = {}) => ({
+  schemaVersion:'patterns.improvement-candidate.v1', candidateId:'candidate:route-001',
+  experimentId:'experiment:route-001', parentDigests:[improvementDigest('a')],
+  candidateDigest:improvementDigest('b'), artifactDigests:[improvementDigest('7')],
+  declaredChange:'Adjust bounded retrieval weights',
+  expectedBenefit:'Improve held-out NDCG without citation regression',
+  requestedCapabilities:['READ_INPUT_ARTIFACTS','WRITE_CANDIDATE_ARTIFACT','EXECUTE_EPHEMERAL'],
+  prohibitedCapabilities:[...FORBIDDEN_CANDIDATE_CAPABILITIES],
+  builderIdentity:'builder:forge-route', buildProvenanceDigest:improvementDigest('6'),
+  reproducibility:'MATCHED', compatibleInputSchema:'ask-pie-feedback-features-v1',
+  compatibleOutputSchema:'retrieval-policy-candidate-v1',
+  knownLimitations:['Public-intelligence retrieval only'], fallbackDigest:improvementDigest('a'),
+  changesServing:false, changesAuthority:false, changesHardware:false, authorizesAction:false,
+  ...overrides,
+});
+const improvementEvaluation = (overrides = {}) => ({
+  schemaVersion:'patterns.improvement-evaluation.v1', evaluationId:'evaluation:route-001',
+  experimentId:'experiment:route-001', candidateDigest:improvementDigest('b'),
+  evaluatorId:'evaluator:independent-route', evaluatorDigest:improvementDigest('e'),
+  datasetSnapshotDigest:improvementDigest('d'), holdoutHandle:'holdout:route-001',
+  windowStartMs:4000, windowEndMs:5000, observedAtMs:5000, sampleSize:100,
+  baselinePrimaryValue:0.5, candidatePrimaryValue:0.53,
+  protectedMetricRegressions:[{name:'citationPrecision', regression:0, passed:true}],
+  sliceResults:[{sliceId:'overall', sampleSize:100, primaryDelta:0.03, passed:true},
+    {sliceId:'sparse-query', sampleSize:30, primaryDelta:0.02, passed:true}],
+  resourceUse:{cpuMs:1000, peakMemoryMb:128, costUnits:10, networkRequests:0},
+  suspiciousFindings:[], uncertainty:'95% lower bound 0.021', replayable:true, passed:true,
+  changesServing:false, changesAuthority:false, changesHardware:false, authorizesAction:false,
+  ...overrides,
+});
 
 function spec(claimType = 'observation', suffix = '1') {
   return {
@@ -157,6 +213,89 @@ test('status is public but private routes reject missing reviewer authorization'
   assert.equal((await handlePatternsAutonomy(request('runs', 'POST', {}), env)).status, 401);
   sql.close();
 });
+
+test('improvement routes preserve authenticated append-only lineage without serving authority', async () => {
+  const {env, sql} = setup();
+  const experiment = improvementExperiment();
+  const candidate = improvementCandidate();
+  const evaluation = improvementEvaluation();
+
+  assert.equal((await handlePatternsAutonomy(request(
+    'improvement/experiments', 'POST', experiment,
+  ), env)).status, 401);
+  assert.equal((await handlePatternsAutonomy(request(
+    'improvement/candidates', 'POST', candidate, 'review-token',
+  ), env)).status, 404);
+
+  const registeredExperiment = await handlePatternsAutonomy(request(
+    'improvement/experiments', 'POST', experiment, 'review-token',
+  ), env);
+  assert.equal(registeredExperiment.status, 201);
+  const experimentReceipt = await registeredExperiment.json();
+  assert.equal(experimentReceipt.record_type, 'EXPERIMENT');
+  assert.equal(experimentReceipt.changes_serving, false);
+  assert.equal(experimentReceipt.authorizes_action, false);
+
+  const replay = await (await handlePatternsAutonomy(request(
+    'improvement/experiments', 'POST', experiment, 'review-token',
+  ), env)).json();
+  assert.equal(replay.idempotentReplay, true);
+  assert.equal((await handlePatternsAutonomy(request(
+    'improvement/experiments', 'POST', {...experiment, lane:'other-lane'}, 'review-token',
+  ), env)).status, 409);
+
+  assert.equal((await handlePatternsAutonomy(request(
+    'improvement/candidates', 'POST', candidate, 'review-token',
+  ), env)).status, 201);
+  assert.equal((await handlePatternsAutonomy(request(
+    'improvement/candidates', 'POST', {
+      ...candidate, candidateId:'candidate:forbidden-route', requestedCapabilities:['DEPLOY'],
+    }, 'review-token',
+  ), env)).status, 400);
+  assert.equal((await handlePatternsAutonomy(request(
+    'improvement/evaluations', 'POST', evaluation, 'review-token',
+  ), env)).status, 201);
+
+  const incident = await buildIncident({
+    incidentId:'incident:route-001', experimentId:experiment.experimentId,
+    candidateDigest:candidate.candidateDigest, incidentType:'CAPABILITY_VIOLATION',
+    detectedAtMs:6000, evidenceRefs:[improvementDigest('5')],
+    summary:'Denied undeclared capability during isolated execution',
+  });
+  const incidentResponse = await handlePatternsAutonomy(request(
+    'improvement/incidents', 'POST', incident, 'monitor-token',
+  ), env);
+  assert.equal(incidentResponse.status, 201);
+
+  const servingReceipt = {
+    schemaVersion:'patterns.improvement-serving-receipt.v1', receiptId:'receipt:route-001',
+    policyId:'ask-pie-ranking', configuredVersion:'candidate:route-001',
+    actualVersion:'lexical-subject-v2', activeGeneration:1,
+    fallbackReason:'Candidate unavailable; deterministic baseline served',
+    inputDigest:improvementDigest('1'), resultDigest:improvementDigest('2'),
+    latencyMs:12, costClass:'LOW', errorState:null, observedAtMs:7000,
+    containsRawPrivateInput:false, changesAuthority:false, changesHardware:false,
+    authorizesAction:false,
+  };
+  assert.equal((await handlePatternsAutonomy(request(
+    'improvement/serving-receipts', 'POST', servingReceipt, 'monitor-token',
+  ), env)).status, 201);
+
+  assert.equal((await handlePatternsAutonomy(request('improvement/audit'), env)).status, 401);
+  const audit = await (await handlePatternsAutonomy(request(
+    'improvement/audit', 'GET', undefined, 'review-token',
+  ), env)).json();
+  assert.equal(audit.experiments.length, 1);
+  assert.equal(audit.candidates.length, 1);
+  assert.equal(audit.evaluations.length, 1);
+  assert.equal(audit.incidents.length, 1);
+  assert.equal(audit.serving_receipts.length, 1);
+  assert.equal(audit.read_only, true);
+  assert.equal(audit.changes_serving, false);
+  assert.equal(audit.authorizes_action, false);
+  sql.close();
+});
+
 test('webhook signatures reject altered and stale bodies', async () => {
   const secret = 'whsec_ZXhhbXBsZS1zZWNyZXQ=';
   const id = 'wh_test';

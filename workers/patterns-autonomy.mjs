@@ -11,6 +11,10 @@ import {
   createActivationDecision, createRollbackDecision, improvementDecisionDigest,
   validateApprovedDecisionChain,
 } from './portfolio-improvement.mjs';
+import {
+  recordEvaluation, recordIncident, recordServingReceipt, registerCandidate,
+  registerExperiment,
+} from './experiment-runtime.mjs';
 
 const JSON_HEADERS = {
   'content-type': 'application/json',
@@ -46,6 +50,20 @@ const OFFICIAL_DOMAINS = [
 ];
 const respond = (status, data, extraHeaders = {}) => new Response(JSON.stringify(data), {
   status, headers:{...JSON_HEADERS, ...extraHeaders},
+});
+const improvementFailure = error => {
+  const message = error instanceof Error ? error.message : 'Invalid improvement record';
+  const status = /conflict|already registered|different content/i.test(message) ? 409 : 400;
+  return respond(status, {error:message, changes_serving:false, authorizes_action:false});
+};
+const improvementReceipt = (recordType, receipt) => ({
+  schema_version:'patterns.improvement-registration-receipt.v1',
+  record_type:recordType,
+  ...receipt,
+  changes_serving:false,
+  changes_authority:false,
+  changes_hardware:false,
+  authorizes_action:false,
 });
 const hex = bytes => Array.from(bytes, byte => byte.toString(16).padStart(2, '0')).join('');
 const sha = async value => hex(new Uint8Array(await crypto.subtle.digest(
@@ -1045,6 +1063,131 @@ export async function handlePatternsAutonomy(request, env, context) {
   }
   if (!db) return respond(503, { error: 'Autonomous evidence storage is not configured' });
   try {
+    if (path === 'improvement/experiments' && request.method === 'POST') {
+      if (!await reviewer(request, env.PATTERNS_REVIEW_TOKEN)) {
+        return respond(401, {error:'Reviewer authorization required'});
+      }
+      try {
+        const receipt = await registerExperiment(env, await parseBody(request));
+        return respond(receipt.idempotentReplay ? 200 : 201,
+          improvementReceipt('EXPERIMENT', receipt));
+      } catch (error) {
+        return improvementFailure(error);
+      }
+    }
+    if (path === 'improvement/candidates' && request.method === 'POST') {
+      if (!await reviewer(request, env.PATTERNS_REVIEW_TOKEN)) {
+        return respond(401, {error:'Reviewer authorization required'});
+      }
+      try {
+        const input = await parseBody(request);
+        const stored = await db.prepare(
+          'SELECT record_json FROM improvement_experiments WHERE experiment_id=?1',
+        ).bind(String(input?.experimentId || '')).first();
+        if (!stored) return respond(404, {
+          error:'Registered improvement experiment not found', changes_serving:false,
+          authorizes_action:false,
+        });
+        const receipt = await registerCandidate(env, input, JSON.parse(stored.record_json));
+        return respond(receipt.idempotentReplay ? 200 : 201,
+          improvementReceipt('CANDIDATE', receipt));
+      } catch (error) {
+        return improvementFailure(error);
+      }
+    }
+    if (path === 'improvement/evaluations' && request.method === 'POST') {
+      if (!await reviewer(request, env.PATTERNS_REVIEW_TOKEN)) {
+        return respond(401, {error:'Reviewer authorization required'});
+      }
+      try {
+        const input = await parseBody(request);
+        const candidateRow = await db.prepare(
+          "SELECT record_json FROM improvement_candidates WHERE json_extract(record_json,'$.candidateDigest')=?1",
+        ).bind(String(input?.candidateDigest || '')).first();
+        if (!candidateRow) return respond(404, {
+          error:'Registered improvement candidate not found', changes_serving:false,
+          authorizes_action:false,
+        });
+        const candidate = JSON.parse(candidateRow.record_json);
+        const experimentRow = await db.prepare(
+          'SELECT record_json FROM improvement_experiments WHERE experiment_id=?1',
+        ).bind(candidate.experimentId).first();
+        if (!experimentRow) return respond(409, {
+          error:'Candidate experiment lineage is unavailable', changes_serving:false,
+          authorizes_action:false,
+        });
+        const receipt = await recordEvaluation(
+          env, input, JSON.parse(experimentRow.record_json), candidate,
+        );
+        return respond(receipt.idempotentReplay ? 200 : 201,
+          improvementReceipt('EVALUATION', receipt));
+      } catch (error) {
+        return improvementFailure(error);
+      }
+    }
+    if (path === 'improvement/incidents' && request.method === 'POST') {
+      const reviewAuthorized = await reviewer(request, env.PATTERNS_REVIEW_TOKEN);
+      const monitorAuthorized = await reviewer(request, env.PATTERNS_MONITOR_TOKEN);
+      if (!reviewAuthorized && !monitorAuthorized) {
+        return respond(401, {error:'Monitor or reviewer authorization required'});
+      }
+      try {
+        const input = await parseBody(request);
+        const lineage = await db.prepare(
+          "SELECT record_json FROM improvement_candidates WHERE json_extract(record_json,'$.candidateDigest')=?1",
+        ).bind(String(input?.candidateDigest || '')).first();
+        if (!lineage) return respond(404, {
+          error:'Incident candidate lineage not found', changes_serving:false,
+          authorizes_action:false,
+        });
+        const candidate = JSON.parse(lineage.record_json);
+        if (candidate.experimentId !== input?.experimentId) return respond(409, {
+          error:'Incident does not match candidate experiment lineage', changes_serving:false,
+          authorizes_action:false,
+        });
+        const receipt = await recordIncident(env, input);
+        return respond(receipt.idempotentReplay ? 200 : 201,
+          improvementReceipt('INCIDENT', receipt));
+      } catch (error) {
+        return improvementFailure(error);
+      }
+    }
+    if (path === 'improvement/serving-receipts' && request.method === 'POST') {
+      const reviewAuthorized = await reviewer(request, env.PATTERNS_REVIEW_TOKEN);
+      const monitorAuthorized = await reviewer(request, env.PATTERNS_MONITOR_TOKEN);
+      if (!reviewAuthorized && !monitorAuthorized) {
+        return respond(401, {error:'Monitor or reviewer authorization required'});
+      }
+      try {
+        const receipt = await recordServingReceipt(env, await parseBody(request));
+        return respond(receipt.idempotentReplay ? 200 : 201,
+          improvementReceipt('SERVING_RECEIPT', receipt));
+      } catch (error) {
+        return improvementFailure(error);
+      }
+    }
+    if (path === 'improvement/audit' && request.method === 'GET') {
+      if (!await reviewer(request, env.PATTERNS_REVIEW_TOKEN)) {
+        return respond(401, {error:'Reviewer authorization required'});
+      }
+      const tables = {
+        experiments:'improvement_experiments', candidates:'improvement_candidates',
+        evaluations:'improvement_evaluations', incidents:'improvement_incidents',
+        serving_receipts:'improvement_serving_receipts',
+      };
+      const audit = {};
+      for (const [name, table] of Object.entries(tables)) {
+        const result = await db.prepare(
+          `SELECT record_json FROM ${table} ORDER BY created DESC LIMIT 200`,
+        ).all();
+        audit[name] = result.results.map(row => JSON.parse(row.record_json));
+      }
+      return respond(200, {
+        schema_version:'patterns.improvement-audit.v1', ...audit,
+        read_only:true, changes_serving:false, changes_authority:false,
+        changes_hardware:false, authorizes_action:false,
+      });
+    }
     if (path === 'candidates' && request.method === 'POST') {
       if (!await reviewer(request, env.PATTERNS_REVIEW_TOKEN)) {
         return respond(401, { error: 'Reviewer authorization required' });
