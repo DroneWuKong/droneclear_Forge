@@ -47,6 +47,7 @@ const FRESHNESS_LIMIT_MS = new Map([
   ['ttp_counter_gap', 72 * 60 * 60 * 1000],
   ['threat_scores', 72 * 60 * 60 * 1000],
   ['dataset_catalog', 72 * 60 * 60 * 1000],
+  ['intelligence_advisories', 168 * 60 * 60 * 1000],
   ['source_coverage_matrix', 72 * 60 * 60 * 1000],
   ['data_quality_score', 72 * 60 * 60 * 1000],
 ]);
@@ -159,6 +160,7 @@ const DATASETS = new Set([
   'miner_health',
   'miner_registry',
   'dataset_catalog',
+  'intelligence_advisories',
   'source_coverage_matrix',
   'data_quality_score',
   'forecast_review_queue',
@@ -239,6 +241,7 @@ const PIE_OUTPUTS_KEYS = new Set([
   'miner_health',
   'miner_registry',
   'dataset_catalog',
+  'intelligence_advisories',
   'source_coverage_matrix',
   'data_quality_score',
   'solicitations',
