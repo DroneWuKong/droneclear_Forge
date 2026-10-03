@@ -28,6 +28,28 @@ await page.keyboard.press('Escape');assert.ok(await page.locator('[data-text-siz
 await page.locator('[data-text-size-control]').click();await page.locator('.uas-text-size-panel:not([hidden]) input[value="default"]').check();await page.keyboard.press('Escape');
 await page.reload();assert.equal(await page.evaluate(()=>document.documentElement.dataset.uasTextSize),'default');
 if(await page.locator('#uas-analytics-consent [data-reject]').isVisible())await page.locator('#uas-analytics-consent [data-reject]').click();
+// The shared header must remain operable with large text and narrow screens.
+fs.mkdirSync(path.resolve('.local/design-review'),{recursive:true});
+for(const [route,area] of [['/','build'],['/patterns-home/','research']]){
+ await page.goto('http://forge.test.localhost'+route);
+ assert.equal(await page.locator('.uas-areas [aria-current]').getAttribute('data-uas-link'),area);
+ for(const width of [320,390,1440]){
+  await page.setViewportSize({width,height:844});
+  for(const size of ['default','xlarge']){
+   await page.locator('[data-text-size-control]').click();
+   await page.locator('.uas-text-size-panel:not([hidden]) input[value="'+size+'"]').check();
+   await page.keyboard.press('Escape');
+   const geometry=await page.locator('.uas-header').evaluate(header=>{
+    const controls=[...header.querySelectorAll('a,button')].filter(e=>e.getClientRects().length);
+    return controls.map(e=>{const b=e.getBoundingClientRect();const top=document.elementFromPoint(b.x+b.width/2,b.y+b.height/2);return {text:e.textContent.trim(),inside:b.x>=0&&b.right<=innerWidth+1,hit:e===top||e.contains(top),height:b.height};});
+   });
+   assert.ok(geometry.every(b=>b.inside&&b.hit&&b.height>=24),JSON.stringify({route,width,size,geometry}));
+   assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1),'Homepage must reflow');
+   await page.screenshot({path:path.resolve('.local/design-review',area+'-'+width+'-'+size+'.png')});
+  }
+ }
+ await page.locator('[data-text-size-control]').click();await page.locator('.uas-text-size-panel:not([hidden]) input[value="default"]').check();await page.keyboard.press('Escape');
+}
 await page.goto('http://forge.test.localhost/audit/');await page.waitForTimeout(100);assert.equal(await page.evaluate(()=>typeof initAuditPage),'function');await page.locator('#audit-sn-input').fill('LOCAL-SYNTHETIC-RECORD');await page.locator('#btn-audit-search').click();await page.waitForTimeout(100);assert.ok(apiRequests.some(p=>p.startsWith('/api/audit/')));assert.match(await page.locator('body').innerText(),/Build record not found/);
 await page.goto('http://forge.test.localhost/guide/');await page.waitForTimeout(150);assert.equal(await page.evaluate(()=>typeof initGuidePage),'function');assert.ok(await page.locator('.guide-card').count()>0,'Shipped guide cards must initialize');await page.locator('.guide-card').first().click();await page.waitForFunction(()=>guideState.phase==='overview');
 for(const width of [390,1440]){await page.setViewportSize({width,height:900});await page.locator('#btn-mode-edit').click();assert.equal(await page.evaluate(()=>guideState.phase),'editing');
