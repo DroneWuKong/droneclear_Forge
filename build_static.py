@@ -2413,7 +2413,8 @@ def build(*, offline=False, data_ref=None, data_dir=None, include_private=False)
     # Explicitly copy intel fallbacks to build root (served at /pie_flags.json etc.).
     # The article fallback is a deployment-safe projection; Ai-Project remains
     # the source of truth for complete scraped bodies.
-    ROOT_INTEL_FILES = ['flags.json', 'forecast_review_queue.json', 'analytic_judgments.json', 'publication_inputs.json',
+    ROOT_INTEL_FILES = ['flags.json', 'forecast_review_queue.json', 'code_evolution_review_queue.json',
+                        'analytic_judgments.json', 'publication_inputs.json',
                         'intelligence_advisories.json',
                         'flags.xml', 'brief.xml', 'pie_flags.json', 'pie_predictions.json', 'predictions_best.json',
                         'pie_brief.json', 'pie_brief_history.json', 'pie_trends.json', 'solicitations.json',

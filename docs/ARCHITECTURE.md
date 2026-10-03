@@ -33,12 +33,22 @@ Build script maps source HTML to clean URL paths:
 | `contribute.html` | `contribute/index.html` | `/contribute/` |
 | ... | ... | See `PAGES` dict in `build_static.py` |
 
+## Runtime evidence services
+
+Static pages use same-origin Cloudflare Worker routes for bounded data APIs,
+analytics, and the autonomous-evidence ledger. Ask PIE ranking remains
+deterministic in the browser/API contract. Optional explicit feedback is written
+to the append-only D1 evidence log for private human review; it cannot change
+the live ranker. See [UAS Patterns autonomous evidence](AUTONOMOUS_EVIDENCE.md).
+
 ## Analytics
 
 All pages include an inline analytics snippet that reports to the same-origin Cloudflare Worker endpoint `/api/analytics/ingest` (routed via `functions/api/[[path]].js` → `workers/analytics-ingest.js`). No cookies, no PII.
 
 ## Key Decisions
 
-- **No backend.** Django was removed. All data is static JSON.
+- **No application server.** Django was removed. Published data is static JSON;
+  narrowly scoped same-origin Worker routes provide runtime APIs and evidence
+  capture.
 - **No framework.** Vanilla JS + CSS. No React, no build toolchain.
 - **Data lives in Ai-Project.** Forge is a read-only consumer.

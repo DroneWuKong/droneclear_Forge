@@ -124,6 +124,8 @@ tr.bo-low td{opacity:.55}
 .forecast-criteria ol,.forecast-criteria ul{padding-left:20px;line-height:1.8}
 .forecast-search{background:var(--surface);border:1px solid var(--border);color:var(--text);font:12px var(--font);padding:8px 10px;width:100%;margin:6px 0 12px;border-radius:4px}
 .forecast-summary{font:600 13px var(--font);cursor:pointer}
+.code-review-row h3 a{overflow-wrap:anywhere}
+.code-review-row .forecast-state{color:var(--amber)}
 button:focus-visible,input:focus-visible,summary:focus-visible,a:focus-visible,.forecast-table:focus-visible{outline:2px solid var(--amber);outline-offset:3px}
 @media(max-width:600px){.page{padding:22px 14px 50px}.forecast-criteria dl{grid-template-columns:1fr}.forecast-criteria dd{margin-bottom:7px}.stats{flex-wrap:wrap}.st{flex:1 1 50%;border-bottom:1px solid var(--border)}}
 </style>
@@ -147,6 +149,13 @@ button:focus-visible,input:focus-visible,summary:focus-visible,a:focus-visible,.
     <strong>at least 30 graded forecasts including an evidence-backed refutation</strong>.
     Legacy automated verdicts remain in the audit history but do not count toward accuracy or calibration.
   </div>
+
+  <section class="panel" aria-labelledby="code-review-title" data-test-id="engineering-review-queue">
+    <h2 class="panel-h" id="code-review-title">Engineering review queue</h2>
+    <p class="panel-sub">Bounded software candidates that passed protected evaluation but still require a human patch review. This read-only queue cannot approve, merge, deploy, promote, or change serving behavior.</p>
+    <p id="code-review-status" class="forecast-muted" role="status">Loading engineering review status…</p>
+    <div id="code-review-queue"></div>
+  </section>
 
   <section class="panel" aria-labelledby="cohort-title">
     <h2 class="panel-h" id="cohort-title">Prospective forecasts and retained history</h2>
@@ -777,6 +786,14 @@ function renderHistory(){
 document.getElementById('queue-search').addEventListener('input',function(){_queueLimit=20;renderQueue();});
 document.getElementById('queue-more').addEventListener('click',function(){_queueLimit+=20;renderQueue();});
 document.getElementById('history-more').addEventListener('click',function(){_historyLimit+=20;renderHistory();});
+fetch('/api/data?type=code_evolution_review_queue')
+  .then(function(response){if(!response.ok)throw new Error('unavailable');return response.json();})
+  .then(function(payload){
+    var queue=ForecastAccountability.codeReviewDocument(payload);if(!queue)throw new Error('schema');
+    document.getElementById('code-review-queue').innerHTML=queue.records.map(ForecastAccountability.codeReviewCard).join('') || '<p class="forecast-muted">No bounded software candidates currently require review.</p>';
+    document.getElementById('code-review-status').textContent='Published '+ForecastAccountability.when(queue.generated_at)+' · '+queue.records.length+' candidate'+(queue.records.length===1?'':'s')+' awaiting human review';
+  })
+  .catch(function(){document.getElementById('code-review-status').textContent='Engineering review queue unavailable in this publication. Missing status is not a count of zero.';});
 fetch('/api/data?type=forecast_review_queue')
   .then(function(response){if(!response.ok)throw new Error('unavailable');return response.json();})
   .then(function(payload){_queue=ForecastAccountability.queueDocument(payload);if(!_queue)throw new Error('schema');renderQueue();})
