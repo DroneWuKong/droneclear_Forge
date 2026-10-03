@@ -54,6 +54,16 @@ const EVALUATION_FIELDS = [
   'protectedMetricRegressions', 'sliceResults', 'resourceUse', 'suspiciousFindings', 'uncertainty',
   'replayable', 'passed', 'changesServing', 'changesAuthority', 'changesHardware', 'authorizesAction',
 ];
+const INCIDENT_FIELDS = [
+  'schemaVersion', 'incidentId', 'experimentId', 'candidateDigest', 'incidentType', 'detectedAtMs',
+  'evidenceRefs', 'summary', 'quarantinesLineage', 'preservesEvidence', 'changesServing',
+  'changesAuthority', 'changesHardware', 'authorizesAction', 'incidentDigest',
+];
+const SERVING_RECEIPT_FIELDS = [
+  'schemaVersion', 'receiptId', 'policyId', 'configuredVersion', 'actualVersion', 'activeGeneration',
+  'fallbackReason', 'inputDigest', 'resultDigest', 'latencyMs', 'costClass', 'errorState', 'observedAtMs',
+  'containsRawPrivateInput', 'changesAuthority', 'changesHardware', 'authorizesAction',
+];
 
 const exact = (value, fields, label) => {
   if (!value || typeof value !== 'object' || Array.isArray(value)
@@ -338,4 +348,68 @@ export async function buildIncident({incidentId, experimentId, candidateDigest, 
     summary:text(summary, 'incident summary'), quarantinesLineage:true, preservesEvidence:true,
     changesServing:false, changesAuthority:false, changesHardware:false, authorizesAction:false};
   return {...base, incidentDigest:await canonicalDigest(base)};
+}
+
+export async function validateIncident(value) {
+  exact(value, INCIDENT_FIELDS, 'improvement incident');
+  if (value.schemaVersion !== INCIDENT_SCHEMA || !INCIDENT_TYPES.has(value.incidentType)) {
+    throw new Error('unsupported improvement incident');
+  }
+  authorityBoundary(value, 'improvement incident');
+  if (value.changesServing !== false || value.quarantinesLineage !== true || value.preservesEvidence !== true) {
+    throw new Error('improvement incident violates quarantine or evidence preservation');
+  }
+  const {incidentDigest, ...base} = value;
+  const parsed = {schemaVersion:INCIDENT_SCHEMA, incidentId:identifier(base.incidentId, 'incident id'),
+    experimentId:identifier(base.experimentId, 'incident experiment id'), candidateDigest:digest(base.candidateDigest, 'incident candidate digest'),
+    incidentType:base.incidentType, detectedAtMs:integer(base.detectedAtMs, 'incident time'),
+    evidenceRefs:list(base.evidenceRefs, 'incident evidence references', digest, 1, 128), summary:text(base.summary, 'incident summary'),
+    quarantinesLineage:true, preservesEvidence:true, changesServing:false, changesAuthority:false, changesHardware:false, authorizesAction:false};
+  if (incidentDigest !== await canonicalDigest(parsed)) throw new Error('improvement incident digest mismatch');
+  return {...parsed, incidentDigest};
+}
+
+export function validateServingReceipt(value) {
+  exact(value, SERVING_RECEIPT_FIELDS, 'improvement serving receipt');
+  if (value.schemaVersion !== SERVING_RECEIPT_SCHEMA) throw new Error('unsupported improvement serving receipt schema');
+  if (value.containsRawPrivateInput !== false || value.changesAuthority !== false
+    || value.changesHardware !== false || value.authorizesAction !== false) {
+    throw new Error('improvement serving receipt violates the privacy or non-authorizing boundary');
+  }
+  if (!['FREE', 'LOW', 'MEDIUM', 'HIGH'].includes(value.costClass)) throw new Error('serving receipt cost class is unsupported');
+  const configuredVersion = value.configuredVersion === null ? null : identifier(value.configuredVersion, 'configured version');
+  const fallbackReason = value.fallbackReason === null ? null : text(value.fallbackReason, 'fallback reason');
+  const errorState = value.errorState === null ? null : identifier(value.errorState, 'serving error state');
+  if (configuredVersion === null && fallbackReason === null) throw new Error('unconfigured serving requires a fallback reason');
+  if (configuredVersion !== null && configuredVersion !== value.actualVersion && fallbackReason === null) {
+    throw new Error('serving version mismatch requires a fallback reason');
+  }
+  return structuredClone({schemaVersion:SERVING_RECEIPT_SCHEMA, receiptId:identifier(value.receiptId, 'serving receipt id'),
+    policyId:identifier(value.policyId, 'serving policy id'), configuredVersion,
+    actualVersion:identifier(value.actualVersion, 'actual serving version'), activeGeneration:integer(value.activeGeneration, 'serving generation'),
+    fallbackReason, inputDigest:digest(value.inputDigest, 'serving input digest'), resultDigest:digest(value.resultDigest, 'serving result digest'),
+    latencyMs:integer(value.latencyMs, 'serving latency'), costClass:value.costClass, errorState,
+    observedAtMs:integer(value.observedAtMs, 'serving observation time'), containsRawPrivateInput:false,
+    changesAuthority:false, changesHardware:false, authorizesAction:false});
+}
+
+export async function recordIncident(env, value) {
+  const record = await validateIncident(value);
+  return appendRecord(env, 'improvement_incidents', 'incident_id', record.incidentId, 'incident_digest', record.incidentDigest, record);
+}
+
+export async function recordServingReceipt(env, value) {
+  const record = validateServingReceipt(value), recordDigest = await canonicalDigest(record);
+  const existing = await env.AUTONOMY_DB.prepare(
+    'SELECT receipt_digest digest FROM improvement_serving_receipts WHERE receipt_id=?1',
+  ).bind(record.receiptId).first();
+  if (existing) {
+    if (existing.digest !== recordDigest) throw new Error('improvement serving receipt id conflicts with different content');
+    return {id:record.receiptId, digest:recordDigest, idempotentReplay:true};
+  }
+  await env.AUTONOMY_DB.prepare(
+    'INSERT INTO improvement_serving_receipts(receipt_id,receipt_digest,policy_id,configured_version,actual_version,active_generation,record_json,created) VALUES(?1,?2,?3,?4,?5,?6,?7,?8)',
+  ).bind(record.receiptId, recordDigest, record.policyId, record.configuredVersion, record.actualVersion,
+    record.activeGeneration, canonicalJson(record), new Date().toISOString()).run();
+  return {id:record.receiptId, digest:recordDigest, idempotentReplay:false};
 }

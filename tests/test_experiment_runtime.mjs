@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import {
   FORBIDDEN_CANDIDATE_CAPABILITIES, buildIncident, evaluateCouncil,
   executeIsolatedCandidate, validateCandidate, validateEvaluation, validateExperiment,
+  validateIncident, validateServingReceipt,
 } from '../workers/experiment-runtime.mjs';
 
 const D = character => `sha256:${character.repeat(64)}`;
@@ -86,4 +87,18 @@ test('incidents quarantine lineage without authorizing effects', async () => {
   assert.equal(incident.preservesEvidence, true);
   assert.equal(incident.authorizesAction, false);
   assert.match(incident.incidentDigest, /^sha256:[0-9a-f]{64}$/);
+  assert.equal((await validateIncident(incident)).incidentDigest, incident.incidentDigest);
+  await assert.rejects(validateIncident({...incident, summary:'tampered'}), /digest mismatch/);
+});
+
+test('serving receipts contain digests and fallback state but no private input', () => {
+  const receipt = validateServingReceipt({schemaVersion:'patterns.improvement-serving-receipt.v1',
+    receiptId:'receipt:ask-pie-001', policyId:'ask-pie-ranking', configuredVersion:'candidate:ask-pie-001',
+    actualVersion:'candidate:ask-pie-001', activeGeneration:1, fallbackReason:null, inputDigest:D('1'), resultDigest:D('2'),
+    latencyMs:12, costClass:'LOW', errorState:null, observedAtMs:6000, containsRawPrivateInput:false,
+    changesAuthority:false, changesHardware:false, authorizesAction:false});
+  assert.equal(receipt.containsRawPrivateInput, false);
+  assert.equal(receipt.authorizesAction, false);
+  assert.throws(() => validateServingReceipt({...receipt, rawQuery:'private'}), /unknown fields/);
+  assert.throws(() => validateServingReceipt({...receipt, actualVersion:'lexical-subject-v2'}), /fallback reason/);
 });
