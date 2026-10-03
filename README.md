@@ -82,7 +82,8 @@ Cloudflare Pages deploys from `master` using the project configuration in `wrang
 | Build command | `python3 build_static.py --offline` |
 | Publish directory | `build` |
 | Primary data source | `DroneWuKong/Ai-Project` |
-| Public data status | `/miner-health/` |
+| Public data quality | `/miner-health/` |
+| Intel pipeline operations | `/intel-health/` |
 
 ## Interpretation rules
 

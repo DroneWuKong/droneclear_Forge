@@ -102,6 +102,7 @@ PAGES = {
     'cost.html': 'cost/index.html',
     'intel-home.html': 'intel/index.html',
     'intel.html': 'intel/feed/index.html',
+    'intel-health.html': 'intel-health/index.html',
     # 'ddg.html': 'ddg/index.html',  # DDG (Defense Drone Gauntlet) temporarily disabled — re-enable by uncommenting
     'vault.html': 'vault/index.html',
     'troubleshoot.html': 'troubleshoot/index.html',  # Unlisted — no nav links
@@ -382,10 +383,10 @@ _PAGE_SLUGS = {
     'forecast-accountability.html': 'forecast-accountability',
     'pie-trends.html': 'pie-trends',
     'pie-search.html': 'pie-search', 'brief-archive.html': 'brief-archive',
-    'miner-health.html': 'miner-health',
+    'miner-health.html': 'miner-health', 'intel-health.html': 'intel-health',
     'lexicon.html': 'lexicon', 'api-docs.html': 'api-docs',
     'contribute-doctrine.html': 'contribute-doctrine', 'audit-doctrine.html': 'audit-doctrine',
-    'intel.html': 'intel-feed', 'intel-home.html': 'intel-home', 'forge-home.html': 'forge',
+    'intel.html': 'intel-feed', 'intel-home.html': 'intel-home', 'intel-health.html': 'intel-health', 'forge-home.html': 'forge',
     'intel-commercial.html': 'intel-commercial',
     'intel-dfr.html': 'intel-dfr',
     'wingman.html': 'wingman', 'browse.html': 'browse',
@@ -617,6 +618,7 @@ _UNIFIED_NAV = r"""<!-- ── Unified UAS- Nav (5-domain accordion drawer) ─�
     </summary>
     <div class="dc-dom-sublinks">
       <a class="dc-dom-sublink" href="https://uas-patterns.com/intel/feed/" data-page="intel-feed">Intel Feed</a>
+      <a class="dc-dom-sublink" href="https://uas-patterns.com/intel-health/" data-page="intel-health">Pipeline Health</a>
       <a class="dc-dom-sublink" href="https://uas-patterns.com/intel-commercial/" data-page="intel-commercial">Commercial Desk</a>
       <a class="dc-dom-sublink" href="https://uas-patterns.com/intel-dfr/" data-page="intel-dfr">DFR Desk</a>
       <a class="dc-dom-sublink" href="https://uas-patterns.com/industry/" data-page="industry">Industry Tracker</a>
@@ -735,7 +737,7 @@ _UNIFIED_NAV = r"""<!-- ── Unified UAS- Nav (5-domain accordion drawer) ─�
     'adversary-bom':'Adversary BOM','mirroring':'Component Mirroring','actors':'Threat Actors',
     'ttps':'TTP Defense Gap','evasion':'Sanctions-Evasion','market-lens':'Market Lens',
     'forecast-accountability':'Forecast Accountability','pie-trends':'PIE Trends',
-    'pie-search':'Search','brief-archive':'Brief Archive','miner-health':'Pipeline Health',
+    'pie-search':'Search','brief-archive':'Brief Archive','miner-health':'Data Quality','intel-health':'Intel Health',
     'contribute-doctrine':'Contribute Doctrine','audit-doctrine':'Doctrine Audit',
     'start':'Getting Started','grants':'Grants','waiver':'Doc Builder','forge':'Forge Hub',
     'verify':'Verify','vault':'Vault','troubleshoot':'Troubleshoot','support':'Support','donate':'Support','hub':'Hub','gallery':'Featured Builds','entity-graph':'Entity Graph',
@@ -918,6 +920,7 @@ _DISCLAIMER_PAGES = {
     "tracker.html": "patterns",
     "dossier.html": "patterns",
     "intel.html": "patterns",
+    "intel-health.html": "patterns",
     "intel-home.html": "patterns",
     "intel-dfr.html": "patterns",
     "intel-commercial.html": "patterns",
@@ -1325,6 +1328,11 @@ SEO_META = {
         'Live status of the community data miners powering PIE: sources, schedules, last runs, and record counts. Full data provenance for the intelligence pipeline.',
         'drone data pipeline, UAS intelligence sources, data provenance, miner status',
     ),
+    'intel-health.html': (
+        'Intel Pipeline Health — Collector Status & Evidence Freshness',
+        'Live collector execution, evidence freshness, persistence, and publication diagnostics for the UAS Patterns public intelligence pipeline.',
+        'UAS intelligence pipeline health, drone intel collectors, evidence freshness, miner diagnostics',
+    ),
     'mission-control.html': (
         'Forge — Drone Build Planner & Intelligence Platform',
         'Browse __PART_COUNT__+ drone component records, inspect recorded compatibility, assemble step-by-step guides, and access defense intelligence. The interactive companion to the Drone Integration Handbook.',
@@ -1708,6 +1716,7 @@ CANONICAL_OVERRIDES = {
     'pie-search/':     'https://uas-patterns.com/pie-search/',
     'brief-archive/':  'https://uas-patterns.com/brief-archive/',
     'miner-health/':   'https://uas-patterns.com/miner-health/',
+    'intel-health/':   'https://uas-patterns.com/intel-health/',
     # Intel — merged into uas-patterns.com
     'intel/':              'https://uas-patterns.com/intel/',
     'intel/feed/':         'https://uas-patterns.com/intel/feed/',

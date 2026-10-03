@@ -42,3 +42,26 @@ test('quality page loads the transparent six-dimension artifact', () => {
   assert.ok(source.includes('rates data fitness and accountability'));
   assertInlineScriptsParse(source);
 });
+
+test('intel health page separates run, evidence, persistence, and publication status', () => {
+  const source = html('intel-health.html');
+  assert.ok(source.includes('/static/intel-health.js'));
+  assert.ok(source.includes('Collector run'));
+  assert.ok(source.includes('Evidence'));
+  assert.ok(source.includes('Persistence'));
+  assert.ok(source.includes('Publication'));
+  assert.ok(source.includes('does not prove upstream completeness'));
+  assertInlineScriptsParse(source);
+});
+
+test('patterns dashboard embeds the shared fail-closed intel health summary', () => {
+  const source = html('patterns.html');
+  assert.ok(source.includes('/static/intel-health.js'));
+  assert.ok(source.includes('id="dashboard-health-status"'));
+  assert.ok(source.includes('id="dashboard-health-stages"'));
+  assert.ok(source.includes('href="/intel-health/"'));
+  assert.ok(source.includes('window.IntelHealth.summarize'));
+  assert.ok(source.includes("loadPipelineHealthDocument().then"));
+  assert.ok(source.includes("renderPipelineHealth(null, 'unavailable')"));
+  assertInlineScriptsParse(source);
+});
