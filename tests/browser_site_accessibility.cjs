@@ -31,10 +31,9 @@ const types = {'.html':'text/html','.js':'text/javascript','.json':'application/
     assert.ok(await page.locator('button.browse-card').count() > 20, 'Categories must be native buttons');
     await page.locator('button.browse-card').first().focus();
     await page.keyboard.press('Enter');
-    for (let i=0;i<3 && !await page.locator('.browse-item-name').count();i++) {
-      if (await page.locator('button.browse-card').count()) { await page.locator('button.browse-card').first().focus(); await page.keyboard.press('Space'); }
-      await page.waitForTimeout(100);
-    }
+    // Enter triggers an asynchronous render. Wait for the result instead of
+    // refocusing a category that may disappear between count() and focus().
+    await page.locator('button.browse-item-name').first().waitFor({state:'visible'});
     assert.ok(await page.locator('button.browse-item-name').count(), 'Keyboard category actions must reach part detail actions');
     await page.locator('button.browse-item-name').first().focus(); await page.keyboard.press('Enter');
     await page.waitForTimeout(100);
