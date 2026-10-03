@@ -166,6 +166,7 @@ PAGES = {
     'private/data.html': 'private/data/index.html',
     'private/models.html': 'private/models/index.html',
     'private/components-bom.html': 'private/components-bom/index.html',
+    'private/catalog.html': 'private/catalog/index.html',
     'private/drone-config.html': 'private/drone-config/index.html',
     'ddg.html': 'private/ddg/index.html',
 }
