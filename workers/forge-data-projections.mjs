@@ -39,6 +39,118 @@ function finiteNumber(value) {
   return Number.isFinite(parsed) ? parsed : 0;
 }
 
+const INTELLIGENCE_ADVISORY_FIELDS = [
+  'advisory_id', 'revision', 'status', 'title', 'summary', 'category',
+  'observed_at', 'reviewed_at', 'expires_at', 'confidence',
+  'confidence_basis', 'sources', 'affected_selectors', 'recommended_action',
+  'recommended_action_rationale', 'reviewer_id', 'review_decision_ref',
+  'requires_human_review', 'authorizes_execution',
+  'authorizes_readiness_change', 'advisory_digest',
+].sort();
+const INTELLIGENCE_ADVISORY_CATEGORIES = new Set([
+  'SAFETY', 'SECURITY', 'SUPPLY_CHAIN', 'REGULATORY', 'RELIABILITY',
+]);
+const INTELLIGENCE_ADVISORY_ACTIONS = new Set([
+  'REVIEW', 'INSPECT', 'HOLD', 'REPLACE', 'UPDATE',
+]);
+const INTELLIGENCE_ADVISORY_SELECTOR_KINDS = new Set([
+  'PART_NUMBER', 'MANUFACTURER', 'MODEL', 'FIRMWARE',
+  'COMPONENT_CATEGORY', 'BUILD_TAG',
+]);
+
+export function intelligenceAdvisoryPublicationErrors(data) {
+  if (!data || typeof data !== 'object' || Array.isArray(data)) {
+    return ['intelligence advisory artifact must be a JSON object'];
+  }
+  const errors = [];
+  if (data.schema_version !== 'forge.intelligence-advisory.v1') {
+    errors.push('schema_version must be forge.intelligence-advisory.v1');
+  }
+  if (!Number.isFinite(Date.parse(data.generated_at || ''))) {
+    errors.push('generated_at must be an ISO-8601 timestamp');
+  }
+  const controls = data.publication_controls;
+  if (!controls || typeof controls !== 'object' || Array.isArray(controls)
+    || controls.human_review_required !== true
+    || controls.source_evidence_required !== true
+    || controls.execution_authority_prohibited !== true
+    || controls.readiness_authority_prohibited !== true) {
+    errors.push('publication controls must require review and prohibit authority');
+  }
+  if (!Array.isArray(data.advisories)) {
+    errors.push('advisories must be a list');
+    return errors;
+  }
+  if (!Number.isInteger(data.advisory_count) || data.advisory_count !== data.advisories.length) {
+    errors.push('advisory_count must reconcile with advisories');
+  }
+  const identities = new Set();
+  for (const [index, advisory] of data.advisories.entries()) {
+    const label = `advisories[${index}]`;
+    if (!advisory || typeof advisory !== 'object' || Array.isArray(advisory)) {
+      errors.push(`${label} must be an object`);
+      continue;
+    }
+    const keys = Object.keys(advisory).sort();
+    if (keys.length !== INTELLIGENCE_ADVISORY_FIELDS.length
+      || keys.some((key, keyIndex) => key !== INTELLIGENCE_ADVISORY_FIELDS[keyIndex])) {
+      errors.push(`${label} contains missing or unknown fields`);
+    }
+    const identity = `${String(advisory.advisory_id)}:${String(advisory.revision)}`;
+    if (identities.has(identity)) errors.push(`${label} duplicates an advisory id and revision`);
+    identities.add(identity);
+    if (typeof advisory.advisory_id !== 'string' || advisory.advisory_id.length < 3
+      || !Number.isInteger(advisory.revision) || advisory.revision < 1
+      || advisory.status !== 'ACTIVE') {
+      errors.push(`${label} identity, revision, or status is invalid`);
+    }
+    if (!INTELLIGENCE_ADVISORY_CATEGORIES.has(advisory.category)
+      || !INTELLIGENCE_ADVISORY_ACTIONS.has(advisory.recommended_action)) {
+      errors.push(`${label} classification is unsupported`);
+    }
+    const observedAt = Date.parse(advisory.observed_at || '');
+    const reviewedAt = Date.parse(advisory.reviewed_at || '');
+    const generatedAt = Date.parse(data.generated_at || '');
+    const expiresAt = advisory.expires_at === null ? null : Date.parse(advisory.expires_at || '');
+    if (!Number.isFinite(observedAt) || !Number.isFinite(reviewedAt) || observedAt > reviewedAt) {
+      errors.push(`${label} observation and review times are invalid`);
+    }
+    if (expiresAt !== null && (!Number.isFinite(expiresAt) || expiresAt <= reviewedAt || expiresAt <= generatedAt)) {
+      errors.push(`${label} active expiry is invalid or already elapsed`);
+    }
+    if (!Number.isFinite(advisory.confidence) || advisory.confidence < 0 || advisory.confidence > 1) {
+      errors.push(`${label} confidence must be between zero and one`);
+    }
+    if (!Array.isArray(advisory.sources) || advisory.sources.length === 0
+      || advisory.sources.some((source) => !source || typeof source !== 'object'
+        || typeof source.url !== 'string' || !source.url
+        || typeof source.source_id !== 'string' || !source.source_id
+        || !Number.isFinite(Date.parse(source.published_at || ''))
+        || !Number.isFinite(Date.parse(source.retrieved_at || ''))
+        || Date.parse(source.published_at) > Date.parse(source.retrieved_at))) {
+      errors.push(`${label} requires attributable source evidence`);
+    }
+    if (!Array.isArray(advisory.affected_selectors) || advisory.affected_selectors.length === 0
+      || advisory.affected_selectors.some((selector) => !selector || typeof selector !== 'object'
+        || !INTELLIGENCE_ADVISORY_SELECTOR_KINDS.has(selector.kind)
+        || !['EXACT', 'PREFIX'].includes(selector.match)
+        || typeof selector.value !== 'string' || !selector.value)) {
+      errors.push(`${label} requires supported affected selectors`);
+    }
+    if (advisory.requires_human_review !== true
+      || advisory.authorizes_execution !== false
+      || advisory.authorizes_readiness_change !== false) {
+      errors.push(`${label} violates the non-authorizing review boundary`);
+    }
+    if (typeof advisory.reviewer_id !== 'string' || !advisory.reviewer_id
+      || typeof advisory.review_decision_ref !== 'string' || !advisory.review_decision_ref
+      || !/^sha256:[0-9a-f]{64}$/.test(String(advisory.advisory_digest || ''))) {
+      errors.push(`${label} lacks a review decision or content digest`);
+    }
+  }
+  return errors;
+}
+
 export function articleEventPublicationErrors(data) {
   if (!data || typeof data !== 'object' || Array.isArray(data)) {
     return ['event artifact must be a JSON object'];
@@ -103,6 +215,9 @@ export function articleEventPublicationErrors(data) {
 }
 
 export function validateDatasetForPublication(data, type) {
+  if (type === 'intelligence_advisories') {
+    return intelligenceAdvisoryPublicationErrors(data);
+  }
   const schema = {forecast_review_queue:'forecast-review-queue-v1',analytic_judgments:'analytic-judgments-v1'}[type];
   if (schema) {
     const errors=[];

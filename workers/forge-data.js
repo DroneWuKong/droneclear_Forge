@@ -49,6 +49,7 @@ const FRESHNESS_LIMIT_MS = new Map([
   ['dataset_catalog', 72 * 60 * 60 * 1000],
   ['source_coverage_matrix', 72 * 60 * 60 * 1000],
   ['data_quality_score', 72 * 60 * 60 * 1000],
+  ['intelligence_advisories', 168 * 60 * 60 * 1000],
 ]);
 
 function resp(data, status = 200, extraHeaders = {}) {
@@ -161,6 +162,7 @@ const DATASETS = new Set([
   'dataset_catalog',
   'source_coverage_matrix',
   'data_quality_score',
+  'intelligence_advisories',
   'forecast_review_queue',
   'analytic_judgments',
   'research_index',
@@ -242,6 +244,7 @@ const PIE_OUTPUTS_KEYS = new Set([
   'source_coverage_matrix',
   'data_quality_score',
   'solicitations',
+  'intelligence_advisories',
   'federal_awards',
   'sam_watchlist',
   'flags',

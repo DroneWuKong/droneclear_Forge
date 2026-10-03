@@ -4,6 +4,7 @@ import test from 'node:test';
 import {
   EVENT_PROJECTION_LIMITS,
   articleEventPublicationErrors,
+  intelligenceAdvisoryPublicationErrors,
   projectArticleEventClusters,
   projectDataset,
 } from '../workers/forge-data-projections.mjs';
@@ -162,4 +163,58 @@ test('oversized or overlong clusters fail publication controls', () => {
 test('non-event datasets are returned unchanged', () => {
   const value = { meta: { generated_at: '2026-07-31T12:00:00Z' }, rows: [1] };
   assert.equal(projectDataset(value, 'threat_scores', params()), value);
+});
+
+function intelligenceAdvisoryFixture() {
+  return {
+    schema_version: 'forge.intelligence-advisory.v1',
+    generated_at: '2026-09-27T13:00:00Z',
+    advisory_count: 1,
+    publication_controls: {
+      human_review_required: true,
+      source_evidence_required: true,
+      execution_authority_prohibited: true,
+      readiness_authority_prohibited: true,
+    },
+    advisories: [{
+      advisory_id: 'adv-esc-example-1', revision: 1, status: 'ACTIVE',
+      title: 'Review affected ESC lot', summary: 'Review installed components.',
+      category: 'SAFETY', observed_at: '2026-09-26T12:00:00Z',
+      reviewed_at: '2026-09-27T12:00:00Z', expires_at: null,
+      confidence: 0.82, confidence_basis: 'Primary notice plus analyst matching.',
+      sources: [{
+        source_id: 'source-notice-1', url: 'https://example.invalid/notice/1',
+        title: 'Manufacturer notice', publisher: 'Example Manufacturer',
+        published_at: '2026-09-26T11:00:00Z', retrieved_at: '2026-09-26T13:00:00Z',
+      }],
+      affected_selectors: [{ kind: 'PART_NUMBER', value: 'ESC-42', match: 'EXACT' }],
+      recommended_action: 'INSPECT',
+      recommended_action_rationale: 'Confirm the installed lot before flight.',
+      reviewer_id: 'analyst-example-1', review_decision_ref: 'review:example-1',
+      requires_human_review: true, authorizes_execution: false,
+      authorizes_readiness_change: false,
+      advisory_digest: `sha256:${'a'.repeat(64)}`,
+    }],
+  };
+}
+
+test('reviewed intelligence advisories pass the public non-authorizing gate', () => {
+  const value = intelligenceAdvisoryFixture();
+  assert.deepEqual(intelligenceAdvisoryPublicationErrors(value), []);
+  assert.equal(projectDataset(value, 'intelligence_advisories', params()), value);
+});
+
+test('authority-bearing or source-free advisories are withheld', () => {
+  const authority = intelligenceAdvisoryFixture();
+  authority.advisories[0].authorizes_readiness_change = true;
+  assert.ok(intelligenceAdvisoryPublicationErrors(authority).some((error) => error.includes('non-authorizing')));
+  const sourceFree = intelligenceAdvisoryFixture();
+  sourceFree.advisories[0].sources = [];
+  assert.throws(
+    () => projectDataset(sourceFree, 'intelligence_advisories', params()),
+    /failed publication controls/,
+  );
+  const expired = intelligenceAdvisoryFixture();
+  expired.advisories[0].expires_at = expired.generated_at;
+  assert.ok(intelligenceAdvisoryPublicationErrors(expired).some((error) => error.includes('expiry')));
 });
