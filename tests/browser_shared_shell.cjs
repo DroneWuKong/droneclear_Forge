@@ -31,7 +31,7 @@ await page.reload();assert.equal(await page.evaluate(()=>document.documentElemen
 if(await page.locator('#uas-analytics-consent [data-reject]').isVisible())await page.locator('#uas-analytics-consent [data-reject]').click();
 // The shared header must remain operable with large text and narrow screens.
 fs.mkdirSync(path.resolve('.local/design-review'),{recursive:true});
-for(const [route,area] of [['/','build'],['/patterns-home/','research']]){
+for(const [route,area] of [['/','build'],['/forge/','build'],['/patterns-home/','research']]){
  await page.goto('http://forge.test.localhost'+route);
  assert.equal(await page.locator('.uas-areas [aria-current]').getAttribute('data-uas-link'),area);
  for(const width of [320,390,1440]){
@@ -46,6 +46,10 @@ for(const [route,area] of [['/','build'],['/patterns-home/','research']]){
    });
    assert.ok(geometry.every(b=>b.inside&&b.hit&&b.height>=24),JSON.stringify({route,width,size,geometry}));
    assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1),'Homepage must reflow');
+   if(width<=390){
+    const actions=await page.locator('.uas-actions').evaluate(el=>{const b=el.getBoundingClientRect();return [...el.querySelectorAll('a,button')].every(a=>Math.abs(a.getBoundingClientRect().width-b.width)<2);});
+    assert.ok(actions,'Mobile home actions must share the full available width: '+route);
+   }
    await page.screenshot({path:path.resolve('.local/design-review',area+'-'+width+'-'+size+'.png')});
   }
  }

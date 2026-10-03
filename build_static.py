@@ -2465,7 +2465,9 @@ def build(*, offline=False, data_ref=None, data_dir=None, include_private=False)
 
     # Process HTML pages
     for src_name, dst_path in PAGES.items():
-        src_file = os.path.join(SRC_DIR, src_name)
+        # Both Build entry URLs use one canonical template to prevent visual drift.
+        source_name = 'forge-home.html' if src_name == 'mission-control.html' else src_name
+        src_file = os.path.join(SRC_DIR, source_name)
         dst_file = os.path.join(BUILD_DIR, dst_path)
         
         os.makedirs(os.path.dirname(dst_file), exist_ok=True)
