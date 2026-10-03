@@ -579,6 +579,9 @@ button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible{ou
 (function() {
 'use strict';
 
+const $ = id => document.getElementById(id);
+const esc = s => String(s ?? '').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+
 // ── State ──
 let DB = null;
 let allParts = [];
@@ -599,7 +602,7 @@ function chooseBuild(id){
 }
 $('saved-builds').addEventListener('change',event=>chooseBuild(event.target.value));
 $('new-build').addEventListener('click',()=>{try{buildDocument=ForgeBuildStore.create(buildDocument,'Untitled build',crypto.randomUUID());build=[];saveBuild();workspaceControls();updateBuildUI();renderFilterBar();renderGrid();}catch(error){$('build-storage-note').textContent=error.message;}});
-$('rename-build').addEventListener('click',()=>{const name=$('build-name').value.trim();if(!name){$('build-storage-note').textContent='Enter a build name.';return;}ForgeBuildStore.active(buildDocument).name=name;saveBuild();workspaceControls();});
+$('rename-build').addEventListener('click',()=>{const name=$('build-name').value.trim();if(!name){$('build-storage-note').textContent='Enter a build name.';return;}ForgeBuildStore.active(buildDocument).name=name;saveBuild();workspaceControls();updateBuildUI();});
 window.addEventListener('storage',event=>{if(event.key===ForgeBuildStore.KEY){buildPersisted=false;updateBuildUI();$('build-storage-note').textContent='Saved builds changed in another tab. Export any edits, then reload to use that version.';}});
 const values = window.ForgeBuilderValues;
 let modalPart = null;
@@ -984,8 +987,7 @@ function applySpecFilters(parts) {
 }
 
 // ── Helpers ──
-const $ = id => document.getElementById(id);
-const esc = s => String(s ?? '').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+
 const fmtCat = s => s.replace(/_/g,' ').replace(/\b\w/g,c=>c.toUpperCase());
 
 // ── Load DB ──
