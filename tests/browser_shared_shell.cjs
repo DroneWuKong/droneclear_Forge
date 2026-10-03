@@ -3,7 +3,7 @@ const fs=require('node:fs'),path=require('node:path'),assert=require('node:asser
 const {chromium}=require('playwright');
 const research=require('../forge-source/ask-pie-retrieval.js');
 const directory=path.resolve(process.argv[2]||'build');
-const types={'.html':'text/html','.js':'text/javascript','.css':'text/css','.json':'application/json','.svg':'image/svg+xml'};
+const types={'.html':'text/html','.js':'text/javascript','.mjs':'text/javascript','.css':'text/css','.json':'application/json','.svg':'image/svg+xml'};
 (async()=>{const options={headless:true};if(process.env.AUDIT_CHROMIUM)options.executablePath=process.env.AUDIT_CHROMIUM;
 const browser=await chromium.launch(options);try{const page=await browser.newPage({viewport:{width:390,height:900}});page.setDefaultTimeout(15000);page.setDefaultNavigationTimeout(15000);const errors=[],apiRequests=[];let researchFixture=false;
 const fixture={schema_version:1,meta:{generated_at:'2026-10-03T12:00:00Z',input_revision:'browser-fixture'},counts:{article:2},records:research.articleRecords([{aid:'uas-fixture',title:'Drone delivery test article',summary:'Civil aviation report',pub_date:'2026-10-01',url:'https://source.invalid/drone'},{aid:'sports-fixture',title:'Baseball test article',summary:'Sports report',pub_date:'2026-10-02',url:'https://source.invalid/sports'}]).map(research.compactRecord)};
