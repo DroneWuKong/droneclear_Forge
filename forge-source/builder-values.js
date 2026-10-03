@@ -69,5 +69,13 @@
       return Array.isArray(pids) && pids.every(pid => typeof pid === 'string') ? pids : null;
     } catch { return null; }
   }
-  return { finiteAmount, price, weight, rows, totals, csv, encode, decode };
+  function currentBuildModel(saved, encoded) {
+    let rows=Array.isArray(saved)?saved.filter(row=>row && typeof row.pid==='string'):[];
+    const shared=encoded ? decode(encoded) : null;
+    if(shared)rows=shared.map(pid=>({pid,cat:'selected_parts'}));
+    const seen=new Set(), relations=Object.create(null);
+    for(const row of rows){if(seen.has(row.pid))continue;seen.add(row.pid);const slot=typeof row.cat==='string'?row.cat:'selected_parts';(relations[slot] ||= []).push(row.pid);}
+    return {pid:'__current_build__',name:'My current build',relations};
+  }
+  return { currentBuildModel, finiteAmount, price, weight, rows, totals, csv, encode, decode };
 });

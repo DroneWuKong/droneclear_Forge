@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Forge — Parts Browser</title>
+<title>Forge — My build</title>
 <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
 <script src="https://unpkg.com/@phosphor-icons/web"></script>
 <script src="/static/builder-values.js"></script>
@@ -257,7 +257,7 @@ button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible{ou
 }
 </style>
 </head>
-<body><h1 style="position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap;border:0">Forge — Parts Browser</h1>
+<body>
 <main id="main-content">
 <!-- ── Unified UAS-Nav ───────────────────────────────────────── -->
 <style id="dc-unified-nav-styles">
@@ -406,6 +406,7 @@ button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible{ou
 </script>
 <!-- ── /Unified UAS-Nav ─────────────────────────────────────── -->
 
+<section id="build-intro" style="padding:18px 20px;border-bottom:1px solid var(--border)"><h1 style="font-size:24px;margin:0 0 6px">My build</h1><p id="build-progress" style="color:var(--text-d);margin:0 0 12px">Choose a frame or search for a part to start your component list.</p><div style="display:flex;gap:10px;flex-wrap:wrap"><button class="btn btn-outline" id="review-build">Review selected parts</button><a class="btn btn-outline" id="build-cost-link" href="/cost/?current=1">Review cost & weight</a><a class="btn btn-outline" href="/guides/">Find a guide</a></div><p id="build-storage-note" role="status" style="font-size:12px;color:var(--text-d)">Saved in this browser. Export a copy to keep it elsewhere.</p></section>
 <div id="app">
 
   <!-- Topbar -->
@@ -483,7 +484,7 @@ button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible{ou
     <div class="btn-row">
       <button class="btn btn-outline" id="btn-share"><i class="ph ph-share-network"></i> Share</button>
       <button class="btn btn-outline" id="btn-export"><i class="ph ph-export"></i> Export</button>
-      <a class="btn btn-outline" href="/circuit-forge/" title="Design the wiring for this build with AI" style="color:#3b82f6;border-color:rgba(59,130,246,.3);text-decoration:none"><i class="ph ph-lightning"></i> Wiring (AI)</a>
+      <a class="btn btn-outline" href="/circuit-forge/" title="Open the separate wiring workspace" style="color:#3b82f6;border-color:rgba(59,130,246,.3);text-decoration:none"><i class="ph ph-lightning"></i> Wiring (AI)</a>
       <div id="param-wrap" style="position:relative">
         <button class="btn btn-outline" id="btn-ardupilot" style="color:#22c55e;border-color:rgba(34,197,94,.3)"><i class="ph ph-sliders"></i> Firmware Config</button>
         <div id="param-picker">
@@ -1034,7 +1035,7 @@ async function init() {
   const bParam = new URLSearchParams(location.search).get('b');
   if (bParam) {
     const pids = decodeBuildParam(bParam);
-    if (pids && Array.isArray(pids) && pids.length) {
+    if (pids && Array.isArray(pids)) {
       build = pids
         .map(pid => allParts.find(p => p.pid === pid))
         .filter(Boolean)
@@ -1048,9 +1049,10 @@ async function init() {
   $('grid').style.display = 'grid';
   updateBuildUI();
 
-  // Select first category
-  const firstCat = Object.keys(DB.components)[0];
+  const requested=new URLSearchParams(location.search).get('category');
+  const firstCat = requested && DB.components[requested] ? requested : DB.components.frames ? 'frames' : Object.keys(DB.components)[0];
   selectCat(firstCat);
+  if(new URLSearchParams(location.search).get('view')==='build')openBuild();
 }
 
 // ── Sidebar ──
@@ -1269,7 +1271,7 @@ function clearBuild() {
 }
 
 function saveBuild() {
-  try { localStorage.setItem('forge-build', JSON.stringify(build)); } catch(e) {}
+  try { localStorage.setItem('forge-build', JSON.stringify(build)); $('build-storage-note').textContent='Saved in this browser. Export a copy to keep it elsewhere.'; } catch(e) { $('build-storage-note').textContent='Browser storage is unavailable. Export this build before leaving.'; }
 }
 
 // ── Share ──
@@ -1289,6 +1291,8 @@ function shareBuild() {
 }
 
 function updateBuildUI() {
+  $('build-progress').textContent=build.length ? build.length+' selected parts. Add parts below; review your list and its known cost when ready.' : 'Choose a frame or search for a part to start your component list.';
+  $('build-cost-link').href='/cost/?current=1&b='+values.encode(build.map(item=>item.pid));
   $('build-count').textContent = build.length;
   $('build-n').textContent = build.length;
 
@@ -1902,6 +1906,7 @@ function closeBuild() {
   if (drawerReturnFocus?.isConnected) drawerReturnFocus.focus();
 }
 $('build-fab').addEventListener('click', openBuild);
+$('review-build').addEventListener('click', openBuild);
 $('drawer-close').addEventListener('click', closeBuild);
 $('build-overlay').addEventListener('click', closeBuild);
 $('btn-clear').addEventListener('click', () => { if(confirm('Clear build?')) clearBuild(); });

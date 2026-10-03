@@ -323,7 +323,7 @@ a{color:var(--blue);text-decoration:none}a:hover{text-decoration:underline}
 </div>
 <div class="content">
   <div class="panel active" id="panel-feed">
-    <input class="search-bar" id="feed-search" placeholder="Search articles... (e.g. Replicator, Skydio, FCC, DJI ban)" oninput="renderFeed()">
+    <input class="search-bar" aria-label="Filter loaded articles" id="feed-search" placeholder="Filter loaded articles... (e.g. Replicator, Skydio, FCC, DJI ban)" oninput="renderFeed()">
     <div class="filter-section">
       <div class="filter-header" onclick="toggleFS(this)">
         <span>Type</span><span class="filter-hidden-count" id="cat-hidden-count"></span><span class="filter-chevron">▸</span>
@@ -352,7 +352,7 @@ a{color:var(--blue);text-decoration:none}a:hover{text-decoration:underline}
     </div>
     <div class="stats-bar" id="feed-stats">Loading...</div>
     <div id="pie-sidebar" style="background:var(--surface);border:1px solid var(--border);border-left:2px solid var(--amber);padding:10px 12px;margin-bottom:12px;border-radius:6px;font-size:11px">Loading PIE…</div>
-    <p style="margin:12px 0;color:var(--text-d);font-size:12px">This feed shows the latest 100 indexed article records plus reference desks. <a href="/pie-search/" style="color:var(--green)">Search the full published corpus →</a></p><div id="feed-list">Loading...</div>
+    <p style="margin:12px 0;color:var(--text-d);font-size:12px">News shows paged article records. Reference desks remain available in their own tabs. <a href="/pie-search/" style="color:var(--green)">Search the full published corpus →</a></p><div style="padding:12px 0"><label for="news-scope">News scope </label><select id="news-scope" disabled onchange="changeNewsScope()"><option value="uas">UAS-related articles</option><option value="all-articles">Full article corpus</option></select><p style="font-size:12px">UAS matches use article titles and summaries before paging. This is a text filter, not a relevance or verification rating. <a href="/ask-pie/">Search all evidence</a>.</p></div><div id="feed-list">Loading...</div><button id="news-next" type="button" onclick="moreNews()" hidden>Load next 100 articles</button>
   </div>
   <div class="panel" id="panel-defense">
     <div class="stats-bar" id="defense-stats">Loading...</div>
@@ -413,9 +413,10 @@ const DFRKW=['drone as first responder','drone-as-first-responder',' dfr ','dfr 
 const FKW=['billion','million','contract worth','contract valued','contract award','awarded a','funding','investment','raise','series a','series b','ipo','acquisition','merger','valuation','budget request','procurement','rfp ','fiscal year','fy2','fy3','defense budget','sbir','sttr','ota ','other transaction'];
 const REGS=['US','China','Russia','Ukraine','Turkey','Israel','NATO','Taiwan','Iran','North Korea','Japan','India','Australia','UK','France','Germany','EU'];
 const SL={militarnyi:'militarnyi',defensescoop:'DefenseScoop',defensenews:'Defense News',breakingdefense:'Breaking Defense',twz:'The War Zone',unmannedairspace:'unmannedairspace',dronedj:'DroneDJ',dronelife:'DroneLife',dronexl:'DroneXL',reuters:'Reuters',suasnews:'sUAS News'};
-const CC={defense:'var(--defense)',financial:'var(--financial)',commercial:'var(--commercial)',dfr:'var(--dfr)'};
+const CC={defense:'var(--defense)',financial:'var(--financial)',commercial:'var(--commercial)',dfr:'var(--dfr)',unclassified:'var(--text-d)'};
 function cat(a){
-  if(a.article_type==='dfr'||a.vertical==='dfr')return'dfr';
+  const supplied=a.article_type || a.vertical;
+  if(['defense','financial','commercial','dfr'].includes(supplied))return supplied;
   const t=((a.title||'')+(a.summary||'')+(a.body_text||'')).toLowerCase();
   const df=DFRKW.filter(k=>t.includes(k)).length;
   const d=DKW.filter(k=>t.includes(k)).length;
@@ -424,11 +425,11 @@ function cat(a){
   if(d>=4)return'defense';
   if(f>=2&&f>d)return'financial';
   if(d>=2)return'defense';
-  return'commercial';
+  return'unclassified';
 }
 function ar(a){const t=(a.title||'')+' '+(a.summary||'')+' '+(a.body_text||'').slice(0,500);return REGS.filter(r=>t.includes(r));}
 let ALL=[],cC='all',cS='all',cR='all';
-let feedLimit=60;
+let feedLimit=100;
 let dfrSubFilter='all';
 function renderDFR(){
   // Merge DFR_DB records with keyword-matched articles, dedup by id/url
@@ -477,13 +478,13 @@ function renderDFR(){
 document.querySelectorAll('.tab').forEach(t=>{t.addEventListener('click',()=>{document.querySelectorAll('.tab').forEach(x=>x.classList.remove('active'));document.querySelectorAll('.panel').forEach(x=>x.classList.remove('active'));t.classList.add('active');document.getElementById('panel-'+t.dataset.tab).classList.add('active');const acc=t.dataset.accent||'feed';document.documentElement.style.setProperty('--tab-accent',`var(--${acc})`);document.documentElement.style.setProperty('--tab-accent-d',`var(--${acc}-d)`);if(t.dataset.tab==='dfr')renderDFR();if(t.dataset.tab==='defense')renderDefense();if(t.dataset.tab==='commercial')renderCommercial();if(t.dataset.tab==='solicitations')renderSolicitations();if(window.__forgeAnalytics)__forgeAnalytics.tab(t.dataset.tab);window.scrollTo({top:0,behavior:'smooth'});});});
 function toggleFS(hdr){hdr.classList.toggle('open');const row=hdr.nextElementSibling;row.classList.toggle('open');}
 function rFi(){
-  const cc={all:ALL.length,defense:0,financial:0,commercial:0,dfr:0};ALL.forEach(a=>cc[cat(a)]++);
+  const cc={all:ALL.length,defense:0,financial:0,commercial:0,dfr:0,unclassified:0};ALL.forEach(a=>cc[cat(a)]++);
   document.getElementById('dfr-count').textContent=(DFR_DB.length||0)+cc.dfr;
   document.getElementById('defense-count').textContent=(DEFENSE_DB.length||0)+cc.defense;
   document.getElementById('commercial-count').textContent=(COMMERCIAL_DB.length||0)+cc.commercial;
   // cat-filters may not exist anymore
   const cf=document.getElementById('cat-filters');
-  if(cf) cf.innerHTML=['all','defense','financial','commercial','dfr'].map(c=>`<button class="fbtn${cC===c?' active':''}" onclick="cC='${c}';rFi();renderFeed()">${c==='all'?'All Types':c==='dfr'?'DFR':c.charAt(0).toUpperCase()+c.slice(1)} (${cc[c]})</button>`).join('');
+  if(cf) cf.innerHTML=['all','defense','financial','commercial','dfr','unclassified'].map(c=>`<button class="fbtn${cC===c?' active':''}" onclick="cC='${c}';rFi();renderFeed()">${c==='all'?'All Types':c==='dfr'?'DFR':c.charAt(0).toUpperCase()+c.slice(1)} (${cc[c]})</button>`).join('');
   const sc={};ALL.forEach(a=>{const s=a.site||'other';sc[s]=(sc[s]||0)+1;});
   const ts=Object.entries(sc).sort((a,b)=>b[1]-a[1]);
   document.getElementById('src-filters').innerHTML=`<button class="fbtn${cS==='all'?' active':''}" onclick="cS='all';rFi();renderFeed()">All Sources</button>`+ts.map(([s,c])=>`<button class="fbtn${cS===s?' active':''}" data-src="${esc(s)}" onclick="cS=this.dataset.src;rFi();renderFeed()">${esc(SL[s]||s)} (${c})</button>`).join('');
@@ -497,24 +498,26 @@ function rFi(){
 }
 function renderFeed(){
   window.DC=[];
-  // Combine DB records + feed articles, dedupe by id/url, sort by date
-  const dbAll=[...DEFENSE_DB,...DFR_DB,...COMMERCIAL_DB];
-  const feedIds=new Set(dbAll.map(r=>r.id||r.url).filter(Boolean));
-  const feedOnly=ALL.filter(x=>!feedIds.has(x.id)&&!feedIds.has(x.url));
-  let a=[...dbAll,...feedOnly];
+  // News and dated reference desks have different date semantics. Keep the
+  // reference records in their existing tabs instead of mixing them into News.
+  let a=ALL.slice();
+  if(cC!=='all')a=a.filter(x=>cat(x)===cC);
+  if(cS!=='all')a=a.filter(x=>(x.site||'other')===cS);
+  if(cR!=='all')a=a.filter(x=>ar(x).includes(cR));
   const q=(document.getElementById('feed-search')?.value||'').toLowerCase().trim();
   if(q) a=a.filter(x=>(x.title||'').toLowerCase().includes(q)||(x.summary||'').toLowerCase().includes(q));
-  a.sort((x,y)=>(y.pub_date||'').localeCompare(x.pub_date||''));
+  const order={reported:0,future:1,unknown:2};
+  a.sort((x,y)=>(order[x.source_date_status]??2)-(order[y.source_date_status]??2) || (AskPieRetrieval.parseDate(y.pub_date)?.getTime()||0)-(AskPieRetrieval.parseDate(x.pub_date)?.getTime()||0));
   document.getElementById('feed-count').textContent=a.length;
   const byV={defense:0,dfr:0,commercial:0,other:0};
   a.forEach(x=>{const v=x.vertical_tag||cat(x);byV[v]=(byV[v]||0)+1;});
-  document.getElementById('feed-stats').innerHTML=`<span><b style="color:var(--tab-accent)">${a.length}</b> total · <b style="color:var(--defense)">${byV.defense} defense</b> · <b style="color:var(--dfr)">${byV.dfr} DFR</b> · <b style="color:var(--commercial)">${byV.commercial} commercial</b></span>`;
+  document.getElementById('feed-stats').innerHTML=`<span><b style="color:var(--tab-accent)">${a.length}</b> matching loaded articles · <b style="color:var(--defense)">${byV.defense} defense</b> · <b style="color:var(--dfr)">${byV.dfr} DFR</b> · <b style="color:var(--commercial)">${byV.commercial} commercial</b></span>`;
   const l=document.getElementById('feed-list');
   if(!a.length){l.innerHTML='<div style="text-align:center;padding:40px;color:var(--text-d)">No intel found.</div>';return;}
-  l.innerHTML=a.slice(0,100).map(x=>{
+  l.innerHTML=a.slice(0,feedLimit).map(x=>{
     const c=cat(x),rg=ar(x),en=x.entities||{},pr=(en.programs||[]).slice(0,2),co=(en.companies||[]).slice(0,2),u=x.url||'#';
         var fi=window.DC.push(x)-1;
-    return`<div class="acard ${c}" onclick="window.dc(${fi})"><div style="display:flex;gap:6px;align-items:center;margin-bottom:4px;flex-wrap:wrap"><span class="badge" style="background:${CC[c]}18;color:${CC[c]}">${c}</span><span class="badge" style="background:var(--surface);color:var(--text-d)">${esc(SL[x.site]||x.site)}</span><span style="font:10px var(--mono);color:var(--text-xd);margin-left:auto">${esc(x.pub_date || 'Date not reported')}</span></div><h3>${esc(x.title||'Untitled')}</h3><div class="sum">${esc(x.summary||(x.body_text||'').slice(0,200)||'—')}</div><div style="display:flex;gap:3px;flex-wrap:wrap;margin-top:6px">${pr.map(p=>`<span class="badge badge-red">${esc(p)}</span>`).join('')}${co.map(c=>`<span class="badge badge-blue">${esc(c)}</span>`).join('')}${rg.slice(0,2).map(r=>`<span class="badge badge-cyan">${r}</span>`).join('')}</div></div>`;
+    return`<div class="acard ${c}" onclick="window.dc(${fi})"><div style="display:flex;gap:6px;align-items:center;margin-bottom:4px;flex-wrap:wrap"><span class="badge" style="background:${CC[c]}18;color:${CC[c]}">${c}</span><span class="badge" style="background:var(--surface);color:var(--text-d)">${esc(SL[x.site]||x.site)}</span><span style="font:10px var(--mono);color:var(--text-xd);margin-left:auto">Source: ${esc(x.pub_date || 'Date not reported')}${x.source_date_status==='future'?' · future date — check source':x.source_date_status==='unknown'?' · date unverified':''}</span></div><h3>${esc(x.title||'Untitled')}</h3><div class="sum">${esc(x.summary||(x.body_text||'').slice(0,200)||'—')}</div><div style="display:flex;gap:3px;flex-wrap:wrap;margin-top:6px">${pr.map(p=>`<span class="badge badge-red">${esc(p)}</span>`).join('')}${co.map(c=>`<span class="badge badge-blue">${esc(c)}</span>`).join('')}${rg.slice(0,2).map(r=>`<span class="badge badge-cyan">${r}</span>`).join('')}</div></div>`;
   }).join('')+(a.length>100?`<div style="text-align:center;padding:20px;color:var(--text-d);font:11px var(--mono)">Showing 100 of ${a.length}</div>`:'');
 }
 function rP(){
@@ -976,13 +979,31 @@ function showCard(r){
     if(btn){btn.click();}
   }
 })();
-let ARTICLE_WINDOW={total:0,meta:null};
-async function loadResearchArticles(){
-  const result=await AskPieRetrieval.researchRequest({record_type:'article',limit:'100'});
-  ARTICLE_WINDOW={total:result.data.total_matches || 0,meta:result.data.meta};
+let ARTICLE_WINDOW={total:0,meta:null,offset:0};
+let newsScope='uas', newsGeneration=0;
+async function loadResearchArticles(offset=0){
+  const scope=newsScope;
+  const result=await AskPieRetrieval.researchRequest({record_type:'article',scope,limit:'100',offset:String(offset)});
+  if(result.data.query?.scope!==scope)throw new Error('News filtering is not available on this API release. Open Research to search the corpus.');
+  ARTICLE_WINDOW={total:result.data.total_matches || 0,meta:result.data.meta,offset:offset+result.data.records.length};
   const el=document.getElementById('last-updated');
-  if(el) el.textContent=`Latest 100 of ${ARTICLE_WINDOW.total} indexed article records · index ${result.data.meta?.generated_at || 'unknown'}`;
-  return result.data.records.map(row=>({aid:row.id,title:row.title,summary:row.summary,pub_date:row.date,site:row.source,url:row.sourceUrl || row.citations[0]?.url || '',_research_record:row.destination,_body_deferred:true,entities:row.entities || {}}));
+  if(el) el.textContent=`${ARTICLE_WINDOW.offset} of ${ARTICLE_WINDOW.total} ${scope==='uas'?'UAS text-matched':'full-corpus'} articles loaded · source dates shown below`;
+  const next=document.getElementById('news-next');if(next)next.hidden=ARTICLE_WINDOW.offset>=ARTICLE_WINDOW.total;
+  return result.data.records.map(row=>({aid:row.id,title:row.title,summary:row.summary,pub_date:row.date,site:row.source,url:row.sourceUrl || row.citations[0]?.url || '',article_type:row.article_type,vertical:row.vertical,source_date_status:row.source_date_status,_research_record:row.destination,_body_deferred:true,entities:row.entities || {}}));
+}
+async function changeNewsScope(){
+  const serial=++newsGeneration;newsScope=document.getElementById('news-scope').value;
+  const next=document.getElementById('news-next');next.disabled=true;document.getElementById('news-scope').disabled=true;
+  document.getElementById('last-updated').textContent='Loading articles…';
+  try{const rows=await loadResearchArticles();if(serial!==newsGeneration)return;ALL=rows;feedLimit=100;rFi();renderFeed();}
+  catch(error){document.getElementById('last-updated').textContent=error.message+' Previous results remain displayed.';}
+  finally{if(serial===newsGeneration){next.disabled=false;document.getElementById('news-scope').disabled=false;}}
+}
+async function moreNews(){
+  const serial=newsGeneration,button=document.getElementById('news-next');button.disabled=true;document.getElementById('news-scope').disabled=true;
+  try{const rows=await loadResearchArticles(ARTICLE_WINDOW.offset);if(serial!==newsGeneration)return;ALL.push(...rows);feedLimit=ALL.length;rFi();renderFeed();}
+  catch(error){document.getElementById('last-updated').textContent=error.message;}
+  finally{button.disabled=false;document.getElementById('news-scope').disabled=false;}
 }
 Promise.all([
   loadResearchArticles(),
@@ -1002,7 +1023,7 @@ Promise.all([
     const el=document.getElementById(id+'-reference-age');
     if(el)el.textContent='Reference desk snapshot: '+(stamp ? String(stamp).slice(0,10) : 'date unavailable')+'. Article matches may be newer.';
   });
-  ALL=articles;
+  ALL=articles;document.getElementById('news-scope').disabled=false;
   INTEL_PROGRAMS=intelPrograms||[];
   INTEL_COMPANIES=intelCompanies||[];
   DEFENSE_DB=[...(defDB.records||[]), ...forgeIntelToDefenseRecords(forgeIntel)];
