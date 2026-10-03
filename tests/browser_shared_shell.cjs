@@ -22,7 +22,7 @@ await page.keyboard.press('Escape');assert.equal(await page.locator('#dc-drawer'
 for(const width of [320,390,1440]){await page.setViewportSize({width,height:900});for(const value of ['default','large','xlarge']){
 await page.locator('[data-text-size-control]').click();await page.locator('.uas-text-size-panel:not([hidden]) input[value="'+value+'"]').check();await page.waitForTimeout(40);
 const box=await page.locator('.uas-text-size-panel:not([hidden])').boundingBox();assert.ok(box.x>=0&&box.x+box.width<=width+1,'Reading popup must stay in viewport');
-assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth),width,'Reading setting must not create page overflow');
+assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth),width,'Reading setting must not create page overflow: '+JSON.stringify(await page.evaluate(()=>Array.from(document.querySelectorAll('body *')).filter(e=>{const b=e.getBoundingClientRect();return b.width&&b.right>innerWidth+1;}).slice(0,8).map(e=>({tag:e.tagName,id:e.id,class:e.className,right:e.getBoundingClientRect().right})))));
 await page.keyboard.press('Escape');assert.ok(await page.locator('[data-text-size-control]').evaluate(el=>el===document.activeElement));
 }}
 await page.locator('[data-text-size-control]').click();await page.locator('.uas-text-size-panel:not([hidden]) input[value="default"]').check();await page.keyboard.press('Escape');

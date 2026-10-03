@@ -495,6 +495,7 @@ _UNIFIED_NAV = r"""<!-- ── Unified UAS navigation (Research / Build / Learn)
 #dc-drawer-foot{margin-top:auto;padding:16px;border-top:1px solid #1e1e18;font:400 10px 'JetBrains Mono',monospace;color:#b8b0a0;display:flex;flex-direction:column;gap:6px}
 #dc-drawer-foot a{color:#f59e0b;text-decoration:none}
 #dc-drawer-foot a:hover{color:#ff9292}
+@media(max-width:680px){#dc-nav-left{flex:1 0 auto;max-width:100%;flex-wrap:wrap}#dc-nav-right{max-width:100%;flex-wrap:wrap;gap:4px}.dc-nav-top-btn{padding:0 7px}}
 </style>
 
 <nav id="dc-nav">
