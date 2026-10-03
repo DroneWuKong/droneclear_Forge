@@ -116,3 +116,82 @@ test('corpus builder tolerates unavailable datasets', () => {
   const records = ask.buildCorpus({ articles:null, flags:null, actors:null, events:null, ttps:null });
   assert.deepEqual(records, []);
 });
+
+test('feedback payload pins the exact policy, source revision, result, and observed features', () => {
+  const record = {
+    id:'A-1', type:'article', title:'Counter UAS award', summary:'Award notice',
+    citations:[{url:'https://example.test/award', title:'Award', source:'agency', date:'2026-09-30'}],
+    destination:'https://example.test/award', semantics:''
+  };
+  const item = {record, ranking:{score:51, coverage:1, weightedCoverage:.92, direct:true, subjectInTitle:true}};
+  const payload = ask.feedbackPayload({
+    feedbackId:'123e4567-e89b-42d3-a456-426614174000',
+    label:'helpful',
+    query:'counter UAS award',
+    publication:{retrieval_version:'lexical-subject-v2', meta:{input_revision:'revision-123'}},
+    item,
+    position:2
+  });
+  assert.equal(payload.policy_id, 'ask-pie-ranking');
+  assert.equal(payload.policy_version, 'lexical-subject-v2');
+  assert.equal(payload.input_revision, 'revision-123');
+  assert.equal(payload.target.record_key, ask.recordKey(record));
+  assert.equal(payload.target.position, 2);
+  assert.deepEqual(payload.target.features, {
+    score:51, coverage:1, weighted_coverage:.92, direct:true, subject_in_title:true, citation_count:1
+  });
+  assert.equal(payload.session_id, undefined);
+});
+
+test('missing-source feedback has no invented target and submission uses the review API', async () => {
+  const payload = ask.feedbackPayload({
+    feedbackId:'223e4567-e89b-42d3-a456-426614174001',
+    label:'missing_source',
+    query:'unindexed program',
+    publication:{retrieval_version:'lexical-subject-v2', meta:{input_revision:'revision-456'}}
+  });
+  assert.equal(payload.target, null);
+  let observed;
+  const result = await ask.submitFeedback(payload, async (url, options) => {
+    observed = {url, options};
+    return new Response(JSON.stringify({received:true, automatic_promotion:false}), {
+      status:202, headers:{'content-type':'application/json'}
+    });
+  });
+  assert.equal(observed.url, '/api/autonomy/feedback');
+  assert.equal(observed.options.method, 'POST');
+  assert.deepEqual(JSON.parse(observed.options.body), payload);
+  assert.equal(result.automatic_promotion, false);
+});
+
+test('shadow observation captures exact ranked features but cannot affect displayed order', async () => {
+  const records = ask.articleRecords([
+    { aid:'A', title:'Counter UAS award', summary:'Award evidence', site:'one', url:'https://example.test/a' },
+    { aid:'B', title:'Counter UAS update', summary:'Program context', site:'two', url:'https://example.test/b' }
+  ]);
+  const packet = ask.evidencePacket(ask.rankEvidence(records, 'counter UAS', {limit:10}), 'counter UAS');
+  const originalOrder = packet.ranked.map(item => ask.recordKey(item.record));
+  const payload = ask.shadowObservationPayload({
+    observationId:'623e4567-e89b-42d3-a456-426614174005',
+    packet,
+    publication:{retrieval_version:'lexical-subject-v2',meta:{input_revision:'revision-shadow'}}
+  });
+  assert.equal(payload.policy_id, 'ask-pie-ranking');
+  assert.equal(payload.input_revision, 'revision-shadow');
+  assert.deepEqual(payload.results.map(item => item.record_key), originalOrder);
+  assert.deepEqual(payload.results.map(item => item.position), [1, 2]);
+  assert.equal(payload.session_id, undefined);
+  assert.equal(payload.account_id, undefined);
+  let observed;
+  const response = await ask.submitShadowObservation(payload, async (url, options) => {
+    observed = {url, options};
+    return new Response(JSON.stringify({
+      enabled:true,
+      receipt:{visible_effect:false,serving_changes:false,promotion_eligible:false}
+    }), {status:202,headers:{'content-type':'application/json'}});
+  });
+  assert.equal(observed.url, '/api/autonomy/shadow');
+  assert.deepEqual(JSON.parse(observed.options.body), payload);
+  assert.equal(response.receipt.visible_effect, false);
+  assert.deepEqual(packet.ranked.map(item => ask.recordKey(item.record)), originalOrder);
+});

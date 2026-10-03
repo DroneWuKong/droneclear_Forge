@@ -218,3 +218,58 @@ test('authority-bearing or source-free advisories are withheld', () => {
   expired.advisories[0].expires_at = expired.generated_at;
   assert.ok(intelligenceAdvisoryPublicationErrors(expired).some((error) => error.includes('expiry')));
 });
+
+test('approved retrieval policy reranks only incumbent page membership and emits a receipt', () => {
+  const citation = index => ({
+    url:`https://example.test/${index}`, title:`Source ${index}`, source:'agency',
+    date:'2026-09-30', kind:'article',
+  });
+  const record = (id, citations) => ({
+    id, type:'article', title:`Counter UAS ${id}`, summary:'Program evidence',
+    titleText:`counter uas ${id}`, summaryText:'program evidence',
+    searchText:`counter uas ${id} program evidence`, date:'2026-09-30',
+    source:'agency', destination:`https://example.test/${id}`, semantics:'Indexed evidence.',
+    citations,
+  });
+  const index = {
+    schema_version:1,
+    meta:{generated_at:'2026-10-02T00:00:00Z',input_revision:'revision-policy'},
+    counts:{article:2},
+    records:[record('alpha', []), record('beta', [1,2,3,4].map(citation))],
+  };
+  const query = params({q:'counter uas',limit:2});
+  const incumbent = projectDataset(index, 'research_index', query);
+  assert.deepEqual(incumbent.ranked.map(item => item.record.id), ['beta', 'alpha']);
+  const runtime = {
+    schema_version:'retrieval-shadow-runtime-v1', policy_id:'ask-pie-ranking',
+    candidate_version:'candidate-0123456789abcdef', incumbent_version:'lexical-subject-v2',
+    parameters:{base_score_weight:1,feature_adjustments:{
+      coverage:0,weighted_coverage:0,direct:0,subject_in_title:0,citation_count:-12,
+    },feature_transforms:{booleans:'0-or-1',citation_count:'min(value,4)/4'}},
+  };
+  const receipt = {
+    policy_id:'ask-pie-ranking',version:runtime.candidate_version,
+    configured_version:runtime.candidate_version,incumbent_version:'lexical-subject-v2',
+    generation:1,fallback:false,fallback_reason:null,manifest_sha256:'a'.repeat(64),
+    rollback_to:'lexical-subject-v2',
+  };
+  const promoted = projectDataset(index, 'research_index', query, {
+    retrievalPolicy:runtime,policyReceipt:receipt,
+  });
+  assert.deepEqual(promoted.ranked.map(item => item.record.id), ['alpha', 'beta']);
+  assert.deepEqual(new Set(promoted.ranked.map(item => item.record.id)),
+    new Set(incumbent.ranked.map(item => item.record.id)));
+  assert.equal(promoted.retrieval_version, runtime.candidate_version);
+  assert.equal(promoted.policy_receipt.applied, true);
+  assert.equal(promoted.policy_receipt.generation, 1);
+  assert.equal(promoted.ranked[0].ranking.policyVersion, runtime.candidate_version);
+
+  const fallback = projectDataset(index, 'research_index', query, {
+    retrievalPolicy:null,
+    policyReceipt:{...receipt,version:'lexical-subject-v2',fallback:true,
+      fallback_reason:'manifest-signature-invalid'},
+  });
+  assert.deepEqual(fallback.ranked.map(item => item.record.id), ['beta', 'alpha']);
+  assert.equal(fallback.policy_receipt.applied, false);
+  assert.equal(fallback.policy_receipt.fallback, true);
+});

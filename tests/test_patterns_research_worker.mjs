@@ -1,10 +1,12 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {createHash} from 'node:crypto';
+import {readFileSync} from 'node:fs';
 import worker from '../workers/forge-data.js';
 import ask from '../forge-source/ask-pie-retrieval.js';
 const request=query=>new Request('https://uas-patterns.com/api/data?'+query);
 const now=new Date().toISOString();
+const codeReviewQueue=JSON.parse(readFileSync(new URL('../forge-source/code_evolution_review_queue.json',import.meta.url),'utf8'));
 const index={schema_version:1,meta:{generated_at:now,input_revision:'snapshot'},counts:{article:120},records:ask.articleRecords(Array.from({length:120},(_,i)=>({aid:String(i),title:'Shahed '+i,url:'https://example.test/'+i}))).map(ask.compactRecord)};
 test('research endpoint bounds KV reads and preserves source metadata',async()=>{
   const response=await worker.fetch(request('type=research_index&q=Shahed&limit=9999'),{PIE_OUTPUTS:{get:async key=>key==='research_index'?JSON.stringify(index):null}});
@@ -82,12 +84,14 @@ test('fragment-grouped search keeps each original article detail reachable and d
   }
 });
 
-for (const [type,schema] of [['forecast_review_queue','forecast-review-queue-v1'],['analytic_judgments','analytic-judgments-v1']]) {
+for (const [type,schema] of [['forecast_review_queue','forecast-review-queue-v1'],['code_evolution_review_queue','code-evolution-review-queue-v1'],['analytic_judgments','analytic-judgments-v1']]) {
   test(`${type} is a freshness-gated read-only publication with honest absence`,async()=>{
     const absent=await worker.fetch(request('type='+type),{});assert.equal(absent.status,404);const missing=await absent.json();assert.ok(missing.error);assert.equal(missing.data,undefined);
-    const valid={schema_version:schema,generated_at:now,records:[{prediction_id:'P',state:'pending'}],...(type==='forecast_review_queue'?{counts:{pending:1}}:{})};
+    const valid=type==='code_evolution_review_queue'
+      ? {...codeReviewQueue,generated_at:now}
+      : {schema_version:schema,generated_at:now,records:[{prediction_id:'P',state:'pending'}],...(type==='forecast_review_queue'?{counts:{pending:1}}:{})};
     const response=await worker.fetch(request('type='+type),{ASSETS:{fetch:async()=>Response.json(valid)}});assert.equal(response.status,200);const result=await response.json();assert.equal(result.data.records.length,1);assert.match(result.source,/static/);
-    const stale={...valid,generated_at:'2020-01-01'};assert.equal((await worker.fetch(request('type='+type),{PIE_OUTPUTS:{get:async()=>JSON.stringify(stale)}})).status,503);
+    const stale={...valid,generated_at:'2020-01-01T00:00:00Z'};assert.equal((await worker.fetch(request('type='+type),{PIE_OUTPUTS:{get:async()=>JSON.stringify(stale)}})).status,type==='code_evolution_review_queue'?200:503);
     const malformed={...valid,records:null};const bad=await worker.fetch(request('type='+type),{PIE_OUTPUTS:{get:async()=>JSON.stringify(malformed)}});assert.equal(bad.status,503);assert.match((await bad.json()).error,/publication controls/);
     const write=await worker.fetch(new Request('https://uas-patterns.com/api/data?type='+type,{method:'POST',body:JSON.stringify(valid)}),{FORGE_BLOBS_ADMIN_KEY:'test'});assert.equal(write.status,405);
   });

@@ -3,6 +3,9 @@ import { timingSafeEqual } from './_auth.js';
 import { projectDataset } from './forge-data-projections.mjs';
 import { readKVJSON } from './kv-json-transport.mjs';
 import { readResearchStaticJSON, RESEARCH_GZIP_PATH } from './research-static-transport.mjs';
+import {
+  loadActiveRetrievalPolicy, recordRetrievalServingReceipt,
+} from './retrieval-policy.mjs';
 
 /**
  * forge-data — Cloudflare Worker route for /api/data?type=<dataset>
@@ -72,7 +75,7 @@ function freshnessOf(data, type, source) {
   return { ...freshnessPolicy.inspect(data, FRESHNESS_LIMIT_MS.get(type) ?? null), source };
 }
 
-async function serveParsed(data, type, source, params, raw) {
+async function serveParsed(data, type, source, params, raw, env, context) {
   // Freshness is always evaluated against the complete source document before
   // a summary/actor projection is made.
   const freshness = freshnessOf(data, type, source);
@@ -100,7 +103,23 @@ async function serveParsed(data, type, source, params, raw) {
     );
   }
 
-  const projected = projectDataset(data, type, params);
+  const policyStarted = Date.now();
+  const policy = type === 'research_index' && params.get('q')
+    ? await loadActiveRetrievalPolicy(env, 'research-index-v1')
+    : null;
+  const projected = projectDataset(data, type, params, policy ? {
+    retrievalPolicy: policy.runtime,
+    policyReceipt: policy.receipt,
+  } : {});
+  if (policy) {
+    const telemetry = recordRetrievalServingReceipt(env, {
+      policyReceipt: policy.receipt,
+      query: params.get('q'),
+      inputRevision: projected?.meta?.input_revision,
+      latencyMs: Date.now() - policyStarted,
+    }).catch(() => null);
+    if (context?.waitUntil) context.waitUntil(telemetry); else await telemetry;
+  }
   if (type === 'daily_changes') {
     // Identify the complete input from this successful load, before filtering.
     // A separately loaded catalog could describe a newer/different KV snapshot.
@@ -132,9 +151,9 @@ async function serveParsed(data, type, source, params, raw) {
   );
 }
 
-async function parseAndServe(raw, type, source, params) {
+async function parseAndServe(raw, type, source, params, env, context) {
   try {
-    return await serveParsed(JSON.parse(raw), type, source, params, raw);
+    return await serveParsed(JSON.parse(raw), type, source, params, raw, env, context);
   } catch (error) {
     if (error?.code === 'DATASET_PUBLICATION_CONTROL') return resp({error:`Dataset ${type} failed publication controls`,type,source,details:error.validationErrors,action:'Publish a validated artifact before retrying.'},503,{'X-Data-Source':source});
     return resp(
@@ -164,6 +183,7 @@ const DATASETS = new Set([
   'data_quality_score',
   'intelligence_advisories',
   'forecast_review_queue',
+  'code_evolution_review_queue',
   'analytic_judgments',
   'research_index',
   'daily_changes',
@@ -231,6 +251,7 @@ const PIE_OUTPUTS_KEYS = new Set([
   'entity_graph',
   'forge_intel',
   'forecast_review_queue',
+  'code_evolution_review_queue',
   'analytic_judgments',
   'research_index',
   'daily_changes',
@@ -276,7 +297,7 @@ const PIE_OUTPUTS_KEYS = new Set([
 ]);
 
 export default {
-  async fetch(request, env) {
+  async fetch(request, env, context) {
     if (request.method === 'OPTIONS') {
       return new Response(null, { status: 204, headers: CORS });
     }
@@ -284,7 +305,7 @@ export default {
     const url = new URL(request.url);
     const type = url.searchParams.get('type') || '';
 
-    if (request.method === 'POST' && ['daily_changes','forecast_review_queue','analytic_judgments'].includes(type)) return resp({error:`${type} is a read-only publication`}, 405);
+    if (request.method === 'POST' && ['daily_changes','forecast_review_queue','code_evolution_review_queue','analytic_judgments'].includes(type)) return resp({error:`${type} is a read-only publication`}, 405);
 
     if (request.method === 'POST') {
       const adminKey = env.FORGE_BLOBS_ADMIN_KEY;
@@ -385,7 +406,7 @@ export default {
     const failures = [];
     let rejected = null;
     async function candidate(raw, source) {
-      const result = await parseAndServe(raw, type, source, url.searchParams);
+      const result = await parseAndServe(raw, type, source, url.searchParams, env, context);
       if (result.ok) {
         if (failures.length) result.headers.set('X-Data-Fallback', failures.join(','));
         return result;

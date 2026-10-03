@@ -1,0 +1,32 @@
+name: Retrieval policy monitor
+
+on:
+  schedule:
+    - cron: '*/15 * * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: retrieval-policy-monitor
+  cancel-in-progress: false
+
+jobs:
+  evaluate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Evaluate active policy and apply a hard-gate rollback
+        env:
+          MONITOR_TOKEN: ${{ secrets.PATTERNS_AUTONOMY_MONITOR_TOKEN }}
+          MONITOR_URL: ${{ vars.PATTERNS_AUTONOMY_MONITOR_URL }}
+        run: |
+          test -n "$MONITOR_TOKEN"
+          test -n "$MONITOR_URL"
+          curl --fail-with-body --silent --show-error \
+            --retry 3 --retry-all-errors \
+            --request POST "$MONITOR_URL/api/autonomy/policy/monitor" \
+            --header "Authorization: Bearer $MONITOR_TOKEN" \
+            --header "Content-Type: application/json" \
+            --data '{"action":"evaluate-and-rollback","notes":"Scheduled active-serving hard-gate evaluation and retention run."}'
