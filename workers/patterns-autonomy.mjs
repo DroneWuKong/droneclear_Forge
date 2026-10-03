@@ -219,7 +219,7 @@ function validatePacket(packet, claimId, role) {
       !source || typeof source !== 'object' || !SOURCE_CLASSES.has(source.source_class)
       || !['url', 'title', 'publisher', 'passage', 'locator', 'supports', 'version']
         .every(key => typeof source[key] === 'string')
-      || !/^\d{4}-\d{2}-\d{2}$/.test(source.retrieved_at || '')
+      || !/^\d{4}-\d{2}-\d{2}(?:T\d{2}:\d{2}:\d{2}(?:\.\d{1,9})?Z)?$/.test(source.retrieved_at || '')
     ) throw new Error('Invalid evidence source');
   }
   for (const calculation of packet.calculations) {
