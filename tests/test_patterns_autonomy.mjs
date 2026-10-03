@@ -86,7 +86,7 @@ function evidencePacket(item, role) {
     source_class: 'independent-technical',
     passage: 'Exact relevant passage',
     locator: `Section ${path}`,
-    retrieved_at: '2026-10-02',
+    retrieved_at: '2026-10-02T00:00:00Z',
     content_sha256: 'model-supplied-value-must-be-replaced',
     supports: 'Example scoped claim',
     version: '1',
