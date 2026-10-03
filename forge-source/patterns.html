@@ -78,6 +78,29 @@ a{color:var(--blue);text-decoration:none}a:hover{text-decoration:underline}
 .badge-purple{background:var(--purple-d);color:var(--purple)}.badge-cyan{background:var(--cyan-d);color:var(--cyan)}
 .badge-orange{background:var(--orange-d);color:var(--orange)}.badge-warning{background:var(--warning-d);color:var(--warning)}
 
+/* ── Intel pipeline health ── */
+.pipeline-health-head{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin-bottom:10px;flex-wrap:wrap}
+.pipeline-health-title{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.pipeline-health-title strong{font:700 11px var(--mono);color:var(--text);text-transform:uppercase;letter-spacing:.06em}
+.pipeline-health-status{font:700 9px var(--mono);padding:3px 7px;border-radius:999px;border:1px solid var(--border);color:var(--text-d);text-transform:uppercase;letter-spacing:.05em}
+.pipeline-health-status.healthy{color:var(--green);border-color:#22c55e55;background:var(--green-d)}
+.pipeline-health-status.warning{color:var(--warning);border-color:#f9731655;background:var(--warning-d)}
+.pipeline-health-status.failure{color:var(--red);border-color:#d6282855;background:var(--red-d)}
+.pipeline-health-status.neutral{color:var(--text-s);border-color:var(--border-hi);background:var(--card)}
+.pipeline-health-link{font:600 10px var(--mono);color:var(--cyan);text-decoration:none;white-space:nowrap}
+.pipeline-health-link:hover{text-decoration:underline}
+.pipeline-health-summary{display:flex;align-items:flex-start;justify-content:space-between;gap:10px;padding:9px 10px;margin-bottom:8px;background:var(--card);border:1px solid var(--border);border-radius:7px}
+.pipeline-health-summary strong{display:block;font:600 11px var(--font);color:var(--text);margin-bottom:2px}
+.pipeline-health-summary span{display:block;font:400 10px var(--font);color:var(--text-d);line-height:1.45}
+.pipeline-health-stage-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:6px;margin-bottom:10px}
+.pipeline-health-stage{background:var(--card);border:1px solid var(--border);border-top:2px solid var(--border-hi);border-radius:7px;padding:8px 9px;min-width:0}
+.pipeline-health-stage.good{border-top-color:var(--green)}
+.pipeline-health-stage.warning{border-top-color:var(--warning)}
+.pipeline-health-stage.failure{border-top-color:var(--red)}
+.pipeline-health-stage .label{font:600 9px var(--mono);color:var(--text-d);text-transform:uppercase;letter-spacing:.04em}
+.pipeline-health-stage strong{display:block;font:700 13px var(--mono);color:var(--text);margin:2px 0}
+.pipeline-health-stage .note{font:400 9px var(--font);color:var(--text-d);line-height:1.35}
+
 /* ── Severity dot ── */
 .sev{width:8px;height:8px;border-radius:50%;display:inline-block;flex-shrink:0}
 .sev-critical{background:var(--red);box-shadow:0 0 6px #ef444466}
@@ -169,6 +192,8 @@ a{color:var(--blue);text-decoration:none}a:hover{text-decoration:underline}
   .forge-nav .links{display:none}
   .flag-detail .cards{flex-direction:column}
   .comp-table{font-size:10px}
+  .pipeline-health-stage-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .pipeline-health-summary{display:block}
 }
 
 /* ── Brief panel ── */
@@ -269,6 +294,7 @@ a.brief-source-chip:hover{color:var(--text-s);border-color:var(--border-hi)}
 <script src="static/patterns-decision-support.js"></script>
 <script src="/static/dossier-signals.js?v=2"></script>
 <script src="/static/patterns-flag-evidence.js?v=1"></script>
+<script src="/static/intel-health.js"></script>
 </head>
 <body><h1 style="position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap;border:0">Pattern Intelligence — Forge Module</h1>
 <main id="main-content">
@@ -543,10 +569,21 @@ a.brief-source-chip:hover{color:var(--text-s);border-color:var(--border-hi)}
   <div class="panel" id="panel-dashboard">
     <!-- Pipeline Health Bar -->
     <div id="pipeline-health-bar" style="background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:12px 14px;margin-bottom:14px">
-      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;flex-wrap:wrap;gap:4px">
-        <span style="font:600 10px var(--mono);color:var(--text-s);text-transform:uppercase;letter-spacing:.06em">Pipeline Health</span>
-        <span id="pipeline-last-run" style="font:400 10px var(--mono);color:var(--text-s)">Loading...</span>
+      <div class="pipeline-health-head">
+        <div class="pipeline-health-title">
+          <strong>Intel Pipeline Health</strong>
+          <span id="dashboard-health-status" class="pipeline-health-status neutral">Checking</span>
+        </div>
+        <a class="pipeline-health-link" href="/intel-health/">Open diagnostics →</a>
       </div>
+      <div class="pipeline-health-summary" aria-live="polite">
+        <div>
+          <strong id="dashboard-health-headline">Checking pipeline telemetry</strong>
+          <span id="dashboard-health-detail">Collector execution, evidence freshness, persistence, and publication are evaluated separately.</span>
+        </div>
+        <span id="pipeline-last-run">Loading...</span>
+      </div>
+      <div id="dashboard-health-stages" class="pipeline-health-stage-grid"></div>
       <!-- Pipeline stat tiles -->
       <div id="pipeline-stat-tiles" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(100px,1fr));gap:6px;margin-bottom:10px"></div>
       <!-- Active intel sources -->
@@ -1511,6 +1548,29 @@ let hiddenRegions = new Set();
 let selectedFlag = null;
 let _flagScrollY = 0;
 
+async function loadPipelineHealthDocument() {
+  const token = localStorage.getItem('forge_token') || localStorage.getItem('wingman_sub_token') || '';
+  const candidates = [
+    '/api/data?type=miner_health&token=' + encodeURIComponent(token),
+    '/static/miner_health.json?ts=' + Date.now()
+  ];
+  const errors = [];
+  for (const source of candidates) {
+    try {
+      const response = await fetch(source, { headers: { Accept: 'application/json' } });
+      if (!response.ok) throw new Error('HTTP ' + response.status);
+      const envelope = await response.json();
+      if (envelope && envelope.summary_only) throw new Error('Summary-only response');
+      const health = window.IntelHealth ? window.IntelHealth.unwrap(envelope) : (envelope.data || envelope);
+      if (!health || typeof health !== 'object' || Array.isArray(health) || !health.timestamp) throw new Error('Invalid health document');
+      return { health, source };
+    } catch (error) {
+      errors.push(source + ': ' + error.message);
+    }
+  }
+  throw new Error(errors.join('; '));
+}
+
 // ── Data loading ──
 async function loadData() {
   const flagList = document.getElementById("flag-list");
@@ -1528,20 +1588,22 @@ async function loadData() {
     const _d = d.summary_only ? null : (d.data||d);
     if(_d && _d.entities) { ENTITY_GRAPH = _d.entities; }
   }).catch(()=>{});
-  fetch('/api/data?type=miner_health&token='+encodeURIComponent(localStorage.getItem('forge_token')||localStorage.getItem('wingman_sub_token')||'')).then(r=>r.json()).then(d=>{
-    const h = d.summary_only ? null : (d.data||d);
-    if(h) {
-      window._minerHealth = h;
-      renderPipelineHealth(h);
-      // If history tab is active, re-render pipeline observability section now that miner_health is ready
-      if (activeTab === 'history' && typeof renderHistory === 'function' && _historyData) {
-        renderHistory();
-      }
+  loadPipelineHealthDocument().then(result=>{
+    window._minerHealth = result.health;
+    window._minerHealthSource = result.source;
+    renderPipelineHealth(result.health, result.source);
+    // If history tab is active, re-render pipeline observability section now that miner_health is ready
+    if (activeTab === 'history' && typeof renderHistory === 'function' && _historyData) {
+      renderHistory();
     }
-  }).catch(()=>{});
+  }).catch(()=>renderPipelineHealth(null, 'unavailable'));
   fetch('/api/data?type=miner_registry&token='+encodeURIComponent(localStorage.getItem('forge_token')||localStorage.getItem('wingman_sub_token')||'')).then(r=>r.json()).then(d=>{
     const reg = d.summary_only ? null : (d.data||d);
-    if(reg) { window._minerRegistry = reg; renderSources(); }
+    if(reg) {
+      window._minerRegistry = reg;
+      renderSources();
+      if (window._minerHealth) renderPipelineHealth(window._minerHealth, window._minerHealthSource || '/api/data?type=miner_health');
+    }
   }).catch(()=>{});
   fetch('/api/data?type=solicitations&token='+encodeURIComponent(localStorage.getItem('forge_token')||localStorage.getItem('wingman_sub_token')||'')).then(r=>r.json()).then(d=>{
     const _d = d.summary_only ? null : (d.data||d);
@@ -5819,21 +5881,68 @@ function buildPersonalizedSection(tier) {
 // ══════════════════════════════════════════
 // PIPELINE HEALTH
 // ══════════════════════════════════════════
-function renderPipelineHealth(h) {
+function renderDashboardHealth(summary, source) {
+  const status = document.getElementById('dashboard-health-status');
+  const headline = document.getElementById('dashboard-health-headline');
+  const detail = document.getElementById('dashboard-health-detail');
+  const stages = document.getElementById('dashboard-health-stages');
+  if (!status || !headline || !detail || !stages) return;
+
+  if (!summary) {
+    status.className = 'pipeline-health-status failure';
+    status.textContent = 'Unavailable';
+    headline.textContent = 'Pipeline health unavailable';
+    detail.textContent = 'Neither the production API nor the static fallback returned valid health telemetry. No healthy state is inferred.';
+    stages.replaceChildren();
+    return;
+  }
+
+  const labels = { healthy: 'Current', warning: 'Gaps', failure: 'Action needed', neutral: 'Unreported' };
+  status.className = 'pipeline-health-status ' + summary.overall;
+  status.textContent = labels[summary.overall] || 'Unreported';
+  headline.textContent = summary.headline;
+  detail.textContent = summary.failures + ' failed · ' + summary.warnings + ' degraded or stale · ' + summary.unknown + ' unreported. Collector success does not prove fresh upstream evidence.';
+  stages.replaceChildren(...window.IntelHealth.stageSummary(summary, source).map(function(stage) {
+    const card = document.createElement('div');
+    card.className = 'pipeline-health-stage ' + stage.tone;
+    const label = document.createElement('span'); label.className = 'label'; label.textContent = stage.title;
+    const value = document.createElement('strong'); value.textContent = stage.value;
+    const note = document.createElement('span'); note.className = 'note'; note.textContent = stage.note;
+    card.append(label, value, note);
+    return card;
+  }));
+}
+
+function renderPipelineHealth(h, source) {
   const el = document.getElementById('pipeline-sources');
   const lastRun = document.getElementById('pipeline-last-run');
   const tiles = document.getElementById('pipeline-stat-tiles');
   if (!el) return;
+
+  if (!h || !window.IntelHealth) {
+    renderDashboardHealth(null, source);
+    if (lastRun) lastRun.textContent = 'No telemetry readback';
+    if (tiles) tiles.replaceChildren();
+    el.textContent = 'Source status unavailable.';
+    return;
+  }
+
+  const summary = window.IntelHealth.summarize(h, window._minerRegistry || {}, new Date());
+  renderDashboardHealth(summary, source || 'unavailable');
 
   const sources = h.sources || {};
   const total = h.total || 0;
   const ts = h.timestamp ? new Date(h.timestamp) : null;
 
   if (lastRun && ts) {
-    const diffHrs = Math.round((Date.now() - ts) / 3600000);
+    const diffHrs = Math.max(0, Math.round((Date.now() - ts) / 3600000));
     const freshStr = diffHrs < 2 ? 'live' : diffHrs < 24 ? diffHrs+'h ago' : Math.round(diffHrs/24)+'d ago';
-    const color = diffHrs < 24 ? 'var(--green)' : diffHrs < 48 ? 'var(--warning)' : 'var(--red)';
-    lastRun.innerHTML = `<span style="color:${color}">●</span> run #${esc(h.run||'—')} · ${ts.toISOString().slice(0,16).replace('T',' ')} UTC · ${freshStr}`;
+    const tone = summary.healthFreshness.status;
+    const color = tone === 'fresh' ? 'var(--green)' : tone === 'delayed' ? 'var(--warning)' : 'var(--red)';
+    const channel = String(source || '').startsWith('/api/') ? 'API' : 'static fallback';
+    lastRun.innerHTML = `<span style="color:${color}">●</span> run #${esc(h.run||'—')} · ${ts.toISOString().slice(0,16).replace('T',' ')} UTC · ${freshStr} · ${channel}`;
+    window.__pipelineRunISO = h.timestamp;
+    window.__pipelineRunNum = h.run;
   }
 
   // Stat tiles — show all pipeline outputs
@@ -5881,6 +5990,13 @@ function renderPipelineHealth(h) {
           </div>
         </div>`).join('');
     }
+  }
+
+  const partsCount = h.parts?.total ? h.parts.total.toLocaleString() : null;
+  if (partsCount) {
+    document.querySelectorAll('[data-parts-count]').forEach(function(node) { node.textContent = partsCount; });
+    const search = document.getElementById('global-search-input');
+    if (search) search.placeholder = 'Search ' + partsCount + '+ parts across all categories...';
   }
 }
 
@@ -7806,23 +7922,6 @@ updateNavTokenStatus();
   });
 })();
 
-</script>
-<script>
-(function(){
-  fetch('/api/data?type=miner_health').then(function(r){return r.ok?r.json():null})
-  .then(function(d){
-    var h = d && d.data ? d.data : d;
-    var n = h && h.parts && h.parts.total ? h.parts.total.toLocaleString() : null;
-    if(!n) return;
-    // Update all data-parts-count spans
-    document.querySelectorAll('[data-parts-count]').forEach(function(el){
-      el.textContent = n;
-    });
-    // Update search placeholder
-    var si = document.getElementById('global-search-input');
-    if(si) si.placeholder = 'Search ' + n + '+ parts across all categories...';
-  }).catch(function(){});
-})();
 </script>
 </main>
 </body>

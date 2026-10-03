@@ -1,5 +1,13 @@
 # Changelog
 
+## 2026-10-02 — Intel pipeline health surface
+
+- Add `/intel-health/` as a dedicated public operations view over the wrapped `miner_health` and `miner_registry` contracts.
+- Keep collector execution, evidence freshness, persistence receipts, and publication freshness separate; stale, future, failed, and unreported telemetry fails closed.
+- Roll the same fail-closed summary into the PIE dashboard with four stage boundaries, API-to-static fallback, and a direct link to full diagnostics.
+- Link the page from the Intel hub, Patterns hub, unified navigation, data-quality page, and API documentation.
+- Validate source and built output with contract tests, live API readback, full static build, public-site audits, and desktop/mobile rendering.
+
 ## 2026-10-02 — Consistent lens fallback publication
 
 - Select all lens fallbacks and their article corpus from one immutable generated-data commit.
