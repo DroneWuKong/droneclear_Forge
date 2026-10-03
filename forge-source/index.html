@@ -3,10 +3,11 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Forge — Parts Browser</title>
+<title>Forge — My build</title>
 <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
 <script src="https://unpkg.com/@phosphor-icons/web"></script>
 <script src="/static/builder-values.js"></script>
+<script src="/static/build-store.js"></script>
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
 :root{
@@ -119,9 +120,9 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:var(--s
 #build-fab:hover{background:#ff98aa;transform:translateY(-1px)}
 #build-count{background:rgba(0,0,0,.3);border-radius:12px;padding:2px 7px;font:700 10px var(--mono)}
 /* ── Build Drawer ── */
-#build-overlay{position:fixed;inset:0;background:rgba(0,0,0,.6);backdrop-filter:blur(4px);z-index:200;display:none}
+#build-overlay{position:fixed;inset:0;background:rgba(0,0,0,.6);backdrop-filter:blur(4px);z-index:600;display:none}
 #build-overlay.open{display:block}
-#build-drawer{position:fixed;right:0;top:0;bottom:0;width:320px;max-width:90vw;background:var(--card);border-left:1px solid var(--border);z-index:201;display:flex;flex-direction:column;transform:translateX(100%);transition:transform .25s cubic-bezier(.4,0,.2,1)}
+#build-drawer{position:fixed;right:0;top:0;bottom:0;width:320px;max-width:90vw;background:var(--card);border-left:1px solid var(--border);z-index:601;display:flex;flex-direction:column;transform:translateX(100%);transition:transform .25s cubic-bezier(.4,0,.2,1)}
 #build-drawer.open{transform:translateX(0)}
 #drawer-header{padding:14px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;flex-shrink:0}
 #drawer-header h2{font:700 14px var(--mono);color:var(--text)}
@@ -158,7 +159,7 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:var(--s
 .btn-outline:hover{border-color:var(--border-hi);color:var(--text-s)}
 .btn-row{display:flex;gap:6px;flex-wrap:wrap}
 /* ── Modal ── */
-#modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.75);backdrop-filter:blur(6px);z-index:300;display:none;align-items:center;justify-content:center;padding:16px}
+#modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.75);backdrop-filter:blur(6px);z-index:700;display:none;align-items:center;justify-content:center;padding:16px}
 #modal-overlay.open{display:flex}
 #modal{background:var(--card);border:1px solid var(--border);border-radius:12px;width:100%;max-width:560px;max-height:85vh;display:flex;flex-direction:column;overflow:hidden}
 #modal-top{padding:16px;border-bottom:1px solid var(--border);display:flex;gap:14px;flex-shrink:0}
@@ -177,7 +178,7 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:var(--s
 .spec-label{color:var(--text-d);font:400 10px var(--mono)}
 .spec-value{color:var(--text-s);font:500 11px var(--sans)}
 #modal-foot{padding:12px 16px;border-top:1px solid var(--border);display:flex;gap:8px;align-items:center;flex-shrink:0}
-#modal-close-x{position:absolute;top:8px;right:8px;background:none;border:none;color:var(--text-d);cursor:pointer;font-size:18px;padding:4px}
+#modal-close-x{position:absolute;z-index:1;top:8px;right:8px;background:none;border:none;color:var(--text-d);cursor:pointer;font-size:18px;padding:4px}
 #modal-close-x:hover{color:var(--text)}
 #modal-link-btn{font:500 11px var(--sans);color:var(--cyan);text-decoration:none}
 #modal-link-btn:hover{text-decoration:underline}
@@ -257,7 +258,7 @@ button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible{ou
 }
 </style>
 </head>
-<body><h1 style="position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap;border:0">Forge — Parts Browser</h1>
+<body>
 <main id="main-content">
 <!-- ── Unified UAS-Nav ───────────────────────────────────────── -->
 <style id="dc-unified-nav-styles">
@@ -406,6 +407,7 @@ button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible{ou
 </script>
 <!-- ── /Unified UAS-Nav ─────────────────────────────────────── -->
 
+<section id="build-intro" style="padding:18px 20px;border-bottom:1px solid var(--border)"><h1 style="font-size:24px;margin:0 0 6px">My builds</h1><div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px"><label>Saved build <select id="saved-builds" disabled aria-label="Saved build"></select></label><button class="btn btn-outline" id="new-build" disabled type="button">New build</button><label>Name <input id="build-name" disabled aria-label="Build name" maxlength="80" style="max-width:160px"></label><button class="btn btn-outline" id="rename-build" disabled type="button">Save name</button></div><p id="build-progress" style="color:var(--text-d);margin:0 0 12px">Choose a frame or search for a part to start your component list.</p><div style="display:flex;gap:10px;flex-wrap:wrap"><button class="btn btn-outline" id="review-build">Review selected parts</button><a class="btn btn-outline" id="build-cost-link" href="/cost/?current=1">Review cost & weight</a><a class="btn btn-outline" href="/guides/">Find a guide</a></div><p id="build-storage-note" role="status" style="font-size:12px;color:var(--text-d)">Saved in this browser. Export a copy to keep it elsewhere.</p></section>
 <div id="app">
 
   <!-- Topbar -->
@@ -483,7 +485,7 @@ button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible{ou
     <div class="btn-row">
       <button class="btn btn-outline" id="btn-share"><i class="ph ph-share-network"></i> Share</button>
       <button class="btn btn-outline" id="btn-export"><i class="ph ph-export"></i> Export</button>
-      <a class="btn btn-outline" href="/circuit-forge/" title="Design the wiring for this build with AI" style="color:#3b82f6;border-color:rgba(59,130,246,.3);text-decoration:none"><i class="ph ph-lightning"></i> Wiring (AI)</a>
+      <a class="btn btn-outline" href="/circuit-forge/" title="Open the separate wiring workspace" style="color:#3b82f6;border-color:rgba(59,130,246,.3);text-decoration:none"><i class="ph ph-lightning"></i> Wiring (AI)</a>
       <div id="param-wrap" style="position:relative">
         <button class="btn btn-outline" id="btn-ardupilot" style="color:#22c55e;border-color:rgba(34,197,94,.3)"><i class="ph ph-sliders"></i> Firmware Config</button>
         <div id="param-picker">
@@ -577,16 +579,31 @@ button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible{ou
 (function() {
 'use strict';
 
+const $ = id => document.getElementById(id);
+const esc = s => String(s ?? '').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+
 // ── State ──
 let DB = null;
 let allParts = [];
 let currentCat = null;
 let currentParts = [];
-let build = [];
-try {
-  const saved = JSON.parse(localStorage.getItem('forge-build') || '[]');
-  if (Array.isArray(saved)) build = saved.filter(item => item && typeof item.pid === 'string');
-} catch { /* Malformed or unavailable local storage must not prevent browsing. */ }
+let buildSession=null,buildDocument=null,buildPersisted=false,build=[];
+try{buildSession=ForgeBuildStore.open(localStorage);buildDocument=buildSession.read();build=ForgeBuildStore.active(buildDocument).items;buildPersisted=true;}
+catch(error){$('build-storage-note').textContent=error.message+' You can browse and export a temporary build.';buildDocument=ForgeBuildStore.initial(null);}
+function workspaceControls(){
+  for(const id of ['saved-builds','new-build','build-name','rename-build'])$(id).disabled=false;
+  const selected=ForgeBuildStore.active(buildDocument);selected.items=build;
+  $('saved-builds').innerHTML=buildDocument.builds.map(b=>`<option value="${esc(b.id)}"${b.id===selected.id?' selected':''}>${esc(b.name)}</option>`).join('');
+  $('build-name').value=selected.name;
+}
+function chooseBuild(id){
+  buildDocument.active_id=id;build=ForgeBuildStore.active(buildDocument).items;
+  saveBuild();workspaceControls();updateBuildUI();renderFilterBar();renderGrid();
+}
+$('saved-builds').addEventListener('change',event=>chooseBuild(event.target.value));
+$('new-build').addEventListener('click',()=>{try{buildDocument=ForgeBuildStore.create(buildDocument,'Untitled build',crypto.randomUUID());build=[];saveBuild();workspaceControls();updateBuildUI();renderFilterBar();renderGrid();}catch(error){$('build-storage-note').textContent=error.message;}});
+$('rename-build').addEventListener('click',()=>{const name=$('build-name').value.trim();if(!name){$('build-storage-note').textContent='Enter a build name.';return;}ForgeBuildStore.active(buildDocument).name=name;saveBuild();workspaceControls();updateBuildUI();});
+window.addEventListener('storage',event=>{if(event.key===ForgeBuildStore.KEY){buildPersisted=false;updateBuildUI();$('build-storage-note').textContent='Saved builds changed in another tab. Export any edits, then reload to use that version.';}});
 const values = window.ForgeBuilderValues;
 let modalPart = null;
 let activeFilters = {};
@@ -970,8 +987,7 @@ function applySpecFilters(parts) {
 }
 
 // ── Helpers ──
-const $ = id => document.getElementById(id);
-const esc = s => String(s ?? '').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+
 const fmtCat = s => s.replace(/_/g,' ').replace(/\b\w/g,c=>c.toUpperCase());
 
 // ── Load DB ──
@@ -1026,31 +1042,24 @@ async function init() {
     for (const p of parts) allParts.push({...p, _cat: cat});
   }
 
-  // Resolve saved records against this catalog; stale or duplicate IDs cannot break startup.
-  const savedPids = new Set(build.map(item => item.pid));
-  build = [...savedPids].map(pid => allParts.find(part => part.pid === pid)).filter(Boolean).map(part => ({pid:part.pid,name:part.name,cat:part._cat}));
-
-  // Hydrate build from ?b= shareable URL param (overrides localStorage)
-  const bParam = new URLSearchParams(location.search).get('b');
-  if (bParam) {
-    const pids = decodeBuildParam(bParam);
-    if (pids && Array.isArray(pids) && pids.length) {
-      build = pids
-        .map(pid => allParts.find(p => p.pid === pid))
-        .filter(Boolean)
-        .map(p => ({pid: p.pid, name: p.name, cat: p._cat || p.category}));
-      saveBuild();
-    }
-  }
-
+  // Retain missing IDs so catalog updates cannot silently delete user work.
+  build=build.map(item=>{const part=allParts.find(p=>p.pid===item.pid);return {...item,name:part?.name||item.name||item.pid,cat:part?._cat||item.cat||''};});
+  const params=new URLSearchParams(location.search),bParam=params.get('b');
+  if(bParam){
+    const shared=values.decodeItems(bParam);
+    if(shared){try{buildDocument=ForgeBuildStore.create(buildDocument,'Shared build',crypto.randomUUID());build=shared.map(item=>{const part=allParts.find(p=>p.pid===item.pid);return {...item,name:part?.name||item.pid,cat:part?._cat||''};});buildPersisted=false;$('build-storage-note').textContent='Shared build opened as a separate list. Edit or save its name to keep it; existing builds are unchanged.';}catch(error){$('build-storage-note').textContent=error.message+' Your saved build is still shown.';}}
+    else $('build-storage-note').textContent='The shared build link is invalid. Your saved build is still shown.';
+  }else if(params.get('build')&&buildDocument.builds.some(b=>b.id===params.get('build'))){buildDocument.active_id=params.get('build');build=ForgeBuildStore.active(buildDocument).items;}
+  workspaceControls();
   renderSidebar();
   $('loader').style.display = 'none';
   $('grid').style.display = 'grid';
   updateBuildUI();
 
-  // Select first category
-  const firstCat = Object.keys(DB.components)[0];
+  const requested=new URLSearchParams(location.search).get('category');
+  const firstCat = requested && DB.components[requested] ? requested : DB.components.frames ? 'frames' : Object.keys(DB.components)[0];
   selectCat(firstCat);
+  if(new URLSearchParams(location.search).get('view')==='build')openBuild();
 }
 
 // ── Sidebar ──
@@ -1241,7 +1250,7 @@ function closeModal() {
 function addToBuild(pid) {
   const p = allParts.find(x => x.pid === pid);
   if (!p || build.some(b => b.pid === pid)) return;
-  build.push({pid: p.pid, name: p.name, cat: p._cat || p.category});
+  build.push({pid: p.pid, name: p.name, cat: p._cat || p.category,qty:1});
   saveBuild();
   updateBuildUI();
   renderFilterBar();
@@ -1269,11 +1278,13 @@ function clearBuild() {
 }
 
 function saveBuild() {
-  try { localStorage.setItem('forge-build', JSON.stringify(build)); } catch(e) {}
+  ForgeBuildStore.active(buildDocument).items=build;
+  try{if(!buildSession)throw new Error('Browser storage is unavailable.');buildSession.save(buildDocument);buildPersisted=true;$('build-storage-note').textContent='Saved in this browser. Export a copy to keep it elsewhere.';}
+  catch(error){buildPersisted=false;$('build-storage-note').textContent=error.message+' Export before leaving.';}
 }
 
 // ── Share ──
-function encodeBuildParam() { return values.encode(build.map(item => item.pid)); }
+function encodeBuildParam() { return values.encodeItems(build); }
 function decodeBuildParam(encoded) { return values.decode(encoded); }
 function shareBuild() {
   if (!build.length) { alert('Build is empty — add parts before sharing.'); return; }
@@ -1289,6 +1300,8 @@ function shareBuild() {
 }
 
 function updateBuildUI() {
+  $('build-progress').textContent=build.length ? build.length+' selected parts. Add parts below; review your list and its known cost when ready.' : 'Choose a frame or search for a part to start your component list.';
+  $('build-cost-link').href=buildPersisted?'/cost/?build='+encodeURIComponent(buildDocument.active_id):'/cost/?b='+values.encodeItems(build);
   $('build-count').textContent = build.length;
   $('build-n').textContent = build.length;
 
@@ -1307,12 +1320,19 @@ function updateBuildUI() {
     <div class="build-slot">
       <span class="slot-cat">${esc(fmtCat(b.cat||''))}</span>
       <span class="slot-name" title="${esc(b.name)}">${esc(b.name)}</span>
+      <label style="font-size:11px">Qty <input type="number" min="1" max="999" step="1" value="${b.qty||1}" data-quantity="${esc(b.pid)}" aria-label="Quantity for ${esc(b.name)}" style="width:55px"></label>
       <button class="slot-remove" data-pid="${esc(b.pid)}" title="Remove"><i class="ph ph-x"></i></button>
     </div>
   `).join('');
   slots.querySelectorAll('.slot-remove').forEach(btn => {
     btn.addEventListener('click', () => removeFromBuild(btn.dataset.pid));
   });
+
+  slots.querySelectorAll('[data-quantity]').forEach(input=>input.addEventListener('change',()=>{
+    const value=Number(input.value),item=build.find(row=>row.pid===input.dataset.quantity);
+    if(!Number.isInteger(value)||value<1||value>999){input.value=item.qty||1;$('build-storage-note').textContent='Quantity must be a whole number from 1 to 999.';return;}
+    item.qty=value;saveBuild();updateBuildUI();
+  }));
 
   // ── Live BOM panel ──
   const CAT_COLORS = {
@@ -1324,7 +1344,7 @@ function updateBuildUI() {
   const summary = values.totals(rows);
   const totalCost = summary.price, totalWeight = summary.weight;
   const catWeight = {};
-  rows.forEach(row => { if (row.weight != null) catWeight[row.cat] = (catWeight[row.cat] || 0) + row.weight; });
+  rows.forEach(row => { if (row.weight != null) catWeight[row.cat] = (catWeight[row.cat] || 0) + row.weight*(row.qty||1); });
   const costCls = summary.unknownPrices ? 'amber' : totalCost < 350 ? 'green' : totalCost < 700 ? 'amber' : 'red';
   $('bom-cost').textContent = rows.length === summary.unknownPrices ? '—' : '$' + totalCost.toFixed(2);
   $('bom-cost').className = 'bom-gauge-val ' + costCls;
@@ -1343,7 +1363,7 @@ function updateBuildUI() {
   ).join('') : '';
 
   $('bom-rows').innerHTML = rows.map(row =>
-    `<div class="bom-row"><span class="bom-name">${esc(row.name)}</span><span class="bom-price">${row.price == null ? esc(row.priceNote) : '$' + row.price.toFixed(2)}</span></div>`
+    `<div class="bom-row"><span class="bom-name">${esc(row.name)} × ${row.qty||1}</span><span class="bom-price">${row.price == null ? esc(row.priceNote) : '$' + (row.price*(row.qty||1)).toFixed(2)}</span></div>`
   ).join('');
 
   bom.style.display = 'block';
@@ -1902,6 +1922,7 @@ function closeBuild() {
   if (drawerReturnFocus?.isConnected) drawerReturnFocus.focus();
 }
 $('build-fab').addEventListener('click', openBuild);
+$('review-build').addEventListener('click', openBuild);
 $('drawer-close').addEventListener('click', closeBuild);
 $('build-overlay').addEventListener('click', closeBuild);
 $('btn-clear').addEventListener('click', () => { if(confirm('Clear build?')) clearBuild(); });

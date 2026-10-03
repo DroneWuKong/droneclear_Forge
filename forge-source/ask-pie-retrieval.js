@@ -371,11 +371,24 @@
       semantics:type === 'prediction' ? 'Forecast or preserved legacy judgment. Probability is not evidence confidence. Review the issued criteria and cohort before evaluating it.' : 'Indexed reference. Relationships require their own evidence; a matching name does not establish ownership, supply, or installation.'
     }));
   }
+  // A transparent news filter, not an assessment of truth or relevance to a mission.
+  // Restrict text matching to article content; publisher footers and entity names
+  // alone cannot turn an unrelated article into a UAS result.
+  function isUasArticle(record) {
+    return /\b(?:drones?|uas|uavs?|suas|fpv|bvlos|rpas|quadcopters?|multirotors?|uncrewed aircraft|unmanned (?:aircraft|aerial|air vehicle)|drone-as-first-responder)\b/i.test(withoutPublisherBoilerplate(normalize([record.title,record.summary].filter(Boolean).join(' '))));
+  }
+  function sourceDateStatus(record, now) {
+    const date=parseDate(recordSourceDate(record));
+    if(!date)return 'unknown';
+    const clock=parseDate(now);
+    return clock && date.getTime()>clock.getTime()+86400000 ? 'future' : 'reported';
+  }
   function compactRecord(record) {
     const shorten = (value, limit) => text(value).slice(0, limit);
     return {
       id:shorten(record.id, 240), key:recordKey(record), type:record.type, title:shorten(record.title, 320),
       summary:shorten(record.summary, 800), date:shorten(record.date, 80), source:shorten(record.source, 160),
+      ...(record.type === 'article' ? {article_type:shorten(record.raw?.article_type || record.article_type,80),vertical:shorten(record.raw?.vertical || record.raw?.vertical_tag || record.vertical,80),date_basis:'source publication date'} : {}),
       ...(record.type === 'flag' ? Object.fromEntries(Object.entries(flagDateFields(record)).map(([key,value]) => [key,shorten(value,80)])) : {}),
       destination:recordUrl(record), sourceUrl:safeHttpUrl(record.destination),
       datasetDestination:record.type === 'flag' ? `/patterns/#flag=${encodeURIComponent(record.id)}` : record.type === 'entity' ? `/dossier/?m=${encodeURIComponent(record.id)}` : '',
@@ -394,26 +407,31 @@
     const query = text(params.get('q')).slice(0, 240);
     const type = text(params.get('record_type'));
     const id = text(params.get('record')).slice(0, 500);
+    const scope = ['uas','all-articles'].includes(params.get('scope')) ? params.get('scope') : '';
     const parsedLimit = Number(params.get('limit'));
     const limit = Math.max(1, Math.min(100, Number.isFinite(parsedLimit) && parsedLimit > 0 ? Math.floor(parsedLimit) : 48));
     const offset = Math.max(0, Math.min(index.records.length, Math.floor(Number(params.get('offset')) || 0)));
     function visible(record) {
       const dataset = record.dataset || index.meta?.dataset_by_type?.[record.type];
       const source = index.meta?.inputs?.[dataset] || {};
-      return {...publicRecord(record), semantics:record.semantics || index.meta?.record_semantics?.[record.type] || 'Indexed public record; support and relationships require review.', dataset, dataset_sha256:record.dataset_sha256 || source.sha256 || null, dataset_generated_at:record.dataset_generated_at || source.generated_at || null, dataset_status:record.dataset_status || source.evidence_status || 'unversioned', dataset_origin:source.origin || 'untracked local input', dataset_revision:source.revision_verified === true ? source.upstream_ref : null};
+      return {...publicRecord(record), ...(record.type === 'article' ? {source_date_status:sourceDateStatus(record,index.meta?.generated_at)} : {}), semantics:record.semantics || index.meta?.record_semantics?.[record.type] || 'Indexed public record; support and relationships require review.', dataset, dataset_sha256:record.dataset_sha256 || source.sha256 || null, dataset_generated_at:record.dataset_generated_at || source.generated_at || null, dataset_status:record.dataset_status || source.evidence_status || 'unversioned', dataset_origin:source.origin || 'untracked local input', dataset_revision:source.revision_verified === true ? source.upstream_ref : null};
     }
-    const base = {schema_version:1, retrieval_version:RETRIEVAL_VERSION, meta:index.meta, counts:index.counts, query:{q:query, record_type:type || 'all', limit, offset}, records:[]};
+    const base = {schema_version:1, retrieval_version:RETRIEVAL_VERSION, meta:index.meta, counts:index.counts, query:{q:query, record_type:type || 'all', limit, offset, ...(scope ? {scope} : {})}, records:[]};
     if (id) {
       const matches = index.records.filter(record => recordKey(record) === id || `${record.type}:${record.id}` === id);
       return {...base, record_status:matches.length === 1 ? 'found' : matches.length ? 'ambiguous' : 'missing', records:matches.length === 1 ? matches.map(visible) : []};
     }
     if (params.get('view') === 'summary') return base;
     let records = index.records.filter(record => !type || type === 'all' || record.type === type);
+    if(scope) records=records.filter(record=>record.type==='article' && (scope!=='uas' || isUasArticle(record)));
     const after = parseDate(params.get('after'));
     if (after) records = records.filter(record => dateSortValue(recordSourceDate(record)) >= after.getTime());
     if (query && !queryTerms(query).length) return {...base, total_matches:0, ranked:[]};
     if (!query) {
-      records.sort((a,b) => dateSortValue(recordSourceDate(b)) - dateSortValue(recordSourceDate(a)) || recordKey(a).localeCompare(recordKey(b)));
+      records.sort((a,b) => {
+        if(scope){const priority={reported:0,future:1,unknown:2};const order=priority[sourceDateStatus(a,index.meta?.generated_at)]-priority[sourceDateStatus(b,index.meta?.generated_at)];if(order)return order;}
+        return dateSortValue(recordSourceDate(b)) - dateSortValue(recordSourceDate(a)) || recordKey(a).localeCompare(recordKey(b));
+      });
       const grouped=groupArticleSources(records.map(record=>({record})));
       return {...base, total_matches:grouped.length, records:grouped.slice(offset, offset + limit).map(item=>visible(item.record))};
     }
@@ -676,6 +694,8 @@
         <details><summary>Input revisions and availability</summary><ul>${inputs.map(([name,row]) => `<li>${htmlEscape(name)}: ${htmlEscape(row.status)} · ${htmlEscape(row.origin || 'origin untracked')} · upstream revision ${htmlEscape(row.upstream_ref || 'unverified')} · source artifact date ${htmlEscape(row.generated_at || 'unknown')} · ${htmlEscape(row.sha256 || 'no hash')}</li>`).join('')}</ul></details>`;
     }
     function display(packet, publication, saved) {
+      document.querySelectorAll('[data-packet-results]').forEach(node=>{node.hidden=false;});
+      const advanced=document.getElementById('advanced-search');if(advanced)advanced.href='/pie-search/?q='+encodeURIComponent(packet.query);
       current = savedPacket(packet, publication);
       coverage(publication);
       summary.innerHTML = `<h2>${saved ? 'Saved evidence packet' : 'Evidence packet'}</h2><div class="answer-facts"><strong>${packet.direct.length}</strong><span>direct cited matches</span><strong>${packet.contextual.length}</strong><span>contextual cited matches</span><strong>${packet.analytic.length}</strong><span>uncited context rows</span><strong>${packet.citations.length}</strong><span>complete source references</span></div>
@@ -715,6 +735,7 @@
         const data = result.data;
         if (record && data.record_status !== 'found') {
           current = null; directNode.innerHTML = contextNode.innerHTML = analyticNode.innerHTML = ''; citationNode.innerHTML = '<li>No record selected.</li>';
+          summary.hidden=false;
           summary.innerHTML = `<h2>Record ${htmlEscape(data.record_status || 'unavailable')}</h2><p>The exact requested identity cannot be resolved in this snapshot. No substitute was selected.</p>`;
           document.getElementById('save-packet').disabled = document.getElementById('export-packet').disabled = true;
           status.textContent = 'Try the saved packet for the historical snapshot, or search current records.'; return;
@@ -739,7 +760,7 @@
             } catch(error) { if(serial===generation){button.textContent=`Excerpt unavailable: ${error.message}`;button.disabled=false;} }
           });
         }
-        status.textContent = `${ranked.length} records in this packet${data.total_matches != null ? ` of ${data.total_matches} matching records` : ''}. Snapshot ${text(data.meta?.input_revision).slice(0,12)} · ${data.meta?.availability || 'availability unknown'}.`;
+        status.textContent = `${ranked.length} records in this packet${data.total_matches != null ? ` of ${data.total_matches} matching records` : ''}. ${data.meta?.availability || 'availability unknown'} coverage. Open source details for publication revisions.`;
       } catch (error) {
         if (serial !== generation || error.name === 'AbortError') return;
         status.textContent = `Research unavailable: ${error.message}. Existing displayed evidence has not been refreshed.`;
@@ -772,6 +793,6 @@
     STOPWORDS, TYPE_ORDER, text, normalize, termPattern, queryTerms, safeHttpUrl, parseDate, canonicalArticleSource,
     normalizeCitation, dedupeCitations, citationsFromFlag, citationsFromActor, citationsFromTtp,
     articleRecords, flagRecords, actorRecords, ttpRecords, buildCorpus, scoreRecord, rankEvidence,
-    evidencePacket, coverageFacts, htmlEscape, stableId, genericRecords, compactRecord, recordKey, recordUrl, projectResearch, publicRecord, citationNumbers, renderResult, renderCitation, researchRequest, savedPacket, readSaved, writeSaved, boot
+    evidencePacket, coverageFacts, htmlEscape, stableId, genericRecords, compactRecord, recordKey, recordUrl, projectResearch, publicRecord, isUasArticle, sourceDateStatus, citationNumbers, renderResult, renderCitation, researchRequest, savedPacket, readSaved, writeSaved, boot
   };
 });

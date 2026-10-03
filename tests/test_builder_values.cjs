@@ -30,13 +30,13 @@ test('UTF-8 shared builds round-trip existing Cyrillic catalog PID and old links
 test('actual quote-bearing names and newlines are escaped without changing contents',()=>{
  const rows=values.rows(buildFor(['ANT-1366','FRM-1003']),parts);const out=values.csv(rows);
  assert.match(out,/Omnivision 5\.8GHz ""Stubby""/);assert.match(out,/HGLRC MY5 5"" Frame Kit/);
- assert.equal(values.csv([{pid:'test',name:'A,"B"\nC',cat:'frames',price:null,weight:null,priceNote:'Needs quote'}]).split('\r\n')[1], '"test","A,""B""\nC","frames","","","Needs quote","Weight unavailable"');
+ assert.equal(values.csv([{pid:'test',name:'A,"B"\nC',cat:'frames',price:null,weight:null,priceNote:'Needs quote'}]).split('\r\n')[1], '"test","A,""B""\nC","frames","","","Needs quote","Weight unavailable","1"');
 });
 test('actual inline drawer render and export survive all formerly crashing catalog records',()=>{
  const html=fs.readFileSync(new URL('../forge-source/index.html','file://'+__filename),'utf8');
  const source=html.slice(html.indexOf('function updateBuildUI() {'),html.indexOf('// ── ArduPilot .param generator'));
  const elements={};let csv='';
- const ctx=vm.createContext({values,build:buildFor(['ESC-1155','FC-2050','GPS-1075','BAT-FF-SL8AIR','ANT-1366']),allParts:parts,
+ const ctx=vm.createContext({values,buildPersisted:false,buildDocument:{active_id:'test'},build:buildFor(['ESC-1155','FC-2050','GPS-1075','BAT-FF-SL8AIR','ANT-1366']),allParts:parts,
  $:id=>elements[id]??={style:{},querySelectorAll:()=>[]},esc:s=>String(s),fmtCat:s=>s,
  Blob:class{constructor(content){csv=content.join('')}},URL:{createObjectURL:()=>'',revokeObjectURL(){}},document:{createElement:()=>({click(){}})},setTimeout:fn=>fn()});
  vm.runInContext(source,ctx);vm.runInContext('updateBuildUI();exportBuild()',ctx);

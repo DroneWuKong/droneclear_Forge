@@ -66,39 +66,21 @@ REPLACEMENTS = (
     ),
     Replacement(
         'build_static.py',
-        'data-page="ask-pie">Ask PIE</a>',
+        'data-page="ask-pie">',
         '      <a class="dc-dom-sublink" href="https://uas-patterns.com/priorities/" data-page="priorities">Priority View</a>\n      <a class="dc-dom-sublink" href="https://uas-patterns.com/brief/" data-page="brief">Daily Brief</a>',
         '      <a class="dc-dom-sublink" href="https://uas-patterns.com/priorities/" data-page="priorities">Priority View</a>\n      <a class="dc-dom-sublink" href="https://uas-patterns.com/ask-pie/" data-page="ask-pie">Ask PIE</a>\n      <a class="dc-dom-sublink" href="https://uas-patterns.com/brief/" data-page="brief">Daily Brief</a>',
     ),
     Replacement(
         'build_static.py',
-        "'ask-pie':'Ask PIE'",
+        "'ask-pie':",
         "    'patterns-home':'P.I.E Hub','priorities':'Priority View','brief':'Brief','patterns':'Flags','clock':'UAS Clock','ddg':'DDG Tracker',",
         "    'patterns-home':'P.I.E Hub','priorities':'Priority View','ask-pie':'Ask PIE','brief':'Brief','patterns':'Flags','clock':'UAS Clock','ddg':'DDG Tracker',",
     ),
     Replacement(
         'forge-source/patterns-home.html',
-        '<a href="/ask-pie/">',
+        'href="/ask-pie/"',
         '      <a href="/priorities/">Priorities</a>\n      <a href="#current">Current</a>',
         '      <a href="/priorities/">Priorities</a>\n      <a href="/ask-pie/">Ask PIE</a>\n      <a href="#current">Current</a>',
-    ),
-    Replacement(
-        'forge-source/patterns-home.html',
-        'Build cited evidence packet',
-        '          <a class="button primary" href="/brief/">Read the daily brief <span aria-hidden="true">→</span></a>\n          <a class="button" href="/priorities/">Open priority view</a>',
-        '          <a class="button primary" href="/brief/">Read the daily brief <span aria-hidden="true">→</span></a>\n          <a class="button" href="/ask-pie/">Build cited evidence packet</a>\n          <a class="button" href="/priorities/">Open priority view</a>',
-    ),
-    Replacement(
-        'forge-source/patterns-home.html',
-        'Ask PIE <span class="tag">Cited retrieval</span>',
-        '        <a class="product" data-tone="amber" href="/pie-search/">\n          <span class="product-icon" aria-hidden="true">SRC</span>',
-        ASK_CARD + '        <a class="product" data-tone="amber" href="/pie-search/">\n          <span class="product-icon" aria-hidden="true">SRC</span>',
-    ),
-    Replacement(
-        'forge-source/patterns-home.html',
-        'Raw corpus search',
-        '<span><span class="product-title">Global evidence search</span><span class="product-desc">Search indexed flags, actors, entities, predictions, and public reporting from one surface.</span><span class="product-meta">Show me the supporting record.</span></span>',
-        '<span><span class="product-title">Raw corpus search</span><span class="product-desc">Search indexed flags, actors, entities, predictions, and public reporting without an evidence-packet interpretation layer.</span><span class="product-meta">Show every literal match.</span></span>',
     ),
     Replacement(
         'forge-source/pie-search.html',

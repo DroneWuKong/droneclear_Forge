@@ -91,7 +91,7 @@ def build_targets(patterns_base: str, forge_base: str) -> list[Target]:
             "patterns-home",
             urljoin(patterns, "patterns-home/"),
             (
-                "Follow the changes that matter.",
+                "Today in UAS.",
                 'id="daily-workspace"',
                 "/static/patterns-daily-ui.mjs",
             ),
@@ -112,7 +112,7 @@ def build_targets(patterns_base: str, forge_base: str) -> list[Target]:
             urljoin(patterns, "ask-pie/"),
             (
                 "Cited retrieval · no generated conclusion",
-                "Follow the question. Inspect the evidence.",
+                "Research a question.",
                 "No LLM writes the answer or changes the ranking.",
                 'id="save-packet"',
                 'id="export-packet"',
