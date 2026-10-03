@@ -352,7 +352,7 @@ a{color:var(--blue);text-decoration:none}a:hover{text-decoration:underline}
     </div>
     <div class="stats-bar" id="feed-stats">Loading...</div>
     <div id="pie-sidebar" style="background:var(--surface);border:1px solid var(--border);border-left:2px solid var(--amber);padding:10px 12px;margin-bottom:12px;border-radius:6px;font-size:11px">Loading PIE…</div>
-    <p style="margin:12px 0;color:var(--text-d);font-size:12px">News shows paged article records. Reference desks remain available in their own tabs. <a href="/pie-search/" style="color:var(--green)">Search the full published corpus →</a></p><div style="padding:12px 0"><label for="news-scope">News scope </label><select id="news-scope" disabled onchange="changeNewsScope()"><option value="uas">UAS-related articles</option><option value="all-articles">Full article corpus</option></select><p style="font-size:12px">UAS matches use article titles and summaries before paging. This is a text filter, not a relevance or verification rating. <a href="/ask-pie/">Search all evidence</a>.</p></div><div id="feed-list">Loading...</div><button id="news-next" type="button" onclick="moreNews()" hidden>Load next 100 articles</button>
+    <p style="margin:12px 0;color:var(--text-d);font-size:12px">News shows paged article records. Reference desks remain available in their own tabs. <a href="/pie-search/" style="color:var(--green)">Search the full published corpus →</a></p><div style="padding:12px 0"><label for="news-scope">News scope </label><select id="news-scope" disabled onchange="changeNewsScope()"><option value="uas">UAS-related articles</option><option value="all-articles">Full article corpus</option></select><p style="font-size:12px">UAS matches use article titles and summaries before paging. This is a text filter, not a relevance or verification rating. <a href="/ask-pie/">Search all evidence</a>.</p></div><p id="last-updated" role="status" style="font-size:12px;color:var(--text-d)">Loading articles…</p><div id="feed-list">Loading...</div><button id="news-next" type="button" onclick="moreNews()" hidden>Load next 100 articles</button>
   </div>
   <div class="panel" id="panel-defense">
     <div class="stats-bar" id="defense-stats">Loading...</div>
@@ -507,7 +507,12 @@ function renderFeed(){
   const q=(document.getElementById('feed-search')?.value||'').toLowerCase().trim();
   if(q) a=a.filter(x=>(x.title||'').toLowerCase().includes(q)||(x.summary||'').toLowerCase().includes(q));
   const order={reported:0,future:1,unknown:2};
-  a.sort((x,y)=>(order[x.source_date_status]??2)-(order[y.source_date_status]??2) || (AskPieRetrieval.parseDate(y.pub_date)?.getTime()||0)-(AskPieRetrieval.parseDate(x.pub_date)?.getTime()||0));
+  const sort=document.getElementById('feed-sort')?.value||'date-desc';
+  a.sort((x,y)=>{
+    const dateOrder=(order[x.source_date_status]??2)-(order[y.source_date_status]??2);
+    const time=(AskPieRetrieval.parseDate(y.pub_date)?.getTime()||0)-(AskPieRetrieval.parseDate(x.pub_date)?.getTime()||0);
+    return (sort==='type'?cat(x).localeCompare(cat(y)):0)||dateOrder||(sort==='date-asc'?-time:time);
+  });
   document.getElementById('feed-count').textContent=a.length;
   const byV={defense:0,dfr:0,commercial:0,other:0};
   a.forEach(x=>{const v=x.vertical_tag||cat(x);byV[v]=(byV[v]||0)+1;});

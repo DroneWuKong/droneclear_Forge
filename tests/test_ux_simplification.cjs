@@ -45,3 +45,22 @@ test('UAS boundary cases exclude publisher boilerplate and include explicit RPAS
  const result=ask.projectResearch(data,new URLSearchParams({scope:'uas'}));
  assert.deepEqual(result.records.map(r=>r.id),['rpas']);
 });
+
+test('News scope switches use real markup, preserve results on errors, and keep sort controls working',async()=>{
+ const html=fs.readFileSync('forge-source/intel.html','utf8'),elements={};
+ for(const m of html.matchAll(/id="([^"]+)"/g))elements[m[1]]={textContent:'',innerHTML:'',value:'',hidden:false};
+ elements['news-scope'].value='all-articles';elements['feed-sort'].value='date-desc';
+ let fail=false;
+ const records=[{id:'a',title:'Older drone report',date:'2026-09-01',citations:[],source_date_status:'reported'},{id:'b',title:'New baseball report',date:'2026-10-01',citations:[],source_date_status:'reported'}];
+ const context=vm.createContext({document:{getElementById:id=>elements[id]||null},window:{},AskPieRetrieval:{parseDate:ask.parseDate,researchRequest:async()=>{if(fail)throw Error('Fixture unavailable');return {data:{query:{scope:'all-articles'},records,total_matches:2,meta:{input_revision:'one'}}};}}});
+ const source=html.slice(html.indexOf('const DKW='),html.indexOf('function renderDFR'))+
+ '\nlet DFR_DB=[],DEFENSE_DB=[],COMMERCIAL_DB=[];function esc(x){return String(x||"");}\n'+
+ html.slice(html.indexOf('function rFi()'),html.indexOf('function rP()'))+
+ html.slice(html.indexOf('let ARTICLE_WINDOW='),html.indexOf('let newsLoadError='));
+ vm.runInContext(source,context);await vm.runInContext('changeNewsScope()',context);
+ assert.match(elements['feed-list'].innerHTML,/New baseball report/);assert.equal(elements['news-scope'].disabled,false);
+ const before=elements['feed-list'].innerHTML;fail=true;elements['news-scope'].value='uas';await vm.runInContext('changeNewsScope()',context);
+ assert.equal(elements['feed-list'].innerHTML,before);assert.equal(elements['news-scope'].value,'all-articles');assert.match(elements['last-updated'].textContent,/Fixture unavailable/);
+ elements['feed-sort'].value='date-asc';vm.runInContext('renderFeed()',context);
+ assert.ok(elements['feed-list'].innerHTML.indexOf('Older drone')<elements['feed-list'].innerHTML.indexOf('New baseball'));
+});
