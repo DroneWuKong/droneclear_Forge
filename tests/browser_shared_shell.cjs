@@ -49,6 +49,17 @@ await page.setViewportSize({width:390,height:844});
 await page.evaluate(()=>localStorage.setItem('forge-build',JSON.stringify([{pid:'ESC-1155',name:'Legacy ESC',cat:'escs'}])));
 await page.goto('http://forge.test.localhost/builder/');await page.waitForFunction(()=>document.querySelector('#new-build')?.disabled===false);
 assert.match(await page.locator('#cat-title').innerText(),/Frames/i);
+// Pointer users must be able to close overlays above the shared sticky header.
+for(const width of [390,1440]){
+await page.setViewportSize({width,height:844});
+await page.locator('#review-build').click();await page.locator('#drawer-close').click();
+assert.equal(await page.locator('#build-drawer').getAttribute('class'),'');
+assert.ok(await page.locator('#review-build').evaluate(el=>el===document.activeElement));
+await page.locator('.part-details').first().click();await page.locator('#modal-close-x').click();
+assert.equal(await page.locator('#modal-overlay').getAttribute('class'),'');
+}
+await page.setViewportSize({width:390,height:844});
+
 await page.locator('#build-name').fill('Bench list');await page.locator('#rename-build').click();
 await page.locator('#review-build').click();await page.locator('[data-quantity="ESC-1155"]').fill('4');await page.locator('[data-quantity="ESC-1155"]').press('Tab');
 assert.equal(await page.locator('#bom-cost').innerText(),'$794.00');await page.keyboard.press('Escape');
