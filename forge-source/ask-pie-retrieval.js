@@ -402,7 +402,39 @@
     const { searchText, titleText, summaryText, raw, ...visible } = record;
     return record.type === 'flag' ? {...visible, ...flagDateFields(record)} : visible;
   }
-  function projectResearch(index, params) {
+  function policyAdjustment(item, runtime) {
+    const weights = runtime?.parameters?.feature_adjustments || {};
+    const ranking = item.ranking || {};
+    const citations = Array.isArray(item.record?.citations) ? item.record.citations.length : 0;
+    return Number(weights.coverage || 0) * Number(ranking.coverage || 0)
+      + Number(weights.weighted_coverage || 0) * Number(ranking.weightedCoverage || 0)
+      + Number(weights.direct || 0) * Number(Boolean(ranking.direct))
+      + Number(weights.subject_in_title || 0) * Number(Boolean(ranking.subjectInTitle))
+      + Number(weights.citation_count || 0) * (Math.min(citations, 4) / 4);
+  }
+  function applyRetrievalPolicyPage(items, runtime) {
+    if (!runtime || runtime.schema_version !== 'retrieval-shadow-runtime-v1'
+      || runtime.policy_id !== 'ask-pie-ranking') return items;
+    return items.map((item,index) => {
+      const incumbentScore = Number(item.ranking?.score || 0);
+      const adjustment = policyAdjustment(item, runtime);
+      return {
+        ...item,
+        ranking:{
+          ...item.ranking,
+          incumbentScore,
+          policyAdjustment:Math.round(adjustment * 1000000) / 1000000,
+          score:Math.round((incumbentScore + adjustment) * 1000000) / 1000000,
+          policyVersion:runtime.candidate_version,
+          incumbentPosition:index + 1,
+          reason:[...(item.ranking?.reason || []), `approved policy: ${runtime.candidate_version}`]
+        }
+      };
+    }).sort((left,right) => right.ranking.score - left.ranking.score
+      || left.ranking.incumbentPosition - right.ranking.incumbentPosition
+      || recordKey(left.record).localeCompare(recordKey(right.record)));
+  }
+  function projectResearch(index, params, policyContext) {
     if (!index || index.schema_version !== 1 || !Array.isArray(index.records)) throw new Error('Research index missing or incompatible');
     const query = text(params.get('q')).slice(0, 240);
     const type = text(params.get('record_type'));
@@ -416,7 +448,17 @@
       const source = index.meta?.inputs?.[dataset] || {};
       return {...publicRecord(record), ...(record.type === 'article' ? {source_date_status:sourceDateStatus(record,index.meta?.generated_at)} : {}), semantics:record.semantics || index.meta?.record_semantics?.[record.type] || 'Indexed public record; support and relationships require review.', dataset, dataset_sha256:record.dataset_sha256 || source.sha256 || null, dataset_generated_at:record.dataset_generated_at || source.generated_at || null, dataset_status:record.dataset_status || source.evidence_status || 'unversioned', dataset_origin:source.origin || 'untracked local input', dataset_revision:source.revision_verified === true ? source.upstream_ref : null};
     }
-    const base = {schema_version:1, retrieval_version:RETRIEVAL_VERSION, meta:index.meta, counts:index.counts, query:{q:query, record_type:type || 'all', limit, offset, ...(scope ? {scope} : {})}, records:[]};
+    const policyReceipt = policyContext?.policyReceipt || {
+      policy_id:'ask-pie-ranking', version:RETRIEVAL_VERSION, configured_version:null,
+      generation:0, fallback:false, fallback_reason:null, manifest_sha256:null, rollback_to:null
+    };
+    const runtime = policyContext?.retrievalPolicy;
+    const canApply = Boolean(runtime && !policyReceipt.fallback
+      && runtime.candidate_version === policyReceipt.version);
+    const base = {schema_version:1, retrieval_version:canApply ? runtime.candidate_version : RETRIEVAL_VERSION,
+      policy_receipt:{...policyReceipt,applied:false}, meta:index.meta, counts:index.counts,
+      query:{q:query, record_type:type || 'all', limit, offset,
+        ...(scope ? {scope} : {})}, records:[]};
     if (id) {
       const matches = index.records.filter(record => recordKey(record) === id || `${record.type}:${record.id}` === id);
       return {...base, record_status:matches.length === 1 ? 'found' : matches.length ? 'ambiguous' : 'missing', records:matches.length === 1 ? matches.map(visible) : []};
@@ -437,7 +479,11 @@
     }
     // Rank once with the publication's clock; save that revision with packets.
     const ranked = rankedRecords(records, query, {now:index.meta && index.meta.generated_at, subjectRecords:index.records});
-    return {...base, total_matches:ranked.length, ranked:ranked.slice(offset, offset + limit).map(item => ({record:visible(item.record), ranking:item.ranking}))};
+    const page = ranked.slice(offset, offset + limit)
+      .map(item => ({record:visible(item.record), ranking:item.ranking}));
+    const served = canApply ? applyRetrievalPolicyPage(page, runtime) : page;
+    return {...base, policy_receipt:{...policyReceipt,applied:canApply},
+      total_matches:ranked.length, ranked:served};
   }
 
   function countOccurrences(haystack, pattern) {
@@ -607,6 +653,7 @@
   }
   function renderResult(item, packet) {
     const record = publicRecord(item.record);
+    const position = Math.max(1, packet.ranked.findIndex(candidate => recordKey(candidate.record) === recordKey(record)) + 1);
     const numbers = citationNumbers(record, packet);
     const cited = numbers.map(number => `<a href="#citation-${number}">[${number}]</a>`).join(' ');
     const reasons = item.ranking.reason.slice(0, 6).map(reason => `<span>${htmlEscape(reason)}</span>`).join('');
@@ -625,6 +672,7 @@
       <div class="reasons">${reasons || '<span>indexed-field match</span>'}</div>
       <p class="semantics">${htmlEscape(record.semantics)}${record.dataset_status ? ` Dataset: ${htmlEscape(record.dataset_status)} (${htmlEscape(record.dataset_origin || 'origin untracked')}); source artifact date ${htmlEscape(record.dataset_generated_at || 'unknown')}.` : ''}</p>
       <div class="actions"><a href="${htmlEscape(record.destination)}"${safeHttpUrl(record.destination) ? ' target="_blank" rel="noopener noreferrer"' : ''}>Open exact record →</a>${record.datasetDestination ? ` · <a href="${htmlEscape(record.datasetDestination)}">Open dossier / source record</a>` : ''}</div>
+      <div class="feedback-actions" data-feedback-record="${htmlEscape(recordKey(record))}" data-feedback-position="${position}"><span>Help improve this ranking:</span><button type="button" data-feedback-label="helpful">Useful</button><button type="button" data-feedback-label="wrong_match">Wrong match</button><button type="button" data-feedback-label="outdated_evidence">Outdated</button><button type="button" data-feedback-label="misleading_citation">Citation issue</button></div>
     </article>`;
   }
   function renderGroup(container, items, packet, emptyMessage) {
@@ -662,6 +710,86 @@
     if (!response.ok) throw new Error(payload.error || `Research unavailable (HTTP ${response.status})`);
     return {data:payload.data || payload, source:payload.source || 'unknown', freshness:payload.freshness || null};
   }
+  function feedbackPayload({ feedbackId, label, query, publication, item = null, position = null }) {
+    const record = item && publicRecord(item.record);
+    return {
+      schema_version:1,
+      feedback_id:text(feedbackId).toLowerCase(),
+      query:text(query).slice(0,300),
+      policy_id:'ask-pie-ranking',
+      policy_version:text(publication?.retrieval_version) || RETRIEVAL_VERSION,
+      input_revision:text(publication?.meta?.input_revision) || 'unknown',
+      label:text(label),
+      target:record ? {
+        record_key:recordKey(record),
+        position:Number(position),
+        record_type:text(record.type),
+        features:{
+          score:Number(item.ranking?.score || 0),
+          coverage:Number(item.ranking?.coverage || 0),
+          weighted_coverage:Number(item.ranking?.weightedCoverage || 0),
+          direct:Boolean(item.ranking?.direct),
+          subject_in_title:Boolean(item.ranking?.subjectInTitle),
+          citation_count:Array.isArray(record.citations) ? record.citations.length : 0
+        }
+      } : null
+    };
+  }
+  async function submitFeedback(payload, fetcher) {
+    const requestFetch = fetcher || fetch;
+    const response = await requestFetch('/api/autonomy/feedback', {
+      method:'POST',
+      headers:{'content-type':'application/json'},
+      body:JSON.stringify(payload)
+    });
+    let result = {};
+    try { result = await response.json(); } catch { /* Preserve the HTTP failure below. */ }
+    if (!response.ok) throw new Error(result.error || `Feedback unavailable (HTTP ${response.status})`);
+    return result;
+  }
+  async function fetchShadowStatus(fetcher) {
+    const requestFetch = fetcher || fetch;
+    const response = await requestFetch('/api/autonomy/shadow/status', {cache:'no-store'});
+    if (!response.ok) throw new Error(`Shadow status unavailable (HTTP ${response.status})`);
+    return response.json();
+  }
+  function shadowObservationPayload({ observationId, packet, publication }) {
+    return {
+      schema_version:1,
+      observation_id:text(observationId).toLowerCase(),
+      query:text(packet?.query).slice(0,300),
+      policy_id:'ask-pie-ranking',
+      policy_version:text(publication?.retrieval_version) || RETRIEVAL_VERSION,
+      input_revision:text(publication?.meta?.input_revision) || 'unknown',
+      results:(packet?.ranked || []).slice(0,100).map((item,index) => {
+        const record = publicRecord(item.record);
+        return {
+          record_key:recordKey(record),
+          position:index + 1,
+          features:{
+            score:Number(item.ranking?.score || 0),
+            coverage:Number(item.ranking?.coverage || 0),
+            weighted_coverage:Number(item.ranking?.weightedCoverage || 0),
+            direct:Boolean(item.ranking?.direct),
+            subject_in_title:Boolean(item.ranking?.subjectInTitle),
+            citation_count:Array.isArray(record.citations) ? record.citations.length : 0
+          }
+        };
+      })
+    };
+  }
+  async function submitShadowObservation(payload, fetcher) {
+    const requestFetch = fetcher || fetch;
+    const response = await requestFetch('/api/autonomy/shadow', {
+      method:'POST',
+      headers:{'content-type':'application/json'},
+      body:JSON.stringify(payload)
+    });
+    let result = {};
+    try { result = await response.json(); } catch { /* Preserve the HTTP failure below. */ }
+    if (!response.ok) throw new Error(result.error || `Shadow evaluation unavailable (HTTP ${response.status})`);
+    return result;
+  }
   function savedPacket(packet, publication) {
     return {schema_version:1, saved_at:new Date().toISOString(), query:packet.query, publication,
       ranked:packet.ranked.map(item => ({record:publicRecord(item.record), ranking:item.ranking})),
@@ -685,6 +813,52 @@
     const analyticNode = document.getElementById('analytic-context'), citationNode = document.getElementById('citations');
     const coverageNode = document.getElementById('ask-coverage');
     let current = null, generation = 0, controller = null;
+    let shadowState = {enabled:false};
+    const shadowStateReady = fetchShadowStatus()
+      .then(value => { shadowState = value; return value; })
+      .catch(() => shadowState);
+    async function emitShadow(packet, publication) {
+      const state = await shadowStateReady;
+      if (!state.enabled || state.incumbent_version !== (text(publication?.retrieval_version) || RETRIEVAL_VERSION)
+        || !globalThis.crypto?.randomUUID) return;
+      const payload = shadowObservationPayload({
+        observationId:crypto.randomUUID(), packet, publication
+      });
+      if (!payload.results.length) return;
+      try { await submitShadowObservation(payload); } catch { /* Shadow must never alter the visible path. */ }
+    }
+    async function sendFeedback(button) {
+      if (!current || !globalThis.crypto?.randomUUID) return;
+      const panel = button.closest('[data-feedback-record], [data-feedback-query]');
+      const label = button.dataset.feedbackLabel;
+      const targetKey = panel?.dataset.feedbackRecord || '';
+      const item = targetKey ? current.ranked.find(candidate => recordKey(candidate.record) === targetKey) : null;
+      const position = item ? current.ranked.indexOf(item) + 1 : null;
+      const controls = panel ? [...panel.querySelectorAll('button')] : [button];
+      const original = button.textContent;
+      controls.forEach(control => { control.disabled = true; });
+      button.textContent = 'Recording…';
+      try {
+        const payload = feedbackPayload({
+          feedbackId:crypto.randomUUID(), label, query:current.query,
+          publication:current.publication, item, position
+        });
+        await submitFeedback(payload);
+        button.textContent = 'Recorded for review';
+        status.textContent = 'Feedback recorded with this query, policy version, source revision, and exact result features. It cannot change ranking without review and offline evaluation.';
+      } catch (error) {
+        controls.forEach(control => { control.disabled = false; });
+        button.textContent = original;
+        status.textContent = `Feedback not recorded: ${error.message}`;
+      }
+    }
+    function bindFeedback() {
+      [summary, directNode, contextNode, analyticNode].forEach(container => {
+        container.querySelectorAll('[data-feedback-label]').forEach(button => {
+          button.addEventListener('click', () => sendFeedback(button));
+        });
+      });
+    }
     function coverage(publication) {
       const meta = publication.meta || {};
       const inputs = Object.entries(meta.inputs || {});
@@ -699,12 +873,15 @@
       current = savedPacket(packet, publication);
       coverage(publication);
       summary.innerHTML = `<h2>${saved ? 'Saved evidence packet' : 'Evidence packet'}</h2><div class="answer-facts"><strong>${packet.direct.length}</strong><span>direct cited matches</span><strong>${packet.contextual.length}</strong><span>contextual cited matches</span><strong>${packet.analytic.length}</strong><span>uncited context rows</span><strong>${packet.citations.length}</strong><span>complete source references</span></div>
-        <p>${htmlEscape(packet.query)}. Ranking describes term matches. Contradictions and source independence remain unassessed.</p>`;
+        <p>${htmlEscape(packet.query)}. Ranking describes term matches. Contradictions and source independence remain unassessed.</p>
+        <div class="feedback-actions feedback-query" data-feedback-query><span>Expected evidence is absent?</span><button type="button" data-feedback-label="missing_source">Report a missing source</button><small>Submitting stores this query and the current index/policy revision for human review. It does not validate a fact or change the live ranking.</small></div>`;
       renderGroup(directNode, packet.direct, packet, 'No cited record matched every meaningful query term.');
       renderGroup(contextNode, packet.contextual, packet, 'No partial cited matches in this packet.');
       renderGroup(analyticNode, packet.analytic, packet, 'No uncited context rows in this packet.');
       citationNode.innerHTML = packet.citations.length ? packet.citations.map((citation,index) => renderCitation(citation,index+1)).join('') : '<li>Source URLs are missing. These results are navigation leads.</li>';
       document.getElementById('save-packet').disabled = document.getElementById('export-packet').disabled = false;
+      bindFeedback();
+      if (!saved) void emitShadow(packet, publication);
     }
     function listSaved() {
       const node = document.getElementById('saved-packets');
@@ -792,7 +969,7 @@
   return {
     STOPWORDS, TYPE_ORDER, text, normalize, termPattern, queryTerms, safeHttpUrl, parseDate, canonicalArticleSource,
     normalizeCitation, dedupeCitations, citationsFromFlag, citationsFromActor, citationsFromTtp,
-    articleRecords, flagRecords, actorRecords, ttpRecords, buildCorpus, scoreRecord, rankEvidence,
-    evidencePacket, coverageFacts, htmlEscape, stableId, genericRecords, compactRecord, recordKey, recordUrl, projectResearch, publicRecord, isUasArticle, sourceDateStatus, citationNumbers, renderResult, renderCitation, researchRequest, savedPacket, readSaved, writeSaved, boot
+    articleRecords, flagRecords, actorRecords, ttpRecords, buildCorpus, scoreRecord, rankEvidence, applyRetrievalPolicyPage,
+    evidencePacket, coverageFacts, htmlEscape, stableId, genericRecords, compactRecord, recordKey, recordUrl, projectResearch, publicRecord, isUasArticle, sourceDateStatus, citationNumbers, renderResult, renderCitation, researchRequest, feedbackPayload, submitFeedback, fetchShadowStatus, shadowObservationPayload, submitShadowObservation, savedPacket, readSaved, writeSaved, boot
   };
 });

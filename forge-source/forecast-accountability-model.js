@@ -10,6 +10,7 @@
     due: 'Due for review', candidate_evidence: 'Evidence candidates', pending: 'Window open',
     reviewed: 'Reviewed', legacy_unregistered: 'Legacy · unregistered', issuance_invalid: 'Issuance unavailable'
   };
+  const CODE_STATE = 'Human code review required';
   const escape = value => String(value == null ? '' : value).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
   const numeric = value => typeof value === 'number' && Number.isFinite(value);
   const probability = value => numeric(value) && value >= 0 && value <= 1 ? value : null;
@@ -123,6 +124,67 @@
       }).join('') + '</ul><p class="forecast-muted">Retrieval candidates require analyst review; they are not verdicts.</p></details>' : '') + '</article>';
   }
 
+  function codeReviewDocument(payload) {
+    const doc = payload && payload.data ? payload.data : payload;
+    if (!doc || doc.schema_version !== 'code-evolution-review-queue-v1' ||
+        time(doc.generated_at) === null || doc.read_only !== true ||
+        doc.human_decision_required !== true || !HASH.test(doc.queue_sha256 || '') ||
+        !doc.counts || Object.keys(doc.counts).length !== 1 ||
+        count(doc.counts.needs_review) === null || !Array.isArray(doc.records) ||
+        doc.counts.needs_review !== doc.records.length) return null;
+    const gateNames = ['baseline_green', 'agent_adapter_green', 'protected_evaluator_unchanged',
+      'path_and_diff_budget_passed', 'candidate_evaluation_green', 'head_unchanged',
+      'human_review_required'];
+    const valid = doc.records.every(row => {
+      const paths = row && row.paths, stats = row && row.stats, gates = row && row.gates;
+      return row && row.state === 'needs_review' && typeof row.review_id === 'string' &&
+        typeof row.request_id === 'string' && /^[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+$/.test(row.repository_id || '') &&
+        /^[a-f0-9]{40,64}$/.test(row.base_commit || '') && time(row.generated_at) !== null &&
+        ['evaluation_sha256', 'candidate_sha256', 'tracked_patch_sha256', 'evaluator_snapshot_sha256',
+          'objective_sha256', 'success_criteria_sha256'].every(name => HASH.test(row[name] || '')) &&
+        Array.isArray(paths) && paths.length > 0 && paths.every(path =>
+          typeof path === 'string' && path.length > 0 && !path.startsWith('/') &&
+          !path.includes('\\') && path.split('/').every(part => part && part !== '.' && part !== '..')) &&
+        stats && count(stats.changed_files) === paths.length && count(stats.additions) !== null &&
+        count(stats.deletions) !== null && Array.isArray(row.evaluator_ids) && row.evaluator_ids.length > 0 &&
+        row.evaluator_ids.every(value => typeof value === 'string' && value.length > 0) &&
+        gates && Object.keys(gates).length === gateNames.length && gateNames.every(name => gates[name] === true) &&
+        row.pull_request_eligible === true && row.promotion_eligible === false &&
+        row.automatic_merge === false && row.automatic_deploy === false && row.serving_changes === false &&
+        row.evidence_level === 'isolated-software-evaluation';
+    });
+    return valid ? doc : null;
+  }
+
+  function repositoryURL(repository, revision, path) {
+    if (!/^[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+$/.test(repository || '') ||
+        !/^[a-f0-9]{40,64}$/.test(revision || '')) return null;
+    const suffix = path ? '/blob/' + revision + '/' + path.split('/').map(encodeURIComponent).join('/') : '/tree/' + revision;
+    return safeURL('https://github.com/' + repository + suffix);
+  }
+
+  function codeReviewCard(row) {
+    const stats = row.stats, repo = repositoryURL(row.repository_id, row.base_commit);
+    const pathItems = row.paths.map(path => {
+      const url = repositoryURL(row.repository_id, row.base_commit, path);
+      return '<li>' + (url ? '<a href="' + escape(url) + '" target="_blank" rel="noopener noreferrer"><code>' + escape(path) + '</code></a>' : '<code>' + escape(path) + '</code>') + '</li>';
+    }).join('');
+    return '<article class="forecast-queue-row code-review-row" data-state="needs_review">' +
+      '<div class="rcall-top"><span class="forecast-state">' + CODE_STATE + '</span>' +
+      '<span class="rcall-meta">' + escape(row.evidence_level) + '</span></div>' +
+      '<h3>' + (repo ? '<a class="forecast-docs" href="' + escape(repo) + '" target="_blank" rel="noopener noreferrer">' + escape(row.repository_id) + '</a>' : escape(row.repository_id)) + ' · ' + escape(row.request_id) + '</h3>' +
+      '<p class="forecast-muted">' + escape(row.review_action) + '</p>' +
+      '<p class="rcall-meta">Evaluated ' + escape(when(row.generated_at)) + ' · ' + stats.changed_files + ' file · +' + stats.additions + ' / −' + stats.deletions + '</p>' +
+      '<details class="forecast-criteria"><summary>Exact software evidence</summary><dl>' +
+      '<dt>Base commit</dt><dd><code>' + escape(row.base_commit) + '</code></dd>' +
+      '<dt>Candidate</dt><dd><code>' + escape(row.candidate_sha256) + '</code></dd>' +
+      '<dt>Evaluation</dt><dd><code>' + escape(row.evaluation_sha256) + '</code></dd>' +
+      '<dt>Evaluators</dt><dd>' + escape(row.evaluator_ids.join(', ')) + '</dd>' +
+      '<dt>Authority</dt><dd>PR-eligible only · no automatic merge, deploy, promotion, or serving change</dd>' +
+      '</dl><p class="forecast-muted">Changed paths:</p><ul>' + pathItems + '</ul>' +
+      '<p class="forecast-muted"><strong>Evidence limit:</strong> ' + escape(row.limitation) + '</p></details></article>';
+  }
+
   function cohortHTML(evaluation) {
     const groups = evaluation && evaluation.cohorts;
     if (!groups || typeof groups !== 'object') return '<p class="forecast-muted">Prospective cohort reporting is not available in the current publication. Historical outcome records remain below.</p>';
@@ -158,5 +220,5 @@
       '<p class="forecast-muted">' + escape(holdout.note || 'Descriptive comparison only; no weight promotion.') + '</p>' +
       '<p class="forecast-muted">' + escape(report.weight_policy) + '. ' + escape(report.uncertainty_note) + '.</p>';
   }
-  return {METHOD, STATES, escape, probability, percent, when, safeURL, eligible, criteriaHTML, queueDocument, queueRows, queueCard, cohortHTML, evaluationHTML};
+  return {METHOD, STATES, escape, probability, percent, when, safeURL, eligible, criteriaHTML, queueDocument, queueRows, queueCard, codeReviewDocument, codeReviewCard, cohortHTML, evaluationHTML};
 });

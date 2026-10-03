@@ -152,7 +152,7 @@ test('worker allowlists, validates, and freshness-gates event evidence', () => {
   );
   assert.ok(source.includes("['article_event_clusters', 72 * 60 * 60 * 1000]"));
   assert.ok(source.includes("'article_event_clusters'"));
-  assert.ok(source.includes('projectDataset(data, type, params)'));
+  assert.ok(source.includes('projectDataset(data, type, params,'));
   assert.ok(source.includes("'dataset_catalog'"));
   assert.ok(source.includes("['data_quality_score', 72 * 60 * 60 * 1000]"));
   assert.ok(source.includes("'data_quality_score'"));

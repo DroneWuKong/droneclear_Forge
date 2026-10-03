@@ -218,7 +218,7 @@ export function validateDatasetForPublication(data, type) {
   if (type === 'intelligence_advisories') {
     return intelligenceAdvisoryPublicationErrors(data);
   }
-  const schema = {forecast_review_queue:'forecast-review-queue-v1',analytic_judgments:'analytic-judgments-v1'}[type];
+  const schema = {forecast_review_queue:'forecast-review-queue-v1',code_evolution_review_queue:'code-evolution-review-queue-v1',analytic_judgments:'analytic-judgments-v1'}[type];
   if (schema) {
     const errors=[];
     if (!data || Array.isArray(data) || data.schema_version !== schema) errors.push(`schema_version must be ${schema}`);
@@ -226,6 +226,14 @@ export function validateDatasetForPublication(data, type) {
     if (type === 'forecast_review_queue') {
       if (!data?.counts || typeof data.counts !== 'object' || Array.isArray(data.counts) || Object.values(data.counts).some(count=>!Number.isInteger(count)||count<0)) errors.push('queue counts must be nonnegative integers');
       else if (Array.isArray(data.records) && Object.values(data.counts).reduce((sum,count)=>sum+count,0) !== data.records.length) errors.push('queue counts must reconcile with records');
+    }
+    if (type === 'code_evolution_review_queue') {
+      const hash = /^[a-f0-9]{64}$/;
+      if (data?.read_only !== true || data?.human_decision_required !== true) errors.push('code review queue authority boundary is invalid');
+      if (!hash.test(data?.queue_sha256 || '') || !Number.isFinite(Date.parse(data?.generated_at || ''))) errors.push('code review queue identity is invalid');
+      if (!data?.counts || Object.keys(data.counts).length !== 1 || !Number.isInteger(data.counts.needs_review) || data.counts.needs_review < 0) errors.push('code review queue count is invalid');
+      else if (Array.isArray(data.records) && data.counts.needs_review !== data.records.length) errors.push('code review queue count must reconcile with records');
+      if (Array.isArray(data?.records) && data.records.some(row=>row.state !== 'needs_review' || !hash.test(row.evaluation_sha256 || '') || !hash.test(row.candidate_sha256 || '') || !/^[a-f0-9]{40,64}$/.test(row.base_commit || '') || !Array.isArray(row.paths) || !row.paths.length || row.pull_request_eligible !== true || row.promotion_eligible !== false || row.automatic_merge !== false || row.automatic_deploy !== false || row.serving_changes !== false)) errors.push('code review record authority boundary is invalid');
     }
     return errors;
   }
@@ -320,7 +328,7 @@ export function projectArticleEventClusters(data, params) {
   return data;
 }
 
-export function projectDataset(data, type, params) {
+export function projectDataset(data, type, params, options = {}) {
   const errors = validateDatasetForPublication(data, type);
   if (errors.length) {
     const error = new Error(
@@ -330,7 +338,10 @@ export function projectDataset(data, type, params) {
     error.validationErrors = errors;
     throw error;
   }
-  if (type === 'research_index') return research.projectResearch(data, params);
+  if (type === 'research_index') return research.projectResearch(data, params, {
+    retrievalPolicy: options.retrievalPolicy,
+    policyReceipt: options.policyReceipt,
+  });
   if (type === 'daily_changes') return projectDailyChanges(data, params);
   if (type === 'intel_articles' && (params.get('record_id') || params.get('record_key'))) {
     const rows = Array.isArray(data) ? data : data.articles || [];

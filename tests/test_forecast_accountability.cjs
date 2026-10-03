@@ -18,6 +18,9 @@ function graded() {
     was_correct:false,resolution_outcome:'refuted',evidence_review:{prediction_id:row.prediction_id,issuance_sha256:row.issuance_sha256,
       criteria_sha256:'b'.repeat(64),prediction_sha256:'c'.repeat(64),evidence_sha256:'d'.repeat(64),verdict:'refuted',reviewed_by:'analyst',reviewed_at:'2026-09-10T00:00:00Z',evidence:[{url:'https://example.com/announcements/factory',published_at:'2026-09-09T00:00:00Z',event_date:'2026-09-08T00:00:00Z',excerpt:'Review evidence'}]}};
 }
+function codeReviewQueue() {
+  return JSON.parse(fs.readFileSync(path.join(__dirname,'../forge-source/code_evolution_review_queue.json'),'utf8'));
+}
 
 test('only complete prospective v2 published grades count; legacy and revoked reviews stay unrated',()=>{
   const row=graded();assert.equal(forecast.eligible(row),true);
@@ -83,6 +86,32 @@ test('legacy details explicitly preserve ungraded historical values and do not i
   assert.match(html,/cannot be retroactively graded/);
 });
 
+test('engineering review queue is fail-closed, read-only, and links exact source revisions',()=>{
+  const doc=codeReviewQueue();
+  assert.equal(forecast.codeReviewDocument({data:doc}),doc);
+  const html=forecast.codeReviewCard(doc.records[0]);
+  assert.match(html,/Human code review required/);
+  assert.match(html,/PR-eligible only/);
+  assert.match(html,/services\/pipeline\/retrieval_candidate\.py/);
+  assert.match(html,/blob\/ef3e45381c41eaa294abd9ba3ac9cff6a6a60da2\/services\/pipeline\/retrieval_candidate\.py/);
+  for(const mutation of [
+    {...doc,read_only:false},
+    {...doc,counts:{needs_review:2}},
+    {...doc,records:[{...doc.records[0],automatic_merge:true}]},
+    {...doc,records:[{...doc.records[0],paths:['../secret']}]},
+  ]) assert.equal(forecast.codeReviewDocument(mutation),null);
+});
+
+test('engineering review strings cannot create executable dashboard content',()=>{
+  const row=structuredClone(codeReviewQueue().records[0]);
+  row.request_id='<img src=x onerror=alert(1)>';
+  row.review_action='<script>bad()</script>';
+  const html=forecast.codeReviewCard(row);
+  assert.ok(!html.includes('<img'));
+  assert.ok(!html.includes('<script>'));
+  assert.match(html,/&lt;img/);
+});
+
 test('cohort and baseline views keep unknown values unavailable and compare explicit same-question samples',()=>{
   const report={schema_version:'forecast-evaluation-v1',sample_unit:'earliest issued version',registered_questions:3,reviewed_questions:1,
     cohorts:{'prospective-v1':{total:3,reviewed:1,unreviewed:2,resolution_coverage:1/3},'legacy-unregistered':{total:128,reviewed:0,unreviewed:128,resolution_coverage:0}},
@@ -103,12 +132,15 @@ test('page loads queue and evaluation independently, preserves empty outcomes, a
   const element=id=>{if(!elements.has(id))elements.set(id,{innerHTML:'',textContent:'',hidden:false,value:'',addEventListener(){}});return elements.get(id);};
   const requests=[];
   const queue={schema_version:'forecast-review-queue-v1',generated_at:'2026-09-11T00:00:00Z',records:[]};
+  const codeQueue=codeReviewQueue();
   const context=vm.createContext({ForecastAccountability:forecast,console,document:{getElementById:element,querySelector:element,querySelectorAll:()=>[]},
     fetch:async(url,options)=>{requests.push([url,options]);const type=new URL(url,'https://local.invalid').searchParams.get('type');
-      return {ok:true,json:async()=>({data:type==='forecast_review_queue'?queue:type==='prediction_outcomes'?[]:{methodology:'reviewed-evidence-v2',evaluation:{schema_version:'forecast-evaluation-v1',cohorts:{},metrics:{},temporal_holdout:{}}}})};}});
+      return {ok:true,json:async()=>({data:type==='code_evolution_review_queue'?codeQueue:type==='forecast_review_queue'?queue:type==='prediction_outcomes'?[]:{methodology:'reviewed-evidence-v2',evaluation:{schema_version:'forecast-evaluation-v1',cohorts:{},metrics:{},temporal_holdout:{}}}})};}});
   vm.runInContext(script,context);await new Promise(resolve=>setImmediate(resolve));
-  assert.equal(requests.length,3);assert.ok(requests.every(([,options])=>!options || !options.method || options.method==='GET'));
+  assert.equal(requests.length,4);assert.ok(requests.every(([,options])=>!options || !options.method || options.method==='GET'));
   assert.equal(element('content').hidden,false);assert.equal(element('k-total').textContent,0);
+  assert.match(element('code-review-status').textContent,/1 candidate awaiting human review/);
+  assert.match(element('code-review-queue').innerHTML,/Human code review required/);
   assert.match(element('queue-status').textContent,/showing 0 of 0/);
   assert.match(element('legacy-history').innerHTML,/No retained ungraded outcomes/);
   assert.ok(source.includes('FORECAST_REGISTRATION.md'));assert.ok(source.includes('aria-pressed'));

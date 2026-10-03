@@ -32,7 +32,17 @@ const types = {'.html':'text/html','.js':'text/javascript','.json':'application/
     await page.locator('button.browse-card').first().focus();
     await page.keyboard.press('Enter');
     for (let i=0;i<3 && !await page.locator('.browse-item-name').count();i++) {
-      if (await page.locator('button.browse-card').count()) { await page.locator('button.browse-card').first().focus(); await page.keyboard.press('Space'); }
+      const card = page.locator('button.browse-card').first();
+      if (await card.count()) {
+        try { await card.focus({timeout:1000}); await page.keyboard.press('Space'); }
+        catch (error) {
+          // Category rendering replaces the button grid asynchronously. A locator
+          // may observe the old grid immediately before it is detached; accept that
+          // race only when the intended part list has actually replaced it.
+          await page.waitForSelector('.browse-item-name',{timeout:3000}).catch(()=>null);
+          if (!await page.locator('.browse-item-name').count()) throw error;
+        }
+      }
       await page.waitForTimeout(100);
     }
     assert.ok(await page.locator('button.browse-item-name').count(), 'Keyboard category actions must reach part detail actions');
