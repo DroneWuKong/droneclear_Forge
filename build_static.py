@@ -149,6 +149,7 @@ PAGES = {
     'pie-trends.html': 'pie-trends/index.html',
     'pie-search.html': 'pie-search/index.html',   # global search over flags/predictions/actors/entities/articles
     'brief-archive.html': 'brief-archive/index.html',  # historical daily-brief browser (pie_brief_history)
+    'data-status.html': 'data-status/index.html',
     'miner-health.html': 'miner-health/index.html',    # pipeline health / data provenance board
     'lexicon.html': 'lexicon/index.html',         # estimative-language reference
     'api-docs.html': 'api-docs/index.html',       # /api/data reference (NOT /api/* — that's worker-routed)
@@ -440,10 +441,11 @@ _MOBILE_CSS = """<style>
 
 
 
-_UNIFIED_NAV = r"""<!-- ── Unified UAS- Nav (5-domain accordion drawer) ──────────────── -->
+_UNIFIED_NAV = r"""<!-- ── Unified UAS navigation (Research / Build / Learn) ──────────────── -->
 <style id="dc-unified-nav-styles">
 #dc-nav{display:flex;align-items:center;justify-content:space-between;padding:0 16px;height:44px;background:#0c0c0a;border-bottom:1px solid #1e1e18;position:sticky;top:0;z-index:500;font-family:'DM Sans',system-ui,sans-serif}
 #dc-nav~nav.nav{top:44px}
+@media(max-width:680px){#dc-nav-page,#dc-nav-sep{display:none}#dc-nav{padding:0 8px}#dc-nav-right{gap:4px}#dc-nav{height:auto;min-height:44px;flex-wrap:wrap;gap:4px;padding-top:4px;padding-bottom:4px}.dc-nav-top-btn{padding:0 7px}}
 #dc-nav-left{display:flex;align-items:center;gap:10px;min-width:0;flex:1}
 #dc-nav-brand{font:700 13px 'JetBrains Mono',monospace;color:#f59e0b;text-decoration:none;letter-spacing:-.02em;flex-shrink:0}
 #dc-nav-sep{color:#2e2e26;font-size:12px;flex-shrink:0}
@@ -493,6 +495,7 @@ _UNIFIED_NAV = r"""<!-- ── Unified UAS- Nav (5-domain accordion drawer) ─�
 #dc-drawer-foot{margin-top:auto;padding:16px;border-top:1px solid #1e1e18;font:400 10px 'JetBrains Mono',monospace;color:#b8b0a0;display:flex;flex-direction:column;gap:6px}
 #dc-drawer-foot a{color:#f59e0b;text-decoration:none}
 #dc-drawer-foot a:hover{color:#ff9292}
+@media(max-width:680px){#dc-nav-left{flex:1 0 auto;max-width:100%;flex-wrap:wrap}#dc-nav-right{max-width:100%;flex-wrap:wrap;gap:4px}.dc-nav-top-btn{padding:0 7px}}
 </style>
 
 <nav id="dc-nav">
@@ -507,14 +510,9 @@ _UNIFIED_NAV = r"""<!-- ── Unified UAS- Nav (5-domain accordion drawer) ─�
     <span id="dc-nav-page">—</span>
   </div>
   <div id="dc-nav-right">
-    <a class="dc-nav-top-btn" href="https://uas-forge.com/donate/" data-page="donate" title="Support the project">
-      <span class="dc-nav-top-ico">❤️</span>
-      <span class="dc-nav-top-label">Donate</span>
-    </a>
-    <a class="dc-nav-top-btn" href="https://uas-forge.com/wingman/" data-page="wingman" title="Wingman AI">
-      <span class="dc-nav-top-ico">🤖</span>
-      <span class="dc-nav-top-label">Wingman</span>
-    </a>
+    <a class="dc-nav-top-btn dc-primary" href="https://uas-patterns.com/patterns-home/">Research</a>
+    <a class="dc-nav-top-btn dc-primary" href="https://uas-forge.com/">Build</a>
+    <a class="dc-nav-top-btn dc-primary" href="https://uas-handbook.com/">Learn</a>
     <button class="dc-nav-top-btn" type="button" data-text-size-control aria-label="Text size">
       <span class="dc-nav-top-ico">Aᴬ</span>
       <span class="dc-nav-top-label">Text</span>
@@ -529,178 +527,38 @@ _UNIFIED_NAV = r"""<!-- ── Unified UAS- Nav (5-domain accordion drawer) ─�
     <button id="dc-drawer-close" type="button" onclick="dcNavClose()" aria-label="Close menu">✕</button>
   </div>
 
-  <details class="dc-dom-group" data-host="uas-forge.com" data-hub-href="https://uas-forge.com/forge/">
-    <summary>
-      <span class="dc-dom-ico">🔨</span>
-      <div class="dc-dom-info">
-        <div class="dc-dom-name">Forge</div>
-        <div class="dc-dom-url">uas-forge.com</div>
-      </div>
-      <span class="dc-dom-chev">▶</span>
-    </summary>
+  <details class="dc-dom-group" data-area="research">
+    <summary><span class="dc-dom-info"><span class="dc-dom-name">Research</span><span class="dc-dom-url" style="display:block">Patterns · follow evidence</span></span><span class="dc-dom-chev" aria-hidden="true">▶</span></summary>
     <div class="dc-dom-sublinks">
-      <a class="dc-dom-sublink" href="https://uas-forge.com/forge/" data-page="forge">Forge Hub</a>
-      <a class="dc-dom-sublink" href="https://uas-forge.com/browse/" data-page="browse">Parts Database</a>
-      <a class="dc-dom-sublink" href="https://uas-forge.com/builder/" data-page="builder">Model Builder</a>
+      <a class="dc-dom-sublink" href="https://uas-patterns.com/patterns-home/" data-page="patterns-home">Today</a>
+      <a class="dc-dom-sublink" href="https://uas-patterns.com/ask-pie/" data-page="ask-pie">Research a question</a>
+      <a class="dc-dom-sublink" href="https://uas-patterns.com/intel/feed/" data-page="intel-feed">News</a>
+      <a class="dc-dom-sublink" href="https://uas-patterns.com/priorities/" data-page="priorities">Watchlist & priorities</a>
+      <a class="dc-dom-sublink" href="https://uas-patterns.com/forecast-accountability/" data-page="forecast-accountability">Forecasts</a>
+    </div>
+  </details>
+  <details class="dc-dom-group" data-area="build">
+    <summary><span class="dc-dom-info"><span class="dc-dom-name">Build</span><span class="dc-dom-url" style="display:block">Forge · plan your build</span></span><span class="dc-dom-chev" aria-hidden="true">▶</span></summary>
+    <div class="dc-dom-sublinks">
+      <a class="dc-dom-sublink" href="https://uas-forge.com/" data-page="home">Build home</a>
+      <a class="dc-dom-sublink" href="https://uas-forge.com/builder/" data-page="builder">My build</a>
+      <a class="dc-dom-sublink" href="https://uas-forge.com/browse/" data-page="browse">Parts</a>
       <a class="dc-dom-sublink" href="https://uas-forge.com/platforms/" data-page="platforms">Platforms</a>
-      <a class="dc-dom-sublink" href="https://uas-forge.com/compare/" data-page="compare">Compare</a>
-      <a class="dc-dom-sublink" href="https://uas-forge.com/compliance/" data-page="compliance">Compliance Dashboard</a>
-      <a class="dc-dom-sublink" href="https://uas-forge.com/stack-builder/" data-page="stack-builder">Stack Builder</a>
-      <a class="dc-dom-sublink" href="https://uas-forge.com/circuit-forge/" data-page="circuit-forge">Circuit Forge (AI)</a>
-      <a class="dc-dom-sublink" href="https://uas-forge.com/cost/" data-page="cost">Cost Estimator</a>
-      <a class="dc-dom-sublink" href="https://uas-forge.com/waiver/" data-page="waiver">Document Builder</a>
-      <a class="dc-dom-sublink" href="https://uas-forge.com/wingman/" data-page="wingman">Wingman AI</a>
-      <a class="dc-dom-sublink" href="https://uas-forge.com/gallery/" data-page="gallery">Featured Builds</a>
-      <a class="dc-dom-sublink" href="https://uas-forge.com/entity-graph/" data-page="entity-graph">Entity Graph</a>
-      <a class="dc-dom-sublink" href="https://uas-forge.com/tools-home/" data-page="tools-home">All Tools</a>
     </div>
   </details>
-
-  <details class="dc-dom-group" data-host="uas-forge.com" data-hub-href="https://uas-forge.com/guides/">
-    <summary>
-      <span class="dc-dom-ico">📐</span>
-      <div class="dc-dom-info">
-        <div class="dc-dom-name">Guides</div>
-        <div class="dc-dom-url">uas-forge.com</div>
-      </div>
-      <span class="dc-dom-chev">▶</span>
-    </summary>
-    <div class="dc-dom-sublinks">
-      <a class="dc-dom-sublink" href="https://uas-forge.com/guides/" data-page="guides-hub">All Guides</a>
-      <a class="dc-dom-sublink" href="https://uas-forge.com/fc-firmware-guide/" data-page="fc-firmware-guide">FC Firmware</a>
-      <a class="dc-dom-sublink" href="https://uas-forge.com/mesh-guide/" data-page="mesh-guide">Mesh Radio</a>
-      <a class="dc-dom-sublink" href="https://uas-forge.com/tak-guide/" data-page="tak-guide">TAK / CoT</a>
-      <a class="dc-dom-sublink" href="https://uas-forge.com/slam-guide/" data-page="slam-guide">SLAM / VIO</a>
-      <a class="dc-dom-sublink" href="https://uas-forge.com/openhd-guide/" data-page="openhd-guide">OpenHD / FPV</a>
-      <a class="dc-dom-sublink" href="https://uas-forge.com/swarm-guide/" data-page="swarm-guide">Swarm</a>
-      <a class="dc-dom-sublink" href="https://uas-forge.com/cuas-guide/" data-page="cuas-guide">Counter-UAS</a>
-      <a class="dc-dom-sublink" href="https://uas-forge.com/ai-guide/" data-page="ai-guide">AI / Autonomy</a>
-    </div>
-  </details>
-
-  <details class="dc-dom-group" data-host="uas-patterns.com" data-hub-href="https://uas-patterns.com/patterns-home/">
-    <summary>
-      <span class="dc-dom-ico">📊</span>
-      <div class="dc-dom-info">
-        <div class="dc-dom-name">Patterns</div>
-        <div class="dc-dom-url">uas-patterns.com</div>
-      </div>
-      <span class="dc-dom-chev">▶</span>
-    </summary>
-    <div class="dc-dom-sublinks">
-      <a class="dc-dom-sublink" href="https://uas-patterns.com/patterns-home/" data-page="patterns-home">P.I.E Hub</a>
-      <a class="dc-dom-sublink" href="https://uas-patterns.com/priorities/" data-page="priorities">Priority View</a>
-      <a class="dc-dom-sublink" href="https://uas-patterns.com/ask-pie/" data-page="ask-pie">Ask PIE</a>
-      <a class="dc-dom-sublink" href="https://uas-patterns.com/brief/" data-page="brief">Daily Brief</a>
-      <a class="dc-dom-sublink" href="https://uas-patterns.com/patterns/" data-page="patterns">Flags Dashboard</a>
-      <a class="dc-dom-sublink" href="https://uas-patterns.com/adversary-bom/" data-page="adversary-bom">Adversary BOM</a>
-      <a class="dc-dom-sublink" href="https://uas-patterns.com/mirroring/" data-page="mirroring">Component Mirroring</a>
-      <a class="dc-dom-sublink" href="https://uas-patterns.com/actors/" data-page="actors">Threat Actors</a>
-      <a class="dc-dom-sublink" href="https://uas-patterns.com/ttps/" data-page="ttps">TTP Defense Gap</a>
-      <a class="dc-dom-sublink" href="https://uas-patterns.com/evasion/" data-page="evasion">Sanctions-Evasion</a>
-      <a class="dc-dom-sublink" href="https://uas-patterns.com/market-lens/" data-page="market-lens">Market Lens</a>
-      <a class="dc-dom-sublink" href="https://uas-patterns.com/forecast-accountability/" data-page="forecast-accountability">Forecast Accountability</a>
-      <a class="dc-dom-sublink" href="https://uas-patterns.com/pie-trends/" data-page="pie-trends">PIE Trends</a>
-      <a class="dc-dom-sublink" href="https://uas-patterns.com/pie-search/" data-page="pie-search">Search</a>
-      <a class="dc-dom-sublink" href="https://uas-patterns.com/brief-archive/" data-page="brief-archive">Brief Archive</a>
-      <a class="dc-dom-sublink" href="https://uas-patterns.com/miner-health/" data-page="miner-health">Pipeline Health</a>
-    </div>
-  </details>
-
-  <details class="dc-dom-group" data-host="uas-patterns.com" data-hub-href="https://uas-patterns.com/intel/">
-    <summary>
-      <span class="dc-dom-ico">📡</span>
-      <div class="dc-dom-info">
-        <div class="dc-dom-name">Intel</div>
-        <div class="dc-dom-url">uas-patterns.com</div>
-      </div>
-      <span class="dc-dom-chev">▶</span>
-    </summary>
-    <div class="dc-dom-sublinks">
-      <a class="dc-dom-sublink" href="https://uas-patterns.com/intel/feed/" data-page="intel-feed">Intel Feed</a>
-      <a class="dc-dom-sublink" href="https://uas-patterns.com/intel-health/" data-page="intel-health">Pipeline Health</a>
-      <a class="dc-dom-sublink" href="https://uas-patterns.com/intel-commercial/" data-page="intel-commercial">Commercial Desk</a>
-      <a class="dc-dom-sublink" href="https://uas-patterns.com/intel-dfr/" data-page="intel-dfr">DFR Desk</a>
-      <a class="dc-dom-sublink" href="https://uas-patterns.com/industry/" data-page="industry">Industry Tracker</a>
-      <a class="dc-dom-sublink" href="https://uas-patterns.com/tracker/" data-page="tracker">Contract Tracker</a>
-      <a class="dc-dom-sublink" href="https://uas-patterns.com/grants/" data-page="grants">Grants</a>
-      <a class="dc-dom-sublink" href="https://uas-patterns.com/timeline/" data-page="timeline">Regulatory Timeline</a>
-    </div>
-  </details>
-
-  <details class="dc-dom-group" data-host="uas-handbook.com">
-    <summary>
-      <span class="dc-dom-ico">📘</span>
-      <div class="dc-dom-info">
-        <div class="dc-dom-name">Handbook</div>
-        <div class="dc-dom-url">uas-handbook.com</div>
-      </div>
-      <span class="dc-dom-chev">▶</span>
-    </summary>
+  <details class="dc-dom-group" data-area="learn">
+    <summary><span class="dc-dom-info"><span class="dc-dom-name">Learn</span><span class="dc-dom-url" style="display:block">Handbook · guides & help</span></span><span class="dc-dom-chev" aria-hidden="true">▶</span></summary>
     <div class="dc-dom-sublinks">
       <a class="dc-dom-sublink" href="https://uas-handbook.com/" data-page="handbook">Read the handbook</a>
-      <a class="dc-dom-sublink" href="https://uas-handbook.com/#ch13" data-page="ch13">Chapter 13 — Adding a Companion Computer</a>
-      <a class="dc-dom-sublink" href="https://uas-handbook.com/#ch14" data-page="ch14">Chapter 14 — Mesh Radios for Multi-Vehicle</a>
-      <a class="dc-dom-sublink" href="https://uas-handbook.com/#ch8" data-page="ch8">Chapter 8 — UART Layout and Why It Matters</a>
+      <a class="dc-dom-sublink" href="https://uas-forge.com/guides/" data-page="guides">Guides</a>
+      <a class="dc-dom-sublink" href="https://uas-forge.com/academy/" data-page="academy">Academy</a>
     </div>
   </details>
-
-  <!-- Intel (gated) — listed for authorized users; private links are nofollow/noindex. -->
-  <details class="dc-dom-group" data-host="uas-forge.com">
-    <summary>
-      <span class="dc-dom-ico">🔒</span>
-      <div class="dc-dom-info">
-        <div class="dc-dom-name">Intel (Private)</div>
-        <div class="dc-dom-url">gated workspace</div>
-      </div>
-      <span class="dc-dom-chev">▶</span>
-    </summary>
-    <div class="dc-dom-sublinks">
-      <a class="dc-dom-sublink" href="https://uas-forge.com/private/ddg/" rel="nofollow" data-noindex="true" data-page="ddg">DDG Tracker</a>
-      <a class="dc-dom-sublink" href="https://uas-forge.com/private/dossiers/" rel="nofollow" data-noindex="true" data-page="dossiers">Intel Dossiers</a>
-      <a class="dc-dom-sublink" href="https://uas-forge.com/private/supply-web/" rel="nofollow" data-noindex="true" data-page="supply-web">Supply Web</a>
-      <a class="dc-dom-sublink" href="https://uas-forge.com/private/data/" rel="nofollow" data-noindex="true" data-page="data">Intel Data</a>
-      <a class="dc-dom-sublink" href="https://uas-forge.com/private/components-bom/" rel="nofollow" data-noindex="true" data-page="components-bom">Component BOMs</a>
-      <a class="dc-dom-sublink" href="https://uas-forge.com/private/drone-config/" rel="nofollow" data-noindex="true" data-page="drone-config">Build Configurator</a>
-    </div>
-  </details>
-
-  <!-- Standalone quick links — not grouped under any domain -->
-  <a class="dc-dom-standalone" href="https://uas-forge.com/wingman/" data-page="wingman">
-    <span class="dc-dom-ico">🤖</span>
-    <div class="dc-dom-info">
-      <div class="dc-dom-name">Wingman AI</div>
-      <div class="dc-dom-url">uas-forge.com/wingman/</div>
-    </div>
-  </a>
-  <a class="dc-dom-standalone" href="https://uas-patterns.com/clock/" data-page="clock">
-    <span class="dc-dom-ico">⏰</span>
-    <div class="dc-dom-info">
-      <div class="dc-dom-name">UAS Clock</div>
-      <div class="dc-dom-url">uas-patterns.com/clock/</div>
-    </div>
-  </a>
-  <a class="dc-dom-standalone" aria-disabled="true" data-page="ddg">
-    <span class="dc-dom-ico">🎯</span>
-    <div class="dc-dom-info">
-      <div class="dc-dom-name">DDG Tracker</div>
-      <div class="dc-dom-url">uas-patterns.com/ddg/</div>
-    </div>
-  </a>
-  <a class="dc-dom-standalone" href="https://uas-forge.com/hub/" data-page="hub">
-    <span class="dc-dom-ico">⊞</span>
-    <div class="dc-dom-info">
-      <div class="dc-dom-name">UAS- Hub</div>
-      <div class="dc-dom-url">all 5 domains</div>
-    </div>
-  </a>
-  <a class="dc-dom-standalone" href="https://uas-forge.com/donate/" data-page="donate">
-    <span class="dc-dom-ico">❤️</span>
-    <div class="dc-dom-info">
-      <div class="dc-dom-name">Support / Donate</div>
-      <div class="dc-dom-url">keep the tools free</div>
-    </div>
-  </a>
+  <a class="dc-dom-standalone" href="https://uas-forge.com/tools-home/" data-page="tools-home"><span class="dc-dom-name">All tools & search</span></a>
+  <a class="dc-dom-standalone" href="https://uas-patterns.com/data-status/" data-page="data-status"><span class="dc-dom-name">Data status</span></a>
+  <a class="dc-dom-standalone" href="https://uas-forge.com/private/" data-page="private" rel="nofollow" data-noindex="true"><span class="dc-dom-name">Private workspace</span></a>
+  <a class="dc-dom-standalone" href="https://uas-forge.com/support/" data-page="support"><span class="dc-dom-name">Help & support</span></a>
+  <a class="dc-dom-standalone" href="https://uas-forge.com/donate/" data-page="donate"><span class="dc-dom-name">Support the project</span></a>
 
   <div id="dc-drawer-foot">
     <span>Midwest Nice UAS LLC</span>
@@ -711,6 +569,7 @@ _UNIFIED_NAV = r"""<!-- ── Unified UAS- Nav (5-domain accordion drawer) ─�
 <script>
 (function(){
   var path = location.pathname.replace(/\/$/, '').split('/').pop() || 'home';
+  if(location.pathname.indexOf('/intel/feed') === 0) path = 'intel-feed';
   var isPro = (function(){
     try {
       var tok = localStorage.getItem('forge_token') || localStorage.getItem('wingman_sub_token') || '';
@@ -733,7 +592,7 @@ _UNIFIED_NAV = r"""<!-- ── Unified UAS- Nav (5-domain accordion drawer) ─�
     'compliance':'Compliance','dossier':'Dossier','platforms':'Platforms','regs':'Regs',
     'stack-builder':'Stack Builder','circuit-forge':'Circuit Forge','report':'Compliance Report','tools-home':'Tools',
     'software-library':'Software Library','industry':'Industry','tracker':'Contract Tracker',
-    'patterns-home':'P.I.E Hub','priorities':'Priority View','ask-pie':'Ask PIE','brief':'Brief','patterns':'Flags','clock':'UAS Clock','ddg':'DDG Tracker',
+    'patterns-home':'Today','priorities':'Watchlist & priorities','ask-pie':'Research','intel-feed':'News','data-status':'Data status','brief':'Brief','patterns':'Flags','clock':'UAS Clock','ddg':'DDG Tracker',
     'adversary-bom':'Adversary BOM','mirroring':'Component Mirroring','actors':'Threat Actors',
     'ttps':'TTP Defense Gap','evasion':'Sanctions-Evasion','market-lens':'Market Lens',
     'forecast-accountability':'Forecast Accountability','pie-trends':'PIE Trends',
@@ -760,37 +619,27 @@ _UNIFIED_NAV = r"""<!-- ── Unified UAS- Nav (5-domain accordion drawer) ─�
   // Brand-click home target per domain
   window.dcNavBrandClick = function(e){
     e.preventDefault();
-    if(isForge)         location.href = 'https://uas-forge.com/forge/';
+    if(isForge)         location.href = 'https://uas-forge.com/';
     else if(isPatCom)   location.href = 'https://uas-patterns.com/patterns-home/';
     else if(isIntel)    location.href = 'https://uas-patterns.com/';
     else if(isHandbook) location.href = 'https://uas-handbook.com/';
     else                location.href = 'https://uas-forge.com/hub/';
   };
 
-  // Auto-expand the drawer group matching current host
-  var currentHost = isForge    ? 'uas-forge.com'
-                  : isPatCom   ? 'uas-patterns.com'
-                  : isIntel    ? 'uas-patterns.com'
-                  : isHandbook ? 'uas-handbook.com'
-                  : 'uas-forge.com';
-  document.querySelectorAll('.dc-dom-group').forEach(function(g){
-    if(g.dataset.host === currentHost) g.open = true;
+  // Only the current task expands. Native summary activation always toggles.
+  var matched = false;
+  document.querySelectorAll('.dc-dom-sublink, .dc-dom-standalone').forEach(function(a){
+    if(a.dataset.page === path && (path !== 'home' || isForge)) {
+      a.classList.add('dc-active'); a.setAttribute('aria-current','page');
+      var group = a.closest('.dc-dom-group');
+      if(group && !matched){group.open = true; matched = true;}
+    }
   });
-
-  // Mark active sublink AND standalone AND top-bar buttons (match data-page)
-  document.querySelectorAll('.dc-dom-sublink, .dc-dom-standalone, .dc-nav-top-btn').forEach(function(a){
-    if(a.dataset.page === path) a.classList.add('dc-active');
-  });
-
-  // Domain groups with data-hub-href: clicking the name/icon navigates to the
-  // hub URL; clicking the chev still toggles the dropdown.
-  document.querySelectorAll('.dc-dom-group[data-hub-href] > summary').forEach(function(s){
-    s.addEventListener('click', function(e){
-      if(e.target.closest('.dc-dom-chev')) return; // chev: default toggle
-      e.preventDefault();
-      location.href = s.parentElement.dataset.hubHref;
-    });
-  });
+  if(!matched){
+    var area = isPatCom || isIntel ? 'research' : isHandbook ? 'learn' : 'build';
+    var group = document.querySelector('[data-area="'+area+'"]');
+    if(group) group.open = true;
+  }
 
   // Closed navigation is absent from both Tab order and the accessible tree.
   var drawer = document.getElementById('dc-drawer');
@@ -2733,6 +2582,11 @@ def build(*, offline=False, data_ref=None, data_dir=None, include_private=False)
         else:
             raise RuntimeError('Built database counts do not match the input')
 
+
+    # One canonical Forge home; legacy links keep working without a second directory.
+    shutil.copy2(os.path.join(BUILD_DIR, 'index.html'), os.path.join(BUILD_DIR, 'forge', 'index.html'))
+    from tools.build_navigation import write_directory
+    write_directory(PAGES, Path(SRC_DIR), Path(BUILD_DIR))
 
     # ── Cloudflare Pages routing files ──────────────────────────
     for cf_file in ['_redirects', '_routes.json', '_headers']:

@@ -278,16 +278,17 @@
         <main class="cost-page">
             <div style="margin-bottom: 24px;">
                 <h1 style="font-size: 24px; font-weight: 700; margin-bottom: 4px;">Build Cost Estimator</h1>
-                <p style="font-size: 14px; color: var(--text-muted);">Select a build to see the full BOM with cost, weight breakdown, and per-slot pricing.</p>
+                <p style="font-size: 14px; color: var(--text-muted);">Review your current component list or choose a catalog model. Unknown values are excluded from known totals.</p>
             </div>
 
-            <div class="build-selector" id="build-selector"></div>
+            <p><a id="return-build" href="/builder/?view=build">← Return to my build</a></p><p id="cost-context" role="status"></p><details><summary>Choose a catalog model or current build</summary><div class="build-selector" id="build-selector"></div></details>
             <div class="cost-gauges" id="cost-gauges"></div>
             <div class="weight-bar-wrap" id="weight-bar-wrap"></div>
             <div id="bom-output"></div>
         </main>
     </div>
 
+    <script src="/static/builder-values.js"></script><script src="/static/build-store.js"></script>
     <script>
     (function() {
         'use strict';
@@ -324,6 +325,10 @@
             document.querySelectorAll('.build-chip').forEach(chip => {
                 chip.addEventListener('click', () => {
                     selectedBuild = builds.find(b => b.pid === chip.dataset.pid);
+                    if(selectedBuild?.pid.startsWith('saved:')){
+                        const id=selectedBuild.pid.slice(6),encoded=new URLSearchParams(location.search).get('b');
+                        document.getElementById('return-build').href=id==='shared'&&encoded?'/builder/?view=build&b='+encodeURIComponent(encoded):'/builder/?view=build&build='+encodeURIComponent(id);
+                    }
                     renderBuildSelector();
                     renderBOM();
                 });
@@ -336,15 +341,16 @@
                 if (!refs) continue;
                 for (const ref of refs) {
                     const pid = typeof ref === 'string' ? ref : ref.pid;
-                    const qty = typeof ref === 'object' ? (ref.quantity || 1) : 1;
+                    const qty = typeof ref === 'object' && Number.isFinite(Number(ref.quantity)) && Number(ref.quantity)>0 ? Number(ref.quantity) : 1;
                     const part = allParts[pid];
                     items.push({
-                        slot,
+                        slot:part?._cat || slot,
                         pid,
                         qty,
                         name: part?.name || `Unknown (${pid})`,
-                        price: part?.approx_price || 0,
-                        weight: part?.schema_data?.weight_g || 0,
+                        price: ForgeBuilderValues.price(part).amount,
+                        priceNote: ForgeBuilderValues.price(part).note,
+                        weight: ForgeBuilderValues.weight(part),
                         found: !!part,
                     });
                 }
@@ -363,6 +369,8 @@
             }
 
             const items = resolveBOM(selectedBuild);
+            if(!items.length){document.getElementById('cost-gauges').innerHTML='';document.getElementById('weight-bar-wrap').innerHTML='';document.getElementById('bom-output').innerHTML='<p>No parts in this build yet. <a href="/builder/">Choose parts</a>, or select a catalog model above.</p>';return;}
+            const unknownPrices=items.filter(i=>i.price==null).length, unknownWeights=items.filter(i=>i.weight==null).length;
             const totalCost = items.reduce((s, i) => s + i.price * i.qty, 0);
             const totalWeight = items.reduce((s, i) => s + i.weight * i.qty, 0);
             const partCount = items.reduce((s, i) => s + i.qty, 0);
@@ -373,14 +381,14 @@
             const fp = typeof formatPrice === 'function' ? formatPrice : (v) => '$' + v.toFixed(0);
             document.getElementById('cost-gauges').innerHTML = `
                 <div class="gauge-card">
-                    <div class="gauge-value ${costClass}">${fp(totalCost)}</div>
-                    <div class="gauge-label">Total BOM Cost</div>
-                    <div class="gauge-sub">Retail pricing, no shipping</div>
+                    <div class="gauge-value ${costClass}">${unknownPrices===items.length?'—':fp(totalCost)}</div>
+                    <div class="gauge-label">${unknownPrices?'Known cost':'Estimated cost'}</div>
+                    <div class="gauge-sub">${unknownPrices} prices unavailable; excludes shipping</div>
                 </div>
                 <div class="gauge-card">
-                    <div class="gauge-value">${totalWeight.toLocaleString()}g</div>
-                    <div class="gauge-label">Total Weight</div>
-                    <div class="gauge-sub">${(totalWeight / 1000).toFixed(2)} kg dry</div>
+                    <div class="gauge-value">${unknownWeights===items.length?'—':totalWeight.toLocaleString()+'g'}</div>
+                    <div class="gauge-label">${unknownWeights?'Known weight':'Recorded weight'}</div>
+                    <div class="gauge-sub">${unknownWeights} weights unavailable</div>
                 </div>
                 <div class="gauge-card">
                     <div class="gauge-value">${partCount}</div>
@@ -388,7 +396,7 @@
                     <div class="gauge-sub">${items.length} unique, ${partCount} total</div>
                 </div>
                 <div class="gauge-card">
-                    <div class="gauge-value" style="color: ${missingCount ? '#ef4444' : '#22c55e'}">${missingCount ? missingCount + ' missing' : 'Complete'}</div>
+                    <div class="gauge-value" style="color: ${missingCount ? '#ef4444' : '#22c55e'}">${missingCount ? missingCount + ' missing' : 'Resolved'}</div>
                     <div class="gauge-label">BOM Status</div>
                     <div class="gauge-sub">${missingCount ? 'Some parts not in DB' : 'All parts resolved'}</div>
                 </div>
@@ -406,14 +414,14 @@
             document.getElementById('weight-bar-wrap').innerHTML = `
                 <div class="weight-bar-label">
                     <span>Weight Breakdown</span>
-                    <span>${totalWeight}g total</span>
+                    <span>${totalWeight}g known</span>
                 </div>
                 <div class="weight-bar-bg">
                     ${barSegs.map(([slot, w]) => {
                         const pct = (w / totalWeight * 100).toFixed(1);
                         const color = SLOT_COLORS[slot] || '#666';
                         const label = SLOT_LABELS[slot] || slot;
-                        return `<div class="weight-bar-seg" style="width:${pct}%; background:${color};" title="${label}: ${w}g (${pct}%)"></div>`;
+                        return `<div class="weight-bar-seg" style="width:${pct}%; background:${color};" title="${ESC(label)}: ${w}g (${pct}%)"></div>`;
                     }).join('')}
                 </div>
                 <div style="display:flex; gap:12px; flex-wrap:wrap; margin-top:8px;">
@@ -422,7 +430,7 @@
                         const label = SLOT_LABELS[slot] || slot;
                         return `<span style="font-size:11px; display:flex; align-items:center; gap:4px; color:var(--text-muted);">
                             <span style="width:8px; height:8px; border-radius:2px; background:${color}; display:inline-block;"></span>
-                            ${label} ${w}g
+                            ${ESC(label)} ${w}g
                         </span>`;
                     }).join('')}
                 </div>
@@ -437,10 +445,10 @@
                         <div class="part-pid">${ESC(i.pid)}</div>
                     </td>
                     <td class="num">${i.qty}</td>
-                    <td class="num">${i.price ? '' + (typeof formatPrice === 'function' ? formatPrice(i.price) : '$' + i.price.toFixed(2)) : '—'}</td>
-                    <td class="num">${i.weight ? i.weight + 'g' : '—'}</td>
-                    <td class="num subtotal">${i.price ? '' + (typeof formatPrice === 'function' ? formatPrice(i.price * i.qty) : '$' + (i.price * i.qty).toFixed(2)) : '—'}</td>
-                    <td class="num">${i.weight ? (i.weight * i.qty) + 'g' : '—'}</td>
+                    <td class="num">${i.price != null ? '' + (typeof formatPrice === 'function' ? formatPrice(i.price) : '$' + i.price.toFixed(2)) : ESC(i.priceNote)}</td>
+                    <td class="num">${i.weight != null ? i.weight + 'g' : '—'}</td>
+                    <td class="num subtotal">${i.price != null ? '' + (typeof formatPrice === 'function' ? formatPrice(i.price * i.qty) : '$' + (i.price * i.qty).toFixed(2)) : '—'}</td>
+                    <td class="num">${i.weight != null ? (i.weight * i.qty) + 'g' : '—'}</td>
                 </tr>
             `).join('');
 
@@ -454,10 +462,10 @@
                         </tr></thead>
                         <tbody>${rows}</tbody>
                         <tfoot><tr>
-                            <td colspan="3">Total</td>
+                            <td colspan="3">Known totals</td>
                             <td></td><td></td>
-                            <td class="num">${typeof formatPrice === 'function' ? formatPrice(totalCost) : '$' + totalCost.toFixed(2)}</td>
-                            <td class="num">${totalWeight.toLocaleString()}g</td>
+                            <td class="num">${unknownPrices===items.length?'—':(typeof formatPrice === 'function' ? formatPrice(totalCost) : '$' + totalCost.toFixed(2))}</td>
+                            <td class="num">${unknownWeights===items.length?'—':totalWeight.toLocaleString()+'g'}</td>
                         </tr></tfoot>
                     </table>
                 </div>
@@ -474,7 +482,7 @@
                 for (const [cat, parts] of Object.entries(db.components || {})) {
                     if (!Array.isArray(parts)) continue;
                     for (const p of parts) {
-                        if (p.pid) allParts[p.pid] = p;
+                        if (p.pid) allParts[p.pid] = {...p,_cat:cat};
                     }
                 }
 
@@ -484,11 +492,17 @@
                     return Object.values(rels).some(v => v && v.length > 0);
                 });
 
+                const params=new URLSearchParams(location.search),encoded=params.get('b');
+                let collection;try{collection=ForgeBuildStore.open(localStorage).read();}catch(error){document.getElementById('cost-context').textContent=error.message;collection=ForgeBuildStore.initial(null);}
+                let savedModels=collection.builds.map(ForgeBuildStore.model);
+                const current=savedModels.find(b=>b.pid==='saved:'+(params.get('build')||collection.active_id))||savedModels[0];
+                selectedBuild=current;
+                if(encoded){const shared=ForgeBuilderValues.decodeItems(encoded);if(shared){selectedBuild=ForgeBuildStore.model({id:'shared',name:'Shared build',items:shared});savedModels.unshift(selectedBuild);document.getElementById('return-build').href='/builder/?view=build&b='+encodeURIComponent(encoded);}else document.getElementById('cost-context').textContent='Invalid shared build link; saved build is shown.';}
+                else document.getElementById('return-build').href='/builder/?view=build&build='+encodeURIComponent((params.get('build')||collection.active_id));
+                builds=[...savedModels,...builds];
+                const context=document.getElementById('cost-context');
+                context.append(document.createTextNode(' Quantities come from the saved list or catalog model. Shipping and assembly completeness are not assessed.'));
                 renderBuildSelector();
-                if (builds.length) {
-                    selectedBuild = builds[0];
-                    renderBuildSelector();
-                }
                 renderBOM();
             } catch (err) {
                 console.error(err);

@@ -70,33 +70,21 @@ REPLACEMENTS = (
     ),
     Replacement(
         'build_static.py',
-        'data-page="priorities">Priority View</a>',
+        'data-page="priorities">',
         '      <a class="dc-dom-sublink" href="https://uas-patterns.com/patterns-home/" data-page="patterns-home">P.I.E Hub</a>\n      <a class="dc-dom-sublink" href="https://uas-patterns.com/brief/" data-page="brief">Daily Brief</a>',
         '      <a class="dc-dom-sublink" href="https://uas-patterns.com/patterns-home/" data-page="patterns-home">P.I.E Hub</a>\n      <a class="dc-dom-sublink" href="https://uas-patterns.com/priorities/" data-page="priorities">Priority View</a>\n      <a class="dc-dom-sublink" href="https://uas-patterns.com/brief/" data-page="brief">Daily Brief</a>',
     ),
     Replacement(
         'build_static.py',
-        "'priorities':'Priority View'",
+        "'priorities':",
         "    'patterns-home':'P.I.E Hub','brief':'Brief','patterns':'Flags','clock':'UAS Clock','ddg':'DDG Tracker',",
         "    'patterns-home':'P.I.E Hub','priorities':'Priority View','brief':'Brief','patterns':'Flags','clock':'UAS Clock','ddg':'DDG Tracker',",
     ),
     Replacement(
         'forge-source/patterns-home.html',
-        '<a href="/priorities/">',
+        'href="/priorities/"',
         '      <a href="#current">Current</a>\n      <a href="#evidence">Evidence</a>',
         '      <a href="/priorities/">Priorities</a>\n      <a href="#current">Current</a>\n      <a href="#evidence">Evidence</a>',
-    ),
-    Replacement(
-        'forge-source/patterns-home.html',
-        'Open priority view',
-        '          <a class="button primary" href="/brief/">Read the daily brief <span aria-hidden="true">→</span></a>\n          <a class="button" href="/patterns/">Review current signals</a>',
-        '          <a class="button primary" href="/brief/">Read the daily brief <span aria-hidden="true">→</span></a>\n          <a class="button" href="/priorities/">Open priority view</a>\n          <a class="button" href="/patterns/">Review current signals</a>',
-    ),
-    Replacement(
-        'forge-source/patterns-home.html',
-        'Priority intelligence view <span class="tag">Local</span>',
-        '      <div class="product-grid">\n        <a class="product" href="/brief/">',
-        '      <div class="product-grid">\n' + PRIORITY_CARD + '        <a class="product" href="/brief/">',
     ),
     Replacement(
         'workers/forge-data.js',
