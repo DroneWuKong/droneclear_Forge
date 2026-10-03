@@ -9,6 +9,7 @@ import builder from '../tools/build_research_index.cjs';
 import ask from '../forge-source/ask-pie-retrieval.js';
 import worker from '../workers/forge-data.js';
 import {readResearchStaticJSON} from '../workers/research-static-transport.mjs';
+import {loadActiveRetrievalPolicy} from '../workers/retrieval-policy.mjs';
 
 const fixture=()=>({schema_version:1,meta:{generated_at:new Date().toISOString(),input_revision:'source-snapshot'},counts:{article:4},
   records:ask.articleRecords(Array.from({length:4},(_,i)=>({aid:String(i),title:'Shahed evidence '+i,
@@ -40,13 +41,16 @@ test('generator selects lossless gzip, removes stale format, and preserves all s
     const binding=assets(data);
     assert.equal(await readResearchStaticJSON(binding,'https://site.test/api/data?type=research_index'),raw);
     assert.equal(binding.calls.length,2);
+    const unavailablePolicy=await loadActiveRetrievalPolicy({},'research-index-v1');
+    const policyContext={retrievalPolicy:unavailablePolicy.runtime,policyReceipt:unavailablePolicy.receipt};
     for(const query of ['q=Shahed&limit=100','view=summary','record=article:3']) {
       const binding=assets(data);
       const response=await worker.fetch(new Request('https://site.test/api/data?type=research_index&'+query),{ASSETS:binding});
       assert.equal(response.status,200);
       const payload=await response.json();
       assert.equal(payload.source,'static:/research_index.json.gzip');
-      assert.deepEqual(payload.data,JSON.parse(JSON.stringify(ask.projectResearch(index,new URLSearchParams(query)))));
+      const params=new URLSearchParams(query);
+      assert.deepEqual(payload.data,JSON.parse(JSON.stringify(ask.projectResearch(index,params,params.has('q')?policyContext:undefined))));
       assert.equal(binding.calls.length,2);
     }
     builder.writeResearchIndex(index,path.join(data.dir,'research_index.json'));
@@ -62,7 +66,9 @@ test('legacy plain index retains its API shape after confirming the manifest is 
     calls++;return new URL(request.url).pathname.endsWith('.metadata.json')?new Response('Missing',{status:404}):Response.json(index);
   }}});
   assert.equal(response.status,200);assert.equal(calls,2);
-  assert.deepEqual((await response.json()).data,JSON.parse(JSON.stringify(ask.projectResearch(index,new URLSearchParams({q:'Shahed'})))));
+  const unavailablePolicy=await loadActiveRetrievalPolicy({},'research-index-v1');
+  const policyContext={retrievalPolicy:unavailablePolicy.runtime,policyReceipt:unavailablePolicy.receipt};
+  assert.deepEqual((await response.json()).data,JSON.parse(JSON.stringify(ask.projectResearch(index,new URLSearchParams({q:'Shahed'}),policyContext))));
 });
 
 test('generator fails before writing when decoded or encoded bounds would be exceeded',()=>{

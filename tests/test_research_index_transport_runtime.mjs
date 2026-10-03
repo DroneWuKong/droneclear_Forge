@@ -10,6 +10,7 @@ import {build} from 'esbuild';
 import {Miniflare, convertV4MiniflareOptions} from 'miniflare';
 import builder from '../tools/build_research_index.cjs';
 import ask from '../forge-source/ask-pie-retrieval.js';
+import {loadActiveRetrievalPolicy} from '../workers/retrieval-policy.mjs';
 
 test('workerd and real asset binding preserve an oversized research corpus and its HTTP encoding',async()=>{
   const repo=fileURLToPath(new URL('..',import.meta.url));
@@ -64,12 +65,15 @@ test('workerd and real asset binding preserve an oversized research corpus and i
     assert.ok([null,'identity'].includes(asset.headers.get('Content-Encoding')));
     assert.deepEqual(Buffer.from(await asset.arrayBuffer()),compressed);
     const last=index.records.filter(row=>row.type==='article').at(-1);
+    const unavailablePolicy=await loadActiveRetrievalPolicy({},'research-index-v1');
+    const policyContext={retrievalPolicy:unavailablePolicy.runtime,policyReceipt:unavailablePolicy.receipt};
     for(const query of ['view=summary','q=Shahed&limit=7','record='+encodeURIComponent(ask.recordKey(last))]) {
       const response=await runtime.dispatchFetch('http://localhost/api/data?type=research_index&'+query);
       assert.equal(response.status,200);
       const payload=await response.json();
       assert.equal(payload.source,'static:/research_index.json.gzip');
-      assert.deepEqual(payload.data,JSON.parse(JSON.stringify(ask.projectResearch(index,new URLSearchParams(query)))));
+      const params=new URLSearchParams(query);
+      assert.deepEqual(payload.data,JSON.parse(JSON.stringify(ask.projectResearch(index,params,params.has('q')?policyContext:undefined))));
     }
     console.log(JSON.stringify({runtime:'workerd',articles:articles.length,records:index.records.length,index_bytes:raw.length,
       stored_bytes:compressed.length,sha256:metadata.sha256,full_index_equality:true,search_and_detail_equal:true}));
