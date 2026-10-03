@@ -444,31 +444,31 @@ _MOBILE_CSS = """<style>
 _UNIFIED_NAV = r"""<!-- ── Unified UAS navigation (Research / Build / Learn) ──────────────── -->
 <style id="dc-unified-nav-styles">
 #dc-nav{display:flex;align-items:center;justify-content:space-between;padding:0 16px;height:44px;background:#0c0c0a;border-bottom:1px solid #1e1e18;position:sticky;top:0;z-index:500;font-family:'DM Sans',system-ui,sans-serif}
-#dc-nav~nav.nav{top:44px}
+#dc-nav~nav.nav{top:var(--uas-header-height,44px)}
 @media(max-width:680px){#dc-nav-page,#dc-nav-sep{display:none}#dc-nav{padding:0 8px}#dc-nav-right{gap:4px}#dc-nav{height:auto;min-height:44px;flex-wrap:wrap;gap:4px;padding-top:4px;padding-bottom:4px}.dc-nav-top-btn{padding:0 7px}}
 #dc-nav-left{display:flex;align-items:center;gap:10px;min-width:0;flex:1}
-#dc-nav-brand{font:700 13px 'JetBrains Mono',monospace;color:#f59e0b;text-decoration:none;letter-spacing:-.02em;flex-shrink:0}
+#dc-nav-brand{font:700 13px 'JetBrains Mono',monospace;color:var(--uas-accent,#f4c56a);text-decoration:none;letter-spacing:-.02em;flex-shrink:0}
 #dc-nav-sep{color:#2e2e26;font-size:12px;flex-shrink:0}
 #dc-nav-page{font:600 11px 'DM Sans',system-ui;color:#b8b0a0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:200px}
 #dc-nav-right{display:flex;align-items:center;gap:8px;flex-shrink:0}
 #dc-hamburger{display:flex;align-items:center;justify-content:center;width:32px;height:32px;border-radius:6px;border:1px solid #2a2a22;background:none;color:#b8b0a0;cursor:pointer;transition:all .15s;flex-shrink:0}
 #dc-hamburger:hover{border-color:#3e3e34;color:#b8b0a0}
-#dc-hamburger.open{border-color:#ff9292;color:#ff9292;background:rgba(220,38,38,.08)}
+#dc-hamburger.open{border-color:var(--uas-accent,#f4c56a);color:var(--uas-accent,#f4c56a);background:var(--uas-tint,#241e12)}
 .dc-nav-top-btn{display:inline-flex;align-items:center;gap:6px;height:30px;padding:0 10px;border-radius:6px;border:1px solid #2a2a22;background:none;color:#b8b0a0;font:600 11px 'DM Sans',system-ui,sans-serif;text-decoration:none;cursor:pointer;transition:all .15s;flex-shrink:0}
-.dc-nav-top-btn:hover{border-color:#f59e0b;color:#f59e0b;background:rgba(245,158,11,.06)}
-.dc-nav-top-btn.dc-active{border-color:#22c55e;color:#22c55e;background:rgba(34,197,94,.06)}
+.dc-nav-top-btn:hover{border-color:var(--uas-accent,#f4c56a);color:var(--uas-accent,#f4c56a);background:var(--uas-tint,#241e12)}
+.dc-nav-top-btn.dc-active{border-color:var(--uas-accent,#f4c56a);color:var(--uas-accent,#f4c56a);background:var(--uas-tint,#241e12)}
 .dc-nav-top-btn .dc-nav-top-ico{font-size:14px;line-height:1}
 @media (max-width:520px){.dc-nav-top-btn span.dc-nav-top-label{display:none}}
-#dc-overlay{position:fixed;inset:0;z-index:498;background:rgba(0,0,0,.6);backdrop-filter:blur(4px);opacity:0;pointer-events:none;transition:opacity .25s}
+#dc-overlay{position:fixed;inset:0;z-index:501;background:rgba(0,0,0,.6);backdrop-filter:blur(4px);opacity:0;pointer-events:none;transition:opacity .25s}
 #dc-overlay.open{opacity:1;pointer-events:auto}
-#dc-drawer{position:fixed;top:0;left:0;bottom:0;z-index:499;width:280px;max-width:calc(85vw / var(--uas-text-scale,1));background:#111110;border-right:1px solid #2a2a22;transform:translateX(-100%);transition:transform .3s cubic-bezier(.4,0,.2,1);display:flex;flex-direction:column;overflow-y:auto}
+#dc-drawer{position:fixed;top:0;left:0;bottom:0;z-index:502;width:280px;max-width:calc(85vw / var(--uas-text-scale,1));background:#111110;border-right:1px solid #2a2a22;transform:translateX(-100%);transition:transform .3s cubic-bezier(.4,0,.2,1);display:flex;flex-direction:column;overflow-y:auto}
 #dc-drawer.open{transform:translateX(0)}
 #dc-drawer[hidden]{display:none!important}
-#dc-drawer :focus-visible,#dc-hamburger:focus-visible{outline:2px solid #f59e0b;outline-offset:3px}
+#dc-drawer :focus-visible,#dc-hamburger:focus-visible{outline:2px solid var(--uas-accent,#f4c56a);outline-offset:3px}
 #dc-drawer-head{padding:16px;border-bottom:1px solid #1e1e18;display:flex;align-items:center;justify-content:space-between;flex-shrink:0}
-#dc-drawer-brand{font:700 14px 'JetBrains Mono',monospace;color:#f59e0b;letter-spacing:-.02em}
+#dc-drawer-brand{font:700 14px 'JetBrains Mono',monospace;color:var(--uas-accent,#f4c56a);letter-spacing:-.02em}
 #dc-drawer-close{width:28px;height:28px;border-radius:6px;border:1px solid #2a2a22;background:none;color:#b8b0a0;cursor:pointer;font-size:16px;display:flex;align-items:center;justify-content:center;transition:all .15s}
-#dc-drawer-close:hover{color:#ff9292;border-color:rgba(220,38,38,.3)}
+#dc-drawer-close:hover{color:var(--uas-accent,#f4c56a);border-color:rgba(220,38,38,.3)}
 .dc-dom-group{border-bottom:1px solid #1a1a14}
 .dc-dom-group > summary{padding:14px 16px;cursor:pointer;list-style:none;display:flex;align-items:center;gap:12px;transition:all .15s;user-select:none}
 .dc-dom-group > summary::-webkit-details-marker{display:none}
@@ -479,26 +479,26 @@ _UNIFIED_NAV = r"""<!-- ── Unified UAS navigation (Research / Build / Learn)
 .dc-dom-name{font:700 12px 'DM Sans',system-ui;color:#b8b0a0;letter-spacing:-.01em;transition:color .15s}
 .dc-dom-url{font:400 9px 'JetBrains Mono',monospace;color:#b8b0a0;margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .dc-dom-chev{color:#3e3e34;font-size:9px;transition:transform .2s;flex-shrink:0}
-.dc-dom-group[open] > summary .dc-dom-chev{transform:rotate(90deg);color:#ff9292}
-.dc-dom-group[open] > summary .dc-dom-name{color:#ff9292}
+.dc-dom-group[open] > summary .dc-dom-chev{transform:rotate(90deg);color:var(--uas-accent,#f4c56a)}
+.dc-dom-group[open] > summary .dc-dom-name{color:var(--uas-accent,#f4c56a)}
 .dc-dom-group[open] > summary .dc-dom-ico{filter:grayscale(0)}
 .dc-dom-sublinks{padding:0 0 10px 0;display:flex;flex-direction:column;gap:0;background:rgba(0,0,0,.15)}
 .dc-dom-sublink{display:block;padding:8px 16px 8px 46px;font:400 11px 'DM Sans',system-ui;color:#b8b0a0;text-decoration:none;border-left:2px solid transparent;transition:all .1s}
 .dc-dom-sublink:hover{color:#b8b0a0;background:rgba(255,255,255,.02);border-left-color:#2e2e26}
-.dc-dom-sublink.dc-active{color:#22c55e;border-left-color:#22c55e;background:rgba(34,197,94,.04)}
+.dc-dom-sublink.dc-active{color:var(--uas-accent,#f4c56a);border-left-color:var(--uas-accent,#f4c56a);background:var(--uas-tint,#241e12)}
 .dc-dom-standalone{padding:14px 16px;display:flex;align-items:center;gap:12px;text-decoration:none;border-bottom:1px solid #1a1a14;transition:all .15s}
 .dc-dom-standalone:hover{background:rgba(255,255,255,.02)}
-.dc-dom-standalone:hover .dc-dom-name{color:#ff9292}
+.dc-dom-standalone:hover .dc-dom-name{color:var(--uas-accent,#f4c56a)}
 .dc-dom-standalone:hover .dc-dom-ico{filter:grayscale(0)}
-.dc-dom-standalone.dc-active .dc-dom-name{color:#22c55e}
-.dc-dom-standalone.dc-active{background:rgba(34,197,94,.04);border-left:2px solid #22c55e}
+.dc-dom-standalone.dc-active .dc-dom-name{color:var(--uas-accent,#f4c56a)}
+.dc-dom-standalone.dc-active{background:var(--uas-tint,#241e12);border-left:2px solid var(--uas-accent,#f4c56a)}
 #dc-drawer-foot{margin-top:auto;padding:16px;border-top:1px solid #1e1e18;font:400 10px 'JetBrains Mono',monospace;color:#b8b0a0;display:flex;flex-direction:column;gap:6px}
-#dc-drawer-foot a{color:#f59e0b;text-decoration:none}
-#dc-drawer-foot a:hover{color:#ff9292}
+#dc-drawer-foot a{color:var(--uas-accent,#f4c56a);text-decoration:none}
+#dc-drawer-foot a:hover{color:var(--uas-accent,#f4c56a)}
 @media(max-width:680px){#dc-nav-left{flex:1 0 auto;max-width:100%;flex-wrap:wrap}#dc-nav-right{max-width:100%;flex-wrap:wrap;gap:4px}.dc-nav-top-btn{padding:0 7px}}
 </style>
 
-<nav id="dc-nav">
+<nav id="dc-nav" class="uas-header" aria-label="UAS navigation">
   <div id="dc-nav-left">
     <button id="dc-hamburger" type="button" onclick="dcNavToggle()" aria-label="Menu" aria-controls="dc-drawer" aria-expanded="false">
       <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round">
@@ -509,13 +509,14 @@ _UNIFIED_NAV = r"""<!-- ── Unified UAS navigation (Research / Build / Learn)
     <span id="dc-nav-sep">/</span>
     <span id="dc-nav-page">—</span>
   </div>
-  <div id="dc-nav-right">
-    <a class="dc-nav-top-btn dc-primary" href="https://uas-patterns.com/patterns-home/">Research</a>
-    <a class="dc-nav-top-btn dc-primary" href="https://uas-forge.com/">Build</a>
-    <a class="dc-nav-top-btn dc-primary" href="https://uas-handbook.com/">Learn</a>
+  <div id="dc-nav-right" class="uas-areas">
+    <a class="dc-nav-top-btn dc-primary" data-uas-link="research" href="https://uas-patterns.com/patterns-home/">Research</a>
+    <a class="dc-nav-top-btn dc-primary" data-uas-link="build" href="https://uas-forge.com/">Build</a>
+    <a class="dc-nav-top-btn dc-primary" data-uas-link="learn" href="https://uas-handbook.com/">Learn</a>
+  </div>
+  <div class="uas-utilities">
     <button class="dc-nav-top-btn" type="button" data-text-size-control aria-label="Text size">
       <span class="dc-nav-top-ico">Aᴬ</span>
-      <span class="dc-nav-top-label">Text</span>
     </button>
   </div>
 </nav>
@@ -605,26 +606,23 @@ _UNIFIED_NAV = r"""<!-- ── Unified UAS navigation (Research / Build / Learn)
   var pageEl = document.getElementById('dc-nav-page');
   if(pageEl) pageEl.textContent = labels[path] || document.title.split('—')[0].trim().split('·')[0].trim() || path;
 
-  // Brand label — per domain
-  var brandName = isForge    ? 'Forge'
-                : isPatCom   ? 'Patterns'
-                : isIntel    ? 'Intel'
-                : isHandbook ? 'Handbook'
-                : 'UAS-';
+  var area = isPatCom || isIntel ? 'research' : isHandbook ? 'learn' :
+    (document.documentElement.dataset.uasArea || 'build');
+  document.documentElement.dataset.uasArea = area;
+  document.querySelectorAll('[data-uas-link]').forEach(function(link){
+    if(link.dataset.uasLink === area) link.setAttribute('aria-current','location');
+    else link.removeAttribute('aria-current');
+  });
+  // Brand label follows the current task, including preview hosts.
+  var brandName = area === 'research' ? 'Patterns' : area === 'learn' ? 'Handbook' : 'Forge';
   var brandEl = document.getElementById('dc-nav-brand');
   var drawerBrandEl = document.getElementById('dc-drawer-brand');
   if(brandEl) brandEl.textContent = brandName;
   if(drawerBrandEl) drawerBrandEl.textContent = brandName;
 
-  // Brand-click home target per domain
-  window.dcNavBrandClick = function(e){
-    e.preventDefault();
-    if(isForge)         location.href = 'https://uas-forge.com/';
-    else if(isPatCom)   location.href = 'https://uas-patterns.com/patterns-home/';
-    else if(isIntel)    location.href = 'https://uas-patterns.com/';
-    else if(isHandbook) location.href = 'https://uas-handbook.com/';
-    else                location.href = 'https://uas-forge.com/hub/';
-  };
+  // Keep the actual href useful to keyboard users, new tabs and no-JS readers.
+  if(brandEl) brandEl.href = area === 'research' ? 'https://uas-patterns.com/patterns-home/' : area === 'learn' ? 'https://uas-handbook.com/' : 'https://uas-forge.com/';
+  window.dcNavBrandClick = function(){ return true; };
 
   // Only the current task expands. Native summary activation always toggles.
   var matched = false;
@@ -636,7 +634,6 @@ _UNIFIED_NAV = r"""<!-- ── Unified UAS navigation (Research / Build / Learn)
     }
   });
   if(!matched){
-    var area = isPatCom || isIntel ? 'research' : isHandbook ? 'learn' : 'build';
     var group = document.querySelector('[data-area="'+area+'"]');
     if(group) group.open = true;
   }
@@ -915,8 +912,19 @@ def inject_nav(html, src_name):
 
     html = re.sub(r'<style\b[^>]*\bid=[\"\']dc-unified-nav-styles[\"\'][^>]*>.*?</style>', '', html, flags=re.DOTALL | re.IGNORECASE)
 
-    # Inject the fresh nav after <body>
-    nav_block = "\n" + _UNIFIED_NAV + "\n"
+    # Task identity is rendered before paint; host detection handles domain aliases.
+    research_pages = {'patterns-home.html', 'ask-pie.html', 'intel-feed.html',
+        'patterns.html', 'priorities.html', 'forecast-accountability.html',
+        'pie-search.html', 'pie-trends.html', 'brief.html', 'brief-archive.html',
+        'actors.html', 'ttps.html', 'evasion.html', 'market-lens.html', 'entity-graph.html'}
+    area = 'research' if src_name in research_pages else 'build'
+    html = re.sub(r'<html\b', f'<html data-uas-area="{area}"', html, count=1)
+    nav = _UNIFIED_NAV.replace('data-uas-link="' + area + '"', 'data-uas-link="' + area + '" aria-current="location"')
+    brand = 'Patterns' if area == 'research' else 'Forge'
+    nav = nav.replace('onclick="return dcNavBrandClick(event)">—</a>', 'onclick="return dcNavBrandClick(event)">' + brand + '</a>')
+    home = 'https://uas-patterns.com/patterns-home/' if area == 'research' else 'https://uas-forge.com/'
+    nav = nav.replace('id="dc-nav-brand" href="/"', f'id="dc-nav-brand" href="{home}"')
+    nav_block = "\n" + nav + "\n"
     if re.search(r'<body\b[^>]*>', html):
         return re.sub(r'(<body\b[^>]*>)', lambda m: m.group(1) + nav_block, html, count=1)
     return html
@@ -946,7 +954,7 @@ def inject_analytics(html, src_name, dst_path):
             + f'<script id="uas-first-party-analytics" type="text/plain">{_ANALYTICS_SNIPPET}</script>\n'
             + '<script src="/static/analytics-consent.js"></script>\n'
         )
-    tag = analytics_tag + '<link rel="stylesheet" href="/static/site-accessibility.css">\n<script defer src="/static/site-accessibility.js"></script>\n' + f'{_MOBILE_CSS}\n'
+    tag = analytics_tag + '<link rel="stylesheet" href="/static/site-accessibility.css">\n<link rel="stylesheet" href="/static/uas-design.css">\n<script defer src="/static/site-accessibility.js"></script>\n' + f'{_MOBILE_CSS}\n'
     html = inject_nav(html, src_name)
     if '</body>' in html:
         return html.replace('</body>', tag + '</body>', 1)
@@ -2458,7 +2466,9 @@ def build(*, offline=False, data_ref=None, data_dir=None, include_private=False)
 
     # Process HTML pages
     for src_name, dst_path in PAGES.items():
-        src_file = os.path.join(SRC_DIR, src_name)
+        # Both Build entry URLs use one canonical template to prevent visual drift.
+        source_name = 'forge-home.html' if src_name == 'mission-control.html' else src_name
+        src_file = os.path.join(SRC_DIR, source_name)
         dst_file = os.path.join(BUILD_DIR, dst_path)
         
         os.makedirs(os.path.dirname(dst_file), exist_ok=True)

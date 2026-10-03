@@ -3,7 +3,7 @@ const fs=require('node:fs'),path=require('node:path'),assert=require('node:asser
 const {chromium}=require('playwright');
 const research=require('../forge-source/ask-pie-retrieval.js');
 const directory=path.resolve(process.argv[2]||'build');
-const types={'.html':'text/html','.js':'text/javascript','.css':'text/css','.json':'application/json','.svg':'image/svg+xml'};
+const types={'.html':'text/html','.js':'text/javascript','.mjs':'text/javascript','.css':'text/css','.json':'application/json','.svg':'image/svg+xml'};
 (async()=>{const options={headless:true};if(process.env.AUDIT_CHROMIUM)options.executablePath=process.env.AUDIT_CHROMIUM;
 const browser=await chromium.launch(options);try{const page=await browser.newPage({viewport:{width:390,height:900}});page.setDefaultTimeout(15000);page.setDefaultNavigationTimeout(15000);const errors=[],apiRequests=[];let researchFixture=false;
 const fixture={schema_version:1,meta:{generated_at:'2026-10-03T12:00:00Z',input_revision:'browser-fixture'},counts:{article:2},records:research.articleRecords([{aid:'uas-fixture',title:'Drone delivery test article',summary:'Civil aviation report',pub_date:'2026-10-01',url:'https://source.invalid/drone'},{aid:'sports-fixture',title:'Baseball test article',summary:'Sports report',pub_date:'2026-10-02',url:'https://source.invalid/sports'}]).map(research.compactRecord)};
@@ -19,6 +19,7 @@ assert.ok(await page.locator('#dc-drawer-close').evaluate(el=>el===document.acti
 await page.keyboard.press('Shift+Tab');assert.ok(await page.locator('#dc-drawer').evaluate(el=>el.contains(document.activeElement)));
 await page.keyboard.press('Tab');assert.ok(await page.locator('#dc-drawer-close').evaluate(el=>el===document.activeElement));
 await page.keyboard.press('Escape');assert.equal(await page.locator('#dc-drawer').isVisible(),false);assert.equal(await page.locator('#dc-hamburger').getAttribute('aria-expanded'),'false');assert.ok(await page.locator('#dc-hamburger').evaluate(el=>el===document.activeElement));
+await page.locator('#dc-hamburger').click();await page.locator('#dc-drawer-close').click();assert.equal(await page.locator('#dc-drawer').isVisible(),false);
 for(const width of [320,390,1440]){await page.setViewportSize({width,height:900});for(const value of ['default','large','xlarge']){
 await page.locator('[data-text-size-control]').click();await page.locator('.uas-text-size-panel:not([hidden]) input[value="'+value+'"]').check();await page.waitForTimeout(40);
 const box=await page.locator('.uas-text-size-panel:not([hidden])').boundingBox();assert.ok(box.x>=0&&box.x+box.width<=width+1,'Reading popup must stay in viewport');
@@ -28,6 +29,32 @@ await page.keyboard.press('Escape');assert.ok(await page.locator('[data-text-siz
 await page.locator('[data-text-size-control]').click();await page.locator('.uas-text-size-panel:not([hidden]) input[value="default"]').check();await page.keyboard.press('Escape');
 await page.reload();assert.equal(await page.evaluate(()=>document.documentElement.dataset.uasTextSize),'default');
 if(await page.locator('#uas-analytics-consent [data-reject]').isVisible())await page.locator('#uas-analytics-consent [data-reject]').click();
+// The shared header must remain operable with large text and narrow screens.
+fs.mkdirSync(path.resolve('.local/design-review'),{recursive:true});
+for(const [route,area] of [['/','build'],['/forge/','build'],['/patterns-home/','research']]){
+ await page.goto('http://forge.test.localhost'+route);
+ assert.equal(await page.locator('.uas-areas [aria-current]').getAttribute('data-uas-link'),area);
+ for(const width of [320,390,1440]){
+  await page.setViewportSize({width,height:844});
+  for(const size of ['default','xlarge']){
+   await page.locator('[data-text-size-control]').click();
+   await page.locator('.uas-text-size-panel:not([hidden]) input[value="'+size+'"]').check();
+   await page.keyboard.press('Escape');
+   const geometry=await page.locator('.uas-header').evaluate(header=>{
+    const controls=[...header.querySelectorAll('a,button')].filter(e=>e.getClientRects().length);
+    return controls.map(e=>{const b=e.getBoundingClientRect();const top=document.elementFromPoint(b.x+b.width/2,b.y+b.height/2);return {text:e.textContent.trim(),inside:b.x>=0&&b.right<=innerWidth+1,hit:e===top||e.contains(top),height:b.height};});
+   });
+   assert.ok(geometry.every(b=>b.inside&&b.hit&&b.height>=24),JSON.stringify({route,width,size,geometry}));
+   assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1),'Homepage must reflow');
+   if(width<=390){
+    const actions=await page.locator('.uas-actions').evaluate(el=>{const b=el.getBoundingClientRect();return [...el.querySelectorAll('a,button')].every(a=>Math.abs(a.getBoundingClientRect().width-b.width)<2);});
+    assert.ok(actions,'Mobile home actions must share the full available width: '+route);
+   }
+   await page.screenshot({path:path.resolve('.local/design-review',area+'-'+width+'-'+size+'.png')});
+  }
+ }
+ await page.locator('[data-text-size-control]').click();await page.locator('.uas-text-size-panel:not([hidden]) input[value="default"]').check();await page.keyboard.press('Escape');
+}
 await page.goto('http://forge.test.localhost/audit/');await page.waitForTimeout(100);assert.equal(await page.evaluate(()=>typeof initAuditPage),'function');await page.locator('#audit-sn-input').fill('LOCAL-SYNTHETIC-RECORD');await page.locator('#btn-audit-search').click();await page.waitForTimeout(100);assert.ok(apiRequests.some(p=>p.startsWith('/api/audit/')));assert.match(await page.locator('body').innerText(),/Build record not found/);
 await page.goto('http://forge.test.localhost/guide/');await page.waitForTimeout(150);assert.equal(await page.evaluate(()=>typeof initGuidePage),'function');assert.ok(await page.locator('.guide-card').count()>0,'Shipped guide cards must initialize');await page.locator('.guide-card').first().click();await page.waitForFunction(()=>guideState.phase==='overview');
 for(const width of [390,1440]){await page.setViewportSize({width,height:900});await page.locator('#btn-mode-edit').click();assert.equal(await page.evaluate(()=>guideState.phase),'editing');
