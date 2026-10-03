@@ -44,7 +44,7 @@ Research and implementation details are in [UX_IMPLEMENTATION_RESEARCH_2026-10-0
 
 ## Verification
 
-Source and built audits, offline build, Python fixtures, Node regressions and CI browser acceptance are tracked in the implementation research document and draft PR. Browser access to the hosted preview is blocked by automatic approval review at Cloudflare Access; authenticated preview review remains a release gate.
+Source and built audits, offline build, Python fixtures, Node regressions and CI browser acceptance are tracked in the implementation research document and draft PR. Authorized hosted-preview review is complete. It verified the core task flows and exposed two Builder pointer-close obstructions that were fixed and covered by phone/desktop browser regressions. The research document records tested commit IDs, CI runs and the limits of live coverage.
 
 [Route inventory](UX_ROUTE_INVENTORY.csv) lists every mapped route and inspection coverage. Source/generated-output coverage is not a claim that every authenticated workflow has been exercised.
 
