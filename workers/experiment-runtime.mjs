@@ -317,14 +317,16 @@ export async function executeIsolatedCandidate({experiment:experimentValue, cand
 
 async function appendRecord(env, table, idColumn, id, digestColumn, recordDigest, record) {
   const body = canonicalJson(record), created = new Date().toISOString();
-  const existing = await env.AUTONOMY_DB.prepare(`SELECT ${digestColumn} digest FROM ${table} WHERE ${idColumn}=?1`).bind(id).first();
-  if (existing) {
-    if (existing.digest !== recordDigest) throw new Error(`${table} id conflicts with different content`);
-    return {id, digest:recordDigest, idempotentReplay:true};
-  }
-  await env.AUTONOMY_DB.prepare(`INSERT INTO ${table}(${idColumn},${digestColumn},record_json,created) VALUES(?1,?2,?3,?4)`)
+  const inserted = await env.AUTONOMY_DB.prepare(`INSERT OR IGNORE INTO ${table}(${idColumn},${digestColumn},record_json,created) VALUES(?1,?2,?3,?4)`)
     .bind(id, recordDigest, body, created).run();
-  return {id, digest:recordDigest, idempotentReplay:false};
+  const stored = await env.AUTONOMY_DB.prepare(
+    `SELECT ${digestColumn} digest,record_json FROM ${table} WHERE ${idColumn}=?1`,
+  ).bind(id).first();
+  if (!stored) throw new Error(`${table} registration did not persist`);
+  if (stored.digest !== recordDigest || stored.record_json !== body) {
+    throw new Error(`${table} id conflicts with different content`);
+  }
+  return {id, digest:recordDigest, idempotentReplay:!inserted.meta?.changes};
 }
 
 export async function registerExperiment(env, value) {
@@ -400,16 +402,17 @@ export async function recordIncident(env, value) {
 
 export async function recordServingReceipt(env, value) {
   const record = validateServingReceipt(value), recordDigest = await canonicalDigest(record);
-  const existing = await env.AUTONOMY_DB.prepare(
-    'SELECT receipt_digest digest FROM improvement_serving_receipts WHERE receipt_id=?1',
-  ).bind(record.receiptId).first();
-  if (existing) {
-    if (existing.digest !== recordDigest) throw new Error('improvement serving receipt id conflicts with different content');
-    return {id:record.receiptId, digest:recordDigest, idempotentReplay:true};
-  }
-  await env.AUTONOMY_DB.prepare(
-    'INSERT INTO improvement_serving_receipts(receipt_id,receipt_digest,policy_id,configured_version,actual_version,active_generation,record_json,created) VALUES(?1,?2,?3,?4,?5,?6,?7,?8)',
+  const body = canonicalJson(record);
+  const inserted = await env.AUTONOMY_DB.prepare(
+    'INSERT OR IGNORE INTO improvement_serving_receipts(receipt_id,receipt_digest,policy_id,configured_version,actual_version,active_generation,record_json,created) VALUES(?1,?2,?3,?4,?5,?6,?7,?8)',
   ).bind(record.receiptId, recordDigest, record.policyId, record.configuredVersion, record.actualVersion,
-    record.activeGeneration, canonicalJson(record), new Date().toISOString()).run();
-  return {id:record.receiptId, digest:recordDigest, idempotentReplay:false};
+    record.activeGeneration, body, new Date().toISOString()).run();
+  const stored = await env.AUTONOMY_DB.prepare(
+    'SELECT receipt_digest digest,record_json FROM improvement_serving_receipts WHERE receipt_id=?1',
+  ).bind(record.receiptId).first();
+  if (!stored) throw new Error('improvement serving receipt registration did not persist');
+  if (stored.digest !== recordDigest || stored.record_json !== body) {
+    throw new Error('improvement serving receipt id conflicts with different content');
+  }
+  return {id:record.receiptId, digest:recordDigest, idempotentReplay:!inserted.meta?.changes};
 }

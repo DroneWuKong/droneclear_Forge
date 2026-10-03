@@ -244,6 +244,12 @@ test('improvement routes preserve authenticated append-only lineage without serv
     'improvement/experiments', 'POST', {...experiment, lane:'other-lane'}, 'review-token',
   ), env)).status, 409);
 
+  const concurrent = improvementExperiment({experimentId:'experiment:route-concurrent'});
+  const concurrentResponses = await Promise.all([1, 2, 3, 4].map(() => handlePatternsAutonomy(request(
+    'improvement/experiments', 'POST', concurrent, 'review-token',
+  ), env)));
+  assert.deepEqual(concurrentResponses.map(response => response.status).sort(), [200, 200, 200, 201]);
+
   assert.equal((await handlePatternsAutonomy(request(
     'improvement/candidates', 'POST', candidate, 'review-token',
   ), env)).status, 201);
@@ -285,7 +291,7 @@ test('improvement routes preserve authenticated append-only lineage without serv
   const audit = await (await handlePatternsAutonomy(request(
     'improvement/audit', 'GET', undefined, 'review-token',
   ), env)).json();
-  assert.equal(audit.experiments.length, 1);
+  assert.equal(audit.experiments.length, 2);
   assert.equal(audit.candidates.length, 1);
   assert.equal(audit.evaluations.length, 1);
   assert.equal(audit.incidents.length, 1);
