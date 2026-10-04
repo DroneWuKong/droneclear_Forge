@@ -1,0 +1,77 @@
+name: Production incident notifications
+
+on:
+  workflow_run:
+    workflows: ["Deploy Forge to Cloudflare Pages", "Forge + Patterns Production Smoke"]
+    types: [completed]
+    branches: [master]
+  pull_request:
+    paths:
+      - ".github/workflows/production-notifications.yml"
+      - "tools/production_alert.cjs"
+      - "tests/test_production_alert.cjs"
+      - ".github/workflows/intelligence_pipeline.yml"
+  push:
+    branches: [master]
+    paths:
+      - ".github/workflows/production-notifications.yml"
+      - "tools/production_alert.cjs"
+      - "tests/test_production_alert.cjs"
+      - ".github/workflows/intelligence_pipeline.yml"
+
+permissions:
+  contents: read
+  actions: read
+
+# Serialize completed-result handling; never cancel an in-flight notification.
+concurrency:
+  group: production-notifications-${{ github.event.workflow_run.workflow_id || github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Test incident, recovery, and suppression policy without email
+        run: node --test tests/test_production_alert.cjs
+
+  notify:
+    needs: validate
+    if: >-
+      github.event_name == 'workflow_run' &&
+      github.event.workflow_run.head_branch == 'master' &&
+      github.event.workflow_run.event != 'pull_request'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      # workflow_run has secrets. Only load trusted default-branch code,
+      # never the triggering branch or any artifacts from the triggering run.
+      - uses: actions/checkout@v4
+        with:
+          ref: master
+          persist-credentials: false
+      - name: Classify production result and suppress repeat alerts
+        id: policy
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const { prepare } = require('./tools/production_alert.cjs');
+            await prepare({ github, context, core });
+      - name: Email new production incident or recovery
+        if: steps.policy.outputs.send == 'true'
+        uses: dawidd6/action-send-mail@v3
+        with:
+          server_address: smtp.gmail.com
+          server_port: 465
+          secure: true
+          username: ${{ secrets.SMTP_USER }}
+          password: ${{ secrets.SMTP_PASS }}
+          subject: ${{ steps.policy.outputs.subject }}
+          to: jeremiah@midwestniceuas.com
+          from: Forge Production <${{ secrets.SMTP_USER }}>
+          body: ${{ steps.policy.outputs.body }}

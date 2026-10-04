@@ -165,22 +165,6 @@ jobs:
           echo "**Run mode:** $INPUT_GROUP" >> "$GITHUB_STEP_SUMMARY"
           echo "**Changes:** ${CHANGES:-unknown}" >> "$GITHUB_STEP_SUMMARY"
 
-      - name: Email notification
-        # Keep the useful "changes landed" summary, but do not send an email
-        # for a successful no-op run.  Failures still always notify.
-        if: ${{ failure() || (env.CHANGES != '' && env.CHANGES != 'none') }}
-        uses: dawidd6/action-send-mail@v3
-        with:
-          server_address: smtp.gmail.com
-          server_port: 465
-          secure: true
-          username: ${{ secrets.SMTP_USER }}
-          password: ${{ secrets.SMTP_PASS }}
-          subject: "Forge Intelligence Pipeline — ${{ job.status }}"
-          to: jeremiah@midwestniceuas.com
-          from: Forge Pipeline <${{ secrets.SMTP_USER }}>
-          body: |
-            Forge Intelligence Pipeline — ${{ job.status }}
-            Run: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
-            Changes: ${{ env.CHANGES }}
-        continue-on-error: true
+      # Routine changes and miner failures are covered by the owner's daily
+      # health summary. Production incident emails are owned by
+      # production-notifications.yml; keep every run's evidence in this summary.
