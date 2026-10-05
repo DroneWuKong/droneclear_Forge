@@ -223,6 +223,16 @@ async function renderComponents(searchTerm = '') {
         cautionGroup.sort((a, b) => a.warningCount - b.warningCount || weightSort(a, b));
         incompatGroup.sort((a, b) => (a.comp.name || '').localeCompare(b.comp.name || ''));
 
+        // Hash this render once, rather than hashing the catalog separately for every card.
+        const matchingSnapshot = import('/static/forge-matching-feedback.js').then(async module => ({
+            module,
+            snapshot: await module.prepareMatchingSnapshot({ category: currentCategory,
+                context: [currentCategory, Object.entries(currentBuild).map(([cat, part]) => [cat, part?.pid || null]).sort()],
+                catalog: filteredComponents.map(part => [part.pid, part.schema_data || {}]),
+            }),
+        }));
+        matchingSnapshot.catch(() => {});
+
         let cardIndex = 0;
 
         // Helper: render a group of cards
@@ -234,6 +244,13 @@ async function renderComponents(searchTerm = '') {
 
                 const card = createComponentCard(comp, highlightData);
                 card.classList.add(`card--${cssClass}`);
+                // Capture an explicit judgment against the exact displayed feature snapshot.
+                const feedbackSnapshot = {
+                    group: ({ 'compat-green': 'compatible', 'compat-orange': 'caution', 'compat-red': 'incompatible' })[cssClass],
+                    warningCount: warnings.length, position: cardIndex + 1,
+                };
+                matchingSnapshot.then(({ module, snapshot }) =>
+                    module.attachMatchingFeedback(card, comp, { ...snapshot, ...feedbackSnapshot })).catch(() => {});
 
                 // Attach warning summary tooltip for caution cards
                 if (cssClass === 'compat-orange' && warnings.length > 0) {
