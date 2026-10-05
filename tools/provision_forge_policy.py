@@ -24,7 +24,7 @@ DATABASE = "AUTONOMY_DB"
 DATABASE_ID = "44950cd6-f34c-4fd2-bd2e-4dcf42aeeaf6"
 SECRET_NAME = "FORGE_POLICY_SIGNING_SECRET"
 MIGRATION = "migrations/0008_forge_matching_policy.sql"
-STATUS_URL = "https://uas-forge.com/api/autonomy/forge-policy/status"
+STATUS_URL = "https://uas-patterns.com/api/autonomy/forge-policy/status"
 WRANGLER = ["npx", "--yes", "wrangler@4.147.0"]
 
 
@@ -38,8 +38,10 @@ class NoRedirect(urllib.request.HTTPRedirectHandler):
 
 
 def fetch_json(url, token=None):
-    headers = {"Accept": "application/json", "Cache-Control": "no-cache",
-               "User-Agent": "ForgePolicyDeploymentVerification/1.0"}
+    # Match the existing, deployed Forge/Patterns production smoke client.
+    headers = {"Accept": "text/html,application/json;q=0.9,*/*;q=0.8",
+               "Cache-Control": "no-cache", "Pragma": "no-cache",
+               "User-Agent": "ForgePatternsProductionSmoke/1.1 (+https://uas-patterns.com/)"}
     if token:
         headers["Authorization"] = "Bearer " + token
     request = urllib.request.Request(url, headers=headers)
@@ -175,7 +177,7 @@ def verify(attempts=12):
     url = status_url()
     for attempt in range(attempts):
         try:
-            print(json.dumps(verify_status(fetch_json(url))))
+            print(json.dumps({"verified_url": url, **verify_status(fetch_json(url))}))
             return
         except ProvisioningError as caught:
             error = caught

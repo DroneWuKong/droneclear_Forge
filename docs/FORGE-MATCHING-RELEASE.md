@@ -13,10 +13,14 @@ and reads the schema back. It preserves an existing signing secret. If absent,
 it generates a separate 384-bit secret in the trusted CI process and supplies
 it to pinned Wrangler over stdin; no key is saved in the repository or artifact.
 After upload, the workflow requires public status readback to confirm signing
-and the actual serving version on the exact deployment URL returned by Wrangler.
-The origin is locked to this Pages project. The custom domain can challenge
-CI clients with HTTP 403; using the release's Pages URL verifies the same
-production bundle without changing zone rules or authenticated control routes.
+and the actual serving version through the canonical `uas-patterns.com` service
+for this shared Pages project. It uses the existing production smoke client's
+request headers. Forge's custom domain can challenge CI clients with HTTP 403,
+and hashed Pages URLs can redirect to preview Access protection. Neither is
+treated as successful readback. A separate read-only PR check verifies the
+canonical probe before release, without credentials, zone changes or writes.
+An optional exact-project deployment URL remains supported for diagnostics;
+redirects are rejected and cannot be followed into a login page.
 Provisioning never starts shadow or activates.
 
 The existing deployment token needs Pages Edit and D1 Edit on these resources.
