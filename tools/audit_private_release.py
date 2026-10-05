@@ -147,14 +147,31 @@ def main():
     for stale in ("AeroVironment", "Auterion", "Kratos", "Griffon Aerospace", "Napatree"):
         assert f'name:"{stale}"' not in focus, f"G-I forecast company leaked into current focus: {stale}"
 
-    for page in ("dossiers", "supply-web", "data", "components-bom", "drone-config"):
+    for page in ("dossiers", "supply-web", "data", "components-bom", "drone-config", "models"):
         html = (BUILD / page / "index.html").read_text(encoding="utf-8")
         for route in ROUTES:
             assert route in html, f"{page} navigation lacks {route}"
 
+    model_catalog = load(BUILD / "models" / "catalog.json")
+    assert model_catalog.get("access", "").startswith("Cloudflare Access gated")
+    assert len(model_catalog.get("bundles", [])) == 3
+    exported_names = set()
+    for bundle in model_catalog["bundles"]:
+        package = bundle["package"]
+        package_path = BUILD / "models" / "files" / package["name"]
+        assert package_path.stat().st_size == package["bytes"]
+        assert hashlib.sha256(package_path.read_bytes()).hexdigest() == package["sha256"]
+        for row in bundle["files"]:
+            exported_names.add(row["name"])
+            path = BUILD / "models" / "files" / row["name"]
+            assert path.stat().st_size == row["bytes"]
+            assert hashlib.sha256(path.read_bytes()).hexdigest() == row["sha256"]
+    assert not exported_names.intersection({row["name"] for row in model_catalog["retired"]})
+
     print(
         "private release audit passed: 10 placements / 9 companies, "
-        f"{len(dossier_index)} dossiers, {len(data_index)} datasets, complete provenance"
+        f"{len(dossier_index)} dossiers, {len(data_index)} datasets, "
+        f"{len(model_catalog['bundles'])} model bundles, complete provenance"
     )
     return 0
 
