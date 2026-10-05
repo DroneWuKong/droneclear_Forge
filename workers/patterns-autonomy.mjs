@@ -16,6 +16,7 @@ import {
   registerExperiment,
 } from './experiment-runtime.mjs';
 import { handleForgeMatchingFeedback } from './forge-matching-feedback.mjs';
+import { handleSourceLearningFeedback } from './source-learning-feedback.mjs';
 
 const JSON_HEADERS = {
   'content-type': 'application/json',
@@ -643,6 +644,8 @@ async function purgeExpiredOperationalData(env, now = new Date()) {
     ['forge_matching_feedback',
       "DELETE FROM evidence_events WHERE entity_type='forge-matching' AND event_type='forge-match-feedback' AND created<?1",
       cutoff(RETENTION_DAYS.retrieval_feedback)],
+    ['source_learning_reviews',"DELETE FROM evidence_events WHERE entity_type='learning-source-judgment' AND created<?1",
+      cutoff(RETENTION_DAYS.retrieval_feedback)],
     ['shadow_receipts', 'DELETE FROM retrieval_shadow_receipts WHERE created<?1',
       cutoff(RETENTION_DAYS.retrieval_shadow)],
     ['shadow_attempts', 'DELETE FROM retrieval_shadow_attempts WHERE created<?1',
@@ -1160,6 +1163,9 @@ export async function handlePatternsAutonomy(request, env, context) {
       });
       return response || respond(404, { error: 'Forge feedback route not found' });
     }
+    if (path === 'source-learning') return await handleSourceLearningFeedback(request,env,{
+      respond,parseBody,reviewAuthorized:await reviewer(request,env.PATTERNS_REVIEW_TOKEN),
+    });
     if (path === 'improvement/experiments' && request.method === 'POST') {
       if (!await reviewer(request, env.PATTERNS_REVIEW_TOKEN)) {
         return respond(401, {error:'Reviewer authorization required'});
