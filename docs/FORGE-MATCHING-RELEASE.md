@@ -6,6 +6,20 @@ operation additionally needs migration, bindings, real traffic and readback.
 
 ## Provision and inspect
 
+The production Pages deployment now runs `tools/provision_forge_policy.py`
+before upload. It inspects the exact existing D1 binding and prerequisite
+schema, applies only additive migration 0008, rejects conflicting definitions,
+and reads the schema back. It preserves an existing signing secret. If absent,
+it generates a separate 384-bit secret in the trusted CI process and supplies
+it to pinned Wrangler over stdin; no key is saved in the repository or artifact.
+After upload, the workflow requires public status readback to confirm signing
+and the actual serving version. Provisioning never starts shadow or activates.
+
+The existing deployment token needs Pages Edit and D1 Edit on these resources.
+A permission failure stops deployment with an explicit failing step; it cannot
+be reported as operational readiness. An invalid existing key is never rotated
+automatically and causes runtime verification to fail.
+
 Apply `migrations/0008_forge_matching_policy.sql` to the existing `AUTONOMY_DB`
 after migrations 0001–0007. Configure a distinct secret
 `FORGE_POLICY_SIGNING_SECRET` containing at least 32 random bytes. Keep it out of
