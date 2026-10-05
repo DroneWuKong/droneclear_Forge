@@ -445,8 +445,9 @@ function forgeFeedback(overrides = {}) {
 }
 
 test('Forge matching judgments are minimized, idempotent and independently reviewed', async () => {
-  const { env, sql } = setup(), headers = { origin: 'https://uas-patterns.com' };
-  const payload = forgeFeedback({ identity: 'private-person', build: 'private-build' });
+  const { env, sql } = setup(), headers = { origin: 'https://uas-forge.com' };
+  const payload = forgeFeedback({ identity: 'private-person', build: 'private-build',
+    target: { ...forgeFeedback().target, product_id: 'ESC-UA-603700-СТРИЙ-v1-8S/' } });
   const first = await (await handlePatternsAutonomy(request('forge-feedback', 'POST', payload, undefined, headers), env)).json();
   assert.equal(first.received, true); assert.equal(first.automatic_promotion, false);
   const retry = await (await handlePatternsAutonomy(request('forge-feedback', 'POST', payload, undefined, headers), env)).json();
