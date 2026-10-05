@@ -3,6 +3,10 @@
 Production service: Cloudflare Pages project `droneclear-forge` at
 `https://uas-patterns.com`.
 
+Forge display-policy migration 0008 and its distinct signing credential are
+documented in [FORGE-MATCHING-RELEASE.md](FORGE-MATCHING-RELEASE.md). Existing
+Ask PIE activation remains separate; no learned Forge policy starts on deploy.
+
 ## Production resources
 
 Configure these exact Pages Functions bindings:

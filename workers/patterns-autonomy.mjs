@@ -16,6 +16,7 @@ import {
   registerExperiment,
 } from './experiment-runtime.mjs';
 import { handleForgeMatchingFeedback } from './forge-matching-feedback.mjs';
+import { handleForgeMatchingPolicy } from './forge-matching-policy.mjs';
 import { handleSourceLearningFeedback } from './source-learning-feedback.mjs';
 
 const JSON_HEADERS = {
@@ -656,6 +657,12 @@ async function purgeExpiredOperationalData(env, now = new Date()) {
       'DELETE FROM retrieval_policy_monitor_evaluations WHERE created<?1',
       cutoff(RETENTION_DAYS.policy_monitor_evaluations)],
   ];
+  // Keep existing maintenance available while the optional display-policy
+  // migration is staged. Its control routes stay closed until it is applied.
+  if (await env.AUTONOMY_DB.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name='forge_matching_receipts'").first()) {
+    operations.push(['forge_matching_receipts','DELETE FROM forge_matching_receipts WHERE created<?1',
+      cutoff(RETENTION_DAYS.retrieval_serving_receipts)]);
+  }
   const deleted = {};
   for (const [name, query, boundary] of operations) {
     const result = await env.AUTONOMY_DB.prepare(query).bind(boundary).run();
@@ -1153,6 +1160,13 @@ export async function handlePatternsAutonomy(request, env, context) {
   }
   if (!db) return respond(503, { error: 'Autonomous evidence storage is not configured' });
   try {
+    if (path === 'forge-policy' || path.startsWith('forge-policy/')) {
+      return await handleForgeMatchingPolicy(request,env,{
+        respond,parseBody,reviewAuthorized:await reviewer(request,env.PATTERNS_REVIEW_TOKEN),
+        sameOrigin:['https://uas-forge.com','https://www.uas-forge.com'].includes(request.headers.get('origin')),
+        rateLimit:async()=>rateLimitResponse(await consumeIngressRateLimit(request,env,'feedback')),
+      });
+    }
     if (path === 'forge-feedback' || path.startsWith('forge-feedback/')) {
       const response = await handleForgeMatchingFeedback(request, env, {
         respond, parseBody,

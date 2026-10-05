@@ -1,4 +1,5 @@
 // Explicit product judgments only. Adding a part or browsing never creates a label.
+import { matchingFeatures } from './forge-matching-policy.js';
 export async function prepareMatchingSnapshot(snapshot) {
   const digest = async value => [...new Uint8Array(await crypto.subtle.digest('SHA-256',
     new TextEncoder().encode(JSON.stringify(value))))].map(v => v.toString(16).padStart(2, '0')).join('');
@@ -8,12 +9,7 @@ export async function prepareMatchingSnapshot(snapshot) {
 
 export function attachMatchingFeedback(card, comp, snapshot) {
   if (!crypto.randomUUID || !comp.pid) return;
-  const weight = Number(comp.schema_data?.weight_g);
-  const specs = Object.values(comp.schema_data || {});
-  const features = { weight_known: Number.isFinite(weight) && weight > 0,
-    weight_g: Number.isFinite(weight) && weight > 0 ? Math.min(weight, 100000) : 0,
-    warning_count: snapshot.warningCount,
-    specification_completeness: specs.length ? specs.filter(v => v != null && v !== '').length / specs.length : 0 };
+  const features = matchingFeatures(comp, snapshot.warningCount);
   const controls = document.createElement('div');
   controls.className = 'matching-feedback';
   controls.setAttribute('aria-label', 'Was this component suggestion useful?');
@@ -28,9 +24,11 @@ export function attachMatchingFeedback(card, comp, snapshot) {
       buttons.forEach(b => { b.disabled = true; }); status.textContent = 'Sending…';
       // Keep the same id/body on transport retry; changing judgment creates a new event.
       button.feedbackBody ||= { schema_version: 'forge-match-feedback-v1', feedback_id: crypto.randomUUID(),
-        context_sha256: snapshot.context_sha256, catalog_revision: snapshot.catalog_revision, policy_version: 'compatibility-weight-v1',
+        context_sha256: snapshot.context_sha256, catalog_revision: snapshot.catalog_revision,
+        policy_version: snapshot.policy_version || 'compatibility-weight-v1',
         category: snapshot.category, label, target: { product_id: String(comp.pid),
-          compatibility_group: snapshot.group, position: snapshot.position, features } };
+          compatibility_group: snapshot.group, position: snapshot.position, features,
+          incumbent_position: snapshot.incumbentPosition || snapshot.position } };
       try {
         const response = await fetch('/api/autonomy/forge-feedback', { method: 'POST',
           headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(button.feedbackBody) });
