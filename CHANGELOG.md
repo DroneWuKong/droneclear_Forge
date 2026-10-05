@@ -1,5 +1,11 @@
 # Changelog
 
+## 2026-10-05 — Private source-learning judgments
+
+- Add reviewer-only, append-only extraction and graph judgments to the existing evidence ledger.
+- Export minimized hashes and bounded features; exclude research passages and reviewer identity.
+- Retain explicit needs-context judgments without converting them to training labels or policy authority.
+
 ## 2026-10-05 — Forge matching feedback lane
 
 - Capture explicit builder judgments against a hashed catalog and context snapshot.

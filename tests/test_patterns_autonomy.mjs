@@ -11,6 +11,7 @@ import {
   FORBIDDEN_CANDIDATE_CAPABILITIES, buildIncident,
 } from '../workers/experiment-runtime.mjs';
 import forgeData from '../workers/forge-data.js';
+import { cleanSourceSnapshot } from '../workers/source-learning-feedback.mjs';
 
 function setup() {
   const sql = new DatabaseSync(':memory:');
@@ -78,6 +79,47 @@ const request = (path, method = 'GET', payload, token, headers = {}) => new Requ
     ...(payload === undefined ? {} : { body: typeof payload === 'string' ? payload : JSON.stringify(payload) }),
   },
 );
+
+async function sourceReview(overrides = {}) {
+  const lane='graphify-projection',fingerprint='a'.repeat(64);
+  const data={id:(await sha256(canonicalJson({lane,fingerprint}))).slice(0,24),lane,fingerprint,
+    policy_version:'source-bound-quality-v1',source_keys:['b'.repeat(64)],claim_sha256:'c'.repeat(64),observation_sha256:'d'.repeat(64),
+    features:{passage_verified:true,explicit_identity:true,extracted:true,affirmed:true,scope_known:true,
+      negation_case:false,alias_case:false,primary_claims:1,independent_publishers:1},
+    excerpt:'Fictional private passage',identity:'private-human@example.invalid'};
+  return {review_id:'123e4567-e89b-42d3-a456-426614174777',data,observed_at:'2026-09-01T12:00:00Z',
+    action:'supported',notes:'Checked the exact fictional source identity and scope',...overrides};
+}
+
+test('source judgments require reviewer authority, are append-only and omit private passages and identity', async () => {
+  const {env,sql}=setup(),payload=await sourceReview();
+  assert.equal((await handlePatternsAutonomy(request('source-learning'),env)).status,401);
+  assert.equal((await handlePatternsAutonomy(request('source-learning','POST',payload),env)).status,401);
+  const first=await handlePatternsAutonomy(request('source-learning','POST',payload,'review-token'),env);
+  assert.equal(first.status,200);const receipt=await first.json();
+  assert.equal(receipt.automatic_promotion,false);
+  assert.equal((await handlePatternsAutonomy(request('source-learning','POST',payload,'review-token'),env)).status,200);
+  assert.equal(sql.prepare("SELECT count(*) n FROM evidence_events WHERE entity_type='learning-source-judgment'").get().n,1);
+  const stored=sql.prepare('SELECT data FROM evidence_events WHERE id=?').get(receipt.event_id).data;
+  assert.ok(!stored.includes('Fictional private passage'));assert.ok(!stored.includes('private-human@'));
+  assert.equal((await handlePatternsAutonomy(request('source-learning','POST',{...payload,action:'not_supported'},'review-token'),env)).status,409);
+  const updated={...payload,review_id:'223e4567-e89b-42d3-a456-426614174777',action:'needs_context'};
+  assert.equal((await handlePatternsAutonomy(request('source-learning','POST',updated,'review-token'),env)).status,200);
+  const exported=await (await handlePatternsAutonomy(request('source-learning','GET',undefined,'review-token'),env)).json();
+  assert.equal(exported.schema_version,'source-learning-feedback-v1');assert.equal(exported.truncated,false);
+  assert.equal(exported.feedback.length,1);assert.equal(exported.feedback[0].disposition.action,'needs_context');
+  assert.equal(exported.feedback[0].disposition.human_reviewed,true);
+  assert.equal(sql.prepare("SELECT count(*) n FROM evidence_events WHERE entity_type='learning-source-judgment'").get().n,2);
+  assert.equal(sql.prepare('SELECT count(*) n FROM retrieval_policy_state').get().n,0);
+});
+
+test('source judgments reject fabricated identities, malformed features, future dates and promotion actions', async () => {
+  const {env}=setup(),payload=await sourceReview();
+  for(const changed of [{...payload,action:'activate'},{...payload,notes:' '},{...payload,observed_at:'2999-01-01T00:00:00Z'},
+    {...payload,data:{...payload.data,id:'0'.repeat(24)}},{...payload,data:{...payload.data,features:{...payload.data.features,primary_claims:-1}}}])
+    assert.equal((await handlePatternsAutonomy(request('source-learning','POST',changed,'review-token'),env)).status,400);
+  const clean=await cleanSourceSnapshot(payload.data);assert.equal(clean.excerpt,undefined);assert.equal(clean.identity,undefined);
+});
 
 const improvementDigest = character => `sha256:${character.repeat(64)}`;
 const improvementExperiment = (overrides = {}) => ({
