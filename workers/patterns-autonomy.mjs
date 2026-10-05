@@ -15,6 +15,7 @@ import {
   recordEvaluation, recordIncident, recordServingReceipt, registerCandidate,
   registerExperiment,
 } from './experiment-runtime.mjs';
+import { handleForgeMatchingFeedback } from './forge-matching-feedback.mjs';
 
 const JSON_HEADERS = {
   'content-type': 'application/json',
@@ -635,6 +636,13 @@ async function purgeExpiredOperationalData(env, now = new Date()) {
       "DELETE FROM evidence_events WHERE entity_type='retrieval' "
       + "AND event_type='retrieval-feedback' AND created<?1",
       cutoff(RETENTION_DAYS.retrieval_feedback)],
+    ['forge_feedback_dispositions',
+      "DELETE FROM evidence_events WHERE entity_type='forge-feedback' AND entity_id IN "
+      + "(SELECT id FROM evidence_events WHERE entity_type='forge-matching' AND created<?1)",
+      cutoff(RETENTION_DAYS.retrieval_feedback)],
+    ['forge_matching_feedback',
+      "DELETE FROM evidence_events WHERE entity_type='forge-matching' AND event_type='forge-match-feedback' AND created<?1",
+      cutoff(RETENTION_DAYS.retrieval_feedback)],
     ['shadow_receipts', 'DELETE FROM retrieval_shadow_receipts WHERE created<?1',
       cutoff(RETENTION_DAYS.retrieval_shadow)],
     ['shadow_attempts', 'DELETE FROM retrieval_shadow_attempts WHERE created<?1',
@@ -1142,6 +1150,16 @@ export async function handlePatternsAutonomy(request, env, context) {
   }
   if (!db) return respond(503, { error: 'Autonomous evidence storage is not configured' });
   try {
+    if (path === 'forge-feedback' || path.startsWith('forge-feedback/')) {
+      const response = await handleForgeMatchingFeedback(request, env, {
+        respond, parseBody,
+        reviewAuthorized: await reviewer(request, env.PATTERNS_REVIEW_TOKEN),
+        sameOrigin: feedbackOriginAllowed(request)
+          || ['https://uas-forge.com', 'https://www.uas-forge.com'].includes(request.headers.get('origin')),
+        rateLimit: async () => rateLimitResponse(await consumeIngressRateLimit(request, env, 'feedback')),
+      });
+      return response || respond(404, { error: 'Forge feedback route not found' });
+    }
     if (path === 'improvement/experiments' && request.method === 'POST') {
       if (!await reviewer(request, env.PATTERNS_REVIEW_TOKEN)) {
         return respond(401, {error:'Reviewer authorization required'});
@@ -1852,10 +1870,12 @@ export async function handlePatternsAutonomy(request, env, context) {
         return respond(401, { error: 'Reviewer authorization required' });
       }
       const result = await db.prepare(
-        "SELECT e.id,e.entity_id,e.data,e.created,(SELECT d.data FROM evidence_events d WHERE d.entity_type='feedback' AND d.entity_id=e.id AND d.event_type='reviewer-disposition' ORDER BY d.created DESC LIMIT 1) disposition FROM evidence_events e WHERE e.entity_type='retrieval' AND e.event_type='retrieval-feedback' ORDER BY e.created DESC LIMIT 200",
+        "SELECT e.id,e.entity_id,e.data,e.created,(SELECT d.data FROM evidence_events d WHERE d.entity_type='feedback' AND d.entity_id=e.id AND d.event_type='reviewer-disposition' ORDER BY d.created DESC,d.rowid DESC LIMIT 1) disposition FROM evidence_events e WHERE e.entity_type='retrieval' AND e.event_type='retrieval-feedback' ORDER BY e.created DESC,e.id DESC LIMIT 1000",
       ).all();
       return respond(200, {
         automatic_promotion: false,
+        limit: 1000,
+        truncated: result.results.length === 1000,
         feedback: result.results.map(row => ({
           id: row.id,
           query_id: row.entity_id,

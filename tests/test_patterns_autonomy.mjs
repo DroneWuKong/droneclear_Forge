@@ -437,6 +437,47 @@ test('terminal provider events fail the paired spec instead of leaving it stuck'
   sql.close();
 });
 
+function forgeFeedback(overrides = {}) {
+  return { schema_version: 'forge-match-feedback-v1', feedback_id: '123e4567-e89b-42d3-a456-426614174099',
+    context_sha256: 'a'.repeat(64), catalog_revision: 'b'.repeat(64), policy_version: 'compatibility-weight-v1',
+    category: 'motors', label: 'helpful', target: { product_id: 'motor-123', compatibility_group: 'compatible',
+      position: 1, features: { weight_known: true, weight_g: 32, warning_count: 0, specification_completeness: .75 } }, ...overrides };
+}
+
+test('Forge matching judgments are minimized, idempotent and independently reviewed', async () => {
+  const { env, sql } = setup(), headers = { origin: 'https://uas-patterns.com' };
+  const payload = forgeFeedback({ identity: 'private-person', build: 'private-build' });
+  const first = await (await handlePatternsAutonomy(request('forge-feedback', 'POST', payload, undefined, headers), env)).json();
+  assert.equal(first.received, true); assert.equal(first.automatic_promotion, false);
+  const retry = await (await handlePatternsAutonomy(request('forge-feedback', 'POST', payload, undefined, headers), env)).json();
+  assert.equal(retry.event_id, first.event_id);
+  assert.equal(sql.prepare("SELECT count(*) n FROM evidence_events WHERE event_type='forge-match-feedback'").get().n, 1);
+  const stored = JSON.parse(sql.prepare("SELECT data FROM evidence_events WHERE event_type='forge-match-feedback'").get().data);
+  assert.equal(stored.identity, undefined); assert.equal(stored.build, undefined);
+  assert.equal(stored.signal_quality, 'explicit-unreviewed');
+  assert.equal((await handlePatternsAutonomy(request('forge-feedback', 'POST', forgeFeedback({ label: 'wrong_match' }), undefined, headers), env)).status, 409);
+  assert.equal((await handlePatternsAutonomy(request('forge-feedback'), env)).status, 401);
+  assert.equal((await handlePatternsAutonomy(request('forge-feedback/' + first.event_id, 'POST', { action: 'accept-as-judgment', notes: 'checked' }), env)).status, 401);
+  assert.equal((await handlePatternsAutonomy(request('forge-feedback/' + first.event_id, 'POST', { action: 'activate', notes: 'checked' }, 'review-token'), env)).status, 400);
+  const review = await handlePatternsAutonomy(request('forge-feedback/' + first.event_id, 'POST', { action: 'accept-as-judgment', notes: 'Checked the catalog snapshot independently' }, 'review-token'), env);
+  assert.equal(review.status, 200);
+  const exported = await (await handlePatternsAutonomy(request('forge-feedback', 'GET', undefined, 'review-token'), env)).json();
+  assert.equal(exported.truncated, false); assert.equal(exported.feedback[0].disposition.action, 'accept-as-judgment');
+  assert.equal(sql.prepare('SELECT count(*) n FROM retrieval_policy_state').get().n, 0);
+  sql.close();
+});
+
+test('Forge feedback rejects incompatible snapshots and cross-origin submissions', async () => {
+  const { env, sql } = setup();
+  assert.equal((await handlePatternsAutonomy(request('forge-feedback', 'POST', forgeFeedback(), undefined, { origin: 'https://other.invalid' }), env)).status, 403);
+  for (const payload of [forgeFeedback({ context_sha256: 'raw-build' }), forgeFeedback({ policy_version: 'candidate-unapproved' }),
+    forgeFeedback({ target: { ...forgeFeedback().target, features: { ...forgeFeedback().target.features, weight_g: -1 } } }),
+    forgeFeedback({ target: { ...forgeFeedback().target, compatibility_group: 'incompatible' } })]) {
+    assert.equal((await handlePatternsAutonomy(request('forge-feedback', 'POST', payload, undefined, { origin: 'https://uas-patterns.com' }), env)).status, 400);
+  }
+  sql.close();
+});
+
 function retrievalFeedback(overrides = {}) {
   return {
     schema_version: 1,

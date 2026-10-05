@@ -1,5 +1,12 @@
 # Changelog
 
+## 2026-10-05 — Forge matching feedback lane
+
+- Capture explicit builder judgments against a hashed catalog and context snapshot.
+- Store anonymous, idempotent signals and append-only independent reviews in the existing evidence ledger.
+- Expose a bounded private export with truncation disclosure; preserve the existing compatibility and weight ranking.
+- Connect the feedback contract to the Ai-Project candidate cycle and private UAS Portfolio Learning view.
+
 ## 2026-10-02 — Intel pipeline health surface
 
 - Add `/intel-health/` as a dedicated public operations view over the wrapped `miner_health` and `miner_registry` contracts.
