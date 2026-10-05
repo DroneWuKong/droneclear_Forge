@@ -1,0 +1,26 @@
+name: Forge policy readback
+
+on:
+  pull_request:
+    paths:
+      - "tools/provision_forge_policy.py"
+      - ".github/workflows/cloudflare-pages-deploy.yml"
+      - ".github/workflows/forge-policy-readback.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  canonical-service:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Read the existing canonical service without credentials or writes
+        run: python3 tools/provision_forge_policy.py --verify
