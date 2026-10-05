@@ -20,6 +20,7 @@ import hashlib
 import argparse
 import tempfile
 import base64
+import zipfile
 from datetime import datetime, timezone
 from html.parser import HTMLParser
 from urllib.parse import urlsplit
@@ -162,6 +163,7 @@ PAGES = {
     'private/dossiers.html': 'private/dossiers/index.html',
     'private/supply-web.html': 'private/supply-web/index.html',
     'private/data.html': 'private/data/index.html',
+    'private/models.html': 'private/models/index.html',
     'private/components-bom.html': 'private/components-bom/index.html',
     'private/drone-config.html': 'private/drone-config/index.html',
     'ddg.html': 'private/ddg/index.html',
@@ -169,6 +171,81 @@ PAGES = {
 
 # Static assets to copy (JS, CSS, JSON, images)
 STATIC_EXTENSIONS = {'.js', '.mjs', '.css', '.json', '.xml', '.txt', '.png', '.jpg', '.svg', '.ico', '.gif', '.webp'}
+
+# Only these reviewed artifacts leave the private Ai-Project checkout during a
+# gated Forge build. Hashes bind the descriptions below to exact bytes and make
+# the export fail closed if an upstream artifact changes unexpectedly.
+PRIVATE_MODEL_BUNDLES = (
+    {
+        'id': 'ssd-apb-runtime',
+        'name': 'SSD MobileNet APB runtime',
+        'status': 'DEFAULT DEPLOYMENT',
+        'status_tone': 'ready',
+        'summary': 'The detector pair selected by the current APB service for general person and vehicle context detection.',
+        'use_with': 'Prismo APB wingman-detector with --arch ssd and TensorFlow Lite.',
+        'install': '/data/wingman/detector/assets/models/',
+        'portability': 'Medium — TFLite is portable, but the host must support TFLite_Detection_PostProcess and the documented 300×300 RGB UINT8 contract.',
+        'share_note': 'Authorized internal use. Exact upstream license evidence is not pinned, so do not publish as an open public download.',
+        'package': 'ssd-mobilenet-apb-runtime.zip',
+        'files': (
+            {'path': 'apb/detector/assets/models/ssd_mobilenet_v2_coco_quant_postprocess.tflite', 'bytes': 6220797, 'sha256': '42fb3d70ffb7bb37dd518f730f7be784b831c2078f30c497d0019cc2e987fa26', 'role': 'TFLite detector'},
+            {'path': 'apb/detector/assets/models/ssd_mobilenet_labels.txt', 'bytes': 660, 'sha256': 'ef13ecf0059e44b57d63f17544d9674083d464c5742b41af3d9596f9661fa861', 'role': 'Required COCO labels'},
+        ),
+    },
+    {
+        'id': 'cuas-v3-apb-bench',
+        'name': 'CUAS v3 APB bench candidate',
+        'status': 'BENCH ONLY',
+        'status_tone': 'caution',
+        'summary': 'Drone, bird, airplane, and helicopter YOLOv5n detector. NPU delegation passed, but false-lock and full-stack field gates remain open.',
+        'use_with': 'Prismo APB wingman-detector with --arch yolov5n, the documented anchors, and the Vivante delegate.',
+        'install': '/data/wingman/detector/assets/models/ for controlled bench or replay evaluation; do not replace the default service yet.',
+        'portability': 'Medium — the TFLite graph can move, but preprocessing, anchors, output decoding, labels, and NPU support are part of its contract.',
+        'share_note': 'Authorized engineering evaluation only; not a field-qualified or flight-qualified release.',
+        'package': 'cuas-v3-apb-bench.zip',
+        'files': (
+            {'path': 'apb/detector/assets/models/cuas-v3-yolov5n-640-int8.tflite', 'bytes': 1935088, 'sha256': '21621a99da2fdfe531f3bc78c9333b0dbae455982aca211702f51f24ff07b56d', 'role': 'INT8 TFLite detector'},
+            {'path': 'apb/detector/assets/models/cuas-v3-yolov5n-640-labels.txt', 'bytes': 31, 'sha256': 'b4b42d0d574286bbac6f42bcac7e5bd1c412cb758d8fd4172fef9eeadd66a7ef', 'role': 'Required class labels'},
+        ),
+    },
+    {
+        'id': 'cuas-v3-developer',
+        'name': 'CUAS v3 developer sources',
+        'status': 'DEVELOPER ONLY',
+        'status_tone': 'developer',
+        'summary': 'The exchange graph and training checkpoint used to inspect, convert, retrain, or fine-tune the CUAS family.',
+        'use_with': 'ONNX Runtime or a model converter for .onnx; matching PyTorch/YOLOv5 code for .pt.',
+        'install': 'Do not install these on the APB. Keep them on a development workstation.',
+        'portability': 'ONNX is the most framework-neutral artifact. The PyTorch checkpoint depends on compatible YOLOv5 code and is not a drop-in runtime model.',
+        'share_note': 'Authorized developers only; preserve the SHA256 and the accompanying model card when transferring.',
+        'package': 'cuas-v3-developer-sources.zip',
+        'files': (
+            {'path': 'apb/detector/assets/models/cuas-v3-yolov5n-640.onnx', 'bytes': 7101832, 'sha256': '22004543bfff25445fa8aa12477fec6674332faba63893f666aa7972005faa9e', 'role': 'ONNX exchange graph'},
+            {'path': 'apb/detector/assets/models/cuas-v3-yolov5n-640-best.pt', 'bytes': 3907048, 'sha256': '2e68ef4410c055cdba6b5246da3739436163e1a481ef4f939c5339244989381e', 'role': 'PyTorch training checkpoint'},
+        ),
+    },
+)
+
+PRIVATE_DOCTRINE_DATA = {
+    'id': 'doctrine-semantic-index',
+    'name': 'Doctrine semantic-search index',
+    'status': 'SERVER DATA — NOT A MODEL',
+    'status_tone': 'data',
+    'summary': 'A row-aligned vector matrix and metadata for cloud semantic retrieval. It cannot perform inference by itself.',
+    'use_with': 'services/pipeline/doctrine/retrieve.py plus 1,536-dimension query embeddings from the matching embedding family.',
+    'install': 'Server or research workstation only. Do not copy this pair into the APB detector model directory.',
+    'portability': 'Low across embedding families: every query and indexed row must use the same 1,536-dimension embedding contract.',
+    'share_note': 'Source links require Ai-Project repository access. The files remain at source because they exceed the dashboard static-asset policy.',
+    'files': (
+        {'path': 'data/doctrine/index.npy', 'bytes': 113578112, 'sha256': 'a60f142bc5b8c90a2bc82f840b41d34ff4c4f36a721045766c0942f5f5f7b5ea', 'role': '18,486 × 1,536 float32 vector matrix'},
+        {'path': 'data/doctrine/index_meta.json', 'bytes': 39167071, 'sha256': 'b999701be6f1704afff6be3880e5b01a124ad7f357e66d657aab81a1367c1dca', 'role': 'Row-aligned source and chunk metadata'},
+    ),
+}
+
+PRIVATE_RETIRED_MODEL_FILES = (
+    {'name': 'cuas-v3-yolov5n-640-fp32.tflite', 'reason': 'Unused CPU-only export; superseded by the retained INT8, ONNX, and PyTorch artifacts.'},
+    {'name': 'cuas-v3-yolov5n-640-fp32-new.tflite', 'reason': 'Unreproducible comparison export with no recorded exporter or accuracy delta.'},
+)
 
 # Files that must NOT appear in the public build/ static/ directory.
 # These are served by forge-data.mjs with tier-based auth.
@@ -1415,6 +1492,11 @@ SEO_META = {
         'Gated parts auto-builder: set prop class, battery, payload and a flight-time target to get a compatibility-valid component build with estimated thrust-to-weight and endurance.',
         'drone build configurator, auto-builder, FPV component selector, thrust to weight, flight time estimator',
     ),
+    'private/models.html': (
+        'Prismo Model & Data Downloads (Private)',
+        'Gated, hash-verified detector packages, developer weights, doctrine search data, install locations, runtime requirements, and portability guidance.',
+        'Prismo APB models, TFLite download, ONNX model, PyTorch checkpoint, doctrine vector index',
+    ),
     'waiver.html': (
         'Drone Document Builder — Part 107, COI, Ops Manuals & More',
         'Generate drone operations documents: Part 107 Ops Manual, Certificate of Insurance summary, Drone Services Agreement, Property Access, Incident Report, Client NDA, and DFR-specific templates.',
@@ -2096,6 +2178,92 @@ def sync_handbook_data(data_ref=None):
     return True
 
 
+def _sha256_file(path):
+    digest = hashlib.sha256()
+    with open(path, 'rb') as handle:
+        for chunk in iter(lambda: handle.read(1024 * 1024), b''):
+            digest.update(chunk)
+    return digest.hexdigest()
+
+
+def export_private_model_library(repo_root, data_ref, private_out=None):
+    """Export the reviewed model allowlist into the Access-gated build."""
+    if not re.fullmatch(r'[0-9a-fA-F]{40}', data_ref or ''):
+        raise ValueError('Private model export requires an exact upstream commit')
+    repo_root = Path(repo_root)
+    private_out = Path(private_out or Path(BUILD_DIR) / 'private')
+    models_out = private_out / 'models'
+    files_out = models_out / 'files'
+    files_out.mkdir(parents=True, exist_ok=True)
+
+    catalog = {
+        'schema_version': 1,
+        'upstream_repository': 'DroneWuKong/Ai-Project',
+        'upstream_ref': data_ref.lower(),
+        'access': 'Cloudflare Access gated; copied links do not bypass authentication',
+        'bundles': [],
+        'source_only': [],
+        'retired': list(PRIVATE_RETIRED_MODEL_FILES),
+    }
+
+    for bundle in PRIVATE_MODEL_BUNDLES:
+        exported = {key: value for key, value in bundle.items() if key not in {'files', 'package'}}
+        exported_files = []
+        source_pairs = []
+        for spec in bundle['files']:
+            source = repo_root / spec['path']
+            if not source.is_file():
+                raise FileNotFoundError(f"Required private model artifact missing: {spec['path']}")
+            actual_bytes = source.stat().st_size
+            actual_sha = _sha256_file(source)
+            if actual_bytes != spec['bytes'] or actual_sha != spec['sha256']:
+                raise ValueError(
+                    f"Private model artifact drifted: {spec['path']} "
+                    f"({actual_bytes} bytes, {actual_sha})"
+                )
+            filename = source.name
+            destination = files_out / filename
+            shutil.copy2(source, destination)
+            exported_files.append({
+                **spec,
+                'name': filename,
+                'download_url': f'/private/models/files/{filename}',
+                'source_url': f'https://github.com/DroneWuKong/Ai-Project/blob/{data_ref}/{spec["path"]}',
+            })
+            source_pairs.append((filename, source))
+
+        package_path = files_out / bundle['package']
+        with zipfile.ZipFile(package_path, 'w', compression=zipfile.ZIP_STORED) as archive:
+            for filename, source in source_pairs:
+                info = zipfile.ZipInfo(filename, date_time=(1980, 1, 1, 0, 0, 0))
+                info.compress_type = zipfile.ZIP_STORED
+                info.external_attr = 0o100644 << 16
+                archive.writestr(info, source.read_bytes())
+        exported['files'] = exported_files
+        exported['package'] = {
+            'name': bundle['package'],
+            'bytes': package_path.stat().st_size,
+            'sha256': _sha256_file(package_path),
+            'download_url': f'/private/models/files/{bundle["package"]}',
+        }
+        catalog['bundles'].append(exported)
+
+    doctrine = {key: value for key, value in PRIVATE_DOCTRINE_DATA.items() if key != 'files'}
+    doctrine['files'] = [
+        {
+            **spec,
+            'name': Path(spec['path']).name,
+            'source_url': f'https://github.com/DroneWuKong/Ai-Project/blob/{data_ref}/{spec["path"]}',
+        }
+        for spec in PRIVATE_DOCTRINE_DATA['files']
+    ]
+    catalog['source_only'].append(doctrine)
+    (models_out / 'catalog.json').write_text(
+        json.dumps(catalog, indent=2) + '\n', encoding='utf-8'
+    )
+    return catalog
+
+
 def sync_private_dossiers():
     """Pull the OSINT dossiers from the PRIVATE Ai-Project repo into
     build/private/dossiers/ at build time. The markdown is NEVER committed to
@@ -2190,6 +2358,11 @@ def sync_private_dossiers():
     repo_root = os.path.dirname(research.rstrip('/'))
     private_out = os.path.join(BUILD_DIR, 'private')
     os.makedirs(private_out, exist_ok=True)
+    model_catalog = export_private_model_library(repo_root, data_ref, private_out)
+    print(
+        f"    Exported {len(model_catalog['bundles'])} private model bundles "
+        f"to build/private/models/"
+    )
     supply_src = os.path.join(repo_root, 'data', 'ddg_supply_links.json')
     if os.path.isfile(supply_src):
         shutil.copy2(supply_src, os.path.join(private_out, 'supply_links.json'))
@@ -2312,6 +2485,12 @@ def sync_private_dossiers():
             'records': len(index),
         },
         'private_datasets': data_index,
+        'models': {
+            'path': '/private/models/',
+            'catalog_sha256': _sha256_file(Path(private_out) / 'models' / 'catalog.json'),
+            'bundles': len(model_catalog['bundles']),
+            'source_only': len(model_catalog['source_only']),
+        },
     }
     ddg3_src = os.path.join(repo_root, 'data', 'ddg3.json')
     if os.path.isfile(ddg3_src):
