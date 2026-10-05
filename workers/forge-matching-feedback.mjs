@@ -12,7 +12,8 @@ export function cleanForgeMatchingFeedback(input) {
     || !SHA.test(input.catalog_revision || '') || input.policy_version !== 'compatibility-weight-v1'
     || !/^[a-z][a-z0-9_]{0,63}$/.test(input.category || '')
     || !['helpful', 'wrong_match', 'catalog_error'].includes(input.label)
-    || !/^[A-Za-z0-9][A-Za-z0-9_.:-]{0,255}$/.test(target?.product_id || '')
+    || typeof target?.product_id !== 'string' || !target.product_id.trim()
+    || target.product_id.length > 256 || /[\u0000-\u001f\u007f]/.test(target.product_id)
     || !['compatible', 'caution', 'incompatible'].includes(target?.compatibility_group)
     || !Number.isInteger(target?.position) || target.position < 1 || target.position > 10000
     || typeof f?.weight_known !== 'boolean' || !finite(f?.weight_g, 100000)
