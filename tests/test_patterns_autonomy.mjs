@@ -22,6 +22,7 @@ function setup() {
   sql.exec(readFileSync(new URL('../migrations/0005_autonomy_ingress_controls.sql', import.meta.url), 'utf8'));
   sql.exec(readFileSync(new URL('../migrations/0006_portfolio_improvement_decisions.sql', import.meta.url), 'utf8'));
   sql.exec(readFileSync(new URL('../migrations/0007_improvement_experiment_os.sql', import.meta.url), 'utf8'));
+  sql.exec(readFileSync(new URL('../migrations/0008_forge_matching_policy.sql', import.meta.url), 'utf8'));
   const AUTONOMY_DB = {
     prepare(query) {
       let values = {};

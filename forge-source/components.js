@@ -157,7 +157,9 @@ async function selectCategory(category, _fromWizard = false) {
     await renderComponents();
 }
 
+let matchingRenderSequence = 0;
 async function renderComponents(searchTerm = '') {
+    const renderSequence = ++matchingRenderSequence;
     hideError();
 
     if (!schemaData[currentCategory]) {
@@ -233,11 +235,28 @@ async function renderComponents(searchTerm = '') {
         }));
         matchingSnapshot.catch(() => {});
 
+        let matchingPolicy = { policy_version: 'compatibility-weight-v1', applied: false };
+        try {
+            const [{ snapshot }, policyModule] = await Promise.all([
+                matchingSnapshot, import('/static/forge-matching-policy.js'),
+            ]);
+            matchingPolicy = await policyModule.applyMatchingPolicy([
+                ['compatible', compatGroup], ['caution', cautionGroup], ['incompatible', incompatGroup],
+            ], snapshot);
+        } catch { /* The incumbent remains available during an outage. */ }
+        if (renderSequence !== matchingRenderSequence) return;
+        if (matchingPolicy.applied) {
+            const notice = document.createElement('p');
+            notice.className = 'matching-policy-status';
+            notice.textContent = 'Suggestions ranked with the approved matching policy.';
+            elements.componentsGrid.appendChild(notice);
+        }
+
         let cardIndex = 0;
 
         // Helper: render a group of cards
         const renderGroup = (group, cssClass) => {
-            group.forEach(({ comp, warnings }) => {
+            group.forEach(({ comp, warnings, incumbentPosition }) => {
                 const highlightData = { active: true, matchPids: new Set(), warningPids: new Set() };
                 if (cssClass === 'compat-green') highlightData.matchPids.add(comp.pid);
                 else if (cssClass === 'compat-orange') highlightData.warningPids.add(comp.pid);
@@ -248,6 +267,8 @@ async function renderComponents(searchTerm = '') {
                 const feedbackSnapshot = {
                     group: ({ 'compat-green': 'compatible', 'compat-orange': 'caution', 'compat-red': 'incompatible' })[cssClass],
                     warningCount: warnings.length, position: cardIndex + 1,
+                    incumbentPosition: incumbentPosition || cardIndex + 1,
+                    policy_version: matchingPolicy.policy_version,
                 };
                 matchingSnapshot.then(({ module, snapshot }) =>
                     module.attachMatchingFeedback(card, comp, { ...snapshot, ...feedbackSnapshot })).catch(() => {});

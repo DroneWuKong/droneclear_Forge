@@ -9,13 +9,19 @@ export function cleanForgeMatchingFeedback(input) {
   const finite = (v, max) => typeof v === 'number' && Number.isFinite(v) && v >= 0 && v <= max;
   if (input?.schema_version !== 'forge-match-feedback-v1'
     || !UUID.test(input.feedback_id || '') || !SHA.test(input.context_sha256 || '')
-    || !SHA.test(input.catalog_revision || '') || input.policy_version !== 'compatibility-weight-v1'
+    || !SHA.test(input.catalog_revision || '')
+    || !(input.policy_version === 'compatibility-weight-v1' || /^candidate-[0-9a-f]{16}$/.test(input.policy_version || ''))
     || !/^[a-z][a-z0-9_]{0,63}$/.test(input.category || '')
     || !['helpful', 'wrong_match', 'catalog_error'].includes(input.label)
     || typeof target?.product_id !== 'string' || !target.product_id.trim()
     || target.product_id.length > 256 || /[\u0000-\u001f\u007f]/.test(target.product_id)
     || !['compatible', 'caution', 'incompatible'].includes(target?.compatibility_group)
     || !Number.isInteger(target?.position) || target.position < 1 || target.position > 10000
+    || (target?.incumbent_position !== undefined && (!Number.isInteger(target.incumbent_position)
+      || target.incumbent_position < 1 || target.incumbent_position > 10000))
+    || (input.policy_version !== 'compatibility-weight-v1' && target?.incumbent_position === undefined)
+    || (input.policy_version === 'compatibility-weight-v1' && target?.incumbent_position !== undefined
+      && target.incumbent_position !== target.position)
     || typeof f?.weight_known !== 'boolean' || !finite(f?.weight_g, 100000)
     || !Number.isInteger(f?.warning_count) || !finite(f.warning_count, 100)
     || !finite(f?.specification_completeness, 1)
@@ -31,7 +37,8 @@ export function cleanForgeMatchingFeedback(input) {
     policy_id: 'forge-product-matching', policy_version: input.policy_version,
     category: input.category, label: input.label,
     target: { product_id: target.product_id, compatibility_group: target.compatibility_group,
-      position: target.position, features: { weight_known: f.weight_known, weight_g: f.weight_g,
+      position: target.position, incumbent_position: target.incumbent_position || target.position,
+      features: { weight_known: f.weight_known, weight_g: f.weight_g,
         warning_count: f.warning_count, specification_completeness: f.specification_completeness } },
     signal_quality: 'explicit-unreviewed',
     data_policy: { anonymized: true, retention_days: 180 },
