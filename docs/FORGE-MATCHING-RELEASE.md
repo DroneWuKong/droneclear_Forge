@@ -13,7 +13,11 @@ and reads the schema back. It preserves an existing signing secret. If absent,
 it generates a separate 384-bit secret in the trusted CI process and supplies
 it to pinned Wrangler over stdin; no key is saved in the repository or artifact.
 After upload, the workflow requires public status readback to confirm signing
-and the actual serving version. Provisioning never starts shadow or activates.
+and the actual serving version on the exact deployment URL returned by Wrangler.
+The origin is locked to this Pages project. The custom domain can challenge
+CI clients with HTTP 403; using the release's Pages URL verifies the same
+production bundle without changing zone rules or authenticated control routes.
+Provisioning never starts shadow or activates.
 
 The existing deployment token needs Pages Edit and D1 Edit on these resources.
 A permission failure stops deployment with an explicit failing step; it cannot
