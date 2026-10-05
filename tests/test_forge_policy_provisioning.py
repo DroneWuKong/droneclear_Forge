@@ -65,6 +65,14 @@ class ForgeProvisioningTests(unittest.TestCase):
             with self.assertRaises(provision.ProvisioningError):
                 provision.verify_status({**status, **change})
 
+    def test_readback_is_locked_to_the_exact_project_deployment(self):
+        with patch.dict(provision.os.environ, {"FORGE_POLICY_DEPLOYMENT_URL": "https://254531cd.droneclear-forge.pages.dev/"}):
+            self.assertEqual(provision.status_url(), "https://254531cd.droneclear-forge.pages.dev/api/autonomy/forge-policy/status")
+        for url in ("https://example.com", "https://user@254531cd.droneclear-forge.pages.dev", "https://254531cd.droneclear-forge.pages.dev/other"):
+            with patch.dict(provision.os.environ, {"FORGE_POLICY_DEPLOYMENT_URL": url}):
+                with self.assertRaises(provision.ProvisioningError):
+                    provision.status_url()
+
 
 if __name__ == "__main__":
     unittest.main()

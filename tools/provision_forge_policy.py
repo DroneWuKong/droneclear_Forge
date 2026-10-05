@@ -38,7 +38,8 @@ class NoRedirect(urllib.request.HTTPRedirectHandler):
 
 
 def fetch_json(url, token=None):
-    headers = {"Accept": "application/json", "Cache-Control": "no-cache"}
+    headers = {"Accept": "application/json", "Cache-Control": "no-cache",
+               "User-Agent": "ForgePolicyDeploymentVerification/1.0"}
     if token:
         headers["Authorization"] = "Bearer " + token
     request = urllib.request.Request(url, headers=headers)
@@ -160,11 +161,21 @@ def verify_status(value):
         "policy_id", "active_version", "shadow_version", "generation", "signing_configured", "automatic_promotion")}
 
 
+def status_url():
+    deployment = os.environ.get("FORGE_POLICY_DEPLOYMENT_URL", "").rstrip("/")
+    if not deployment:
+        return STATUS_URL
+    if not re.fullmatch(r"https://[a-z0-9]+\.droneclear-forge\.pages\.dev", deployment):
+        raise ProvisioningError("Unexpected production deployment readback origin")
+    return deployment + "/api/autonomy/forge-policy/status"
+
+
 def verify(attempts=12):
     error = None
+    url = status_url()
     for attempt in range(attempts):
         try:
-            print(json.dumps(verify_status(fetch_json(STATUS_URL))))
+            print(json.dumps(verify_status(fetch_json(url))))
             return
         except ProvisioningError as caught:
             error = caught
