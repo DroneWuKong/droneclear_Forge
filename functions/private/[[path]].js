@@ -1,4 +1,5 @@
-import { verifyAccessToken, createSession, verifySession } from '../../workers/access-auth.mjs';
+import { verifyAccessIdentity, createSession, verifySession } from '../../workers/access-auth.mjs';
+import { handleEcosystemRequest } from '../../workers/ecosystem-api.mjs';
 /**
  * CF Pages Function — gate for /private/*
  * Deployed at functions/private/[[path]].js → runs for every /private/* request
@@ -14,6 +15,7 @@ import { verifyAccessToken, createSession, verifySession } from '../../workers/a
  * NEVER served unauthenticated.
  */
 const COOKIE_MAX_AGE = 60 * 60 * 24 * 7; // 7 days
+const ECOSYSTEM_PROXY = '/private/api/ecosystem/v1';
 const escapeHTML = value => String(value).replace(/[&<>"']/g, char => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[char]);
 
 function destination(url) {
@@ -100,6 +102,22 @@ export async function onRequest(context) {
   const url = new URL(request.url);
   const dest = destination(url);
 
+  // Keep partner writes inside the Access-covered /private/* boundary. The
+  // shared-password fallback may read private assets, but never receives an
+  // organization identity and therefore cannot create or publish records.
+  const accessIdentity = await verifyAccessIdentity(request.headers.get('Cf-Access-Jwt-Assertion'), env);
+  if (url.pathname === ECOSYSTEM_PROXY || url.pathname.startsWith(`${ECOSYSTEM_PROXY}/`)) {
+    if (!accessIdentity) {
+      return Response.json({ error: 'Cloudflare Access identity required' }, {
+        status: 401,
+        headers: { 'Cache-Control': 'no-store' },
+      });
+    }
+    const upstreamUrl = new URL(request.url);
+    upstreamUrl.pathname = upstreamUrl.pathname.replace(/^\/private\/api\/ecosystem\/v1/, '/api/ecosystem/v1');
+    return handleEcosystemRequest(new Request(upstreamUrl, request), env, accessIdentity);
+  }
+
   // 1) Cloudflare Access identity (only trustworthy when Access is in front).
   const serve = async () => {
     const upstream = await next();
@@ -108,7 +126,7 @@ export async function onRequest(context) {
     response.headers.set('X-Robots-Tag', 'noindex, nofollow');
     return response;
   };
-  if (await verifyAccessToken(request.headers.get('Cf-Access-Jwt-Assertion'), env)) return serve();
+  if (accessIdentity) return serve();
 
   const secret = env.PRIVATE_GATE_SECRET;
   if (!secret) return promptPage(dest, { locked: true });
