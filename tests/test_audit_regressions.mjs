@@ -113,7 +113,14 @@ test('shared-password sessions cannot become OEM organization identities', async
 test('OEM ecosystem catalog has a public build route and live API boundary', () => {
   const build = fs.readFileSync(new URL('../build_static.py', import.meta.url), 'utf8');
   const source = fs.readFileSync(new URL('../forge-source/ecosystem.html', import.meta.url), 'utf8');
+  const portal = fs.readFileSync(new URL('../forge-source/private/catalog.html', import.meta.url), 'utf8');
   assert.match(build, /'ecosystem\.html': 'ecosystem\/index\.html'/);
+  assert.match(build, /data-page="ecosystem">OEM catalog/);
+  assert.match(source, /href="\/static\/workspace\.css"/);
+  assert.match(source, /class="workspace uas-home uas-container ecosystem-page"/);
+  assert.doesNotMatch(source, /<nav class="shell nav"/);
+  assert.match(portal, /href="\/static\/workspace\.css"/);
+  assert.match(portal, /class="workspace portal-page"/);
   assert.match(source, /fetch\('\/api\/ecosystem\/v1\/products'/);
   assert.match(source, /href="\/private\/catalog\/"/);
   assert.match(source, /No OEM products are published yet/);
