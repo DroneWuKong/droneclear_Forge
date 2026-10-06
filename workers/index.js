@@ -20,6 +20,7 @@ import contributionSubmit from './contribution-submit.js';
 import faaLookup     from './faa-lookup.js';
 import digest        from './digest.js';
 import patternsAutonomy from './patterns-autonomy.mjs';
+import ecosystemApi from './ecosystem-api.mjs';
 
 const CORS = {
   'Access-Control-Allow-Origin': '*',
@@ -79,6 +80,9 @@ export default {
     // signed provider webhook, and reviewer-authenticated evidence routes.
     if (path === '/api/autonomy' || path.startsWith('/api/autonomy/'))
       return patternsAutonomy.fetch(req, env, ctx);
+
+    if (path === '/api/ecosystem/v1' || path.startsWith('/api/ecosystem/v1/'))
+      return ecosystemApi.fetch(req, env, ctx);
 
     // Legacy /.netlify/functions/* redirect → /api/* equivalents
     if (path.startsWith('/.netlify/functions/')) {

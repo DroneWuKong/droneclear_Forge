@@ -204,6 +204,18 @@ test('reviewed intelligence advisories pass the public non-authorizing gate', ()
   assert.equal(projectDataset(value, 'intelligence_advisories', params()), value);
 });
 
+test('product, revision, GTIN, lot, and serial selectors survive the publication gate', () => {
+  const value = intelligenceAdvisoryFixture();
+  value.advisories[0].affected_selectors = [
+    { kind: 'PRODUCT_ID', value: 'motor-1', match: 'EXACT' },
+    { kind: 'PRODUCT_REVISION', value: 'r3', match: 'EXACT' },
+    { kind: 'GTIN', value: '00012345678905', match: 'EXACT' },
+    { kind: 'LOT_NUMBER', value: 'lot-2026-10', match: 'EXACT' },
+    { kind: 'SERIAL_NUMBER', value: 'serial-0042', match: 'EXACT' },
+  ];
+  assert.deepEqual(intelligenceAdvisoryPublicationErrors(value), []);
+});
+
 test('authority-bearing or source-free advisories are withheld', () => {
   const authority = intelligenceAdvisoryFixture();
   authority.advisories[0].authorizes_readiness_change = true;

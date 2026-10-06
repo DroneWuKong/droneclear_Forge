@@ -1,0 +1,45 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="robots" content="noindex,nofollow">
+  <title>Forge Partner Catalog</title>
+  <style>
+    :root{color-scheme:dark;--ink:#ecf6ef;--muted:#91a99b;--line:#29483a;--green:#68e29a;--amber:#ffc862;--panel:#0c1c16}*{box-sizing:border-box}body{margin:0;background:radial-gradient(circle at 85% 0,#183e2d 0,transparent 34rem),#07110d;color:var(--ink);font:15px Inter,system-ui,sans-serif}main{max-width:1180px;margin:auto;padding:clamp(1.25rem,4vw,4rem)}header{display:flex;justify-content:space-between;gap:2rem;padding-bottom:2rem;border-bottom:1px solid var(--line)}h1{max-width:760px;margin:.5rem 0;font-size:clamp(2.5rem,7vw,5.5rem);line-height:.88;letter-spacing:-.06em}.kicker,label,dt,.boundary{font:700 .72rem ui-monospace,monospace;letter-spacing:.12em;text-transform:uppercase;color:var(--muted)}.badge{height:fit-content;padding:.6rem .8rem;border:1px solid #347650;border-radius:99px;color:var(--green)}section{margin-top:1.5rem;padding:1.5rem;border:1px solid var(--line);border-radius:1rem;background:#0b1914e8}h2{margin:.4rem 0 1rem;font-size:1.5rem}.grid{display:grid;grid-template-columns:repeat(3,1fr);gap:1rem}.field{display:grid;gap:.45rem}input,select,textarea{width:100%;padding:.8rem;border:1px solid var(--line);border-radius:.55rem;background:#050b08;color:var(--ink);font:inherit}textarea{min-height:17rem;resize:vertical;font:12px ui-monospace,monospace}button{padding:.8rem 1rem;border:0;border-radius:.55rem;background:var(--green);color:#06100b;font-weight:900;cursor:pointer}.import{display:grid;grid-template-columns:1fr auto;gap:1rem;align-items:end}.import .field{grid-column:1/-1}.boundary{display:block;margin-top:.8rem;color:var(--amber)}pre{max-height:18rem;overflow:auto;padding:1rem;border:1px solid var(--line);border-radius:.6rem;background:#050b08;color:#b7d7c3;white-space:pre-wrap}.status{color:var(--green)}@media(max-width:800px){header{display:block}.badge{display:inline-block;margin-top:1rem}.grid{grid-template-columns:1fr}.import{grid-template-columns:1fr}}
+  </style>
+</head>
+<body>
+<main>
+  <header><div><span class="kicker">Prismo ecosystem · Forge</span><h1>Publish product truth. Keep commercial offers separate.</h1><p>Versioned products and BOMs enter review before publication. Supplier availability remains its own evidence-bearing record.</p></div><span class="badge">ACCESS IDENTITY REQUIRED</span></header>
+
+  <section>
+    <span class="kicker">Tenant bootstrap</span><h2>Create your organization boundary</h2>
+    <div class="grid">
+      <div class="field"><label for="org">Organization ID</label><input id="org" placeholder="example-oem"></div>
+      <div class="field"><label for="name">Display name</label><input id="name" placeholder="Example OEM"></div>
+      <div class="field"><label for="kind">Organization kind</label><select id="kind"><option>OEM</option><option>MANUFACTURER</option><option>SUPPLIER</option><option>OPERATOR</option><option>HYBRID</option></select></div>
+    </div>
+    <p><button id="create">Create organization</button></p>
+  </section>
+
+  <section>
+    <span class="kicker">Catalog import</span><h2>Upload records for validation</h2>
+    <div class="import">
+      <div><label for="resource">Resource</label><select id="resource"><option>PRODUCTS</option><option>BOMS</option><option>OFFERS</option></select></div>
+      <button id="upload">Queue evidence-bound import</button>
+      <div class="field"><label for="records">JSON array of records</label><textarea id="records" spellcheck="false">[]</textarea></div>
+    </div>
+    <span class="boundary">Import creates DRAFT records only. Review and publish are separate actions. No PO, reservation, or manufacturing order is created.</span>
+  </section>
+
+  <section><span class="kicker">Receipt</span><h2 class="status" id="status">Waiting for an action.</h2><pre id="result">No request sent.</pre></section>
+</main>
+<script>
+  const $=id=>document.getElementById(id), show=(status,value)=>{$('status').textContent=status;$('result').textContent=JSON.stringify(value,null,2)};
+  async function call(path,options){const response=await fetch(path,{...options,headers:{'Content-Type':'application/json',...(options?.headers||{})}});const value=await response.json().catch(()=>({error:'Non-JSON response'}));show(response.ok?'ACCEPTED':'REJECTED',value);if(!response.ok)throw new Error(value.error||'Request failed');return value}
+  $('create').addEventListener('click',async()=>{try{await call('/api/ecosystem/v1/organizations',{method:'POST',body:JSON.stringify({organizationId:$('org').value.trim(),name:$('name').value.trim(),kind:$('kind').value})})}catch{}});
+  $('upload').addEventListener('click',async()=>{try{const records=JSON.parse($('records').value);const importId='import-'+new Date().toISOString().replace(/[-:.TZ]/g,'');await call(`/api/ecosystem/v1/organizations/${encodeURIComponent($('org').value.trim())}/catalog-imports`,{method:'POST',body:JSON.stringify({importId,resource:$('resource').value,records})})}catch(error){show('REJECTED',{error:error instanceof Error?error.message:'Invalid JSON'})}});
+</script>
+</body>
+</html>
