@@ -15,7 +15,7 @@ import { handleEcosystemRequest } from '../../workers/ecosystem-api.mjs';
  * NEVER served unauthenticated.
  */
 const COOKIE_MAX_AGE = 60 * 60 * 24 * 7; // 7 days
-const ECOSYSTEM_PROXY = '/private/api/ecosystem/v1';
+const ECOSYSTEM_API_MARKER = '/api/ecosystem/v1';
 const escapeHTML = value => String(value).replace(/[&<>"']/g, char => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[char]);
 
 function destination(url) {
@@ -106,15 +106,18 @@ export async function onRequest(context) {
   // shared-password fallback may read private assets, but never receives an
   // organization identity and therefore cannot create or publish records.
   const accessIdentity = await verifyAccessIdentity(request.headers.get('Cf-Access-Jwt-Assertion'), env);
-  if (url.pathname === ECOSYSTEM_PROXY || url.pathname.startsWith(`${ECOSYSTEM_PROXY}/`)) {
+  // Pages may expose the original pathname or the catch-all-relative pathname
+  // to middleware, so match the stable API marker rather than one prefix form.
+  const ecosystemOffset = url.pathname.indexOf(ECOSYSTEM_API_MARKER);
+  if (ecosystemOffset !== -1) {
     if (!accessIdentity) {
       return Response.json({ error: 'Cloudflare Access identity required' }, {
         status: 401,
-        headers: { 'Cache-Control': 'no-store' },
+        headers: { 'Cache-Control': 'no-store', 'X-Forge-Private-Route': 'ecosystem-access-required' },
       });
     }
     const upstreamUrl = new URL(request.url);
-    upstreamUrl.pathname = upstreamUrl.pathname.replace(/^\/private\/api\/ecosystem\/v1/, '/api/ecosystem/v1');
+    upstreamUrl.pathname = url.pathname.slice(ecosystemOffset);
     return handleEcosystemRequest(new Request(upstreamUrl, request), env, accessIdentity);
   }
 
