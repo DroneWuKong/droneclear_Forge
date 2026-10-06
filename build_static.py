@@ -676,6 +676,7 @@ _UNIFIED_NAV = r"""<!-- ── Unified UAS navigation (Research / Build / Learn)
       <a class="dc-dom-sublink" href="https://uas-forge.com/builder/" data-page="builder">My build</a>
       <a class="dc-dom-sublink" href="https://uas-forge.com/browse/" data-page="browse">Parts</a>
       <a class="dc-dom-sublink" href="https://uas-forge.com/platforms/" data-page="platforms">Platforms</a>
+      <a class="dc-dom-sublink" href="https://uas-forge.com/ecosystem/" data-page="ecosystem">OEM catalog</a>
       <a class="dc-dom-sublink" href="https://uas-forge.com/models/" data-page="models">Developer models</a>
     </div>
   </details>
@@ -724,7 +725,7 @@ _UNIFIED_NAV = r"""<!-- ── Unified UAS navigation (Research / Build / Learn)
     'browse':'Browse','wingman':'Wingman','intel':'Intel Hub','compare':'Compare',
     'compliance':'Compliance','dossier':'Dossier','platforms':'Platforms','regs':'Regs',
     'stack-builder':'Stack Builder','circuit-forge':'Circuit Forge','report':'Compliance Report','tools-home':'Tools',
-    'software-library':'Software Library','models':'Developer Models','industry':'Industry','tracker':'Contract Tracker',
+    'software-library':'Software Library','models':'Developer Models','ecosystem':'OEM Catalog','industry':'Industry','tracker':'Contract Tracker',
     'patterns-home':'Today','priorities':'Watchlist & priorities','ask-pie':'Research','intel-feed':'News','data-status':'Data status','brief':'Brief','patterns':'Flags','clock':'UAS Clock','ddg':'DDG Tracker',
     'adversary-bom':'Adversary BOM','mirroring':'Component Mirroring','actors':'Threat Actors',
     'ttps':'TTP Defense Gap','evasion':'Sanctions-Evasion','market-lens':'Market Lens',
