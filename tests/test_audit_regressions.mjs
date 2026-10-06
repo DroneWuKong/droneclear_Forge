@@ -98,6 +98,18 @@ test('static adapter intercepts only legacy catalog requests', async () => {
   }
   const before=calls.length; await context.window.fetch('/api/categories/'); assert.equal(calls.length,before);
 });
+test('shared-password sessions cannot become OEM organization identities', async () => {
+  let next = false;
+  const request = new Request('https://local.invalid/private/api/ecosystem/v1/organizations', {
+    method: 'POST',
+    headers: { Cookie: `pg=${await createSession('test', 60)}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ organizationId:'example-oem', name:'Example OEM', kind:'OEM' }),
+  });
+  const response = await onRequest({ request, env:{ PRIVATE_GATE_SECRET:'test' }, next(){ next=true; return new Response('unsafe'); } });
+  assert.equal(response.status, 401);
+  assert.equal((await response.json()).error, 'Cloudflare Access identity required');
+  assert.equal(next, false);
+});
 test('OEM ecosystem catalog has a public build route and live API boundary', () => {
   const build = fs.readFileSync(new URL('../build_static.py', import.meta.url), 'utf8');
   const source = fs.readFileSync(new URL('../forge-source/ecosystem.html', import.meta.url), 'utf8');
