@@ -278,7 +278,7 @@ PUBLIC_MODEL_RELEASES = (
             {'path': 'apb/detector/assets/models/cuas-v3-yolov5n-640-best.pt', 'bytes': 3907048, 'sha256': '2e68ef4410c055cdba6b5246da3739436163e1a481ef4f939c5339244989381e', 'role': 'PyTorch/YOLOv5 training checkpoint; load only in a trusted Python environment', 'format': 'PyTorch', 'normalize_lf': False},
             {'path': 'apb/detector/assets/models/cuas-v3-yolov5n-640-int8.tflite', 'bytes': 1935088, 'sha256': '21621a99da2fdfe531f3bc78c9333b0dbae455982aca211702f51f24ff07b56d', 'role': 'Quantized edge inference graph', 'format': 'TFLite INT8', 'normalize_lf': False},
             {'path': 'apb/detector/assets/models/cuas-v3-yolov5n-640-labels.txt', 'bytes': 31, 'sha256': 'b4b42d0d574286bbac6f42bcac7e5bd1c412cb758d8fd4172fef9eeadd66a7ef', 'role': 'Required class order: drone, bird, airplane, helicopter', 'format': 'Labels', 'normalize_lf': True},
-            {'path': 'apb/detector/assets/models/cuas-v3-yolov5n-640.md', 'bytes': 5694, 'sha256': 'a70297aa567547fbbbe58d0bf71f74b692a25d6e6149d9af7efca8393ba0c509', 'role': 'Model card: training, metrics, runtime contract, and open validation gates', 'format': 'Documentation', 'normalize_lf': True},
+            {'path': 'apb/detector/assets/models/cuas-v3-yolov5n-640.md', 'bytes': 4273, 'sha256': '1d18765bc84abf03354e971a2d252f9dc5eae4d00bc53a8f4ffd19090ce55e33', 'role': 'Model card: training, metrics, runtime contract, and open validation gates', 'format': 'Documentation', 'normalize_lf': True},
         ),
     },
 )
