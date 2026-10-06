@@ -130,6 +130,7 @@ PAGES = {
     'evidence-lab.html': 'evidence-lab/index.html',
     'tools-home.html': 'tools-home/index.html',
     'software-library.html': 'software-library/index.html',
+    'models.html': 'models/index.html',
     'tracker.html': 'tracker/index.html',
     'grants.html': 'grants/index.html',
     'regs.html': 'regs/index.html',
@@ -245,6 +246,49 @@ PRIVATE_DOCTRINE_DATA = {
 PRIVATE_RETIRED_MODEL_FILES = (
     {'name': 'cuas-v3-yolov5n-640-fp32.tflite', 'reason': 'Unused CPU-only export; superseded by the retained INT8, ONNX, and PyTorch artifacts.'},
     {'name': 'cuas-v3-yolov5n-640-fp32-new.tflite', 'reason': 'Unreproducible comparison export with no recorded exporter or accuracy delta.'},
+)
+
+# Public developer preview. This is one trained detector family in multiple
+# runtime formats, not four separately trained models. Exact hashes bind the
+# downloads and the explanatory model card to the reviewed upstream bytes.
+# Publication does not imply an open-source or commercial-use license.
+PUBLIC_MODEL_RELEASES = (
+    {
+        'id': 'cuas-v3-yolov5n-640',
+        'name': 'CUAS v3 YOLOv5n 640',
+        'status': 'EXPERIMENTAL — BENCH ONLY',
+        'status_tone': 'caution',
+        'summary': 'A compact object detector for drone, bird, airplane, and helicopter classes. The same trained weights are provided in three formats for different developer workflows.',
+        'task': 'Four-class aerial-object detection on 640×640 RGB input.',
+        'audiences': (
+            'Computer-vision developers evaluating or fine-tuning a detector.',
+            'Edge/embedded developers integrating a TFLite inference pipeline.',
+            'Researchers comparing aerial-object detection formats and results.',
+        ),
+        'use_with': 'ONNX Runtime, OpenCV DNN, or a compatible model converter for .onnx; matching PyTorch/YOLOv5 code for .pt; TensorFlow Lite plus the supplied labels and documented YOLOv5 decoding contract for .tflite.',
+        'install': 'Workstation: keep the ONNX or PyTorch file in your project model directory. APB bench evaluation: place the INT8 TFLite file and labels together under /data/wingman/detector/assets/models/.',
+        'portability': 'ONNX is the most framework-neutral option. PyTorch is best for compatible training code. TFLite is the smallest edge artifact, but preprocessing, output decoding, labels, and accelerator support remain part of the integration contract.',
+        'validation': '100 epochs on 20,391 training and 7,316 validation images; overall mAP50 0.679 and drone-class mAP50 0.741. Isolated APB NPU graph delegation passed at 27.7224 ms per inference.',
+        'limitations': 'No operational false-lock, full-stack field, environmental, authority, safety, or flight-qualification evidence. Do not use this preview to make autonomous, safety-critical, or enforcement decisions.',
+        'license_status': 'Public download for technical inspection and evaluation. No public reuse, redistribution, sublicensing, or commercial-use license is granted. Contact jeremiah@midwestniceuas.com for permission.',
+        'provenance_status': 'The retained training record is documented, but complete public redistribution clearance for every training-data source has not been established. Training data is not included.',
+        'package': 'cuas-v3-yolov5n-640-developer-preview.zip',
+        'files': (
+            {'path': 'apb/detector/assets/models/cuas-v3-yolov5n-640.onnx', 'bytes': 7101832, 'sha256': '22004543bfff25445fa8aa12477fec6674332faba63893f666aa7972005faa9e', 'role': 'Recommended framework-neutral inference graph', 'format': 'ONNX', 'normalize_lf': False},
+            {'path': 'apb/detector/assets/models/cuas-v3-yolov5n-640-best.pt', 'bytes': 3907048, 'sha256': '2e68ef4410c055cdba6b5246da3739436163e1a481ef4f939c5339244989381e', 'role': 'PyTorch/YOLOv5 training checkpoint; load only in a trusted Python environment', 'format': 'PyTorch', 'normalize_lf': False},
+            {'path': 'apb/detector/assets/models/cuas-v3-yolov5n-640-int8.tflite', 'bytes': 1935088, 'sha256': '21621a99da2fdfe531f3bc78c9333b0dbae455982aca211702f51f24ff07b56d', 'role': 'Quantized edge inference graph', 'format': 'TFLite INT8', 'normalize_lf': False},
+            {'path': 'apb/detector/assets/models/cuas-v3-yolov5n-640-labels.txt', 'bytes': 31, 'sha256': 'b4b42d0d574286bbac6f42bcac7e5bd1c412cb758d8fd4172fef9eeadd66a7ef', 'role': 'Required class order: drone, bird, airplane, helicopter', 'format': 'Labels', 'normalize_lf': True},
+            {'path': 'apb/detector/assets/models/cuas-v3-yolov5n-640.md', 'bytes': 5694, 'sha256': 'a70297aa567547fbbbe58d0bf71f74b692a25d6e6149d9af7efca8393ba0c509', 'role': 'Model card: training, metrics, runtime contract, and open validation gates', 'format': 'Documentation', 'normalize_lf': True},
+        ),
+    },
+)
+
+PUBLIC_MODEL_WITHHELD = (
+    {'name': 'SSD MobileNet APB runtime', 'reason': 'A third-party dependency, not one of our trained models; exact upstream license evidence is not pinned.'},
+    {'name': 'NanoDet VisDrone run', 'reason': 'Training completion was recorded, but the trained artifact was not retained in the repository.'},
+    {'name': 'YOLOv5s 1280 run', 'reason': 'The recorded run stopped at epoch 136 of 149 and no final artifact was retained.'},
+    {'name': 'Retired FP32 TFLite exports', 'reason': 'Unused or unreproducible comparison exports superseded by the retained INT8, ONNX, and PyTorch artifacts.'},
+    {'name': 'Doctrine semantic index', 'reason': 'Search data rather than a trained detector; it remains in the gated data workspace.'},
 )
 
 # Files that must NOT appear in the public build/ static/ directory.
@@ -473,6 +517,7 @@ _PAGE_SLUGS = {
     'stack-builder.html': 'stack-builder', 'circuit-forge.html': 'circuit-forge', 'industry.html': 'industry',
     'tools.html': 'tools', 'tools-home.html': 'tools-home',
     'software-library.html': 'software-library',
+    'models.html': 'models',
     'brief.html': 'brief', 'report.html': 'report',
     'compliance.html': 'compliance', 'tracker.html': 'tracker',
     'spec-sheets.html': 'spec-sheets', 'compliance-matrix.html': 'compliance-matrix',
@@ -622,6 +667,7 @@ _UNIFIED_NAV = r"""<!-- ── Unified UAS navigation (Research / Build / Learn)
       <a class="dc-dom-sublink" href="https://uas-forge.com/builder/" data-page="builder">My build</a>
       <a class="dc-dom-sublink" href="https://uas-forge.com/browse/" data-page="browse">Parts</a>
       <a class="dc-dom-sublink" href="https://uas-forge.com/platforms/" data-page="platforms">Platforms</a>
+      <a class="dc-dom-sublink" href="https://uas-forge.com/models/" data-page="models">Developer models</a>
     </div>
   </details>
   <details class="dc-dom-group" data-area="learn">
@@ -669,7 +715,7 @@ _UNIFIED_NAV = r"""<!-- ── Unified UAS navigation (Research / Build / Learn)
     'browse':'Browse','wingman':'Wingman','intel':'Intel Hub','compare':'Compare',
     'compliance':'Compliance','dossier':'Dossier','platforms':'Platforms','regs':'Regs',
     'stack-builder':'Stack Builder','circuit-forge':'Circuit Forge','report':'Compliance Report','tools-home':'Tools',
-    'software-library':'Software Library','industry':'Industry','tracker':'Contract Tracker',
+    'software-library':'Software Library','models':'Developer Models','industry':'Industry','tracker':'Contract Tracker',
     'patterns-home':'Today','priorities':'Watchlist & priorities','ask-pie':'Research','intel-feed':'News','data-status':'Data status','brief':'Brief','patterns':'Flags','clock':'UAS Clock','ddg':'DDG Tracker',
     'adversary-bom':'Adversary BOM','mirroring':'Component Mirroring','actors':'Threat Actors',
     'ttps':'TTP Defense Gap','evasion':'Sanctions-Evasion','market-lens':'Market Lens',
@@ -1577,6 +1623,11 @@ SEO_META = {
         'Every configurator, GCS, simulator, and firmware tool for FPV, commercial UAS, and defense platforms. Betaflight, QGroundControl, Mission Planner, ELRS, and 40+ more with direct download links.',
         'drone software, FPV configurator, ground control station, Betaflight configurator, ELRS configurator, Mission Planner, QGroundControl, drone tools download',
     ),
+    'models.html': (
+        'Developer Model Downloads — CUAS YOLOv5n — Forge',
+        'Download the hash-verified CUAS v3 YOLOv5n developer preview in ONNX, PyTorch, and INT8 TFLite formats with labels, model card, metrics, integration notes, and limitations.',
+        'CUAS model download, drone detector ONNX, YOLOv5n checkpoint, TFLite object detector, aerial object detection model',
+    ),
     'lexicon.html': (
         'Estimative Language — How PIE Expresses Confidence & Likelihood',
         'The fixed lexicon behind every PIE flag, prediction, and brief judgment: evidence tiers, ICD 203-style likelihood bands, confidence levels, and source types.',
@@ -2186,6 +2237,85 @@ def _sha256_file(path):
     return digest.hexdigest()
 
 
+def _public_artifact_bytes(path, normalize_lf=False):
+    """Return deterministic release bytes across Linux and Windows checkouts."""
+    data = Path(path).read_bytes()
+    if normalize_lf:
+        data = data.replace(b'\r\n', b'\n')
+    return data
+
+
+def export_public_model_library(repo_root, data_ref, public_out=None):
+    """Export the reviewed public developer preview and a hash manifest."""
+    if not re.fullmatch(r'[0-9a-fA-F]{40}', data_ref or ''):
+        raise ValueError('Public model export requires an exact upstream commit')
+    repo_root = Path(repo_root)
+    public_out = Path(public_out or BUILD_DIR)
+    models_out = public_out / 'models'
+    files_out = models_out / 'files'
+    files_out.mkdir(parents=True, exist_ok=True)
+
+    catalog = {
+        'schema_version': 1,
+        'upstream_repository': 'DroneWuKong/Ai-Project',
+        'upstream_ref': data_ref.lower(),
+        'access': 'Public developer preview; links may be shared',
+        'license': 'No public reuse, redistribution, sublicensing, or commercial-use license is granted. Contact jeremiah@midwestniceuas.com for permission.',
+        'safety': 'Experimental bench evaluation only; not operationally, field, safety, authority, or flight qualified.',
+        'releases': [],
+        'withheld': list(PUBLIC_MODEL_WITHHELD),
+    }
+
+    for release in PUBLIC_MODEL_RELEASES:
+        exported = {key: value for key, value in release.items() if key not in {'files', 'package'}}
+        exported_files = []
+        package_members = []
+        for spec in release['files']:
+            source = repo_root / spec['path']
+            if not source.is_file():
+                raise FileNotFoundError(f"Required public model artifact missing: {spec['path']}")
+            data = _public_artifact_bytes(source, spec.get('normalize_lf', False))
+            actual_bytes = len(data)
+            actual_sha = hashlib.sha256(data).hexdigest()
+            if actual_bytes != spec['bytes'] or actual_sha != spec['sha256']:
+                raise ValueError(
+                    f"Public model artifact drifted: {spec['path']} "
+                    f"({actual_bytes} bytes, {actual_sha})"
+                )
+            filename = source.name
+            destination = files_out / filename
+            destination.write_bytes(data)
+            public_spec = {key: value for key, value in spec.items() if key != 'normalize_lf'}
+            exported_files.append({
+                **public_spec,
+                'name': filename,
+                'download_url': f'/models/files/{filename}',
+                'upstream_path': spec['path'],
+            })
+            package_members.append((filename, data))
+
+        package_path = files_out / release['package']
+        with zipfile.ZipFile(package_path, 'w', compression=zipfile.ZIP_STORED) as archive:
+            for filename, data in package_members:
+                info = zipfile.ZipInfo(filename, date_time=(1980, 1, 1, 0, 0, 0))
+                info.compress_type = zipfile.ZIP_STORED
+                info.external_attr = 0o100644 << 16
+                archive.writestr(info, data)
+        exported['files'] = exported_files
+        exported['package'] = {
+            'name': release['package'],
+            'bytes': package_path.stat().st_size,
+            'sha256': _sha256_file(package_path),
+            'download_url': f'/models/files/{release["package"]}',
+        }
+        catalog['releases'].append(exported)
+
+    (models_out / 'catalog.json').write_text(
+        json.dumps(catalog, indent=2) + '\n', encoding='utf-8'
+    )
+    return catalog
+
+
 def export_private_model_library(repo_root, data_ref, private_out=None):
     """Export the reviewed model allowlist into the Access-gated build."""
     if not re.fullmatch(r'[0-9a-fA-F]{40}', data_ref or ''):
@@ -2362,6 +2492,11 @@ def sync_private_dossiers():
     print(
         f"    Exported {len(model_catalog['bundles'])} private model bundles "
         f"to build/private/models/"
+    )
+    public_model_catalog = export_public_model_library(repo_root, data_ref, BUILD_DIR)
+    print(
+        f"    Exported {len(public_model_catalog['releases'])} public model release "
+        f"to build/models/"
     )
     supply_src = os.path.join(repo_root, 'data', 'ddg_supply_links.json')
     if os.path.isfile(supply_src):

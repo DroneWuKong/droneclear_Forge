@@ -167,6 +167,21 @@ def test_private_export_emits_hashed_index_and_auditor_detects_tampering(corpus,
         )
         return catalog
 
+    def fake_public_model_export(_repo_root, data_ref, public_out):
+        models_out = Path(public_out) / 'models'
+        models_out.mkdir(parents=True, exist_ok=True)
+        catalog = {
+            'schema_version': 1,
+            'upstream_ref': data_ref,
+            'access': 'public test fixture',
+            'releases': [],
+            'withheld': [],
+        }
+        (models_out / 'catalog.json').write_text(
+            json.dumps(catalog, indent=2) + '\n', encoding='utf-8'
+        )
+        return catalog
+
     def fake_git(command, **kwargs):
         if command[1] == 'clone':
             for directory in ['research', 'data']:
@@ -176,6 +191,7 @@ def test_private_export_emits_hashed_index_and_auditor_detects_tampering(corpus,
         return subprocess.CompletedProcess(command, 0)
     monkeypatch.setattr(builder.subprocess, 'run', fake_git)
     monkeypatch.setattr(builder, 'export_private_model_library', fake_model_export)
+    monkeypatch.setattr(builder, 'export_public_model_library', fake_public_model_export)
     assert builder.sync_private_dossiers()
     release = json.loads((out / 'release.json').read_text())
     assert release['artifacts']['relationships']['records'] == 2

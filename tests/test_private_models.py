@@ -76,7 +76,8 @@ class PrivateModelExportTests(unittest.TestCase):
         for token in ("Use the right file", "How agnostic?", "Where it goes", "Copy package link"):
             self.assertIn(token, page)
         self.assertIn('/private/models/', landing)
-        self.assertIn("Prismo Model & Data Library", library)
+        self.assertIn("Forge Developer Models", library)
+        self.assertIn("/models/", library)
 
 
 if __name__ == "__main__":
