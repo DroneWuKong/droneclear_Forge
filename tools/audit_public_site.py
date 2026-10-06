@@ -150,12 +150,16 @@ def load_routes(root: Path, report: AuditReport) -> set[str]:
         source = path.read_text(encoding="utf-8")
         tree = ast.parse(source)
         pages: dict[str, str] | None = None
+        generated_routes: set[str] = set()
         for node in tree.body:
             if isinstance(node, ast.Assign) and any(isinstance(target, ast.Name) and target.id == "PAGES" for target in node.targets):
                 value = ast.literal_eval(node.value)
                 if isinstance(value, dict):
                     pages = value
-                    break
+            elif isinstance(node, ast.Assign) and any(isinstance(target, ast.Name) and target.id == "GENERATED_ROUTES" for target in node.targets):
+                value = ast.literal_eval(node.value)
+                if isinstance(value, (set, tuple, list)):
+                    generated_routes = {str(route) for route in value}
         if pages is None:
             raise ValueError("PAGES mapping not found")
     except Exception as exc:
@@ -171,6 +175,7 @@ def load_routes(root: Path, report: AuditReport) -> set[str]:
             routes.add("/" + output[: -len("index.html")])
         else:
             routes.add("/" + output.lstrip("/"))
+    routes.update(generated_routes)
     return routes
 
 

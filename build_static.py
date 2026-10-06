@@ -170,6 +170,13 @@ PAGES = {
     'ddg.html': 'private/ddg/index.html',
 }
 
+# Public routes materialized from pinned upstream bytes during production
+# builds rather than copied from forge-source/. The public-site auditor reads
+# this literal alongside PAGES so source HTML can link to generated manifests.
+GENERATED_ROUTES = {
+    '/models/catalog.json',
+}
+
 # Static assets to copy (JS, CSS, JSON, images)
 STATIC_EXTENSIONS = {'.js', '.mjs', '.css', '.json', '.xml', '.txt', '.png', '.jpg', '.svg', '.ico', '.gif', '.webp'}
 

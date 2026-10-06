@@ -46,7 +46,7 @@ def catalog(rows=None):
 def fixture(root: Path) -> Path:
     source = root / "forge-source"
     source.mkdir(parents=True)
-    (root / "build_static.py").write_text("PAGES={'patterns-home.html':'patterns-home/index.html','miner-health.html':'miner-health/index.html','brief.html':'brief/index.html'}\n", encoding="utf-8")
+    (root / "build_static.py").write_text("PAGES={'patterns-home.html':'patterns-home/index.html','miner-health.html':'miner-health/index.html','brief.html':'brief/index.html'}\nGENERATED_ROUTES={'/models/catalog.json'}\n", encoding="utf-8")
     (root / "_headers").write_text(VALID_HEADERS, encoding="utf-8")
     (root / "README.md").write_text("# Site\n\nPublic metadata: `dataset_catalog.json`.\n", encoding="utf-8")
     (source / "patterns-home.html").write_text(VALID_HTML, encoding="utf-8")
@@ -90,6 +90,14 @@ class PublicSiteAuditTests(unittest.TestCase):
             (source / "patterns-home.html").write_text(VALID_HTML.replace("/brief/", "/not-a-route/"), encoding="utf-8")
         report = self.run_fixture(mutate)
         self.assertTrue(any(item.code == "broken-internal-route" for item in report.errors))
+
+    def test_generated_manifest_route_is_allowed(self):
+        def mutate(root, source):
+            (source / "patterns-home.html").write_text(
+                VALID_HTML.replace("/brief/", "/models/catalog.json"), encoding="utf-8"
+            )
+        report = self.run_fixture(mutate)
+        self.assertFalse(any(item.code == "broken-internal-route" for item in report.errors))
 
     def test_duplicate_catalog_id_is_blocking(self):
         def mutate(root, source):
