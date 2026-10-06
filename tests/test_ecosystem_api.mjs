@@ -93,6 +93,105 @@ test('Pages execution context can never be mistaken for an Access identity', asy
   assert.equal(result.status, 401);
 });
 
+test('ordinary Access users cannot self-provision an organization', async () => {
+  const db = { prepare() { throw new Error('database must not be touched by denied provisioning'); } };
+  const request = new Request('https://uas-forge.com/api/ecosystem/v1/organizations', { method: 'POST', body: '{not valid json' });
+  const result = await handleEcosystemRequest(request, { ECOSYSTEM_DB: db }, { subject: 'partner-user', email: 'partner@example.com' });
+  assert.equal(result.status, 403);
+  assert.deepEqual(await result.json(), { error: 'organization provisioning is restricted to Forge platform administrators' });
+});
+
+test('organization provisioning uses an exact Access subject allowlist with no email fallback', async () => {
+  let batches = 0;
+  const db = {
+    prepare() { return { bind() { return this; }, async run() { return { meta: { changes: 1 } }; } }; },
+    async batch() { batches += 1; return [{ meta: { changes: 1 } }]; },
+  };
+  const payload = JSON.stringify({ organizationId: 'partner-oem', name: 'Partner OEM', kind: 'OEM' });
+  const denied = await handleEcosystemRequest(new Request('https://uas-forge.com/api/ecosystem/v1/organizations', { method: 'POST', body: payload }), {
+    ECOSYSTEM_DB: db, ECOSYSTEM_PLATFORM_ADMIN_SUBJECTS: 'other-subject',
+  }, { subject: 'partner-user', email: 'other-subject' });
+  assert.equal(denied.status, 403);
+  assert.equal(batches, 0);
+
+  const allowed = await handleEcosystemRequest(new Request('https://uas-forge.com/api/ecosystem/v1/organizations', { method: 'POST', body: payload }), {
+    ECOSYSTEM_DB: db, ECOSYSTEM_PLATFORM_ADMIN_SUBJECTS: ' other-subject, platform-admin ',
+  }, { subject: 'platform-admin', email: 'admin@example.com' });
+  assert.equal(allowed.status, 201);
+  assert.equal(batches, 1);
+});
+
+test('an Access member cannot read or mutate another organization by changing the route', async () => {
+  let targetOperations = 0;
+  const db = {
+    prepare(sql) {
+      const statement = {
+        values: [],
+        bind(...values) { this.values = values; return this; },
+        async first() {
+          if (sql.startsWith('SELECT role FROM ecosystem_memberships')) {
+            return this.values[0] === 'tenant-a' && this.values[1] === 'user-a' ? { role: 'OWNER' } : null;
+          }
+          targetOperations += 1;
+          return null;
+        },
+        async all() { targetOperations += 1; return { results: [] }; },
+        async run() { targetOperations += 1; return { meta: { changes: 1 } }; },
+      };
+      return statement;
+    },
+    async batch() { targetOperations += 1; return []; },
+  };
+  const cases = [
+    ['POST', '/products', JSON.stringify(productInput())],
+    ['POST', '/catalog-imports/preflight', JSON.stringify({ resource: 'PRODUCTS', records: [productInput()] })],
+    ['POST', '/invitations', JSON.stringify({ email: 'intruder@example.com', role: 'ADMIN' })],
+    ['POST', '/api-credentials', JSON.stringify({ name: 'stolen', role: 'EDITOR', scopes: ['catalog:write'] })],
+    ['GET', '/audit-events'],
+  ];
+  for (const [method, suffix, requestBody] of cases) {
+    const result = await handleEcosystemRequest(new Request(`https://uas-forge.com/api/ecosystem/v1/organizations/tenant-b${suffix}`, { method, ...(requestBody ? { body: requestBody } : {}) }), { ECOSYSTEM_DB: db }, { subject: 'user-a', email: 'user-a@example.com' });
+    assert.equal(result.status, 404, `${method} ${suffix}`);
+    assert.deepEqual(await result.json(), { error: 'organization workspace not found' });
+  }
+  assert.equal(targetOperations, 0);
+});
+
+test('an organization-bound service credential cannot cross tenant boundaries', async () => {
+  const credentialId = '11111111-1111-4111-8111-111111111111';
+  const token = `forge_oem_${credentialId}.service-secret`;
+  let targetOperations = 0;
+  const db = {
+    prepare(sql) {
+      const statement = {
+        values: [],
+        bind(...values) { this.values = values; return this; },
+        async first() {
+          if (sql.includes('FROM ecosystem_api_credentials WHERE credential_id')) return {
+            credential_id: credentialId, organization_id: 'tenant-a', key_hash: await canonicalDigest(token), role: 'EDITOR', scopes_json: JSON.stringify(['catalog:read', 'catalog:write']),
+          };
+          if (sql.startsWith('SELECT request_count FROM ecosystem_service_rate_windows')) return { request_count: 1 };
+          targetOperations += 1;
+          return null;
+        },
+        async all() { targetOperations += 1; return { results: [] }; },
+        async run() {
+          if (sql.startsWith('INSERT INTO ecosystem_service_rate_windows') || sql.startsWith('UPDATE ecosystem_api_credentials SET last_used_at_ms')) return { meta: { changes: 1 } };
+          targetOperations += 1;
+          return { meta: { changes: 1 } };
+        },
+      };
+      return statement;
+    },
+  };
+  const result = await handleEcosystemRequest(new Request('https://uas-forge.com/api/ecosystem/v1/organizations/tenant-b/products', {
+    headers: { Authorization: `Bearer ${token}` },
+  }), { ECOSYSTEM_DB: db });
+  assert.equal(result.status, 404);
+  assert.deepEqual(await result.json(), { error: 'organization workspace not found' });
+  assert.equal(targetOperations, 0);
+});
+
 test('catalog worker reports a protected published-record conflict instead of false success', async () => {
   const source = { schemaVersion: 'forge.catalog-import.v2', importId: 'import-1', organizationId: 'example-oem', resource: 'PRODUCTS', records: [productInput()] };
   const sourceDigest = await canonicalDigest(source);

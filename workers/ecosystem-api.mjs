@@ -90,13 +90,26 @@ async function member(db, organizationId, principal) {
     .bind(organizationId, principal.subject, 'ACTIVE').first();
 }
 
+function isPlatformAdmin(env, principal) {
+  if (principal?.kind !== 'ACCESS') return false;
+  const subjects = String(env.ECOSYSTEM_PLATFORM_ADMIN_SUBJECTS || '')
+    .split(',')
+    .map(value => value.trim())
+    .filter(Boolean);
+  return subjects.includes(principal.subject);
+}
+
 async function requireMember(env, organizationId, principal, roles = ['OWNER', 'ADMIN', 'EDITOR', 'VIEWER'], scope = 'catalog:read') {
   if (!principal) return { error: response(401, { error: 'Cloudflare Access identity or service credential required' }) };
-  if (principal.kind === 'SERVICE' && (!principal.scopes.includes(scope) || principal.organizationId !== organizationId)) {
+  if (principal.kind === 'SERVICE' && principal.organizationId !== organizationId) {
+    return { error: response(404, { error: 'organization workspace not found' }) };
+  }
+  if (principal.kind === 'SERVICE' && !principal.scopes.includes(scope)) {
     return { error: response(403, { error: 'service credential scope does not permit this operation' }) };
   }
   const membership = await member(requireDb(env), organizationId, principal);
-  if (!membership || !roles.includes(membership.role)) return { error: response(403, { error: 'organization membership does not permit this operation' }) };
+  if (!membership) return { error: response(404, { error: 'organization workspace not found' }) };
+  if (!roles.includes(membership.role)) return { error: response(403, { error: 'organization membership does not permit this operation' }) };
   return { membership };
 }
 
@@ -192,6 +205,7 @@ async function getMe(env, principal) {
 
 async function createOrganization(env, principal, request) {
   if (!principal || principal.kind !== 'ACCESS') return response(401, { error: 'Cloudflare Access identity required' });
+  if (!isPlatformAdmin(env, principal)) return response(403, { error: 'organization provisioning is restricted to Forge platform administrators' });
   const input = await body(request);
   const organizationId = String(input.organizationId || '').trim();
   const name = String(input.name || '').trim();

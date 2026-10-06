@@ -23,13 +23,11 @@
 
   <section>
     <span class="kicker">Organization boundary</span><h2>Workspace</h2>
-    <div class="grid">
+    <div class="grid two">
       <div class="field"><label for="org-select">Active organization</label><select id="org-select"><option value="">No organization loaded</option></select></div>
-      <div class="field"><label for="org">New organization ID</label><input id="org" placeholder="example-oem" autocomplete="off"></div>
-      <div class="field"><label for="name">Display name</label><input id="name" placeholder="Example OEM"></div>
-      <div class="field"><label for="kind">Organization kind</label><select id="kind"><option>OEM</option><option>MANUFACTURER</option><option>SUPPLIER</option><option>OPERATOR</option><option>HYBRID</option></select></div>
-      <div class="actions"><button id="create" type="button">Create organization</button><button id="refresh-all" class="secondary" type="button">Refresh workspace</button></div>
+      <div class="actions"><button id="refresh-all" class="secondary" type="button">Refresh workspace</button></div>
     </div>
+    <p class="meta">Forge provisions organization workspaces. This list contains only organizations assigned to your verified identity; changing the URL or request body never grants access to another company.</p>
   </section>
 
   <div class="panel" data-panel="catalog">
@@ -77,7 +75,7 @@
   const clean=value=>String(value??'').trim();
   function show(status,value,tone=''){ $('status').textContent=status;$('status').className=`status ${tone}`;$('result').textContent=typeof value==='string'?value:JSON.stringify(value,null,2) }
   async function call(path,options={}){const response=await fetch(`${api}${path}`,{...options,headers:{Accept:'application/json',...(options.body?{'Content-Type':'application/json'}:{}),...(options.headers||{})}});const value=await response.json().catch(()=>({error:'Non-JSON response'}));if(!response.ok)throw Object.assign(new Error(value.error||`HTTP ${response.status}`),{status:response.status,value});return value}
-  function org(){if(!state.org)throw new Error('Choose or create an organization first');return state.org}
+  function org(){if(!state.org)throw new Error('Choose an assigned organization first');return state.org}
   function setBusy(button,busy,label){if(!button.dataset.label)button.dataset.label=button.textContent;button.disabled=busy;button.textContent=busy?label:button.dataset.label}
   function node(tag,className,text){const item=document.createElement(tag);if(className)item.className=className;if(text!==undefined)item.textContent=text;return item}
   function button(text,handler,className='secondary'){const item=node('button',className,text);item.type='button';item.addEventListener('click',handler);return item}
@@ -100,7 +98,6 @@
   const templates={PRODUCTS:[{productId:'motor-1',revision:'r1',manufacturerName:'Example OEM',partNumber:'MOTOR-42',name:'Example Motor',category:'MOTOR',compatibilityTags:['voltage:6s'],lifecycle:'ACTIVE',evidenceRefs:['https://example.com/datasheet.pdf']}],BOMS:[{bomId:'airframe-bom-1',revision:'r1',productId:'airframe-1',productRevision:'r1',lines:[{lineId:'motor-line',slot:'motor-fl',quantity:1,manufacturerId:'example-oem',productId:'motor-1',productRevision:'r1',requiredCompatibilityTags:['voltage:6s'],substitutionsAllowed:true}],evidenceRefs:['https://example.com/drawing.pdf']}],OFFERS:[{offerId:'offer-1',supplierId:'example-supplier',productManufacturerId:'example-oem',productId:'motor-1',productRevision:'r1',currency:'USD',unitPriceMinor:1299,availableQuantity:100,leadTimeDays:4,validAtMs:Date.now(),validUntilMs:Date.now()+2592000000,evidenceRefs:['erp:offer-1'],sponsored:false}]};
   document.querySelectorAll('[data-tab]').forEach(tab=>tab.addEventListener('click',()=>{document.querySelectorAll('[data-tab]').forEach(item=>item.setAttribute('aria-selected',String(item===tab)));document.querySelectorAll('[data-panel]').forEach(panel=>panel.hidden=panel.dataset.panel!==tab.dataset.tab)}));
   $('org-select').addEventListener('change',async event=>{state.org=event.target.value;await refreshWorkspace()});
-  $('create').addEventListener('click',async()=>{const button=$('create');setBusy(button,true,'Creating…');try{const value=await call('/organizations',{method:'POST',body:JSON.stringify({organizationId:$('org').value.trim(),name:$('name').value.trim(),kind:$('kind').value})});show('ORGANIZATION CREATED',value);await loadIdentity()}catch(error){show('CREATE REJECTED',error.value||{error:error.message},'error')}finally{setBusy(button,false)}});
   $('records').addEventListener('input',updateSummary);$('resource').addEventListener('change',()=>{$('records').value=JSON.stringify(templates[$('resource').value],null,2);updateSummary()});
   $('file').addEventListener('change',async event=>{try{const file=event.target.files[0];if(!file)return;const text=await file.text(),records=file.name.toLowerCase().endsWith('.csv')?parseCsv(text):JSON.parse(text);if(!Array.isArray(records))throw new Error('File must contain an array of records');$('records').value=JSON.stringify(records,null,2);updateSummary();show('FILE LOADED',{name:file.name,records:records.length,size:file.size})}catch(error){show('FILE REJECTED',{error:error.message},'error')}});
   $('template').addEventListener('click',()=>{const resource=$('resource').value,blob=new Blob([JSON.stringify(templates[resource],null,2)],{type:'application/json'}),link=document.createElement('a');link.href=URL.createObjectURL(blob);link.download=`forge-${resource.toLowerCase()}-template.json`;link.click();URL.revokeObjectURL(link.href)});
