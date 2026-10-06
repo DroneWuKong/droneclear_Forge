@@ -52,7 +52,7 @@ test('Access verifies actual RSA signature, audience, issuer, time and key ident
   const jwk = { ...await crypto.subtle.exportKey('jwk', keys.publicKey), kid: 'test-key' };
   const encode = value => Buffer.from(JSON.stringify(value)).toString('base64url');
   async function token(claims = {}, header = {}) {
-    const input = encode({ alg:'RS256',kid:'test-key',...header }) + '.' + encode({ iss:'https://audit.cloudflareaccess.com',aud:['audience'],iat:sec,exp:sec+300,...claims });
+    const input = encode({ alg:'RS256',kid:'test-key',...header }) + '.' + encode({ iss:'https://audit.cloudflareaccess.com',aud:['audience'],sub:'test-subject',iat:sec,exp:sec+300,...claims });
     return input + '.' + Buffer.from(await crypto.subtle.sign('RSASSA-PKCS1-v1_5',keys.privateKey,new TextEncoder().encode(input))).toString('base64url');
   }
   const env = { PRIVATE_ACCESS_TEAM_DOMAIN:'audit.cloudflareaccess.com', PRIVATE_ACCESS_AUD:'audience' };
@@ -97,6 +97,15 @@ test('static adapter intercepts only legacy catalog requests', async () => {
     await context.window.fetch(route,options); assert.equal(calls.at(-1)[0],route); assert.equal(calls.at(-1)[1],options);
   }
   const before=calls.length; await context.window.fetch('/api/categories/'); assert.equal(calls.length,before);
+});
+test('OEM ecosystem catalog has a public build route and live API boundary', () => {
+  const build = fs.readFileSync(new URL('../build_static.py', import.meta.url), 'utf8');
+  const source = fs.readFileSync(new URL('../forge-source/ecosystem.html', import.meta.url), 'utf8');
+  assert.match(build, /'ecosystem\.html': 'ecosystem\/index\.html'/);
+  assert.match(source, /fetch\('\/api\/ecosystem\/v1\/products'/);
+  assert.match(source, /href="\/private\/catalog\/"/);
+  assert.match(source, /No OEM products are published yet/);
+  assert.doesNotMatch(source, /\.innerHTML\s*=/);
 });
 test('model routes require authorization and an available shared quota', async () => {
   for (const worker of [groq,gemini,claude]) {
