@@ -131,6 +131,7 @@ PAGES = {
     'evidence-lab.html': 'evidence-lab/index.html',
     'tools-home.html': 'tools-home/index.html',
     'software-library.html': 'software-library/index.html',
+    'test-lab.html': 'test-lab/index.html',
     'models.html': 'models/index.html',
     'tracker.html': 'tracker/index.html',
     'grants.html': 'grants/index.html',
@@ -177,6 +178,13 @@ PAGES = {
 # this literal alongside PAGES so source HTML can link to generated manifests.
 GENERATED_ROUTES = {
     '/models/catalog.json',
+    '/system-tests/forge-system-tests.zip',
+    '/system-tests/run_tests.py',
+    '/system-tests/profiles.json',
+    '/system-tests/config.example.json',
+    '/system-tests/README.txt',
+    '/system-tests/LICENSE.txt',
+    '/system-tests/SHA256SUMS.txt',
 }
 
 # Static assets to copy (JS, CSS, JSON, images)
@@ -751,7 +759,7 @@ _UNIFIED_NAV = r"""<!-- ── Unified UAS navigation (Research / Build / Learn)
     'browse':'Browse','wingman':'Wingman','intel':'Intel Hub','compare':'Compare',
     'compliance':'Compliance','dossier':'Dossier','platforms':'Platforms','regs':'Regs',
     'stack-builder':'Stack Builder','circuit-forge':'Circuit Forge','report':'Compliance Report','tools-home':'Tools',
-    'software-library':'Software Library','models':'Developer Models','ecosystem':'OEM Catalog','industry':'Industry','tracker':'Contract Tracker',
+    'software-library':'Software Library','models':'Developer Models','test-lab':'System Test Lab','ecosystem':'OEM Catalog','industry':'Industry','tracker':'Contract Tracker',
     'patterns-home':'Today','priorities':'Watchlist & priorities','ask-pie':'Research','intel-feed':'News','data-status':'Data status','brief':'Brief','patterns':'Flags','clock':'UAS Clock','ddg':'DDG Tracker',
     'adversary-bom':'Adversary BOM','mirroring':'Component Mirroring','actors':'Threat Actors',
     'ttps':'TTP Defense Gap','evasion':'Sanctions-Evasion','market-lens':'Market Lens',
@@ -2763,6 +2771,8 @@ def build(*, offline=False, data_ref=None, data_dir=None, include_private=False)
 
     print(f"  Copied {copied} static assets, skipped {skipped} gated files")
     write_brand_assets(BUILD_DIR)
+    from tools.build_system_test_lab import export_toolkit
+    export_toolkit(SRC_DIR, BUILD_DIR)
     version_script_dependencies()
 
     # Explicitly copy intel fallbacks to build root (served at /pie_flags.json etc.).
