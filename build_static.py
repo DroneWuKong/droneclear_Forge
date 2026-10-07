@@ -338,19 +338,48 @@ def copy_root_intel_file(src, dst, fname):
     if not isinstance(articles, list):
         raise ValueError('intel_articles.json must contain a JSON array')
 
-    projected = []
     for article in articles:
         if not isinstance(article, dict):
             raise ValueError('intel_articles.json rows must be JSON objects')
-        row = dict(article)
-        body = row.get('body_text')
-        if isinstance(body, str) and len(body) > DEPLOYED_ARTICLE_BODY_CHARS:
-            row['body_text'] = body[:DEPLOYED_ARTICLE_BODY_CHARS]
-            row['body_text_truncated'] = True
-        projected.append(row)
 
-    with open(dst, 'w', encoding='utf-8') as handle:
-        json.dump(projected, handle, ensure_ascii=False, separators=(',', ':'))
+    def encode_projection(body_chars):
+        projected = []
+        for article in articles:
+            row = dict(article)
+            body = row.get('body_text')
+            if isinstance(body, str) and len(body) > body_chars:
+                row['body_text'] = body[:body_chars]
+                row['body_text_truncated'] = True
+            projected.append(row)
+        return json.dumps(projected, ensure_ascii=False, separators=(',', ':')).encode('utf-8')
+
+    body_chars = DEPLOYED_ARTICLE_BODY_CHARS
+    deployed = encode_projection(body_chars)
+    if len(deployed) > PAGES_MAX_ASSET_BYTES:
+        # Corpus growth and multibyte text defeat a fixed character prefix.
+        # Keep every record and every non-body field; shrink only the already
+        # lossy fallback body. The complete corpus remains in Ai-Project.
+        deployed = encode_projection(0)
+        if len(deployed) > PAGES_MAX_ASSET_BYTES:
+            raise ValueError(
+                'Intel article metadata alone exceeds the Cloudflare Pages '
+                f'25 MiB asset limit ({len(deployed)} bytes); shard the corpus '
+                'rather than dropping records or provenance'
+            )
+        body_chars = 0
+        low, high = 1, DEPLOYED_ARTICLE_BODY_CHARS - 1
+        while low <= high:
+            candidate_chars = (low + high) // 2
+            candidate = encode_projection(candidate_chars)
+            if len(candidate) <= PAGES_MAX_ASSET_BYTES:
+                body_chars, deployed = candidate_chars, candidate
+                low = candidate_chars + 1
+            else:
+                high = candidate_chars - 1
+
+    # Check actual encoded bytes before replacing the destination. Never
+    # silently drop articles or weaken the final whole-build asset check.
+    Path(dst).write_bytes(deployed)
     # Keep the original publication hash and the deterministic Pages projection
     # connected. The compacted JSON cannot have the same hash as the input.
     manifest_path = os.path.join(os.path.dirname(dst), 'publication_inputs.json')
@@ -366,17 +395,14 @@ def copy_root_intel_file(src, dst, fname):
                 input_row.setdefault('projections', {})[fname] = {
                     'source_sha256': source_sha,
                     'sha256': hashlib.sha256(Path(dst).read_bytes()).hexdigest(),
-                    'transform': f'intel-article-body-prefix-{DEPLOYED_ARTICLE_BODY_CHARS}-v1',
+                    'transform': f'intel-article-body-prefix-{body_chars}-v1',
+                    'body_prefix_chars': body_chars,
+                    'article_count': len(articles),
+                    'bytes': len(deployed),
                 }
                 with open(manifest_path, 'w', encoding='utf-8') as handle:
                     json.dump(manifest, handle, sort_keys=True, separators=(',', ':'))
             break
-    deployed_bytes = os.path.getsize(dst)
-    if deployed_bytes > PAGES_MAX_ASSET_BYTES:
-        raise ValueError(
-            'Projected intel_articles.json exceeds the Cloudflare Pages '
-            f'25 MiB asset limit ({deployed_bytes} bytes)'
-        )
 
 
 def strip_django_tags(html):
