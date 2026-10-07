@@ -1707,6 +1707,7 @@ SEO_META = {
 
 # Accurate per-tool metadata for the audited public routes; avoid unsupported counts.
 SEO_META.update({
+    'test-lab.html': ('System Test Lab — UAS Forge', 'Download general software checks, prepare Gauntlet III evidence, and review DoW software assurance gaps locally with Forge System Test Lab.', 'system testing, software checks, Gauntlet III, DoW software assurance'),
     'autonomy.html': ('Autonomy Datasets and Benchmarks — UAS Forge', 'Explore drone autonomy datasets and benchmarks by task, license class, and usability notes. Verify source terms before reuse.', 'UAS tools, drone reference, source evidence'),
     'donate.html': ('Support the UAS Websites — Forge, Patterns and Handbook', 'Support the hosting and maintenance of UAS Forge, UAS Patterns, and the Drone Integration Handbook.', 'UAS tools, drone reference, source evidence'),
     'uas-hub.html': ('UAS Website Hub — Forge, Patterns and Handbook', 'Find UAS Forge build tools, UAS Patterns evidence research, and the Drone Integration Handbook field reference.', 'UAS tools, drone reference, source evidence'),
