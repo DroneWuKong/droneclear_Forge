@@ -721,6 +721,8 @@ _UNIFIED_NAV = r"""<!-- ── Unified UAS navigation (Research / Build / Learn)
       <a class="dc-dom-sublink" href="https://uas-forge.com/platforms/" data-page="platforms">Platforms</a>
       <a class="dc-dom-sublink" href="https://uas-forge.com/ecosystem/" data-page="ecosystem">OEM catalog</a>
       <a class="dc-dom-sublink" href="https://uas-forge.com/models/" data-page="models">Developer models</a>
+      <a class="dc-dom-sublink" href="https://uas-forge.com/session-recorder/" data-page="session-recorder">UAS Session Recorder</a>
+      <a class="dc-dom-sublink" href="https://uas-forge.com/test-lab/" data-page="test-lab">System Test Lab</a>
     </div>
   </details>
   <details class="dc-dom-group" data-area="learn">
