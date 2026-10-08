@@ -1,5 +1,12 @@
 # Changelog
 
+## 2026-10-08 — Offline field recorder and live team view
+
+- Bundle Windows/Linux x64 executables with the runtime and app assets for first-launch offline use in an installed Chromium browser.
+- Connect local telemetry automatically; copy finished captures atomically to a field folder and reopen them independently of browser storage.
+- Add a live view for Teams/Google Meet window sharing with video, telemetry observation age, recording state and marked moments. Capture continues through meeting loss.
+- Build and verify on each target OS, preserve source/hash metadata and license notices, and publish versioned free downloads.
+
 ## 2026-10-07 — Free local UAS Session Recorder
 
 - Add guided/developer screen, camera, narration and receive-only MAVLink capture with local replay, event markers, manual timing alignment and recovery.

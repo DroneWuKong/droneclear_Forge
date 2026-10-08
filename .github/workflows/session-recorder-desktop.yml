@@ -1,0 +1,119 @@
+name: UAS Recorder Desktop
+
+on:
+  pull_request:
+    paths:
+      - 'forge-source/session-*'
+      - 'forge-source/session-helper/**'
+      - 'forge-source/workspace.css'
+      - 'forge-source/test-lab.js'
+      - 'forge-source/system-tests/**'
+      - 'tools/*session*'
+      - 'tests/*session*'
+      - 'tests/fixtures/session_*'
+      - 'docs/*SESSION*'
+      - 'package*.json'
+      - '.github/workflows/session-recorder-desktop.yml'
+  push:
+    branches: [master]
+    paths:
+      - 'forge-source/session-*'
+      - 'forge-source/session-helper/**'
+      - 'forge-source/workspace.css'
+      - 'forge-source/test-lab.js'
+      - 'forge-source/system-tests/**'
+      - 'tools/*session*'
+      - 'tests/*session*'
+      - 'tests/fixtures/session_*'
+      - 'docs/*SESSION*'
+      - 'package*.json'
+      - '.github/workflows/session-recorder-desktop.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: uas-recorder-desktop-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  native:
+    name: Offline recorder (${{ matrix.platform }})
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - runner: ubuntu-22.04
+            platform: linux
+          - runner: windows-latest
+            platform: windows
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 25
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Check local bridge and evidence formats
+        run: |
+          python -m unittest -v tests/test_session_helper.py
+          node --test tests/test_session_evidence.cjs
+      - name: Build runtime on target OS
+        run: |
+          python -m pip install pyinstaller==6.22.3
+          python -m tools.build_session_desktop
+      - name: Install browser test runtime
+        run: npm ci
+      - name: Install Chromium (Linux)
+        if: runner.os == 'Linux'
+        run: npx playwright install --with-deps chromium
+      - name: Install Chromium (Windows)
+        if: runner.os == 'Windows'
+        run: npx playwright install chromium
+      - name: First-launch offline capture and live view
+        run: node tests/browser_session_desktop.cjs
+      - uses: actions/upload-artifact@v4
+        with:
+          name: recorder-bundle-${{ matrix.platform }}
+          path: |
+            build/session-desktop/forge-uas-recorder-${{ matrix.platform }}-x64.zip
+            build/session-desktop/forge-uas-recorder-${{ matrix.platform }}-x64.sha256
+            build/session-desktop/forge-uas-recorder-${{ matrix.platform }}-x64.json
+          if-no-files-found: error
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: recorder-view-${{ matrix.platform }}
+          path: .local/design-review/session-desktop-live-*.png
+          if-no-files-found: ignore
+
+  publish:
+    name: Publish verified standalone downloads
+    needs: native
+    if: github.event_name == 'push' && github.ref == 'refs/heads/master'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: recorder-bundle-*
+          merge-multiple: true
+          path: build/desktop-release
+      - name: Publish immutable version with both platform hashes
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          RELEASE_COMMIT: ${{ github.sha }}
+        run: python -m tools.publish_session_desktop build/desktop-release

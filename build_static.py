@@ -189,6 +189,7 @@ GENERATED_ROUTES = {
     '/session-recorder/forge-session-helper.zip',
     '/session-recorder/README.txt',
     '/session-recorder/SOP.md',
+    '/session-recorder/LIVE_TEAM_GUIDE.txt',
     '/session-recorder/LICENSE.txt',
     '/session-recorder/SHA256SUMS.txt',
     '/session-recorder/app.webmanifest',

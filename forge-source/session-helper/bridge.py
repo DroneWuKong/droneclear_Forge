@@ -17,6 +17,7 @@ from pathlib import Path
 import re
 import secrets
 import socket
+import tempfile
 import threading
 import time
 import urllib.error
@@ -81,17 +82,23 @@ def inspect_bundle(data):
         if archive.getinfo('session.json').file_size > 1048576:
             raise ValueError('Session metadata exceeds 1 MiB.')
         session = json.loads(archive.read('session.json'))
-        if (session.get('tool') != 'forge-uas-session' or session.get('schema_version') != 1
+        if (not isinstance(session, dict) or session.get('tool') != 'forge-uas-session' or session.get('schema_version') != 1
                 or session.get('certification') is not False
                 or session.get('program_acceptance') is not False
                 or session.get('state') not in ('finished', 'interrupted')
-                or not re.fullmatch(r'[-a-zA-Z0-9]{8,80}', session.get('id', ''))):
+                or not isinstance(session.get('id'), str)
+                or not re.fullmatch(r'[-a-zA-Z0-9]{8,80}', session['id'])):
             raise ValueError('Invalid session identity or scope.')
         files = session.get('files', [])
         if not isinstance(files, list) or len(files) > 80:
             raise ValueError('Invalid evidence manifest.')
         expected = {'session.json', 'timeline.json', 'summary.txt'}
         for f in files:
+            if (not isinstance(f, dict) or not isinstance(f.get('name'), str)
+                    or not isinstance(f.get('size'), int) or f['size'] < 0
+                    or not isinstance(f.get('sha256'), str)
+                    or not re.fullmatch(r'[0-9a-f]{64}', f['sha256'])):
+                raise ValueError('Invalid evidence file metadata.')
             name = f['name']
             if name in expected:
                 raise ValueError('Duplicate evidence file.')
@@ -198,8 +205,74 @@ class BridgeServer(ThreadingHTTPServer):
     daemon_threads = True
 
 
+class FieldArchive:
+    """Atomic local ZIP copies, independent of browser storage and connectivity."""
+    def __init__(self, directory):
+        self.directory = Path(directory).expanduser().resolve()
+        self.lock = threading.Lock()
+
+    def path(self, identity):
+        if not isinstance(identity, str) or not re.fullmatch(r'[-a-zA-Z0-9]{8,80}', identity):
+            raise ValueError('Invalid archived session ID.')
+        return self.directory / ('forge-session-' + identity + '.zip')
+
+    def save(self, data):
+        session, _ = inspect_bundle(data)
+        destination = self.path(session['id'])
+        with self.lock:
+            self.directory.mkdir(parents=True, exist_ok=True, mode=0o700)
+            temporary = None
+            try:
+                with tempfile.NamedTemporaryFile(dir=self.directory, prefix='.saving-', delete=False) as stream:
+                    temporary = Path(stream.name)
+                    stream.write(data)
+                    stream.flush()
+                    os.fsync(stream.fileno())
+                temporary.replace(destination)
+            finally:
+                if temporary and temporary.exists():
+                    temporary.unlink()
+        return {'ok': True, 'id': session['id'], 'size': len(data),
+                'sha256': hashlib.sha256(data).hexdigest(), 'path': str(destination)}
+
+    def list(self):
+        records = []
+        candidates = []
+        for path in self.directory.glob('forge-session-*.zip'):
+            try:
+                if not path.is_symlink():
+                    candidates.append((path.stat().st_mtime, path))
+            except OSError:
+                continue
+        paths = [path for _, path in sorted(candidates, reverse=True)]
+        for path in paths[:200]:
+            try:
+                size = path.stat().st_size
+                if size > LIMIT or path.is_symlink():
+                    continue
+                with zipfile.ZipFile(path) as archive:
+                    info = archive.getinfo('session.json')
+                    if info.file_size > 1048576 or info.compress_type != zipfile.ZIP_STORED:
+                        continue
+                    session = json.loads(archive.read(info))
+                if not isinstance(session, dict) or self.path(session.get('id')) != path:
+                    continue
+                records.append({'id': session['id'], 'title': str(session.get('title', ''))[:200],
+                                'started_at': str(session.get('started_at', ''))[:50], 'size': size})
+            except (OSError, ValueError, KeyError, zipfile.BadZipFile):
+                continue
+        return {'ok': True, 'sessions': records, 'truncated': len(paths) > 200,
+                'directory': str(self.directory)}
+
+    def read(self, identity):
+        path = self.path(identity)
+        if path.is_symlink() or path.stat().st_size > LIMIT:
+            raise ValueError('Archived session is unavailable or oversized.')
+        return path.read_bytes()
+
+
 class Handler(BaseHTTPRequestHandler):
-    server_version = 'ForgeSessionHelper/1.0'
+    server_version = 'ForgeSessionHelper/1.1'
 
     def log_message(self, *_args):
         pass  # Never log keys, file names, summaries, or Slack credentials.
@@ -245,14 +318,35 @@ class Handler(BaseHTTPRequestHandler):
 
     def do_GET(self):
         path = urllib.parse.urlparse(self.path)
-        if not self.allowed(path.path in ('/status', '/telemetry')):
+        if path.path == '/local-config':
+            local_origins = {'http://' + host for host in self.server.hosts}
+            if (not self.allowed(False) or self.headers.get('X-Forge-Local') != '1'
+                    or self.headers.get('Origin') not in (None, *local_origins)
+                    or self.headers.get('Sec-Fetch-Site') not in (None, 'same-origin', 'none')):
+                self.respond(403, {'error': 'Local app startup is allowed from this device only.'})
+                return
+            self.respond(200, {'ok': True, 'key': self.server.key, 'standalone': self.server.standalone})
+            return
+        if not self.allowed(path.path in ('/status', '/telemetry', '/archives') or path.path.startswith('/archive/')):
             self.respond(403, {'error': 'Invalid local connection key, origin or host.'})
             return
         if path.path == '/status':
             self.respond(200, {'ok': True, 'cursor': self.server.telemetry.cursor,
                               'udp_address': '127.0.0.1:' + str(self.server.udp_port),
                               'slack_enabled': bool(self.server.slack),
-                              'slack_channel': self.server.slack.channel if self.server.slack else ''})
+                              'slack_channel': self.server.slack.channel if self.server.slack else '',
+                              'standalone': self.server.standalone,
+                              'archive_enabled': bool(self.server.archive),
+                              'archive_directory': str(self.server.archive.directory) if self.server.archive else ''})
+        elif path.path == '/archives':
+            self.respond(200, self.server.archive.list() if self.server.archive else {'ok': True, 'sessions': []})
+        elif path.path.startswith('/archive/'):
+            try:
+                if not self.server.archive:
+                    raise ValueError('Field folder is unavailable in this helper.')
+                self.respond(200, self.server.archive.read(path.path.removeprefix('/archive/')), 'application/zip')
+            except (OSError, ValueError) as error:
+                self.respond(404, {'error': str(error)[:500]})
         elif path.path == '/telemetry':
             try:
                 cursor = int(urllib.parse.parse_qs(path.query).get('after', ['0'])[0])
@@ -269,6 +363,7 @@ class Handler(BaseHTTPRequestHandler):
                        '/system-tests/profiles.json': ('profiles.json', 'application/json'),
                        '/session-recorder/README.txt': ('README.txt', 'text/plain')}
             mapping['/session-recorder/SOP.md'] = ('SOP.md', 'text/plain')
+            mapping['/session-recorder/LIVE_TEAM_GUIDE.txt'] = ('LIVE_TEAM_GUIDE.txt', 'text/plain')
             for name in STATIC:
                 mapping['/static/' + name] = ('static/' + name,
                     'text/javascript' if name.endswith('.js') else 'text/css' if name.endswith('.css') else 'image/svg+xml')
@@ -285,8 +380,8 @@ class Handler(BaseHTTPRequestHandler):
         if not self.allowed():
             self.respond(403, {'error': 'Invalid local connection key, origin or host.'})
             return
-        if self.path != '/slack' or not self.server.slack:
-            self.respond(404, {'error': 'Slack is not configured.'})
+        if not ((self.path == '/slack' and self.server.slack) or (self.path == '/archive' and self.server.archive)):
+            self.respond(404, {'error': 'This destination is not configured.'})
             return
         try:
             length = int(self.headers.get('Content-Length', '0'))
@@ -296,15 +391,18 @@ class Handler(BaseHTTPRequestHandler):
             body = self.rfile.read(length)
             if len(body) != length:
                 raise ValueError('Incomplete upload body.')
-            self.respond(200, self.server.slack.upload(body))
+            self.respond(200, self.server.archive.save(body) if self.path == '/archive' else self.server.slack.upload(body))
         except (ValueError, OSError, KeyError, zipfile.BadZipFile, urllib.error.URLError) as error:
             self.respond(400, {'ok': False, 'error': str(error)[:500]})
 
 
-def create_server(root, http_port=8767, udp_port=14551, token='', channel='', key=None):
+def create_server(root, http_port=8767, udp_port=14551, token='', channel='', key=None,
+                  standalone=False, session_directory=None):
     server = BridgeServer(('127.0.0.1', http_port), Handler)
     actual = server.server_address[1]
     server.root, server.key = Path(root), key or secrets.token_urlsafe(32)
+    server.standalone = standalone
+    server.archive = FieldArchive(session_directory) if session_directory else None
     server.hosts = {'127.0.0.1:' + str(actual), 'localhost:' + str(actual)}
     server.origins = {'https://uas-forge.com', 'http://127.0.0.1:' + str(actual),
                       'http://localhost:' + str(actual)}

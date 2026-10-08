@@ -22,7 +22,17 @@
     const saved=Boolean(current&&!capturing&&!stopping&&!busy);
     for(const id of ['download-session','copy-summary','copy-report','download-report','delete-session','save-details','save-alignment','attach-log','attach-report'])byId(id).disabled=!saved;
     for(const id of Object.values(detailFields))byId(id).disabled=capturing||stopping||busy;
-    byId('send-slack').disabled=!saved||!helper?.slack_enabled||!byId('share-confirm').checked;
+    byId('send-slack').disabled=!saved||!helper?.slack_enabled||!byId('share-confirm').checked||navigator.onLine===false;
+    byId('save-archive').disabled=!saved||!helper?.archive_enabled;
+    byId('open-archive').disabled=!ready||capturing||stopping||busy||!helper?.archive_enabled;
+  }
+  function networkStatus(){byId('network-status').textContent=navigator.onLine===false?'Browser reports no internet. Local capture, telemetry and saving continue; share after reconnecting.':'Local capture is independent of internet. Use your meeting or upload when a connection is available.';controls();}
+  function liveTeam(){
+    if(document.body.dataset.layout!=='live')return;
+    byId('live-session-title').textContent=current?.session.title||byId('session-title').value||'Field development session';
+    byId('live-capture-state').textContent=capturing?'Recording on this device · '+time(elapsed()):stopping?'Finishing local evidence…':'Local recorder standing by.';
+    const list=byId('live-team-values');list.replaceChildren();for(const row of [...liveMessages.values()].filter(r=>[0,1,24,147,253].includes(r.message_id))){const card=document.createElement('div');card.className='live-value';const label=document.createElement('strong');label.textContent=row.message;const observation=document.createElement('p');observation.textContent=E.describe(row);const age=document.createElement('small');age.textContent=Math.max(0,Math.floor((performance.now()-row.at_ms)/1000))+' seconds since this observation';card.append(label,observation,age);list.append(card);}if(!list.children.length)list.textContent='Waiting for supported vehicle observations. Screen/camera and notes can still be recorded.';
+    const notes=current?.timeline.filter(r=>r.kind==='note').slice(-5)||[];byId('live-team-notes').textContent=notes.length?notes.map(r=>time(r.at_ms)+' · '+r.text).join('\n'):'Marked events appear here during the session.';
   }
   function addRow(row){if(!current||stopping&&row.kind==='mavlink')return;const size=new TextEncoder().encode(JSON.stringify(row)).length+1;if(capturing&&!stopping&&(current.timeline.length>=29999||timelineBytes+size>12*1024*1024)){void stop('Decoded timeline limit reached. Original received telemetry remains in the evidence.');return;}timelineBytes+=size;current.timeline.push(row);current.session.duration_ms=Math.max(current.session.duration_ms,row.at_ms);}
   function note(text,kind='source'){addRow({kind,text:text.slice(0,2000),at_ms:elapsed()});}
@@ -72,19 +82,21 @@
   async function helperRequest(path,options={}){const response=await fetch(helper.base+path,{...options,headers:{'X-Forge-Key':helper.key,...options.headers},cache:'no-store'});const result=await response.json();if(!response.ok||result.ok===false)throw Error(result.error||'Local helper request failed.');return result;}
   async function connectHelper(){
     try{
-      if(helper){helperGeneration++;helperAbort?.abort();helper=null;byId('connect-helper').textContent='Connect local helper';byId('helper-status').textContent='Helper disconnected.';byId('telemetry-status').textContent='Not connected';byId('slack-destination').textContent='Connect a local helper configured for your Slack channel.';controls();return;}
+      if(helper){helperGeneration++;helperAbort?.abort();helper=null;byId('field-folder').hidden=true;byId('connect-helper').textContent='Connect local helper';byId('helper-status').textContent='Helper disconnected.';byId('telemetry-status').textContent='Not connected';byId('slack-destination').textContent='Connect a local helper configured for your Slack channel.';controls();return;}
       if(serialPort)throw Error('Disconnect USB before choosing network telemetry.');
       const base=helperBase(),key=byId('helper-key').value.trim();if(!key)throw Error('Copy the connection key printed by the helper.');
       helperAbort?.abort();const generation=++helperGeneration;helper={base,key};helperAbort=new AbortController();const config=await helperRequest('/status',{signal:helperAbort.signal});helper={...helper,...config};
       monitorParser=new E.MavlinkParser();byId('connect-helper').textContent='Disconnect local helper';byId('helper-status').textContent='Connected · UDP receive-only on '+config.udp_address;
       byId('slack-destination').textContent=config.slack_enabled?'Slack destination: '+config.slack_channel:'Slack is not configured in this helper. Reports and sessions can still be exported locally.';
+      byId('field-folder').hidden=!config.archive_enabled;
+      if(config.archive_enabled){try{await refreshArchives();}catch(error){byId('archive-status').textContent='Could not list disk copies: '+error.message;}}
       controls();let cursor=config.cursor;
       void (async()=>{try{while(generation===helperGeneration){const data=await helperRequest('/telemetry?after='+cursor,{signal:helperAbort.signal});if(data.gap&&capturing){note('Local helper buffer gap: '+data.gap+' datagrams were unavailable.');current.session.sources.telemetry.status='interrupted';}for(const packet of data.packets){cursor=packet.id;const chunk=Uint8Array.from(atob(packet.data),c=>c.charCodeAt(0));telemetry(chunk,/^[0-9]{1,24}$/.test(packet.received_unix_ns||'')?packet.received_unix_ns:null);}if(generation!==helperGeneration)break;await new Promise(resolve=>setTimeout(resolve,250));}}catch(error){if(generation===helperGeneration){byId('helper-status').textContent='Helper disconnected: '+error.message;helper=null;controls();if(capturing){current.session.sources.telemetry.status='interrupted';note('Helper disconnected.');persist();}}}})();
     }catch(error){helper=null;byId('helper-status').textContent=error.message;controls();}
   }
   async function start(){
     if(!ready||capturing||stopping)return;pausePlayback();current={id:crypto.randomUUID(),session:null,timeline:[]};
-    current.session={schema_version:1,tool:'forge-uas-session',tool_version:'1.0.0',id:current.id,certification:false,program_acceptance:false,clock_basis:'browser_receipt_monotonic',started_at:new Date().toISOString(),duration_ms:0,state:'in_progress',files:[],sources:{},test_reports:[],...details()};
+    current.session={schema_version:1,tool:'forge-uas-session',tool_version:'1.1.0',id:current.id,certification:false,program_acceptance:false,clock_basis:'browser_receipt_monotonic',started_at:new Date().toISOString(),duration_ms:0,state:'in_progress',files:[],sources:{},test_reports:[],...details()};
     originTime=performance.now();parser=new E.MavlinkParser();indexes.clear();totalBytes=0;timelineBytes=0;storageFailure=false;capturing=true;stopping=false;recorders.clear();byId('share-confirm').checked=false;
     for(const kind of ['screen','camera']){
       const stream=streams[kind],active=stream?.getVideoTracks().some(t=>t.readyState==='live');current.session.sources[kind]={requested:Boolean(active),status:active?'recording':'not_selected'};
@@ -117,7 +129,7 @@
       if(storageFailure){saved.session.state='interrupted';saved.timeline.push({kind:'source',text:'Recovered the last committed local save after a storage error; later data was unavailable.',at_ms:saved.session.duration_ms});}
       else{saved.session=current.session;saved.timeline=current.timeline;}
       await materialize(saved,saved.chunks);current={id:saved.id,session:saved.session,timeline:saved.timeline};await store.save(current);
-      await refresh();await showCurrent();status(storageFailure?'Saved evidence needs review after a storage error. Export the session now.':'Saved locally. Review the evidence and add your test result.');
+      await refresh();await showCurrent();if(helper?.archive_enabled){try{await saveArchive(false);}catch(error){byId('archive-status').textContent='Disk copy failed: '+error.message+'. Evidence is still in this browser; download a ZIP.';}}status(storageFailure?'Saved evidence needs review after a storage error. Export the session now.':'Saved locally. Review the evidence and add your test result.');liveTeam();
     }catch(error){capturing=false;fail(error);}finally{stopping=false;for(const kind of ['screen','camera']){if(streams[kind])for(const t of streams[kind].getTracks())t.stop();streams[kind]=null;byId(kind+'-preview').srcObject=null;byId(kind+'-status').textContent='Not selected';}controls();}
   }
   async function refresh(){const selected=current?.id,list=await store.list(),select=byId('saved-sessions');select.replaceChildren(new Option('Choose a session',''));for(const record of list)select.add(new Option((record.session.title||'Untitled session')+' · '+record.session.started_at.slice(0,19).replace('T',' ')+(record.session.state==='in_progress'?' · interrupted capture':''),record.id));if(selected)select.value=selected;}
@@ -152,14 +164,17 @@
   }
   async function openSaved(id){if(!id)return;const record=await store.read(id);if(record.session.state==='in_progress'){record.session.state='interrupted';for(const source of Object.values(record.session.sources))if(['recording','listening'].includes(source.status))source.status='interrupted';record.timeline.push({kind:'source',text:'Recovered after recording ended without a normal stop. Media finalization may be incomplete.',at_ms:record.session.duration_ms});await materialize(record,record.chunks);delete record.chunks;await store.save(record);}current={id:record.id,session:record.session,timeline:record.timeline};await showCurrent();status('Opened local session.');}
   async function saveDetails(){if(!current||capturing)return;Object.assign(current.session,details());E.validateSession(current.session,current.timeline);await store.save(current);await refresh();reports();byId('session-summary').textContent=E.summary(current.session,current.timeline)+'\nTest outcome: '+R.outcomeLabels[current.session.test_outcome];status('Report details saved.');}
-  async function bundle(){
-    await saveDetails();const saved=await store.read(current.id),files=await materialize(current,saved.chunks),exportSession=structuredClone(current.session);
+  async function bundle({save=true}={}){
+    if(save)await saveDetails();const saved=await store.read(current.id),files=await materialize(current,saved.chunks),exportSession=structuredClone(current.session);
     exportSession.files=exportSession.files.filter(f=>!['report.md','report.json'].includes(f.name));
     const report=R.model(exportSession,current.timeline),text=JSON.stringify(report,null,2)+'\n';
     for(const[name,content,mime]of [['report.md',R.markdown(report),'text/markdown'],['report.json',text,'application/json']]){const bytes=new TextEncoder().encode(content);files.set(name,bytes);exportSession.files.push({name,original_name:name,mime_type:mime,role:'report',size:bytes.length,sha256:await E.sha256(bytes),start_ms:0,duration_ms:0});}
     const entries=[...files].map(([name,bytes])=>({name,bytes}));entries.push({name:'session.json',bytes:new TextEncoder().encode(JSON.stringify(exportSession))},{name:'timeline.json',bytes:new TextEncoder().encode(JSON.stringify(current.timeline))},{name:'summary.txt',bytes:new TextEncoder().encode(E.summary(exportSession,current.timeline))});
     E.validateSession(exportSession,current.timeline);return E.zip(entries);
   }
+  async function refreshArchives(){if(!helper?.archive_enabled)return;const data=await helperRequest('/archives'),select=byId('archived-sessions');select.replaceChildren(new Option('Choose a disk copy',''));for(const session of data.sessions)select.add(new Option((session.title||'Untitled session')+' · '+session.started_at,session.id));byId('field-folder-path').textContent='Local folder: '+data.directory+(data.truncated?' · Showing the latest 200 copies; more remain in the folder.':'');}
+  async function saveArchive(save=true){if(!helper?.archive_enabled||!current||capturing)return;byId('archive-status').textContent='Writing a local disk copy…';const bytes=await bundle({save}),result=await helperRequest('/archive',{method:'POST',headers:{'Content-Type':'application/zip'},body:bytes});byId('archive-status').textContent='Saved on disk: '+result.path;await refreshArchives();}
+  async function openArchive(){const id=byId('archived-sessions').value;if(!id)return;const response=await fetch(helper.base+'/archive/'+encodeURIComponent(id),{headers:{'X-Forge-Key':helper.key},cache:'no-store'});if(!response.ok)throw Error('Disk copy unavailable.');await importBundle(new File([await response.blob()],'field-session.zip',{type:'application/zip'}));}
   async function attach(file,role){
     if(!current||capturing)return;if(current.session.files.length>=70)throw Error('Evidence file limit reached.');
     if(file.name.length>512||file.type.length>200)throw Error('Evidence name or media type is too long.');
@@ -173,7 +188,7 @@
   }
   async function importBundle(file){if(!file)return;if(file.size>E.LIMIT)throw Error('ZIP exceeds 256 MiB.');const parsed=await E.verifyBundle(new Uint8Array(await file.arrayBuffer()));const id=crypto.randomUUID(),record={id,session:{...parsed.session,id,imported_from:parsed.session.id},timeline:parsed.timeline};const files=new Map([...parsed.files].filter(([name])=>record.session.files.some(f=>f.name===name)));await store.replace(record,files);current=record;await refresh();await showCurrent();status('Imported session. Evidence hashes and decoded telemetry rows checked; authorship and test claims remain unverified.');}
   async function sendSlack(){
-    if(!helper?.slack_enabled||!byId('share-confirm').checked)return;byId('send-slack').disabled=true;byId('share-status').textContent='Preparing the reviewed session for Slack…';
+    if(!helper?.slack_enabled||!byId('share-confirm').checked||navigator.onLine===false)return;byId('send-slack').disabled=true;byId('share-status').textContent='Preparing the reviewed session for Slack…';
     try{const bytes=await bundle();const result=await helperRequest('/slack',{method:'POST',headers:{'Content-Type':'application/zip','X-Forge-Session':current.id},body:bytes});byId('share-status').textContent='Uploaded to '+result.channel+(result.permalink?' · '+result.permalink:'')+'.';byId('share-confirm').checked=false;}catch(error){byId('share-status').textContent='Slack upload incomplete: '+error.message+'. Session is still saved locally.';}finally{controls();}
   }
   const run=work=>async()=>{if(busy)return;busy=true;controls();try{await work();}catch(error){fail(error);}finally{busy=false;controls();}};
@@ -181,7 +196,7 @@
   byId('start-recording').onclick=run(start);byId('stop-recording').onclick=()=>stop();byId('mark-event').onclick=()=>{if(!capturing||stopping)return;const text=byId('marker-note').value.trim()||'Marked moment';note(text,'note');byId('marker-note').value='';persist();status('Marked '+time(elapsed())+': '+text);};
   byId('open-saved').onclick=run(()=>openSaved(byId('saved-sessions').value));byId('open-bundle').onchange=run(()=>importBundle(byId('open-bundle').files[0]));
   byId('attach-log').onchange=run(async()=>{for(const file of byId('attach-log').files)await attach(file,byId('attachment-role').value);byId('attach-log').value='';});byId('attach-report').onchange=run(async()=>{const file=byId('attach-report').files[0];if(file)await attach(file,'test_report');byId('attach-report').value='';});
-  byId('save-details').onclick=run(saveDetails);byId('download-session').onclick=run(async()=>{const bytes=await bundle();download(new Blob([bytes],{type:'application/zip'}),'forge-session-'+current.id+'.zip');status('Session ZIP exported with original evidence and reports.');});
+  byId('save-details').onclick=run(saveDetails);byId('save-archive').onclick=run(()=>saveArchive());byId('open-archive').onclick=run(openArchive);byId('download-session').onclick=run(async()=>{const bytes=await bundle();download(new Blob([bytes],{type:'application/zip'}),'forge-session-'+current.id+'.zip');status('Session ZIP exported with original evidence and reports.');});
   byId('save-alignment').onclick=run(async()=>{pausePlayback();const changes=[];for(const kind of ['screen','camera']){const name=byId(kind+'-replay').dataset.fileName,file=current.session.files.find(f=>f.name===name);if(!file)continue;const offset=Number(byId(kind+'-offset').value)*1000,scale=Number(byId(kind+'-scale').value);if(!Number.isFinite(offset)||Math.abs(offset)>7200000||!Number.isFinite(scale)||scale<0.5||scale>2)throw Error('Choose an offset within two hours and a scale from 0.5 to 2.');changes.push({file,offset,scale});}for(const change of changes)Object.assign(change.file,{alignment_offset_ms:change.offset,alignment_scale:change.scale,alignment_method:'manual',alignment_uncertainty_ms:null});await store.save(current);await showCurrent();status('Manual alignment saved. Check a shared event near both ends; uncertainty is still unmeasured.');});
   byId('copy-summary').onclick=run(async()=>{await saveDetails();await navigator.clipboard.writeText(E.summary(current.session,current.timeline));status('Summary copied.');});
   byId('copy-report').onclick=run(async()=>{await saveDetails();await navigator.clipboard.writeText(R.render(current.session,current.timeline,byId('report-destination').value));status('Formatted report copied.');});
@@ -189,16 +204,24 @@
   byId('report-destination').onchange=reports;byId('share-confirm').onchange=controls;byId('send-slack').onclick=run(sendSlack);
   byId('delete-session').onclick=run(async()=>{if(!current||!confirm('Delete this session and its evidence from this browser? Download it first if you want to keep it.'))return;pausePlayback();await store.remove(current.id);current=null;await refresh();location.reload();});
   byId('timeline-position').oninput=()=>{pausePlayback();seek(Number(byId('timeline-position').value));};byId('play-session').onclick=play;
+  document.querySelectorAll('button[data-layout]').forEach(button=>button.onclick=()=>{document.body.dataset.layout=button.dataset.layout;document.querySelectorAll('button[data-layout]').forEach(b=>b.setAttribute('aria-pressed',String(b===button)));byId('live-team-board').hidden=button.dataset.layout!=='live';byId('recorder-heading').textContent=button.dataset.layout==='live'?'Live field session':'Show what happened.';liveTeam();});
   document.querySelectorAll('button[data-view]').forEach(button=>button.onclick=()=>{document.body.dataset.view=button.dataset.view;document.querySelectorAll('button[data-view]').forEach(b=>b.setAttribute('aria-pressed',String(b===button)));byId('view-explanation').textContent=button.dataset.view==='guided'?'Everyday language, clear steps and a short session summary.':'Source identifiers, decoded values, timing limits and original evidence.';});
   byId('session-stack').onchange=()=>{const stack=byId('session-stack').value;byId('stack-guidance').textContent=stack==='betaflight'?'Capture the Betaflight App window, attach native Blackbox and diff all, and collect the Support ID. Live MSP is not available in this release.':stack==='px4'?'Keep the original ULog and ver all output. Forward telemetry alongside QGC when possible.':stack==='ardupilot'?'Keep the original DataFlash and parameters. Forward telemetry alongside your GCS when possible.':'Capture the relevant app and retain original evidence. Choose the test environment and expected behavior.';};
-  setInterval(()=>{byId('live-age').textContent=lastTelemetryAt===null?'Waiting for incoming messages.':Math.floor((performance.now()-lastTelemetryAt)/1000)+' seconds since the latest received bytes.';if(!capturing)return;byId('recording-clock').textContent=time(elapsed());current.session.duration_ms=elapsed();persist();if(elapsed()>=7200000)void stop('Two-hour capture limit reached.');},1000);
+  addEventListener('online',networkStatus);addEventListener('offline',networkStatus);
+  setInterval(()=>{liveTeam();byId('live-age').textContent=lastTelemetryAt===null?'Waiting for incoming messages.':Math.floor((performance.now()-lastTelemetryAt)/1000)+' seconds since the latest received bytes.';if(!capturing)return;byId('recording-clock').textContent=time(elapsed());current.session.duration_ms=elapsed();persist();if(elapsed()>=7200000)void stop('Two-hour capture limit reached.');},1000);
   addEventListener('beforeunload',event=>{if(capturing||stopping){event.preventDefault();event.returnValue='';}});
   let installPrompt;addEventListener('beforeinstallprompt',event=>{event.preventDefault();installPrompt=event;byId('install-app').hidden=false;});byId('install-app').onclick=async()=>{if(installPrompt){await installPrompt.prompt();installPrompt=null;byId('install-app').hidden=true;}};
   async function init(){
-    await store.open();ready=true;await refresh();controls();status('Ready. Select inputs or start a notes-only session and attach evidence afterward.');
+    await store.open();await refresh();
     try{const response=await fetch('/system-tests/profiles.json',{cache:'no-store'});if(response.ok){const bytes=new Uint8Array(await response.arrayBuffer());catalog=JSON.parse(new TextDecoder().decode(bytes));catalogHash=await E.sha256(bytes);}}catch{}
-    if('serviceWorker'in navigator){try{await navigator.serviceWorker.register('/session-recorder/sw.js',{scope:'/session-recorder/'});byId('app-status').textContent='Free local app · this recorder can reopen offline after its files are cached. Your sessions stay on this device.';}catch{byId('app-status').textContent='Browser mode ready. Download the local app for offline use.';}}
-    if(new URL(location.href).hostname==='127.0.0.1'||new URL(location.href).hostname==='localhost')byId('helper-url').value=location.origin;
+    let standalone=false;
+    if(['127.0.0.1','localhost'].includes(location.hostname)){
+      byId('helper-url').value=location.origin;
+      try{const response=await fetch('/local-config',{headers:{'X-Forge-Local':'1'},cache:'no-store',signal:AbortSignal.timeout(2000)});if(response.ok){const local=await response.json();if(typeof local.key==='string'&&local.key.length<=80){byId('helper-key').value=local.key;standalone=local.standalone===true;await connectHelper();}}}catch{}
+    }
+    if('serviceWorker'in navigator){try{await navigator.serviceWorker.register('/session-recorder/sw.js',{scope:'/session-recorder/'});byId('app-status').textContent=standalone?'Standalone field app · all capture files and report templates are installed locally. No internet is required.':'Free local app · this recorder can reopen offline after its files are cached. Your sessions stay on this device.';}catch{byId('app-status').textContent=standalone?'Standalone field app ready. No internet is required.':'Browser mode ready. Download the standalone app for field use.';}}
+    if(standalone)byId('offline-downloads').hidden=true;
+    ready=true;controls();networkStatus();status('Ready. Select inputs or start a notes-only session and attach evidence afterward.');
   }
   controls();if(navigator.locks)navigator.locks.request('forge-uas-recorder',{ifAvailable:true},async lock=>{if(!lock){status('Another recorder tab is open. Close it and reload to protect your local sessions.');return;}await init();await new Promise(()=>{});}).catch(fail);else init().catch(fail);
 })();
