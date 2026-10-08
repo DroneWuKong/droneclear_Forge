@@ -13,6 +13,7 @@ Version 1.1.0, 8 October 2026. Public route: `/session-recorder/`. The app is fr
 - Check attached System Test Lab reports against the exact shipped catalog. General, Gauntlet and DoW profile summaries retain human/external gates and self-recorded claims.
 - Export/import an ordinary ZIP with SHA-256 hashes, raw telemetry, timestamped `.tlog`, a receipt ledger, media, originals and reports. Validate hashes and decoded packet identity when importing.
 - Generate PX4/ArduPilot forum drafts, Betaflight support context, ClickUp task Markdown and Jira Cloud ADF. Forum posting and attachments remain user-reviewed actions in the destination.
+- Keep Guided setup short, expand technical fields in Developer mode, and provide direct choose/record/review navigation. Attachments preserve report drafts. Jira's Guided copy is readable editor text; its download and Developer copy remain ADF JSON.
 - Optionally upload a reviewed complete ZIP to a configured Slack channel through the local helper. Credentials stay in the helper environment. Persistent receipts reuse a completed upload and block blind retries after uncertain completion.
 
 Direct ClickUp/Jira posting, MSP capture, RTSP ingestion, native flight-log analysis, automatic flight control and requirement certification are outside this release. This app does not register OAuth integrations or provision Slack workspaces.
@@ -50,6 +51,8 @@ The release is checked with independently generated pymavlink 2.4.49 MAVLink v1/
 Chromium browser checks use real MediaRecorder encoding and IndexedDB with synthetic video inputs and upstream telemetry fixtures. They cover local save/reopen, original attachments, alignment/replay, report formatting, catalog validation, import rejection, interrupted recovery, offline reopening, and 320/390/1440-pixel layouts. Forge's existing Test Lab, navigation, accessibility and built-site checks also run. CI includes these checks.
 
 Native CI builds each executable on its target Windows/Linux runner. A fresh Chromium profile loads bundled assets with all non-loopback requests blocked, records real synthetic media and UDP fixtures, switches live/workspace views during capture, exports reports and reopens a disk copy in a new profile. Archive/authentication tests cover integrity failures, replacement, symlinks, path rejection and cross-origin bootstrap restrictions. This is software evidence; real Teams/Meet participants, field connectivity, hardware and code signing remain unqualified.
+
+The [user journey review](SESSION_RECORDER_USER_JOURNEYS_2026-10-08.md) records novice, developer and live-team walkthrough findings and their fixes. Automated browser checks cover first-use navigation, review focus, draft retention, Jira clipboard/ADF behavior and mobile reflow. This is a scenario-based review, with no recruited participant study or measured human completion rates.
 
 This evidence is software validation. Physical aircraft, real USB/camera/microphone hardware across operating systems, and live Slack workspace permissions have not been qualified by these tests. The free local app does not depend on those account integrations to record or export.
 
