@@ -1,5 +1,13 @@
 # Changelog
 
+## 2026-10-07 — Free local UAS Session Recorder
+
+- Add guided/developer screen, camera, narration and receive-only MAVLink capture with local replay, event markers, manual timing alignment and recovery.
+- Preserve native evidence in hashed session ZIPs; attach existing System Test Lab reports and retain external acceptance gates.
+- Generate PX4, ArduPilot, Betaflight, ClickUp Markdown and Jira ADF reports; provide optional explicit Slack upload through a downloadable stdlib helper.
+- Publish the research and session SOP; correct PID Tuning's native Blackbox upload claim and link the maintained Betaflight App viewer.
+- Validate upstream wire fixtures, real browser encoding/storage, imports, interrupted recovery, offline reopening, responsive layout and mocked Slack retries.
+
 ## 2026-10-05 — Private source-learning judgments
 
 - Add reviewer-only, append-only extraction and graph judgments to the existing evidence ledger.

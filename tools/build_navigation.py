@@ -9,8 +9,10 @@ LEARN = set('guides academy start software-library troubleshoot'.split())
 ALIASES = {'forge', 'hub', 'intel', 'tools-home'}
 LABELS = {'':'Build home','builder':'My build','models':'Developer models','patterns-home':'Today','ask-pie':'Research a question','intel/feed':'News','pie-search':'Advanced record search','cost':'Cost estimate','priorities':'Watchlist & priorities','miner-health':'Dataset coverage','intel-health':'Collection pipeline','data-status':'Data status','gallery':'Example builds','tools':'RF tools'}
 LABELS['test-lab'] = 'System Test Lab'
+LABELS['session-recorder'] = 'UAS Session Recorder'
 DESCRIPTIONS = {'builder':'Select parts and review recorded compatibility in your current build.','models':'Download the retained CUAS detector family with formats, hashes, metrics, and integration guidance.','ask-pie':'Find cited records and save an evidence packet.','pie-search':'Filter and inspect the full indexed corpus.','cost':'Review prices and weights for your saved parts or a catalog model.','tools':'Terrain, channel planning, mesh planning, and link budget tools.','intel/feed':'UAS-related articles, with a separate full-corpus view.','gallery':'Unvalidated example component lists to inspect in the Builder.'}
 DESCRIPTIONS['test-lab'] = 'Download general software tests, prepare Gauntlet III and DoW evidence, and review local results.'
+DESCRIPTIONS['session-recorder'] = 'Free local screen, camera and MAVLink capture, marked replay, original flight logs, and forum / ClickUp / Jira reports.'
 def write_directory(pages, source, output):
     entries=[]
     for filename, destination in pages.items():
