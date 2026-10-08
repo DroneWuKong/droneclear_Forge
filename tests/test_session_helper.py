@@ -63,7 +63,9 @@ class HelperTests(unittest.TestCase):
                 self.assertIn('bridge.py', archive.namelist())
                 self.assertIn('static/session-recorder.js', archive.namelist())
                 self.assertIn('SOP.md', archive.namelist())
-                self.assertEqual(len(archive.namelist()), 20)
+                self.assertIn('static/session-media.js', archive.namelist())
+                self.assertIn('static/session-vehicle.js', archive.namelist())
+                self.assertEqual(len(archive.namelist()), 22)
                 self.assertFalse(any('.env' in p or 'private' in p for p in archive.namelist()))
                 package = Path(tmp) / 'local-app'
                 archive.extractall(package)
@@ -106,6 +108,60 @@ class HelperTests(unittest.TestCase):
             self.assertEqual(data['gap'], 0)
         finally:
             server.telemetry.closed.set();server.udp.close();server.shutdown();server.server_close();thread.join()
+
+    def test_evidence_requests_use_only_observed_peer_and_allowlisted_reads(self):
+        fixture = json.loads((ROOT / 'tests/fixtures/session_vehicle.json').read_text())
+        telemetry = bridge.Telemetry()
+        address = ('127.0.0.1', 14555)
+        heartbeat = bytes.fromhex(fixture['responses']['heartbeat_px4'])
+        telemetry.observe(b'noise' + heartbeat[:8], address)
+        telemetry.observe(heartbeat[8:], address)
+        class UDP:
+            def __init__(self): self.sent = []
+            def sendto(self, data, peer): self.sent.append((data, peer))
+        udp = UDP()
+        for hex_data in fixture['requests'].values():
+            data = bytes.fromhex(hex_data)
+            self.assertTrue(telemetry.read_request(data, udp)['ok'])
+            self.assertEqual(udp.sent[-1], (data, address))
+        request = bytes.fromhex(fixture['requests']['21'])
+        with self.assertRaises(ValueError): telemetry.read_request(request[:-1], udp)
+        with self.assertRaises(ValueError): telemetry.read_request(bytes([254,0,0,255,190,76,0,0]), udp)
+        telemetry.observe(bytes.fromhex(fixture['responses']['heartbeat_armed']), address)
+        with self.assertRaisesRegex(ValueError, 'disarmed'):
+            telemetry.read_request(bytes.fromhex(fixture['requests']['119']), udp)
+        telemetry.read_request(bytes.fromhex(fixture['requests']['122']), udp)
+        telemetry.vehicles[(42,7)]['signed'] = True
+        with self.assertRaisesRegex(ValueError, 'authenticated GCS'): telemetry.read_request(request, udp)
+        telemetry.vehicles[(42,7)]['signed'] = False
+        telemetry.vehicles[(42,7)]['seen'] -= 11
+        with self.assertRaisesRegex(ValueError, 'fresh'): telemetry.read_request(request, udp)
+        telemetry.observe(heartbeat, address)
+        telemetry.read_times.clear()
+        for _ in range(20): telemetry.read_request(request, udp)
+        with self.assertRaisesRegex(ValueError, '20 per second'): telemetry.read_request(request, udp)
+
+    def test_authenticated_read_endpoint_returns_request_over_local_udp(self):
+        fixture = json.loads((ROOT / 'tests/fixtures/session_vehicle.json').read_text())
+        server = bridge.create_server(ROOT / 'forge-source', http_port=0, udp_port=0, key='fixture-key')
+        thread = threading.Thread(target=server.serve_forever, daemon=True);thread.start()
+        url = 'http://127.0.0.1:' + str(server.server_address[1]) + '/mavlink/read-request'
+        sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM);sock.bind(('127.0.0.1',0));sock.settimeout(2)
+        try:
+            sock.sendto(bytes.fromhex(fixture['responses']['heartbeat_px4']), ('127.0.0.1', server.udp_port))
+            deadline = time.monotonic() + 2
+            while not server.telemetry.vehicles and time.monotonic() < deadline: time.sleep(0.01)
+            data = bytes.fromhex(fixture['requests']['21'])
+            for key, code in [('wrong',403),('fixture-key',200)]:
+                request = urllib.request.Request(url, data=data, headers={'X-Forge-Key':key,'Content-Type':'application/octet-stream'})
+                if code == 403:
+                    with self.assertRaises(urllib.error.HTTPError) as error: urllib.request.urlopen(request)
+                    self.assertEqual(error.exception.code,code)
+                else:
+                    with urllib.request.urlopen(request) as response: self.assertEqual(response.status,code)
+            self.assertEqual(sock.recvfrom(100)[0],data)
+        finally:
+            sock.close();server.telemetry.closed.set();server.udp.close();server.shutdown();server.server_close();thread.join()
 
     def test_gap_is_reported_after_buffer_overrun(self):
         telemetry = bridge.Telemetry()

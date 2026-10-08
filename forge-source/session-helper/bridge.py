@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
-"""Local, receive-only MAVLink bridge and explicit Slack session upload.
+"""Local MAVLink monitoring, bounded evidence reads and explicit Slack upload.
 
-Python standard library only. No vehicle commands, shell execution, or hosted
+Python standard library only. No flight control, configuration writes, shell execution, or hosted
 session storage. Slack credentials are read from the operator's environment.
 """
 import argparse
@@ -26,7 +26,7 @@ import urllib.request
 import zipfile
 
 LIMIT = 256 * 1024 * 1024
-STATIC = ('workspace.css', 'session-recorder.css', 'session-recorder.js',
+STATIC = ('workspace.css', 'session-recorder.css', 'session-recorder.js', 'session-media.js', 'session-vehicle.js',
           'session-evidence.js', 'session-reports.js', 'session-store.js',
           'test-lab.js', 'session-recorder-icon.svg')
 
@@ -37,20 +37,97 @@ class Telemetry:
         self.packets = deque(maxlen=2048)
         self.cursor = 0
         self.closed = threading.Event()
+        self.buffers = {}
+        self.vehicles = {}
+        self.read_times = deque()
 
     def receive(self, udp):
         udp.settimeout(0.5)
         while not self.closed.is_set():
             try:
-                data, _ = udp.recvfrom(65535)
+                data, address = udp.recvfrom(65535)
             except socket.timeout:
                 continue
             except OSError:
                 break
             with self.lock:
+                self.observe(data, address)
                 self.cursor += 1
                 self.packets.append({'id': self.cursor, 'received_unix_ns': str(time.time_ns()),
                                      'data': base64.b64encode(data).decode('ascii')})
+
+    def observe(self, data, address):
+        buffer = self.buffers.get(address, b'') + data
+        if len(buffer) > 65536:
+            buffer = data
+        offset = 0
+        while offset < len(buffer):
+            if buffer[offset] not in (254, 253):
+                offset += 1
+                continue
+            version2 = buffer[offset] == 253
+            header = 10 if version2 else 6
+            if len(buffer) - offset < header:
+                break
+            signed = version2 and bool(buffer[offset + 2] & 1)
+            length = header + buffer[offset + 1] + 2 + (13 if signed else 0)
+            if len(buffer) - offset < length:
+                break
+            message = int.from_bytes(buffer[offset + 7:offset + 10], 'little') if version2 else buffer[offset + 5]
+            if message == 0 and buffer[offset + 1] == 9 and (not version2 or buffer[offset + 2] & 254 == 0):
+                frame = buffer[offset:offset + length]
+                checksum = int.from_bytes(frame[header + 9:header + 11], 'little')
+                if mav_crc(frame[1:header + 9] + bytes([50])) == checksum:
+                    system, component = (frame[5], frame[6]) if version2 else (frame[3], frame[4])
+                    payload = frame[header:header + 9]
+                    if system and component and payload[4] != 6 and payload[5] in (3, 12):
+                        self.vehicles[(system, component)] = {'address': address, 'seen': time.monotonic(),
+                            'armed': bool(payload[6] & 128), 'signed': signed}
+                        if len(self.vehicles) > 8:
+                            self.vehicles.pop(next(iter(self.vehicles)))
+            offset += length
+        self.buffers[address] = buffer[offset:]
+        if len(self.buffers) > 8:
+            self.buffers.pop(next(iter(self.buffers)))
+
+    def read_request(self, data, udp):
+        definitions = {20: (214, 20, 2), 21: (159, 2, 0), 117: (128, 6, 4),
+                       119: (116, 12, 10), 122: (203, 2, 0)}
+        if len(data) < 8 or data[0] != 254 or data[3:5] != bytes([255, 190]):
+            raise ValueError('Use an allowlisted MAVLink evidence read request.')
+        definition = definitions.get(data[5])
+        if not definition:
+            raise ValueError('Only parameter and onboard-log reads are available.')
+        crc, size, target_offset = definition
+        if (data[1] != size or len(data) != size + 8 or
+                mav_crc(data[1:-2] + bytes([crc])) != int.from_bytes(data[-2:], 'little')):
+            raise ValueError('Read request length or CRC is invalid.')
+        payload = data[6:-2]
+        if data[5] == 20 and (not 0 <= int.from_bytes(payload[:2], 'little', signed=True) <= 9999 or any(payload[4:])):
+            raise ValueError('Use a bounded parameter index.')
+        if data[5] == 117 and payload[:4] != bytes([0, 0, 255, 255]):
+            raise ValueError('Use the standard onboard-log listing range.')
+        if data[5] == 119 and (int.from_bytes(payload[:4], 'little') > 32 * 1048576 or
+                not 1 <= int.from_bytes(payload[4:8], 'little') <= 11520 or
+                int.from_bytes(payload[:4], 'little') + int.from_bytes(payload[4:8], 'little') > 32 * 1048576):
+            raise ValueError('Use a log read up to 11,520 bytes within a 32 MiB file.')
+        with self.lock:
+            vehicle = self.vehicles.get(tuple(payload[target_offset:target_offset + 2]))
+            if not vehicle or time.monotonic() - vehicle['seen'] > 10:
+                raise ValueError('Wait for a fresh vehicle heartbeat on this local UDP connection.')
+            if vehicle['signed']:
+                raise ValueError('Use an authenticated GCS for reads on a signed link.')
+            if data[5] in (117, 119) and vehicle['armed']:
+                raise ValueError('Collect onboard logs while the vehicle is disarmed.')
+            now = time.monotonic()
+            while self.read_times and now - self.read_times[0] > 1:
+                self.read_times.popleft()
+            if len(self.read_times) >= 20:
+                raise ValueError('Evidence requests are limited to 20 per second.')
+            self.read_times.append(now)
+            address = vehicle['address']
+        udp.sendto(data, address)
+        return {'ok': True, 'message_id': data[5], 'bytes_sent': len(data)}
 
     def after(self, cursor):
         with self.lock:
@@ -59,6 +136,14 @@ class Telemetry:
                     'gap': max(0, first - cursor - 1),
                     'packets': [p for p in self.packets if p['id'] > cursor][:256]}
 
+
+def mav_crc(data):
+    crc = 65535
+    for value in data:
+        tmp = value ^ (crc & 255)
+        tmp ^= (tmp << 4) & 255
+        crc = ((crc >> 8) ^ (tmp << 8) ^ (tmp << 3) ^ (tmp >> 4)) & 65535
+    return crc
 
 def inspect_bundle(data):
     """Check file integrity without extracting anything to the filesystem."""
@@ -75,7 +160,7 @@ def inspect_bundle(data):
             name = f.filename
             if (f.compress_type != zipfile.ZIP_STORED or f.flag_bits & 1 or
                     f.file_size > LIMIT or f.file_size != f.compress_size or
-                    (name not in fixed and (not re.fullmatch(
+                    (name not in fixed and not re.fullmatch(r'(screen|camera)-[2-8]\.(webm|mp4)', name) and (not re.fullmatch(
                         r'originals/[a-z0-9-]{8,80}/[a-zA-Z0-9][a-zA-Z0-9._-]{0,160}', name)
                         or '..' in name))):
                 raise ValueError('Unsupported session ZIP entry.')
@@ -272,7 +357,7 @@ class FieldArchive:
 
 
 class Handler(BaseHTTPRequestHandler):
-    server_version = 'ForgeSessionHelper/1.1'
+    server_version = 'ForgeSessionHelper/1.2'
 
     def log_message(self, *_args):
         pass  # Never log keys, file names, summaries, or Slack credentials.
@@ -334,6 +419,7 @@ class Handler(BaseHTTPRequestHandler):
             self.respond(200, {'ok': True, 'cursor': self.server.telemetry.cursor,
                               'udp_address': '127.0.0.1:' + str(self.server.udp_port),
                               'slack_enabled': bool(self.server.slack),
+                              'evidence_reads': True,
                               'slack_channel': self.server.slack.channel if self.server.slack else '',
                               'standalone': self.server.standalone,
                               'archive_enabled': bool(self.server.archive),
@@ -379,6 +465,19 @@ class Handler(BaseHTTPRequestHandler):
     def do_POST(self):
         if not self.allowed():
             self.respond(403, {'error': 'Invalid local connection key, origin or host.'})
+            return
+        if self.path == '/mavlink/read-request':
+            try:
+                length = int(self.headers.get('Content-Length', '0'))
+                if not 0 < length <= 32 or self.headers.get('Content-Type') != 'application/octet-stream':
+                    raise ValueError('Send one bounded MAVLink evidence read request.')
+                self.connection.settimeout(5)
+                body = self.rfile.read(length)
+                if len(body) != length:
+                    raise ValueError('Incomplete evidence request.')
+                self.respond(200, self.server.telemetry.read_request(body, self.server.udp))
+            except (ValueError, OSError) as error:
+                self.respond(400, {'ok': False, 'error': str(error)[:500]})
             return
         if not ((self.path == '/slack' and self.server.slack) or (self.path == '/archive' and self.server.archive)):
             self.respond(404, {'error': 'This destination is not configured.'})

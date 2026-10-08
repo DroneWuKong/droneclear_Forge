@@ -25,3 +25,13 @@ Physical camera/microphone/USB behavior, real field datalinks and live meeting/w
 - `tests/browser_session_recorder.cjs`: existing recording, evidence integrity, alignment, report formats, recovery and cached web reopening.
 
 Native build outputs now live in `build-desktop/`, separate from the Pages site output. They cannot contaminate a local site audit or be removed by a normal static-site rebuild.
+
+## Version 1.2 follow-up: multi-input field workflow
+
+A developer chooses Mission Planner, its CLI and a terminal one at a time, then adds the laptop camera and a USB camera. Names remain attached to separate recordings; Focus changes the preview without changing capture. The camera chooser advances to an unused device. Duplicate cameras, cancelled pickers and a ninth input leave the existing choices intact. One microphone avoids duplicate narration. An ended terminal source records an interruption while the remaining inputs continue.
+
+Before reproducing, the operator selects a connected PX4/ArduPilot target and collects parameters. A complete snapshot creates a prepared session; Start recording retains its evidence in the same session. The operator can list and collect completed logs while disarmed before/after recording. Interrupted transfers attach no partial file. Afterward, PX4/Dronecode opens a reviewed draft; Betaflight offers each official bug-form field separately and copies its Support ID without wrappers. Configuration questions have their own official community destination.
+
+The fixed 1,120-pixel maximum left unused space on desktop. The wide workspace now puts setup beside capture, fills the viewport width, expands preview columns and provides fullscreen. Replay spans the workspace. Live mode uses smaller grid cells for several simultaneous inputs, with a focused view for detailed reading. A sticky-panel trial obscured report controls during the walkthrough and was removed. The live board now includes source interruptions as well as marked notes.
+
+The frozen Linux app passes this five-input journey offline, including actual MediaRecorder, one audio stream, loopback parameter/log requests, separate media files, interrupted-source metadata, ZIP integrity, replay and fresh-profile disk recovery. Geometry checks cover 320, 390, 1366, 1920 and 2560 pixels and fullscreen entry/exit. The same executable journey runs on both native CI platforms. These remain synthetic software checks; physical hardware and participant validation are separate.
