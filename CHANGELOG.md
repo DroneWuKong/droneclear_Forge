@@ -1,5 +1,11 @@
 # Changelog
 
+## 2026-10-08 — Recorder 1.3.1 terminal-sharing guidance
+
+- Show a short terminal-sharing hint beside the window/monitor controls, with accessible descriptions for both buttons.
+- Expand Help with restore → Window tab → monitor fallback steps, the browser/OS limitation and the scope of monitor capture.
+- Include the guidance in the offline packages and setup instructions.
+
 ## 2026-10-08 — Recorder 1.3 task workspaces
 
 - Remove the long setup column. Record, Evidence and Report open directly; saved sessions and help have separate destinations.

@@ -1,6 +1,6 @@
 # Forge UAS Session Recorder
 
-Version 1.3.0, 8 October 2026. Public route: `/session-recorder/`. The app is free, with local browser storage, guided/developer views and standalone Windows/Linux x64 packages. It records evidence around existing tools and attaches System Test Lab output.
+Version 1.3.1, 8 October 2026. Public route: `/session-recorder/`. The app is free, with local browser storage, guided/developer views and standalone Windows/Linux x64 packages. It records evidence around existing tools and attaches System Test Lab output.
 
 ## What this release does
 
@@ -73,4 +73,6 @@ The background Gauntlet service remains stopped. This release neither starts it 
 
 ## Window picker and terminal availability
 
-Add app window requests the browser's window preference; Add monitor requests its monitor preference. These are picker hints, not restrictions or a custom native window enumerator. Chrome on Windows omits invisible/minimized windows: restore the terminal and select its Window entry. If it remains unavailable, share the monitor showing it. The standalone app uses the same installed-browser picker. [Chrome picker preferences](https://developer.chrome.com/docs/web-platform/screen-sharing-controls#preferred_display_surface), [Chromium Windows enumeration](https://chromium.googlesource.com/external/webrtc/+/HEAD/modules/desktop_capture/win/window_capture_utils.cc).
+The Record screen shows a short terminal hint beside Add app window and Add monitor; Terminal window missing? opens the full Help walkthrough. Restore the terminal if minimized, choose Add app window, then select Chrome's Window tab and the terminal. Repeat for each separate app window. If it remains unavailable, use Add monitor and keep the terminal visible on that screen; monitor capture records everything visible there.
+
+Add app window requests the browser's window preference; Add monitor requests its monitor preference. These are picker hints, not restrictions or a custom native window enumerator. Forge does not filter out command-line apps. Chrome on Windows omits invisible/minimized windows, and some window types may be unavailable. The standalone app uses the same installed-browser picker. [Chrome picker preferences](https://developer.chrome.com/docs/web-platform/screen-sharing-controls#preferred_display_surface), [Chromium Windows enumeration](https://chromium.googlesource.com/external/webrtc/+/HEAD/modules/desktop_capture/win/window_capture_utils.cc).

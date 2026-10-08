@@ -34,7 +34,7 @@ def main():
         print('Close another recorder instance or choose different --http-port / --udp-port values.', flush=True)
         return 1
     url = 'http://127.0.0.1:' + str(server.server_address[1]) + '/session-recorder/'
-    print(json.dumps({'url': url, 'udp_port': server.udp_port, 'version': '1.3.0'}), flush=True)
+    print(json.dumps({'url': url, 'udp_port': server.udp_port, 'version': '1.3.1'}), flush=True)
     print('Field folder: ' + str(server.archive.directory), flush=True)
     print('Keep this window open. Press Ctrl+C to close the recorder after stopping your session.', flush=True)
     thread = threading.Thread(target=server.serve_forever, daemon=True)

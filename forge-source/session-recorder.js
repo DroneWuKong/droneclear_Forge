@@ -124,7 +124,7 @@
   async function prepareEvidenceSession(target){
     if(current)return;
     const values=details();if(values.stack==='generic')values.stack=target.autopilot===12?'px4':'ardupilot';
-    const id=crypto.randomUUID();current={id,session:{schema_version:1,tool:'forge-uas-session',tool_version:'1.3.0',id,certification:false,program_acceptance:false,clock_basis:'browser_receipt_monotonic',started_at:new Date().toISOString(),duration_ms:0,state:'finished',evidence_only:true,files:[],sources:{screen:{requested:false,status:'not_selected',inputs:[]},camera:{requested:false,status:'not_selected',inputs:[]},telemetry:{requested:false,status:'not_selected'}},test_reports:[],...values},timeline:[]};
+    const id=crypto.randomUUID();current={id,session:{schema_version:1,tool:'forge-uas-session',tool_version:'1.3.1',id,certification:false,program_acceptance:false,clock_basis:'browser_receipt_monotonic',started_at:new Date().toISOString(),duration_ms:0,state:'finished',evidence_only:true,files:[],sources:{screen:{requested:false,status:'not_selected',inputs:[]},camera:{requested:false,status:'not_selected',inputs:[]},telemetry:{requested:false,status:'not_selected'}},test_reports:[],...values},timeline:[]};
     await store.save(current);await refresh();await showCurrent();
   }
   async function collectVehicle(kind){
@@ -141,7 +141,7 @@
   }
   async function start(){
     if(!ready||capturing||stopping)return;pausePlayback();const prepared=current?.session.evidence_only?current:null;current={id:prepared?.id||crypto.randomUUID(),session:null,timeline:prepared?.timeline||[]};
-    current.session={schema_version:1,tool:'forge-uas-session',tool_version:'1.3.0',id:current.id,certification:false,program_acceptance:false,clock_basis:'browser_receipt_monotonic',started_at:new Date().toISOString(),duration_ms:0,state:'in_progress',evidence_only:false,files:prepared?.session.files||[],sources:{},test_reports:prepared?.session.test_reports||[],...details()};
+    current.session={schema_version:1,tool:'forge-uas-session',tool_version:'1.3.1',id:current.id,certification:false,program_acceptance:false,clock_basis:'browser_receipt_monotonic',started_at:new Date().toISOString(),duration_ms:0,state:'in_progress',evidence_only:false,files:prepared?.session.files||[],sources:{},test_reports:prepared?.session.test_reports||[],...details()};
     originTime=performance.now();parser=new E.MavlinkParser();indexes.clear();totalBytes=current.session.files.reduce((total,file)=>total+file.size,0);timelineBytes=new TextEncoder().encode(JSON.stringify(current.timeline)).length;storageFailure=false;capturing=true;stopping=false;recorders.clear();byId('share-confirm').checked=false;
     const ordinals={screen:0,camera:0};for(const kind of ['screen','camera'])current.session.sources[kind]={requested:media.active.some(input=>input.kind===kind),status:media.active.some(input=>input.kind===kind)?'recording':'not_selected',inputs:[]};
     for(const input of media.active){
