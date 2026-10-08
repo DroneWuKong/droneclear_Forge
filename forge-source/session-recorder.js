@@ -37,6 +37,7 @@
     byId('open-archive').disabled=!ready||capturing||stopping||busy||!helper?.archive_enabled;
     byId('review-session').hidden=!current||capturing||stopping;byId('review-session').disabled=!saved;
     byId('complete-report').disabled=!saved;
+    for(const button of byId('official-report-fields').querySelectorAll('button'))button.disabled=!saved;
     let target=null;try{target=vehicle.target(byId('vehicle-target').value);}catch{}
     const available=ready&&!capturing&&!stopping&&!busy&&Boolean(serialPort?.writable||helper?.evidence_reads)&&target;
     byId('collect-params').disabled=!available;byId('list-vehicle-logs').disabled=!available||target?.armed;
@@ -190,7 +191,7 @@
     const url=R.composer(current.session,current.timeline,target),link=byId('open-destination');link.hidden=!url;if(url)link.href=url;
     link.textContent=target==='betaflight'?'Open official Betaflight bug form':target==='betaflight_support'?'Open Betaflight community':target==='px4'?'Open PX4 / Dronecode draft':target==='ardupilot'?'Open ArduPilot draft':'Open destination';
     const fields=byId('official-report-fields');fields.replaceChildren();fields.hidden=target!=='betaflight';
-    for(const[label,value]of R.officialFields(current.session,current.timeline,target)){const card=document.createElement('div');card.className='rec-official-field';const title=document.createElement('h3'),preview=document.createElement('pre'),button=document.createElement('button');title.textContent=label;preview.textContent=value||'Add this detail before submitting.';button.type='button';button.className='action secondary';button.textContent='Copy '+label;button.onclick=run(async()=>{await saveDetails();const fresh=R.officialFields(current.session,current.timeline,target).find(([field])=>field===label)?.[1];if(!fresh)throw Error('Add '+label+' to the report details before copying.');await navigator.clipboard.writeText(fresh);status('Copied '+label+'. Paste it into the matching official form field.');});card.append(title,preview,button);fields.append(card);}
+    for(const[label,value]of R.officialFields(current.session,current.timeline,target)){const card=document.createElement('div');card.className='rec-official-field';const title=document.createElement('h3'),preview=document.createElement('pre'),button=document.createElement('button');title.textContent=label;preview.textContent=value||'Add this detail before submitting.';button.type='button';button.className='action secondary';button.textContent='Copy '+label;button.disabled=capturing||stopping||busy;button.onclick=run(async()=>{await saveDetails();const fresh=R.officialFields(current.session,current.timeline,target).find(([field])=>field===label)?.[1];if(!fresh)throw Error('Add '+label+' to the report details before copying.');await navigator.clipboard.writeText(fresh);status('Copied '+label+'. Paste it into the matching official form field.');});card.append(title,preview,button);fields.append(card);}
   }
   async function showCurrent(){
     byId('archive-status').textContent='';
