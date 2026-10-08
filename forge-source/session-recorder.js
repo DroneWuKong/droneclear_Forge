@@ -4,7 +4,7 @@
   const byId=id=>document.getElementById(id),MAX_CAPTURE=192*1024*1024;
   const detailFields={title:'session-title',aircraft:'session-aircraft',firmware:'session-firmware',build_reference:'session-build',stack:'session-stack',test_mode:'session-test-mode',app_version:'session-app-version',support_id:'session-support-id',expected:'session-expected',actual:'session-actual',steps:'session-steps',conditions:'session-conditions',test_outcome:'test-outcome',outcome_reason:'outcome-reason'};
   const store=new ForgeSessionStore(),streams={screen:null,camera:null},recorders=new Map(),indexes=new Map();
-  let ready=false,busy=false,current=null,capturing=false,stopping=false,originTime=0,parser=null,queue=Promise.resolve(),storageFailure=false,totalBytes=0;
+  let ready=false,busy=false,current=null,capturing=false,stopping=false,originTime=0,parser=null,queue=Promise.resolve(),storageFailure=false,totalBytes=0,timelineBytes=0;
   let monitorParser=new E.MavlinkParser(),lastTelemetryAt=null;const liveMessages=new Map();
   let serialPort=null,serialReader=null,serialGeneration=0,helper=null,helperGeneration=0,helperAbort=null,catalog=null,catalogHash=null,replayURLs=[],playbackTimer=null;
   const status=text=>{byId('rec-status').textContent=text;};
@@ -24,7 +24,7 @@
     for(const id of Object.values(detailFields))byId(id).disabled=capturing||stopping||busy;
     byId('send-slack').disabled=!saved||!helper?.slack_enabled||!byId('share-confirm').checked;
   }
-  function addRow(row){if(!current)return;current.timeline.push(row);current.session.duration_ms=Math.max(current.session.duration_ms,row.at_ms);if(current.timeline.length>=30000&&capturing)void stop('Timeline limit reached.');}
+  function addRow(row){if(!current||stopping&&row.kind==='mavlink')return;const size=new TextEncoder().encode(JSON.stringify(row)).length+1;if(capturing&&!stopping&&(current.timeline.length>=29999||timelineBytes+size>12*1024*1024)){void stop('Decoded timeline limit reached. Original received telemetry remains in the evidence.');return;}timelineBytes+=size;current.timeline.push(row);current.session.duration_ms=Math.max(current.session.duration_ms,row.at_ms);}
   function note(text,kind='source'){addRow({kind,text:text.slice(0,2000),at_ms:elapsed()});}
   function enqueue(work){queue=queue.then(work).catch(error=>{storageFailure=true;fail(Error('Local saving failed: '+error.message+'. Stop and export any available evidence.'));if(capturing&&!stopping)void stop('Local storage failed.');});return queue;}
   function persist(){if(!current||storageFailure)return;const snapshot=structuredClone(current);delete snapshot.chunks;enqueue(()=>store.save(snapshot));}
@@ -85,7 +85,7 @@
   async function start(){
     if(!ready||capturing||stopping)return;pausePlayback();current={id:crypto.randomUUID(),session:null,timeline:[]};
     current.session={schema_version:1,tool:'forge-uas-session',tool_version:'1.0.0',id:current.id,certification:false,program_acceptance:false,clock_basis:'browser_receipt_monotonic',started_at:new Date().toISOString(),duration_ms:0,state:'in_progress',files:[],sources:{},test_reports:[],...details()};
-    originTime=performance.now();parser=new E.MavlinkParser();indexes.clear();totalBytes=0;storageFailure=false;capturing=true;stopping=false;recorders.clear();byId('share-confirm').checked=false;
+    originTime=performance.now();parser=new E.MavlinkParser();indexes.clear();totalBytes=0;timelineBytes=0;storageFailure=false;capturing=true;stopping=false;recorders.clear();byId('share-confirm').checked=false;
     for(const kind of ['screen','camera']){
       const stream=streams[kind],active=stream?.getVideoTracks().some(t=>t.readyState==='live');current.session.sources[kind]={requested:Boolean(active),status:active?'recording':'not_selected'};
       if(!active)continue;

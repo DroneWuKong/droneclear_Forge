@@ -41,7 +41,7 @@ The session ZIP contains session.json (versioned manifest), timeline.json,
 summary.txt, report.md, report.json, selected media and original attachments.
 Original filenames, sizes and SHA-256 values are stored. Derived reports are
 labeled. ZIP exports are uncompressed and limited to 256 MiB. Capture stops
-at 192 MiB, 30,000 timeline entries or two hours. Attachments keep originals;
+at 192 MiB, 30,000 timeline entries, 12 MiB of decoded timeline or two hours. Attachments keep originals;
 native ULog, DataFlash and Blackbox analysis stays in existing viewers.
 Video alignment accepts a manual offset, including negative offsets for video
 that began earlier. Developer mode also exposes a clock scale. Check shared

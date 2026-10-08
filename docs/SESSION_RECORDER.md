@@ -31,7 +31,7 @@ Sessions belong to the browser origin, including its port. Use the same address 
 
 CRC checks detect corruption and hashes check byte integrity. Authorship, signatures and test claims are not authenticated. Unknown message CRCs are not checked. Routed sequence gaps do not establish radio packet-loss percentages. Capture state, missing report evidence, user-recorded test outcome and external acceptance stay separate.
 
-Capture stops at 192 MiB, 30,000 timeline entries or two hours. A final media chunk may exceed the capture threshold; retained evidence plus attachments is bounded at 240 MiB and ZIP export at 256 MiB. Interrupted containers may require repair in an external tool. Mobile layouts reflow; mobile screen/serial capture is not assured.
+Capture stops at 192 MiB, 30,000 timeline entries, 12 MiB of decoded timeline or two hours. A final media chunk may exceed the capture threshold; retained evidence plus attachments is bounded at 240 MiB and ZIP export at 256 MiB. Interrupted containers may require repair in an external tool. Mobile layouts reflow; mobile screen/serial capture is not assured.
 
 ## Validation
 
