@@ -78,7 +78,7 @@ class HelperTests(unittest.TestCase):
                     with urllib.request.urlopen(url + route) as response:
                         self.assertEqual(response.status, 200)
                         self.assertGreater(len(response.read()), 20)
-                html = (package / 'session-recorder.html').read_text()
+                html = (package / 'session-recorder.html').read_text(encoding='utf-8')
                 self.assertIn('href="https://uas-forge.com/test-lab/"', html)
                 self.assertNotIn('href="/test-lab/"', html)
             finally:

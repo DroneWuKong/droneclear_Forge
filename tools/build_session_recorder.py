@@ -26,7 +26,7 @@ def export_recorder(source, output):
         'sw.js': (source / 'session-helper/sw.js').read_bytes(),
         **{'static/' + name: (source / name).read_bytes() for name in ASSETS},
     }
-    sop = (Path(__file__).resolve().parents[1] / 'docs/UAS_TEST_SESSION_SOP.md').read_text()
+    sop = (Path(__file__).resolve().parents[1] / 'docs/UAS_TEST_SESSION_SOP.md').read_text(encoding='utf-8')
     sop = re.sub(r'\]\((SESSION_RECORDER.md|UAS_TOOLING_AND_FORMATS_2026-10-07.md)\)',
                  r'](https://github.com/DroneWuKong/droneclear_Forge/blob/master/docs/\1)', sop)
     contents['SOP.md'] = sop.encode()
@@ -50,5 +50,5 @@ def export_recorder(source, output):
             archive.writestr(info, data)
     hashes = {name: hashlib.sha256((output / name).read_bytes()).hexdigest()
               for name in ('README.txt', 'LICENSE.txt', 'app.webmanifest', 'sw.js', 'SOP.md', 'LIVE_TEAM_GUIDE.txt', path.name)}
-    (output / 'SHA256SUMS.txt').write_text(''.join(f'{digest}  {name}\n' for name, digest in hashes.items()))
+    (output / 'SHA256SUMS.txt').write_text(''.join(f'{digest}  {name}\n' for name, digest in hashes.items()), encoding='utf-8')
     return hashes

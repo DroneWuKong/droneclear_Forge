@@ -12,6 +12,8 @@ from bridge import create_server
 
 
 def main():
+    if hasattr(sys.stdout, 'reconfigure'):
+        sys.stdout.reconfigure(encoding='utf-8')
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--http-port', type=int, default=8767)
     parser.add_argument('--udp-port', type=int, default=14551)
