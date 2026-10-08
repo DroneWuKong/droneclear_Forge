@@ -132,6 +132,7 @@ PAGES = {
     'tools-home.html': 'tools-home/index.html',
     'software-library.html': 'software-library/index.html',
     'test-lab.html': 'test-lab/index.html',
+    'session-recorder.html': 'session-recorder/index.html',
     'models.html': 'models/index.html',
     'tracker.html': 'tracker/index.html',
     'grants.html': 'grants/index.html',
@@ -185,6 +186,13 @@ GENERATED_ROUTES = {
     '/system-tests/README.txt',
     '/system-tests/LICENSE.txt',
     '/system-tests/SHA256SUMS.txt',
+    '/session-recorder/forge-session-helper.zip',
+    '/session-recorder/README.txt',
+    '/session-recorder/SOP.md',
+    '/session-recorder/LICENSE.txt',
+    '/session-recorder/SHA256SUMS.txt',
+    '/session-recorder/app.webmanifest',
+    '/session-recorder/sw.js',
 }
 
 # Static assets to copy (JS, CSS, JSON, images)
@@ -759,7 +767,7 @@ _UNIFIED_NAV = r"""<!-- ── Unified UAS navigation (Research / Build / Learn)
     'browse':'Browse','wingman':'Wingman','intel':'Intel Hub','compare':'Compare',
     'compliance':'Compliance','dossier':'Dossier','platforms':'Platforms','regs':'Regs',
     'stack-builder':'Stack Builder','circuit-forge':'Circuit Forge','report':'Compliance Report','tools-home':'Tools',
-    'software-library':'Software Library','models':'Developer Models','test-lab':'System Test Lab','ecosystem':'OEM Catalog','industry':'Industry','tracker':'Contract Tracker',
+    'software-library':'Software Library','models':'Developer Models','test-lab':'System Test Lab','session-recorder':'UAS Session Recorder','ecosystem':'OEM Catalog','industry':'Industry','tracker':'Contract Tracker',
     'patterns-home':'Today','priorities':'Watchlist & priorities','ask-pie':'Research','intel-feed':'News','data-status':'Data status','brief':'Brief','patterns':'Flags','clock':'UAS Clock','ddg':'DDG Tracker',
     'adversary-bom':'Adversary BOM','mirroring':'Component Mirroring','actors':'Threat Actors',
     'ttps':'TTP Defense Gap','evasion':'Sanctions-Evasion','market-lens':'Market Lens',
@@ -1708,6 +1716,7 @@ SEO_META = {
 # Accurate per-tool metadata for the audited public routes; avoid unsupported counts.
 SEO_META.update({
     'test-lab.html': ('System Test Lab — UAS Forge', 'Download general software checks, prepare Gauntlet III evidence, and review DoW software assurance gaps locally with Forge System Test Lab.', 'system testing, software checks, Gauntlet III, DoW software assurance'),
+    'session-recorder.html': ('Free UAS Session Recorder — UAS Forge', 'Record screen, camera and MAVLink locally, replay marked moments, attach original flight logs, and format PX4, ArduPilot, Betaflight, ClickUp and Jira reports.', 'UAS recorder, MAVLink, flight logs, test evidence, PX4, ArduPilot, Betaflight'),
     'autonomy.html': ('Autonomy Datasets and Benchmarks — UAS Forge', 'Explore drone autonomy datasets and benchmarks by task, license class, and usability notes. Verify source terms before reuse.', 'UAS tools, drone reference, source evidence'),
     'donate.html': ('Support the UAS Websites — Forge, Patterns and Handbook', 'Support the hosting and maintenance of UAS Forge, UAS Patterns, and the Drone Integration Handbook.', 'UAS tools, drone reference, source evidence'),
     'uas-hub.html': ('UAS Website Hub — Forge, Patterns and Handbook', 'Find UAS Forge build tools, UAS Patterns evidence research, and the Drone Integration Handbook field reference.', 'UAS tools, drone reference, source evidence'),
@@ -2774,6 +2783,8 @@ def build(*, offline=False, data_ref=None, data_dir=None, include_private=False)
     write_brand_assets(BUILD_DIR)
     from tools.build_system_test_lab import export_toolkit
     export_toolkit(SRC_DIR, BUILD_DIR)
+    from tools.build_session_recorder import export_recorder
+    export_recorder(SRC_DIR, BUILD_DIR)
     version_script_dependencies()
 
     # Explicitly copy intel fallbacks to build root (served at /pie_flags.json etc.).

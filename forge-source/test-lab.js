@@ -43,7 +43,7 @@
   const api = {checks, validateReport, validateReview};
   if (typeof module === 'object' && module.exports) module.exports = api;
   root.ForgeTestLab = api;
-  if (typeof document === 'undefined') return;
+  if (typeof document === 'undefined' || !document.getElementById('lab-status')) return;
 
   let catalog, catalogHash, profile = 'general', report = null, notes = Object.create(null);
   const byId = id => document.getElementById(id);
