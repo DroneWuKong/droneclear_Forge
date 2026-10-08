@@ -18,7 +18,7 @@ For a support question, it is fine to have an observation rather than a pass lim
 
 Record aircraft/platform, flight controller, relevant connected components, firmware version/source commit, GCS/App version and computer environment. Include the simulator/model and middleware versions when relevant.
 
-For a connected PX4/ArduPilot vehicle, the recorder can collect a parameter snapshot before recording. Choose the connected target, then Collect parameters. Collection metadata retains its time and vehicle identity. Use the existing GCS for signed links or receive-only forwarding.
+For a connected PX4/ArduPilot vehicle, the recorder can collect a parameter snapshot before recording. Open Evidence, expand Collect parameters and onboard logs, choose the target, then Collect parameters. Collection metadata retains its time and vehicle identity. Use the existing GCS for signed links or receive-only forwarding.
 
 Save the configuration using its existing tool: QGC parameter export, ArduPilot/MAVProxy parameter file, or Betaflight support data and `diff all`. Attach the mission/fence/plan when it affects the test. Preserve original output and any incomplete-download indication. Note recent changes and their reasons. Reuse a Forge build record where one already exists.
 
@@ -65,7 +65,7 @@ Record what happened separately from a suspected cause. “No vehicle messages r
 
 ## 6 Finish and inspect the files
 
-Stop recording, wait for pending media/log writes and save the session. For supported PX4/ArduPilot links, select List onboard logs, choose a completed log, then Collect selected log while disarmed. Cancellation leaves existing evidence intact and discards partial downloads. Attach the original onboard log, exported configuration and any test output. Preserve original filenames and bytes. Label trimmed/transcoded clips and decoded CSV as derivatives.
+Stop recording, wait for pending media/log writes and save the session. For supported PX4/ArduPilot links, open Evidence and select List onboard logs, choose a completed log, then Collect selected log while disarmed. Cancellation leaves existing evidence intact and discards partial downloads. Attach the original onboard log, exported configuration and any test output. Preserve original filenames and bytes. Label trimmed/transcoded clips and decoded CSV as derivatives.
 
 Reopen the saved session. Check that selected media plays, marked moments are in range, logs are present and sources have correct status. Open the native log in an upstream analyzer when its contents are needed. For PX4, the official reporting workflow includes downloading logs with QGC and sharing an appropriate Flight Review link. Encrypted logs require their supported handling path. [PX4 flight reporting](https://docs.px4.io/main/en/getting_started/flight_reporting).
 
@@ -121,7 +121,7 @@ Question or requested help:
 Previous related discussion / issue:
 ```
 
-Choose PX4 / Dronecode forum for its reviewed draft composer, or Betaflight firmware bug form for matching per-field copy buttons. Use Betaflight configuration / community support for setup questions. GitHub form fields and attachments still need user review and submission.
+In Report, choose PX4 / Dronecode forum for its reviewed draft composer, or Betaflight firmware bug form for matching per-field copy buttons. Use Betaflight configuration / community support for setup questions. GitHub form fields and attachments still need user review and submission.
 
 The final exporter adds the chosen platform's fields and formatting. Betaflight's GitHub Support ID field already adds code formatting; a forum report may instead use an appropriate code block. The app must respect that distinction. [Betaflight firmware template](https://github.com/betaflight/betaflight/blob/master/.github/ISSUE_TEMPLATE/firmware-bug-report.yml).
 

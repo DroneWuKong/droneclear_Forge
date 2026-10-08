@@ -15,17 +15,17 @@ const root=path.resolve(process.argv[2]||'build');
   await page.goto(origin+'/session-recorder/');await page.waitForFunction(()=>document.querySelector('#rec-status').textContent.startsWith('Ready.'));
   assert.equal(await page.locator('#session-firmware').isVisible(),false,'Guided setup initially conceals technical fields');
   await page.locator('#session-title').fill('Guided support journey');
-  await page.getByRole('link',{name:'1 · Choose inputs'}).click();assert.equal(await page.locator('#choose-screen').isVisible(),true);
-  await page.getByRole('link',{name:'Continue to recording'}).click();
-  assert.ok(await page.locator('#start-recording').evaluate(button=>{const rect=button.getBoundingClientRect();return rect.top>=0&&rect.bottom<=innerHeight;}),'Start is in the laptop viewport after Continue');
+  assert.equal(await page.locator('#choose-screen').isVisible(),true);assert.equal(await page.locator('[data-section=report]').isVisible(),false);assert.equal(await page.locator('[data-section=replay]').isVisible(),false);
+  assert.ok(await page.locator('#start-recording').evaluate(button=>{const rect=button.getBoundingClientRect();return rect.top>=0&&rect.bottom<=innerHeight;}),'Start is visible on first load without reading or scrolling through setup');
   await page.locator('#start-recording').click();await page.locator('#marker-note').fill('Observed the problem');await page.locator('#mark-event').click();
   await page.locator('#stop-recording').click();await page.waitForFunction(()=>document.querySelector('#rec-status').textContent.startsWith('Saved locally.'));
-  await page.locator('#review-session').click();assert.equal(await page.evaluate(()=>document.activeElement.id),'replay-title');
+  assert.equal(await page.locator('body').getAttribute('data-stage'),'evidence');assert.equal(await page.locator('#replay-title').isVisible(),true);assert.equal(await page.locator('#choose-screen').isVisible(),false);assert.equal(await page.evaluate(()=>document.activeElement.id),'replay-title');
+  await page.locator('a[data-stage=report]').click();
   await page.locator('#session-actual').fill('My report draft before attaching the log');
-  await page.locator('#attach-log').setInputFiles({name:'fixture.log',mimeType:'text/plain',buffer:Buffer.from('Original test log')});
+  await page.locator('a[data-stage=evidence]').click();await page.locator('#attach-log').setInputFiles({name:'fixture.log',mimeType:'text/plain',buffer:Buffer.from('Original test log')});
   await page.waitForFunction(()=>document.querySelector('#evidence-files').textContent.includes('fixture.log'));
   assert.equal(await page.locator('#session-actual').inputValue(),'My report draft before attaching the log');
-  await page.locator('#report-destination').selectOption('jira');
+  await page.locator('a[data-stage=report]').click();await page.locator('#report-destination').selectOption('jira');
   assert.match(await page.locator('#report-preview').textContent(),/^Guided support journey\n/);
   assert.match(await page.locator('#copy-report').textContent(),/Jira editor/);
   await page.locator('#copy-report').click();await page.waitForFunction(()=>document.querySelector('#rec-status').textContent==='Formatted report copied.');
@@ -36,13 +36,16 @@ const root=path.resolve(process.argv[2]||'build');
   assert.equal(await page.evaluate(()=>document.activeElement.tagName),'SUMMARY');
   await page.locator('button[data-view="developer"]').click();assert.equal(JSON.parse(await page.locator('#report-preview').textContent()).type,'doc');
   await page.locator('button[data-view="guided"]').click();assert.match(await page.locator('#report-preview').textContent(),/^Guided support journey\n/);
+  // Detail drawers cannot push recording controls or review below a long setup column.
+  await page.locator('a[data-stage=record]').click();assert.ok(await page.locator('#start-recording').evaluate(e=>e.getBoundingClientRect().bottom<innerHeight));
+  await page.locator('#capture-help').click();assert.equal(await page.locator('#window-capture-help').isVisible(),true);assert.match(await page.locator('#window-capture-help').textContent(),/minimized/);
   fs.mkdirSync('.local/design-review',{recursive:true});
   for(const width of [320,390,1366]){
-   await page.setViewportSize({width,height:768});await page.evaluate(()=>scrollTo(0,0));
+   await page.setViewportSize({width,height:768});await page.locator('a[data-stage=record]').click();await page.evaluate(()=>scrollTo(0,0));
    assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1),'Guided reflow '+width);
    await page.screenshot({path:'.local/design-review/session-journey-guided-'+width+'.png'});
   }
-  await page.locator('#replay-title').scrollIntoViewIfNeeded();await page.screenshot({path:'.local/design-review/session-journey-replay.png'});
+  await page.locator('a[data-stage=evidence]').click();await page.locator('#replay-title').scrollIntoViewIfNeeded();await page.screenshot({path:'.local/design-review/session-journey-replay.png'});
   assert.equal(errors.length,0,errors.join('\n'));await context.close();
   console.log('Guided journeys passed: source/record navigation, notes-only capture, review focus, draft preservation, readable Jira clipboard, valid ADF download, detail recovery and desktop/mobile reflow.');
  }finally{if(browser)await browser.close();await new Promise(resolve=>server.close(resolve));}
