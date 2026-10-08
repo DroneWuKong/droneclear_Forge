@@ -97,8 +97,8 @@
   function validateSession(s,rows){
     if(!s||s.tool!=='forge-uas-session'||s.schema_version!==1||s.certification!==false||s.program_acceptance!==false||s.clock_basis!=='browser_receipt_monotonic'||!['finished','interrupted'].includes(s.state)||!/^[-a-zA-Z0-9]{8,80}$/.test(s.id||'')||!Number.isFinite(Date.parse(s.started_at))||!Number.isFinite(s.duration_ms)||s.duration_ms<0||s.duration_ms>7200000)throw Error('Invalid session identity, timing or scope.');
     for(const key of ['title','aircraft','firmware','build_reference'])if(typeof s[key]!=='string'||s[key].length>200)throw Error('Invalid session details.');
-    for(const key of ['expected','actual','steps','conditions','outcome_reason'])if(s[key]!==undefined&&(typeof s[key]!=='string'||s[key].length>10000))throw Error('Invalid report text.');
-    for(const key of ['support_id','app_version'])if(s[key]!==undefined&&(typeof s[key]!=='string'||s[key].length>200))throw Error('Invalid report details.');
+    for(const key of ['expected','actual','steps','conditions','outcome_reason','components','wiring'])if(s[key]!==undefined&&(typeof s[key]!=='string'||s[key].length>10000))throw Error('Invalid report text.');
+    for(const key of ['support_id','app_version','flight_controller'])if(s[key]!==undefined&&(typeof s[key]!=='string'||s[key].length>200))throw Error('Invalid report details.');
     if(!['generic','px4','ardupilot','betaflight'].includes(s.stack)||!['software','sitl','sih_hil','bench','flight'].includes(s.test_mode)||!['not_run','pass','fail','blocked','skipped','inconclusive'].includes(s.test_outcome))throw Error('Invalid test context.');
     if(!Array.isArray(s.files)||s.files.length>80||!Array.isArray(rows)||rows.length>50000)throw Error('Invalid session file list or timeline.');
     if(enc.encode(JSON.stringify(rows)).length>16*1048576)throw Error('Timeline exceeds the 16 MiB import limit.');

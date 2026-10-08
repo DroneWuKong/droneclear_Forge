@@ -130,6 +130,7 @@ const executable=path.resolve(process.argv[2]||('build-desktop/native/Forge-UAS-
   assert.match(parsed.session.actual,/team call/);assert.ok(parsed.session.files.some(file=>file.original_name==='flight.ulg'));
   for(const target of ['px4','ardupilot','betaflight','betaflight_support','clickup','jira']){
    await page.locator('#report-destination').selectOption(target);
+   if(target==='betaflight'){assert.equal(await page.locator('#official-report-fields .rec-official-field').count(),8);await page.locator('#technical-details').evaluate(e=>e.open=true);await page.locator('#session-flight-controller').fill('Fixture FC board');await page.locator('#session-support-id').fill('support-id-fixture');await page.locator('#session-components').fill('Fixture receiver');await page.locator('#session-wiring').fill('RX on UART 2');}
    const download=page.waitForEvent('download');await page.locator('#download-report').click();
    const data=fs.readFileSync(await (await download).path(),'utf8');assert.ok(data.length>100);
    if(target==='jira')assert.equal(JSON.parse(data).type,'doc');

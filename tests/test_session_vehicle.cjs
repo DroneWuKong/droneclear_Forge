@@ -47,7 +47,7 @@ test('armed, signed and stale vehicles cannot start logs; cancellation and armin
  for(const action of ['cancel','arm']){const {c,sent}=client((bytes,c)=>{if(bytes[5]===117){if(action==='cancel')c.cancel();else c.observe(row('heartbeat_armed'));}});await assert.rejects(()=>c.listLogs('42:7'),action==='cancel'?/cancelled/:/disarmed/);assert.deepEqual(sent,[117,122]);}
 });
 test('Betaflight adapter matches official form fields, copies a raw Support ID, and routes configuration help',()=>{
- const s={id:'test-session',title:'Bug',stack:'betaflight',files:[],test_outcome:'not_run',aircraft:'FC board',firmware:'4.5',expected:'Expected',actual:'Actual',steps:'Reproduce',support_id:'abc123'};
- const fields=R.officialFields(s,[],'betaflight');assert.equal(fields.length,8);assert.equal(fields.find(([label])=>label==='Support ID')[1],'abc123');
+ const s={id:'test-session',title:'Bug',stack:'betaflight',files:[],test_outcome:'not_run',aircraft:'FC board',firmware:'4.5',expected:'Expected',actual:'Actual',steps:'Reproduce',support_id:'abc123',flight_controller:'Board model',components:'RX model',wiring:'RX on UART 2'};
+ const fields=R.officialFields(s,[],'betaflight');assert.equal(fields.length,8);assert.equal(fields.find(([label])=>label==='Flight controller')[1],'Board model');assert.equal(fields.find(([label])=>label.startsWith('How are'))[1],'RX on UART 2');assert.equal(fields.find(([label])=>label==='Support ID')[1],'abc123');
  const url=new URL(R.composer(s,[],'betaflight'));assert.equal(url.searchParams.get('template'),'firmware-bug-report.yml');assert.equal(url.searchParams.get('body'),null);assert.equal(R.composer(s,[],'betaflight_support'),'https://discord.betaflight.com/invite');
 });
