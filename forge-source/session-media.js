@@ -1,8 +1,14 @@
 (function(root){
   'use strict';
   const MAX_INPUTS=8;
+  function fitGrid(container){
+    if(!container.getClientRects().length)return;
+    const count=[...container.children].filter(card=>!card.hidden).length;if(!count)return;
+    const columns=getComputedStyle(container).gridTemplateColumns.split(' ').length,rows=Math.ceil(count/columns),available=Math.max(280,innerHeight-container.getBoundingClientRect().top-24);
+    container.style.setProperty('--preview-height',Math.max(96,Math.min(480,available/rows-96)).toFixed(0)+'px');
+  }
   class CaptureInputs{
-    constructor(onEnded){this.inputs=new Map();this.onEnded=onEnded;this.locked=true;this.focus='';this.container=document.getElementById('capture-previews');this.select=document.getElementById('preview-view');this.cameraSelect=document.getElementById('camera-device');this.select.onchange=()=>{this.focus=this.select.value;this.applyFocus();};}
+    constructor(onEnded){this.inputs=new Map();this.onEnded=onEnded;this.locked=true;this.focus='';this.container=document.getElementById('capture-previews');this.select=document.getElementById('preview-view');this.cameraSelect=document.getElementById('camera-device');new ResizeObserver(()=>fitGrid(this.container)).observe(this.container);this.select.onchange=()=>{this.focus=this.select.value;this.applyFocus();};}
     get active(){return [...this.inputs.values()].filter(input=>input.stream.getVideoTracks().some(track=>track.readyState==='live'));}
     setLocked(locked){this.locked=locked;for(const input of this.inputs.values()){input.nameInput.disabled=locked;input.remove.disabled=locked;}this.cameraSelect.disabled=locked;document.getElementById('include-mic').disabled=locked;}
     async refreshCameras(){
@@ -13,7 +19,7 @@
       if([...this.cameraSelect.options].some(option=>option.value===selected))this.cameraSelect.value=selected;
       return devices;
     }
-    async add(kind){
+    async add(kind,surface='window'){
       if(this.inputs.size>=MAX_INPUTS)throw Error('Eight video inputs are already selected. Remove one before adding another.');
       if(!isSecureContext)throw Error('Capture requires HTTPS or localhost. Use the downloaded local app.');
       if(!navigator.mediaDevices)throw Error('Media capture is unavailable in this browser.');
@@ -21,7 +27,7 @@
       if(kind==='camera'&&selected&&this.active.some(input=>input.kind==='camera'&&input.deviceId===selected))throw Error('That camera is already selected. Choose another camera.');
       const narration=kind==='camera'&&document.getElementById('include-mic').checked&&!this.active.some(input=>input.stream.getAudioTracks().some(track=>track.readyState==='live'));
       // Call the display picker directly from the user's click, once per source.
-      const stream=kind==='screen'?await navigator.mediaDevices.getDisplayMedia({video:{frameRate:{ideal:15}},audio:false}):await navigator.mediaDevices.getUserMedia({video:selected?{deviceId:{exact:selected}}:true,audio:narration});
+      const stream=kind==='screen'?await navigator.mediaDevices.getDisplayMedia({video:{displaySurface:surface,frameRate:{ideal:15}},audio:false}):await navigator.mediaDevices.getUserMedia({video:selected?{deviceId:{exact:selected}}:true,audio:narration});
       let retained=false;
       try{
         const track=stream.getVideoTracks()[0];if(!track||track.readyState!=='live')throw Error('No live video input was returned.');
@@ -49,12 +55,12 @@
     updateViews(){
       if(this.focus&&!this.inputs.has(this.focus))this.focus='';this.select.replaceChildren(new Option('All selected inputs',''));for(const input of this.inputs.values())this.select.add(new Option(input.label,input.id));this.select.value=this.focus;this.select.disabled=!this.inputs.size;this.applyFocus();
     }
-    applyFocus(){for(const input of this.inputs.values())input.card.hidden=Boolean(this.focus&&input.id!==this.focus);this.container.classList.toggle('rec-focused',Boolean(this.focus));}
+    applyFocus(){for(const input of this.inputs.values())input.card.hidden=Boolean(this.focus&&input.id!==this.focus);this.container.classList.toggle('rec-focused',Boolean(this.focus));requestAnimationFrame(()=>fitGrid(this.container));}
     updateCounts(){
       for(const kind of ['screen','camera']){const count=this.active.filter(input=>input.kind===kind).length;document.getElementById(kind+'-status').textContent=count?count+' '+(kind==='screen'?'screen / window':'camera')+(count===1?'':'s')+' selected':'Not selected';}
-      document.getElementById('capture-empty').hidden=Boolean(this.inputs.size);document.getElementById('input-count').textContent=this.active.length+' / '+MAX_INPUTS+' video inputs selected';this.updateViews();
+      this.select.closest('.rec-preview-controls').hidden=this.inputs.size<2;document.getElementById('capture-empty').hidden=Boolean(this.inputs.size);document.getElementById('input-count').textContent=this.active.length+' / '+MAX_INPUTS+' video inputs selected';this.updateViews();
     }
     stopAll(){for(const input of this.inputs.values())for(const track of input.stream.getTracks())track.stop();this.inputs.clear();this.container.replaceChildren();this.focus='';this.updateCounts();}
   }
-  root.ForgeSessionMedia={CaptureInputs,MAX_INPUTS};
+  root.ForgeSessionMedia={CaptureInputs,MAX_INPUTS,fitGrid};
 })(globalThis);

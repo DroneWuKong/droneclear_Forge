@@ -60,7 +60,7 @@ def main(directory):
 
 Extract the ZIP and run Forge-UAS-Recorder.exe (Windows), or chmod +x Forge-UAS-Recorder then ./Forge-UAS-Recorder (Linux). Keep the launcher open. Python and app assets are bundled; install Edge, Chrome or Chromium before field use. Linux is built on Ubuntu 22.04/glibc 2.35.
 
-Record up to eight named windows/screens and cameras, one microphone and passive local MAVLink offline. Explicitly collect PX4/ArduPilot parameters and completed onboard logs over USB or bidirectional local UDP; signed or receive-only links use GCS exports. Wide/fullscreen windows use the available desktop space. Finished captures also save to .forge-uas-recorder/sessions under your home directory. Reopen disk copies, retain original logs and export support reports. PX4/Dronecode supports reviewed forum drafts; Betaflight provides official bug-form field copying and community routing. Select Live team view and share that window in your usual Teams/Google Meet meeting. Local recording continues when internet or the meeting drops.
+Record up to eight named windows/screens and cameras, one microphone and passive local MAVLink offline. Explicitly collect PX4/ArduPilot parameters and completed onboard logs over USB or bidirectional local UDP; signed or receive-only links use GCS exports. Record, Evidence and Report are separate workspaces. Start/Stop/Mark sit above previews, Stop opens Evidence, and detailed setup expands only when needed. App-window/monitor buttons guide the browser picker; restore a minimized terminal or use its monitor when it is unavailable. Finished captures also save to .forge-uas-recorder/sessions under your home directory. Reopen disk copies, retain original logs and export support reports. PX4/Dronecode supports reviewed forum drafts; Betaflight provides official bug-form field copying and community routing. Select Live team view and share that window in your usual Teams/Google Meet meeting. Local recording continues when internet or the meeting drops.
 
 Both native builds passed cold-start Chromium capture, three synthetic windows, two cameras, one audio stream, source interruption, local UDP parameter/log collection, fullscreen/reflow, disk save/update, fresh-profile reopen and replay with all non-loopback browser requests blocked. Packages include hashes, source/build metadata and runtime license notices. Executables are unsigned; physical hardware and live meeting/workspace integrations are not qualified by these software tests.
 
@@ -71,7 +71,7 @@ Source commit: {revision}
         body = Path(tmp) / 'release.md'
         body.write_text(notes)
         subprocess.run(['gh', 'release', 'create', tag, *map(str, assets), '--target', revision,
-                        '--title', 'UAS Session Recorder ' + VERSION + ' — multi-input offline recorder',
+                        '--title', 'UAS Session Recorder ' + VERSION + ' — compact task workspaces',
                         '--notes-file', str(body), '--latest=false', '--draft'], check=True)
         subprocess.run(['gh', 'release', 'edit', tag, '--draft=false'], check=True)
 

@@ -1,5 +1,13 @@
 # Changelog
 
+## 2026-10-08 — Recorder 1.3 task workspaces
+
+- Remove the long setup column. Record, Evidence and Report open directly; saved sessions and help have separate destinations.
+- Place Start/Stop/Mark above previews, open Evidence after stopping and keep detailed setup/report previews collapsed until needed.
+- Fit previews to window space and preserve drafts and selected inputs across workspace navigation.
+- Add explicit app-window and monitor picker preferences plus terminal troubleshooting. Windows/Chromium still control which windows can be captured.
+
+
 ## 2026-10-08 — Multi-input UAS recorder 1.2
 
 - Record up to eight named screen/window and camera inputs, including one optional microphone; preserve independent files, replay/alignment and source interruptions.

@@ -1,4 +1,4 @@
-Forge UAS Session Recorder 1.2
+Forge UAS Session Recorder 1.3
 Free local recording, live team view and evidence export. No account required.
 
 QUICK START
@@ -16,11 +16,11 @@ QUICK START
 4. The app displays the field folder for saved session ZIPs. Its default is
    .forge-uas-recorder/sessions under your home directory. --session-dir PATH
    selects another writable folder, including a removable drive.
-5. Add your chosen windows/screens and cameras (up to eight video inputs),
+5. In Record, add your chosen windows/screens and cameras (up to eight video inputs),
    name each preview, and optionally include one microphone. Or start notes-only.
    Collect connected parameters/logs before or after recording. Select your
    stack and test environment, explain the expected behavior, and mark moments.
-6. Stop: committed evidence stays in the browser and a completed ZIP is copied
+6. Stop opens Evidence immediately: committed evidence stays in the browser and a completed ZIP is copied
    to the field folder. Attach original logs/configuration and update the report,
    then select Save updated disk copy. Reopen a disk copy or download a ZIP.
 
@@ -147,3 +147,13 @@ in browsers that support Web Locks.
 The app records evidence and user-declared outcomes. It does not certify
 airworthiness or official acceptance. Follow the procedure for the selected
 test and vehicle; active upstream bench tools are separate from this recorder.
+
+WORKSPACES
+Record contains inputs, previews and Start/Stop/Mark. Evidence contains replay,
+attachments and connected log/parameter collection. Report contains editable
+report facts and copy/draft actions. Detailed setup and previews expand only
+when needed; Developer mode does not open all forms. Saved sessions opens
+browser/disk copies. Help & offline app contains downloads and instructions.
+Add app window prefers the browser's Window picker; Add monitor prefers its
+monitor picker. Restore a minimized terminal first. Window availability is
+controlled by Windows/Linux and the browser; the standalone uses the same picker.
