@@ -6,6 +6,7 @@
 - Connect local telemetry automatically; copy finished captures atomically to a field folder and reopen them independently of browser storage.
 - Add a live view for Teams/Google Meet window sharing with video, telemetry observation age, recording state and marked moments. Capture continues through meeting loss.
 - Build and verify on each target OS, preserve source/hash metadata and license notices, and publish versioned free downloads.
+- Review novice, developer and live-team journeys; simplify Guided setup, preserve drafts on attachment, distinguish Jira editor text from ADF, and add direct record/review navigation.
 
 ## 2026-10-07 — Free local UAS Session Recorder
 

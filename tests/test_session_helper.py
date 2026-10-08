@@ -27,10 +27,10 @@ def bundle():
                   'size': len(evidence), 'sha256': hashlib.sha256(evidence).hexdigest()}]}
     buf = io.BytesIO()
     with zipfile.ZipFile(buf, 'w', compression=zipfile.ZIP_STORED) as archive:
-        archive.writestr('session.json', json.dumps(session))
-        archive.writestr('timeline.json', '[]')
-        archive.writestr('summary.txt', 'Fixture support report')
-        archive.writestr('originals/fixture-0001/flight.ulg', evidence)
+        for name, content in [('session.json', json.dumps(session)), ('timeline.json', '[]'),
+                              ('summary.txt', 'Fixture support report'),
+                              ('originals/fixture-0001/flight.ulg', evidence)]:
+            archive.writestr(zipfile.ZipInfo(name, date_time=(2026, 10, 7, 0, 0, 0)), content)
     return buf.getvalue()
 
 

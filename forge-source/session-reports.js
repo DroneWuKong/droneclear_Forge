@@ -38,6 +38,7 @@
     const paragraph=text=>({type:'paragraph',content:text?[{type:'text',text}]:[]});
     return {type:'doc',version:1,content:[{type:'heading',attrs:{level:1},content:[{type:'text',text:report.title}]},...sections(report,'jira').flatMap(([heading,text])=>[{type:'heading',attrs:{level:2},content:[{type:'text',text:heading}]},...text.split('\n').map(paragraph)])]};
   }
+  function plain(report,target='general') {return report.title+'\n\n'+sections(report,target).map(([heading,text])=>heading+'\n'+text).join('\n\n')+'\n';}
   function render(s,rows,target='general') {if(!Object.hasOwn(destinations,target))throw Error('Unknown report destination.');const report=model(s,rows);return target==='jira'?JSON.stringify(adf(report),null,2)+'\n':markdown(report,target);}
   function composer(s,rows,target) {
     const dest=destinations[target];if(!dest?.url)return null;
@@ -45,5 +46,5 @@
     const url=new URL(dest.url);url.searchParams.set('title',s.title||'UAS support investigation');url.searchParams.set('body',render(s,rows,target));
     return url.href.length<=6000?url.href:dest.url;
   }
-  const api={versions,destinations,outcomeLabels,completeness,model,markdown,adf,render,composer};root.ForgeSessionReports=api;if(typeof module==='object'&&module.exports)module.exports=api;
+  const api={versions,destinations,outcomeLabels,completeness,model,markdown,plain,adf,render,composer};root.ForgeSessionReports=api;if(typeof module==='object'&&module.exports)module.exports=api;
 })(globalThis);

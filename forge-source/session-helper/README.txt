@@ -92,8 +92,9 @@ review category/tags, and attach selected files there. Large reports use copy.
 Betaflight: collect Submit Support Data's Support ID and original diff all.
 The GitHub Support ID field adds its own formatting; paste the ID there plainly.
 ClickUp: copy/download task Markdown for your selected List or existing task.
-Jira Cloud: download ADF JSON for an API description; select General for a
-human-readable report to paste in the editor. Direct ClickUp/Jira posting needs
+Jira Cloud: Guided mode copies a readable report for the task editor. Download
+ADF JSON for an API description; Developer mode also previews/copies that JSON.
+Direct ClickUp/Jira posting needs
 registered public OAuth apps and is not enabled in this local release.
 
 OPTIONAL SLACK UPLOAD

@@ -4,7 +4,7 @@ const fs=require('node:fs'),path=require('node:path'),os=require('node:os'),asse
 const {spawn,execFileSync}=require('node:child_process'),{chromium}=require('playwright');
 const E=require('../forge-source/session-evidence.js');
 const fixtures=require('./fixtures/session_mavlink.json').fixtures;
-const executable=path.resolve(process.argv[2]||('build/session-desktop/native/Forge-UAS-Recorder'+(process.platform==='win32'?'.exe':'')));
+const executable=path.resolve(process.argv[2]||('build-desktop/native/Forge-UAS-Recorder'+(process.platform==='win32'?'.exe':'')));
 (async()=>{
  const folder=fs.mkdtempSync(path.join(os.tmpdir(),'forge-field-test-')),external=[],errors=[];
  const app=spawn(executable,['--no-browser','--http-port','0','--udp-port','0','--session-dir',folder],{stdio:['ignore','pipe','pipe']});
@@ -39,6 +39,7 @@ const executable=path.resolve(process.argv[2]||('build/session-desktop/native/Fo
    return {context,page};
   }
   let {context,page}=await offlineProfile();
+  await page.locator('button[data-view="developer"]').click();
   await page.locator('#session-title').fill('Offline field reproduction');
   await page.locator('#session-aircraft').fill('PX4 software fixture');
   await page.locator('#session-firmware').fill('fixture-commit');
@@ -81,7 +82,8 @@ const executable=path.resolve(process.argv[2]||('build/session-desktop/native/Fo
   await page.locator('#session-actual').fill('Observed behavior recorded during the team call');
   await page.locator('#attach-log').setInputFiles({name:'flight.ulg',mimeType:'application/octet-stream',buffer:Buffer.from('original-field-log')});
   await page.waitForFunction(()=>document.querySelector('#evidence-files').textContent.includes('flight.ulg'));
-  await page.locator('#session-actual').fill('Observed behavior recorded during the team call');
+  assert.equal(await page.locator('#session-actual').inputValue(),'Observed behavior recorded during the team call','Attaching a log preserves report drafts');
+  assert.match(await page.locator('#archive-status').innerText(),/has updates/);
   await page.locator('#save-archive').click();await page.waitForFunction(()=>document.querySelector('#archive-status').textContent.startsWith('Saved on disk:')&&!document.querySelector('#save-archive').disabled);
   parsed=await E.verifyBundle(new Uint8Array(fs.readFileSync(copy)));
   assert.match(parsed.session.actual,/team call/);assert.ok(parsed.session.files.some(file=>file.original_name==='flight.ulg'));
