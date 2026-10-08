@@ -1,12 +1,14 @@
 # Forge UAS Session Recorder
 
-Version 1.0.0, 7 October 2026. Public route: `/session-recorder/`. The app is free, with local browser storage, guided/developer views and a downloadable Python standard-library helper. It records evidence around existing tools and attaches System Test Lab output.
+Version 1.1.0, 8 October 2026. Public route: `/session-recorder/`. The app is free, with local browser storage, guided/developer views and standalone Windows/Linux x64 packages. It records evidence around existing tools and attaches System Test Lab output.
 
 ## What this release does
 
 - Record an app/window or screen, camera/USB video capture, and optional microphone narration using browser MediaRecorder.
 - Monitor and record receive-only MAVLink through Web Serial or a localhost UDP copy alongside the existing GCS. Ten common message types are decoded with named units. Unknown bytes and signatures remain in the original capture.
 - Mark events, save chunks to IndexedDB, reopen sessions, recover committed evidence after interruption, and replay video with the telemetry timeline. Manual offset and clock-scale adjustments remain labeled with unmeasured uncertainty.
+- Cold-start offline from a bundled executable with an installed desktop Chromium browser. Connect to local UDP automatically, save completed session ZIPs atomically in a field folder, and reopen them independently of browser storage. Updated reports/attachments have an explicit Save updated disk copy action.
+- Share the live team view through normal Teams or Google Meet window sharing. Show previews, recent supported telemetry with observation age, local recording status and marked events while capture continues. Internet/meeting loss does not stop local capture; meeting chat/audio is not automatically ingested.
 - Preserve multiple original ULog, DataFlash, Blackbox, configuration, mission, video and test-output attachments. Existing analyzers handle their native contents.
 - Check attached System Test Lab reports against the exact shipped catalog. General, Gauntlet and DoW profile summaries retain human/external gates and self-recorded claims.
 - Export/import an ordinary ZIP with SHA-256 hashes, raw telemetry, timestamped `.tlog`, a receipt ledger, media, originals and reports. Validate hashes and decoded packet identity when importing.
@@ -17,11 +19,19 @@ Direct ClickUp/Jira posting, MSP capture, RTSP ingestion, native flight-log anal
 
 ## Run locally
 
-Download `/session-recorder/forge-session-helper.zip`, extract it, and run `python3 bridge.py` (Windows may use `python bridge.py`). Open the printed localhost URL. Python 3.9+ is sufficient; no packages are required. Copy its printed connection key to the app to enable the bridge. Recording/export work without an account or internet.
+Download the Windows x64 or Linux x64 standalone ZIP from the recorder page, extract it, and run `Forge-UAS-Recorder.exe` (Windows) or `./Forge-UAS-Recorder` (Linux; set executable permission if necessary). The executable includes Python and every recorder asset. Install Edge, Chrome or Chromium before field use. The app opens the default browser and connects to the localhost helper automatically; use the printed URL in Chromium if another browser is your default. The Linux release is built on Ubuntu 22.04 with glibc 2.35. Packages are unsigned.
+
+Completed captures also save under `~/.forge-uas-recorder/sessions` (`~` is the user's home directory on both platforms). Select Save updated disk copy after editing or attaching logs. Browser chunks are retained during recording, but the automatic disk copy happens after a normal stop; interrupted browser evidence still uses the existing recovery path. Disk copies can be opened after browser data is cleared. `--session-dir PATH`, `--http-port`, `--udp-port` and `--no-browser` are available.
+
+The source fallback `/session-recorder/forge-session-helper.zip` requires Python 3.9+ but no pip packages. Run `Start-Recorder.cmd` or `python3 desktop.py`. Advanced `bridge.py` usage remains available with its printed connection key and without an automatic field folder.
 
 For network telemetry, forward a copy from the existing GCS/MAVProxy/router to `127.0.0.1:14551`. The helper binds to localhost and reads datagrams; it sends no vehicle commands. The packaged [README](../forge-source/session-helper/README.txt) explains optional Slack environment variables, ports and recovery. The [test-session SOP](UAS_TEST_SESSION_SOP.md) provides the general procedure.
 
-Sessions belong to the browser origin, including its port. Use the same address to reopen them. Export before clearing browser data; a ZIP can move evidence between installations. The web app caches its recorder shell for offline reopening after an initial visit. Browser/OS capture support varies; Chromium desktop is the initial tested path.
+Browser sessions belong to their origin, including its port. Use the same address to reopen them. A field-folder ZIP or download can move evidence between installations. The public web app caches its recorder shell for offline reopening after an initial visit; the standalone package includes those assets for a first offline launch. Browser/OS capture support varies; Chromium desktop is the initial tested path.
+
+## Live team procedure
+
+Select capture inputs and start local recording, join your normal Teams/Meet meeting, choose Live team view, and share the recorder window. The [live team guide](../forge-source/session-helper/LIVE_TEAM_GUIDE.txt) describes sharing, source selection and reconnecting. These are standard meeting screen shares, with no native meeting SDK, hosted relay or remote aircraft control. A meeting connection is separate from localhost capture and disk persistence.
 
 ## Evidence and timing contract
 
@@ -39,10 +49,12 @@ The release is checked with independently generated pymavlink 2.4.49 MAVLink v1/
 
 Chromium browser checks use real MediaRecorder encoding and IndexedDB with synthetic video inputs and upstream telemetry fixtures. They cover local save/reopen, original attachments, alignment/replay, report formatting, catalog validation, import rejection, interrupted recovery, offline reopening, and 320/390/1440-pixel layouts. Forge's existing Test Lab, navigation, accessibility and built-site checks also run. CI includes these checks.
 
+Native CI builds each executable on its target Windows/Linux runner. A fresh Chromium profile loads bundled assets with all non-loopback requests blocked, records real synthetic media and UDP fixtures, switches live/workspace views during capture, exports reports and reopens a disk copy in a new profile. Archive/authentication tests cover integrity failures, replacement, symlinks, path rejection and cross-origin bootstrap restrictions. This is software evidence; real Teams/Meet participants, field connectivity, hardware and code signing remain unqualified.
+
 This evidence is software validation. Physical aircraft, real USB/camera/microphone hardware across operating systems, and live Slack workspace permissions have not been qualified by these tests. The free local app does not depend on those account integrations to record or export.
 
 ## Implementation
 
-`session-recorder.js` controls capture/replay; `session-store.js` owns atomic IndexedDB saves; `session-evidence.js` owns wire parsing and the bundle format; `session-reports.js` owns destination templates. `session-helper/bridge.py` provides localhost HTTP/UDP and Slack upload. `tools/build_session_recorder.py` packages only selected public files reproducibly through the existing Forge build. The recorder route enables camera, microphone and display capture in Pages headers.
+`session-recorder.js` controls capture/replay; `session-store.js` owns atomic IndexedDB saves; `session-evidence.js` owns wire parsing and the bundle format; `session-reports.js` owns destination templates. `session-helper/bridge.py` provides localhost HTTP/UDP, atomic field-folder ZIPs and Slack upload; `desktop.py` launches it. `tools/build_session_recorder.py` packages selected public files reproducibly through the existing Forge build. `tools/build_session_desktop.py` freezes the runtime on each OS. The desktop CI publishes versioned ZIPs, SHA-256 files, source/build metadata and runtime license notices to GitHub Releases after both platforms pass. The recorder route enables camera, microphone and display capture in Pages headers.
 
 The background Gauntlet service remains stopped. This release neither starts it nor executes aircraft tests automatically.

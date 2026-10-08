@@ -11,22 +11,25 @@
   <link rel="stylesheet" href="/static/workspace.css">
   <link rel="stylesheet" href="/static/session-recorder.css">
 </head>
-<body data-view="guided">
+<body data-view="guided" data-layout="workspace">
   <a class="skip-link" href="#main">Skip to content</a>
   <main id="main" class="workspace recorder">
     <header class="rec-hero">
       <p class="eyebrow">Forge · Free UAS Session Recorder</p>
-      <h1>Show what happened.</h1>
+      <h1 id="recorder-heading">Show what happened.</h1>
       <p class="rec-lede">Record your screen, camera and drone telemetry in one test session. Mark the problem, replay the evidence, and share it with the people fixing it.</p>
       <div class="rec-mode" role="group" aria-label="Level of detail"><button type="button" data-view="guided" aria-pressed="true">Guided mode</button><button type="button" data-view="developer" aria-pressed="false">Developer mode</button></div>
+      <div class="rec-mode rec-layout" role="group" aria-label="Session layout"><button type="button" data-layout="workspace" aria-pressed="true">Session workspace</button><button type="button" data-layout="live" aria-pressed="false">Live team view</button></div>
       <p id="view-explanation">Everyday language, clear steps and a short session summary.</p>
       <p class="rec-meta">Saved on this device · Receive-only telemetry · Sharing happens when you choose it</p>
       <button id="install-app" class="action secondary" type="button" hidden>Install recorder</button>
-      <p id="app-status" class="rec-meta">Use in your browser or download the local app and helper.</p>
+      <p id="app-status" class="rec-meta">Use in your browser or take the standalone app into the field.</p>
+      <p id="network-status" role="status" class="rec-meta">Local capture works without internet. Meetings and uploads need connectivity.</p>
+      <div id="offline-downloads"><p><strong>Take it to the field.</strong> Download and extract once before you leave. Windows and Linux packages include their runtime; open the app in an installed Chromium browser. Recording, local telemetry, replay and export work without internet.</p><div class="rec-toolbar"><a class="action secondary" href="https://github.com/DroneWuKong/droneclear_Forge/releases/download/uas-recorder-v1.1.0/forge-uas-recorder-windows-x64.zip">Windows standalone</a><a class="action secondary" href="https://github.com/DroneWuKong/droneclear_Forge/releases/download/uas-recorder-v1.1.0/forge-uas-recorder-linux-x64.zip">Linux standalone</a><a href="/session-recorder/forge-session-helper.zip" download>Python source package</a></div></div>
       <p><a href="/session-recorder/SOP.md" download>Download the test-session procedure and report template</a></p>
     </header>
 
-    <section class="work-panel" aria-labelledby="setup-title">
+    <section class="work-panel" data-section="setup" aria-labelledby="setup-title">
       <p class="eyebrow">01 · Set up your session</p><h2 id="setup-title">What are you checking?</h2>
       <div class="rec-fields"><label>Session title<input id="session-title" maxlength="200" placeholder="Camera freezes during startup"></label><label>Aircraft or bench setup<input id="session-aircraft" maxlength="200" placeholder="My aircraft / simulator / test rig"></label><label>Firmware or app version<input id="session-firmware" maxlength="200" placeholder="Version or source commit"></label><label>Build or issue reference<input id="session-build" maxlength="200" placeholder="Optional serial, build reference or issue number"></label></div>
       <div class="rec-fields"><label>Flight stack<select id="session-stack"><option value="generic">General / other</option><option value="px4">PX4</option><option value="ardupilot">ArduPilot</option><option value="betaflight">Betaflight</option></select></label><label>Test environment<select id="session-test-mode"><option value="bench">Real hardware on a bench</option><option value="software">Software / app only</option><option value="sitl">Software simulation (SITL)</option><option value="sih_hil">Simulation with controller hardware</option><option value="flight">Physical flight</option></select></label><label>GCS or App version<input id="session-app-version" maxlength="200" placeholder="QGC / Mission Planner / Betaflight App version"></label><label>Betaflight Support ID<input id="session-support-id" maxlength="200" placeholder="From Submit Support Data, when applicable"></label></div>
@@ -42,8 +45,9 @@
       <div class="rec-summary" aria-label="Live telemetry"><p id="live-observation">Connect telemetry to see what the vehicle reports.</p><p id="live-age" class="rec-meta">Waiting for incoming messages.</p><details class="developer-only"><summary>Live decoded values and units</summary><pre id="live-values">No supported messages received.</pre></details></div>
     </section>
 
-    <section class="work-panel" aria-labelledby="capture-title">
+    <section class="work-panel" data-section="capture" aria-labelledby="capture-title">
       <p class="eyebrow">02 · Capture the test</p><h2 id="capture-title">Record, explain, mark.</h2>
+      <div id="live-team-board" hidden><h3 id="live-session-title">Field development session</h3><p id="live-capture-state">Local recorder standing by.</p><div class="live-values" id="live-team-values">Connect local telemetry to show reported vehicle observations.</div><div class="rec-summary" id="live-team-notes">Marked events appear here during the session.</div><p class="rec-meta">Share this recorder window in Teams or Google Meet. Record the GCS/app window or camera as your input. The meeting connection does not control local recording.</p><p><a href="/session-recorder/LIVE_TEAM_GUIDE.txt">Live team session instructions</a></p></div>
       <div class="rec-previews"><div><span>Screen</span><video id="screen-preview" muted playsinline autoplay></video></div><div><span>Camera / video input</span><video id="camera-preview" muted playsinline autoplay></video></div></div>
       <div class="rec-toolbar"><button id="start-recording" type="button" class="action">Start recording</button><button id="stop-recording" type="button" class="action secondary" disabled>Stop and save</button><output id="recording-clock">00:00</output></div>
       <div class="rec-marker"><label for="marker-note">What happened?<input id="marker-note" maxlength="2000" placeholder="The video froze when I opened the camera panel"></label><button id="mark-event" type="button" class="action secondary" disabled>Mark this moment</button></div>
@@ -51,9 +55,10 @@
       <p class="rec-meta">Media and telemetry chunks are saved in this browser. Download before clearing browser data. Capture stops at 192 MiB, 30,000 timeline entries, 12 MiB of decoded timeline or two hours; exported ZIPs support up to 256 MiB. Source and media timing uncertainty stays visible.</p>
     </section>
 
-    <section class="work-panel" aria-labelledby="replay-title">
+    <section class="work-panel" data-section="replay" aria-labelledby="replay-title">
       <p class="eyebrow">03 · Replay and share</p><h2 id="replay-title">One session. The evidence together.</h2>
       <div class="rec-toolbar"><label>Saved on this device<select id="saved-sessions"><option value="">Choose a session</option></select></label><button id="open-saved" class="action secondary" type="button">Open saved session</button><label class="file-control">Open a session ZIP<input id="open-bundle" type="file" accept=".zip,application/zip"></label></div>
+      <details id="field-folder" hidden open><summary>Copies in your field folder</summary><p>Completed captures are copied here automatically by the standalone app. Save an updated copy after adding logs or changing your report.</p><p id="field-folder-path" class="rec-meta"></p><div class="rec-toolbar"><label>Saved on disk<select id="archived-sessions"><option value="">Choose a disk copy</option></select></label><button id="open-archive" class="action secondary" type="button" disabled>Open disk copy</button><button id="save-archive" class="action secondary" type="button" disabled>Save updated disk copy</button></div><p id="archive-status" role="status"></p></details>
       <div id="session-summary" class="rec-summary">No session selected. Your recorder will show a summary after you stop.</div>
       <div class="rec-previews"><div><span>Recorded screen</span><video id="screen-replay" playsinline controls></video></div><div><span>Recorded camera / video</span><video id="camera-replay" playsinline controls></video></div></div>
       <div class="rec-playback"><button id="play-session" type="button" class="action secondary" disabled>Play together</button><label for="timeline-position">Session time<input id="timeline-position" type="range" min="0" max="1" value="0" step="0.1" disabled></label><output id="replay-clock">00:00</output></div>
@@ -67,7 +72,7 @@
       <details class="developer-only"><summary>Developer evidence details</summary><p>Decoded messages use a reviewed subset of MAVLink common definitions. Unknown frames remain in raw capture and timestamped telemetry export. CRC checks detect corruption; signatures are preserved but not authenticated. Filtered/routed sequence gaps do not establish radio packet loss. Arrival time is local; device clocks and media pipeline delays are separate.</p><pre id="developer-evidence">No telemetry recorded.</pre></details>
     </section>
 
-    <section class="work-panel"><h2>Use the tools you already have.</h2><div class="rec-links"><a href="/audit/">Build compatibility and assembly evidence</a><a href="/pid-tuning/">Blackbox / gyro analysis</a><a href="/test-lab/">System Test Lab reports</a><a href="/guide/">Assembly guides and photos</a><a href="/software-library/">External log viewers and developer tools</a></div><p>The recorder keeps the reproduction and evidence together. Findings from existing tools can be attached to the session. Recorded states are observations, with no airworthiness or standards certification.</p></section>
+    <section class="work-panel" data-section="tools"><h2>Use the tools you already have.</h2><div class="rec-links"><a href="/audit/">Build compatibility and assembly evidence</a><a href="/pid-tuning/">Blackbox / gyro analysis</a><a href="/test-lab/">System Test Lab reports</a><a href="/guide/">Assembly guides and photos</a><a href="/software-library/">External log viewers and developer tools</a></div><p>The recorder keeps the reproduction and evidence together. Findings from existing tools can be attached to the session. Recorded states are observations, with no airworthiness or standards certification.</p></section>
     <footer><a href="/tools-home/">All tools</a> · <a href="/session-recorder/README.txt">Local helper instructions</a> · <a href="/privacy/">Privacy</a></footer>
     <noscript><p>Recording needs JavaScript and browser capture permissions. Download the <a href="/session-recorder/forge-session-helper.zip">helper and local recorder</a> to run on your own machine.</p></noscript>
   </main>

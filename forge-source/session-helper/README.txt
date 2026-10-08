@@ -1,21 +1,54 @@
-Forge UAS Session Recorder 1.0
-Free local recording and evidence export. Python 3.9 or newer; no Python packages required.
+Forge UAS Session Recorder 1.1
+Free local recording, live team view and evidence export. No account required.
 
 QUICK START
-1. Extract the complete ZIP.
-2. Open a terminal in the extracted directory and run: python bridge.py
-   On Linux/macOS the command may be: python3 bridge.py
-3. Open the localhost address printed by the helper.
-4. Copy its Connection key into the recorder and select Connect local helper.
+1. Download and extract the Windows x64 or Linux x64 standalone ZIP before
+   leaving for the field. Install a desktop Chromium browser (Edge, Chrome or
+   Chromium) beforehand. The executable includes Python and the recorder files;
+   there is no runtime installation, account check or download at field startup.
+2. Windows: open Forge-UAS-Recorder.exe. Keep its console window open.
+   Linux: run chmod +x Forge-UAS-Recorder, then ./Forge-UAS-Recorder.
+   The Linux release is built on Ubuntu 22.04 (glibc 2.35); newer compatible
+   x64 distributions are the initial target. Hardware capture depends on the OS.
+3. The app opens the default browser. If it is not Chromium, paste the printed
+   localhost address into Edge, Chrome or Chromium. Local telemetry connects
+   automatically. Use --no-browser to open it yourself.
+4. The app displays the field folder for saved session ZIPs. Its default is
+   .forge-uas-recorder/sessions under your home directory. --session-dir PATH
+   selects another writable folder, including a removable drive.
 5. Choose a screen and/or camera, or start a notes-only session. Select your
    stack and test environment, explain the expected behavior, and mark moments.
-6. Stop, attach original logs/configuration, reopen the evidence, then export.
+6. Stop: committed evidence stays in the browser and a completed ZIP is copied
+   to the field folder. Attach original logs/configuration and update the report,
+   then select Save updated disk copy. Reopen a disk copy or download a ZIP.
+
+PYTHON SOURCE PACKAGE
+The smaller source ZIP requires an existing Python 3.9+ installation. Extract
+the complete package, open Start-Recorder.cmd (Windows), or run
+python3 desktop.py (Linux). No pip packages are required. start-recorder.sh
+is also included. These launch the same app with automatic local telemetry
+connection and disk copies. Advanced bridge.py usage prints a manual key;
+that helper has browser storage and downloads, with no automatic field folder.
 
 SOP.md provides the general session procedure and report template.
 The included app runs without internet. Local browser sessions belong to the
 browser origin (including its port): use the same address/port next time, or
 export a ZIP to move evidence. Clearing browser data deletes browser sessions.
-Download the session before clearing it. The helper does not host team links.
+Disk copies remain when browser data is cleared; use Open disk copy to recover
+them. Active capture chunks still live in browser storage until stopped/exported.
+Keep the app running until capture finishes. The helper does not host team links.
+
+LIVE TEAM SESSIONS
+Join your usual Teams or Google Meet meeting, then choose Live team view and
+share this recorder window through the meeting's screen/window sharing.
+Record the separate GCS/app window and/or camera to avoid recursive capture.
+The team sees video previews, recent vehicle observations, their observation
+age and marked events. Switch between live view and workspace without stopping
+capture. Meetings require connectivity; losing the meeting does not stop local
+recording, local UDP telemetry, saving, replay or report generation.
+LIVE_TEAM_GUIDE.txt gives the procedure and official screen-sharing references.
+Meeting audio/chat is not automatically captured. This release uses normal
+meeting screen sharing; it does not create a meeting bot or hosted video relay.
 
 NETWORK TELEMETRY
 Keep your existing GCS connected and forward a copy to 127.0.0.1 UDP 14551.
@@ -66,7 +99,7 @@ registered public OAuth apps and is not enabled in this local release.
 OPTIONAL SLACK UPLOAD
 Use an existing Slack app with files:write permission and membership in the
 destination channel. Set FORGE_SLACK_TOKEN and FORGE_SLACK_CHANNEL in the
-terminal environment before starting bridge.py. The token stays in the helper;
+terminal environment before starting the executable or Python launcher. The token stays in the helper;
 the browser receives only whether Slack is enabled and the channel identifier.
 Do not put tokens in source files or reports. No Slack account is needed for
 recording, playback, report formatting or export.

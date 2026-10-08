@@ -14,6 +14,10 @@ def export_recorder(source, output):
     output.mkdir(parents=True, exist_ok=True)
     contents = {
         'bridge.py': (source / 'session-helper/bridge.py').read_bytes(),
+        'desktop.py': (source / 'session-helper/desktop.py').read_bytes(),
+        'Start-Recorder.cmd': (source / 'session-helper/Start-Recorder.cmd').read_bytes(),
+        'start-recorder.sh': (source / 'session-helper/start-recorder.sh').read_bytes(),
+        'LIVE_TEAM_GUIDE.txt': (source / 'session-helper/LIVE_TEAM_GUIDE.txt').read_bytes(),
         'README.txt': (source / 'session-helper/README.txt').read_bytes(),
         'LICENSE.txt': (source / 'system-tests/LICENSE.txt').read_bytes(),
         'session-recorder.html': (source / 'session-recorder.html').read_bytes(),
@@ -35,16 +39,16 @@ def export_recorder(source, output):
                                    'href="https://uas-forge.com/session-recorder/forge-session-helper.zip"')
     contents['session-recorder.html'] = local_html.encode()
     contents = {name: data.replace(b'\r\n', b'\n') for name, data in contents.items()}
-    for name in ('README.txt', 'LICENSE.txt', 'app.webmanifest', 'sw.js', 'SOP.md'):
+    for name in ('README.txt', 'LICENSE.txt', 'app.webmanifest', 'sw.js', 'SOP.md', 'LIVE_TEAM_GUIDE.txt'):
         (output / name).write_bytes(contents[name])
     path = output / 'forge-session-helper.zip'
     with zipfile.ZipFile(path, 'w', compression=zipfile.ZIP_DEFLATED) as archive:
         for name, data in sorted(contents.items()):
             info = zipfile.ZipInfo(name, date_time=(2026, 10, 7, 0, 0, 0))
             info.compress_type = zipfile.ZIP_DEFLATED
-            info.external_attr = 0o644 << 16
+            info.external_attr = (0o755 if name.endswith('.sh') else 0o644) << 16
             archive.writestr(info, data)
     hashes = {name: hashlib.sha256((output / name).read_bytes()).hexdigest()
-              for name in ('README.txt', 'LICENSE.txt', 'app.webmanifest', 'sw.js', 'SOP.md', path.name)}
+              for name in ('README.txt', 'LICENSE.txt', 'app.webmanifest', 'sw.js', 'SOP.md', 'LIVE_TEAM_GUIDE.txt', path.name)}
     (output / 'SHA256SUMS.txt').write_text(''.join(f'{digest}  {name}\n' for name, digest in hashes.items()))
     return hashes
