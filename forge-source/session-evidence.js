@@ -1,8 +1,8 @@
 (function(root){
   'use strict';
   const LIMIT=256*1024*1024, enc=new TextEncoder(), dec=new TextDecoder('utf-8',{fatal:true});
-  // Common MAVLink wire layouts reviewed 2026-10-07; CRC is not authentication.
-  const definitions={0:['HEARTBEAT',50,9],1:['SYS_STATUS',124,31],2:['SYSTEM_TIME',137,12],24:['GPS_RAW_INT',24,30],30:['ATTITUDE',39,28],33:['GLOBAL_POSITION_INT',104,28],74:['VFR_HUD',20,20],109:['RADIO_STATUS',185,9],147:['BATTERY_STATUS',154,36],253:['STATUSTEXT',83,51]};
+  // Common MAVLink wire layouts reviewed 2026-10-08; CRC is not authentication.
+  const definitions={0:['HEARTBEAT',50,9],1:['SYS_STATUS',124,31],2:['SYSTEM_TIME',137,12],22:['PARAM_VALUE',220,25],24:['GPS_RAW_INT',24,30],30:['ATTITUDE',39,28],33:['GLOBAL_POSITION_INT',104,28],74:['VFR_HUD',20,20],109:['RADIO_STATUS',185,9],118:['LOG_ENTRY',56,14],120:['LOG_DATA',134,97],147:['BATTERY_STATUS',154,36],253:['STATUSTEXT',83,51]};
   function x25(bytes,seed=65535){let c=seed;for(const b of bytes){let t=b^(c&255);t^=(t<<4)&255;c=((c>>>8)^(t<<8)^(t<<3)^(t>>>4))&65535;}return c;}
   function crc32(bytes){let c=0xffffffff;for(const b of bytes){c^=b;for(let i=0;i<8;i++)c=(c>>>1)^((c&1)?0xedb88320:0);}return (c^0xffffffff)>>>0;}
   function concat(parts){const out=new Uint8Array(parts.reduce((n,p)=>n+p.length,0));let offset=0;for(const p of parts){out.set(p,offset);offset+=p.length;}return out;}
@@ -12,6 +12,9 @@
     if(id===0)return {custom_mode:u32(0),vehicle_type:u8(4),autopilot:u8(5),base_mode:u8(6),system_status:u8(7),mavlink_version:u8(8),armed:Boolean(u8(6)&128)};
     if(id===1)return {sensors_present:u32(0),sensors_enabled:u32(4),sensors_health:u32(8),load_percent:u16(12)/10,battery_voltage_v:u16(14)===65535?null:u16(14)/1000,battery_current_a:i16(16)===-1?null:i16(16)/100,battery_remaining_percent:i8(30)===-1?null:i8(30)};
     if(id===2)return {time_unix_usec:d.getBigUint64(0,true).toString(),time_boot_ms:u32(8)};
+    if(id===22){const name=bytes.slice(8,24),end=name.indexOf(0);return {param_value:f(0),raw_value:Array.from(bytes.slice(0,4)),param_count:u16(4),param_index:u16(6),param_id:new TextDecoder().decode(end<0?name:name.slice(0,end)),param_type:u8(24)};}
+    if(id===118)return {time_utc:u32(0),size:u32(4),id:u16(8),num_logs:u16(10),last_log_num:u16(12)};
+    if(id===120)return {ofs:u32(0),id:u16(4),count:u8(6),data:Array.from(bytes.slice(7,97))};
     if(id===24)return {time_usec:d.getBigUint64(0,true).toString(),latitude_deg:i32(8)/1e7,longitude_deg:i32(12)/1e7,altitude_msl_m:i32(16)/1000,fix_type:u8(28),satellites_visible:u8(29)===255?null:u8(29)};
     if(id===30)return {time_boot_ms:u32(0),roll_rad:f(4),pitch_rad:f(8),yaw_rad:f(12),rollspeed_rad_s:f(16),pitchspeed_rad_s:f(20),yawspeed_rad_s:f(24)};
     if(id===33)return {time_boot_ms:u32(0),latitude_deg:i32(4)/1e7,longitude_deg:i32(8)/1e7,altitude_msl_m:i32(12)/1000,relative_altitude_m:i32(16)/1000,vx_m_s:i16(20)/100,vy_m_s:i16(22)/100,vz_down_m_s:i16(24)/100,heading_deg:u16(26)===65535?null:u16(26)/100};
@@ -59,7 +62,7 @@
   }
   async function sha256(bytes){return Array.from(new Uint8Array(await root.crypto.subtle.digest('SHA-256',bytes)),n=>n.toString(16).padStart(2,'0')).join('');}
   const allowed=new Set(['screen.webm','screen.mp4','camera.webm','camera.mp4','telemetry.mavlink','telemetry.tlog','telemetry-receipts.jsonl','session.json','timeline.json','summary.txt','report.md','report.json']);
-  function allowedName(name){return typeof name==='string'&&(allowed.has(name)||/^originals\/[a-z0-9-]{8,80}\/[a-zA-Z0-9][a-zA-Z0-9._-]{0,160}$/.test(name)&&!name.includes('..'));}
+  function allowedName(name){return typeof name==='string'&&(allowed.has(name)||/^(screen|camera)-[2-8]\.(webm|mp4)$/.test(name)||/^originals\/[a-z0-9-]{8,80}\/[a-zA-Z0-9][a-zA-Z0-9._-]{0,160}$/.test(name)&&!name.includes('..'));}
   function tlog(frames,started_at){const base=BigInt(Date.parse(started_at))*1000n;return concat(frames.map(frame=>{const timestamp=new Uint8Array(8);const usec=frame.receipt_unix_ns?BigInt(frame.receipt_unix_ns)/1000n:base+BigInt(Math.round(frame.at_ms*1000));if(usec<0n||usec>18446744073709551615n)throw Error('Invalid telemetry receipt time.');new DataView(timestamp.buffer).setBigUint64(0,usec,false);return concat([timestamp,frame.bytes]);}));}
   function zip(entries){
     if(entries.length>96)throw Error('Too many bundle files.');const names=new Set(),local=[],central=[];let offset=0;
@@ -99,6 +102,12 @@
     if(!['generic','px4','ardupilot','betaflight'].includes(s.stack)||!['software','sitl','sih_hil','bench','flight'].includes(s.test_mode)||!['not_run','pass','fail','blocked','skipped','inconclusive'].includes(s.test_outcome))throw Error('Invalid test context.');
     if(!Array.isArray(s.files)||s.files.length>80||!Array.isArray(rows)||rows.length>50000)throw Error('Invalid session file list or timeline.');
     if(enc.encode(JSON.stringify(rows)).length>16*1048576)throw Error('Timeline exceeds the 16 MiB import limit.');
+    const inputs=new Map();for(const kind of ['screen','camera'])if(s.sources?.[kind]?.inputs!==undefined){
+      const list=s.sources[kind].inputs;if(!Array.isArray(list)||list.length>8)throw Error('Invalid video input list.');
+      for(const input of list){if(!input||typeof input.id!=='string'||input.id.length>80||!input.id.startsWith(kind+'-')||!/^(screen|camera)-[a-z0-9-]{8,80}$/.test(input.id)||inputs.has(input.id)||typeof input.label!=='string'||input.label.length>200||!['complete','interrupted','failed'].includes(input.status)||typeof input.audio!=='boolean'||(input.file_name!==undefined&&(!allowedName(input.file_name)||!input.file_name.startsWith(kind)))||(input.settings!==undefined&&(!input.settings||typeof input.settings!=='object'||Array.isArray(input.settings)||JSON.stringify(input.settings).length>2000)))throw Error('Invalid video input metadata.');inputs.set(input.id,input);}
+    }
+    if(inputs.size>8)throw Error('Session exceeds eight video inputs.');
+    for(const file of s.files)if(file.source_id!==undefined||file.source_label!==undefined){const input=inputs.get(file.source_id);if(!input||file.source_label!==input.label||file.name!==input.file_name)throw Error('Media file does not match its video input.');}
     const seen=new Set();for(const f of s.files){if(!f||!allowedName(f.name)||['session.json','timeline.json','summary.txt'].includes(f.name)||seen.has(f.name)||!Number.isInteger(f.size)||f.size<0||f.size>LIMIT||!/^[a-f0-9]{64}$/.test(f.sha256||'')||!Number.isFinite(f.start_ms)||f.start_ms<0||!Number.isFinite(f.duration_ms)||f.duration_ms<0||f.start_ms+f.duration_ms>s.duration_ms+2000||typeof f.original_name!=='string'||f.original_name.length>512||typeof f.mime_type!=='string'||f.mime_type.length>200||!['screen','camera','telemetry','log','configuration','video','test_report','attachment','report'].includes(f.role))throw Error('Invalid evidence file.');if(f.alignment_offset_ms!==undefined&&(!Number.isFinite(f.alignment_offset_ms)||Math.abs(f.alignment_offset_ms)>7200000||!Number.isFinite(f.alignment_scale)||f.alignment_scale<0.5||f.alignment_scale>2||f.alignment_method!=='manual'||f.alignment_uncertainty_ms!==null))throw Error('Invalid manual media alignment.');seen.add(f.name);}
     if(s.test_reports!==undefined&&(!Array.isArray(s.test_reports)||s.test_reports.length>70||s.test_reports.some(r=>!r||!['general','gauntlet','dow'].includes(r.profile)||r.claims_verified!==false||!seen.has(r.file)||typeof r.profile_version!=='string'||r.profile_version.length>80||!/^[a-f0-9]{64}$/.test(r.catalog_sha256||'')||!r.counts||typeof r.counts!=='object'||Array.isArray(r.counts)||Object.entries(r.counts).some(([key,n])=>!['pass','fail','blocked','not_run','review_required','external_required'].includes(key)||!Number.isInteger(n)||n<0||n>1000))))throw Error('Invalid Test Lab attachment summary.');
     let previous=-1;for(const r of rows){if(!r||!Number.isFinite(r.at_ms)||r.at_ms<previous||r.at_ms<0||r.at_ms>s.duration_ms+2000)throw Error('Invalid timeline time.');previous=r.at_ms;

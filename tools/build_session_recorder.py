@@ -4,7 +4,7 @@ import re
 from pathlib import Path
 import zipfile
 
-ASSETS = ('workspace.css', 'session-recorder.css', 'session-recorder.js',
+ASSETS = ('workspace.css', 'session-recorder.css', 'session-recorder.js', 'session-media.js', 'session-vehicle.js',
           'session-evidence.js', 'session-reports.js', 'session-store.js',
           'test-lab.js', 'session-recorder-icon.svg')
 

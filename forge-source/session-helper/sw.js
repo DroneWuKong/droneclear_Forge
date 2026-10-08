@@ -1,6 +1,6 @@
 'use strict';
-const CACHE='forge-uas-recorder-1.1.0';
-const SHELL=['/session-recorder/','/session-recorder/app.webmanifest','/static/workspace.css','/static/session-recorder.css','/static/session-recorder.js','/static/session-evidence.js','/static/session-reports.js','/static/session-store.js','/static/test-lab.js','/static/session-recorder-icon.svg','/system-tests/profiles.json','/session-recorder/SOP.md','/session-recorder/LIVE_TEAM_GUIDE.txt'];
+const CACHE='forge-uas-recorder-1.2.0';
+const SHELL=['/session-recorder/','/session-recorder/app.webmanifest','/static/workspace.css','/static/session-recorder.css','/static/session-recorder.js','/static/session-media.js','/static/session-vehicle.js','/static/session-evidence.js','/static/session-reports.js','/static/session-store.js','/static/test-lab.js','/static/session-recorder-icon.svg','/system-tests/profiles.json','/session-recorder/SOP.md','/session-recorder/LIVE_TEAM_GUIDE.txt'];
 self.addEventListener('install',event=>{event.waitUntil(caches.open(CACHE).then(cache=>cache.addAll(SHELL)));});
 self.addEventListener('activate',event=>{event.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(key=>key.startsWith('forge-uas-recorder-')&&key!==CACHE).map(key=>caches.delete(key)))).then(()=>self.clients.claim()));});
 self.addEventListener('fetch',event=>{

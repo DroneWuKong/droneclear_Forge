@@ -1,5 +1,14 @@
 # Changelog
 
+## 2026-10-08 — Multi-input UAS recorder 1.2
+
+- Record up to eight named screen/window and camera inputs, including one optional microphone; preserve independent files, replay/alignment and source interruptions.
+- Collect PX4/ArduPilot parameter snapshots and bounded onboard logs using explicit MAVLink reads over USB or bidirectional local UDP. Cancel incomplete transfers; attach complete evidence before or after recording.
+- Match Betaflight’s official firmware bug-form fields, preserve raw Support IDs and offer official community support routing. Keep PX4/Dronecode draft, copy and reviewed submission workflows.
+- Use the available desktop/fullscreen width for setup beside capture, expanding preview columns, focused previews and full-width replay.
+- Extend independent MAVLink fixtures, helper restrictions, native multi-input journeys and Windows/Linux release checks. Hardware and participant qualification remain separate.
+
+
 ## 2026-10-08 — Offline field recorder and live team view
 
 - Bundle Windows/Linux x64 executables with the runtime and app assets for first-launch offline use in an installed Chromium browser.

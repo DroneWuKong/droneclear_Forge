@@ -1,4 +1,4 @@
-Forge UAS Session Recorder 1.1
+Forge UAS Session Recorder 1.2
 Free local recording, live team view and evidence export. No account required.
 
 QUICK START
@@ -16,7 +16,9 @@ QUICK START
 4. The app displays the field folder for saved session ZIPs. Its default is
    .forge-uas-recorder/sessions under your home directory. --session-dir PATH
    selects another writable folder, including a removable drive.
-5. Choose a screen and/or camera, or start a notes-only session. Select your
+5. Add your chosen windows/screens and cameras (up to eight video inputs),
+   name each preview, and optionally include one microphone. Or start notes-only.
+   Collect connected parameters/logs before or after recording. Select your
    stack and test environment, explain the expected behavior, and mark moments.
 6. Stop: committed evidence stays in the browser and a completed ZIP is copied
    to the field folder. Attach original logs/configuration and update the report,
@@ -55,12 +57,16 @@ Keep your existing GCS connected and forward a copy to 127.0.0.1 UDP 14551.
 Use the forwarding options of Mission Planner, QGroundControl, MAVProxy or
 MAVLink Router. Setup reference:
 https://ardupilot.org/mavproxy/docs/getting_started/forwarding.html
-The helper binds only to localhost and never sends anything to the aircraft.
+The helper binds only to localhost. Monitoring is passive. Explicit parameter
+and onboard-log collection returns allowlisted read requests to the observed
+vehicle peer; the forwarding route must be bidirectional (MAVProxy mavfwd).
+No flight-control commands or configuration writes are available.
 It buffers 2048 datagrams; gaps are reported if the browser falls behind.
 Use --http-port or --udp-port to select different local ports.
 
 Direct USB telemetry uses browser Web Serial where available. The recorder
-only reads the port. Do not select a port already owned by your GCS; prefer a
+monitors the port and writes only explicit evidence read requests. Do not
+select a port already owned by your GCS; prefer a
 forwarded copy. Supported decoding is a subset of MAVLink common messages.
 Raw bytes preserve unknown data. Timestamped telemetry.tlog uses host receipt
 time; source clock and camera/display pipeline delays are not measured.
@@ -68,6 +74,17 @@ Helper captures preserve the helper's Unix receipt timestamp separately from
 browser receipt time in telemetry-receipts.jsonl. With the helper, .tlog uses
 that helper receipt time; direct USB uses the browser wall-clock anchor.
 Betaflight uses MSP: capture its App window and import Blackbox/support data.
+
+CONNECTED EVIDENCE
+Choose a vehicle with a fresh PX4/ArduPilot heartbeat. Collect parameters, or
+list onboard logs and collect a selected completed log (up to 32 MiB, disarmed).
+Complete files attach to the current session with collection time and target.
+If collected before recording, Start recording keeps them in the same session.
+Cancellation, missing data or disconnect does not attach incomplete downloads.
+Use GCS/SD-card exports for signed links, receive-only mirrors and unsupported
+firmware. Betaflight needs App configuration/Blackbox exports; MSP retrieval is
+not implemented. Live parameter snapshots are not atomic backups. PX4 uses
+bytewise parameter encoding; ArduPilot C-cast values retain float precision limits.
 
 LOCAL EVIDENCE
 The session ZIP contains session.json (versioned manifest), timeline.json,
@@ -90,6 +107,9 @@ REPORTS
 PX4 / ArduPilot forum drafts: copy the Markdown or open a prefilled composer,
 review category/tags, and attach selected files there. Large reports use copy.
 Betaflight: collect Submit Support Data's Support ID and original diff all.
+Select the firmware bug destination for per-field copying into the official
+GitHub form. Review and submit in your own account; attach files separately.
+Configuration/community questions go to Betaflight's official Discord.
 The GitHub Support ID field adds its own formatting; paste the ID there plainly.
 ClickUp: copy/download task Markdown for your selected List or existing task.
 Jira Cloud: Guided mode copies a readable report for the task editor. Download
