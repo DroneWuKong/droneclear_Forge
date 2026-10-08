@@ -17,7 +17,7 @@ const executable=path.resolve(process.argv[2]||('build-desktop/native/Forge-UAS-
    app.once('exit',code=>{clearTimeout(deadline);reject(Error('Native startup exited '+code+': '+stderr));});
    app.stdout.on('data',data=>{startup+=data;const first=startup.split('\n')[0];try{const config=JSON.parse(first);if(config.url){clearTimeout(deadline);resolve(config);}}catch{}});
   });
-  const origin=new URL(config.url).origin;assert.equal(config.version,'1.3.0');
+  const origin=new URL(config.url).origin;assert.equal(config.version,'1.3.1');
   assert.ok(!startup.includes('Connection key:'),'Native launch need not expose its connection key');
   browser=await chromium.launch({headless:true,...(process.env.AUDIT_CHROMIUM?{executablePath:process.env.AUDIT_CHROMIUM}:{})});
   async function offlineProfile(){
@@ -109,7 +109,7 @@ const executable=path.resolve(process.argv[2]||('build-desktop/native/Forge-UAS-
   assert.match(await page.locator('#archive-status').innerText(),/Saved on disk:/);
   const copies=fs.readdirSync(folder).filter(name=>name.endsWith('.zip'));assert.equal(copies.length,1);
   const copy=path.join(folder,copies[0]);let parsed=await E.verifyBundle(new Uint8Array(fs.readFileSync(copy)));
-  assert.equal(parsed.session.tool_version,'1.3.0');assert.equal(parsed.session.state,'interrupted');
+  assert.equal(parsed.session.tool_version,'1.3.1');assert.equal(parsed.session.state,'interrupted');
   assert.equal(parsed.session.sources.screen.inputs.length,3);assert.equal(parsed.session.sources.camera.inputs.length,2);
   assert.equal(parsed.session.sources.screen.inputs[2].status,'interrupted');
   for(const name of ['screen-2.webm','screen-3.webm','camera-2.webm'])assert.ok(parsed.files.get(name)?.length>100,name);

@@ -1,4 +1,4 @@
-Forge UAS Session Recorder 1.3
+Forge UAS Session Recorder 1.3.1
 Free local recording, live team view and evidence export. No account required.
 
 QUICK START
@@ -154,6 +154,16 @@ attachments and connected log/parameter collection. Report contains editable
 report facts and copy/draft actions. Detailed setup and previews expand only
 when needed; Developer mode does not open all forms. Saved sessions opens
 browser/disk copies. Help & offline app contains downloads and instructions.
-Add app window prefers the browser's Window picker; Add monitor prefers its
-monitor picker. Restore a minimized terminal first. Window availability is
-controlled by Windows/Linux and the browser; the standalone uses the same picker.
+
+TERMINAL OR COMMAND-LINE WINDOW MISSING?
+1. Open Windows Terminal, PowerShell, Command Prompt or your other terminal.
+   Restore it if minimized before opening the picker.
+2. Choose Add app window, select Chrome's Window tab, choose the terminal
+   and Share. Repeat for each separate app window.
+3. If it is still missing, choose Add monitor and select the screen showing
+   the terminal. Keep it visible; monitor capture records everything on that screen.
+
+Add app window and Add monitor guide the browser picker. Chrome on Windows
+skips invisible/minimized windows, and some window types may be unavailable.
+Forge does not filter out command-line apps. Windows/Linux and the browser
+control window availability; the standalone uses the same installed-browser picker.

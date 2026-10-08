@@ -14,7 +14,7 @@ import zipfile
 
 from tools.build_session_recorder import export_recorder
 
-VERSION = '1.3.0'
+VERSION = '1.3.1'
 ROOT = Path(__file__).resolve().parents[1]
 
 

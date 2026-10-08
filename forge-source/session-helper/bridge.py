@@ -357,7 +357,7 @@ class FieldArchive:
 
 
 class Handler(BaseHTTPRequestHandler):
-    server_version = 'ForgeSessionHelper/1.3'
+    server_version = 'ForgeSessionHelper/1.3.1'
 
     def log_message(self, *_args):
         pass  # Never log keys, file names, summaries, or Slack credentials.
