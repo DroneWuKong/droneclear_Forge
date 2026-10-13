@@ -1126,7 +1126,9 @@ def inject_analytics(html, src_name, dst_path):
     slug = _PAGE_SLUGS.get(src_name, src_name.replace('.html', ''))
     # Cloudflare Access protects /private/. No optional analytics or consent UI there.
     analytics_tag = ''
-    if not dst_path.startswith('private/'):
+    if dst_path.startswith('partners/'):
+        analytics_tag = '<script src="/static/text-size-control.js"></script>\n'
+    if not dst_path.startswith(('private/', 'partners/')):
         analytics_tag = (
             '<script src="/static/text-size-control.js"></script>\n'
             + f'<script>var __FORGE_PAGE__="{slug}";</script>\n'

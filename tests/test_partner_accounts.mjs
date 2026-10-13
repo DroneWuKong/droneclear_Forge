@@ -2,10 +2,11 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import { partnerRuntime } from './partner_runtime.mjs';
 import { onRequest as privateGate } from '../functions/private/[[path]].js';
+import { deliverPartnerEmails } from '../workers/partner-email-worker.mjs';
 
 const origin = 'https://uas-forge.com';
 const password = 'a long synthetic partner passphrase';
-const product = { productId:'motor-1',revision:'r1',manufacturerName:'Test OEM',partNumber:'M-42',name:'Example motor',category:'MOTOR',compatibilityTags:['voltage:6s'],lifecycle:'ACTIVE',evidenceRefs:['datasheet:m-42'] };
+const product = { productId:'motor-1',revision:'r1',manufacturerName:'Test OEM',partNumber:'M-42',name:'Example motor',category:'MOTOR',compatibilityTags:['voltage:6s'],lifecycle:'ACTIVE',evidenceRefs:['datasheet:m-42'],description:'A 6S motor for the fixture platform.',productKind:'COMPONENT',completionState:'COMPLETE' };
 
 test('partner accounts persist drafts, isolate companies, and revoke sessions in the Workers runtime', async () => {
   const {runtime,db} = await partnerRuntime();
@@ -24,6 +25,10 @@ test('partner accounts persist drafts, isolate companies, and revoke sessions in
     assert.equal(me.identityKind,'PARTNER'); assert.equal(me.email,'partner@example.com');
     assert.equal(me.organizations[0].role,'EDITOR');
     const org = account.organizationId;
+    const messages=[];
+    await deliverPartnerEmails({ECOSYSTEM_DB:db,EMAIL:{async send(message){messages.push(message)}}});
+    const token=messages[0].text.match(/#verify=([0-9a-f]{64})/)[1];
+    assert.equal((await call('/auth/verify-email',{method:'POST',input:{token}})).status,200);
     const stored = await db.prepare('SELECT * FROM ecosystem_partner_accounts WHERE email = ?').bind('partner@example.com').first();
     assert.notEqual(stored.password_hash,password); assert.equal(stored.password_iterations,600000);
     assert.equal((await db.prepare('SELECT token_hash FROM ecosystem_partner_sessions').first()).token_hash.includes(cookie.split('=')[1]),false);

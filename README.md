@@ -81,18 +81,29 @@ to upload JSON/CSV products or BOMs and edit saved records. Partner sessions do
 not grant access to `/private/*`, platform provisioning, other companies, or
 catalog publication. Access-authenticated teams retain their existing portal.
 
-Production deployment runs `tools/provision_partner_accounts.py` before uploading
-the Pages bundle. It verifies the existing ecosystem schema, applies migration
-0003 once, preserves the historical audit records, and checks the resulting
-schema. No new authentication secret or email provider is required. Email-based
-invitation acceptance remains restricted to verified Cloudflare Access users;
-partner email addresses do not prove ownership of an existing organization.
+Production deployment verifies and applies the ecosystem migrations before deploying
+both the private partner email sender and the catalog import worker. Verification
+and password-reset emails use Cloudflare Email Sending from `accounts@uas-forge.com`.
+Requests are persisted and retried; only expiring, single-use token hashes are
+stored. Password resets revoke existing sessions. Email links carry tokens in
+URL fragments, and the partner account page excludes optional analytics.
 
-Validate the account flow with `node --test tests/test_partner_accounts.mjs`,
-`python -m unittest tests/test_partner_schema.py`, and
-`node tests/browser_partner_portal.cjs build` after building the site. Password
-recovery and email verification are follow-up features; signup currently grants
-only an isolated draft workspace.
+A customer-visible product requires the existing identity/technical fields,
+a description, `productKind` (`COMPONENT` or `ASSEMBLY`), supporting evidence,
+and `completionState: "COMPLETE"`. An assembly also needs a reviewed BOM for its
+exact revision, with every line resolved to a complete, published component
+revision. Publishing an assembly and its BOM is atomic. Drafts, reviewed-only
+records, and historical records without completeness approval stay private on
+all public product, BOM, and offer endpoints. Partners can check missing
+requirements in the portal before submitting.
+
+Verified Cloudflare Access identities in `ECOSYSTEM_PLATFORM_ADMIN_SUBJECTS` can
+review submitted partner products from `/private/catalog/`. The existing Access
+application must cover that private route and its private API. Partner signup
+never grants platform administration or approval authority.
+
+Validate with `npm run test:partners` after building, and
+`python -m unittest tests/test_partner_schema.py` for migration preservation.
 
 Cloudflare Pages deploys from `master` using the project configuration in `wrangler.jsonc`.
 

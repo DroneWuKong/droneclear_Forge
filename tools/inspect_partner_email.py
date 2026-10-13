@@ -23,6 +23,8 @@ try:
         'resend_configured': variables.get('RESEND_API_KEY', {}).get('type') == 'secret_text',
         'sender_configured': bool(variables.get('PARTNER_EMAIL_FROM', {}).get('value') or variables.get('DIGEST_FROM', {}).get('value')),
         'email_service_binding_configured': 'PARTNER_EMAIL' in config.get('services', {}),
+        'private_access_configured': 'PRIVATE_ACCESS_TEAM_DOMAIN' in variables and 'PRIVATE_ACCESS_AUD' in variables,
+        'platform_reviewer_configured': 'ECOSYSTEM_PLATFORM_ADMIN_SUBJECTS' in variables,
         'relevant_binding_names': sorted(name for name in variables if any(term in name for term in ('EMAIL', 'SMTP', 'RESEND', 'DIGEST_FROM'))),
     }))
     domains = subprocess.run(['npx', '--yes', 'wrangler@4.147.0', 'email', 'sending', 'list'],
@@ -32,7 +34,7 @@ try:
         for line in domains.stdout.splitlines():
             if any(domain in line for domain in ('uas-forge.com', 'uas-patterns.com', 'midwestniceuas.com')):
                 print(line)
-    if '--configure' in sys.argv:
+    if '--configure' in sys.argv and 'uas-forge.com' not in domains.stdout:
         enabled = subprocess.run(['npx', '--yes', 'wrangler@4.147.0', 'email', 'sending', 'enable', 'uas-forge.com'],
             capture_output=True, text=True, timeout=180, env={**os.environ, 'CI':'true','WRANGLER_SEND_METRICS':'false'})
         if enabled.returncode:

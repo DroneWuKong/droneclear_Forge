@@ -49,8 +49,8 @@ test('public catalog serves published contracts and keeps sponsored offers in a 
       return {
         bind() { return this; },
         async all() {
-          if (sql.includes('ecosystem_product_revisions')) return { results: [{ contract_json: JSON.stringify(product) }] };
           if (sql.includes('ecosystem_supplier_offers')) return { results: [{ contract_json: JSON.stringify(unsponsored) }, { contract_json: JSON.stringify(sponsored) }] };
+          if (sql.includes('ecosystem_product_revisions')) return { results: [{ contract_json: JSON.stringify(product) }] };
           return { results: [] };
         },
       };
