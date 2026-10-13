@@ -45,11 +45,11 @@ function equalHash(left, right) {
 export async function authenticatePartner(request, env) {
   const token = cookieToken(request);
   if (!token) return null;
-  const row = await env.ECOSYSTEM_DB.prepare(`SELECT a.account_id, a.email, a.name
+  const row = await env.ECOSYSTEM_DB.prepare(`SELECT a.account_id, a.email, a.name, a.email_verified_at_ms
     FROM ecosystem_partner_sessions s JOIN ecosystem_partner_accounts a ON a.account_id = s.account_id
-    WHERE s.token_hash = ? AND s.expires_at_ms > ? AND a.status = 'ACTIVE'`)
+    WHERE s.token_hash = ? AND s.expires_at_ms > ? AND a.status = 'ACTIVE' AND s.account_generation = a.account_generation`)
     .bind(await canonicalDigest(token), Date.now()).first();
-  return row ? { kind: 'PARTNER', subject: `partner:${row.account_id}`, email: row.email, name: row.name } : null;
+  return row ? { kind: 'PARTNER', subject: `partner:${row.account_id}`, email: row.email, name: row.name, emailVerified: row.email_verified_at_ms != null } : null;
 }
 
 async function limited(db, bucket, ceiling, duration) {
@@ -62,18 +62,98 @@ async function limited(db, bucket, ceiling, duration) {
   return (results[1].results?.[0]?.request_count || 0) > ceiling;
 }
 
-async function issueSession(db, request, accountId) {
+async function issueSession(db, request, accountId, generation = 0) {
   const token = randomToken();
   const now = Date.now();
   const oldToken = cookieToken(request);
   const statements = [
     db.prepare('DELETE FROM ecosystem_partner_sessions WHERE expires_at_ms <= ?').bind(now),
-    db.prepare('INSERT INTO ecosystem_partner_sessions (token_hash, account_id, created_at_ms, expires_at_ms) VALUES (?, ?, ?, ?)')
-      .bind(await canonicalDigest(token), accountId, now, now + SESSION_SECONDS * 1000),
+    db.prepare(`INSERT INTO ecosystem_partner_sessions (token_hash, account_id, created_at_ms, expires_at_ms, account_generation)
+      SELECT ?, account_id, ?, ?, account_generation FROM ecosystem_partner_accounts WHERE account_id = ? AND account_generation = ? AND status = 'ACTIVE'`)
+      .bind(await canonicalDigest(token), now, now + SESSION_SECONDS * 1000, accountId, generation),
   ];
   if (oldToken) statements.push(db.prepare('DELETE FROM ecosystem_partner_sessions WHERE token_hash = ?').bind(await canonicalDigest(oldToken)));
-  await db.batch(statements);
-  return sessionCookie(token);
+  const results = await db.batch(statements);
+  return results[1].meta.changes === 1 ? sessionCookie(token) : null;
+}
+
+async function emailReady(env) {
+  if (!env.PARTNER_EMAIL) return false;
+  try {
+    const response = await env.PARTNER_EMAIL.fetch('https://partner-email.internal/health');
+    return response.ok && (await response.json()).configured === true;
+  } catch { return false; }
+}
+
+async function queueEmail(db, accountId, purpose, generation) {
+  const now = Date.now();
+  await db.prepare(`INSERT INTO ecosystem_partner_email_requests
+    (request_id, account_id, purpose, account_generation, status, created_at_ms, updated_at_ms)
+    VALUES (?, ?, ?, ?, 'PENDING', ?, ?)`).bind(crypto.randomUUID(), accountId, purpose, generation, now, now).run();
+}
+
+async function dispatchEmail(env) {
+  try { await env.PARTNER_EMAIL.fetch('https://partner-email.internal/dispatch', {method:'POST'}); } catch { /* The scheduled sender retries persisted requests. */ }
+}
+
+async function recoveryAction(request, env, action, input) {
+  const db = env.ECOSYSTEM_DB;
+  if (action === 'resend-verification') {
+    const principal = await authenticatePartner(request, env);
+    if (!principal) return reply(401, {error:'Log in to request a verification email.'});
+    if (principal.emailVerified) return reply(200, {emailVerified:true});
+    if (!await emailReady(env)) return reply(503, {error:'Email delivery is temporarily unavailable. Please try again shortly.'});
+    if (await limited(db, await canonicalDigest('verify-email:' + principal.email), 3, 15 * 60_000)) return reply(429, {error:'Please wait 15 minutes before requesting another email.'});
+    const account = await db.prepare('SELECT account_id, account_generation FROM ecosystem_partner_accounts WHERE email = ?').bind(principal.email).first();
+    await queueEmail(db, account.account_id, 'VERIFY_EMAIL', account.account_generation);
+    await dispatchEmail(env);
+    return reply(200, {message:'Verification email queued. Check your inbox shortly.'});
+  }
+  if (action === 'request-reset') {
+    const email = String(input.email || '').trim().toLowerCase();
+    if (email.length > 254 || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return reply(400, {error:'Enter a valid email address.'});
+    if (!await emailReady(env)) return reply(503, {error:'Email delivery is temporarily unavailable. Please try again shortly.'});
+    if (await limited(db, await canonicalDigest('reset-email:' + email), 3, 15 * 60_000)) return reply(429, {error:'Please wait 15 minutes before requesting another email.'});
+    const now = Date.now();
+    // The same SQL, sender dispatch, and response serve known and unknown emails.
+    await db.prepare(`INSERT INTO ecosystem_partner_email_requests
+      (request_id, account_id, purpose, account_generation, status, created_at_ms, updated_at_ms)
+      SELECT ?, account_id, 'RESET_PASSWORD', account_generation, 'PENDING', ?, ?
+      FROM ecosystem_partner_accounts WHERE email = ? AND status = 'ACTIVE'`)
+      .bind(crypto.randomUUID(), now, now, email).run();
+    await dispatchEmail(env);
+    return reply(200, {message:'If an account uses this email, a password reset link will arrive shortly.'});
+  }
+  if (!/^[0-9a-f]{64}$/.test(input.token || '')) return reply(400, {error:'This link is invalid or expired. Request a new email.'});
+  const hash = await canonicalDigest(input.token), now = Date.now();
+  const purpose = action === 'verify-email' ? 'VERIFY_EMAIL' : 'RESET_PASSWORD';
+  const token = await db.prepare(`SELECT t.account_id, t.account_generation FROM ecosystem_partner_action_tokens t
+    JOIN ecosystem_partner_accounts a ON a.account_id = t.account_id
+    WHERE t.token_hash = ? AND t.purpose = ? AND t.consumed_at_ms IS NULL AND t.expires_at_ms > ?
+      AND t.account_generation = a.account_generation AND a.status = 'ACTIVE'`).bind(hash, purpose, now).first();
+  if (!token) return reply(400, {error:'This link is invalid or expired. Request a new email.'});
+  let update;
+  if (action === 'verify-email') {
+    update = db.prepare(`UPDATE ecosystem_partner_accounts SET email_verified_at_ms = ? WHERE account_id = ?
+      AND email_verified_at_ms IS NULL AND account_generation = ? AND EXISTS (SELECT 1 FROM ecosystem_partner_action_tokens
+        WHERE token_hash = ? AND consumed_at_ms IS NULL AND expires_at_ms > ?)`)
+      .bind(now, token.account_id, token.account_generation, hash, now);
+  } else {
+    if (typeof input.password !== 'string' || input.password.length < 15 || input.password.length > 128) return reply(400, {error:'Choose a password with 15–128 characters.'});
+    const salt = randomToken(), password = await passwordHash(input.password, salt);
+    update = db.prepare(`UPDATE ecosystem_partner_accounts SET password_hash = ?, password_salt = ?, password_iterations = ?,
+      account_generation = account_generation + 1, email_verified_at_ms = COALESCE(email_verified_at_ms, ?) WHERE account_id = ? AND account_generation = ?
+      AND EXISTS (SELECT 1 FROM ecosystem_partner_action_tokens WHERE token_hash = ? AND consumed_at_ms IS NULL AND expires_at_ms > ?)`)
+      .bind(password, salt, ITERATIONS, now, token.account_id, token.account_generation, hash, now);
+  }
+  const statements = [update,
+    db.prepare('UPDATE ecosystem_partner_action_tokens SET consumed_at_ms = ? WHERE token_hash = ? AND consumed_at_ms IS NULL').bind(now, hash),
+  ];
+  if (action === 'reset-password') statements.push(db.prepare('DELETE FROM ecosystem_partner_sessions WHERE account_id = ? AND account_generation <= ?').bind(token.account_id, token.account_generation));
+  const results = await db.batch(statements);
+  if (results[0].meta.changes !== 1) return reply(400, {error:'This link was already used. Request a new email.'});
+  return action === 'verify-email' ? reply(200, {emailVerified:true,message:'Email verified. You can now submit complete products for review.'})
+    : reply(200, {message:'Password updated. Log in with your new password.'}, sessionCookie('',0));
 }
 
 async function readInput(request) {
@@ -100,6 +180,7 @@ async function readInput(request) {
 }
 
 export async function handlePartnerAuth(request, env, action) {
+  if (action === 'status' && request.method === 'GET') return reply(200, {emailDeliveryConfigured:await emailReady(env)});
   if (request.method !== 'POST') return reply(405, { error: 'Use POST for account actions.' });
   if (!sameOriginMutation(request)) return reply(403, { error: 'Account actions must come from this site.' });
   const db = env.ECOSYSTEM_DB;
@@ -108,13 +189,14 @@ export async function handlePartnerAuth(request, env, action) {
     if (token) await db.prepare('DELETE FROM ecosystem_partner_sessions WHERE token_hash = ?').bind(await canonicalDigest(token)).run();
     return reply(200, { signedOut: true }, sessionCookie('', 0));
   }
-  if (!['signup', 'login'].includes(action)) return reply(404, { error: 'Account action not found.' });
+  if (!['signup', 'login', 'request-reset', 'reset-password', 'verify-email', 'resend-verification'].includes(action)) return reply(404, { error: 'Account action not found.' });
   const ip = request.headers.get('CF-Connecting-IP') || 'unknown';
   const ipBucket = await canonicalDigest(`${action}:ip:${ip}`);
   if (await limited(db, ipBucket, action === 'signup' ? 10 : 50, 15 * 60_000)) return reply(429, { error: 'Too many attempts. Please try again in 15 minutes.' });
   await db.prepare('DELETE FROM ecosystem_partner_auth_windows WHERE window_start_ms < ?').bind(Date.now() - 24 * 60 * 60_000).run();
   const input = await readInput(request);
   if (!input) return reply(400, { error: 'Send account details as JSON, up to 8 KB.' });
+  if (!['signup','login'].includes(action)) return recoveryAction(request, env, action, input);
   const email = String(input.email || '').trim().toLowerCase();
   const password = input.password;
   if (email.length > 254 || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) || typeof password !== 'string' || !password || password.length > 128) {
@@ -122,11 +204,12 @@ export async function handlePartnerAuth(request, env, action) {
   }
   if (await limited(db, await canonicalDigest(`${action}:email:${email}`), 10, 15 * 60_000)) return reply(429, { error: 'Too many attempts. Please try again in 15 minutes.' });
   if (action === 'login') {
-    const account = await db.prepare('SELECT account_id, name, password_hash, password_salt, password_iterations, status FROM ecosystem_partner_accounts WHERE email = ?').bind(email).first();
+    const account = await db.prepare('SELECT account_id, name, password_hash, password_salt, password_iterations, status, account_generation FROM ecosystem_partner_accounts WHERE email = ?').bind(email).first();
     // Match the hashing cost for unknown emails without storing a dummy account.
     const candidate = await passwordHash(password, account?.password_salt || '0'.repeat(64), account?.password_iterations || ITERATIONS);
     if (!account || account.status !== 'ACTIVE' || !equalHash(candidate, account.password_hash)) return reply(401, { error: 'Email or password is incorrect.' });
-    return reply(200, { email, name: account.name }, await issueSession(db, request, account.account_id));
+    const cookie = await issueSession(db, request, account.account_id, account.account_generation);
+    return cookie ? reply(200, { email, name: account.name }, cookie) : reply(401, {error:'Your account changed. Please log in again.'});
   }
   const name = String(input.name || '').trim();
   const organizationName = String(input.organizationName || '').trim();
@@ -135,6 +218,7 @@ export async function handlePartnerAuth(request, env, action) {
   if (!name || name.length > 128 || !organizationName || organizationName.length > 256 || !['OEM', 'MANUFACTURER', 'SUPPLIER', 'OPERATOR', 'HYBRID'].includes(kind)) {
     return reply(400, { error: 'Enter your name, company name, and company type.' });
   }
+  if (!await emailReady(env)) return reply(503, {error:'Account email delivery is temporarily unavailable. Please try again shortly.'});
   const accountId = crypto.randomUUID();
   const subject = `partner:${accountId}`;
   const organizationId = `partner-${crypto.randomUUID()}`;
@@ -154,10 +238,14 @@ export async function handlePartnerAuth(request, env, action) {
         (event_id, organization_id, actor_subject, actor_kind, action, resource_type, resource_id, detail_json, created_at_ms)
         VALUES (?, ?, ?, 'PARTNER', 'partner.signup', 'organization', ?, '{}', ?)`)
         .bind(crypto.randomUUID(), organizationId, subject, organizationId, now),
+      db.prepare(`INSERT INTO ecosystem_partner_email_requests
+        (request_id, account_id, purpose, account_generation, status, created_at_ms, updated_at_ms)
+        VALUES (?, ?, 'VERIFY_EMAIL', 0, 'PENDING', ?, ?)`).bind(crypto.randomUUID(), accountId, now, now),
     ]);
   } catch (error) {
     if (/UNIQUE.*ecosystem_partner_accounts.email/i.test(error.message)) return reply(409, { error: 'An account already uses this email. Log in to continue.' });
     throw error;
   }
-  return reply(201, { email, name, organizationId, organizationName, role: 'EDITOR' }, await issueSession(db, request, accountId));
+  await dispatchEmail(env);
+  return reply(201, { email, name, organizationId, organizationName, role: 'EDITOR', emailVerified:false, message:'Your account is ready. Check your email to verify it before submitting products for review.' }, await issueSession(db, request, accountId));
 }

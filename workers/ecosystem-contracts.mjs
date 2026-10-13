@@ -46,7 +46,9 @@ function exact(value, required, optional, label) {
 
 export async function productRevisionContract(value, manufacturerId) {
   const input = object(value, 'product revision');
-  exact(input, ['productId', 'revision', 'manufacturerName', 'partNumber', 'name', 'category', 'compatibilityTags', 'lifecycle', 'evidenceRefs'], ['gtin', 'supersedesRevision'], 'product revision');
+  exact(input, ['productId', 'revision', 'manufacturerName', 'partNumber', 'name', 'category', 'compatibilityTags', 'lifecycle', 'evidenceRefs'], ['gtin', 'supersedesRevision', 'description', 'productKind', 'completionState'], 'product revision');
+  if (input.productKind !== undefined && !['COMPONENT', 'ASSEMBLY'].includes(input.productKind)) throw new Error('product kind must be COMPONENT or ASSEMBLY');
+  if (input.completionState !== undefined && !['INCOMPLETE', 'COMPLETE'].includes(input.completionState)) throw new Error('product completion state must be INCOMPLETE or COMPLETE');
   const lifecycle = text(input.lifecycle, 'product lifecycle', 32);
   if (!['ACTIVE', 'LIMITED', 'END_OF_LIFE', 'WITHDRAWN'].includes(lifecycle)) throw new Error('product lifecycle is unsupported');
   const parsedManufacturerId = id(manufacturerId, 'manufacturer ID');
@@ -59,6 +61,9 @@ export async function productRevisionContract(value, manufacturerId) {
     compatibilityTags: strings(input.compatibilityTags, 'compatibility tag'), lifecycle,
     ...(input.supersedesRevision === undefined ? {} : { supersedesRevision: text(input.supersedesRevision, 'superseded product revision', 128) }),
     evidenceRefs: evidence(input.evidenceRefs, 'product evidence reference'),
+    ...(input.description === undefined ? {} : { description: text(input.description, 'product description', 8000) }),
+    ...(input.productKind === undefined ? {} : { productKind: input.productKind }),
+    completionState: input.completionState || 'INCOMPLETE',
   };
   if (base.supersedesRevision === base.revision) throw new Error('product revision cannot supersede itself');
   return { ...base, productDigest: await canonicalDigest(base) };
