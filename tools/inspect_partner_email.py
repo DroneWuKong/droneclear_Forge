@@ -2,6 +2,7 @@
 import json
 import os
 import subprocess
+import sys
 import urllib.error
 import urllib.request
 
@@ -31,5 +32,11 @@ try:
         for line in domains.stdout.splitlines():
             if any(domain in line for domain in ('uas-forge.com', 'uas-patterns.com', 'midwestniceuas.com')):
                 print(line)
+    if '--configure' in sys.argv:
+        enabled = subprocess.run(['npx', '--yes', 'wrangler@4.147.0', 'email', 'sending', 'enable', 'uas-forge.com'],
+            capture_output=True, text=True, timeout=180, env={**os.environ, 'CI':'true','WRANGLER_SEND_METRICS':'false'})
+        if enabled.returncode:
+            raise SystemExit('Cloudflare could not enable partner email sending. Existing credentials or account settings need attention; no site deployment was attempted.')
+        print(json.dumps({'partner_email_domain_enabled':True}))
 except (urllib.error.URLError, ValueError, KeyError):
     raise SystemExit('Production email metadata inspection failed; no credentials were printed.') from None
