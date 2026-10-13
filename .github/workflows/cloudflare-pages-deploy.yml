@@ -4,6 +4,12 @@ on:
   push:
     branches: [master]
   workflow_dispatch:
+    inputs:
+      mode:
+        description: Deploy the site or inspect partner email readiness
+        type: choice
+        default: deploy
+        options: [deploy, inspect-email]
 
 concurrency:
   group: cloudflare-pages-production
@@ -13,7 +19,19 @@ permissions:
   contents: read
 
 jobs:
+  inspect-email:
+    if: github.event_name == 'workflow_dispatch' && inputs.mode == 'inspect-email'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Inspect production partner email metadata
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN || secrets.CLOUDFLAR_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: python3 tools/inspect_partner_email.py
+
   deploy:
+    if: github.event_name != 'workflow_dispatch' || inputs.mode != 'inspect-email'
     name: Build and deploy production Pages bundle
     runs-on: ubuntu-latest
     timeout-minutes: 20
