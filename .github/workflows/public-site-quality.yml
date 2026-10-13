@@ -180,6 +180,11 @@ jobs:
       - name: Audit all source surfaces
         run: python tools/audit_public_site.py --all --strict --require-catalog --dry-run
 
+      - name: Verify partner account security and catalog persistence
+        run: |
+          node --test tests/test_partner_accounts.mjs tests/test_ecosystem_api.mjs
+          python -m unittest tests/test_partner_schema.py
+
       - name: Build the public site
         env:
           GITHUB_PAT: ${{ secrets.GITHUB_PAT }}
@@ -193,6 +198,7 @@ jobs:
           node tests/browser_system_test_lab.cjs build
           node tests/browser_session_recorder.cjs build
           node tests/browser_session_journeys.cjs build
+          node tests/browser_partner_portal.cjs build
 
       - name: Audit built routes and copied metadata
         run: python tools/audit_public_site.py --site-dir build --built --all --strict --require-catalog --dry-run

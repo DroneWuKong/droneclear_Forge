@@ -118,6 +118,7 @@ PAGES = {
     'start.html': 'start/index.html',
     'forge-home.html': 'forge/index.html',
     'ecosystem.html': 'ecosystem/index.html',
+    'partners.html': 'partners/index.html',
     'report.html': 'report/index.html',
     'waiver.html': 'waiver/index.html',
     'terms.html': 'terms/index.html',
@@ -1883,7 +1884,7 @@ def inject_seo(html, src_name, dst_path):
 
 # Paths that must never appear in a sitemap: gated/noindex surfaces.
 # Keep in sync with the Disallow list in generate_robots_txt().
-SITEMAP_EXCLUDED_PREFIXES = ('private/', 'analytics/', 'vault/', 'contribute/', 'template/')
+SITEMAP_EXCLUDED_PREFIXES = ('private/', 'partners/', 'analytics/', 'vault/', 'contribute/', 'template/')
 
 
 def generate_sitemaps(pages):
@@ -1944,6 +1945,7 @@ Disallow: /vault/
 Disallow: /contribute/
 Disallow: /template/
 Disallow: /private/
+Disallow: /partners/
 '''
 
 
@@ -2871,7 +2873,7 @@ def build(*, offline=False, data_ref=None, data_dir=None, include_private=False)
             'intel.html','intel-home.html',
             'intel-dfr.html','intel-commercial.html',
             'uas-hub.html',
-            'ecosystem.html','private/catalog.html',
+            'ecosystem.html','partners.html','private/catalog.html',
             'clock.html','entity-graph.html','analytics.html',
             'adversary-bom.html','mirroring.html','actors.html',
             'ttps.html','evasion.html',

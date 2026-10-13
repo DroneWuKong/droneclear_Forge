@@ -1,4 +1,5 @@
 import { verifyAccessIdentity } from './access-auth.mjs';
+import { authenticatePartner, handlePartnerAuth, sameOriginMutation } from './partner-accounts.mjs';
 import { bomRevisionContract, canonicalDigest, canonicalJson, productRevisionContract, supplierOfferContract } from './ecosystem-contracts.mjs';
 
 const JSON_HEADERS = { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store' };
@@ -79,7 +80,7 @@ async function authenticate(request, env, identityOverride) {
   if (identityOverride !== undefined) return accessPrincipal(identityOverride);
   const token = bearer(request);
   if (token?.startsWith('forge_oem_')) return authenticateService(db, token);
-  return accessPrincipal(await verifyAccessIdentity(token, env));
+  return accessPrincipal(await verifyAccessIdentity(token, env)) || await authenticatePartner(request, env);
 }
 
 async function member(db, organizationId, principal) {
@@ -100,7 +101,7 @@ function isPlatformAdmin(env, principal) {
 }
 
 async function requireMember(env, organizationId, principal, roles = ['OWNER', 'ADMIN', 'EDITOR', 'VIEWER'], scope = 'catalog:read') {
-  if (!principal) return { error: response(401, { error: 'Cloudflare Access identity or service credential required' }) };
+  if (!principal) return { error: response(401, { error: 'Sign in to your partner account to continue.' }) };
   if (principal.kind === 'SERVICE' && principal.organizationId !== organizationId) {
     return { error: response(404, { error: 'organization workspace not found' }) };
   }
@@ -194,13 +195,13 @@ async function activateInvitations(db, principal) {
 }
 
 async function getMe(env, principal) {
-  if (!principal || principal.kind !== 'ACCESS') return response(401, { error: 'Cloudflare Access identity required' });
+  if (!principal || !['ACCESS', 'PARTNER'].includes(principal.kind)) return response(401, { error: 'Sign in to your partner account to continue.' });
   const db = requireDb(env);
   await activateInvitations(db, principal);
   const result = await db.prepare(`SELECT o.organization_id, o.name, o.kind, m.role
     FROM ecosystem_memberships m JOIN ecosystem_organizations o ON o.organization_id = m.organization_id
     WHERE m.access_subject = ? AND m.status = 'ACTIVE' ORDER BY o.name`).bind(principal.subject).all();
-  return response(200, { subject: principal.subject, email: principal.email, organizations: (result.results || []).map(row => ({ organizationId: row.organization_id, name: row.name, kind: row.kind, role: row.role })) });
+  return response(200, { subject: principal.subject, email: principal.email, name: principal.name || null, identityKind: principal.kind, organizations: (result.results || []).map(row => ({ organizationId: row.organization_id, name: row.name, kind: row.kind, role: row.role })) });
 }
 
 async function createOrganization(env, principal, request) {
@@ -514,12 +515,14 @@ export async function handleEcosystemRequest(request, env, identityOverride) {
     const url = new URL(request.url);
     const segments = url.pathname.replace(/^\/api\/ecosystem\/v1\/?/, '').split('/').filter(Boolean).map(decodeURIComponent);
     const db = requireDb(env);
+    if (segments.length === 2 && segments[0] === 'auth') return await handlePartnerAuth(request, env, segments[1]);
     if (request.method === 'GET' && segments.length === 1 && segments[0] === 'products') return listPublicProducts(db, url);
     if (request.method === 'GET' && segments.length === 2 && segments[0] === 'products') return getPublicProduct(db, segments[1], url.searchParams.get('revision'), url);
     if (request.method === 'GET' && segments.length === 1 && segments[0] === 'offers') return listPublicOffers(db, url);
     if (request.method === 'GET' && segments.length === 1 && segments[0] === 'boms') return listPublicBoms(db, url);
 
     const principal = await authenticate(request, env, identityOverride);
+    if (principal?.kind === 'PARTNER' && request.method !== 'GET' && !sameOriginMutation(request)) return response(403, { error: 'Account actions must come from this site.' });
     if (request.method === 'GET' && segments.length === 1 && segments[0] === 'me') return getMe(env, principal);
     if (request.method === 'POST' && segments.length === 1 && segments[0] === 'organizations') return createOrganization(env, principal, request);
     if (segments[0] === 'organizations' && segments.length >= 3) {
