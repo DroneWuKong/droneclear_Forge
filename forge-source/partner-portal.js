@@ -1,5 +1,7 @@
   const $=id=>document.getElementById(id);const api='/api/ecosystem/v1';
-  const emailLink=new URLSearchParams(location.hash.slice(1));let actionToken=emailLink.get('verify')||emailLink.get('reset');const linkMode=emailLink.has('verify')?'verify-email':emailLink.has('reset')?'reset-password':null;if(linkMode)history.replaceState(null,'',location.pathname+location.search);
+  let actionToken=null;
+  function readEmailLink(){const emailLink=new URLSearchParams(location.hash.slice(1)),mode=emailLink.has('verify')?'verify-email':emailLink.has('reset')?'reset-password':null;if(mode){actionToken=emailLink.get('verify')||emailLink.get('reset');history.replaceState(null,'',location.pathname+location.search)}return mode}
+  const linkMode=readEmailLink();
   const state={me:null,org:'',records:{PRODUCTS:[],BOMS:[],OFFERS:[]},pollers:new Map()};
   const clean=value=>String(value??'').trim();
   function show(status,value,tone=''){ $('status').textContent=status;$('status').className=`status ${tone}`;$('result').textContent=typeof value==='string'?value:JSON.stringify(value,null,2) }
@@ -57,8 +59,8 @@
       $('identity').textContent = value.email || value.subject;
       $('account-panel').hidden = true; $('partner-workspace').hidden = false;
       $('logout').hidden = value.identityKind !== 'PARTNER';
-      $('verification-note').hidden = value.emailVerified === true; $('reviewer-panel').hidden = value.platformAdmin !== true;
-      if(value.platformAdmin)await loadReviewQueue();
+      $('verification-note').hidden = value.emailVerified === true; $('reviewer-panel').hidden = value.platformReviewer !== true;
+      if(value.platformReviewer)await loadReviewQueue();
       document.querySelectorAll('[data-access-only]').forEach(item => item.hidden = value.identityKind !== 'ACCESS');
       const select = $('org-select'); select.replaceChildren(new Option('Choose a workspace',''));
       (value.organizations || []).forEach(item => select.append(new Option(`${item.name} · ${item.role}`,item.organizationId)));
@@ -141,4 +143,5 @@
   $('invite').addEventListener('click',async()=>{try{const value=await call(`/organizations/${encodeURIComponent(org())}/invitations`,{method:'POST',body:JSON.stringify({email:$('invite-email').value,role:$('invite-role').value})});show('INVITATION CREATED',value);await loadTeam()}catch(error){show('INVITATION REJECTED',error.value||{error:error.message},'error')}});
   $('credential-role').addEventListener('change',()=>{const viewer=$('credential-role').value==='VIEWER';document.querySelectorAll('input[name=scope]').forEach(input=>{if(viewer&&input.value!=='catalog:read')input.checked=false;input.disabled=viewer&&input.value!=='catalog:read'})});
   $('credential').addEventListener('click',async()=>{try{const scopes=[...document.querySelectorAll('input[name=scope]:checked')].map(input=>input.value),value=await call(`/organizations/${encodeURIComponent(org())}/api-credentials`,{method:'POST',body:JSON.stringify({name:$('credential-name').value,role:$('credential-role').value,scopes})});show('COPY THIS CREDENTIAL NOW',value,'good');await loadCredentials()}catch(error){show('CREDENTIAL REJECTED',error.value||{error:error.message},'error')}});
+  addEventListener('hashchange',()=>{const mode=readEmailLink();if(mode){clearWorkspace();setAccountMode(mode)}});
   $('refresh-all').addEventListener('click',refreshWorkspace);updateSummary();if(linkMode)setAccountMode(linkMode);else loadIdentity();

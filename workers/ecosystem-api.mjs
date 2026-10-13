@@ -101,6 +101,13 @@ function isPlatformAdmin(env, principal) {
   return subjects.includes(principal.subject);
 }
 
+async function canReviewPartners(env, principal) {
+  if (isPlatformAdmin(env, principal)) return true;
+  if (principal?.kind !== 'PARTNER' || !principal.emailVerified) return false;
+  return Boolean(await requireDb(env).prepare(`SELECT 1 AS found FROM ecosystem_partner_reviewers
+    WHERE account_id = ? AND status = 'ACTIVE'`).bind(principal.subject.slice('partner:'.length)).first());
+}
+
 async function requireMember(env, organizationId, principal, roles = ['OWNER', 'ADMIN', 'EDITOR', 'VIEWER'], scope = 'catalog:read') {
   if (!principal) return { error: response(401, { error: 'Sign in to your partner account to continue.' }) };
   if (principal.kind === 'SERVICE' && principal.organizationId !== organizationId) {
@@ -110,7 +117,7 @@ async function requireMember(env, organizationId, principal, roles = ['OWNER', '
     return { error: response(403, { error: 'service credential scope does not permit this operation' }) };
   }
   const membership = await member(requireDb(env), organizationId, principal);
-  if (!membership && isPlatformAdmin(env, principal)) {
+  if (['catalog:read','catalog:publish'].includes(scope) && await canReviewPartners(env, principal)) {
     const partnerWorkspace = await requireDb(env).prepare(`SELECT 1 AS found FROM ecosystem_memberships m
       JOIN ecosystem_partner_accounts a ON m.access_subject = 'partner:' || a.account_id
       WHERE m.organization_id = ? AND m.status = 'ACTIVE' AND a.status = 'ACTIVE' LIMIT 1`).bind(organizationId).first();
@@ -125,9 +132,20 @@ function publicRecord(row) {
   return {
     ...JSON.parse(row.contract_json), publicationState: row.publication_state,
     publishedAtMs: row.published_at_ms || null, isCurrent: Boolean(row.is_current),
-    ...(row.is_complete === undefined ? {} : {isComplete:row.is_complete === 1, customerVisible:row.publication_state === 'PUBLISHED' && row.is_complete === 1}),
+    ...(row.is_complete === undefined ? {} : {isComplete:row.is_complete === 1, customerVisible:row.customer_visible === undefined ? row.publication_state === 'PUBLISHED' && row.is_complete === 1 : row.customer_visible === 1}),
     ...(row.withdrawn_at_ms ? { withdrawnAtMs: row.withdrawn_at_ms, withdrawalReason: row.withdrawal_reason } : {}),
   };
+}
+
+// Withdrawing an assembly's required BOM must also hide its customer listing.
+// Aliases come only from the fixed queries below, never from request input.
+function customerProductSql(alias) {
+  return `${alias}.publication_state = 'PUBLISHED' AND ${alias}.is_complete = 1
+    AND (json_extract(${alias}.contract_json, '$.productKind') = 'COMPONENT'
+      OR (json_extract(${alias}.contract_json, '$.productKind') = 'ASSEMBLY' AND EXISTS (
+        SELECT 1 FROM ecosystem_bom_revisions required_bom WHERE required_bom.organization_id = ${alias}.organization_id
+          AND required_bom.product_id = ${alias}.product_id AND required_bom.product_revision = ${alias}.revision
+          AND required_bom.publication_state = 'PUBLISHED' AND required_bom.is_complete = 1)))`;
 }
 
 async function listPublicProducts(db, url) {
@@ -135,13 +153,13 @@ async function listPublicProducts(db, url) {
   const manufacturer = url.searchParams.get('manufacturer_id');
   const limit = Math.min(Math.max(Number(url.searchParams.get('limit') || 50), 1), 200);
   const offset = decodeCursor(url.searchParams.get('cursor'));
-  const clauses = ["publication_state = 'PUBLISHED'", 'is_current = 1', 'is_complete = 1'];
+  const clauses = [customerProductSql('p'), 'p.is_current = 1'];
   const bindings = [];
-  if (category) { clauses.push('category = ?'); bindings.push(category); }
-  if (manufacturer) { clauses.push('manufacturer_id = ?'); bindings.push(manufacturer); }
+  if (category) { clauses.push('p.category = ?'); bindings.push(category); }
+  if (manufacturer) { clauses.push('p.manufacturer_id = ?'); bindings.push(manufacturer); }
   bindings.push(limit + 1, offset);
-  const result = await db.prepare(`SELECT contract_json, publication_state, published_at_ms, is_current, withdrawn_at_ms, withdrawal_reason
-    FROM ecosystem_product_revisions WHERE ${clauses.join(' AND ')}
+  const result = await db.prepare(`SELECT contract_json, publication_state, published_at_ms, is_current, is_complete, withdrawn_at_ms, withdrawal_reason
+    FROM ecosystem_product_revisions p WHERE ${clauses.join(' AND ')}
     ORDER BY manufacturer_id, product_id, revision LIMIT ? OFFSET ?`).bind(...bindings).all();
   const rows = result.results || [];
   const hasMore = rows.length > limit;
@@ -154,9 +172,9 @@ async function listPublicProducts(db, url) {
 async function getPublicProduct(db, productId, revision, url) {
   const manufacturerId = url.searchParams.get('manufacturer_id');
   if (!manufacturerId) return response(400, { error: 'manufacturer_id is required for an unambiguous product identity' });
-  const statement = revision
-    ? db.prepare("SELECT contract_json, publication_state, published_at_ms, is_current, withdrawn_at_ms, withdrawal_reason FROM ecosystem_product_revisions WHERE manufacturer_id = ? AND product_id = ? AND revision = ? AND publication_state = 'PUBLISHED' AND is_complete = 1").bind(manufacturerId, productId, revision)
-    : db.prepare("SELECT contract_json, publication_state, published_at_ms, is_current, withdrawn_at_ms, withdrawal_reason FROM ecosystem_product_revisions WHERE manufacturer_id = ? AND product_id = ? AND publication_state = 'PUBLISHED' AND is_current = 1 AND is_complete = 1 LIMIT 1").bind(manufacturerId, productId);
+  const statement = db.prepare(`SELECT contract_json, publication_state, published_at_ms, is_current, is_complete, withdrawn_at_ms, withdrawal_reason
+    FROM ecosystem_product_revisions p WHERE manufacturer_id = ? AND product_id = ? AND ${revision ? 'revision = ?' : 'is_current = 1'} AND ${customerProductSql('p')} LIMIT 1`)
+    .bind(manufacturerId, productId, ...(revision ? [revision] : []));
   const row = await statement.first();
   return row ? response(200, publicRecord(row), { 'Cache-Control': 'public, max-age=60' }) : response(404, { error: 'published product revision not found' });
 }
@@ -169,7 +187,7 @@ async function listPublicOffers(db, url) {
   const result = await db.prepare(`SELECT contract_json FROM ecosystem_supplier_offers
     WHERE product_manufacturer_id = ? AND product_id = ? AND publication_state = 'PUBLISHED'
       AND valid_at_ms <= ? AND valid_until_ms > ?
-      AND EXISTS (SELECT 1 FROM ecosystem_product_revisions p WHERE p.manufacturer_id = ecosystem_supplier_offers.product_manufacturer_id AND p.product_id = ecosystem_supplier_offers.product_id AND p.revision = ecosystem_supplier_offers.product_revision AND p.publication_state = 'PUBLISHED' AND p.is_complete = 1)
+      AND EXISTS (SELECT 1 FROM ecosystem_product_revisions p WHERE p.manufacturer_id = ecosystem_supplier_offers.product_manufacturer_id AND p.product_id = ecosystem_supplier_offers.product_id AND p.revision = ecosystem_supplier_offers.product_revision AND ${customerProductSql('p')})
     ORDER BY sponsored, unit_price_minor, offer_id LIMIT 200`).bind(manufacturerId, productId, now, now).all();
   const offers = (result.results || []).map(row => JSON.parse(row.contract_json));
   return response(200, { schemaVersion: 'forge.supplier-offer-catalog.v2', manufacturerId, productId, offers: offers.filter(item => item.sponsored === false), sponsoredOffers: offers.filter(item => item.sponsored === true), authorizesExecution: false }, { 'Cache-Control': 'public, max-age=30' });
@@ -180,9 +198,11 @@ async function listPublicBoms(db, url) {
   const productId = url.searchParams.get('product_id');
   const productRevision = url.searchParams.get('product_revision');
   if (!manufacturerId || !productId) return response(400, { error: 'manufacturer_id and product_id are required' });
-  const statement = productRevision
-    ? db.prepare("SELECT contract_json, publication_state, published_at_ms, is_current, withdrawn_at_ms, withdrawal_reason FROM ecosystem_bom_revisions WHERE organization_id = ? AND product_id = ? AND product_revision = ? AND publication_state = 'PUBLISHED' AND is_complete = 1 AND EXISTS (SELECT 1 FROM ecosystem_product_revisions p WHERE p.organization_id = ecosystem_bom_revisions.organization_id AND p.product_id = ecosystem_bom_revisions.product_id AND p.revision = ecosystem_bom_revisions.product_revision AND p.publication_state = 'PUBLISHED' AND p.is_complete = 1) ORDER BY is_current DESC, published_at_ms DESC").bind(manufacturerId, productId, productRevision)
-    : db.prepare("SELECT contract_json, publication_state, published_at_ms, is_current, withdrawn_at_ms, withdrawal_reason FROM ecosystem_bom_revisions WHERE organization_id = ? AND product_id = ? AND publication_state = 'PUBLISHED' AND is_current = 1 AND is_complete = 1 AND EXISTS (SELECT 1 FROM ecosystem_product_revisions p WHERE p.organization_id = ecosystem_bom_revisions.organization_id AND p.product_id = ecosystem_bom_revisions.product_id AND p.revision = ecosystem_bom_revisions.product_revision AND p.publication_state = 'PUBLISHED' AND p.is_complete = 1) ORDER BY published_at_ms DESC").bind(manufacturerId, productId);
+  const statement = db.prepare(`SELECT contract_json, publication_state, published_at_ms, is_current, is_complete, withdrawn_at_ms, withdrawal_reason
+    FROM ecosystem_bom_revisions b WHERE organization_id = ? AND product_id = ? AND ${productRevision ? 'product_revision = ?' : 'is_current = 1'}
+      AND publication_state = 'PUBLISHED' AND is_complete = 1 AND EXISTS (SELECT 1 FROM ecosystem_product_revisions p
+        WHERE p.organization_id = b.organization_id AND p.product_id = b.product_id AND p.revision = b.product_revision AND ${customerProductSql('p')})
+    ORDER BY is_current DESC, published_at_ms DESC`).bind(manufacturerId, productId, ...(productRevision ? [productRevision] : []));
   const result = await statement.all();
   return response(200, { schemaVersion: 'forge.bom-catalog.v2', manufacturerId, productId, boms: (result.results || []).map(publicRecord), authorizesExecution: false }, { 'Cache-Control': 'public, max-age=60' });
 }
@@ -210,7 +230,7 @@ async function getMe(env, principal) {
   const result = await db.prepare(`SELECT o.organization_id, o.name, o.kind, m.role
     FROM ecosystem_memberships m JOIN ecosystem_organizations o ON o.organization_id = m.organization_id
     WHERE m.access_subject = ? AND m.status = 'ACTIVE' ORDER BY o.name`).bind(principal.subject).all();
-  return response(200, { subject: principal.subject, email: principal.email, name: principal.name || null, identityKind: principal.kind, emailVerified: principal.kind === 'ACCESS' || principal.emailVerified === true, platformAdmin: isPlatformAdmin(env, principal), organizations: (result.results || []).map(row => ({ organizationId: row.organization_id, name: row.name, kind: row.kind, role: row.role })) });
+  return response(200, { subject: principal.subject, email: principal.email, name: principal.name || null, identityKind: principal.kind, emailVerified: principal.kind === 'ACCESS' || principal.emailVerified === true, platformAdmin: isPlatformAdmin(env, principal), platformReviewer:await canReviewPartners(env, principal), organizations: (result.results || []).map(row => ({ organizationId: row.organization_id, name: row.name, kind: row.kind, role: row.role })) });
 }
 
 async function createOrganization(env, principal, request) {
@@ -466,7 +486,7 @@ async function listOwned(env, principal, organizationId, type) {
     return response(200, { imports: (result.results || []).map(row => ({ importId: row.import_id, resource: row.resource, recordCount: row.record_count, acceptedCount: row.accepted_count, rejectedCount: row.rejected_count, status: row.status, lastError: row.last_error, attemptCount: row.attempt_count, createdAtMs: row.created_at_ms, updatedAtMs: row.updated_at_ms })) });
   }
   const config = type === 'products' ? { table: 'ecosystem_product_revisions' } : type === 'boms' ? { table: 'ecosystem_bom_revisions' } : { table: 'ecosystem_supplier_offers' };
-  const result = await db.prepare(`SELECT contract_json, publication_state, ${type === 'offers' ? 'NULL AS published_at_ms, 0 AS is_current' : 'published_at_ms, is_current, is_complete'}, withdrawn_at_ms, withdrawal_reason FROM ${config.table} WHERE organization_id = ? ORDER BY updated_at_ms DESC LIMIT 500`).bind(organizationId).all();
+  const result = await db.prepare(`SELECT contract_json, publication_state, ${type === 'offers' ? 'NULL AS published_at_ms, 0 AS is_current' : 'published_at_ms, is_current, is_complete'}, ${type === 'products' ? `(${customerProductSql('owned')}) AS customer_visible,` : ''} withdrawn_at_ms, withdrawal_reason FROM ${config.table} owned WHERE organization_id = ? ORDER BY updated_at_ms DESC LIMIT 500`).bind(organizationId).all();
   return response(200, { [type]: (result.results || []).map(publicRecord) });
 }
 
@@ -577,7 +597,7 @@ export async function handleEcosystemRequest(request, env, identityOverride) {
     if (principal?.kind === 'PARTNER' && request.method !== 'GET' && !sameOriginMutation(request)) return response(403, { error: 'Account actions must come from this site.' });
     if (request.method === 'GET' && segments.length === 1 && segments[0] === 'me') return getMe(env, principal);
     if (request.method === 'GET' && segments.length === 1 && segments[0] === 'partner-reviews') {
-      if (!isPlatformAdmin(env, principal)) return response(403, { error: 'Forge reviewer access required.' });
+      if (!await canReviewPartners(env, principal)) return response(403, { error: 'Forge reviewer access required.' });
       const rows = await db.prepare(`SELECT p.organization_id, o.name AS organization_name, p.product_id, p.revision, p.contract_json
         FROM ecosystem_product_revisions p JOIN ecosystem_organizations o ON o.organization_id = p.organization_id
         WHERE p.publication_state = 'REVIEWED' AND EXISTS (SELECT 1 FROM ecosystem_memberships m

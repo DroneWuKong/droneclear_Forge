@@ -77,9 +77,10 @@ docs/                             Architecture, operations, and product document
 
 The ecosystem's partner entry point is `/partners/`: email/password signup creates
 a separate company workspace with draft editing, and returning users can log in
-to upload JSON/CSV products or BOMs and edit saved records. Partner sessions do
-not grant access to `/private/*`, platform provisioning, other companies, or
-catalog publication. Access-authenticated teams retain their existing portal.
+to upload JSON/CSV products or BOMs and edit saved records.
+Ordinary partner accounts do not grant access to `/private/*`, platform
+provisioning, other companies, or catalog publication. Access-authenticated
+teams retain their existing portal.
 
 Production deployment verifies and applies the ecosystem migrations before deploying
 both the private partner email sender and the catalog import worker. Verification
@@ -95,12 +96,19 @@ exact revision, with every line resolved to a complete, published component
 revision. Publishing an assembly and its BOM is atomic. Drafts, reviewed-only
 records, and historical records without completeness approval stay private on
 all public product, BOM, and offer endpoints. Partners can check missing
-requirements in the portal before submitting.
+requirements in the portal before submitting. Withdrawing an assembly's required
+published BOM hides that assembly from customers.
 
-Verified Cloudflare Access identities in `ECOSYSTEM_PLATFORM_ADMIN_SUBJECTS` can
-review submitted partner products from `/private/catalog/`. The existing Access
-application must cover that private route and its private API. Partner signup
-never grants platform administration or approval authority.
+Publication reviewers are assigned explicitly to verified partner account IDs
+in `ecosystem_partner_reviewers`; ordinary signup grants no reviewer authority.
+Reviewers can inspect submitted partner products and approve their publication
+in `/partners/`, without gaining platform provisioning, team administration, or
+private intelligence access. Existing Cloudflare Access platform administrators
+can also review from `/private/catalog/`. Reviewer assignment is an operator
+setup action, not an email-domain match or a self-service upgrade.
+After the chosen reviewer creates and verifies an account, run the production
+deployment workflow with mode `assign-reviewer` and their `reviewer_email`.
+The setup resolves that verified account to its exact ID and verifies the grant.
 
 Validate with `npm run test:partners` after building, and
 `python -m unittest tests/test_partner_schema.py` for migration preservation.

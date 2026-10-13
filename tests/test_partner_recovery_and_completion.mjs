@@ -109,5 +109,35 @@ test('customers see only complete approved products; assemblies publish with the
     assert.equal((await call(`/products/legacy-1?manufacturer_id=${org}`)).status,404,'Historical published records without completeness approval stay private');
     assert.equal((await (await call('/products')).json()).products.length,2);
     const audit=await db.prepare("SELECT actor_kind FROM ecosystem_audit_events WHERE action = 'boms.publish'").first();assert.equal(audit.actor_kind,'ACCESS');
+    assert.equal((await call(path+'/boms/system-bom/r1/withdraw',{method:'POST',reviewer:true,input:{reason:'Required BOM withdrawn in fixture'}})).status,200);
+    assert.equal((await call(`/products/system-1?manufacturer_id=${org}`)).status,404,'Assemblies are hidden if their required published BOM is withdrawn');
+    assert.equal((await (await call('/products')).json()).products.length,1);
+    const owned=await (await call(path+'/products',{cookie})).json();
+    assert.equal(owned.products.find(product=>product.productId==='system-1').customerVisible,false);
+  }finally{await runtime.dispose()}
+});
+
+test('only explicitly assigned verified partner accounts can review without gaining team or tenant write authority',async()=>{
+  const {runtime,db}=await partnerRuntime();const call=client(runtime);
+  try{
+    const owner=await signup(call,db,'owner@example.com');
+    const reviewer=await signup(call,db,'reviewer@example.com');
+    const path=`/organizations/${owner.account.organizationId}`;
+    const reviewerId=(await db.prepare("SELECT account_id FROM ecosystem_partner_accounts WHERE email = 'reviewer@example.com'").first()).account_id;
+    await db.prepare("INSERT INTO ecosystem_partner_reviewers (account_id,status,assigned_by,assigned_at_ms) VALUES (?,'ACTIVE','test-fixture',?)").bind(reviewerId,Date.now()).run();
+    assert.equal((await (await call('/me',{cookie:reviewer.cookie})).json()).platformReviewer,false,'Assignment requires email verification');
+    assert.equal((await call('/partner-reviews',{cookie:reviewer.cookie})).status,403);
+    await call('/auth/verify-email',{method:'POST',input:{token:reviewer.token}});
+    const identity=await (await call('/me',{cookie:reviewer.cookie})).json();
+    assert.equal(identity.platformReviewer,true);assert.equal(identity.platformAdmin,false);
+    assert.equal((await call(path+'/products',{cookie:reviewer.cookie})).status,200);
+    assert.equal((await call(path+'/members',{cookie:reviewer.cookie})).status,404);
+    assert.equal((await call(path+'/api-credentials',{cookie:reviewer.cookie})).status,404);
+    assert.equal((await call(path+'/products',{method:'POST',cookie:reviewer.cookie,input:{}})).status,404);
+    assert.equal((await call('/organizations',{method:'POST',cookie:reviewer.cookie,input:{}})).status,401);
+    assert.equal((await call('/partner-reviews',{cookie:owner.cookie})).status,403);
+    await db.prepare("UPDATE ecosystem_partner_reviewers SET status = 'SUSPENDED' WHERE account_id = ?").bind(reviewerId).run();
+    assert.equal((await call('/partner-reviews',{cookie:reviewer.cookie})).status,403,'Revocation applies to existing sessions');
+    assert.equal((await call(path+'/products',{cookie:reviewer.cookie})).status,404);
   }finally{await runtime.dispose()}
 });
