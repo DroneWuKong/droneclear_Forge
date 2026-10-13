@@ -75,6 +75,25 @@ docs/                             Architecture, operations, and product document
 
 ## Deployment
 
+The ecosystem's partner entry point is `/partners/`: email/password signup creates
+a separate company workspace with draft editing, and returning users can log in
+to upload JSON/CSV products or BOMs and edit saved records. Partner sessions do
+not grant access to `/private/*`, platform provisioning, other companies, or
+catalog publication. Access-authenticated teams retain their existing portal.
+
+Production deployment runs `tools/provision_partner_accounts.py` before uploading
+the Pages bundle. It verifies the existing ecosystem schema, applies migration
+0003 once, preserves the historical audit records, and checks the resulting
+schema. No new authentication secret or email provider is required. Email-based
+invitation acceptance remains restricted to verified Cloudflare Access users;
+partner email addresses do not prove ownership of an existing organization.
+
+Validate the account flow with `node --test tests/test_partner_accounts.mjs`,
+`python -m unittest tests/test_partner_schema.py`, and
+`node tests/browser_partner_portal.cjs build` after building the site. Password
+recovery and email verification are follow-up features; signup currently grants
+only an isolated draft workspace.
+
 Cloudflare Pages deploys from `master` using the project configuration in `wrangler.jsonc`.
 
 | Setting | Value |
