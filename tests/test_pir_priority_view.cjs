@@ -45,6 +45,18 @@ test('full analyst view preserves source order and treats all records as visible
   assert.ok(ranked.every(item => item.ranking.matched));
 });
 
+test('repeated indexing does not make an old claim current', () => {
+  const row = {title:'Retained claim', date:'2026-04-04', last_seen:'2026-10-14'};
+  assert.equal(view.dateFor(row), '2026-04-04');
+  assert.equal(view.dateFor({last_seen:'2026-10-14'}), '');
+  const html = view.renderRecordCard({record:row, ranking:view.scoreRecord(row, profile('full'), 'flags')}, 'flags');
+  assert.match(html, /Claim dated Apr 4, 2026/);
+  assert.match(html, /Last indexed Oct 14, 2026/);
+  assert.match(html, /does not establish evidence freshness/);
+  assert.match(html, /Full analyst view/);
+  assert.ok(!html.includes('no declared profile term matched'));
+});
+
 test('storage helpers normalize values and fail open when persistence is blocked', () => {
   const storage = {
     value: null,

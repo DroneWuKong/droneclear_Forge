@@ -243,7 +243,7 @@
 
   function dateFor(record) {
     const row = record || {};
-    return text(row.last_seen || row.updated_at || row.generated_at || row.date || row.pub_date || row.first_seen);
+    return text(row.source_published_at || row.date || row.pub_date);
   }
 
   function evidenceUrlFor(record) {
@@ -344,12 +344,13 @@
       <h3>${htmlEscape(titleFor(row, datasetId))}</h3>
       <p>${htmlEscape(summaryFor(row, datasetId))}</p>
       <div class="signal-meta">
-        <span>${htmlEscape(formatDate(dateFor(row)))}</span>
+        <span>${dateFor(row) ? `${row.source_published_at ? 'Source published' : 'Claim dated'} ${htmlEscape(formatDate(dateFor(row)))}` : 'Evidence date not reported'}</span>
+        ${row.last_seen ? `<span>Last indexed ${htmlEscape(formatDate(row.last_seen))}; does not establish evidence freshness</span>` : ''}
         <span>${htmlEscape(ranking.severity || 'unknown')} severity</span>
       </div>
       <div class="match-row">${matched.length
         ? matched.map(term => `<span>${htmlEscape(term)}</span>`).join('')
-        : '<span>no declared profile term matched</span>'}</div>
+        : ranking.matched ? '<span>Full analyst view</span>' : '<span>no declared profile term matched</span>'}</div>
       <div class="signal-actions">
         <a href="${destination}">Open full dataset</a>
         ${evidence ? `<a href="${htmlEscape(evidence)}" target="_blank" rel="noopener noreferrer">Open evidence ↗</a>` : ''}
@@ -523,6 +524,7 @@
     titleFor,
     summaryFor,
     dateFor,
+    renderRecordCard,
     evidenceUrlFor,
     mergeActorEventSummaries,
     profileTerms,
