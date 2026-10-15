@@ -91,8 +91,8 @@ def main():
             stop = str(END) + 'T00:00:00Z'
             query = ('{viewer{accounts(filter:{accountTag:"' + ACCOUNT + '"}){'
                 'httpRequestsAdaptiveGroups(limit:1000,filter:{datetime_geq:"' + start + '",'
-                'datetime_lt:"' + stop + '",clientRequestHTTPHost_in:' + json.dumps(hosts) + '},'
-                'orderBy:[date_ASC]){count dimensions{date clientRequestHTTPHost}sum{visits}}}}}')
+                'datetime_lt:"' + stop + '",requestSource:"eyeball",clientRequestHTTPHost_in:' + json.dumps(hosts) + '},'
+                'orderBy:[date_ASC]){count dimensions{date clientRequestHTTPHost}sum{visits}avg{sampleInterval}}}}}')
             REPORT['account_traffic'] = gql(query)
             REPORT['start_utc'] = start
         elif mode == 'diagnostic':
