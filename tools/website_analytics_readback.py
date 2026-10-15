@@ -82,6 +82,25 @@ def history_report():
         with ThreadPoolExecutor(max_workers=6) as pool:
             REPORT['kv']['days'] = list(pool.map(read_day, keys))
 
+def rum_history_report():
+    settings = gql('{viewer{accounts(filter:{accountTag:"' + ACCOUNT + '"}){settings{'
+        'rumPageloadEventsAdaptiveGroups{enabled notOlderThan maxDuration maxPageSize availableFields}}}}}')
+    REPORT['rum_settings'] = settings
+    cfg = settings['data']['viewer']['accounts'][0]['settings']['rumPageloadEventsAdaptiveGroups']
+    start = NOW - dt.timedelta(seconds=cfg['notOlderThan'] - 600)
+    hosts = [host for domain in DOMAINS for host in (domain, 'www.' + domain)]
+    REPORT['rum_history'] = {'start_utc':start.isoformat(),'end_utc':NOW.isoformat(),'windows':[]}
+    cursor = start
+    while cursor < NOW:
+        stop = min(NOW, dt.datetime.combine(cursor.date() + dt.timedelta(days=90), dt.time(), dt.timezone.utc))
+        query = ('{viewer{accounts(filter:{accountTag:"' + ACCOUNT + '"}){'
+            'rumPageloadEventsAdaptiveGroups(limit:' + str(min(cfg['maxPageSize'],10000)) + ',filter:{datetime_geq:"'
+            + cursor.isoformat().replace('+00:00','Z') + '",datetime_lt:"' + stop.isoformat().replace('+00:00','Z')
+            + '",requestHost_in:' + json.dumps(hosts) + '},orderBy:[date_ASC])'
+            '{count dimensions{date requestHost bot}sum{visits}avg{sampleInterval}}}}}')
+        REPORT['rum_history']['windows'].append({'start':cursor.isoformat(),'end_exclusive':stop.isoformat(),'response':gql(query)})
+        cursor = stop
+
 def zone_report(domain):
     listing = cf('zones?' + urllib.parse.urlencode({'name': domain, 'per_page': 50}))
     zones = listing.get('result')
@@ -145,6 +164,8 @@ def main():
                 REPORT['token_configuration'] = cf('accounts/' + ACCOUNT + '/tokens/' + token_id)
         elif mode == 'history':
             history_report()
+        elif mode == 'rum-history':
+            rum_history_report()
     with tempfile.TemporaryDirectory() as temp:
         plaintext = Path(temp) / 'report.json'
         text = json.dumps(REPORT)
