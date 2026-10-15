@@ -56,6 +56,8 @@ def zone_report(domain):
         'httpRequests1dGroups{enabled notOlderThan maxDuration availableFields}'
         'httpRequestsAdaptiveGroups{enabled notOlderThan maxDuration availableFields}}}}}')
     result['settings_response'] = settings
+    if settings.get('errors') or settings.get('http_status'):
+        return
     try:
         cfg = settings['data']['viewer']['zones'][0]['settings']['httpRequests1dGroups']
     except (KeyError, TypeError, IndexError):
@@ -78,30 +80,9 @@ def zone_report(domain):
         start = stop
 
 def main():
-    if ADMIN:
-        for domain in DOMAINS[1:]:
-            data = request('https://' + domain + '/api/analytics/ingest?range=90', {'x-admin-key': ADMIN})
-            if isinstance(data.get('days'), list):
-                REPORT['first_party'][domain] = {'days': [
-                    {k: day[k] for k in ('date', 'events', 'pages') if k in day}
-                    for day in data['days'] if isinstance(day, dict)]}
-            else:
-                REPORT['first_party'][domain] = {k: data[k] for k in ('http_status','error','error_type') if k in data}
-    if TOKEN and ACCOUNT:
-        # Read the site's separately stored daily event counters. These are
-        # application telemetry, not Cloudflare's restricted traffic dataset.
-        namespace = '4a6f8fcda0e1405b9880e0f4e2886a3c'
-        base = 'accounts/' + ACCOUNT + '/storage/kv/namespaces/' + namespace
-        listing = cf(base + '/keys?prefix=analytics_daily_&limit=1000')
-        REPORT['kv'] = {'key_listing': listing, 'days': []}
-        keys = listing.get('result', [])
-        if isinstance(keys, list):
-            for key in keys:
-                name = key.get('name', '')
-                if name.startswith('analytics_daily_'):
-                    value = cf(base + '/values/' + urllib.parse.quote(name, safe=''))
-                    if isinstance(value, dict):
-                        REPORT['kv']['days'].append({k: value[k] for k in ('date','events','pages') if k in value})
+    if TOKEN:
+        for domain in DOMAINS:
+            zone_report(domain)
     with tempfile.TemporaryDirectory() as temp:
         plaintext = Path(temp) / 'report.json'
         text = json.dumps(REPORT)
