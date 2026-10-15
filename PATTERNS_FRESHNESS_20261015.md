@@ -40,3 +40,17 @@ Gauntlet was observed inactive and was left untouched.
 These source changes are prepared for review; production recovery also requires
 disk capacity and at least one usable synthesis provider. No billing change or
 model request was made during this investigation.
+
+## Approved cache recovery
+
+After the user explicitly approved cache cleanup, removed only the listed
+Gradle/npm caches on GupB and Gradle/npm/pip caches on GupC. GupC's trainer and
+both Actions runner services recovered automatically. At 17:59 UTC the worker
+published a current WAITING_FOR_CAPACITY snapshot (MEMORY_RESERVE / DISK_RESERVE),
+the mirror became available, and the unchanged reporter validated its projection.
+The trainer checkpoint remained at cycle 6246; no new training progress is claimed.
+Forecast synthesis still needs a usable funded provider. The self-hosted daily
+run was still queued at this check.
+
+PR #205's Cloudflare Pages preview and full source/built-site audit passed on
+GitHub. This is additional build evidence beyond the disk-limited local checks.
