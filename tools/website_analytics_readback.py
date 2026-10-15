@@ -82,7 +82,7 @@ def history_report():
         with ThreadPoolExecutor(max_workers=6) as pool:
             REPORT['kv']['days'] = list(pool.map(read_day, keys))
 
-def rum_history_report():
+def rum_history_report(chunk_days=90):
     settings = gql('{viewer{accounts(filter:{accountTag:"' + ACCOUNT + '"}){settings{'
         'rumPageloadEventsAdaptiveGroups{enabled notOlderThan maxDuration maxPageSize availableFields}}}}}')
     REPORT['rum_settings'] = settings
@@ -91,15 +91,21 @@ def rum_history_report():
     hosts = [host for domain in DOMAINS for host in (domain, 'www.' + domain)]
     REPORT['rum_history'] = {'start_utc':start.isoformat(),'end_utc':NOW.isoformat(),'windows':[]}
     cursor = start
+    windows = []
     while cursor < NOW:
-        stop = min(NOW, dt.datetime.combine(cursor.date() + dt.timedelta(days=90), dt.time(), dt.timezone.utc))
+        stop = min(NOW, dt.datetime.combine(cursor.date() + dt.timedelta(days=chunk_days), dt.time(), dt.timezone.utc))
         query = ('{viewer{accounts(filter:{accountTag:"' + ACCOUNT + '"}){'
             'rumPageloadEventsAdaptiveGroups(limit:' + str(min(cfg['maxPageSize'],10000)) + ',filter:{datetime_geq:"'
             + cursor.isoformat().replace('+00:00','Z') + '",datetime_lt:"' + stop.isoformat().replace('+00:00','Z')
             + '",requestHost_in:' + json.dumps(hosts) + '},orderBy:[date_ASC])'
             '{count dimensions{date requestHost bot}sum{visits}avg{sampleInterval}}}}}')
-        REPORT['rum_history']['windows'].append({'start':cursor.isoformat(),'end_exclusive':stop.isoformat(),'response':gql(query)})
+        windows.append((cursor.isoformat(),stop.isoformat(),query))
         cursor = stop
+    def read_window(window):
+        a,b,query=window
+        return {'start':a,'end_exclusive':b,'response':gql(query)}
+    with ThreadPoolExecutor(max_workers=3) as pool:
+        REPORT['rum_history']['windows'] = list(pool.map(read_window,windows))
 
 def zone_report(domain):
     listing = cf('zones?' + urllib.parse.urlencode({'name': domain, 'per_page': 50}))
@@ -166,10 +172,17 @@ def main():
             history_report()
         elif mode == 'rum-history':
             rum_history_report()
+        elif mode == 'archives':
+            rum_history_report(chunk_days=7)
+            try:
+                legacy = subprocess.run(['node','tools/read_legacy_analytics.cjs'],capture_output=True,text=True,timeout=240)
+                REPORT['legacy_netlify'] = json.loads(legacy.stdout)
+            except Exception as error:
+                REPORT['legacy_netlify'] = {'error_type':type(error).__name__}
     with tempfile.TemporaryDirectory() as temp:
         plaintext = Path(temp) / 'report.json'
         text = json.dumps(REPORT)
-        for secret in (TOKEN, ADMIN, os.environ.get('GITHUB_TOKEN', '')):
+        for secret in (TOKEN, ADMIN, os.environ.get('GITHUB_TOKEN', ''), os.environ.get('NETLIFY_API_TOKEN','')):
             if secret:
                 text = text.replace(secret, '[redacted]')
         plaintext.write_text(text)

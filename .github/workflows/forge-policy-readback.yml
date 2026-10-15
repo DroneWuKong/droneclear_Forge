@@ -6,7 +6,7 @@ on:
         description: Aggregate traffic or token policy diagnosis
         type: choice
         default: traffic
-        options: [traffic, account, diagnostic, history, rum-history]
+        options: [traffic, account, diagnostic, history, rum-history, archives]
 permissions:
   contents: read
 jobs:
@@ -17,12 +17,18 @@ jobs:
       - uses: actions/checkout@v4
         with:
           persist-credentials: false
+      - name: Prepare read-only legacy analytics client
+        if: inputs.mode == 'archives'
+        run: npm install --prefix "$RUNNER_TEMP/analytics-sdk" --no-audit --no-fund @netlify/blobs@11.1.4
       - name: Retrieve aggregate traffic with existing credentials
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN || secrets.CLOUDFLAR_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           ANALYTICS_ADMIN_KEY: ${{ secrets.ANALYTICS_ADMIN_KEY }}
           ANALYTICS_REPORT_MODE: ${{ inputs.mode || 'traffic' }}
+          NETLIFY_API_TOKEN: ${{ secrets.NETLIFY_API_TOKEN }}
+          ANALYTICS_SITE_ID: ${{ secrets.ANALYTICS_SITE_ID }}
+          NODE_PATH: ${{ runner.temp }}/analytics-sdk/node_modules
         run: python3 tools/website_analytics_readback.py
       - uses: actions/upload-artifact@v4
         with:
