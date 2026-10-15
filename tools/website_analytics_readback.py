@@ -8,6 +8,7 @@ import tempfile
 import urllib.error
 import urllib.parse
 import urllib.request
+from concurrent.futures import ThreadPoolExecutor
 
 DOMAINS = ['uasdash.com', 'uas-forge.com', 'uas-patterns.com', 'uas-handbook.com']
 TOKEN = os.environ.get('CLOUDFLARE_API_TOKEN', '')
@@ -39,6 +40,47 @@ def cf(path, payload=None):
 
 def gql(query):
     return cf('graphql', {'query': query})
+
+def history_report():
+    root = '{viewer{accounts(filter:{accountTag:"' + ACCOUNT + '"}){settings{__typename}}}}'
+    metadata = gql(root)
+    REPORT['history_metadata'] = metadata
+    settings_type = metadata['data']['viewer']['accounts'][0]['settings']['__typename']
+    fields = gql('{__type(name:' + json.dumps(settings_type) + '){fields{name}}}')
+    names = [f['name'] for f in fields.get('data', {}).get('__type', {}).get('fields', [])
+             if f['name'].startswith('httpRequests') or f['name'].startswith('rumPageload')]
+    REPORT['history_nodes'] = names
+    query = ('{viewer{accounts(filter:{accountTag:"' + ACCOUNT + '"}){settings{'
+             + ' '.join(n + '{enabled notOlderThan maxDuration availableFields}' for n in names) + '}}}}')
+    settings = gql(query)
+    REPORT['history_settings'] = settings
+    cfg = settings['data']['viewer']['accounts'][0]['settings']['httpRequestsAdaptiveGroups']
+    # Include the partial oldest retained day and the current partial day.
+    seconds = min(cfg['notOlderThan'], cfg['maxDuration']) - 600
+    start = (NOW - dt.timedelta(seconds=seconds)).isoformat().replace('+00:00', 'Z')
+    stop = NOW.isoformat().replace('+00:00', 'Z')
+    hosts = [host for domain in DOMAINS for host in (domain, 'www.' + domain)]
+    query = ('{viewer{accounts(filter:{accountTag:"' + ACCOUNT + '"}){'
+        'httpRequestsAdaptiveGroups(limit:1000,filter:{datetime_geq:"' + start + '",'
+        'datetime_lt:"' + stop + '",requestSource:"eyeball",clientRequestHTTPHost_in:' + json.dumps(hosts) + '},'
+        'orderBy:[date_ASC]){count dimensions{date clientRequestHTTPHost}sum{visits}avg{sampleInterval}}}}}')
+    REPORT['account_traffic'] = gql(query)
+    REPORT['start_utc'] = start
+    REPORT['end_exclusive_utc'] = stop
+    namespace = '4a6f8fcda0e1405b9880e0f4e2886a3c'
+    base = 'accounts/' + ACCOUNT + '/storage/kv/namespaces/' + namespace
+    listing = cf(base + '/keys?prefix=analytics_daily_&limit=1000')
+    REPORT['kv'] = {'key_listing': listing, 'days': []}
+    keys = listing.get('result', [])
+    def read_day(key):
+        name = key.get('name', '')
+        if not name.startswith('analytics_daily_'):
+            return {}
+        value = cf(base + '/values/' + urllib.parse.quote(name, safe=''))
+        return {k: value[k] for k in ('date','events','pages') if k in value}
+    if isinstance(keys, list):
+        with ThreadPoolExecutor(max_workers=6) as pool:
+            REPORT['kv']['days'] = list(pool.map(read_day, keys))
 
 def zone_report(domain):
     listing = cf('zones?' + urllib.parse.urlencode({'name': domain, 'per_page': 50}))
@@ -101,6 +143,8 @@ def main():
             token_id = verification.get('result', {}).get('id')
             if token_id:
                 REPORT['token_configuration'] = cf('accounts/' + ACCOUNT + '/tokens/' + token_id)
+        elif mode == 'history':
+            history_report()
     with tempfile.TemporaryDirectory() as temp:
         plaintext = Path(temp) / 'report.json'
         text = json.dumps(REPORT)
