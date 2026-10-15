@@ -87,11 +87,21 @@ def main():
                     for day in data['days'] if isinstance(day, dict)]}
             else:
                 REPORT['first_party'][domain] = {k: data[k] for k in ('http_status','error','error_type') if k in data}
-    if TOKEN:
-        for domain in DOMAINS:
-            zone_report(domain)
-        if ACCOUNT:
-            REPORT['rum']['site_listing'] = cf('accounts/' + ACCOUNT + '/rum/site_info/list')
+    if TOKEN and ACCOUNT:
+        # Read the site's separately stored daily event counters. These are
+        # application telemetry, not Cloudflare's restricted traffic dataset.
+        namespace = '4a6f8fcda0e1405b9880e0f4e2886a3c'
+        base = 'accounts/' + ACCOUNT + '/storage/kv/namespaces/' + namespace
+        listing = cf(base + '/keys?prefix=analytics_daily_&limit=1000')
+        REPORT['kv'] = {'key_listing': listing, 'days': []}
+        keys = listing.get('result', [])
+        if isinstance(keys, list):
+            for key in keys:
+                name = key.get('name', '')
+                if name.startswith('analytics_daily_'):
+                    value = cf(base + '/values/' + urllib.parse.quote(name, safe=''))
+                    if isinstance(value, dict):
+                        REPORT['kv']['days'].append({k: value[k] for k in ('date','events','pages') if k in value})
     with tempfile.TemporaryDirectory() as temp:
         plaintext = Path(temp) / 'report.json'
         text = json.dumps(REPORT)
