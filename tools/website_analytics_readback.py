@@ -81,11 +81,13 @@ def zone_report(domain):
 
 def main():
     if TOKEN:
-        verification = cf('user/tokens/verify')
+        verification = cf('accounts/' + ACCOUNT + '/tokens/verify')
         REPORT['token_verification'] = verification
         token_id = verification.get('result', {}).get('id')
         if token_id:
-            REPORT['token_configuration'] = cf('user/tokens/' + token_id)
+            REPORT['token_configuration'] = cf('accounts/' + ACCOUNT + '/tokens/' + token_id)
+        REPORT['account_settings'] = gql('{viewer{accounts(filter:{accountTag:"' + ACCOUNT + '"}){settings{'
+            'httpRequestsAdaptiveGroups{enabled notOlderThan maxDuration availableFields}}}}}')
     with tempfile.TemporaryDirectory() as temp:
         plaintext = Path(temp) / 'report.json'
         text = json.dumps(REPORT)
