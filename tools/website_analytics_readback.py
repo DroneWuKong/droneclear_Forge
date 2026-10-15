@@ -81,8 +81,11 @@ def zone_report(domain):
 
 def main():
     if TOKEN:
-        for domain in DOMAINS:
-            zone_report(domain)
+        verification = cf('user/tokens/verify')
+        REPORT['token_verification'] = verification
+        token_id = verification.get('result', {}).get('id')
+        if token_id:
+            REPORT['token_configuration'] = cf('user/tokens/' + token_id)
     with tempfile.TemporaryDirectory() as temp:
         plaintext = Path(temp) / 'report.json'
         text = json.dumps(REPORT)
