@@ -1,6 +1,12 @@
 name: One-off website analytics readback
 on:
   workflow_dispatch:
+    inputs:
+      mode:
+        description: Aggregate traffic or token policy diagnosis
+        type: choice
+        default: traffic
+        options: [traffic, account, diagnostic]
 permissions:
   contents: read
 jobs:
@@ -16,6 +22,7 @@ jobs:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN || secrets.CLOUDFLAR_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           ANALYTICS_ADMIN_KEY: ${{ secrets.ANALYTICS_ADMIN_KEY }}
+          ANALYTICS_REPORT_MODE: ${{ inputs.mode || 'traffic' }}
         run: python3 tools/website_analytics_readback.py
       - uses: actions/upload-artifact@v4
         with:

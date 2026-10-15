@@ -81,13 +81,26 @@ def zone_report(domain):
 
 def main():
     if TOKEN:
-        verification = cf('accounts/' + ACCOUNT + '/tokens/verify')
-        REPORT['token_verification'] = verification
-        token_id = verification.get('result', {}).get('id')
-        if token_id:
-            REPORT['token_configuration'] = cf('accounts/' + ACCOUNT + '/tokens/' + token_id)
-        REPORT['account_settings'] = gql('{viewer{accounts(filter:{accountTag:"' + ACCOUNT + '"}){settings{'
-            'httpRequestsAdaptiveGroups{enabled notOlderThan maxDuration availableFields}}}}}')
+        mode = os.environ.get('ANALYTICS_REPORT_MODE', 'traffic')
+        if mode == 'traffic':
+            for domain in DOMAINS:
+                zone_report(domain)
+        elif mode == 'account':
+            hosts = [host for domain in DOMAINS for host in (domain, 'www.' + domain)]
+            start = str(END - dt.timedelta(days=31)) + 'T00:00:00Z'
+            stop = str(END) + 'T00:00:00Z'
+            query = ('{viewer{accounts(filter:{accountTag:"' + ACCOUNT + '"}){'
+                'httpRequestsAdaptiveGroups(limit:1000,filter:{datetime_geq:"' + start + '",'
+                'datetime_lt:"' + stop + '",clientRequestHTTPHost_in:' + json.dumps(hosts) + '},'
+                'orderBy:[date_ASC]){count dimensions{date clientRequestHTTPHost}sum{visits}}}}}')
+            REPORT['account_traffic'] = gql(query)
+            REPORT['start_utc'] = start
+        elif mode == 'diagnostic':
+            verification = cf('accounts/' + ACCOUNT + '/tokens/verify')
+            REPORT['token_verification'] = verification
+            token_id = verification.get('result', {}).get('id')
+            if token_id:
+                REPORT['token_configuration'] = cf('accounts/' + ACCOUNT + '/tokens/' + token_id)
     with tempfile.TemporaryDirectory() as temp:
         plaintext = Path(temp) / 'report.json'
         text = json.dumps(REPORT)
