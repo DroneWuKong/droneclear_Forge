@@ -1,26 +1,25 @@
-name: Forge policy readback
-
+name: One-off website analytics readback
 on:
-  pull_request:
-    paths:
-      - "tools/provision_forge_policy.py"
-      - ".github/workflows/cloudflare-pages-deploy.yml"
-      - ".github/workflows/forge-policy-readback.yml"
   workflow_dispatch:
-
 permissions:
   contents: read
-
 jobs:
-  canonical-service:
+  aggregate-report:
     runs-on: ubuntu-latest
-    timeout-minutes: 5
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
         with:
           persist-credentials: false
-      - uses: actions/setup-python@v5
+      - name: Retrieve aggregate traffic with existing credentials
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN || secrets.CLOUDFLAR_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          ANALYTICS_ADMIN_KEY: ${{ secrets.ANALYTICS_ADMIN_KEY }}
+        run: python3 tools/website_analytics_readback.py
+      - uses: actions/upload-artifact@v4
         with:
-          python-version: "3.12"
-      - name: Read the existing canonical service without credentials or writes
-        run: python3 tools/provision_forge_policy.py --verify
+          name: encrypted-website-analytics
+          path: analytics-report.enc
+          if-no-files-found: error
+          retention-days: 1
