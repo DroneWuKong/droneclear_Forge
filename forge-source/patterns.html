@@ -1813,37 +1813,55 @@ function sinceLastVisitHTML(){
   return out;
 }
 
-// Today's movement, preferring the durable ledger (DELTA) over the brief's
-// embedded delta_summary. Renders counts + the actual new/escalated titles.
+// Latest movement, preferring the durable ledger (DELTA) over the brief's
+// embedded delta_summary. Changes to existing flags matter even with zero new IDs.
 function whatChangedHTML(b){
   const D = (DELTA && DELTA.date) ? DELTA : null;
-  // Map either source into a common shape.
-  let nc, rc, ec, newList, escList, vs, firstRun=false;
-  if(D){
-    nc = D.new_count||0; rc = D.resolved_count||0; ec = D.escalated_count||0;
-    newList = D.new_flags||[]; escList = D.escalated_flags||[];
-    vs = D.vs_yesterday; firstRun = !!D.first_run;
-  } else {
-    const ds = b.delta_summary||{};
-    if(!ds.vs_yesterday) return '';
-    nc = ds.new_flags||0; rc = ds.resolved_flags||0; ec = ds.escalated_flags||0;
-    newList = []; escList = []; vs = ds.vs_yesterday;
-  }
+  const summary = D || b.delta_summary || {};
+  if(!D && !summary.vs_yesterday) return '';
+  const nc = (D ? summary.new_count : summary.new_flags) || 0;
+  const rc = (D ? summary.resolved_count : summary.resolved_flags) || 0;
+  const ec = (D ? summary.escalated_count : summary.escalated_flags) || 0;
+  const cc = summary.changed_count || 0;
+  const dc = summary.deescalated_count || 0;
+  const xc = summary.contradicted_count || 0;
+  const oc = summary.not_observed_count || 0;
   const chips = [];
+  if(cc>0) chips.push(`<span style="color:var(--cyan)">${cc} changed</span>`);
   chips.push(nc>0 ? `<span style="color:var(--green)">+${nc} new</span>` : `<span style="color:var(--text-d)">0 new</span>`);
   if(ec>0) chips.push(`<span style="color:var(--red)">⬆ ${ec} escalated</span>`);
+  if(dc>0) chips.push(`<span style="color:var(--cyan)">${dc} de-escalated</span>`);
+  if(xc>0) chips.push(`<span style="color:var(--red)">${xc} contradicted</span>`);
   if(rc>0) chips.push(`<span style="color:var(--cyan)">${rc} resolved</span>`);
+  if(oc>0) chips.push(`<span style="color:var(--text-d)">${oc} not observed</span>`);
+  const date = String(summary.date || b.date || '').slice(0,10);
+  const label = date === new Date().toISOString().slice(0,10) ? 'Today' : (date ? `Update ${date}` : 'Latest update');
   let html = `<div style="margin-bottom:10px;padding:8px 12px;background:var(--surface);border-radius:6px;font:500 10px var(--mono)">
-    <span style="color:var(--text-d);text-transform:uppercase;letter-spacing:.06em;margin-right:8px">Today</span>${chips.join('<span style="color:var(--border);margin:0 6px">·</span>')}`;
-  // Inline the most newsworthy fresh titles (cap 3) so "new" isn't just a number.
-  const titles = [...escList.map(e=>({t:e.title,c:'var(--red)'})), ...newList.map(n=>({t:n.title,c:'var(--green)'}))].filter(x=>x.t).slice(0,3);
+    <div style="display:flex;flex-wrap:wrap;gap:4px 10px"><span style="color:var(--text-d);text-transform:uppercase;letter-spacing:.06em">${esc(label)}</span>${chips.join('')}</div>`;
+  // Show up to three distinct affected flags, with an exact link to their evidence.
+  const seen = new Set();
+  const titles = [
+    ['escalated_flags','Escalated','var(--red)'],
+    ['contradicted_flags','Contradicted','var(--red)'],
+    ['new_flags','New','var(--green)'],
+    ['changed_flags','Changed','var(--cyan)']
+  ].flatMap(([key,label,color]) => (Array.isArray(summary[key]) ? summary[key] : []).map(row=>({...row,label,color})))
+    .filter(row=>{
+      if(!row.title) return false;
+      const key = row.id || row.title;
+      if(seen.has(key)) return false;
+      seen.add(key); return true;
+    }).slice(0,3);
   if(titles.length){
-    html += `<div style="margin-top:6px;display:flex;flex-direction:column;gap:3px">` +
-      titles.map(x=>`<div style="font:500 11px var(--font);color:var(--text);line-height:1.35"><span style="color:${x.c}">▸</span> ${String(x.t).replace(/</g,'&lt;').slice(0,110)}</div>`).join('') +
-      `</div>`;
-  } else if(firstRun){
-    html += `<div style="margin-top:5px;color:var(--text-d)">Baseline established — tracking starts today; day-over-day movement appears tomorrow.</div>`;
+    html += `<div style="margin-top:6px;display:flex;flex-direction:column;gap:4px">` + titles.map(row=>{
+      const title = `${esc(row.label)}: ${esc(row.title)}`;
+      const content = row.id ? `<a href="#flag=${encodeURIComponent(String(row.id))}" style="color:inherit">${title}</a>` : title;
+      return `<div style="font:500 11px var(--font);color:var(--text);line-height:1.4;overflow-wrap:anywhere"><span style="color:${row.color}">▸</span> ${content}</div>`;
+    }).join('') + `</div>`;
+  } else if(summary.first_run){
+    html += `<div style="margin-top:5px;color:var(--text-d)">Baseline established — day-over-day movement appears after the next collection.</div>`;
   }
+  if(oc>0) html += `<div style="margin-top:6px;color:var(--text-d)">Not observed means absent from this collection; resolution requires a review.</div>`;
   html += `</div>`;
   return html;
 }
