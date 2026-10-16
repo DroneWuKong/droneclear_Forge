@@ -20,7 +20,7 @@ test('developer approval is separate by site, owner-only, revocable and notifica
     assert.equal((await call(rt,'/developer-access/readiness')).status,200);
     assert.equal((await call(rt,'/developer-access/status?site=orqa-reference')).status,401);
     const user=await signup(rt,db,'dev@example.com','orqa-reference');
-    assert.ok(user.messages[0].text.includes('https://dev.prismoprime.com/login#verify='));
+    assert.ok(user.messages[0].text.includes('https://orqa-reference-lab.jeremiah651574.chatgpt.site/login#verify='));
     assert.equal((await call(rt,'/developer-access/request',{cookie:user.cookie,input:{site:'orqa-reference'}})).status,403);
     await call(rt,'/auth/verify-email',{input:{token:user.token}});
     assert.equal((await call(rt,'/developer-access/status?site=toString',{cookie:user.cookie})).status,400);
@@ -32,7 +32,7 @@ test('developer approval is separate by site, owner-only, revocable and notifica
     const delivery=[];
     await deliverPartnerEmails({ECOSYSTEM_DB:db,DEVELOPER_HUB_OWNER_EMAIL:'owner@example.com',EMAIL:{async send(message){delivery.push(message)}}});
     assert.equal(delivery.length,1);assert.equal(delivery[0].to,'owner@example.com');
-    assert.match(delivery[0].text,/dev\.prismoprime\.com\/access-admin/);
+    assert.match(delivery[0].text,/orqa-reference-lab\.jeremiah651574\.chatgpt\.site\/access-admin/);
     assert.equal((await call(rt,'/developer-access/review',{cookie:user.cookie,input:{requestId,status:'APPROVED'}})).status,403);
     const owner=await signup(rt,db,'owner@example.com');await call(rt,'/auth/verify-email',{input:{token:owner.token}});
     const decisions=await call(rt,'/developer-access/requests',{cookie:owner.cookie});assert.equal(decisions.status,200);assert.equal((await decisions.json()).requests.length,1);
@@ -57,7 +57,7 @@ test('owner email outages stay retryable and no request is accepted without noti
     assert.equal(messages.length,1);assert.equal((await db.prepare('SELECT status FROM ecosystem_developer_hub_notifications').first()).status,'SENT');
     await call(rt,'/auth/request-reset',{input:{email:'dev@example.com',hubSite:'prismo-full'}});
     await deliverPartnerEmails({ECOSYSTEM_DB:db,EMAIL:{async send(m){messages.push(m)}}});
-    assert.ok(messages.at(-1).text.includes('https://labs.prismoprime.com/login#reset='));
+    assert.ok(messages.at(-1).text.includes('https://prismo-developer-hub.jeremiah651574.chatgpt.site/login#reset='));
     options.emailAvailable=false;
     assert.equal((await call(rt,'/developer-access/request',{cookie:user.cookie,input:{site:'orqa-reference'}})).status,503);
     assert.equal((await db.prepare('SELECT COUNT(*) AS n FROM ecosystem_developer_hub_access').first()).n,1);

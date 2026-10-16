@@ -48,3 +48,9 @@ logout, retryable mail delivery, DNS scope and existing-account compatibility.
 Each hub additionally tests direct HTML/JS/JSON/download denial and checks that
 the artifact has no public static fallback. No synthetic account is registered
 or email sent to a real recipient by those tests.
+
+## Domain activation
+
+The current Cloudflare deployment credential cannot identify the exact `prismoprime.com` zone. The six required DNS records are in `data/developer-hub-domains.json`; the provisioning workflow refuses unrelated or conflicting records. Grant the workflow credential Zone Read and DNS Edit for this zone, or add those records at its authoritative DNS provider, then rerun domain provisioning and refresh Sites validation.
+
+Until the custom domains are verified, verification, reset and owner-review emails use the already active `orqa-reference-lab.jeremiah651574.chatgpt.site` and `prismo-developer-hub.jeremiah651574.chatgpt.site` addresses. Both have the same password and per-hub approval checks. Switch the fixed `DEVELOPER_SITES` origins and their contract tests to the custom domains only after DNS and TLS validation pass.
