@@ -30,6 +30,8 @@ class PartnerSchemaTests(unittest.TestCase):
             self.assertEqual(database.execute('SELECT name FROM ecosystem_organizations').fetchone()[0], 'Historical OEM')
             database.executescript((ROOT / 'ecosystem-migrations/0004_partner_completion_and_recovery.sql').read_text())
             database.executescript((ROOT / 'ecosystem-migrations/0005_partner_reviewers.sql').read_text())
+            self.assertEqual(schema.pending_migrations(rows()), ['ecosystem-migrations/0006_developer_hub_access.sql'])
+            database.executescript((ROOT / 'ecosystem-migrations/0006_developer_hub_access.sql').read_text())
             self.assertEqual(schema.schema_state(rows()), 'ready')
             self.assertEqual(schema.schema_state(rows()), 'ready', 'Later deployments must skip the migration')
             database.execute('ALTER TABLE ecosystem_partner_accounts ADD COLUMN conflicting_column TEXT')

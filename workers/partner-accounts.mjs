@@ -1,4 +1,5 @@
 import { canonicalDigest } from './ecosystem-contracts.mjs';
+import { developerSiteOrigin } from './developer-hub-access.mjs';
 
 const COOKIE = '__Secure-forge_partner';
 const COOKIE_PATH = '/api/ecosystem/v1';
@@ -85,11 +86,11 @@ async function emailReady(env) {
   } catch { return false; }
 }
 
-async function queueEmail(db, accountId, purpose, generation) {
+async function queueEmail(db, accountId, purpose, generation, hubSite) {
   const now = Date.now();
   await db.prepare(`INSERT INTO ecosystem_partner_email_requests
-    (request_id, account_id, purpose, account_generation, status, created_at_ms, updated_at_ms)
-    VALUES (?, ?, ?, ?, 'PENDING', ?, ?)`).bind(crypto.randomUUID(), accountId, purpose, generation, now, now).run();
+    (request_id, account_id, purpose, account_generation, status, created_at_ms, updated_at_ms, return_origin)
+    VALUES (?, ?, ?, ?, 'PENDING', ?, ?, ?)`).bind(crypto.randomUUID(), accountId, purpose, generation, now, now, developerSiteOrigin(hubSite)).run();
 }
 
 async function dispatchEmail(env) {
@@ -105,7 +106,7 @@ async function recoveryAction(request, env, action, input) {
     if (!await emailReady(env)) return reply(503, {error:'Email delivery is temporarily unavailable. Please try again shortly.'});
     if (await limited(db, await canonicalDigest('verify-email:' + principal.email), 3, 15 * 60_000)) return reply(429, {error:'Please wait 15 minutes before requesting another email.'});
     const account = await db.prepare('SELECT account_id, account_generation FROM ecosystem_partner_accounts WHERE email = ?').bind(principal.email).first();
-    await queueEmail(db, account.account_id, 'VERIFY_EMAIL', account.account_generation);
+    await queueEmail(db, account.account_id, 'VERIFY_EMAIL', account.account_generation, input.hubSite);
     await dispatchEmail(env);
     return reply(200, {message:'Verification email queued. Check your inbox shortly.'});
   }
@@ -117,10 +118,10 @@ async function recoveryAction(request, env, action, input) {
     const now = Date.now();
     // The same SQL, sender dispatch, and response serve known and unknown emails.
     await db.prepare(`INSERT INTO ecosystem_partner_email_requests
-      (request_id, account_id, purpose, account_generation, status, created_at_ms, updated_at_ms)
-      SELECT ?, account_id, 'RESET_PASSWORD', account_generation, 'PENDING', ?, ?
+      (request_id, account_id, purpose, account_generation, status, created_at_ms, updated_at_ms, return_origin)
+      SELECT ?, account_id, 'RESET_PASSWORD', account_generation, 'PENDING', ?, ?, ?
       FROM ecosystem_partner_accounts WHERE email = ? AND status = 'ACTIVE'`)
-      .bind(crypto.randomUUID(), now, now, email).run();
+      .bind(crypto.randomUUID(), now, now, developerSiteOrigin(input.hubSite), email).run();
     await dispatchEmail(env);
     return reply(200, {message:'If an account uses this email, a password reset link will arrive shortly.'});
   }
@@ -239,8 +240,8 @@ export async function handlePartnerAuth(request, env, action) {
         VALUES (?, ?, ?, 'PARTNER', 'partner.signup', 'organization', ?, '{}', ?)`)
         .bind(crypto.randomUUID(), organizationId, subject, organizationId, now),
       db.prepare(`INSERT INTO ecosystem_partner_email_requests
-        (request_id, account_id, purpose, account_generation, status, created_at_ms, updated_at_ms)
-        VALUES (?, ?, 'VERIFY_EMAIL', 0, 'PENDING', ?, ?)`).bind(crypto.randomUUID(), accountId, now, now),
+        (request_id, account_id, purpose, account_generation, status, created_at_ms, updated_at_ms, return_origin)
+        VALUES (?, ?, 'VERIFY_EMAIL', 0, 'PENDING', ?, ?, ?)`).bind(crypto.randomUUID(), accountId, now, now, developerSiteOrigin(input.hubSite)),
     ]);
   } catch (error) {
     if (/UNIQUE.*ecosystem_partner_accounts.email/i.test(error.message)) return reply(409, { error: 'An account already uses this email. Log in to continue.' });

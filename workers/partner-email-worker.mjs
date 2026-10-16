@@ -1,4 +1,5 @@
 import { canonicalDigest } from './ecosystem-contracts.mjs';
+import { deliverDeveloperHubEmails, DEVELOPER_SITES } from './developer-hub-access.mjs';
 
 const token = () => Array.from(crypto.getRandomValues(new Uint8Array(32)), value => value.toString(16).padStart(2,'0')).join('');
 const escape = value => value.replace(/[&<>"']/g, char => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[char]));
@@ -7,7 +8,7 @@ export async function deliverPartnerEmails(env) {
   const db = env.ECOSYSTEM_DB;
   const now = Date.now();
   await db.prepare('DELETE FROM ecosystem_partner_action_tokens WHERE expires_at_ms < ?').bind(now - 24 * 60 * 60_000).run();
-  const requests = await db.prepare(`SELECT r.request_id, r.account_id, r.purpose, r.account_generation, a.email, a.email_verified_at_ms
+  const requests = await db.prepare(`SELECT r.request_id, r.account_id, r.purpose, r.account_generation, r.return_origin, a.email, a.email_verified_at_ms
     FROM ecosystem_partner_email_requests r JOIN ecosystem_partner_accounts a ON a.account_id = r.account_id
     WHERE (r.status = 'PENDING' OR (r.status = 'SENDING' AND r.updated_at_ms < ?))
       AND r.attempts < 5 AND a.status = 'ACTIVE' AND r.account_generation = a.account_generation
@@ -24,7 +25,8 @@ export async function deliverPartnerEmails(env) {
     }
     const rawToken = token(), hash = await canonicalDigest(rawToken);
     const lifetime = verification ? 24 * 60 * 60_000 : 60 * 60_000;
-    const link = `https://uas-forge.com/partners/#${verification ? 'verify' : 'reset'}=${rawToken}`;
+    const hubOrigin=Object.values(DEVELOPER_SITES).some(site=>site.origin===request.return_origin)?request.return_origin:null;
+    const link = `${hubOrigin ? hubOrigin+'/login' : 'https://uas-forge.com/partners/'}#${verification ? 'verify' : 'reset'}=${rawToken}`;
     const subject = verification ? 'Verify your UAS Forge partner email' : 'Reset your UAS Forge password';
     const action = verification ? 'Verify email' : 'Reset password';
     await db.prepare(`INSERT INTO ecosystem_partner_action_tokens
@@ -45,12 +47,13 @@ export async function deliverPartnerEmails(env) {
       console.error(JSON.stringify({event:'partner-email-delivery-failed',requestId:request.request_id}));
     }
   }
+  await deliverDeveloperHubEmails(env);
 }
 
 export default {
   async scheduled(controller, env) { await deliverPartnerEmails(env); },
   async fetch(request, env, ctx) {
-    if (new URL(request.url).pathname === '/health') return Response.json({configured:typeof env.EMAIL?.send === 'function'});
+    if (new URL(request.url).pathname === '/health') return Response.json({configured:typeof env.EMAIL?.send === 'function',developerApprovalConfigured:Boolean(env.DEVELOPER_HUB_OWNER_EMAIL && typeof env.EMAIL?.send === 'function')});
     if (request.method !== 'POST' || new URL(request.url).pathname !== '/dispatch') return new Response('Not found',{status:404});
     ctx.waitUntil(deliverPartnerEmails(env));
     return Response.json({queued:true},{status:202});
