@@ -23,6 +23,8 @@ test('developer approval is separate by site, owner-only, revocable and notifica
     assert.ok(user.messages[0].text.includes('https://dev.prismoprime.com/login#verify='));
     assert.equal((await call(rt,'/developer-access/request',{cookie:user.cookie,input:{site:'orqa-reference'}})).status,403);
     await call(rt,'/auth/verify-email',{input:{token:user.token}});
+    assert.equal((await call(rt,'/developer-access/status?site=toString',{cookie:user.cookie})).status,400);
+    assert.equal((await call(rt,'/developer-access/request',{cookie:user.cookie,input:{site:'__proto__'}})).status,400);
     const request=await call(rt,'/developer-access/request',{cookie:user.cookie,input:{site:'orqa-reference',reason:'Camera development'}});
     assert.equal(request.status,201);const {requestId}=await request.json();
     assert.equal((await call(rt,'/developer-access/request',{cookie:user.cookie,input:{site:'orqa-reference'}})).status,200);
