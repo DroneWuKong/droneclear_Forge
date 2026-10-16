@@ -51,6 +51,20 @@ or email sent to a real recipient by those tests.
 
 ## Domain activation
 
-The current Cloudflare deployment credential cannot identify the exact `prismoprime.com` zone. The six required DNS records are in `data/developer-hub-domains.json`; the provisioning workflow refuses unrelated or conflicting records. Grant the workflow credential Zone Read and DNS Edit for this zone, or add those records at its authoritative DNS provider, then rerun domain provisioning and refresh Sites validation.
+`prismoprime.com` uses Squarespace authoritative DNS (`nsd1.squarespacedns.com`
+through `nsd4.squarespacedns.com`). On 2026-10-16, the six required records in
+`data/developer-hub-domains.json` were added there. All eleven pre-existing
+records were preserved, including the apex, `www` and email security records.
+Keep the existing nameservers and unrelated DNS records unchanged.
 
-Until the custom domains are verified, verification, reset and owner-review emails use the already active `orqa-reference-lab.jeremiah651574.chatgpt.site` and `prismo-developer-hub.jeremiah651574.chatgpt.site` addresses. Both have the same password and per-hub approval checks. Switch the fixed `DEVELOPER_SITES` origins and their contract tests to the custom domains only after DNS and TLS validation pass.
+Both existing Sites custom-domain entries validated with active provider and
+SSL status. HTTPS login pages were verified at `https://dev.prismoprime.com`
+and `https://labs.prismoprime.com` before changing email-return origins.
+Verification, password reset and owner-review emails now use these two fixed
+`DEVELOPER_SITES` origins; ordinary Forge partner email retains its existing
+`https://uas-forge.com/partners/` return path.
+
+The Cloudflare DNS workflow cannot identify this zone with its current
+credential. Cloudflare DNS permissions alone do not publish records at the
+current Squarespace nameservers. For future DNS changes, use the authoritative
+provider and refresh the existing Sites validation entries afterward.
