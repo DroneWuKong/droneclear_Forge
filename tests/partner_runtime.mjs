@@ -17,11 +17,12 @@ export async function partnerRuntime(options = {}) {
   const runtime = new Miniflare(convertV4MiniflareOptions({
     modules: true, script: bundle.outputFiles[0].text,
     compatibilityDate: '2026-05-03', d1Databases: ['ECOSYSTEM_DB'],
-    serviceBindings: {PARTNER_EMAIL: async request => Response.json(new URL(request.url).pathname === '/health' ? {configured:options.emailAvailable !== false} : {queued:true},{status:200})},
+    bindings: {DEVELOPER_HUB_OWNER_EMAIL:options.ownerEmail || 'owner@example.com'},
+    serviceBindings: {PARTNER_EMAIL: async request => Response.json(new URL(request.url).pathname === '/health' ? {configured:options.emailAvailable !== false,developerApprovalConfigured:options.emailAvailable !== false} : {queued:true},{status:200})},
   }));
   try {
     const db = await runtime.getD1Database('ECOSYSTEM_DB');
-    for (const file of ['0001_ecosystem.sql','0002_partner_portal_v2.sql','0003_partner_accounts.sql','0004_partner_completion_and_recovery.sql','0005_partner_reviewers.sql']) {
+    for (const file of ['0001_ecosystem.sql','0002_partner_portal_v2.sql','0003_partner_accounts.sql','0004_partner_completion_and_recovery.sql','0005_partner_reviewers.sql','0006_developer_hub_access.sql']) {
       const sql = (await readFile(new URL('../ecosystem-migrations/' + file, import.meta.url), 'utf8')).replace(/^\s*--.*$/gm, '');
       for (const statement of sql.split(';').map(value => value.trim()).filter(Boolean)) await db.prepare(statement).run();
     }

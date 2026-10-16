@@ -1,5 +1,6 @@
 import { verifyAccessIdentity } from './access-auth.mjs';
 import { authenticatePartner, handlePartnerAuth, sameOriginMutation } from './partner-accounts.mjs';
+import { handleDeveloperHubAccess } from './developer-hub-access.mjs';
 import { bomCompleteness, productCompleteness } from './product-completeness.mjs';
 import { bomRevisionContract, canonicalDigest, canonicalJson, productRevisionContract, supplierOfferContract } from './ecosystem-contracts.mjs';
 
@@ -595,6 +596,7 @@ export async function handleEcosystemRequest(request, env, identityOverride) {
 
     const principal = await authenticate(request, env, identityOverride);
     if (principal?.kind === 'PARTNER' && request.method !== 'GET' && !sameOriginMutation(request)) return response(403, { error: 'Account actions must come from this site.' });
+    if (segments[0] === 'developer-access') return handleDeveloperHubAccess(request,env,principal,segments);
     if (request.method === 'GET' && segments.length === 1 && segments[0] === 'me') return getMe(env, principal);
     if (request.method === 'GET' && segments.length === 1 && segments[0] === 'partner-reviews') {
       if (!await canReviewPartners(env, principal)) return response(403, { error: 'Forge reviewer access required.' });

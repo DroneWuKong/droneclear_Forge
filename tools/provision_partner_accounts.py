@@ -29,14 +29,14 @@ def pending_migrations(rows):
     actual = {(row['type'], row['name']): normalize_sql(row['sql']) for row in rows if row.get('sql')}
     versions = []
     with sqlite3.connect(':memory:') as database:
-        for file in ('0001_ecosystem.sql', '0002_partner_portal_v2.sql', '0003_partner_accounts.sql', '0004_partner_completion_and_recovery.sql', '0005_partner_reviewers.sql'):
+        for file in ('0001_ecosystem.sql', '0002_partner_portal_v2.sql', '0003_partner_accounts.sql', '0004_partner_completion_and_recovery.sql', '0005_partner_reviewers.sql', '0006_developer_hub_access.sql'):
             database.executescript((ROOT / 'ecosystem-migrations' / file).read_text())
             if file.startswith('0001'):
                 continue
             expected = {(kind, name): normalize_sql(sql) for kind, name, sql in database.execute(
                 "SELECT type,name,sql FROM sqlite_master WHERE type IN ('table','index') AND sql IS NOT NULL")}
             versions.append(expected)
-    new_files = ['ecosystem-migrations/0003_partner_accounts.sql', 'ecosystem-migrations/0004_partner_completion_and_recovery.sql','ecosystem-migrations/0005_partner_reviewers.sql']
+    new_files = ['ecosystem-migrations/0003_partner_accounts.sql', 'ecosystem-migrations/0004_partner_completion_and_recovery.sql','ecosystem-migrations/0005_partner_reviewers.sql','ecosystem-migrations/0006_developer_hub_access.sql']
     for index in range(len(versions) - 1, -1, -1):
         expected = versions[index]
         if expected.keys() <= actual.keys() and all(actual[key] == sql for key, sql in expected.items()):

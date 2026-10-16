@@ -1,0 +1,20 @@
+name: Prismo developer hub domains
+on:
+  push:
+    branches: [master]
+    paths: ['data/developer-hub-domains.json','tools/provision_developer_hub_domains.py','.github/workflows/developer-hub-dns.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: prismo-developer-domains
+  cancel-in-progress: false
+jobs:
+  provider-records:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Configure only the two authorized developer hostnames
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN || secrets.CLOUDFLAR_API_TOKEN }}
+        run: python3 tools/provision_developer_hub_domains.py
