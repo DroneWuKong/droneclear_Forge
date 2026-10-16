@@ -68,3 +68,17 @@ The Cloudflare DNS workflow cannot identify this zone with its current
 credential. Cloudflare DNS permissions alone do not publish records at the
 current Squarespace nameservers. For future DNS changes, use the authoritative
 provider and refresh the existing Sites validation entries afterward.
+
+## Production password runtime compatibility
+
+Live custom-domain signup exposed a production-only Cloudflare PBKDF2 limit:
+native derivations above 100,000 rounds fail, while local workerd permits them.
+Forge retains its existing PBKDF2-SHA-256 format, 32-byte salts, 32-byte derived
+keys, and 600,000-round default through pinned `@noble/hashes` portable PBKDF2.
+Login still uses each account's saved iteration count. Existing password hashes,
+accounts, memberships, and sessions require no migration or reset.
+
+The account test runtime now reproduces the production native limit. Regression
+checks compare new hashes with Node's native PBKDF2 and authenticate pre-existing
+native-format hashes (including Unicode passwords and saved iteration counts).
+The production workflow installs pinned runtime dependencies before bundling.

@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
+import { pbkdf2Sync } from 'node:crypto';
 import { partnerRuntime } from './partner_runtime.mjs';
 import { onRequest as privateGate } from '../functions/private/[[path]].js';
 import { deliverPartnerEmails } from '../workers/partner-email-worker.mjs';
@@ -31,6 +32,7 @@ test('partner accounts persist drafts, isolate companies, and revoke sessions in
     assert.equal((await call('/auth/verify-email',{method:'POST',input:{token}})).status,200);
     const stored = await db.prepare('SELECT * FROM ecosystem_partner_accounts WHERE email = ?').bind('partner@example.com').first();
     assert.notEqual(stored.password_hash,password); assert.equal(stored.password_iterations,600000);
+    assert.equal(stored.password_hash, pbkdf2Sync(password, Buffer.from(stored.password_salt,'hex'),600000,32,'sha256').toString('hex'), 'New hashes preserve the established PBKDF2-SHA-256 format');
     assert.equal((await db.prepare('SELECT token_hash FROM ecosystem_partner_sessions').first()).token_hash.includes(cookie.split('=')[1]),false);
     const duplicate = await call('/auth/signup',{method:'POST',input:{email:'partner@example.com',password,name:'Duplicate',organizationName:'Duplicate',kind:'OEM'}});
     assert.equal(duplicate.status,409);
@@ -79,4 +81,22 @@ test('signup validates input and login throttles guesses before password hashing
       assert.equal(result.status,i===10?429:401);
     }
   }finally{await runtime.dispose()}
+});
+
+
+test('existing native PBKDF2 partner passwords retain Unicode and stored iteration compatibility',async()=>{
+  const {runtime,db}=await partnerRuntime();
+  const post=(action,input)=>runtime.dispatchFetch(origin+'/api/ecosystem/v1/auth/'+action,{method:'POST',headers:{Origin:origin,'Content-Type':'application/json'},body:JSON.stringify(input)});
+  try {
+    const email='legacy-password@example.com';
+    assert.equal((await post('signup',{email,password,name:'Legacy fixture',organizationName:'Legacy fixture'})).status,201);
+    const legacyPassword='legacy café 🔑 passphrase preserved';
+    const salt=Buffer.from(Array.from({length:32},(_,i)=>i));
+    for(const iterations of [600000,100000]) {
+      const nativeHash=pbkdf2Sync(legacyPassword,salt,iterations,32,'sha256').toString('hex');
+      await db.prepare('UPDATE ecosystem_partner_accounts SET password_hash=?, password_salt=?, password_iterations=? WHERE email=?').bind(nativeHash,salt.toString('hex'),iterations,email).run();
+      assert.equal((await post('login',{email,password:legacyPassword})).status,200,'Existing hashes authenticate without resetting or rewriting accounts');
+      assert.equal((await db.prepare('SELECT password_hash FROM ecosystem_partner_accounts WHERE email=?').bind(email).first()).password_hash,nativeHash);
+    }
+  } finally {await runtime.dispose();}
 });

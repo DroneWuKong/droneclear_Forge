@@ -5,11 +5,20 @@ import { fileURLToPath } from 'node:url';
 
 export async function partnerRuntime(options = {}) {
   const root = fileURLToPath(new URL('..', import.meta.url));
-  const bundle = await build({
-    stdin: { contents: options.reviewerFixture ? `import {handleEcosystemRequest} from './workers/ecosystem-api.mjs';
+  const entry = options.reviewerFixture ? `import {handleEcosystemRequest} from './workers/ecosystem-api.mjs';
       export default {fetch(request,env){return handleEcosystemRequest(request,{...env,ECOSYSTEM_PLATFORM_ADMIN_SUBJECTS:'reviewer-fixture'},
         request.headers.get('X-Fixture-Reviewer')==='yes'?{subject:'reviewer-fixture',email:'reviewer@example.com'}:undefined)}};`
-      : "export { default } from './workers/ecosystem-api.mjs';", resolveDir: root },
+      : "export { default } from './workers/ecosystem-api.mjs';";
+  // Miniflare removes the production native PBKDF2 cap. Reproduce it so a
+  // locally successful password flow cannot conceal the deployed failure.
+  const productionCryptoLimit = `const deriveBits = crypto.subtle.deriveBits.bind(crypto.subtle);
+    crypto.subtle.deriveBits = (algorithm, ...args) => {
+      if (algorithm.name === 'PBKDF2' && algorithm.iterations > 100000)
+        throw new DOMException('Production PBKDF2 iteration cap', 'NotSupportedError');
+      return deriveBits(algorithm, ...args);
+    };`;
+  const bundle = await build({
+    stdin: { contents: productionCryptoLimit + entry, resolveDir: root },
     bundle: true, format: 'esm', platform: 'browser', write: false,
   });
   // Match the production Pages compatibility date. Reviewer identities and
