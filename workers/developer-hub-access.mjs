@@ -1,10 +1,10 @@
 // Authentication is the existing Forge account/session system. These grants
 // are independent of catalog organization membership and product publication.
-// Use verified live addresses for email links until custom-domain DNS is active.
+// Email links return only to the validated developer custom domains.
 // These fixed server-owned origins also prevent caller-controlled redirect links.
 export const DEVELOPER_SITES = Object.freeze({
-  'orqa-reference': {origin:'https://orqa-reference-lab.jeremiah651574.chatgpt.site', name:'Orqa Developer Reference'},
-  'prismo-full': {origin:'https://prismo-developer-hub.jeremiah651574.chatgpt.site', name:'Prismo Developer Lab'},
+  'orqa-reference': {origin:'https://dev.prismoprime.com', name:'Orqa Developer Reference'},
+  'prismo-full': {origin:'https://labs.prismoprime.com', name:'Prismo Developer Lab'},
 });
 export const developerSiteOrigin = site => typeof site==='string' && Object.hasOwn(DEVELOPER_SITES,site) ? DEVELOPER_SITES[site].origin : null;
 const reply = (status, data) => Response.json(data,{status,headers:{'Cache-Control':'no-store','X-Content-Type-Options':'nosniff'}});
