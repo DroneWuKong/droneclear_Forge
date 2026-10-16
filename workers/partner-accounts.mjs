@@ -1,3 +1,5 @@
+import { pbkdf2Async } from '@noble/hashes/pbkdf2.js';
+import { sha256 } from '@noble/hashes/sha2.js';
 import { canonicalDigest } from './ecosystem-contracts.mjs';
 import { developerSiteOrigin } from './developer-hub-access.mjs';
 
@@ -33,8 +35,13 @@ export function sameOriginMutation(request) {
 }
 
 async function passwordHash(password, salt, iterations = ITERATIONS) {
-  const key = await crypto.subtle.importKey('raw', encoder.encode(password), 'PBKDF2', false, ['deriveBits']);
-  return hex(await crypto.subtle.deriveBits({ name: 'PBKDF2', hash: 'SHA-256', salt: unhex(salt), iterations }, key, 256));
+  // Workers production caps native PBKDF2 at 100,000; local workerd does not.
+  // Keep the existing 600,000-round SHA-256 format and per-account iteration
+  // count, using the portable implementation rather than weakening passwords.
+  const bytes = encoder.encode(password);
+  try {
+    return hex(await pbkdf2Async(sha256, bytes, unhex(salt), { c: iterations, dkLen: 32 }));
+  } finally { bytes.fill(0); }
 }
 
 function equalHash(left, right) {
