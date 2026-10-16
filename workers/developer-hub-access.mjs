@@ -4,7 +4,7 @@ export const DEVELOPER_SITES = Object.freeze({
   'orqa-reference': {origin:'https://dev.prismoprime.com', name:'Orqa Developer Reference'},
   'prismo-full': {origin:'https://labs.prismoprime.com', name:'Prismo Developer Lab'},
 });
-export const developerSiteOrigin = site => DEVELOPER_SITES[site]?.origin || null;
+export const developerSiteOrigin = site => typeof site==='string' && Object.hasOwn(DEVELOPER_SITES,site) ? DEVELOPER_SITES[site].origin : null;
 const reply = (status, data) => Response.json(data,{status,headers:{'Cache-Control':'no-store','X-Content-Type-Options':'nosniff'}});
 const verified = p => p?.kind === 'PARTNER' && p.emailVerified === true;
 export function developerOwner(env, principal) {
@@ -34,7 +34,7 @@ export async function handleDeveloperHubAccess(request, env, principal, segments
   const account=principal.subject.slice('partner:'.length);
   if (request.method==='GET' && segments[1]==='status') {
     const site=url.searchParams.get('site');
-    if(!DEVELOPER_SITES[site])return reply(400,{error:'Unknown developer site.'});
+    if(!developerSiteOrigin(site))return reply(400,{error:'Unknown developer site.'});
     const row=await db.prepare('SELECT status, requested_at_ms, updated_at_ms FROM ecosystem_developer_hub_access WHERE account_id = ? AND site = ?').bind(account,site).first();
     return reply(200,{site,status:owner?'APPROVED':row?.status || 'NONE',canReview:owner,email:principal.email,name:principal.name,requestedAtMs:row?.requested_at_ms||null});
   }
@@ -51,7 +51,7 @@ export async function handleDeveloperHubAccess(request, env, principal, segments
   if(!input)return reply(400,{error:'Send JSON up to 8 KB.'});
   if(segments[1]==='request') {
     const site=input.site;
-    if(!DEVELOPER_SITES[site])return reply(400,{error:'Unknown developer site.'});
+    if(!developerSiteOrigin(site))return reply(400,{error:'Unknown developer site.'});
     const existing=await db.prepare('SELECT request_id,status FROM ecosystem_developer_hub_access WHERE account_id = ? AND site = ?').bind(account,site).first();
     if(existing)return reply(200,{status:existing.status,requestId:existing.request_id});
     if(!env.DEVELOPER_HUB_OWNER_EMAIL || !await emailReady(env))return reply(503,{error:'Access request email is unavailable. Please try again shortly.'});
