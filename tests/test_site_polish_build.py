@@ -1,5 +1,6 @@
 """Regression coverage for destructive shell rewriting and silent script failures."""
 import tempfile
+import re
 import unittest
 from pathlib import Path
 from unittest.mock import patch
@@ -7,6 +8,29 @@ import build_static as builder
 
 
 class NavigationRewriteTests(unittest.TestCase):
+    def test_lens_applications_survive_navigation_replacement(self):
+        for name, dataset in [('adversary-bom', 'adversary_bom'),
+                              ('mirroring', 'component_mirroring_index'),
+                              ('evasion', 'sanctions_evasion_graph')]:
+            with self.subTest(page=name):
+                source = (Path('forge-source') / (name + '.html')).read_text()
+                app = next(block for block in re.findall(r'<script>(.*?)</script>', source, re.S)
+                           if 'fetch(\'/api/data?type=' + dataset in block)
+                built = builder.inject_nav(source, name + '.html')
+                self.assertIn(app, built)
+                self.assertIn(app, builder.inject_nav(built, name + '.html'))
+                self.assertEqual(built.count('window.dcNavToggle'), 1)
+                self.assertIn('data-uas-area="research"', built)
+
+    def test_mixed_navigation_and_data_loader_fails_instead_of_deleting_app(self):
+        source = '''<html><body><script>
+        window.dcNavToggle = function(){};
+        window.dcNavBrandClick = function(){};
+        fetch('/api/data?type=fixture').then(render);
+        </script></body></html>'''
+        with self.assertRaisesRegex(ValueError, 'split navigation and application'):
+            builder.inject_nav(source, 'example.html')
+
     def test_intel_app_imports_survive_replacing_legacy_navigation(self):
         source = (Path(__file__).resolve().parents[1] / 'forge-source/intel.html').read_text()
         built = builder.inject_nav(source, 'intel.html')

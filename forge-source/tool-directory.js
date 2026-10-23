@@ -3,6 +3,7 @@
   const output=document.getElementById('tool-results'), status=document.getElementById('tool-count');
   const params=new URLSearchParams(location.search);input.value=params.get('q')||'';
   if([...area.options].some(option=>option.value===params.get('area')))area.value=params.get('area');
+  else if(!params.has('area')&&location.hostname==='uas-patterns.com')area.value='Research';
   document.querySelector('.directory-form').addEventListener('submit',event=>event.preventDefault());
   try{
     const response=await fetch('/static/site-directory.json');if(!response.ok)throw new Error('unavailable');
@@ -17,8 +18,8 @@
         const list=document.createElement('ul');list.className='tool-list';
         for(const row of rows){const li=document.createElement('li'),link=document.createElement('a');link.href=row.url;link.textContent=row.title;if(row.description){const p=document.createElement('p');p.textContent=row.description;link.append(p);}li.append(link);list.append(li);}section.append(list);output.append(section);
       }
-      const url=new URL(location.href);input.value?url.searchParams.set('q',input.value):url.searchParams.delete('q');area.value?url.searchParams.set('area',area.value):url.searchParams.delete('area');history.replaceState(null,'',url);
+      const url=new URL(location.href);input.value?url.searchParams.set('q',input.value):url.searchParams.delete('q');url.searchParams.set('area',area.value);history.replaceState(null,'',url);
     }
     input.addEventListener('input',render);area.addEventListener('change',render);render();
-  }catch{status.textContent='The directory could not load. Reload to try again, or use the menu to open Research, Build, or Learn.';}
+  }catch{status.textContent='Search is unavailable. Browse the complete list below, or reload to try search again.';}
 })();
