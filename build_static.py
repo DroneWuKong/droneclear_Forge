@@ -711,6 +711,13 @@ _UNIFIED_NAV = r"""<!-- ── Unified UAS navigation (Research / Build / Learn)
       <a class="dc-dom-sublink" href="https://uas-patterns.com/intel/feed/" data-page="intel-feed">News</a>
       <a class="dc-dom-sublink" href="https://uas-patterns.com/priorities/" data-page="priorities">Watchlist & priorities</a>
       <a class="dc-dom-sublink" href="https://uas-patterns.com/forecast-accountability/" data-page="forecast-accountability">Forecasts</a>
+      <a class="dc-dom-sublink" href="https://uas-patterns.com/adversary-bom/" data-page="adversary-bom">Adversary BOM</a>
+      <a class="dc-dom-sublink" href="https://uas-patterns.com/mirroring/" data-page="mirroring">Component Mirroring</a>
+      <a class="dc-dom-sublink" href="https://uas-patterns.com/actors/" data-page="actors">Threat Actor Signals</a>
+      <a class="dc-dom-sublink" href="https://uas-patterns.com/ttps/" data-page="ttps">Defensive Procurement Signals</a>
+      <a class="dc-dom-sublink" href="https://uas-patterns.com/evasion/" data-page="evasion">Sanctions-Evasion</a>
+      <a class="dc-dom-sublink" href="https://uas-patterns.com/market-lens/" data-page="market-lens">Market Lens</a>
+      <a class="dc-dom-sublink" href="https://uas-patterns.com/tools-home/?area=Research" data-page="research-tools">All research tools</a>
     </div>
   </details>
   <details class="dc-dom-group" data-area="build">
@@ -1033,6 +1040,11 @@ class _NavigationStripper(HTMLParser):
                 'function dcNavBrandClick' in block and 'const _dcPageMap' in block
                 and "getElementById('dc-nav-current')" in block
             ):
+                # Legacy pages sometimes mixed their data loader into the same
+                # script as the drawer. Never silently delete that application.
+                if re.search(r'\b(?:fetch\s*\(|XMLHttpRequest\b)', block):
+                    raise ValueError('Navigation script contains application data loading; '
+                                     'split navigation and application into separate script elements')
                 self.removals.append((self.script_start, end))
             self.script_start = None
 
@@ -1092,10 +1104,9 @@ def inject_nav(html, src_name):
     html = re.sub(r'<style\b[^>]*\bid=[\"\']dc-unified-nav-styles[\"\'][^>]*>.*?</style>', '', html, flags=re.DOTALL | re.IGNORECASE)
 
     # Task identity is rendered before paint; host detection handles domain aliases.
-    research_pages = {'patterns-home.html', 'ask-pie.html', 'intel-feed.html',
-        'patterns.html', 'priorities.html', 'forecast-accountability.html',
-        'pie-search.html', 'pie-trends.html', 'brief.html', 'brief-archive.html',
-        'actors.html', 'ttps.html', 'evasion.html', 'market-lens.html', 'entity-graph.html'}
+    from tools.build_navigation import RESEARCH
+    research_pages = {filename for filename, destination in PAGES.items()
+                      if destination.removesuffix('index.html').strip('/') in RESEARCH}
     area = 'research' if src_name in research_pages else 'build'
     html = re.sub(r'<html\b', f'<html data-uas-area="{area}"', html, count=1)
     nav = _UNIFIED_NAV.replace('data-uas-link="' + area + '"', 'data-uas-link="' + area + '" aria-current="location"')
