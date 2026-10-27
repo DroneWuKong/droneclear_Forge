@@ -8,9 +8,11 @@ HELP = set('support donate terms privacy contribute analytics data-status miner-
 LEARN = set('guides academy start software-library troubleshoot'.split())
 ALIASES = {'forge', 'hub', 'intel', 'tools-home'}
 LABELS = {'':'Build home','builder':'My build','models':'Developer models','patterns-home':'Today','ask-pie':'Research a question','intel/feed':'News','pie-search':'Advanced record search','cost':'Cost estimate','priorities':'Watchlist & priorities','miner-health':'Dataset coverage','intel-health':'Collection pipeline','data-status':'Data status','gallery':'Example builds','tools':'RF tools'}
+LABELS.update({'suppliers':'EU suppliers', 'ttps':'Defense signals', 'guide':'Build guide'})
 LABELS['test-lab'] = 'System Test Lab'
 LABELS['session-recorder'] = 'UAS Session Recorder'
 DESCRIPTIONS = {'builder':'Select parts and review recorded compatibility in your current build.','models':'Download the retained CUAS detector family with formats, hashes, metrics, and integration guidance.','ask-pie':'Find cited records and save an evidence packet.','pie-search':'Filter and inspect the full indexed corpus.','cost':'Review prices and weights for your saved parts or a catalog model.','tools':'Terrain, channel planning, mesh planning, and link budget tools.','intel/feed':'UAS-related articles, with a separate full-corpus view.','gallery':'Unvalidated example component lists to inspect in the Builder.'}
+DESCRIPTIONS['suppliers'] = 'Compare European supplier listings, reported availability, original prices, currency estimates, and source evidence.'
 DESCRIPTIONS['test-lab'] = 'Download general software tests, prepare Gauntlet III and DoW evidence, and review local results.'
 DESCRIPTIONS['session-recorder'] = 'Free screen, camera and MAVLink capture, marked replay and original flight logs. Offline Windows / Linux downloads; live team view for Teams / Google Meet; PX4, ArduPilot, Betaflight forum, ClickUp and Jira reports; optional Slack upload; setup guides and test-session SOP.'
 
@@ -20,11 +22,11 @@ def directory_html(entries):
     """Keep every public page discoverable even if search JS or JSON fails."""
     sections = []
     for area in ('Research', 'Build', 'Learn', 'Help'):
-        rows = [row for row in entries if row['area'] == area]
+        rows = [row for row in entries if area in row.get('areas', [row['area']])]
         links = []
         for row in rows:
             description = '<p>' + html.escape(row['description']) + '</p>' if row['description'] else ''
-            links.append('<li><a href="' + html.escape(row['url'], quote=True) + '">' +
+            links.append('<li><a href="' + html.escape(row.get('area_urls', {}).get(area, row['url']), quote=True) + '">' +
                          html.escape(row['title']) + description + '</a></li>')
         sections.append('<details open><summary>' + area + ' · ' + str(len(rows)) +
                         '</summary><ul class="tool-list">' + ''.join(links) + '</ul></details>')
@@ -45,6 +47,10 @@ def write_directory(pages, source, output):
         area='Research' if route in RESEARCH else 'Help' if route in HELP else 'Learn' if route in LEARN or route.endswith('-guide') else 'Build'
         origin='https://uas-patterns.com' if area=='Research' or route in {'miner-health','intel-health','data-status'} else 'https://uas-forge.com'
         entries.append({'title':LABELS.get(route,title),'description':DESCRIPTIONS.get(route, ''),'area':area,'url':origin+'/'+route+'/' if route else origin+'/'})
+    for row in entries:
+        if row['url'] == 'https://uas-forge.com/suppliers/':
+            row['areas'] = ['Build', 'Research']
+            row['area_urls'] = {'Research': 'https://uas-patterns.com/suppliers/'}
     entries.append({'title':'Handbook','description':'Read the Drone Integration Handbook.','area':'Learn','url':'https://uas-handbook.com/'})
     (output/'static'/'site-directory.json').write_text(json.dumps(entries,indent=2)+'\n',encoding='utf-8')
     directory = output/'tools-home'/'index.html'

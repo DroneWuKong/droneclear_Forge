@@ -22,6 +22,7 @@ import tempfile
 import base64
 import zipfile
 from datetime import datetime, timezone
+from html import escape as html_escape, unescape as html_unescape
 from html.parser import HTMLParser
 from urllib.parse import urlsplit
 from pathlib import Path
@@ -672,6 +673,28 @@ _UNIFIED_NAV = r"""<!-- ── Unified UAS navigation (Research / Build / Learn)
 #dc-drawer-foot a{color:var(--uas-accent,#f4c56a);text-decoration:none}
 #dc-drawer-foot a:hover{color:var(--uas-accent,#f4c56a)}
 @media(max-width:680px){#dc-nav-left{flex:1 0 auto;max-width:100%;flex-wrap:wrap}#dc-nav-right{max-width:100%;flex-wrap:wrap;gap:4px}.dc-nav-top-btn{padding:0 7px}}
+/* Forge/Patterns drawer shell; shared Handbook design tokens remain reusable. */
+#dc-nav.uas-header .dc-nav-identity{display:flex;flex-direction:column;min-width:0;gap:1px}
+#dc-nav.uas-header #dc-nav-brand{min-height:24px;align-self:flex-start}
+#dc-nav.uas-header #dc-nav-page{display:block;max-width:26ch;font:500 12px/1.4 var(--uas-font,system-ui);color:var(--uas-muted,#b8b0a0);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#dc-drawer{width:360px;max-width:calc(100vw / var(--uas-text-scale,1) - 20px)}
+#dc-drawer-head{position:sticky;top:0;z-index:1;background:#111110;padding:12px 16px}
+#dc-drawer-close{width:44px;height:44px;flex-shrink:0}
+#dc-drawer .dc-dom-sublink{min-height:44px;box-sizing:border-box;padding:11px 20px;font-size:13px;line-height:1.5}
+#dc-drawer .dc-dom-name{font-size:14px}
+#dc-drawer .dc-dom-url{font-size:11px}
+#dc-area-switch{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:4px;padding:12px 12px 0}
+#dc-area-switch a{display:flex;align-items:center;justify-content:center;min-height:44px;border:1px solid #34342c;border-radius:8px;color:#b8b0a0;font:600 13px/1.4 system-ui;text-decoration:none}
+#dc-area-switch a[aria-current]{color:var(--uas-accent,#f4c56a);border-color:var(--uas-accent,#f4c56a);background:var(--uas-tint,#241e12)}
+#dc-menu-search{margin:12px;padding:12px;border:1px solid #34342c;border-radius:8px;min-height:44px;box-sizing:border-box}
+#uas-analytics-consent[inert],#uas-analytics-choices[inert]{visibility:hidden}
+@media(max-width:760px){
+  html[data-uas-nav-ready] nav#dc-nav.uas-header{grid-template-columns:minmax(0,1fr) auto;grid-template-areas:"identity utilities";gap:8px;padding:8px 12px;min-height:64px}
+  html[data-uas-nav-ready] #dc-nav.uas-header #dc-nav-right{display:none}
+  #dc-nav.uas-header #dc-nav-left{flex-wrap:nowrap;gap:8px}
+  #dc-nav.uas-header .dc-nav-identity{flex:1;overflow:hidden}
+  #dc-nav.uas-header #dc-nav-page{max-width:100%}
+}
 </style>
 
 <nav id="dc-nav" class="uas-header" aria-label="UAS navigation">
@@ -681,9 +704,10 @@ _UNIFIED_NAV = r"""<!-- ── Unified UAS navigation (Research / Build / Learn)
         <line x1="1" y1="3" x2="13" y2="3"/><line x1="1" y1="7" x2="13" y2="7"/><line x1="1" y1="11" x2="13" y2="11"/>
       </svg>
     </button>
-    <a id="dc-nav-brand" href="/" onclick="return dcNavBrandClick(event)">—</a>
-    <span id="dc-nav-sep">/</span>
-    <span id="dc-nav-page">—</span>
+    <div class="dc-nav-identity">
+      <a id="dc-nav-brand" href="/" onclick="return dcNavBrandClick(event)">—</a>
+      <span id="dc-nav-page">—</span>
+    </div>
   </div>
   <div id="dc-nav-right" class="uas-areas">
     <a class="dc-nav-top-btn dc-primary" data-uas-link="research" href="https://uas-patterns.com/patterns-home/">Research</a>
@@ -704,18 +728,26 @@ _UNIFIED_NAV = r"""<!-- ── Unified UAS navigation (Research / Build / Learn)
     <button id="dc-drawer-close" type="button" onclick="dcNavClose()" aria-label="Close menu">✕</button>
   </div>
 
+  <nav id="dc-area-switch" aria-label="Switch workspace">
+    <a data-uas-link="research" href="https://uas-patterns.com/patterns-home/">Research</a>
+    <a data-uas-link="build" href="https://uas-forge.com/">Build</a>
+    <a data-uas-link="learn" href="https://uas-handbook.com/">Learn</a>
+  </nav>
+  <a id="dc-menu-search" class="dc-dom-standalone" href="/tools-home/" data-page="tools-home"><span class="dc-dom-name">All tools & search</span></a>
+
   <details class="dc-dom-group" data-area="research">
     <summary><span class="dc-dom-info"><span class="dc-dom-name">Research</span><span class="dc-dom-url" style="display:block">Patterns · follow evidence</span></span><span class="dc-dom-chev" aria-hidden="true">▶</span></summary>
     <div class="dc-dom-sublinks">
       <a class="dc-dom-sublink" href="https://uas-patterns.com/patterns-home/" data-page="patterns-home">Today</a>
       <a class="dc-dom-sublink" href="https://uas-patterns.com/ask-pie/" data-page="ask-pie">Research a question</a>
       <a class="dc-dom-sublink" href="https://uas-patterns.com/intel/feed/" data-page="intel-feed">News</a>
+      <a class="dc-dom-sublink" href="https://uas-patterns.com/suppliers/" data-page="suppliers">EU suppliers</a>
       <a class="dc-dom-sublink" href="https://uas-patterns.com/priorities/" data-page="priorities">Watchlist & priorities</a>
       <a class="dc-dom-sublink" href="https://uas-patterns.com/forecast-accountability/" data-page="forecast-accountability">Forecasts</a>
       <a class="dc-dom-sublink" href="https://uas-patterns.com/adversary-bom/" data-page="adversary-bom">Adversary BOM</a>
       <a class="dc-dom-sublink" href="https://uas-patterns.com/mirroring/" data-page="mirroring">Component Mirroring</a>
       <a class="dc-dom-sublink" href="https://uas-patterns.com/actors/" data-page="actors">Threat Actor Signals</a>
-      <a class="dc-dom-sublink" href="https://uas-patterns.com/ttps/" data-page="ttps">Defensive Procurement Signals</a>
+      <a class="dc-dom-sublink" href="https://uas-patterns.com/ttps/" data-page="ttps">Defense signals</a>
       <a class="dc-dom-sublink" href="https://uas-patterns.com/evasion/" data-page="evasion">Sanctions-Evasion</a>
       <a class="dc-dom-sublink" href="https://uas-patterns.com/market-lens/" data-page="market-lens">Market Lens</a>
       <a class="dc-dom-sublink" href="https://uas-patterns.com/tools-home/?area=Research" data-page="research-tools">All research tools</a>
@@ -727,11 +759,15 @@ _UNIFIED_NAV = r"""<!-- ── Unified UAS navigation (Research / Build / Learn)
       <a class="dc-dom-sublink" href="https://uas-forge.com/" data-page="home">Build home</a>
       <a class="dc-dom-sublink" href="https://uas-forge.com/builder/" data-page="builder">My build</a>
       <a class="dc-dom-sublink" href="https://uas-forge.com/browse/" data-page="browse">Parts</a>
+      <a class="dc-dom-sublink" href="https://uas-forge.com/suppliers/" data-page="suppliers">EU suppliers</a>
       <a class="dc-dom-sublink" href="https://uas-forge.com/platforms/" data-page="platforms">Platforms</a>
       <a class="dc-dom-sublink" href="https://uas-forge.com/ecosystem/" data-page="ecosystem">OEM catalog</a>
+      <a class="dc-dom-sublink" href="https://uas-forge.com/guide/" data-page="guide">Build guide</a>
+      <a class="dc-dom-sublink" href="https://uas-forge.com/cost/" data-page="cost">Cost estimate</a>
       <a class="dc-dom-sublink" href="https://uas-forge.com/models/" data-page="models">Developer models</a>
       <a class="dc-dom-sublink" href="https://uas-forge.com/session-recorder/" data-page="session-recorder">UAS Session Recorder</a>
       <a class="dc-dom-sublink" href="https://uas-forge.com/test-lab/" data-page="test-lab">System Test Lab</a>
+      <a class="dc-dom-sublink" href="https://uas-forge.com/tools-home/?area=Build" data-page="build-tools">All build tools</a>
     </div>
   </details>
   <details class="dc-dom-group" data-area="learn">
@@ -742,7 +778,6 @@ _UNIFIED_NAV = r"""<!-- ── Unified UAS navigation (Research / Build / Learn)
       <a class="dc-dom-sublink" href="https://uas-forge.com/academy/" data-page="academy">Academy</a>
     </div>
   </details>
-  <a class="dc-dom-standalone" href="https://uas-forge.com/tools-home/" data-page="tools-home"><span class="dc-dom-name">All tools & search</span></a>
   <a class="dc-dom-standalone" href="https://uas-patterns.com/data-status/" data-page="data-status"><span class="dc-dom-name">Data status</span></a>
   <a class="dc-dom-standalone" href="https://uas-forge.com/private/" data-page="private" rel="nofollow" data-noindex="true"><span class="dc-dom-name">Private workspace</span></a>
   <a class="dc-dom-standalone" href="https://uas-forge.com/support/" data-page="support"><span class="dc-dom-name">Help & support</span></a>
@@ -782,16 +817,19 @@ _UNIFIED_NAV = r"""<!-- ── Unified UAS navigation (Research / Build / Learn)
     'software-library':'Software Library','models':'Developer Models','test-lab':'System Test Lab','session-recorder':'UAS Session Recorder','ecosystem':'OEM Catalog','industry':'Industry','tracker':'Contract Tracker',
     'patterns-home':'Today','priorities':'Watchlist & priorities','ask-pie':'Research','intel-feed':'News','data-status':'Data status','brief':'Brief','patterns':'Flags','clock':'UAS Clock','ddg':'DDG Tracker',
     'adversary-bom':'Adversary BOM','mirroring':'Component Mirroring','actors':'Threat Actors',
-    'ttps':'TTP Defense Gap','evasion':'Sanctions-Evasion','market-lens':'Market Lens',
+    'suppliers':'EU suppliers','guide':'Build guide','ttps':'Defense signals','evasion':'Sanctions-Evasion','market-lens':'Market Lens',
     'forecast-accountability':'Forecast Accountability','pie-trends':'PIE Trends',
     'pie-search':'Search','brief-archive':'Brief Archive','miner-health':'Data Quality','intel-health':'Intel Health',
     'contribute-doctrine':'Contribute Doctrine','audit-doctrine':'Doctrine Audit',
     'start':'Getting Started','grants':'Grants','waiver':'Doc Builder','forge':'Forge Hub',
     'verify':'Verify','vault':'Vault','troubleshoot':'Troubleshoot','support':'Support','donate':'Support','hub':'Hub','gallery':'Featured Builds','entity-graph':'Entity Graph',
-    'builder':'Builder','cost':'Cost','analytics':'Analytics'
+    'builder':'My build','cost':'Cost estimate','analytics':'Analytics'
   };
   var pageEl = document.getElementById('dc-nav-page');
-  if(pageEl) pageEl.textContent = labels[path] || document.title.split('—')[0].trim().split('·')[0].trim() || path;
+  if(pageEl){
+    pageEl.textContent = labels[path] || document.title.split('—')[0].trim().split('·')[0].trim() || path;
+    pageEl.title = pageEl.textContent;
+  }
 
   var area = isPatCom || isIntel ? 'research' : isHandbook ? 'learn' :
     (document.documentElement.dataset.uasArea || 'build');
@@ -813,10 +851,15 @@ _UNIFIED_NAV = r"""<!-- ── Unified UAS navigation (Research / Build / Learn)
 
   // Only the current task expands. Native summary activation always toggles.
   var matched = false;
-  document.querySelectorAll('.dc-dom-sublink, .dc-dom-standalone').forEach(function(a){
-    if(a.dataset.page === path && (path !== 'home' || isForge)) {
+  var menuLinks = Array.from(document.querySelectorAll('.dc-dom-sublink, .dc-dom-standalone'));
+  var hasAreaMatch = menuLinks.some(function(a){
+    var group = a.closest('.dc-dom-group');
+    return a.dataset.page === path && group && group.dataset.area === area;
+  });
+  menuLinks.forEach(function(a){
+    var group = a.closest('.dc-dom-group');
+    if(a.dataset.page === path && (!hasAreaMatch || !group || group.dataset.area === area) && (path !== 'home' || isForge)) {
       a.classList.add('dc-active'); a.setAttribute('aria-current','page');
-      var group = a.closest('.dc-dom-group');
       if(group && !matched){group.open = true; matched = true;}
     }
   });
@@ -824,6 +867,15 @@ _UNIFIED_NAV = r"""<!-- ── Unified UAS navigation (Research / Build / Learn)
     var group = document.querySelector('[data-area="'+area+'"]');
     if(group) group.open = true;
   }
+
+  // Match sticky content offsets to the actual header at every reading size.
+  var header = document.getElementById('dc-nav');
+  function syncHeaderHeight(){
+    if(header) document.documentElement.style.setProperty('--uas-header-height',header.offsetHeight+'px');
+  }
+  syncHeaderHeight();
+  if(header && typeof ResizeObserver === 'function') new ResizeObserver(syncHeaderHeight).observe(header);
+  else window.addEventListener('resize',syncHeaderHeight);
 
   // Closed navigation is absent from both Tab order and the accessible tree.
   var drawer = document.getElementById('dc-drawer');
@@ -837,7 +889,7 @@ _UNIFIED_NAV = r"""<!-- ── Unified UAS navigation (Research / Build / Learn)
   window.dcNavToggle = function(){
     if(!drawer.hidden){ window.dcNavClose(); return; }
     previousFocus = document.activeElement;
-    drawer.hidden = false; drawer.inert = false;
+    drawer.hidden = false; drawer.inert = false; drawer.scrollTop = 0;
     drawer.setAttribute('aria-hidden','false'); drawer.classList.add('open');
     overlay.classList.add('open'); trigger.classList.add('open');
     trigger.setAttribute('aria-expanded','true');
@@ -868,6 +920,8 @@ _UNIFIED_NAV = r"""<!-- ── Unified UAS navigation (Research / Build / Learn)
       else if(!e.shiftKey && (document.activeElement === last || !drawer.contains(document.activeElement))){e.preventDefault(); first.focus();}
     }
   });
+  document.documentElement.dataset.uasNavReady = 'true';
+  syncHeaderHeight();
 })();
 </script>
 <!-- ── /Unified UAS- Nav ─────────────────────────────────────────── -->"""
@@ -1105,7 +1159,7 @@ def inject_nav(html, src_name):
     html = re.sub(r'<style\b[^>]*\bid=[\"\']dc-unified-nav-styles[\"\'][^>]*>.*?</style>', '', html, flags=re.DOTALL | re.IGNORECASE)
 
     # Task identity is rendered before paint; host detection handles domain aliases.
-    from tools.build_navigation import RESEARCH
+    from tools.build_navigation import RESEARCH, LABELS
     research_pages = {filename for filename, destination in PAGES.items()
                       if destination.removesuffix('index.html').strip('/') in RESEARCH}
     area = 'research' if src_name in research_pages else 'build'
@@ -1115,6 +1169,10 @@ def inject_nav(html, src_name):
     nav = nav.replace('onclick="return dcNavBrandClick(event)">—</a>', 'onclick="return dcNavBrandClick(event)">' + brand + '</a>')
     home = 'https://uas-patterns.com/patterns-home/' if area == 'research' else 'https://uas-forge.com/'
     nav = nav.replace('id="dc-nav-brand" href="/"', f'id="dc-nav-brand" href="{home}"')
+    route = PAGES.get(src_name, src_name.removesuffix('.html')).removesuffix('index.html').strip('/')
+    title = re.search(r'<title>(.*?)</title>', html, re.I | re.S)
+    page_label = LABELS.get(route, re.split(r'[—·|]', html_unescape(title.group(1)))[0].strip() if title else route.replace('-', ' ').title())
+    nav = nav.replace('<span id="dc-nav-page">—</span>', '<span id="dc-nav-page">' + html_escape(page_label) + '</span>')
     nav_block = "\n" + nav + "\n"
     if re.search(r'<body\b[^>]*>', html):
         return re.sub(r'(<body\b[^>]*>)', lambda m: m.group(1) + nav_block, html, count=1)
