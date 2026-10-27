@@ -59,6 +59,17 @@
     return promise;
   }
   function currencyChoice() { try{return localStorage.getItem(key)||'original';}catch{return 'original';} }
+  function profileStatus(profile) {
+    if(profile.identity_status==='candidate')return 'Company identity awaiting review';
+    return ({active:'Listings monitored',pending_first_collection:'First listings pending',
+      unavailable:'Listings temporarily unavailable',identity_review_required:'Company identity needs review',
+      candidate:'Product feed not yet connected'})[profile.collector_status] || 'Listings pending';
+  }
+  function profileNote(profile) {
+    return profile.identity_status==='candidate'
+      ? 'Company details and reported dispatch locations need corroboration.'
+      : 'Company details are attributed to the supplier’s own published information.';
+  }
   function currencyControl(fx, selected) {
     const options=['original',...Object.keys(fx.rates||{}).sort()];
     return `<label>Display currency <select data-supplier-currency>${options.map(c=>`<option value="${escape(c)}" ${c===selected?'selected':''}>${c==='original'?'Original':escape(c)}</option>`).join('')}</select></label>`;
@@ -117,7 +128,7 @@
           ${currencyControl(data.fx,currency)}<label>Product name <input id="supplier-query" type="search" value="${escape(query)}"></label></div>
           <p role="status">${offers.length} listings · ${selectedProfiles.length} suppliers · Updated ${escape(data.offers.generated_at)}</p>
           <div class="supplier-profiles">${selectedProfiles.map(p=>`<article class="supplier-profile"><h2>${escape(p.name)}</h2><p>${escape(p.legal_name || 'Legal identity under review')} · ${escape(p.country)}</p>
-            <p>${escape(p.collector_status)} · ${escape(p.identity_status.replaceAll('_',' '))}</p>${p.reason?`<p>${escape(p.reason)}</p>`:''}<a href="${escape(safeUrl(p.identity_source))}" rel="noopener noreferrer" target="_blank">Source</a></article>`).join('')}</div>
+            <p>${escape(profileStatus(p))}</p><p>${escape(profileNote(p))}</p><a href="${escape(safeUrl(p.identity_source))}" rel="noopener noreferrer" target="_blank">Source</a></article>`).join('')}</div>
           <h2>Supplier listings</h2><div class="supplier-offers">${offers.map(o=>offerCard(o,profiles,currency,data.fx)).join('') || '<p>No listings match these filters.</p>'}</div>
           <h2>Reported changes</h2><ul>${data.changes.changes.filter(c=>ids.has(c.supplier_id)).slice(0,30).map(c=>`<li>${escape(c.observed_at)} · ${escape(c.name)} · ${escape(c.fields.join(', '))} changed — <a href="${escape(safeUrl(c.source_url))}">supplier source</a></li>`).join('') || '<li>No comparable changes have been recorded yet.</li>'}</ul>`;
         const bind=(id,set)=>{app.querySelector('#'+id).onchange=e=>{set(e.target.value);render();};};
