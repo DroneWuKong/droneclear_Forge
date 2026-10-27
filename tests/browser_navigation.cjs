@@ -8,7 +8,7 @@ const mime = {'.html':'text/html','.js':'application/javascript','.mjs':'applica
   '.css':'text/css','.json':'application/json','.svg':'image/svg+xml'};
 
 async function serve(context) {
-  await context.route('**/*', route => {
+  await context.route('**/*', async route => {
     const url = new URL(route.request().url());
     if (!['uas-forge.com','uas-patterns.com'].includes(url.hostname)) return route.abort();
     if (url.pathname.startsWith('/api/')) return route.fulfill({status:503,
@@ -16,6 +16,8 @@ async function serve(context) {
     const file = path.resolve(root, '.' + url.pathname + (url.pathname.endsWith('/') ? 'index.html' : ''));
     if (!file.startsWith(root + path.sep) || !fs.existsSync(file) || !fs.statSync(file).isFile())
       return route.fulfill({status:404,body:'Missing local artifact'});
+    // Keep search input usable while the directory request is still pending.
+    if (url.pathname === '/static/site-directory.json') await new Promise(resolve => setTimeout(resolve, 200));
     return route.fulfill({contentType:mime[path.extname(file)] || 'application/octet-stream',body:fs.readFileSync(file)});
   });
 }
@@ -58,10 +60,10 @@ async function serve(context) {
           assert.equal(await active.evaluate(el => el.closest('[data-area]').dataset.area), selectedGroup);
           for (const workspace of ['research','build','learn'])
             assert.equal(await page.locator('#dc-area-switch [data-uas-link="'+workspace+'"]').isVisible(), true);
-          // Wait for the opening transition before checking the off-canvas edge.
-          await page.waitForTimeout(320);
+          // Wait for the actual open position; CI may defer animation frames.
+          await page.waitForFunction(() => document.getElementById('dc-drawer').getBoundingClientRect().x >= -1, null, {timeout:5000});
           const bounds = await page.locator('#dc-drawer').boundingBox();
-          assert.ok(bounds.x >= -1 && bounds.x+bounds.width <= width+1);
+          assert.ok(bounds.x >= -1 && bounds.x+bounds.width <= width+1, JSON.stringify({host,route,width,size,bounds}));
           assert.ok(await page.locator('#dc-drawer-close').evaluate(el => {
             const b=el.getBoundingClientRect(), hit=document.elementFromPoint(b.x+b.width/2,b.y+b.height/2);
             return hit===el || el.contains(hit);
@@ -83,7 +85,7 @@ async function serve(context) {
       assert.equal(new URL(page.url()).pathname,'/suppliers/');
       await page.goto('https://'+host+'/tools-home/?area='+ (area==='build' ? 'Build' : 'Research'));
       await page.locator('#tool-search').fill('European supplier');
-      await page.waitForFunction(() => document.querySelector('#tool-results a')?.textContent.includes('EU suppliers'));
+      await page.waitForFunction(() => document.querySelectorAll('#tool-results a').length === 1 && document.querySelector('#tool-results a').textContent.includes('EU suppliers'));
       assert.equal(await page.locator('#tool-results a').count(),1);
       assert.equal(await page.locator('#tool-results a').getAttribute('href'),'https://'+host+'/suppliers/');
     }
