@@ -380,7 +380,7 @@
       date:row.identity_checked_at || row.discovered_at,source:row.name,destination:row.identity_source,
       citations:[{url:safeHttpUrl(row.identity_source),title:row.name,source:row.name,date:row.identity_checked_at || row.discovered_at,kind:'Supplier identity source'}],semantics:observation}));
     for(const row of offers?.offers || []) records.push(makeRecord('supplier_offer',row,{
-      id:row.offer_id,title:row.identity.name,summary:`${byId.get(row.supplier_id)?.name || row.supplier_id}: ${row.price.amount ?? 'Price unknown'} ${row.price.currency || ''}; reported ${row.availability.status}; observed ${row.observed_at}; expires ${row.expires_at}. ${row.part_id?'Exact catalog match '+row.part_id:'Component match awaiting review'}.`,
+      id:row.offer_id,title:row.identity.name,summary:`${byId.get(row.supplier_id)?.name || row.supplier_id}: ${row.price.amount ?? 'Price unknown'} ${row.price.currency || ''}; reported ${row.availability.status}; observed ${row.observed_at}; expires ${row.expires_at}. ${row.part_id?'Catalog match ('+(row.match_status || 'exact')+') '+row.part_id:'Component match awaiting review'}.`,
       date:row.observed_at,source:byId.get(row.supplier_id)?.name || row.supplier_id,destination:row.source_url,
       citations:[{url:safeHttpUrl(row.source_url),title:row.identity.name,date:row.observed_at,kind:'Supplier listing'}],semantics:observation}));
     for(const row of changes?.changes || []) records.push(makeRecord('supplier_change',row,{

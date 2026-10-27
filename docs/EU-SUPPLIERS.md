@@ -55,10 +55,13 @@ fallback model.
 
 Deploy the budget Worker before the Pages bundle; the existing production
 workflow now enforces that order. Then deploy the Ai-Project collector/workflow.
-Run the `suppliers` group with `dry_run=true` first, then a normal supplier run.
+Run Ai-Project's `eu-suppliers.yml` with `dry_run=true` first, then a normal run.
 The collector publishes through the existing data-only helper. After final
-pipeline health publication, it dispatches the existing pinned Pages deployment.
+supplier health publication, it dispatches the existing pinned Pages deployment.
 Branch test runs cannot trigger that production deployment.
+The daily 09:00 UTC schedule uses a hosted runner, so stopped physical build
+runners cannot stall refreshes. An optional `discovery_country` input runs one
+smoke task within the same weekly/monthly budget.
 
 Inspect collector counts/errors, unmatched and stale offers, and authenticated
 budget status. The first release seeds five profiles, with FPV24 and Rotorama
@@ -67,7 +70,7 @@ no fabricated offers. Successful live offers require archived evidence.
 
 Acceptance requires seven distinct daily successful observations for both
 initial suppliers; unit tests and a live dry run do not satisfy that soak period.
-To stop collection, disable the `suppliers` job/dispatch and revert the public
+To stop collection, disable `eu-suppliers.yml` and revert the public
 manifest bundle to the last valid generated-data commit. Do not delete source
 evidence, alter partner ownership, or enable global autonomous advisory publication.
 
