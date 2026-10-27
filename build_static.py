@@ -81,6 +81,7 @@ PAGES = {
     'template.html': 'template/index.html',
     'platforms.html': 'platforms/index.html',
     'browse.html': 'browse/index.html',
+    'suppliers.html': 'suppliers/index.html',
     'contribute.html': 'contribute/index.html',
     'slam-selector.html': 'slam/index.html',
     'slam-guide.html': 'slam-guide/index.html',
@@ -2860,6 +2861,13 @@ def build(*, offline=False, data_ref=None, data_dir=None, include_private=False)
         raise RuntimeError("Public data generation failed") from e
 
     # Process HTML pages
+    from tools.supplier_inputs import PUBLIC_NAMES, validate_supplier_inputs
+    if validate_supplier_inputs(SRC_DIR):
+        supplier_target = Path(BUILD_DIR) / 'data/suppliers'
+        supplier_target.mkdir(parents=True, exist_ok=True)
+        for key, name in PUBLIC_NAMES.items():
+            shutil.copy2(Path(SRC_DIR) / (name + '.json'), supplier_target / (key + '.v1.json'))
+
     for src_name, dst_path in PAGES.items():
         # Both Build entry URLs use one canonical template to prevent visual drift.
         source_name = 'forge-home.html' if src_name == 'mission-control.html' else src_name

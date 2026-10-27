@@ -42,8 +42,10 @@ function buildResearchIndex(inputDir, options = {}) {
   const entities = read('entity_graph');
   const predictions = read('predictions') || read('pie_predictions');
   const references = read('forge_intel');
+  const suppliers = read('supplier_profiles'), supplierOffers = read('supplier_offers'), supplierChanges = read('supplier_changes');
   let records = [
     ...ask.buildCorpus({articles, flags, actors, ttps, events}),
+    ...ask.supplierRecords(suppliers, supplierOffers, supplierChanges),
     ...ask.genericRecords(entities, 'entity', 'entities'),
     ...ask.genericRecords(predictions, 'prediction', 'predictions'),
     ...ask.genericRecords(normal.defenseRecords(references).concat(normal.commercialRecords(references)), 'reference', 'records')
@@ -61,6 +63,7 @@ function buildResearchIndex(inputDir, options = {}) {
   }
   const datasetByType={article:'intel_articles',flag:inputs.flags?.status==='available'?'flags':'pie_flags',actor:'actor_fingerprints',ttp:'ttp_counter_gap',entity:'entity_graph',prediction:inputs.predictions?.status==='available'?'predictions':'pie_predictions',reference:'forge_intel'};
   const semantics={};
+  Object.assign(datasetByType,{supplier:'supplier_profiles',supplier_offer:'supplier_offers',supplier_change:'supplier_changes'});
   for (const [name,input] of Object.entries(inputs)) {
     const age=Date.parse(options.generatedAt || new Date().toISOString())-Date.parse(input.generated_at || '');
     input.evidence_status=!Number.isFinite(age)?'unversioned':age>72*3600000?'historical snapshot':age < -24*3600000?'invalid future source date':'recent artifact';

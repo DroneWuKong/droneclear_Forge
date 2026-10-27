@@ -18,7 +18,7 @@
     'has','have','how','i','in','is','it','its','may','might','of','on','or','should','that','the','their',
     'there','these','this','to','was','were','what','when','where','which','who','why','will','with','would'
   ]);
-  const TYPE_ORDER = ['article','flag','actor','ttp','prediction','entity','reference','component','platform'];
+  const TYPE_ORDER = ['article','flag','actor','ttp','prediction','entity','reference','component','platform','supplier','supplier_offer','supplier_change'];
   const TYPE_LABEL = Object.freeze({ article:'Article evidence', flag:'Indexed signal', actor:'Actor context', ttp:'TTP context' });
   const TYPE_DESTINATION = Object.freeze({ article:'/intel/', flag:'/patterns/', actor:'/actors/', ttp:'/ttps/' });
   const MAX_CITATIONS_PER_RECORD = 8;
@@ -370,6 +370,24 @@
       citations:citationsFromFlag(row),
       semantics:type === 'prediction' ? 'Forecast or preserved legacy judgment. Probability is not evidence confidence. Review the issued criteria and cohort before evaluating it.' : 'Indexed reference. Relationships require their own evidence; a matching name does not establish ownership, supply, or installation.'
     }));
+  }
+  function supplierRecords(profiles, offers, changes) {
+    const suppliers=profiles?.suppliers || [], byId=new Map(suppliers.map(s=>[s.id,s]));
+    const observation='Supplier-reported observation with dated source evidence. It is not independently verified inventory, a procurement advisory, or a compliance determination.';
+    const records=[];
+    for(const row of suppliers) records.push(makeRecord('supplier',row,{
+      id:row.id,title:row.name,summary:`${row.country} supplier. ${row.legal_name || 'Legal identity awaiting review'}. ${row.identity_status}. ${row.reason || ''}`,
+      date:row.identity_checked_at || row.discovered_at,source:row.name,destination:row.identity_source,
+      citations:[{url:safeHttpUrl(row.identity_source),title:row.name,source:row.name,date:row.identity_checked_at || row.discovered_at,kind:'Supplier identity source'}],semantics:observation}));
+    for(const row of offers?.offers || []) records.push(makeRecord('supplier_offer',row,{
+      id:row.offer_id,title:row.identity.name,summary:`${byId.get(row.supplier_id)?.name || row.supplier_id}: ${row.price.amount ?? 'Price unknown'} ${row.price.currency || ''}; reported ${row.availability.status}; observed ${row.observed_at}; expires ${row.expires_at}. ${row.part_id?'Exact catalog match '+row.part_id:'Component match awaiting review'}.`,
+      date:row.observed_at,source:byId.get(row.supplier_id)?.name || row.supplier_id,destination:row.source_url,
+      citations:[{url:safeHttpUrl(row.source_url),title:row.identity.name,date:row.observed_at,kind:'Supplier listing'}],semantics:observation}));
+    for(const row of changes?.changes || []) records.push(makeRecord('supplier_change',row,{
+      id:row.id,title:`Supplier-reported change: ${row.name}`,summary:`${byId.get(row.supplier_id)?.name || row.supplier_id}: ${row.fields.join(', ')} changed. Before: ${JSON.stringify(row.before)}. After: ${JSON.stringify(row.after)}.`,
+      date:row.observed_at,source:byId.get(row.supplier_id)?.name || row.supplier_id,destination:row.source_url,
+      citations:[{url:safeHttpUrl(row.source_url),title:row.name,date:row.observed_at,kind:'Supplier change source'}],semantics:observation}));
+    return records;
   }
   // A transparent news filter, not an assessment of truth or relevance to a mission.
   // Restrict text matching to article content; publisher footers and entity names
@@ -970,6 +988,6 @@
     STOPWORDS, TYPE_ORDER, text, normalize, termPattern, queryTerms, safeHttpUrl, parseDate, canonicalArticleSource,
     normalizeCitation, dedupeCitations, citationsFromFlag, citationsFromActor, citationsFromTtp,
     articleRecords, flagRecords, actorRecords, ttpRecords, buildCorpus, scoreRecord, rankEvidence, applyRetrievalPolicyPage,
-    evidencePacket, coverageFacts, htmlEscape, stableId, genericRecords, compactRecord, recordKey, recordUrl, projectResearch, publicRecord, isUasArticle, sourceDateStatus, citationNumbers, renderResult, renderCitation, researchRequest, feedbackPayload, submitFeedback, fetchShadowStatus, shadowObservationPayload, submitShadowObservation, savedPacket, readSaved, writeSaved, boot
+    evidencePacket, coverageFacts, htmlEscape, stableId, genericRecords, supplierRecords, compactRecord, recordKey, recordUrl, projectResearch, publicRecord, isUasArticle, sourceDateStatus, citationNumbers, renderResult, renderCitation, researchRequest, feedbackPayload, submitFeedback, fetchShadowStatus, shadowObservationPayload, submitShadowObservation, savedPacket, readSaved, writeSaved, boot
   };
 });

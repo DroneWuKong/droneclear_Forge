@@ -21,6 +21,7 @@ import faaLookup     from './faa-lookup.js';
 import digest        from './digest.js';
 import patternsAutonomy from './patterns-autonomy.mjs';
 import ecosystemApi from './ecosystem-api.mjs';
+import supplierAutomation from './supplier-automation.mjs';
 
 const CORS = {
   'Access-Control-Allow-Origin': '*',
@@ -83,6 +84,9 @@ export default {
 
     if (path === '/api/ecosystem/v1' || path.startsWith('/api/ecosystem/v1/'))
       return ecosystemApi.fetch(req, env, ctx);
+
+    if (path.startsWith('/api/suppliers/'))
+      return supplierAutomation.fetch(req, env, ctx);
 
     // Legacy /.netlify/functions/* redirect → /api/* equivalents
     if (path.startsWith('/.netlify/functions/')) {

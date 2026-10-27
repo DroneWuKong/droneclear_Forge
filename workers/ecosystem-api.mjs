@@ -189,7 +189,7 @@ async function listPublicOffers(db, url) {
     WHERE product_manufacturer_id = ? AND product_id = ? AND publication_state = 'PUBLISHED'
       AND valid_at_ms <= ? AND valid_until_ms > ?
       AND EXISTS (SELECT 1 FROM ecosystem_product_revisions p WHERE p.manufacturer_id = ecosystem_supplier_offers.product_manufacturer_id AND p.product_id = ecosystem_supplier_offers.product_id AND p.revision = ecosystem_supplier_offers.product_revision AND ${customerProductSql('p')})
-    ORDER BY sponsored, unit_price_minor, offer_id LIMIT 200`).bind(manufacturerId, productId, now, now).all();
+    ORDER BY sponsored, currency, unit_price_minor, offer_id LIMIT 200`).bind(manufacturerId, productId, now, now).all();
   const offers = (result.results || []).map(row => JSON.parse(row.contract_json));
   return response(200, { schemaVersion: 'forge.supplier-offer-catalog.v2', manufacturerId, productId, offers: offers.filter(item => item.sponsored === false), sponsoredOffers: offers.filter(item => item.sponsored === true), authorizesExecution: false }, { 'Cache-Control': 'public, max-age=30' });
 }

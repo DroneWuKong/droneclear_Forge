@@ -3,8 +3,10 @@ import hashlib
 import json
 import re
 from pathlib import Path
+from tools.supplier_inputs import PUBLIC_NAMES, validate_supplier_inputs
 
 PUBLIC_INPUTS = {
+    **{'supply-chain/eu-suppliers/' + key + '.v1.json': (name + '.json',) for key, name in PUBLIC_NAMES.items()},
     'flags.json': ('flags.json', 'pie_flags.json'),
     'predictions.json': ('predictions.json', 'pie_predictions.json'),
     'intel-db/articles.json': ('intel_articles.json',),
@@ -54,6 +56,7 @@ def sync_public_inputs(data_dir, destination, revision=None, *, verified_revisio
     if verified_revision and not re.fullmatch(r'[a-fA-F0-9]{40}', revision or ''):
         raise ValueError('Verified public inputs require an immutable revision')
     target.mkdir(parents=True, exist_ok=True)
+    validate_supplier_inputs(root if root is not None else target)
     manifest = {'schema_version': 1, 'upstream_ref': revision,
                 'upstream_ref_scope': 'selected_input_rows_only',
                 'revision_verified': verified_revision,
