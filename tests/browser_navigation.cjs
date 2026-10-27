@@ -8,7 +8,7 @@ const mime = {'.html':'text/html','.js':'application/javascript','.mjs':'applica
   '.css':'text/css','.json':'application/json','.svg':'image/svg+xml'};
 
 async function serve(context) {
-  await context.route('**/*', route => {
+  await context.route('**/*', async route => {
     const url = new URL(route.request().url());
     if (!['uas-forge.com','uas-patterns.com'].includes(url.hostname)) return route.abort();
     if (url.pathname.startsWith('/api/')) return route.fulfill({status:503,
@@ -16,6 +16,8 @@ async function serve(context) {
     const file = path.resolve(root, '.' + url.pathname + (url.pathname.endsWith('/') ? 'index.html' : ''));
     if (!file.startsWith(root + path.sep) || !fs.existsSync(file) || !fs.statSync(file).isFile())
       return route.fulfill({status:404,body:'Missing local artifact'});
+    // Keep search input usable while the directory request is still pending.
+    if (url.pathname === '/static/site-directory.json') await new Promise(resolve => setTimeout(resolve, 200));
     return route.fulfill({contentType:mime[path.extname(file)] || 'application/octet-stream',body:fs.readFileSync(file)});
   });
 }
@@ -83,7 +85,7 @@ async function serve(context) {
       assert.equal(new URL(page.url()).pathname,'/suppliers/');
       await page.goto('https://'+host+'/tools-home/?area='+ (area==='build' ? 'Build' : 'Research'));
       await page.locator('#tool-search').fill('European supplier');
-      await page.waitForFunction(() => document.querySelector('#tool-results a')?.textContent.includes('EU suppliers'));
+      await page.waitForFunction(() => document.querySelectorAll('#tool-results a').length === 1 && document.querySelector('#tool-results a').textContent.includes('EU suppliers'));
       assert.equal(await page.locator('#tool-results a').count(),1);
       assert.equal(await page.locator('#tool-results a').getAttribute('href'),'https://'+host+'/suppliers/');
     }
