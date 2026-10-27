@@ -60,10 +60,10 @@ async function serve(context) {
           assert.equal(await active.evaluate(el => el.closest('[data-area]').dataset.area), selectedGroup);
           for (const workspace of ['research','build','learn'])
             assert.equal(await page.locator('#dc-area-switch [data-uas-link="'+workspace+'"]').isVisible(), true);
-          // Wait for the opening transition before checking the off-canvas edge.
-          await page.waitForTimeout(320);
+          // Wait for the actual open position; CI may defer animation frames.
+          await page.waitForFunction(() => document.getElementById('dc-drawer').getBoundingClientRect().x >= -1, null, {timeout:5000});
           const bounds = await page.locator('#dc-drawer').boundingBox();
-          assert.ok(bounds.x >= -1 && bounds.x+bounds.width <= width+1);
+          assert.ok(bounds.x >= -1 && bounds.x+bounds.width <= width+1, JSON.stringify({host,route,width,size,bounds}));
           assert.ok(await page.locator('#dc-drawer-close').evaluate(el => {
             const b=el.getBoundingClientRect(), hit=document.elementFromPoint(b.x+b.width/2,b.y+b.height/2);
             return hit===el || el.contains(hit);
