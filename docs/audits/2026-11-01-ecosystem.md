@@ -81,9 +81,21 @@ Initial default-branch revisions:
    a private-repository read in branch run
    [41338267031](https://github.com/DroneWuKong/UAS-Portfolio/actions/runs/41338267031).
    The workflow now tries configured readers and reports a specific setup error.
-   Persistent credential replacement awaits explicit
-   permission to reuse the CLI credential, or a dedicated repository reader
-   supplied through GitHub settings. Token values were not printed.
+   The user explicitly approved reuse of the working CLI credential, which
+   was stored as `PORTFOLIO_READ_TOKEN` at 19:08 UTC. Token values were not printed.
+   The next run read all ten repositories, then exposed a separate publication
+   failure: direct pushes to main were correctly blocked by repository rules.
+   [PR #60](https://github.com/DroneWuKong/UAS-Portfolio/pull/60) now publishes on
+   an automation branch, opens a PR, waits for product identity validation, and
+   merges through the normal rules with the exact proposed head. Failed checks
+   preserve the proposal; unrelated staged files and feature-branch publication
+   are rejected. The repository's auto-merge setting and bypass permissions were
+   unchanged. Five real-Git regression tests and the required CI check passed.
+   Production [run 41340606856](https://github.com/DroneWuKong/UAS-Portfolio/actions/runs/41340606856)
+   succeeded, read all ten source repositories, opened
+   [manifest PR #61](https://github.com/DroneWuKong/UAS-Portfolio/pull/61), and
+   merged it after the required check passed. Credential and publication failures
+   are resolved.
 
 9. **Immutable recorder release:** npm tooling changes triggered a redundant
    publication attempt for native recorder v1.3.1. The publisher now compares
@@ -130,6 +142,7 @@ Initial default-branch revisions:
 | Handbook full browser suite after rendering repair | Passed; zero page errors; final run also verifies full print rendering |
 | Handbook Pages Functions | Compiled successfully |
 | Handbook repaired production | Exact commit `1e87707e36435f4d4400fd64c897b35d2d6be637`, release `7a849a6187c1c485d9d9`, durable storage, review and attachments verified |
+| Portfolio protected publication | Five real-Git regressions passed; production refresh read all ten repositories and merged PR #61 through the required check |
 | npm audit, all three affected package trees | Zero vulnerabilities after patched overrides |
 
 The Handbook evidence audit retains 5,264 unreviewed records out of 5,308 tracked
@@ -142,6 +155,7 @@ records. Passing software checks does not make these claims source-supported.
 - Merged: [Handbook repair PR #88](https://github.com/DroneWuKong/drone-integration-handbook/pull/88)
 - Merged: [Portfolio manifest PR #58](https://github.com/DroneWuKong/UAS-Portfolio/pull/58)
 - Merged: [Recorder release repair PR #217](https://github.com/DroneWuKong/droneclear_Forge/pull/217)
+- Merged: [Portfolio protected-publication PR #60](https://github.com/DroneWuKong/UAS-Portfolio/pull/60)
 - Merged: [Portfolio reader-selection PR #59](https://github.com/DroneWuKong/UAS-Portfolio/pull/59)
 - Forge production deployments of `df468441c639af05b58a25ee85de00fa29b68493` and recorder follow-up `1c8d427add9cb69ba4a04fe16a344bfbb11d8f16` passed.
 - Patterns PR #806 has auto-merge enabled at combined source
