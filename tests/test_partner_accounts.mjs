@@ -69,7 +69,8 @@ test('partner accounts persist drafts, isolate companies, and revoke sessions in
 });
 
 test('signup validates input and login throttles guesses before password hashing',async()=>{
-  const {runtime,db}=await partnerRuntime();
+  const boundary=Date.parse('2026-11-01T20:00:00.000Z');
+  const {runtime,db,setTime}=await partnerRuntime({nowMs:boundary-1});
   const post=input=>runtime.dispatchFetch(origin+'/api/ecosystem/v1/auth/signup',{method:'POST',headers:{Origin:origin,'Content-Type':'application/json'},body:JSON.stringify(input)});
   try{
     const short=await post({email:'invalid@example.com',password:'short',name:'Test',organizationName:'Test'});assert.equal(short.status,400);
@@ -80,6 +81,15 @@ test('signup validates input and login throttles guesses before password hashing
       const result=await runtime.dispatchFetch(url,{method:'POST',headers:{Origin:origin,'Content-Type':'application/json'},body:JSON.stringify({email:'unknown@example.com',password})});
       assert.equal(result.status,i===10?429:401);
     }
+    const windows=await db.prepare('SELECT window_start_ms, request_count FROM ecosystem_partner_auth_windows WHERE request_count = 11').all();
+    assert.equal(windows.results.length,2,'Both the IP and email counters record all attempts');
+    for(const row of windows.results) assert.equal(row.window_start_ms,boundary-15*60_000);
+    await setTime(boundary);
+    const next=await runtime.dispatchFetch(url,{method:'POST',headers:{Origin:origin,'Content-Type':'application/json'},body:JSON.stringify({email:'unknown@example.com',password})});
+    assert.equal(next.status,401,'The next fixed window permits a new attempt');
+    const renewed=await db.prepare('SELECT request_count FROM ecosystem_partner_auth_windows WHERE window_start_ms = ?').bind(boundary).all();
+    assert.equal(renewed.results.length,2);
+    for(const row of renewed.results) assert.equal(row.request_count,1,'New windows start fresh without rewriting prior counters');
   }finally{await runtime.dispose()}
 });
 

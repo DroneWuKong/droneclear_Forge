@@ -5,10 +5,20 @@ import { fileURLToPath } from 'node:url';
 
 export async function partnerRuntime(options = {}) {
   const root = fileURLToPath(new URL('..', import.meta.url));
-  const entry = options.reviewerFixture ? `import {handleEcosystemRequest} from './workers/ecosystem-api.mjs';
-      export default {fetch(request,env){return handleEcosystemRequest(request,{...env,ECOSYSTEM_PLATFORM_ADMIN_SUBJECTS:'reviewer-fixture'},
-        request.headers.get('X-Fixture-Reviewer')==='yes'?{subject:'reviewer-fixture',email:'reviewer@example.com'}:undefined)}};`
-      : "export { default } from './workers/ecosystem-api.mjs';";
+  const controlledClock = options.nowMs !== undefined;
+  if (controlledClock && !Number.isSafeInteger(options.nowMs)) throw new TypeError('Fixture time must be integer milliseconds');
+  // This clock and control route exist only in the generated test entrypoint.
+  // Set the Worker isolate's clock: mocking Date in Node cannot affect workerd.
+  const clock = controlledClock ? `let fixtureNowMs = ${options.nowMs}; Date.now = () => fixtureNowMs;` : '';
+  const clockRoute = controlledClock ? `if (request.url === 'https://partner-fixture.invalid/__clock' && request.method === 'POST') {
+      fixtureNowMs = Number(await request.text()); return new Response(null, {status:204});
+    }` : '';
+  const handler = options.reviewerFixture ? `handleEcosystemRequest(request,{...env,ECOSYSTEM_PLATFORM_ADMIN_SUBJECTS:'reviewer-fixture'},
+        request.headers.get('X-Fixture-Reviewer')==='yes'?{subject:'reviewer-fixture',email:'reviewer@example.com'}:undefined)`
+      : 'handleEcosystemRequest(request,env,undefined)';
+  const entry = `import {handleEcosystemRequest} from './workers/ecosystem-api.mjs';
+    ${clock}
+    export default {async fetch(request,env){${clockRoute} return ${handler};}};`;
   // Miniflare removes the production native PBKDF2 cap. Reproduce it so a
   // locally successful password flow cannot conceal the deployed failure.
   const productionCryptoLimit = `const deriveBits = crypto.subtle.deriveBits.bind(crypto.subtle);
@@ -35,6 +45,10 @@ export async function partnerRuntime(options = {}) {
       const sql = (await readFile(new URL('../ecosystem-migrations/' + file, import.meta.url), 'utf8')).replace(/^\s*--.*$/gm, '');
       for (const statement of sql.split(';').map(value => value.trim()).filter(Boolean)) await db.prepare(statement).run();
     }
-    return { runtime, db };
+    return { runtime, db, async setTime(nowMs) {
+      if (!controlledClock || !Number.isSafeInteger(nowMs)) throw new TypeError('A controlled fixture clock and integer milliseconds are required');
+      const response = await runtime.dispatchFetch('https://partner-fixture.invalid/__clock', {method:'POST',body:String(nowMs)});
+      if (response.status !== 204) throw new Error('Could not advance the fixture clock');
+    } };
   } catch (error) { await runtime.dispose(); throw error; }
 }
