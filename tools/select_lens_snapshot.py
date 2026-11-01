@@ -50,7 +50,18 @@ def select_snapshot(repo, validator, output, receipt, *, ref='HEAD', history=30)
             receipt.parent.mkdir(parents=True, exist_ok=True)
             receipt.write_text(json.dumps(payload, indent=2) + '\n')
             return payload
-    raise RuntimeError('No fresh, consistent lens snapshot passed validation; existing fallbacks were retained')
+    failure = receipt.with_suffix('.failure.json')
+    failure.parent.mkdir(parents=True, exist_ok=True)
+    failure.write_text(json.dumps({
+        'schema_version': 1, 'head_revision': head,
+        'selection': 'no_valid_snapshot', 'selected_revision': None,
+        'rejected_snapshots': rejected,
+    }, indent=2) + '\n')
+    reason = rejected[0]['reason'] if rejected else 'No commits were available'
+    raise RuntimeError(
+        'No fresh, consistent lens snapshot passed validation; existing fallbacks were retained. '
+        f'Checked {len(commits)} snapshots. Head rejection: {reason}. Diagnostics: {failure}'
+    )
 
 
 def main():

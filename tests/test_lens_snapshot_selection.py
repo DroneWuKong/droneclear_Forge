@@ -61,6 +61,18 @@ class SnapshotTests(unittest.TestCase):
             selector.select_snapshot(self.repo, self.validator, self.output, self.receipt)
         self.assertEqual(old.read_text(), 'retained bytes')
         self.assertFalse(self.receipt.exists())
+        failure = json.loads(self.receipt.with_suffix('.failure.json').read_text())
+        self.assertEqual(failure['selection'], 'no_valid_snapshot')
+        self.assertIsNone(failure['selected_revision'])
+        self.assertEqual(len(failure['rejected_snapshots']), 1)
+
+    def test_rejection_preserves_prior_success_receipt(self):
+        self.commit(3, derived=2)
+        self.receipt.write_text('prior successful selection')
+        with self.assertRaisesRegex(RuntimeError, 'Checked 1 snapshots. Head rejection:'):
+            selector.select_snapshot(self.repo, self.validator, self.output, self.receipt)
+        self.assertEqual(self.receipt.read_text(), 'prior successful selection')
+        self.assertFalse(self.output.exists())
 
     def test_missing_artifact_rejects_snapshot(self):
         self.commit(2)
