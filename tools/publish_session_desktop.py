@@ -10,6 +10,26 @@ import zipfile
 from tools.build_session_desktop import VERSION
 
 
+# Include all bundled assets, exporter/build code and shipped documentation.
+# Test-only npm changes do not require rebuilding an immutable native release.
+RECORDER_INPUTS = (
+    'forge-source/session-*', 'forge-source/workspace.css',
+    'forge-source/test-lab.js', 'forge-source/system-tests',
+    'tools/build_session_recorder.py', 'tools/build_session_desktop.py',
+    'docs/UAS_TEST_SESSION_SOP.md',
+)
+
+
+def recorder_sources_unchanged(target, revision):
+    # Native CI uses a shallow checkout. Fetch the exact original source commit,
+    # never a moving branch, before comparing the release's actual inputs.
+    subprocess.run(['git', 'fetch', '--no-tags', '--depth=1', 'origin', target], check=True)
+    result = subprocess.run(['git', 'diff', '--quiet', target, revision, '--', *RECORDER_INPUTS])
+    if result.returncode not in (0, 1):
+        raise SystemExit('Could not compare recorder release inputs.')
+    return result.returncode == 0
+
+
 def main(directory):
     directory = Path(directory)
     revision = os.environ['RELEASE_COMMIT']
@@ -40,6 +60,9 @@ def main(directory):
             ['gh', 'api', 'repos/' + os.environ['GH_REPO'] + '/git/ref/tags/' + tag,
              '--jq', '.object.sha'], text=True).strip()
         if target != revision:
+            if not release['isDraft'] and recorder_sources_unchanged(target, revision):
+                print('Recorder inputs are unchanged; retaining the existing immutable release ' + tag)
+                return
             raise SystemExit('This release already belongs to another commit; increment VERSION and download links.')
         published = {asset['name'] for asset in release['assets']}
         with tempfile.TemporaryDirectory() as tmp:
