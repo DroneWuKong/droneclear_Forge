@@ -122,10 +122,22 @@ Initial default-branch revisions:
    run was stopped after preserving its
    committed collector results; recovery uses the latest generated-data branch.
 
+11. **Partner-login test timing:** public quality run
+   [#472](https://github.com/DroneWuKong/droneclear_Forge/actions/runs/41344456685)
+   crossed the 20:00 UTC boundary of the existing 15-minute login limit. Its
+   eleventh guess correctly entered a new window and returned 401, while the
+   test expected 429 from a single-window sequence. Only the catalog JSON had
+   changed in that commit. Subsequent quality runs #473 and #474 and production
+   smoke passed. The local Worker fixture now supports an explicit clock; the
+   test exercises eleven attempts one millisecond before rollover, then verifies
+   fresh IP/email counters at the exact boundary. Production authentication and
+   rate limits are unchanged.
+
 ## Verification
 
 | Check | Result |
 | --- | --- |
+| Partner account/security regressions after clock repair | 22 passed, including explicit fixed-window rollover |
 | Forge Python | 142 tests and 53 subtests passed |
 | Forge Node / Workers runtime, patched dependencies | 411 passed |
 | Forge source audit, `--all --strict --require-catalog` | 102 HTML files, 30 datasets; zero findings/warnings |
@@ -151,17 +163,17 @@ records. Passing software checks does not make these claims source-supported.
 ## Release tracking
 
 - Merged: [Forge repair PR #216](https://github.com/DroneWuKong/droneclear_Forge/pull/216)
-- [Patterns repair PR #806](https://github.com/DroneWuKong/Ai-Project/pull/806)
+- Merged: [Patterns repair PR #806](https://github.com/DroneWuKong/Ai-Project/pull/806)
 - Merged: [Handbook repair PR #88](https://github.com/DroneWuKong/drone-integration-handbook/pull/88)
 - Merged: [Portfolio manifest PR #58](https://github.com/DroneWuKong/UAS-Portfolio/pull/58)
 - Merged: [Recorder release repair PR #217](https://github.com/DroneWuKong/droneclear_Forge/pull/217)
 - Merged: [Portfolio protected-publication PR #60](https://github.com/DroneWuKong/UAS-Portfolio/pull/60)
 - Merged: [Portfolio reader-selection PR #59](https://github.com/DroneWuKong/UAS-Portfolio/pull/59)
 - Forge production deployments of `df468441c639af05b58a25ee85de00fa29b68493` and recorder follow-up `1c8d427add9cb69ba4a04fe16a344bfbb11d8f16` passed.
-- Patterns PR #806 has auto-merge enabled at combined source
-  `7ccfe7dc43080076248fedc9c2c4cd40fa165135`, gated by existing required platform
-  checks. The local fixes and operational runner recovery are verified; the
-  source changes and writer scheduling are not yet merged/deployed.
+- Patterns PR #806 merged at 19:51 UTC as
+  `035b44b500a3fe1802b264d2aeef5cb4fafbb68a` after all required packaging checks
+  passed, including Windows, Linux, Android, and the connected update kit.
+  The source repairs and writer scheduling are now on main.
 - Scheduling PR #807 was closed after incorporation into #806, avoiding two
   successive full native packaging gates for the same repair.
 - Handbook production was read back at the exact merged commit, with durable capabilities enabled.
