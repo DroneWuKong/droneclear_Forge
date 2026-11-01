@@ -110,6 +110,15 @@ jobs:
             cp "$RUNNER_TEMP/validated-lens/${name}.json" "forge-source/${name}.json"
           done
 
+      - name: Preserve rejected snapshot diagnostics
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: lens-snapshot-rejections
+          path: forge-source/lens_snapshot_selection.failure.json
+          if-no-files-found: ignore
+          retention-days: 14
+
       - name: Validate worker JavaScript syntax
         run: node --check workers/forge-data.js
 
