@@ -75,6 +75,30 @@ function freshnessOf(data, type, source) {
   return { ...freshnessPolicy.inspect(data, FRESHNESS_LIMIT_MS.get(type) ?? null), source };
 }
 
+// The full article archive already passed transport, JSON and publication checks.
+// Stringifying it again alongside the parsed rows can exhaust a Worker isolate.
+function streamArticleArchive(raw, metadata, headers) {
+  let offset = 0;
+  const strings = new ReadableStream({
+    start(controller) {
+      controller.enqueue('{"data":');
+    },
+    pull(controller) {
+      if (offset < raw.length) {
+        const end = Math.min(offset + 32768, raw.length);
+        controller.enqueue(raw.slice(offset, end));
+        offset = end;
+      } else {
+        controller.enqueue(',' + JSON.stringify(metadata).slice(1));
+        controller.close();
+      }
+    },
+  });
+  return new Response(strings.pipeThrough(new TextEncoderStream()), {
+    headers: { ...CORS, ...NO_CACHE, 'Content-Type': 'application/json; charset=utf-8', ...headers },
+  });
+}
+
 async function serveParsed(data, type, source, params, raw, env, context) {
   // Freshness is always evaluated against the complete source document before
   // a summary/actor projection is made.
@@ -135,20 +159,12 @@ async function serveParsed(data, type, source, params, raw, env, context) {
       limitation: 'The loaded source provides no Git publication revision. The hash identifies its complete UTF-8 JSON text, not source freshness or claim support.',
     };
   }
-  return resp(
-    {
-      data: projected,
-      tier: 'free',
-      type,
-      source,
-      freshness,
-    },
-    200,
-    {
-      'X-Data-Source': source,
-      'X-Data-Freshness': freshness.status,
-    },
-  );
+  const metadata = { tier: 'free', type, source, freshness };
+  const headers = { 'X-Data-Source': source, 'X-Data-Freshness': freshness.status };
+  if (type === 'intel_articles' && Array.isArray(data) && projected === data) {
+    return streamArticleArchive(raw, metadata, headers);
+  }
+  return resp({ data: projected, ...metadata }, 200, headers);
 }
 
 async function parseAndServe(raw, type, source, params, env, context) {

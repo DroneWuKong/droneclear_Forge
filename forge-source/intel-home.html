@@ -260,8 +260,8 @@
   </div>
 
   <div class="stats">
-    <div class="st"><span class="st-n" id="s-articles">850</span><span class="st-l">Articles</span></div>
-    <div class="st"><span class="st-n blue" id="s-sources">7</span><span class="st-l">Sources</span></div>
+    <div class="st"><span class="st-n" id="s-articles">—</span><span class="st-l">Articles</span></div>
+    <div class="st"><span class="st-n blue" id="s-sources">—</span><span class="st-l">Sources</span></div>
     <div class="st"><span class="st-n cyan" id="s-companies">30</span><span class="st-l">Companies</span></div>
     <div class="st"><span class="st-n violet" id="s-platforms">237</span><span class="st-l">Platforms</span></div>
   </div>
@@ -272,7 +272,7 @@
       <a href="/intel/feed/" class="featured">
         <div class="feat-ico"><i class="ph ph-newspaper"></i></div>
         <div class="feat-body">
-          <div class="feat-title">Intel Feed <span class="pill-tag" id="feed-count">850</span></div>
+          <div class="feat-title">Intel Feed <span class="pill-tag" id="feed-count">—</span></div>
           <div class="feat-desc">All intel in one place — defense, DFR, and commercial. Search and filter across every source and vertical.</div>
         </div>
         <div class="feat-arr">Open <i class="ph ph-arrow-right"></i></div>
@@ -304,19 +304,23 @@
 
 <script>
 (function(){
-  // Articles + sources — from the live feed file
-  fetch('/api/data?type=intel_articles').then(r=>r.ok?r.json():null).then(e=>e&&e.data!==undefined?e.data:e).then(e=>e&&e.data!==undefined?e.data:e).then(d=>{
-    if(!d) return;
-    // Defensively unwrap {data,tier,type} if forge-data wrapper slips through
-    var arts = Array.isArray(d) ? d : (d && d.tier ? d.data : d);
-    if(!Array.isArray(arts)) return;
-    var el=document.getElementById('s-articles');
-    var fc=document.getElementById('feed-count');
-    var src=document.getElementById('s-sources');
-    if(el) el.textContent=arts.length.toLocaleString();
-    if(fc) fc.textContent=arts.length.toLocaleString();
-    if(src){var s=new Set(arts.map(function(a){return a.site}));src.textContent=s.size;}
-  }).catch(function(){});
+  // The catalog publishes both counts from the same article snapshot.
+  fetch('/api/data?type=dataset_catalog').then(function(response) {
+    if (!response.ok) throw new Error('Catalog unavailable');
+    return response.json();
+  }).then(function(payload) {
+    const catalog = payload.data || payload;
+    const articles = catalog.datasets.find(row => row.id === 'intel_articles');
+    if (!articles || articles.status !== 'fresh') return;
+    function showCount(id, count) {
+      if (Number.isSafeInteger(count) && count >= 0) {
+        document.getElementById(id).textContent = count.toLocaleString();
+      }
+    }
+    showCount('s-articles', articles.record_count);
+    showCount('feed-count', articles.record_count);
+    showCount('s-sources', articles.quality?.unique_source_count);
+  }).catch(function() { /* Leave unavailable counts as dashes. */ });
 
   // Companies — real count from intel_companies.json
   fetch('/intel_companies.json').then(r=>r.ok?r.json():null).then(e=>e&&e.data!==undefined?e.data:e).then(d=>{
