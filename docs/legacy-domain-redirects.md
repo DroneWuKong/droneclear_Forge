@@ -11,8 +11,11 @@ because:
   reach the `forge` Pages project. These legacy hosts are **separate domains**,
   so a Function on `forge` never sees them.
 
-So they must be configured in the **Cloudflare dashboard**. This file is the
-source of truth for what those rules should be.
+These rules live in each Cloudflare zone. For `uas-intel.com`, the existing
+redirect maintenance workflow supports the `legacy-intel` target. Check mode
+previews the exact-host redirect. Apply mode verifies the first-hop status,
+path and query on both hostnames. Both Intel DNS records must already be proxied.
+The other legacy zones use the dashboard instructions below.
 
 > Handled elsewhere — do **not** add here:
 > - `uas-patterns.com` apex → `/patterns-home/` and `uasdash.com` apex →

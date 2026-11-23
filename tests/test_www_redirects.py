@@ -1,5 +1,6 @@
 import unittest
 from unittest.mock import patch
+from urllib.parse import parse_qs, urlsplit
 from tools.repair_www_redirects import ACCOUNT, PHASE, REF, DOMAINS, rule_for, prepare, apply_plan, main
 
 
@@ -23,6 +24,36 @@ class Fixture:
 
 
 class WWWRedirectTests(unittest.TestCase):
+    def test_intel_rule_precedes_old_redirect_and_preserves_both_names_and_query(self):
+        domain = 'uas-intel.com'
+        old = {'id': 'old', 'ref': 'someone_elses_rule', 'enabled': True}
+        class LegacyZone(Fixture):
+            proxied = True
+            def request(self, method, path, payload=None, **kwargs):
+                if method == 'GET' and path.startswith('/zones?'):
+                    return [{'id': 'zone', 'name': domain, 'account': {'id': ACCOUNT}}]
+                if method == 'GET' and '/dns_records?' in path:
+                    host = parse_qs(urlsplit(path).query)['name'][0]
+                    return [{'name': host, 'type': 'A', 'proxied': self.proxied}]
+                return super().request(method, path, payload, **kwargs)
+
+        api = LegacyZone(rules=[old])
+        (method, path, rule), = prepare(api, domain)['changes']
+        self.assertEqual((method, path), ('POST', '/zones/zone/rulesets/ruleset/rules'))
+        self.assertEqual(rule['expression'], '(http.host in {"uas-intel.com" "www.uas-intel.com"})')
+        self.assertEqual(rule['action_parameters']['from_value'], {
+            'status_code': 301, 'preserve_query_string': True,
+            'target_url': {'expression': 'concat("https://uas-patterns.com", http.request.uri.path)'}})
+        self.assertEqual(rule['position'], {'before': ''})
+        managed = rule_for(domain) | {'id': 'managed'}
+        api.rules = [old, managed]
+        self.assertEqual(prepare(api, domain)['changes'][0][:2], ('PATCH', path + '/managed'))
+        api.rules = [managed, old]
+        self.assertEqual(prepare(api, domain)['changes'], [])
+        api.proxied = False
+        with self.assertRaisesRegex(RuntimeError, 'proxied legacy hostname'):
+            prepare(api, domain)
+
     def test_exact_host_path_and_query_preservation(self):
         rule = rule_for(DOMAINS[0])
         self.assertEqual(rule['expression'], '(http.host eq "www.uas-forge.com")')
