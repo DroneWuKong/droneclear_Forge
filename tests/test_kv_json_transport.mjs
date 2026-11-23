@@ -73,3 +73,17 @@ test('transport corruption fails closed, with existing static fallback explicitl
   assert.equal(fallback.status,200);assert.equal(fallback.headers.get('X-Data-Fallback'),'kv:503');
   assert.equal((await fallback.json()).source,'static:/intel_articles.json');
 });
+
+test('bulk responses stream the checked JSON and preserve Unicode across chunk boundaries', async () => {
+  const raw = '["' + 'x'.repeat(32765) + '🚁",\n  {"aid":"last"}]\n';
+  const env = { PIE_OUTPUTS: { getWithMetadata: async () => encoded(raw) } };
+  const response = await worker.fetch(request(''), env);
+  const text = await response.text();
+  assert.equal(response.status, 200);
+  assert.ok(text.startsWith('{"data":' + raw + ','));
+  assert.deepEqual(JSON.parse(text).data, JSON.parse(raw));
+
+  env.PIE_OUTPUTS.getWithMetadata = async () => encoded('[1,');
+  const invalid = await worker.fetch(request(''), env);
+  assert.notEqual(invalid.status, 200);
+});
